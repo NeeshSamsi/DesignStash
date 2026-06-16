@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens (Tailwind v4 CSS-first theme).
+ * Per CLAUDE.md: add named tokens here instead of using arbitrary values in markup.
+ */
+@theme {
+  --color-brand-500: oklch(0.55 0.18 270);
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
