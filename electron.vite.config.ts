@@ -11,7 +11,16 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
-        external: ['electron', 'better-sqlite3', 'sharp', 'node:crypto'],
+        external: [
+          'electron',
+          'better-sqlite3',
+          'sharp',
+          'node:crypto',
+          // node-llama-cpp is loaded at runtime via dynamic import(); never bundle it
+          // (it uses top-level await + ships native platform binaries).
+          'node-llama-cpp',
+          /^@node-llama-cpp\//
+        ],
         input: {
           index: resolve('src/main/index.ts'),
           'psd-reader.worker': resolve('src/main/psd/psd-reader.worker.ts'),
