@@ -14,5 +14,10 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules
     }
   },
+  {
+    // Node scripts (plain JS) — provide Node globals so no-undef passes.
+    files: ['**/*.mjs'],
+    languageOptions: { globals: { process: 'readonly', console: 'readonly' } }
+  },
   prettier
 )

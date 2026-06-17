@@ -11,15 +11,21 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
+        external: ['electron', 'better-sqlite3', 'sharp', 'node:crypto'],
         input: {
           index: resolve('src/main/index.ts'),
           'psd-reader.worker': resolve('src/main/psd/psd-reader.worker.ts'),
         },
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].js',
+          chunkFileNames: 'chunks/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash][extname]'
+        }
       },
     },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: { '@shared': resolve('src/shared') }
     }

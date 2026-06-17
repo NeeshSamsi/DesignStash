@@ -17,7 +17,7 @@ import { join, relative, sep, basename, extname } from 'node:path'
 import { mkdirSync, copyFileSync, rmSync, existsSync, readdirSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 
-import { initDb, getDb, closeDb } from '../src/main/db/connection'
+import { initDb, closeDb } from '../src/main/db/connection'
 import { runMigrations } from '../src/main/db/migrate'
 import { seedTaxonomy } from '../src/main/db/bootstrap'
 import { Repository } from '../src/main/db/repository'

@@ -19,6 +19,7 @@ models/
 coverage/
 playwright-report/
 test-results/
+tmp/
 
 # Real-PSD drop zone for local dev ingestion (never committed)
 dev-fixtures/

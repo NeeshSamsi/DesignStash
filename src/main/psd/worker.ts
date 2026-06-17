@@ -2,10 +2,10 @@ import { Worker } from 'node:worker_threads'
 import { join } from 'node:path'
 import type { RawImage } from './types'
 
-// electron-vite bundles the worker as psd-reader.worker.mjs (ESM) in out/main/.
+// electron-vite bundles the worker as psd-reader.worker.js (CJS) in out/main/.
 // __dirname is injected by electron-vite for both dev and packaged builds.
 function workerScriptPath(): string {
-  return join(__dirname, 'psd-reader.worker.mjs')
+  return join(__dirname, 'psd-reader.worker.js')
 }
 
 type WorkerResponse =
