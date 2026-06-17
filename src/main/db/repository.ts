@@ -1,7 +1,15 @@
 import { and, desc, eq } from 'drizzle-orm'
 import type { AppDatabase } from './connection'
-import { mockups, variants, tags, mockupTags } from './schema'
-import type { Mockup, NewMockup, Variant, NewVariant, Tag } from './schema'
+import { mockups, variants, tags, mockupTags, tagCategories } from './schema'
+import type {
+  Mockup,
+  NewMockup,
+  Variant,
+  NewVariant,
+  Tag,
+  NewTag,
+  TagCategory
+} from './schema'
 
 /** Typed data-access layer over Drizzle. Keep all queries here. */
 export class Repository {
@@ -37,6 +45,14 @@ export class Repository {
       .run()
   }
 
+  mockupExistsByHash(hash: string): boolean {
+    return !!this.db.select().from(mockups).where(eq(mockups.contentHash, hash)).get()
+  }
+
+  updateMockup(id: number, data: Partial<NewMockup>): void {
+    this.db.update(mockups).set(data).where(eq(mockups.id, id)).run()
+  }
+
   // Variants
   createVariant(data: NewVariant): Variant {
     return this.db.insert(variants).values(data).returning().get()
@@ -51,9 +67,30 @@ export class Repository {
       .all()
   }
 
+  // Categories
+  getCategoryByLabel(label: string): TagCategory | undefined {
+    return this.db.select().from(tagCategories).where(eq(tagCategories.label, label)).get()
+  }
+
+  createCategory(data: { label: string; isCanonical?: boolean }): TagCategory {
+    return this.db.insert(tagCategories).values(data).returning().get()
+  }
+
   // Tags
   getAllTags(): Tag[] {
     return this.db.select().from(tags).all()
+  }
+
+  getTagByLabel(categoryId: number, label: string): Tag | undefined {
+    return this.db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.categoryId, categoryId), eq(tags.label, label)))
+      .get()
+  }
+
+  createTag(data: NewTag): Tag {
+    return this.db.insert(tags).values(data).returning().get()
   }
 
   getTagsForMockup(mockupId: number): Tag[] {

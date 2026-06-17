@@ -15,6 +15,13 @@
       "when": 1781664323408,
       "tag": "0001_clear_misty_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1781670991490,
+      "tag": "0002_melted_virginia_dare",
+      "breakpoints": true
     }
   ]
 }

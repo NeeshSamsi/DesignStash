@@ -33,6 +33,9 @@ export const mockups = sqliteTable('mockups', {
   reviewStatus: text('review_status', { enum: ['needs_review', 'approved'] })
     .notNull()
     .default('needs_review'),
+  contentHash: text('content_hash'),
+  /** Import metadata. Does NOT violate the 'no source_path' rule: we store folder *names* as text hints, never a reusable path. */
+  importContext: text('import_context', { mode: 'json' }),
   isGroup: integer('is_group', { mode: 'boolean' }).notNull().default(false),
   groupId: integer('group_id').references((): AnySQLiteColumn => mockups.id, {
     onDelete: 'set null'
