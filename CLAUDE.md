@@ -9,6 +9,7 @@ A local-first macOS (Electron, Apple Silicon) app for designers to organise and 
 **Avoid arbitrary values.** Do NOT reach for Tailwind arbitrary-value syntax (e.g. `w-[437px]`, `text-[#1a1a1a]`, `gap-[13px]`, `top-[7px]`) as a default. They fragment the design system and bypass our tokens.
 
 **The rule:**
+
 1. **Prefer theme tokens first** — use the scale already defined in the Tailwind config (spacing, colors, radius, typography, etc.).
 2. **If a value you need isn't in the theme,** do NOT inline it as an arbitrary value. Instead:
    - **Pause and ask for approval**, and
