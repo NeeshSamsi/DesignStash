@@ -2,7 +2,7 @@
  * dev-ingest — local stand-in for the M3 import pipeline.
  *
  * Walks `dev-fixtures/psd/`, runs each PSD through the M2 cover resolver, copies
- * successes into the managed dev Library (mockups/<uuid>/{original.psd,cover.png,
+ * successes into the managed dev Library (mockups/<uuid>/{original.psd,cover.webp,
  * thumb.webp}), and writes `needs_review` rows. Lets us validate M2 against real
  * PSDs before the import UI exists. Inspect the result with `pnpm db:studio`.
  *

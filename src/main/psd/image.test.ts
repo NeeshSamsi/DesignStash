@@ -25,22 +25,22 @@ function makeRaw(width: number, height: number): RawImage {
 }
 
 describe('generateCoverFromRaw', () => {
-  it('produces cover.png and thumb.webp in outDir', async () => {
+  it('produces cover.webp and thumb.webp in outDir', async () => {
     const dir = tempDir()
     const outDir = join(dir, 'out')
     const { coverPath, thumbPath } = await generateCoverFromRaw(makeRaw(800, 600), outDir)
 
     expect(existsSync(coverPath)).toBe(true)
     expect(existsSync(thumbPath)).toBe(true)
-    expect(coverPath).toBe(join(outDir, 'cover.png'))
+    expect(coverPath).toBe(join(outDir, 'cover.webp'))
     expect(thumbPath).toBe(join(outDir, 'thumb.webp'))
   })
 
-  it('cover is valid PNG with correct format', async () => {
+  it('cover is valid WebP with correct format', async () => {
     const dir = tempDir()
     const { coverPath } = await generateCoverFromRaw(makeRaw(800, 600), join(dir, 'out'))
     const meta = await sharp(coverPath).metadata()
-    expect(meta.format).toBe('png')
+    expect(meta.format).toBe('webp')
   })
 
   it('thumb is valid WebP with correct format', async () => {
@@ -85,7 +85,7 @@ describe('generateCoverFromRaw', () => {
 })
 
 describe('generateCoverFromFile', () => {
-  it('produces cover.png and thumb.webp from a JPEG file', async () => {
+  it('produces cover.webp and thumb.webp from a JPEG file', async () => {
     const dir = tempDir()
     const imgPath = join(dir, 'source.jpg')
     await buildSidecarImage(imgPath, { width: 800, height: 600, format: 'jpeg' })

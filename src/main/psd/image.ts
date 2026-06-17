@@ -1,57 +1,52 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import sharp from 'sharp'
-import { COVER_MAX_EDGE, THUMB_MAX_EDGE, THUMB_WEBP_QUALITY } from '@shared/constants'
+import {
+  COVER_MAX_EDGE,
+  COVER_WEBP_QUALITY,
+  THUMB_MAX_EDGE,
+  THUMB_WEBP_QUALITY,
+  WEBP_EFFORT
+} from '@shared/constants'
 import type { RawImage } from './types'
 
-export async function generateCoverFromRaw(
-  raw: RawImage,
+/** cover.webp (large zoom preview) + thumb.webp (grid tile). Both optimized WebP. */
+async function writeDerivatives(
+  base: sharp.Sharp,
   outDir: string
 ): Promise<{ coverPath: string; thumbPath: string }> {
   await mkdir(outDir, { recursive: true })
-  const coverPath = join(outDir, 'cover.png')
+  const coverPath = join(outDir, 'cover.webp')
   const thumbPath = join(outDir, 'thumb.webp')
-
-  const base = sharp(raw.data, {
-    raw: { width: raw.width, height: raw.height, channels: 4 },
-  })
 
   await base
     .clone()
     .resize(COVER_MAX_EDGE, COVER_MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
-    .png()
+    .webp({ quality: COVER_WEBP_QUALITY, effort: WEBP_EFFORT })
     .toFile(coverPath)
 
   await base
     .clone()
     .resize(THUMB_MAX_EDGE, THUMB_MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: THUMB_WEBP_QUALITY })
+    .webp({ quality: THUMB_WEBP_QUALITY, effort: WEBP_EFFORT })
     .toFile(thumbPath)
 
   return { coverPath, thumbPath }
 }
 
-export async function generateCoverFromFile(
+export function generateCoverFromRaw(
+  raw: RawImage,
+  outDir: string
+): Promise<{ coverPath: string; thumbPath: string }> {
+  return writeDerivatives(
+    sharp(raw.data, { raw: { width: raw.width, height: raw.height, channels: 4 } }),
+    outDir
+  )
+}
+
+export function generateCoverFromFile(
   imagePath: string,
   outDir: string
 ): Promise<{ coverPath: string; thumbPath: string }> {
-  await mkdir(outDir, { recursive: true })
-  const coverPath = join(outDir, 'cover.png')
-  const thumbPath = join(outDir, 'thumb.webp')
-
-  const base = sharp(imagePath)
-
-  await base
-    .clone()
-    .resize(COVER_MAX_EDGE, COVER_MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
-    .png()
-    .toFile(coverPath)
-
-  await base
-    .clone()
-    .resize(THUMB_MAX_EDGE, THUMB_MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: THUMB_WEBP_QUALITY })
-    .toFile(thumbPath)
-
-  return { coverPath, thumbPath }
+  return writeDerivatives(sharp(imagePath), outDir)
 }

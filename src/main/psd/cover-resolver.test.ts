@@ -37,7 +37,7 @@ describe('resolveCover — embedded branch', () => {
     }
   })
 
-  it('writes cover.png and thumb.webp for embedded result', async () => {
+  it('writes cover.webp and thumb.webp for embedded result', async () => {
     const dir = tempDir()
     const psdPath = join(dir, 'design.psd')
     buildPsdWithComposite(psdPath, { width: 800, height: 600 })
@@ -46,7 +46,7 @@ describe('resolveCover — embedded branch', () => {
     const result = await resolveCover({ psdPath, candidateImagePaths: [], outDir })
 
     if (result.source === 'embedded') {
-      expect(result.coverPath).toMatch(/cover\.png$/)
+      expect(result.coverPath).toMatch(/cover\.webp$/)
       expect(result.thumbPath).toMatch(/thumb\.webp$/)
     }
   })
@@ -105,7 +105,7 @@ describe('resolveCover — none branch', () => {
     })
 
     expect(result.source).toBe('none')
-    expect(existsSync(join(outDir, 'cover.png'))).toBe(false)
+    expect(existsSync(join(outDir, 'cover.webp'))).toBe(false)
     expect(existsSync(join(outDir, 'thumb.webp'))).toBe(false)
   })
 })
