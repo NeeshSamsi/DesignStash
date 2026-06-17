@@ -20,6 +20,9 @@ coverage/
 playwright-report/
 test-results/
 
+# Real-PSD drop zone for local dev ingestion (never committed)
+dev-fixtures/
+
 # Env & secrets
 .env
 .env.*
