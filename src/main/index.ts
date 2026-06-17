@@ -1,5 +1,6 @@
 import { app, shell, dialog, BrowserWindow } from 'electron'
 import { join } from 'node:path'
+import { promises as fs } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { sql } from 'drizzle-orm'
 import { APP_ID } from '@shared/constants'
@@ -13,6 +14,14 @@ import { createSettingsStore, type SettingsStore } from './settings'
 import { logger } from './logger'
 import { ImportService } from './import/import-service'
 import { Repository } from './db/repository'
+import { GroupingService } from './import/grouping-service'
+import { ApprovalService } from './import/approval-service'
+import type { GroupMember } from '@shared/grouping'
+import type { InferenceProvider } from '@shared/inference'
+import { detectHardware, recommendTier } from './ai/hardware'
+import { MODEL_REGISTRY } from './ai/registry'
+import { ModelDownloader } from './ai/download'
+import { LocalInferenceProvider } from './ai/local-provider'
 
 const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
 
@@ -26,6 +35,9 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
   const repo = new Repository(getDb())
   const importService = new ImportService(repo, settings.getLibraryRoot())
   const activeImports = new Map<string, AbortController>()
+  const modelsDir = join(settings.getLibraryRoot(), '..', 'models')
+  const downloader = new ModelDownloader(modelsDir)
+  const activeAiDownloads = new Map<string, AbortController>()
 
   registerIpcHandler(IPC_CHANNELS.APP_INFO, () => ({
     name: 'DesignStash',
@@ -96,6 +108,183 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
       return { cancelled: true }
     }
     return { cancelled: false }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.AI_HARDWARE_INFO, () => {
+    const hw = detectHardware()
+    return { ...hw, recommendedTier: recommendTier(hw) }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.AI_LIST_MODELS, async () => {
+    const activeModelId = settings.get().activeModelId
+    const models = await Promise.all(
+      MODEL_REGISTRY.map(async (entry) => ({
+        id: entry.id,
+        name: entry.name,
+        tier: entry.tier,
+        sizeBytes: entry.sizeBytes,
+        installed: await downloader.isInstalled(entry.id),
+        active: entry.id === activeModelId
+      }))
+    )
+    return { models }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.AI_DOWNLOAD_MODEL, (args) => {
+    if (activeAiDownloads.has(args.id)) return { started: false }
+    const controller = new AbortController()
+    activeAiDownloads.set(args.id, controller)
+    void downloader
+      .download(args.id, {
+        signal: controller.signal,
+        onProgress: (p) => {
+          window.webContents.send(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, p)
+        }
+      })
+      .then(() => {
+        window.webContents.send(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
+          modelId: args.id,
+          receivedBytes: 0,
+          totalBytes: 0,
+          phase: 'done'
+        })
+      })
+      .catch((err: unknown) => {
+        const isAbort = err instanceof Error && err.name === 'AbortError'
+        if (!isAbort) {
+          window.webContents.send(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
+            modelId: args.id,
+            receivedBytes: 0,
+            totalBytes: 0,
+            phase: 'error',
+            error: err instanceof Error ? err.message : String(err)
+          })
+        }
+      })
+      .finally(() => {
+        activeAiDownloads.delete(args.id)
+      })
+    return { started: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.AI_CANCEL_DOWNLOAD, (args) => {
+    const controller = activeAiDownloads.get(args.id)
+    if (controller) {
+      controller.abort()
+      activeAiDownloads.delete(args.id)
+      return { cancelled: true }
+    }
+    return { cancelled: false }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.AI_GET_ACTIVE, () => ({
+    modelId: settings.get().activeModelId
+  }))
+
+  registerIpcHandler(IPC_CHANNELS.AI_SET_ACTIVE, (args) => {
+    settings.update({ activeModelId: args.id })
+    return { modelId: args.id }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.GROUPING_PROPOSE, (args) => {
+    const dbMockups = repo.getMockupsByBatchId(args.batchId)
+    const members: GroupMember[] = dbMockups.map((m) => {
+      const ctx = m.importContext as { batchId?: string; folderTrail?: string[]; originalFilename?: string } | null
+      return {
+        mockupId: m.id,
+        fileName: ctx?.originalFilename ?? m.title,
+        folderTrail: ctx?.folderTrail ?? [],
+        coverPath: m.coverPath,
+        isPrimary: false
+      }
+    })
+    return GroupingService.propose(args.batchId, members)
+  })
+
+  registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
+    repo.confirmGroupings(args.groups, args.singletonIds)
+    return { confirmed: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.APPROVAL_INIT, async (args) => {
+    const activeModelId = settings.get().activeModelId
+    let provider: InferenceProvider | null = null
+    if (activeModelId) {
+      const installed = await downloader.isInstalled(activeModelId)
+      if (installed) {
+        const modelPath = join(modelsDir, activeModelId, 'model.gguf')
+        provider = new LocalInferenceProvider(modelPath)
+      }
+    }
+    const service = new ApprovalService(repo, provider)
+    return service.initQueue(args.batchId)
+  })
+
+  registerIpcHandler(IPC_CHANNELS.APPROVAL_SAVE_ITEM, async (args) => {
+    repo.approveItem(args.mockupId, {
+      title: args.title,
+      description: args.description,
+      coverPath: args.coverPath,
+      coverSource: args.coverSource,
+      reviewStatus: 'approved'
+    })
+    repo.clearTagsForMockup(args.mockupId)
+    for (const tagId of args.tagIds) {
+      repo.addTagToMockup(args.mockupId, tagId)
+    }
+
+    let reinferredItems = undefined
+    if (args.isLeader && args.wasEdited && args.leaderId === null) {
+      const groupMembers = repo.getMockupsByGroupId(args.mockupId)
+      if (groupMembers.length > 0) {
+        const activeModelId = settings.get().activeModelId
+        let provider: InferenceProvider | null = null
+        if (activeModelId) {
+          const installed = await downloader.isInstalled(activeModelId)
+          if (installed) {
+            provider = new LocalInferenceProvider(join(modelsDir, activeModelId, 'model.gguf'))
+          }
+        }
+        const service = new ApprovalService(repo, provider)
+        const memberItems = await service.initQueue_membersOnly(groupMembers)
+        reinferredItems = await service.reinferGroupRemainder(memberItems, args)
+      }
+    }
+
+    return { saved: true, reinferredItems }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.APPROVAL_SET_COVER, async (args) => {
+    const mockup = repo.getMockup(args.mockupId)
+    if (!mockup) throw new Error(`Mockup ${args.mockupId} not found`)
+
+    const coversDir = join(settings.getLibraryRoot(), 'covers')
+    await fs.mkdir(coversDir, { recursive: true })
+    const ext = args.filePath.split('.').pop() ?? 'png'
+    const destFileName = `${args.mockupId}-user.${ext}`
+    const destPath = join(coversDir, destFileName)
+    await fs.copyFile(args.filePath, destPath)
+
+    repo.setMockupCover(args.mockupId, destPath, 'user-uploaded')
+    return { coverPath: destPath, coverSource: 'user-uploaded' as const }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.TAG_LIST_BY_CATEGORY, () => {
+    const allCategories = repo.getAllCategories()
+    const allTags = repo.getAllTags()
+    const categories = allCategories.map((cat) => ({
+      categoryId: cat.id,
+      categoryLabel: cat.label,
+      tags: allTags
+        .filter((t) => t.categoryId === cat.id)
+        .map((t) => ({ tagId: t.id, label: t.label, parentTagId: t.parentTagId ?? null }))
+    }))
+    return { categories }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.TAG_CREATE, (args) => {
+    const tag = repo.createTag({ label: args.label, categoryId: args.categoryId })
+    return { tagId: tag.id, label: tag.label, categoryId: tag.categoryId }
   })
 }
 

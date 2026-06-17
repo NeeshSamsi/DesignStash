@@ -2,11 +2,22 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ImportProgress, ImportSummary } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
+import SettingsAiPane from './SettingsAiPane'
+import GroupingReview from './GroupingReview'
+import ApprovalStepper from './ApprovalStepper'
+import { useGroupingStore } from './stores/groupingStore'
+import { useApprovalStore } from './stores/approvalStore'
+
+type AppView = 'import' | 'grouping-review' | 'approval' | 'library-placeholder'
 
 export default function App() {
+  const [view, setView] = useState<AppView>('import')
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null)
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
   const [isDropping, setIsDropping] = useState(false)
+  const [showAiSettings, setShowAiSettings] = useState(false)
+  const groupingStore = useGroupingStore()
+  const approvalStore = useApprovalStore()
 
   useEffect(() => {
     const unsubscribe = window.api.onImportProgress(setImportProgress)
@@ -18,11 +29,19 @@ export default function App() {
     setImportProgress(null)
     const result = await window.api.invoke(IPC_CHANNELS.IMPORT_START, { paths })
     if (result.success) {
-      setImportSummary(result.data)
+      const summary = result.data
+      setImportSummary(summary)
+      groupingStore.setLoading(true)
+      const proposeRes = await window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, { batchId: summary.batchId })
+      groupingStore.setLoading(false)
+      if (proposeRes.success) {
+        groupingStore.setProposal(proposeRes.data)
+        setView('grouping-review')
+      }
     } else {
       console.error(result.error)
     }
-  }, [])
+  }, [groupingStore])
 
   const handleFileSelect = async () => {
     const result = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_PSD_FILES, undefined)
@@ -69,6 +88,58 @@ export default function App() {
     setIsDropping(false)
   }
 
+  if (view === 'grouping-review') {
+    return (
+      <GroupingReview
+        onConfirm={async () => {
+          const batchId = importSummary?.batchId
+          if (!batchId) { setView('import'); return }
+          approvalStore.setInitializing(true)
+          const res = await window.api.invoke(IPC_CHANNELS.APPROVAL_INIT, { batchId })
+          approvalStore.setInitializing(false)
+          if (res.success) {
+            approvalStore.setQueue(res.data)
+            groupingStore.reset()
+            setView('approval')
+          }
+        }}
+        onCancel={() => {
+          setView('import')
+          groupingStore.reset()
+        }}
+      />
+    )
+  }
+
+  if (view === 'approval') {
+    return (
+      <ApprovalStepper
+        onComplete={() => {
+          setView('library-placeholder')
+          approvalStore.reset()
+        }}
+        onCancel={() => {
+          setView('import')
+          approvalStore.reset()
+        }}
+      />
+    )
+  }
+
+  if (view === 'library-placeholder') {
+    return (
+      <main className="min-h-screen bg-neutral-900 text-slate-100 flex flex-col items-center justify-center gap-4">
+        <p className="text-neutral-300 text-lg">Mockups approved — library view coming in M7</p>
+        <button
+          onClick={() => setView('import')}
+          className="text-sm bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          Import more
+        </button>
+      </main>
+    )
+  }
+
   return (
     <main
       className={`min-h-screen bg-neutral-900 text-slate-100 flex flex-col items-center justify-center p-8 font-sans ${
@@ -80,7 +151,16 @@ export default function App() {
       onDragLeave={handleDragLeave}
     >
       <div className="max-w-md w-full bg-neutral-800 rounded-xl shadow-2xl p-8 border border-neutral-700">
-        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">DesignStash</h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-3xl font-bold text-white tracking-tight">DesignStash</h1>
+          <button
+            onClick={() => setShowAiSettings((v) => !v)}
+            className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
+          >
+            AI Settings
+          </button>
+        </div>
+        {showAiSettings && <SettingsAiPane />}
         <div className="flex space-x-2 my-4">
           <button
             onClick={handleFileSelect}

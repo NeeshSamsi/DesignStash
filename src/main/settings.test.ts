@@ -71,4 +71,24 @@ describe('settings store', () => {
     expect(store.getLibraryRoot()).toBe(custom)
     expect(store.get().onboarded).toBe(true)
   })
+
+  it('activeModelId defaults to null', () => {
+    const store = createSettingsStore(tempDir())
+    expect(store.get().activeModelId).toBeNull()
+  })
+
+  it('activeModelId persists to disk and reloads', () => {
+    const dir = tempDir()
+    createSettingsStore(dir).update({ activeModelId: 'moondream2-q4' })
+    const reloaded = createSettingsStore(dir)
+    expect(reloaded.get().activeModelId).toBe('moondream2-q4')
+  })
+
+  it('activeModelId can be cleared back to null', () => {
+    const dir = tempDir()
+    const store = createSettingsStore(dir)
+    store.update({ activeModelId: 'moondream2-q4' })
+    store.update({ activeModelId: null })
+    expect(store.get().activeModelId).toBeNull()
+  })
 })

@@ -3,7 +3,8 @@ import type {
   IpcRequest,
   IpcResponse,
   IpcResult,
-  ImportProgress
+  ImportProgress,
+  AiDownloadProgress
 } from './ipc'
 
 /**
@@ -11,14 +12,11 @@ import type {
  */
 export interface DesignStashApi {
   appName: string
-  /**
-   * Invoke a typed IPC channel.
-   * Input and output are validated against the schema in src/shared/ipc.ts.
-   */
   invoke<C extends IpcChannel>(
     channel: C,
     args: IpcRequest<C>
   ): Promise<IpcResult<IpcResponse<C>>>
   onImportProgress(callback: (progress: ImportProgress) => void): () => void
+  onAiDownloadProgress(callback: (progress: AiDownloadProgress) => void): () => void
   getPathForFile(file: File): string
 }

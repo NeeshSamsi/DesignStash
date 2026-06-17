@@ -7,6 +7,14 @@ import type { NewMockup } from './schema'
 import { Repository } from './repository'
 import { seedTaxonomy } from './bootstrap'
 
+const batchSample = (batchId: string): NewMockup => ({
+  title: 'Test Mockup',
+  libraryPath: `/lib/mockups/${batchId}/original.psd`,
+  coverPath: `/lib/mockups/${batchId}/cover.png`,
+  coverSource: 'embedded',
+  importContext: { batchId, folderTrail: [], originalFilename: 'x.psd' }
+})
+
 let sqlite: Database.Database
 let db: BetterSQLite3Database<typeof schema>
 let repo: Repository
@@ -121,5 +129,61 @@ describe('Repository — tags', () => {
     const labels = all.map((t) => t.label)
     expect(labels).toContain('laptop')
     expect(labels).toContain('macbook') // child of laptop
+  })
+})
+
+describe('getMockupsByBatchId', () => {
+  it('returns only mockups with the matching batchId', () => {
+    repo.createMockup({ ...batchSample('batch-1'), title: 'A', libraryPath: '/lib/a.psd' })
+    repo.createMockup({ ...batchSample('batch-1'), title: 'B', libraryPath: '/lib/b.psd' })
+    repo.createMockup({ ...batchSample('batch-1'), title: 'C', libraryPath: '/lib/c.psd' })
+    repo.createMockup({ ...batchSample('batch-2'), title: 'D', libraryPath: '/lib/d.psd' })
+    repo.createMockup({ ...batchSample('batch-2'), title: 'E', libraryPath: '/lib/e.psd' })
+    expect(repo.getMockupsByBatchId('batch-1')).toHaveLength(3)
+    expect(repo.getMockupsByBatchId('batch-2')).toHaveLength(2)
+    expect(repo.getMockupsByBatchId('batch-99')).toHaveLength(0)
+  })
+})
+
+describe('approveItem', () => {
+  it('sets reviewStatus, title, description, and coverPath on the mockup', () => {
+    const m = repo.createMockup(sample)
+    repo.approveItem(m.id, {
+      title: 'Approved',
+      description: 'Great',
+      coverPath: '/cover.png',
+      coverSource: 'embedded',
+      reviewStatus: 'approved'
+    })
+    const updated = repo.getMockup(m.id)
+    expect(updated?.reviewStatus).toBe('approved')
+    expect(updated?.title).toBe('Approved')
+    expect(updated?.description).toBe('Great')
+  })
+})
+
+describe('setMockupCover', () => {
+  it('updates coverPath and coverSource to user-uploaded', () => {
+    const m = repo.createMockup(sample)
+    repo.setMockupCover(m.id, '/new-cover.png', 'user-uploaded')
+    const updated = repo.getMockup(m.id)
+    expect(updated?.coverPath).toBe('/new-cover.png')
+    expect(updated?.coverSource).toBe('user-uploaded')
+  })
+})
+
+describe('confirmGroupings', () => {
+  it('sets leader isGroup=true and members groupId=leader, singletons cleared', () => {
+    const m1 = repo.createMockup({ ...batchSample('b'), title: 'M1', libraryPath: '/lib/m1.psd' })
+    const m2 = repo.createMockup({ ...batchSample('b'), title: 'M2', libraryPath: '/lib/m2.psd' })
+    const m3 = repo.createMockup({ ...batchSample('b'), title: 'M3', libraryPath: '/lib/m3.psd' })
+    const m4 = repo.createMockup({ ...batchSample('b'), title: 'M4', libraryPath: '/lib/m4.psd' })
+
+    repo.confirmGroupings([{ id: 'g1', memberIds: [m1.id, m2.id, m3.id] }], [m4.id])
+
+    expect(repo.getMockup(m1.id)).toMatchObject({ isGroup: true, groupId: null })
+    expect(repo.getMockup(m2.id)).toMatchObject({ isGroup: false, groupId: m1.id })
+    expect(repo.getMockup(m3.id)).toMatchObject({ isGroup: false, groupId: m1.id })
+    expect(repo.getMockup(m4.id)).toMatchObject({ isGroup: false, groupId: null })
   })
 })

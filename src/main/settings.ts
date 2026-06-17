@@ -9,6 +9,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 export interface AppSettings {
   libraryRoot: string
   onboarded: boolean
+  activeModelId: string | null
 }
 
 export interface SettingsStore {
@@ -22,7 +23,8 @@ export function createSettingsStore(userDataDir: string): SettingsStore {
   const filePath = join(userDataDir, 'settings.json')
   const defaults: AppSettings = {
     libraryRoot: join(userDataDir, 'Library'),
-    onboarded: false
+    onboarded: false,
+    activeModelId: null
   }
   let cache: AppSettings | null = null
 

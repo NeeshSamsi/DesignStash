@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import type { AppDatabase } from './connection'
 import { mockups, variants, tags, mockupTags, tagCategories } from './schema'
 import type {
@@ -10,6 +10,7 @@ import type {
   NewTag,
   TagCategory
 } from './schema'
+import type { ConfirmedGroup } from '@shared/grouping'
 
 /** Typed data-access layer over Drizzle. Keep all queries here. */
 export class Repository {
@@ -76,6 +77,10 @@ export class Repository {
     return this.db.insert(tagCategories).values(data).returning().get()
   }
 
+  getAllCategories(): TagCategory[] {
+    return this.db.select().from(tagCategories).orderBy(tagCategories.sortOrder).all()
+  }
+
   // Tags
   getAllTags(): Tag[] {
     return this.db.select().from(tags).all()
@@ -112,5 +117,68 @@ export class Repository {
       .delete(mockupTags)
       .where(and(eq(mockupTags.mockupId, mockupId), eq(mockupTags.tagId, tagId)))
       .run()
+  }
+
+  clearTagsForMockup(mockupId: number): void {
+    this.db.delete(mockupTags).where(eq(mockupTags.mockupId, mockupId)).run()
+  }
+
+  approveItem(
+    mockupId: number,
+    data: {
+      title: string
+      description: string
+      coverPath: string
+      coverSource: 'embedded' | 'sidecar' | 'user-uploaded'
+      reviewStatus: 'approved'
+    }
+  ): void {
+    this.db
+      .update(mockups)
+      .set({
+        title: data.title,
+        description: data.description,
+        coverPath: data.coverPath,
+        coverSource: data.coverSource,
+        reviewStatus: data.reviewStatus
+      })
+      .where(eq(mockups.id, mockupId))
+      .run()
+  }
+
+  setMockupCover(mockupId: number, coverPath: string, coverSource: 'user-uploaded'): void {
+    this.db
+      .update(mockups)
+      .set({ coverPath, coverSource })
+      .where(eq(mockups.id, mockupId))
+      .run()
+  }
+
+  getMockupsByGroupId(groupId: number): Mockup[] {
+    return this.db.select().from(mockups).where(eq(mockups.groupId, groupId)).all()
+  }
+
+  getMockupsByBatchId(batchId: string): Mockup[] {
+    return this.db
+      .select()
+      .from(mockups)
+      .where(sql`json_extract(${mockups.importContext}, '$.batchId') = ${batchId}`)
+      .all()
+  }
+
+  confirmGroupings(groups: ConfirmedGroup[], singletonIds: number[]): void {
+    this.db.transaction((tx) => {
+      for (const group of groups) {
+        const [leaderId, ...memberIds] = group.memberIds
+        if (leaderId === undefined) continue
+        tx.update(mockups).set({ isGroup: true, groupId: null }).where(eq(mockups.id, leaderId)).run()
+        for (const memberId of memberIds) {
+          tx.update(mockups).set({ isGroup: false, groupId: leaderId }).where(eq(mockups.id, memberId)).run()
+        }
+      }
+      for (const singletonId of singletonIds) {
+        tx.update(mockups).set({ isGroup: false, groupId: null }).where(eq(mockups.id, singletonId)).run()
+      }
+    })
   }
 }
