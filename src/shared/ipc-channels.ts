@@ -23,6 +23,15 @@ export const IPC_CHANNELS = {
   APPROVAL_SET_COVER: 'approval:set-cover',
   TAG_LIST_BY_CATEGORY: 'tag:list-by-category',
   TAG_CREATE: 'tag:create',
+  TAG_TREE: 'tag:tree',
+  TAG_RENAME: 'tag:rename',
+  TAG_MERGE: 'tag:merge',
+  TAG_DELETE: 'tag:delete',
+  TAG_SET_CATEGORY: 'tag:set-category',
+  TAG_SET_PARENT: 'tag:set-parent',
+  CATEGORY_CREATE: 'category:create',
+  CATEGORY_RENAME: 'category:rename',
+  CATEGORY_DELETE: 'category:delete',
   LIBRARY_LIST: 'library:list',
   LIBRARY_STATS: 'library:stats',
   LIBRARY_TRASH_LIST: 'library:trash-list',
@@ -35,7 +44,10 @@ export const IPC_CHANNELS = {
   MOCKUP_DELETE_PERMANENT: 'mockup:delete-permanent',
   MOCKUP_DUPLICATE: 'mockup:duplicate',
   GROUP_UNGROUP: 'group:ungroup',
-  GROUP_DELETE: 'group:delete'
+  GROUP_DELETE: 'group:delete',
+  INTEGRITY_SCAN: 'integrity:scan',
+  INTEGRITY_ADD_ORPHAN: 'integrity:add-orphan',
+  INTEGRITY_DELETE_RECORD: 'integrity:delete-record'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

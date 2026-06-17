@@ -258,6 +258,47 @@ describe('IPC Contract', () => {
     })
   })
 
+  describe('TAG_TREE channel', () => {
+    it('validates a tag-tree response', () => {
+      const { response } = IPC_CONTRACT[IPC_CHANNELS.TAG_TREE]
+      const valid = {
+        tree: [{
+          categoryId: 1,
+          categoryLabel: 'Device',
+          tags: [
+            { tagId: 10, label: 'laptop', parentTagId: null, usageCount: 3 },
+            { tagId: 11, label: 'macbook', parentTagId: 10, usageCount: 0 }
+          ]
+        }]
+      }
+      expect(response.parse(valid)).toEqual(valid)
+    })
+  })
+
+  describe('TAG_MERGE channel', () => {
+    it('validates request and affectedMockups response', () => {
+      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_MERGE]
+      expect(request.parse({ sourceTagId: 1, targetTagId: 2 })).toEqual({ sourceTagId: 1, targetTagId: 2 })
+      expect(response.parse({ affectedMockups: 4 })).toEqual({ affectedMockups: 4 })
+    })
+  })
+
+  describe('TAG_RENAME channel', () => {
+    it('rejects an empty label', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.TAG_RENAME]
+      expect(request.parse({ tagId: 1, label: 'notebook' })).toEqual({ tagId: 1, label: 'notebook' })
+      expect(() => request.parse({ tagId: 1, label: '' })).toThrow()
+    })
+  })
+
+  describe('TAG_SET_PARENT channel', () => {
+    it('accepts parentTagId: null', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.TAG_SET_PARENT]
+      expect(request.parse({ tagId: 1, parentTagId: null })).toEqual({ tagId: 1, parentTagId: null })
+      expect(request.parse({ tagId: 1, parentTagId: 5 })).toEqual({ tagId: 1, parentTagId: 5 })
+    })
+  })
+
   describe('GROUPING_CONFIRM channel', () => {
     it('validates a confirm request', () => {
       const { request } = IPC_CONTRACT[IPC_CHANNELS.GROUPING_CONFIRM]
@@ -300,6 +341,32 @@ describe('IPC Contract', () => {
         }]
       }
       expect(response.parse(valid)).toEqual(valid)
+    })
+  })
+
+  describe('INTEGRITY_SCAN channel', () => {
+    it('validates a report with one orphan file and one orphan record', () => {
+      const { response } = IPC_CONTRACT[IPC_CHANNELS.INTEGRITY_SCAN]
+      const valid = {
+        orphanFiles: ['/lib/mockups/x/stray.psd'],
+        orphanRecords: [{ mockupId: 7, libraryPath: '/lib/mockups/a/original.psd' }]
+      }
+      expect(response.parse(valid)).toEqual(valid)
+    })
+
+    it('rejects a response missing orphanRecords', () => {
+      const { response } = IPC_CONTRACT[IPC_CHANNELS.INTEGRITY_SCAN]
+      expect(() => response.parse({ orphanFiles: [] })).toThrow()
+    })
+  })
+
+  describe('INTEGRITY_ADD_ORPHAN channel', () => {
+    it('validates request and response', () => {
+      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.INTEGRITY_ADD_ORPHAN]
+      expect(request.parse({ filePath: '/lib/mockups/x/stray.psd' })).toEqual({
+        filePath: '/lib/mockups/x/stray.psd'
+      })
+      expect(response.parse({ mockupId: 12 })).toEqual({ mockupId: 12 })
     })
   })
 

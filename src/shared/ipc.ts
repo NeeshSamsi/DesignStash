@@ -15,6 +15,8 @@ import {
   LibraryStatsSchema,
   MockupDetailSchema
 } from './library'
+import { TagTreeSchema } from './tags'
+import { IntegrityReportSchema } from './integrity'
 
 export const AiModelTierSchema = z.enum(['small', 'medium', 'large'])
 export type AiModelTier = z.infer<typeof AiModelTierSchema>
@@ -176,6 +178,42 @@ export const IPC_CONTRACT = {
     request: z.object({ label: z.string().min(1), categoryId: z.number() }),
     response: z.object({ tagId: z.number(), label: z.string(), categoryId: z.number() })
   },
+  [IPC_CHANNELS.TAG_TREE]: {
+    request: z.void(),
+    response: z.object({ tree: TagTreeSchema })
+  },
+  [IPC_CHANNELS.TAG_RENAME]: {
+    request: z.object({ tagId: z.number(), label: z.string().min(1) }),
+    response: z.object({ ok: z.boolean() })
+  },
+  [IPC_CHANNELS.TAG_MERGE]: {
+    request: z.object({ sourceTagId: z.number(), targetTagId: z.number() }),
+    response: z.object({ affectedMockups: z.number() })
+  },
+  [IPC_CHANNELS.TAG_DELETE]: {
+    request: z.object({ tagId: z.number() }),
+    response: z.object({ affectedMockups: z.number() })
+  },
+  [IPC_CHANNELS.TAG_SET_CATEGORY]: {
+    request: z.object({ tagId: z.number(), categoryId: z.number() }),
+    response: z.object({ ok: z.boolean() })
+  },
+  [IPC_CHANNELS.TAG_SET_PARENT]: {
+    request: z.object({ tagId: z.number(), parentTagId: z.number().nullable() }),
+    response: z.object({ ok: z.boolean() })
+  },
+  [IPC_CHANNELS.CATEGORY_CREATE]: {
+    request: z.object({ label: z.string().min(1) }),
+    response: z.object({ categoryId: z.number(), label: z.string() })
+  },
+  [IPC_CHANNELS.CATEGORY_RENAME]: {
+    request: z.object({ categoryId: z.number(), label: z.string().min(1) }),
+    response: z.object({ ok: z.boolean() })
+  },
+  [IPC_CHANNELS.CATEGORY_DELETE]: {
+    request: z.object({ categoryId: z.number() }),
+    response: z.object({ deleted: z.boolean() })
+  },
   [IPC_CHANNELS.LIBRARY_LIST]: {
     request: LibraryQuerySchema,
     response: z.object({ items: z.array(LibraryItemSchema) })
@@ -226,6 +264,18 @@ export const IPC_CONTRACT = {
   },
   [IPC_CHANNELS.GROUP_DELETE]: {
     request: z.object({ leaderId: z.number() }),
+    response: z.object({ deleted: z.boolean() })
+  },
+  [IPC_CHANNELS.INTEGRITY_SCAN]: {
+    request: z.void(),
+    response: IntegrityReportSchema
+  },
+  [IPC_CHANNELS.INTEGRITY_ADD_ORPHAN]: {
+    request: z.object({ filePath: z.string() }),
+    response: z.object({ mockupId: z.number() })
+  },
+  [IPC_CHANNELS.INTEGRITY_DELETE_RECORD]: {
+    request: z.object({ mockupId: z.number() }),
     response: z.object({ deleted: z.boolean() })
   }
 } as const

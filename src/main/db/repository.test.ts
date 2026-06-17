@@ -589,3 +589,181 @@ describe('duplicateMockupRow', () => {
     expect(repo.duplicateMockupRow(9999)).toBeNull()
   })
 })
+
+describe('tag management — reads + simple edits (M8.1)', () => {
+  beforeEach(() => {
+    seedTaxonomy(db)
+    ensureSearchIndex(db)
+  })
+
+  const matchFts = (query: string): number[] =>
+    (
+      sqlite
+        .prepare(`SELECT rowid FROM mockups_fts WHERE mockups_fts MATCH ?`)
+        .all(query) as { rowid: number }[]
+    ).map((r) => r.rowid)
+
+  it('getTagTree groups tags under categories with correct usageCount', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const m = repo.createMockup(approvedMockup({ title: 'Tree', libraryPath: '/lib/tree.psd' }))
+    repo.addTagToMockup(m.id, laptop.id)
+
+    const tree = repo.getTagTree()
+    const device = tree.find((c) => c.categoryLabel === 'Device')!
+    expect(device).toBeDefined()
+    // categories ordered by sortOrder — Device is first
+    expect(tree[0]!.categoryLabel).toBe('Device')
+
+    const laptopNode = device.tags.find((t) => t.label === 'laptop')!
+    expect(laptopNode.usageCount).toBe(1)
+    expect(laptopNode.parentTagId).toBeNull()
+
+    const macbookNode = device.tags.find((t) => t.label === 'macbook')!
+    expect(macbookNode.parentTagId).toBe(laptop.id)
+    expect(macbookNode.usageCount).toBe(0)
+  })
+
+  it('getTagUsageCount counts distinct mockups carrying the tag', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const a = repo.createMockup(approvedMockup({ title: 'A', libraryPath: '/lib/uca.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'B', libraryPath: '/lib/ucb.psd' }))
+    repo.addTagToMockup(a.id, laptop.id)
+    repo.addTagToMockup(b.id, laptop.id)
+    repo.addTagToMockup(a.id, laptop.id) // idempotent — still distinct mockups = 2
+    expect(repo.getTagUsageCount(laptop.id)).toBe(2)
+  })
+
+  it('renameTag changes the label AND updates FTS (new label matches, old no longer)', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const m = repo.createMockup(approvedMockup({ title: 'Rename Tag', libraryPath: '/lib/rt.psd' }))
+    repo.addTagToMockup(m.id, laptop.id)
+    repo.upsertSearchIndex(m.id)
+    expect(matchFts('laptop')).toContain(m.id)
+
+    repo.renameTag(laptop.id, 'notebook')
+
+    expect(repo.getAllTags().find((t) => t.id === laptop.id)!.label).toBe('notebook')
+    expect(matchFts('notebook')).toContain(m.id)
+    expect(matchFts('laptop')).not.toContain(m.id)
+  })
+
+  it('reassignTagCategory moves a tag between categories', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const apparel = repo.getAllCategories().find((c) => c.label === 'Apparel')!
+    repo.reassignTagCategory(laptop.id, apparel.id)
+
+    const tree = repo.getTagTree()
+    const apparelNode = tree.find((c) => c.categoryLabel === 'Apparel')!
+    const deviceNode = tree.find((c) => c.categoryLabel === 'Device')!
+    expect(apparelNode.tags.map((t) => t.label)).toContain('laptop')
+    expect(deviceNode.tags.map((t) => t.label)).not.toContain('laptop')
+  })
+
+  it('setTagParent sets a parent in the same category', () => {
+    const tags = repo.getAllTags()
+    const phone = tags.find((t) => t.label === 'phone')!
+    const tablet = tags.find((t) => t.label === 'tablet')! // same category (Device)
+    repo.setTagParent(tablet.id, phone.id)
+    expect(repo.getAllTags().find((t) => t.id === tablet.id)!.parentTagId).toBe(phone.id)
+
+    repo.setTagParent(tablet.id, null)
+    expect(repo.getAllTags().find((t) => t.id === tablet.id)!.parentTagId).toBeNull()
+  })
+
+  it('setTagParent throws when parent is in a different category', () => {
+    const tags = repo.getAllTags()
+    const laptop = tags.find((t) => t.label === 'laptop')! // Device
+    const tshirt = tags.find((t) => t.label === 't-shirt')! // Apparel
+    expect(() => repo.setTagParent(laptop.id, tshirt.id)).toThrow()
+  })
+
+  it('setTagParent throws when parent === tag', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    expect(() => repo.setTagParent(laptop.id, laptop.id)).toThrow()
+  })
+
+  it('renameCategory changes the category label', () => {
+    const device = repo.getAllCategories().find((c) => c.label === 'Device')!
+    repo.renameCategory(device.id, 'Devices & Screens')
+    expect(repo.getAllCategories().find((c) => c.id === device.id)!.label).toBe('Devices & Screens')
+  })
+})
+
+describe('tag management — merge / delete / deleteCategory (M8.2)', () => {
+  beforeEach(() => {
+    seedTaxonomy(db)
+    ensureSearchIndex(db)
+  })
+
+  const matchFts = (query: string): number[] =>
+    (
+      sqlite
+        .prepare(`SELECT rowid FROM mockups_fts WHERE mockups_fts MATCH ?`)
+        .all(query) as { rowid: number }[]
+    ).map((r) => r.rowid)
+
+  it('mergeTags re-points associations, dedupes, deletes source, reindexes FTS', () => {
+    const all = repo.getAllTags()
+    const macbook = all.find((t) => t.label === 'macbook')!
+    const laptop = all.find((t) => t.label === 'laptop')!
+
+    const a = repo.createMockup(approvedMockup({ title: 'A', libraryPath: '/lib/mga.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'B', libraryPath: '/lib/mgb.psd' }))
+    repo.addTagToMockup(a.id, macbook.id)
+    repo.addTagToMockup(b.id, macbook.id)
+    repo.addTagToMockup(b.id, laptop.id) // B already has both
+    repo.upsertSearchIndex(a.id)
+    repo.upsertSearchIndex(b.id)
+
+    const result = repo.mergeTags(macbook.id, laptop.id)
+
+    expect(result.affectedMockups).toBe(2)
+    // A now has laptop (only)
+    expect(repo.getTagsForMockup(a.id).map((t) => t.label)).toEqual(['laptop'])
+    // B has laptop once — no duplicate row
+    expect(repo.getTagsForMockup(b.id).map((t) => t.label)).toEqual(['laptop'])
+    // source tag gone
+    expect(repo.getAllTags().find((t) => t.id === macbook.id)).toBeUndefined()
+    // FTS: old label no longer matches; new label matches both
+    expect(matchFts('macbook')).toEqual([])
+    const laptopMatches = matchFts('laptop')
+    expect(laptopMatches).toContain(a.id)
+    expect(laptopMatches).toContain(b.id)
+  })
+
+  it('mergeTags throws when source === target or a tag is missing', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    expect(() => repo.mergeTags(laptop.id, laptop.id)).toThrow()
+    expect(() => repo.mergeTags(99999, laptop.id)).toThrow()
+    expect(() => repo.mergeTags(laptop.id, 99999)).toThrow()
+  })
+
+  it('deleteTag returns affected count, removes associations, and clears FTS label', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const m = repo.createMockup(approvedMockup({ title: 'Hero Shot', libraryPath: '/lib/dt.psd' }))
+    repo.addTagToMockup(m.id, laptop.id)
+    repo.upsertSearchIndex(m.id)
+    expect(matchFts('laptop')).toContain(m.id)
+
+    const result = repo.deleteTag(laptop.id)
+
+    expect(result.affectedMockups).toBe(1)
+    expect(repo.getAllTags().find((t) => t.id === laptop.id)).toBeUndefined()
+    expect(repo.getTagsForMockup(m.id)).toHaveLength(0)
+    expect(matchFts('laptop')).not.toContain(m.id)
+    // title still indexed — FTS row preserved, only tag label dropped
+    expect(matchFts('Hero')).toContain(m.id)
+  })
+
+  it('deleteCategory throws when the category still has tags, succeeds once empty', () => {
+    const device = repo.getAllCategories().find((c) => c.label === 'Device')!
+    expect(() => repo.deleteCategory(device.id)).toThrow(/category not empty/)
+
+    // remove all tags in the category
+    for (const t of repo.getAllTags().filter((t) => t.categoryId === device.id)) {
+      repo.deleteTag(t.id)
+    }
+    expect(() => repo.deleteCategory(device.id)).not.toThrow()
+    expect(repo.getAllCategories().find((c) => c.id === device.id)).toBeUndefined()
+  })
+})

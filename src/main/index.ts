@@ -24,6 +24,7 @@ import { MODEL_REGISTRY } from './ai/registry'
 import { ModelDownloader } from './ai/download'
 import { LocalInferenceProvider } from './ai/local-provider'
 import { LibraryService } from './library/library-service'
+import { IntegrityService } from './library/integrity-service'
 
 const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
 
@@ -290,6 +291,44 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
     return { tagId: tag.id, label: tag.label, categoryId: tag.categoryId }
   })
 
+  registerIpcHandler(IPC_CHANNELS.TAG_TREE, () => ({ tree: repo.getTagTree() }))
+
+  registerIpcHandler(IPC_CHANNELS.TAG_RENAME, (args) => {
+    repo.renameTag(args.tagId, args.label)
+    return { ok: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.TAG_MERGE, (args) =>
+    repo.mergeTags(args.sourceTagId, args.targetTagId)
+  )
+
+  registerIpcHandler(IPC_CHANNELS.TAG_DELETE, (args) => repo.deleteTag(args.tagId))
+
+  registerIpcHandler(IPC_CHANNELS.TAG_SET_CATEGORY, (args) => {
+    repo.reassignTagCategory(args.tagId, args.categoryId)
+    return { ok: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.TAG_SET_PARENT, (args) => {
+    repo.setTagParent(args.tagId, args.parentTagId)
+    return { ok: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.CATEGORY_CREATE, (args) => {
+    const cat = repo.createCategory({ label: args.label })
+    return { categoryId: cat.id, label: cat.label }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.CATEGORY_RENAME, (args) => {
+    repo.renameCategory(args.categoryId, args.label)
+    return { ok: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.CATEGORY_DELETE, (args) => {
+    repo.deleteCategory(args.categoryId)
+    return { deleted: true }
+  })
+
   const libraryService = new LibraryService(repo, settings.getLibraryRoot(), {
     openPath: (p) => shell.openPath(p)
   })
@@ -372,6 +411,19 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
     const result = await libraryService.deleteGroup(args.leaderId)
     return { deleted: result.deleted }
   })
+
+  const integrityService = new IntegrityService(repo, settings.getLibraryRoot())
+
+  registerIpcHandler(IPC_CHANNELS.INTEGRITY_SCAN, () => integrityService.scan())
+
+  registerIpcHandler(IPC_CHANNELS.INTEGRITY_ADD_ORPHAN, (args) =>
+    integrityService.addOrphanFile(args.filePath)
+  )
+
+  registerIpcHandler(IPC_CHANNELS.INTEGRITY_DELETE_RECORD, (args) => {
+    integrityService.deleteOrphanRecord(args.mockupId)
+    return { deleted: true }
+  })
 }
 
 function createWindow(): BrowserWindow {
@@ -424,6 +476,17 @@ app.whenReady().then(() => {
     } catch (err) {
       logger.error('Search index rebuild failed:', err)
     }
+    // Detection-only launch scan — never auto-resolves, never blocks startup.
+    void (async () => {
+      try {
+        const report = await new IntegrityService(new Repository(db), libraryRoot).scan()
+        logger.info(
+          `integrity: ${report.orphanFiles.length} orphan files, ${report.orphanRecords.length} orphan records`
+        )
+      } catch (err) {
+        logger.error('Integrity launch scan failed:', err)
+      }
+    })()
     logger.info(`Database and library initialized at ${libraryRoot}`)
   } catch (err) {
     logger.error('Failed to initialize database/library:', err)

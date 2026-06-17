@@ -59,6 +59,15 @@ export class Repository {
       .run()
   }
 
+  /** All non-deleted mockups (leaders, members, singletons) with their stored libraryPath. Used by integrity scan. */
+  getAllLibraryPaths(): { mockupId: number; libraryPath: string }[] {
+    return this.db
+      .select({ mockupId: mockups.id, libraryPath: mockups.libraryPath })
+      .from(mockups)
+      .where(isNull(mockups.deletedAt))
+      .all()
+  }
+
   mockupExistsByHash(hash: string): boolean {
     return !!this.db.select().from(mockups).where(eq(mockups.contentHash, hash)).get()
   }
@@ -94,9 +103,140 @@ export class Repository {
     return this.db.select().from(tagCategories).orderBy(tagCategories.sortOrder).all()
   }
 
+  renameCategory(categoryId: number, label: string): void {
+    this.db.update(tagCategories).set({ label }).where(eq(tagCategories.id, categoryId)).run()
+  }
+
   // Tags
   getAllTags(): Tag[] {
     return this.db.select().from(tags).all()
+  }
+
+  /** Categories (ordered by sortOrder) each with their tags + per-tag usage counts. */
+  getTagTree(): {
+    categoryId: number
+    categoryLabel: string
+    tags: { tagId: number; label: string; parentTagId: number | null; usageCount: number }[]
+  }[] {
+    const categories = this.getAllCategories()
+    const allTags = this.db.select().from(tags).all()
+    const usageRows = this.db
+      .select({ tagId: mockupTags.tagId, count: sql<number>`count(*)` })
+      .from(mockupTags)
+      .groupBy(mockupTags.tagId)
+      .all()
+    const usageMap = new Map(usageRows.map((r) => [r.tagId, r.count]))
+
+    return categories.map((cat) => ({
+      categoryId: cat.id,
+      categoryLabel: cat.label,
+      tags: allTags
+        .filter((t) => t.categoryId === cat.id)
+        .map((t) => ({
+          tagId: t.id,
+          label: t.label,
+          parentTagId: t.parentTagId,
+          usageCount: usageMap.get(t.id) ?? 0
+        }))
+    }))
+  }
+
+  /** Count distinct mockups carrying the tag. (mockup_tags PK makes rows == distinct mockups.) */
+  getTagUsageCount(tagId: number): number {
+    return (
+      this.db
+        .select({ c: sql<number>`count(distinct ${mockupTags.mockupId})` })
+        .from(mockupTags)
+        .where(eq(mockupTags.tagId, tagId))
+        .get()?.c ?? 0
+    )
+  }
+
+  /** Rename a tag and re-index FTS for every mockup carrying it (tag label lives in mockups_fts). */
+  renameTag(tagId: number, label: string): void {
+    this.db.update(tags).set({ label }).where(eq(tags.id, tagId)).run()
+    const affected = this.db
+      .select({ mockupId: mockupTags.mockupId })
+      .from(mockupTags)
+      .where(eq(mockupTags.tagId, tagId))
+      .all()
+    for (const { mockupId } of affected) this.upsertSearchIndex(mockupId)
+  }
+
+  /** Move a tag to a different category. (No FTS change — category label isn't indexed.) */
+  reassignTagCategory(tagId: number, categoryId: number): void {
+    this.db.update(tags).set({ categoryId }).where(eq(tags.id, tagId)).run()
+  }
+
+  /** Set (or clear) a tag's roll-up parent. A non-null parent must be in the SAME category
+   *  as the tag and must not be the tag itself. */
+  setTagParent(tagId: number, parentTagId: number | null): void {
+    if (parentTagId !== null) {
+      if (parentTagId === tagId) throw new Error('A tag cannot be its own parent')
+      const tag = this.db.select().from(tags).where(eq(tags.id, tagId)).get()
+      if (!tag) throw new Error(`Tag ${tagId} not found`)
+      const parent = this.db.select().from(tags).where(eq(tags.id, parentTagId)).get()
+      if (!parent) throw new Error(`Parent tag ${parentTagId} not found`)
+      if (parent.categoryId !== tag.categoryId) {
+        throw new Error('Parent tag must belong to the same category as the tag')
+      }
+    }
+    this.db.update(tags).set({ parentTagId }).where(eq(tags.id, tagId)).run()
+  }
+
+  /** Merge sourceTag into targetTag: re-point every association, dedupe, delete source, reindex FTS. */
+  mergeTags(sourceTagId: number, targetTagId: number): { affectedMockups: number } {
+    if (sourceTagId === targetTagId) throw new Error('Cannot merge a tag into itself')
+    const source = this.db.select().from(tags).where(eq(tags.id, sourceTagId)).get()
+    if (!source) throw new Error(`Source tag ${sourceTagId} not found`)
+    const target = this.db.select().from(tags).where(eq(tags.id, targetTagId)).get()
+    if (!target) throw new Error(`Target tag ${targetTagId} not found`)
+
+    const affected = this.db
+      .select({ mockupId: mockupTags.mockupId })
+      .from(mockupTags)
+      .where(eq(mockupTags.tagId, sourceTagId))
+      .all()
+      .map((r) => r.mockupId)
+
+    this.db.transaction((tx) => {
+      for (const mockupId of affected) {
+        tx.insert(mockupTags).values({ mockupId, tagId: targetTagId }).onConflictDoNothing().run()
+        tx.delete(mockupTags)
+          .where(and(eq(mockupTags.mockupId, mockupId), eq(mockupTags.tagId, sourceTagId)))
+          .run()
+      }
+      tx.delete(tags).where(eq(tags.id, sourceTagId)).run()
+    })
+
+    for (const mockupId of affected) this.upsertSearchIndex(mockupId)
+    return { affectedMockups: affected.length }
+  }
+
+  /** Delete a tag; mockup_tags cascade-deletes. Reindex FTS for affected mockups. */
+  deleteTag(tagId: number): { affectedMockups: number } {
+    const affected = this.db
+      .select({ mockupId: mockupTags.mockupId })
+      .from(mockupTags)
+      .where(eq(mockupTags.tagId, tagId))
+      .all()
+      .map((r) => r.mockupId)
+
+    this.db.delete(tags).where(eq(tags.id, tagId)).run()
+
+    for (const mockupId of affected) this.upsertSearchIndex(mockupId)
+    return { affectedMockups: affected.length }
+  }
+
+  /** Delete an empty category. Throws if any tags still belong to it. */
+  deleteCategory(categoryId: number): void {
+    const remaining = this.db
+      .select({ c: sql<number>`count(*)` })
+      .from(tags)
+      .where(eq(tags.categoryId, categoryId))
+      .get()?.c ?? 0
+    if (remaining > 0) throw new Error('category not empty')
+    this.db.delete(tagCategories).where(eq(tagCategories.id, categoryId)).run()
   }
 
   getTagByLabel(categoryId: number, label: string): Tag | undefined {

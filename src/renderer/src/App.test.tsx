@@ -29,6 +29,12 @@ beforeEach(() => {
       if (channel === IPC_CHANNELS.LIBRARY_TRASH_LIST) {
         return { success: true, data: { items: [] } }
       }
+      if (channel === IPC_CHANNELS.TAG_TREE) {
+        return { success: true, data: { tree: [] } }
+      }
+      if (channel === IPC_CHANNELS.INTEGRITY_SCAN) {
+        return { success: true, data: { orphanFiles: [], orphanRecords: [] } }
+      }
       return { success: true, data: { success: true, message: 'pong', timestamp: 0 } }
     }),
     onImportProgress: vi.fn(() => () => {}),

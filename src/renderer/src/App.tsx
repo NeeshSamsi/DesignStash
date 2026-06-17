@@ -3,13 +3,15 @@ import { useState, useEffect, useCallback } from 'react'
 import type { ImportProgress, ImportSummary } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
 import SettingsAiPane from './SettingsAiPane'
+import SettingsTagsPane from './SettingsTagsPane'
 import GroupingReview from './GroupingReview'
 import ApprovalStepper from './ApprovalStepper'
 import LibraryView from './LibraryView'
+import ReconciliationView from './ReconciliationView'
 import { useGroupingStore } from './stores/groupingStore'
 import { useApprovalStore } from './stores/approvalStore'
 
-type AppView = 'import' | 'grouping-review' | 'approval' | 'library'
+type AppView = 'import' | 'grouping-review' | 'approval' | 'library' | 'reconciliation'
 
 export default function App() {
   const [view, setView] = useState<AppView>('import')
@@ -17,6 +19,7 @@ export default function App() {
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
   const [isDropping, setIsDropping] = useState(false)
   const [showAiSettings, setShowAiSettings] = useState(false)
+  const [showTagSettings, setShowTagSettings] = useState(false)
   const groupingStore = useGroupingStore()
   const approvalStore = useApprovalStore()
 
@@ -131,6 +134,10 @@ export default function App() {
     return <LibraryView onBack={() => setView('import')} />
   }
 
+  if (view === 'reconciliation') {
+    return <ReconciliationView onBack={() => setView('import')} />
+  }
+
   return (
     <main
       className={`min-h-screen bg-neutral-900 text-slate-100 flex flex-col items-center justify-center p-8 font-sans ${
@@ -152,14 +159,27 @@ export default function App() {
               Library
             </button>
             <button
+              onClick={() => setView('reconciliation')}
+              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
+            >
+              Check Library
+            </button>
+            <button
               onClick={() => setShowAiSettings((v) => !v)}
               className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
             >
               AI Settings
             </button>
+            <button
+              onClick={() => setShowTagSettings((v) => !v)}
+              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
+            >
+              Tags
+            </button>
           </div>
         </div>
         {showAiSettings && <SettingsAiPane />}
+        {showTagSettings && <SettingsTagsPane />}
         <div className="flex space-x-2 my-4">
           <button
             onClick={handleFileSelect}
