@@ -9,6 +9,7 @@ import { registerIpcHandler } from './ipc'
 import { initDb, getDb, closeDb } from './db/connection'
 import { runMigrations } from './db/migrate'
 import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
+import { ensureSearchIndex } from './db/search-index'
 import { tagCategories } from './db/schema'
 import { createSettingsStore, type SettingsStore } from './settings'
 import { logger } from './logger'
@@ -22,6 +23,7 @@ import { detectHardware, recommendTier } from './ai/hardware'
 import { MODEL_REGISTRY } from './ai/registry'
 import { ModelDownloader } from './ai/download'
 import { LocalInferenceProvider } from './ai/local-provider'
+import { LibraryService } from './library/library-service'
 
 const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
 
@@ -232,6 +234,7 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
     for (const tagId of args.tagIds) {
       repo.addTagToMockup(args.mockupId, tagId)
     }
+    repo.upsertSearchIndex(args.mockupId)
 
     let reinferredItems = undefined
     if (args.isLeader && args.wasEdited && args.leaderId === null) {
@@ -286,6 +289,89 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
     const tag = repo.createTag({ label: args.label, categoryId: args.categoryId })
     return { tagId: tag.id, label: tag.label, categoryId: tag.categoryId }
   })
+
+  const libraryService = new LibraryService(repo, settings.getLibraryRoot(), {
+    openPath: (p) => shell.openPath(p)
+  })
+
+  registerIpcHandler(IPC_CHANNELS.LIBRARY_LIST, (args) => ({
+    items: repo.getLibrary({
+      ...(args.tagIds !== undefined && { tagIds: args.tagIds }),
+      ...(args.query !== undefined && { query: args.query }),
+      sort: args.sort
+    })
+  }))
+
+  registerIpcHandler(IPC_CHANNELS.LIBRARY_STATS, () => repo.getLibraryStats())
+
+  registerIpcHandler(IPC_CHANNELS.LIBRARY_TRASH_LIST, () => ({
+    items: repo.getTrash()
+  }))
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_DETAIL, (args) => {
+    const detail = repo.getMockupDetail(args.mockupId)
+    if (!detail.mockup) throw new Error(`Mockup ${args.mockupId} not found`)
+    return {
+      item: {
+        id: detail.mockup.id,
+        title: detail.mockup.title,
+        description: detail.mockup.description ?? null,
+        coverPath: detail.mockup.coverPath,
+        isGroup: detail.mockup.isGroup,
+        favourite: detail.mockup.favourite,
+        reviewStatus: detail.mockup.reviewStatus,
+        variantCount: detail.variants.length,
+        tags: detail.tags
+      },
+      variants: detail.variants.map((v) => ({ id: v.id, title: v.title, coverPath: v.coverPath }))
+    }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, (args) => {
+    repo.setFavourite(args.mockupId, args.favourite)
+    return { favourite: args.favourite }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_UPDATE, (args) => {
+    repo.updateMockupMeta(args.mockupId, {
+      title: args.title,
+      description: args.description,
+      tagIds: args.tagIds
+    })
+    return { updated: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, async (args) =>
+    libraryService.openExternal(args.mockupId)
+  )
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_TRASH, (args) => {
+    repo.moveToTrash(args.mockupId)
+    return { ok: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_RESTORE, (args) => {
+    repo.restore(args.mockupId)
+    return { ok: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_DELETE_PERMANENT, async (args) =>
+    libraryService.deletePermanently(args.mockupId)
+  )
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_DUPLICATE, async (args) =>
+    libraryService.duplicate(args.mockupId)
+  )
+
+  registerIpcHandler(IPC_CHANNELS.GROUP_UNGROUP, (args) => {
+    repo.ungroupGroup(args.leaderId)
+    return { ungrouped: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.GROUP_DELETE, async (args) => {
+    const result = await libraryService.deleteGroup(args.leaderId)
+    return { deleted: result.deleted }
+  })
 }
 
 function createWindow(): BrowserWindow {
@@ -331,7 +417,13 @@ app.whenReady().then(() => {
     bootstrapLibrary(libraryRoot)
     const db = initDb(join(libraryRoot, 'designstash.db'))
     runMigrations(db, migrationsFolder())
+    ensureSearchIndex(db)
     seedTaxonomy(db)
+    try {
+      new Repository(db).rebuildSearchIndex()
+    } catch (err) {
+      logger.error('Search index rebuild failed:', err)
+    }
     logger.info(`Database and library initialized at ${libraryRoot}`)
   } catch (err) {
     logger.error('Failed to initialize database/library:', err)

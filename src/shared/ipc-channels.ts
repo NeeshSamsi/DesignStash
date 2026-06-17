@@ -22,7 +22,20 @@ export const IPC_CHANNELS = {
   APPROVAL_SAVE_ITEM: 'approval:save-item',
   APPROVAL_SET_COVER: 'approval:set-cover',
   TAG_LIST_BY_CATEGORY: 'tag:list-by-category',
-  TAG_CREATE: 'tag:create'
+  TAG_CREATE: 'tag:create',
+  LIBRARY_LIST: 'library:list',
+  LIBRARY_STATS: 'library:stats',
+  LIBRARY_TRASH_LIST: 'library:trash-list',
+  MOCKUP_DETAIL: 'mockup:detail',
+  MOCKUP_SET_FAVOURITE: 'mockup:set-favourite',
+  MOCKUP_UPDATE: 'mockup:update',
+  MOCKUP_OPEN_EXTERNAL: 'mockup:open-external',
+  MOCKUP_TRASH: 'mockup:trash',
+  MOCKUP_RESTORE: 'mockup:restore',
+  MOCKUP_DELETE_PERMANENT: 'mockup:delete-permanent',
+  MOCKUP_DUPLICATE: 'mockup:duplicate',
+  GROUP_UNGROUP: 'group:ungroup',
+  GROUP_DELETE: 'group:delete'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

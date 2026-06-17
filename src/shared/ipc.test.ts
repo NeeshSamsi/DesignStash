@@ -276,4 +276,45 @@ describe('IPC Contract', () => {
       ).toThrow()
     })
   })
+
+  describe('LIBRARY_LIST channel', () => {
+    it('validates a full query with tagIds, query, and sort', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.LIBRARY_LIST]
+      const valid = { tagIds: [1, 2], query: 'macbook', sort: 'name' as const }
+      expect(request.parse(valid)).toEqual(valid)
+    })
+
+    it('defaults sort to "date" when omitted', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.LIBRARY_LIST]
+      const result = request.parse({})
+      expect(result.sort).toBe('date')
+    })
+
+    it('validates a response with items array', () => {
+      const { response } = IPC_CONTRACT[IPC_CHANNELS.LIBRARY_LIST]
+      const valid = {
+        items: [{
+          id: 1, title: 'Test', description: null, coverPath: '/c.png',
+          isGroup: false, favourite: false, reviewStatus: 'approved' as const,
+          variantCount: 0, tags: []
+        }]
+      }
+      expect(response.parse(valid)).toEqual(valid)
+    })
+  })
+
+  describe('MOCKUP_UPDATE channel', () => {
+    it('validates a valid update request', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.MOCKUP_UPDATE]
+      const valid = { mockupId: 1, title: 'New Title', description: 'Desc', tagIds: [1, 2] }
+      expect(request.parse(valid)).toEqual(valid)
+    })
+
+    it('rejects an empty title', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.MOCKUP_UPDATE]
+      expect(() =>
+        request.parse({ mockupId: 1, title: '', description: 'Desc', tagIds: [] })
+      ).toThrow()
+    })
+  })
 })

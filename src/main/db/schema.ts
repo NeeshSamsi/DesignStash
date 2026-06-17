@@ -112,6 +112,8 @@ export const embeddings = sqliteTable('embeddings', {
   modelId: text('model_id').notNull()
 })
 
+// mockups_fts (FTS5 virtual table) is maintained via raw SQL in search-index.ts and repository.ts — NOT a Drizzle table.
+
 export type Mockup = InferSelectModel<typeof mockups>
 export type NewMockup = InferInsertModel<typeof mockups>
 export type Variant = InferSelectModel<typeof variants>

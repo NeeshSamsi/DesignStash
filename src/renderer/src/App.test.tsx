@@ -20,6 +20,15 @@ beforeEach(() => {
       if (channel === IPC_CHANNELS.APPROVAL_INIT) {
         return { success: true, data: { batchId: '123', items: [] } }
       }
+      if (channel === IPC_CHANNELS.LIBRARY_LIST) {
+        return { success: true, data: { items: [] } }
+      }
+      if (channel === IPC_CHANNELS.LIBRARY_STATS) {
+        return { success: true, data: { total: 0, favourites: 0, groups: 0, trashed: 0 } }
+      }
+      if (channel === IPC_CHANNELS.LIBRARY_TRASH_LIST) {
+        return { success: true, data: { items: [] } }
+      }
       return { success: true, data: { success: true, message: 'pong', timestamp: 0 } }
     }),
     onImportProgress: vi.fn(() => () => {}),

@@ -9,6 +9,12 @@ import {
   ApprovalSetCoverRequestSchema,
   TagsByCategorySchema
 } from './approval'
+import {
+  LibraryItemSchema,
+  LibraryQuerySchema,
+  LibraryStatsSchema,
+  MockupDetailSchema
+} from './library'
 
 export const AiModelTierSchema = z.enum(['small', 'medium', 'large'])
 export type AiModelTier = z.infer<typeof AiModelTierSchema>
@@ -169,6 +175,58 @@ export const IPC_CONTRACT = {
   [IPC_CHANNELS.TAG_CREATE]: {
     request: z.object({ label: z.string().min(1), categoryId: z.number() }),
     response: z.object({ tagId: z.number(), label: z.string(), categoryId: z.number() })
+  },
+  [IPC_CHANNELS.LIBRARY_LIST]: {
+    request: LibraryQuerySchema,
+    response: z.object({ items: z.array(LibraryItemSchema) })
+  },
+  [IPC_CHANNELS.LIBRARY_STATS]: {
+    request: z.void(),
+    response: LibraryStatsSchema
+  },
+  [IPC_CHANNELS.LIBRARY_TRASH_LIST]: {
+    request: z.void(),
+    response: z.object({ items: z.array(LibraryItemSchema) })
+  },
+  [IPC_CHANNELS.MOCKUP_DETAIL]: {
+    request: z.object({ mockupId: z.number() }),
+    response: MockupDetailSchema
+  },
+  [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: {
+    request: z.object({ mockupId: z.number(), favourite: z.boolean() }),
+    response: z.object({ favourite: z.boolean() })
+  },
+  [IPC_CHANNELS.MOCKUP_UPDATE]: {
+    request: z.object({ mockupId: z.number(), title: z.string().min(1), description: z.string(), tagIds: z.array(z.number()) }),
+    response: z.object({ updated: z.boolean() })
+  },
+  [IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL]: {
+    request: z.object({ mockupId: z.number() }),
+    response: z.object({ opened: z.boolean() })
+  },
+  [IPC_CHANNELS.MOCKUP_TRASH]: {
+    request: z.object({ mockupId: z.number() }),
+    response: z.object({ ok: z.boolean() })
+  },
+  [IPC_CHANNELS.MOCKUP_RESTORE]: {
+    request: z.object({ mockupId: z.number() }),
+    response: z.object({ ok: z.boolean() })
+  },
+  [IPC_CHANNELS.MOCKUP_DELETE_PERMANENT]: {
+    request: z.object({ mockupId: z.number() }),
+    response: z.object({ deleted: z.boolean() })
+  },
+  [IPC_CHANNELS.MOCKUP_DUPLICATE]: {
+    request: z.object({ mockupId: z.number() }),
+    response: z.object({ newMockupId: z.number() })
+  },
+  [IPC_CHANNELS.GROUP_UNGROUP]: {
+    request: z.object({ leaderId: z.number() }),
+    response: z.object({ ungrouped: z.boolean() })
+  },
+  [IPC_CHANNELS.GROUP_DELETE]: {
+    request: z.object({ leaderId: z.number() }),
+    response: z.object({ deleted: z.boolean() })
   }
 } as const
 

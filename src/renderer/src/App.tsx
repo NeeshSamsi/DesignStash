@@ -5,10 +5,11 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import SettingsAiPane from './SettingsAiPane'
 import GroupingReview from './GroupingReview'
 import ApprovalStepper from './ApprovalStepper'
+import LibraryView from './LibraryView'
 import { useGroupingStore } from './stores/groupingStore'
 import { useApprovalStore } from './stores/approvalStore'
 
-type AppView = 'import' | 'grouping-review' | 'approval' | 'library-placeholder'
+type AppView = 'import' | 'grouping-review' | 'approval' | 'library'
 
 export default function App() {
   const [view, setView] = useState<AppView>('import')
@@ -115,7 +116,7 @@ export default function App() {
     return (
       <ApprovalStepper
         onComplete={() => {
-          setView('library-placeholder')
+          setView('library')
           approvalStore.reset()
         }}
         onCancel={() => {
@@ -126,18 +127,8 @@ export default function App() {
     )
   }
 
-  if (view === 'library-placeholder') {
-    return (
-      <main className="min-h-screen bg-neutral-900 text-slate-100 flex flex-col items-center justify-center gap-4">
-        <p className="text-neutral-300 text-lg">Mockups approved — library view coming in M7</p>
-        <button
-          onClick={() => setView('import')}
-          className="text-sm bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          Import more
-        </button>
-      </main>
-    )
+  if (view === 'library') {
+    return <LibraryView onBack={() => setView('import')} />
   }
 
   return (
@@ -153,12 +144,20 @@ export default function App() {
       <div className="max-w-md w-full bg-neutral-800 rounded-xl shadow-2xl p-8 border border-neutral-700">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-3xl font-bold text-white tracking-tight">DesignStash</h1>
-          <button
-            onClick={() => setShowAiSettings((v) => !v)}
-            className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
-          >
-            AI Settings
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setView('library')}
+              className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
+            >
+              Library
+            </button>
+            <button
+              onClick={() => setShowAiSettings((v) => !v)}
+              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
+            >
+              AI Settings
+            </button>
+          </div>
         </div>
         {showAiSettings && <SettingsAiPane />}
         <div className="flex space-x-2 my-4">
