@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import type { DesignStashApi } from '@shared/api'
 
 /**
@@ -6,7 +6,8 @@ import type { DesignStashApi } from '@shared/api'
  * Validated IPC channels are added in M1.
  */
 const api: DesignStashApi = {
-  appName: 'DesignStash'
+  appName: 'DesignStash',
+  invoke: (channel, args) => ipcRenderer.invoke(channel, args)
 }
 
 contextBridge.exposeInMainWorld('api', api)
