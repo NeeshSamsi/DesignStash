@@ -1,5 +1,6 @@
 import { app, shell, dialog, BrowserWindow } from 'electron'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { sql } from 'drizzle-orm'
 import { APP_ID } from '@shared/constants'
 import { IPC_CHANNELS } from '@shared/ipc'
@@ -10,6 +11,8 @@ import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
 import { tagCategories } from './db/schema'
 import { createSettingsStore, type SettingsStore } from './settings'
 import { logger } from './logger'
+import { ImportService } from './import/import-service'
+import { Repository } from './db/repository'
 
 const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
 
@@ -19,7 +22,11 @@ function migrationsFolder(): string {
     : join(app.getAppPath(), 'drizzle')
 }
 
-function registerHandlers(settings: SettingsStore): void {
+function registerHandlers(settings: SettingsStore, window: BrowserWindow): void {
+  const repo = new Repository(getDb())
+  const importService = new ImportService(repo, settings.getLibraryRoot())
+  const activeImports = new Map<string, AbortController>()
+
   registerIpcHandler(IPC_CHANNELS.APP_INFO, () => ({
     name: 'DesignStash',
     version: app.getVersion(),
@@ -53,9 +60,46 @@ function registerHandlers(settings: SettingsStore): void {
     const path = result.canceled ? null : (result.filePaths[0] ?? null)
     return { path }
   })
+
+  registerIpcHandler(IPC_CHANNELS.DIALOG_SELECT_PSD_FILES, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'PSD Files', extensions: ['psd'] }]
+    })
+    return { paths: result.filePaths }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.IMPORT_START, async (args) => {
+    const batchId = randomUUID()
+    const controller = new AbortController()
+    activeImports.set(batchId, controller)
+
+    try {
+      const summary = await importService.importPaths(args.paths, {
+        batchId,
+        signal: controller.signal,
+        onProgress: (progress) => {
+          window.webContents.send(IPC_CHANNELS.IMPORT_PROGRESS, progress)
+        }
+      })
+      return summary
+    } finally {
+      activeImports.delete(batchId)
+    }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.IMPORT_CANCEL, (args) => {
+    const controller = activeImports.get(args.batchId)
+    if (controller) {
+      controller.abort()
+      activeImports.delete(args.batchId)
+      return { cancelled: true }
+    }
+    return { cancelled: false }
+  })
 }
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -84,6 +128,7 @@ function createWindow(): void {
   } else {
     void window.loadFile(join(__dirname, '../renderer/index.html'))
   }
+  return window
 }
 
 app.whenReady().then(() => {
@@ -103,8 +148,8 @@ app.whenReady().then(() => {
     logger.error('Failed to initialize database/library:', err)
   }
 
-  registerHandlers(settings)
-  createWindow()
+  const window = createWindow()
+  registerHandlers(settings, window)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

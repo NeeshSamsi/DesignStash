@@ -1,15 +1,34 @@
 import { z } from 'zod'
+import { IPC_CHANNELS, type IpcChannel } from './ipc-channels'
+export { IPC_CHANNELS, type IpcChannel }
 
-/** IPC channel names. */
-export const IPC_CHANNELS = {
-  APP_INFO: 'app:info',
-  DB_PING: 'db:ping',
-  SETTINGS_GET: 'settings:get',
-  SETTINGS_SET_LIBRARY_ROOT: 'settings:set-library-root',
-  DIALOG_SELECT_DIRECTORY: 'dialog:select-directory'
-} as const
+export const ImportProgressSchema = z.object({
+  batchId: z.string(),
+  phase: z.enum(['scanning', 'copying', 'done']),
+  completed: z.number(),
+  total: z.number(),
+  currentTitle: z.string().optional()
+})
+export type ImportProgress = z.infer<typeof ImportProgressSchema>
 
-export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
+export const ImportSummarySchema = z.object({
+  batchId: z.string(),
+  items: z.array(
+    z.object({
+      title: z.string(),
+      status: z.enum(['imported', 'pending_preview', 'duplicate', 'error']),
+      mockupId: z.number().optional(),
+      coverSource: z.enum(['embedded', 'sidecar']).optional(),
+      detail: z.string().optional()
+    })
+  ),
+  imported: z.number(),
+  pendingPreview: z.number(),
+  duplicates: z.number(),
+  errors: z.number(),
+  skippedNonPsd: z.number()
+})
+export type ImportSummary = z.infer<typeof ImportSummarySchema>
 
 /** Maps each channel to its request/response zod schemas (validated on both ends). */
 export const IPC_CONTRACT = {
@@ -43,6 +62,22 @@ export const IPC_CONTRACT = {
   [IPC_CHANNELS.DIALOG_SELECT_DIRECTORY]: {
     request: z.void(),
     response: z.object({ path: z.string().nullable() })
+  },
+  [IPC_CHANNELS.DIALOG_SELECT_PSD_FILES]: {
+    request: z.void(),
+    response: z.object({ paths: z.array(z.string()) })
+  },
+  [IPC_CHANNELS.IMPORT_START]: {
+    request: z.object({ paths: z.array(z.string()) }),
+    response: ImportSummarySchema
+  },
+  [IPC_CHANNELS.IMPORT_CANCEL]: {
+    request: z.object({ batchId: z.string() }),
+    response: z.object({ cancelled: z.boolean() })
+  },
+  [IPC_CHANNELS.IMPORT_PROGRESS]: {
+    request: ImportProgressSchema,
+    response: z.void()
   }
 } as const
 

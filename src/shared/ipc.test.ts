@@ -36,4 +36,55 @@ describe('IPC Contract', () => {
       expect(response.parse(validResponse)).toEqual(validResponse)
     })
   })
+
+  describe('IMPORT_START channel', () => {
+    const { request, response } = IPC_CONTRACT[IPC_CHANNELS.IMPORT_START]
+
+    it('validates a correct request', () => {
+      const validRequest = { paths: ['/path/to/file.psd'] }
+      expect(request.parse(validRequest)).toEqual(validRequest)
+    })
+
+    it('validates a correct response', () => {
+      const validResponse = {
+        batchId: '123',
+        items: [],
+        imported: 0,
+        pendingPreview: 0,
+        duplicates: 0,
+        errors: 0,
+        skippedNonPsd: 0
+      }
+      expect(response.parse(validResponse)).toEqual(validResponse)
+    })
+  })
+
+  describe('IMPORT_PROGRESS channel', () => {
+    const { request } = IPC_CONTRACT[IPC_CHANNELS.IMPORT_PROGRESS]
+
+    it('validates a correct request', () => {
+      const validRequest = {
+        batchId: '123',
+        phase: 'copying',
+        completed: 1,
+        total: 2,
+        currentTitle: 'file.psd'
+      }
+      expect(request.parse(validRequest)).toEqual(validRequest)
+    })
+  })
+
+  describe('IMPORT_CANCEL channel', () => {
+    const { request, response } = IPC_CONTRACT[IPC_CHANNELS.IMPORT_CANCEL]
+
+    it('validates a correct request', () => {
+      const validRequest = { batchId: '123' }
+      expect(request.parse(validRequest)).toEqual(validRequest)
+    })
+
+    it('validates a correct response', () => {
+      const validResponse = { cancelled: true }
+      expect(response.parse(validResponse)).toEqual(validResponse)
+    })
+  })
 })
