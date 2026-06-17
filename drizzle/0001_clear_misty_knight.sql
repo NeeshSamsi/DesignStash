@@ -1,0 +1,1 @@
+ALTER TABLE `mockups` ADD `deleted_at` text;
