@@ -1,0 +1,5 @@
+export type { Telemetry } from './telemetry'
+export { NoopTelemetry } from './telemetry'
+export { PostHogTelemetry, type PostHogClientLike } from './posthog-telemetry'
+export { createTelemetry, type CreateTelemetryOptions } from './factory'
+export { scrubError, scrubText } from './scrub'

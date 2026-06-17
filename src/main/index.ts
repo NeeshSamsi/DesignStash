@@ -25,8 +25,23 @@ import { ModelDownloader } from './ai/download'
 import { LocalInferenceProvider } from './ai/local-provider'
 import { LibraryService } from './library/library-service'
 import { IntegrityService } from './library/integrity-service'
+import { createTelemetry, type Telemetry } from './telemetry'
+import { TELEMETRY_EVENTS } from '@shared/telemetry'
 
 const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
+
+/**
+ * Mutable holder for the telemetry instance. Consent can flip at runtime, so
+ * handlers read through `get()` and `rebuild()` swaps the instance via the factory
+ * (which decides Noop vs PostHog). All callers stay no-op-safe when consent is off.
+ */
+interface TelemetryRef {
+  get(): Telemetry
+  rebuild(): void
+}
+
+// Module-scoped so the will-quit handler can flush telemetry on shutdown.
+let telemetryRef: TelemetryRef | null = null
 
 function migrationsFolder(): string {
   return app.isPackaged
@@ -34,7 +49,11 @@ function migrationsFolder(): string {
     : join(app.getAppPath(), 'drizzle')
 }
 
-function registerHandlers(settings: SettingsStore, window: BrowserWindow): void {
+function registerHandlers(
+  settings: SettingsStore,
+  window: BrowserWindow,
+  telemetry: TelemetryRef
+): void {
   const repo = new Repository(getDb())
   const importService = new ImportService(repo, settings.getLibraryRoot())
   const activeImports = new Map<string, AbortController>()
@@ -68,6 +87,24 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
     return { libraryRoot: next.libraryRoot }
   })
 
+  registerIpcHandler(IPC_CHANNELS.TELEMETRY_GET_CONSENT, () => ({
+    enabled: settings.get().telemetryEnabled
+  }))
+
+  registerIpcHandler(IPC_CHANNELS.TELEMETRY_SET_CONSENT, (args) => {
+    // Setting consent also marks onboarding complete (first-run disclosure, spec §13.3a) —
+    // the smallest clean way to record the disclosure was shown without a separate channel.
+    settings.update({ telemetryEnabled: args.enabled, onboarded: true })
+    // Rebuild so toggling consent on/off takes effect immediately (Noop <-> PostHog).
+    telemetry.rebuild()
+    return { enabled: args.enabled }
+  })
+
+  // Fire-and-forget forward from the renderer. No-op-safe when consent is off.
+  registerIpcHandler(IPC_CHANNELS.TELEMETRY_TRACK, (args) => {
+    telemetry.get().track(args.event, args.props)
+  })
+
   registerIpcHandler(IPC_CHANNELS.DIALOG_SELECT_DIRECTORY, async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory']
@@ -89,6 +126,10 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
     const controller = new AbortController()
     activeImports.set(batchId, controller)
 
+    // Telemetry: counts only — NEVER paths or filenames.
+    telemetry.get().track(TELEMETRY_EVENTS.IMPORT_STARTED, { paths: args.paths.length })
+    const startedAt = Date.now()
+
     try {
       const summary = await importService.importPaths(args.paths, {
         batchId,
@@ -96,6 +137,13 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
         onProgress: (progress) => {
           window.webContents.send(IPC_CHANNELS.IMPORT_PROGRESS, progress)
         }
+      })
+      // Telemetry: counts + duration only — NEVER paths or filenames.
+      telemetry.get().track(TELEMETRY_EVENTS.IMPORT_COMPLETED, {
+        imported: summary.imported,
+        duplicates: summary.duplicates,
+        errors: summary.errors,
+        durationMs: Date.now() - startedAt
       })
       return summary
     } finally {
@@ -186,6 +234,11 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
 
   registerIpcHandler(IPC_CHANNELS.AI_SET_ACTIVE, (args) => {
     settings.update({ activeModelId: args.id })
+    // Telemetry: hardware/model tier enum only — never the model id beyond its tier.
+    if (args.id) {
+      const tier = MODEL_REGISTRY.find((m) => m.id === args.id)?.tier
+      if (tier) telemetry.get().track(TELEMETRY_EVENTS.MODEL_TIER_CHOSEN, { tier })
+    }
     return { modelId: args.id }
   })
 
@@ -206,6 +259,11 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
 
   registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
     repo.confirmGroupings(args.groups, args.singletonIds)
+    // Telemetry: counts only — never group contents.
+    telemetry.get().track(TELEMETRY_EVENTS.GROUP_CONFIRMED, {
+      groups: args.groups.length,
+      singletons: args.singletonIds.length
+    })
     return { confirmed: true }
   })
 
@@ -254,6 +312,12 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
         reinferredItems = await service.reinferGroupRemainder(memberItems, args)
       }
     }
+
+    // Telemetry: booleans only — never title/description/tag text or filenames.
+    telemetry.get().track(TELEMETRY_EVENTS.AI_ITEM_APPROVED, {
+      wasEdited: args.wasEdited,
+      isLeader: args.isLeader
+    })
 
     return { saved: true, reinferredItems }
   })
@@ -333,13 +397,22 @@ function registerHandlers(settings: SettingsStore, window: BrowserWindow): void 
     openPath: (p) => shell.openPath(p)
   })
 
-  registerIpcHandler(IPC_CHANNELS.LIBRARY_LIST, (args) => ({
-    items: repo.getLibrary({
-      ...(args.tagIds !== undefined && { tagIds: args.tagIds }),
-      ...(args.query !== undefined && { query: args.query }),
-      sort: args.sort
-    })
-  }))
+  registerIpcHandler(IPC_CHANNELS.LIBRARY_LIST, (args) => {
+    // Telemetry: presence + filter counts only — NEVER the search query text.
+    if (args.query && args.query.trim().length > 0) {
+      telemetry.get().track(TELEMETRY_EVENTS.SEARCH_PERFORMED, {
+        hasQuery: true,
+        tagFilter: args.tagIds?.length ?? 0
+      })
+    }
+    return {
+      items: repo.getLibrary({
+        ...(args.tagIds !== undefined && { tagIds: args.tagIds }),
+        ...(args.query !== undefined && { query: args.query }),
+        sort: args.sort
+      })
+    }
+  })
 
   registerIpcHandler(IPC_CHANNELS.LIBRARY_STATS, () => repo.getLibraryStats())
 
@@ -492,8 +565,35 @@ app.whenReady().then(() => {
     logger.error('Failed to initialize database/library:', err)
   }
 
+  // Telemetry: NO-OP in dev/test and when consent is off or no key is set.
+  // Nothing is sent until onboarding is complete (spec §13.3a).
+  const isTest = process.env.NODE_ENV === 'test'
+  const isProd = app.isPackaged
+  const apiKey = process.env.POSTHOG_KEY // absent in dev/CI -> Noop
+  const buildTelemetry = (): Telemetry =>
+    createTelemetry({
+      enabled: settings.get().telemetryEnabled && settings.get().onboarded,
+      isProd,
+      isTest,
+      installId: settings.get().telemetryInstallId,
+      apiKey
+    })
+  let telemetry = buildTelemetry()
+  telemetryRef = {
+    get: () => telemetry,
+    rebuild: () => {
+      const prev = telemetry
+      telemetry = buildTelemetry()
+      void prev.shutdown()
+    }
+  }
+
+  // Crash capture — captureError scrubs absolute paths before any dispatch.
+  process.on('uncaughtException', (err) => telemetry.captureError(err))
+  process.on('unhandledRejection', (reason) => telemetry.captureError(reason))
+
   const window = createWindow()
-  registerHandlers(settings, window)
+  registerHandlers(settings, window, telemetryRef)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -506,5 +606,6 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   logger.info('Closing database connection…')
+  void telemetryRef?.get().shutdown()
   closeDb()
 })

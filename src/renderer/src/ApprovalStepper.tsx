@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { useApprovalStore } from './stores/approvalStore'
 import type { ApprovalItem, ApprovalTag, TagsByCategory, ApproveItemRequest } from '@shared/approval'
+import { track } from './telemetry'
+import { TELEMETRY_EVENTS } from '@shared/telemetry'
 
 interface ApprovalStepperProps {
   onComplete: () => void
@@ -227,6 +229,13 @@ interface CoverSectionProps {
 function CoverSection({ item, onCoverUpdated }: CoverSectionProps) {
   const [showUploadZone, setShowUploadZone] = useState(item.coverSource === 'none')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Telemetry: the mandatory-cover gate blocked save for this item (count only, no file info).
+  useEffect(() => {
+    if (item.coverSource === 'none') {
+      track(TELEMETRY_EVENTS.MANDATORY_UPLOAD_HIT)
+    }
+  }, [item.coverSource, item.mockupId])
 
   const handleFileChange = async (file: File) => {
     const filePath = window.api.getPathForFile(file)

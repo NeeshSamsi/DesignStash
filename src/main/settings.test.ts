@@ -91,4 +91,27 @@ describe('settings store', () => {
     store.update({ activeModelId: null })
     expect(store.get().activeModelId).toBeNull()
   })
+
+  it('telemetryEnabled defaults to true and install ID is non-empty', () => {
+    const store = createSettingsStore(tempDir())
+    expect(store.get().telemetryEnabled).toBe(true)
+    expect(store.get().telemetryInstallId).toBeTruthy()
+    expect(typeof store.get().telemetryInstallId).toBe('string')
+  })
+
+  it('telemetryInstallId is generated once and stable across re-reads', () => {
+    const dir = tempDir()
+    const first = createSettingsStore(dir).get().telemetryInstallId
+    expect(first).toBeTruthy()
+    // A fresh store reading the same dir must see the same persisted ID.
+    const reloaded = createSettingsStore(dir).get().telemetryInstallId
+    expect(reloaded).toBe(first)
+  })
+
+  it('update({ telemetryEnabled: false }) persists and reloads as false', () => {
+    const dir = tempDir()
+    createSettingsStore(dir).update({ telemetryEnabled: false })
+    const reloaded = createSettingsStore(dir)
+    expect(reloaded.get().telemetryEnabled).toBe(false)
+  })
 })

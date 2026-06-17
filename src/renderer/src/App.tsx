@@ -4,6 +4,8 @@ import type { ImportProgress, ImportSummary } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
 import SettingsAiPane from './SettingsAiPane'
 import SettingsTagsPane from './SettingsTagsPane'
+import SettingsPrivacyPane from './SettingsPrivacyPane'
+import TelemetryDisclosure from './TelemetryDisclosure'
 import GroupingReview from './GroupingReview'
 import ApprovalStepper from './ApprovalStepper'
 import LibraryView from './LibraryView'
@@ -20,12 +22,22 @@ export default function App() {
   const [isDropping, setIsDropping] = useState(false)
   const [showAiSettings, setShowAiSettings] = useState(false)
   const [showTagSettings, setShowTagSettings] = useState(false)
+  const [showPrivacy, setShowPrivacy] = useState(false)
+  // null = consent state not yet loaded; false = show first-run disclosure first.
+  const [onboarded, setOnboarded] = useState<boolean | null>(null)
   const groupingStore = useGroupingStore()
   const approvalStore = useApprovalStore()
 
   useEffect(() => {
     const unsubscribe = window.api.onImportProgress(setImportProgress)
     return () => unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    void (async () => {
+      const res = await window.api.invoke(IPC_CHANNELS.SETTINGS_GET, undefined)
+      setOnboarded(res.success ? res.data.onboarded : true)
+    })()
   }, [])
 
   const handleImport = useCallback(async (paths: string[]) => {
@@ -90,6 +102,15 @@ export default function App() {
     event.preventDefault()
     event.stopPropagation()
     setIsDropping(false)
+  }
+
+  // Hold rendering until consent state is known so the disclosure shows before the app.
+  if (onboarded === null) {
+    return <div className="min-h-screen bg-neutral-900" />
+  }
+
+  if (!onboarded) {
+    return <TelemetryDisclosure onDecision={() => setOnboarded(true)} />
   }
 
   if (view === 'grouping-review') {
@@ -176,10 +197,17 @@ export default function App() {
             >
               Tags
             </button>
+            <button
+              onClick={() => setShowPrivacy((v) => !v)}
+              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
+            >
+              Privacy
+            </button>
           </div>
         </div>
         {showAiSettings && <SettingsAiPane />}
         {showTagSettings && <SettingsTagsPane />}
+        {showPrivacy && <SettingsPrivacyPane />}
         <div className="flex space-x-2 my-4">
           <button
             onClick={handleFileSelect}

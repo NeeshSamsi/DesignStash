@@ -11,6 +11,19 @@ beforeEach(() => {
       if (channel === 'app:info') {
         return { success: true, data: { name: 'DesignStash', version: '0.0.0', env: 'test' } }
       }
+      if (channel === IPC_CHANNELS.SETTINGS_GET) {
+        // onboarded: true so existing tests bypass the first-run disclosure.
+        return { success: true, data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true } }
+      }
+      if (channel === IPC_CHANNELS.TELEMETRY_GET_CONSENT) {
+        return { success: true, data: { enabled: true } }
+      }
+      if (channel === IPC_CHANNELS.TELEMETRY_SET_CONSENT) {
+        return { success: true, data: { enabled: true } }
+      }
+      if (channel === IPC_CHANNELS.TELEMETRY_TRACK) {
+        return { success: true, data: undefined }
+      }
       if (channel === IPC_CHANNELS.IMPORT_START) {
         return { success: true, data: { batchId: '123', items: [], imported: 1, pendingPreview: 0, duplicates: 0, errors: 0, skippedNonPsd: 0 } }
       }
@@ -51,7 +64,8 @@ describe('App', () => {
 
   it('calls IMPORT_START on drop', async () => {
     render(<App />)
-    const dropzone = screen.getByRole('main')
+    // Wait for consent state to resolve so the real app (not the disclosure) is mounted.
+    const dropzone = await screen.findByRole('main')
     const file = new File([''], 'test.psd', { type: 'image/vnd.adobe.photoshop' })
     const dataTransfer = {
       files: [file],
@@ -64,5 +78,25 @@ describe('App', () => {
     }
     fireEvent.drop(dropzone, { dataTransfer })
     expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.IMPORT_START, { paths: ['/path/to/test.psd'] })
+  })
+
+  it('shows the first-run disclosure when not onboarded and opting out sets consent off', async () => {
+    ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
+      if (channel === IPC_CHANNELS.SETTINGS_GET) {
+        return { success: true, data: { libraryRoot: '/lib', onboarded: false, telemetryEnabled: true } }
+      }
+      if (channel === IPC_CHANNELS.TELEMETRY_SET_CONSENT) {
+        return { success: true, data: { enabled: false } }
+      }
+      return { success: true, data: {} }
+    })
+
+    render(<App />)
+    expect(await screen.findByText(/Help improve DesignStash/i)).toBeTruthy()
+
+    fireEvent.click(screen.getByText('No thanks'))
+    expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.TELEMETRY_SET_CONSENT, {
+      enabled: false
+    })
   })
 })

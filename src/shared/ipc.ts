@@ -17,6 +17,7 @@ import {
 } from './library'
 import { TagTreeSchema } from './tags'
 import { IntegrityReportSchema } from './integrity'
+import { TelemetryEventSchema, TelemetryConsentSchema } from './telemetry'
 
 export const AiModelTierSchema = z.enum(['small', 'medium', 'large'])
 export type AiModelTier = z.infer<typeof AiModelTierSchema>
@@ -90,7 +91,8 @@ export const IPC_CONTRACT = {
     request: z.void(),
     response: z.object({
       libraryRoot: z.string(),
-      onboarded: z.boolean()
+      onboarded: z.boolean(),
+      telemetryEnabled: z.boolean()
     })
   },
   [IPC_CHANNELS.SETTINGS_SET_LIBRARY_ROOT]: {
@@ -277,6 +279,19 @@ export const IPC_CONTRACT = {
   [IPC_CHANNELS.INTEGRITY_DELETE_RECORD]: {
     request: z.object({ mockupId: z.number() }),
     response: z.object({ deleted: z.boolean() })
+  },
+  // Fire-and-forget renderer→main forward; main applies privacy gating before dispatch.
+  [IPC_CHANNELS.TELEMETRY_TRACK]: {
+    request: TelemetryEventSchema,
+    response: z.void()
+  },
+  [IPC_CHANNELS.TELEMETRY_GET_CONSENT]: {
+    request: z.void(),
+    response: TelemetryConsentSchema
+  },
+  [IPC_CHANNELS.TELEMETRY_SET_CONSENT]: {
+    request: TelemetryConsentSchema,
+    response: TelemetryConsentSchema
   }
 } as const
 

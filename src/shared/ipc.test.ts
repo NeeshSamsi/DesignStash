@@ -384,4 +384,27 @@ describe('IPC Contract', () => {
       ).toThrow()
     })
   })
+
+  describe('TELEMETRY_TRACK channel', () => {
+    it('validates an event with primitive props', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.TELEMETRY_TRACK]
+      const valid = { event: 'import_started', props: { count: 2 } }
+      expect(request.parse(valid)).toEqual(valid)
+    })
+
+    it('rejects props containing a nested object / non-primitive value', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.TELEMETRY_TRACK]
+      expect(() =>
+        request.parse({ event: 'import_started', props: { meta: { nested: true } } })
+      ).toThrow()
+    })
+  })
+
+  describe('TELEMETRY_SET_CONSENT channel', () => {
+    it('validates request and response', () => {
+      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TELEMETRY_SET_CONSENT]
+      expect(request.parse({ enabled: false })).toEqual({ enabled: false })
+      expect(response.parse({ enabled: true })).toEqual({ enabled: true })
+    })
+  })
 })
