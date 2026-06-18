@@ -77,6 +77,9 @@ beforeEach(() => {
       if (channel === IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT) {
         return { success: true, data: { tier: 'free', enabled: { 'search.semantic': true, 'app.core': true } } }
       }
+      if (channel === IPC_CHANNELS.DEBUG_READ_SETTINGS) {
+        return { success: true, data: { path: '/stub/settings.json', json: '{}', exists: false } }
+      }
       return { success: true, data: { success: true, message: 'pong', timestamp: 0 } }
     }),
     onImportProgress: vi.fn(() => () => {}),

@@ -26,7 +26,8 @@
     "db:studio": "drizzle-kit studio",
     "predb:studio": "node scripts/rebuild-better-sqlite3.mjs node",
     "dev:ingest": "tsx --tsconfig tsconfig.node.json scripts/dev-ingest.ts",
-    "predev:ingest": "node scripts/rebuild-better-sqlite3.mjs node"
+    "predev:ingest": "node scripts/rebuild-better-sqlite3.mjs node",
+    "dev:reset": "node scripts/dev-reset.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

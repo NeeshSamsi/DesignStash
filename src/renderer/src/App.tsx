@@ -9,6 +9,7 @@ import LibraryTopBar from './LibraryTopBar'
 import TrashView from './TrashView'
 import SettingsPage from './SettingsPage'
 import AppShell from './AppShell'
+import DebugMenu from './DebugMenu'
 import { useGroupingStore } from './stores/groupingStore'
 import { useApprovalStore } from './stores/approvalStore'
 import { useEntitlementStore } from './stores/entitlementStore'
@@ -154,11 +155,21 @@ export default function App() {
   }
 
   if (onboarded === null) {
-    return <div className="min-h-screen bg-neutral-900" />
+    return (
+      <>
+        <div className="min-h-screen bg-neutral-900" />
+        <DebugMenu />
+      </>
+    )
   }
 
   if (!onboarded) {
-    return <Onboarding onComplete={() => setOnboarded(true)} />
+    return (
+      <>
+        <Onboarding onComplete={() => setOnboarded(true)} />
+        <DebugMenu />
+      </>
+    )
   }
 
   const handleGroupingConfirm = async () => {
@@ -187,43 +198,46 @@ export default function App() {
   }
 
   return (
-    <AppShell
-      topBar={view === 'library' && addFlow === null ? <LibraryTopBar /> : undefined}
-      onAddFiles={() => void handleFileSelect()}
-      onAddFolder={() => void handleFolderSelect()}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      isDropping={isDropping}
-    >
-      {addFlow === 'grouping' && (
-        <GroupingReview
-          onConfirm={() => void handleGroupingConfirm()}
-          onCancel={handlePipelineCancel}
-        />
-      )}
-      {addFlow === 'approval' && (
-        <ApprovalStepper
-          onComplete={() => void handleApprovalComplete()}
-          onCancel={handlePipelineCancel}
-        />
-      )}
-      {addFlow === null && view === 'library' && <LibraryView />}
-      {addFlow === null && view === 'trash' && <TrashView />}
-      {addFlow === null && view === 'settings' && <SettingsPage />}
-      {importProgress && importProgress.phase !== 'done' && (
-        <div className="fixed bottom-6 right-6 z-40 bg-neutral-800 border border-neutral-600 rounded-xl p-4 shadow-xl w-72">
-          <p className="text-sm font-medium text-slate-100 mb-1 capitalize">{importProgress.phase}…</p>
-          <p className="text-xs text-neutral-400 mb-2 truncate">{importProgress.currentTitle}</p>
-          <div className="w-full bg-neutral-700 rounded-full h-1.5">
-            <div
-              className="bg-brand-500 h-1.5 rounded-full transition-all"
-              style={{ width: `${Math.round((importProgress.completed / importProgress.total) * 100)}%` }}
-            />
+    <>
+      <AppShell
+        topBar={view === 'library' && addFlow === null ? <LibraryTopBar /> : undefined}
+        onAddFiles={() => void handleFileSelect()}
+        onAddFolder={() => void handleFolderSelect()}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        isDropping={isDropping}
+      >
+        {addFlow === 'grouping' && (
+          <GroupingReview
+            onConfirm={() => void handleGroupingConfirm()}
+            onCancel={handlePipelineCancel}
+          />
+        )}
+        {addFlow === 'approval' && (
+          <ApprovalStepper
+            onComplete={() => void handleApprovalComplete()}
+            onCancel={handlePipelineCancel}
+          />
+        )}
+        {addFlow === null && view === 'library' && <LibraryView />}
+        {addFlow === null && view === 'trash' && <TrashView />}
+        {addFlow === null && view === 'settings' && <SettingsPage />}
+        {importProgress && importProgress.phase !== 'done' && (
+          <div className="fixed bottom-6 right-6 z-40 bg-neutral-800 border border-neutral-600 rounded-xl p-4 shadow-xl w-72">
+            <p className="text-sm font-medium text-slate-100 mb-1 capitalize">{importProgress.phase}…</p>
+            <p className="text-xs text-neutral-400 mb-2 truncate">{importProgress.currentTitle}</p>
+            <div className="w-full bg-neutral-700 rounded-full h-1.5">
+              <div
+                className="bg-brand-500 h-1.5 rounded-full transition-all"
+                style={{ width: `${Math.round((importProgress.completed / importProgress.total) * 100)}%` }}
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </AppShell>
+        )}
+      </AppShell>
+      <DebugMenu />
+    </>
   )
 }

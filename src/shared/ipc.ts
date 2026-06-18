@@ -305,6 +305,14 @@ export const IPC_CONTRACT = {
   [IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT]: {
     request: z.void(),
     response: EntitlementsSnapshotSchema
+  },
+  [IPC_CHANNELS.DEBUG_RESET_APP]: {
+    request: z.void(),
+    response: z.object({ ok: z.boolean() })
+  },
+  [IPC_CHANNELS.DEBUG_READ_SETTINGS]: {
+    request: z.void(),
+    response: z.object({ path: z.string(), json: z.string(), exists: z.boolean() })
   }
 } as const
 
