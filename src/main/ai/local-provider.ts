@@ -81,18 +81,20 @@ export class LocalInferenceProvider implements InferenceProvider {
 
   private async loadLlamaFn(): Promise<(prompt: string) => Promise<string>> {
     // Dynamic import keeps node-llama-cpp (native binary) out of CI module graph.
+    // Context is created once and reused; each prompt gets a fresh session on its
+    // own sequence so independent mockups don't share chat history.
     const { getLlama, LlamaChatSession } = await import('node-llama-cpp')
     const llama = await getLlama()
     const model = await llama.loadModel({ modelPath: this.modelPath })
+    const context = await model.createContext()
 
     return async (prompt: string) => {
-      const context = await model.createContext()
-      try {
-        const session = new LlamaChatSession({ contextSequence: context.getSequence() })
-        return await session.prompt(prompt)
-      } finally {
-        await context.dispose()
-      }
+      const session = new LlamaChatSession({ contextSequence: context.getSequence() })
+      return session.prompt(prompt)
     }
+  }
+
+  async dispose(): Promise<void> {
+    this.cachedPromptFn = null
   }
 }

@@ -2,7 +2,6 @@ import { join, basename, dirname, extname } from 'node:path'
 import { promises as fs } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import type { Repository } from '../db/repository'
-import type { NewMockup } from '../db/schema'
 import { resolveCover } from '../psd'
 import type { ResolveCoverInput, CoverResolution } from '../psd/types'
 
@@ -110,9 +109,7 @@ export class IntegrityService {
     })
 
     const coverPath = resolution.source === 'none' ? '' : resolution.coverPath
-    // 'none' isn't in the DB enum's narrowed type but the column is plain text (no CHECK);
-    // approval-service.toCoverSource maps it back to 'none' for the mandatory-preview gate.
-    const coverSource = resolution.source as NewMockup['coverSource']
+    const coverSource = resolution.source
 
     const mockup = this.repo.createMockup({
       title: basename(filePath, extname(filePath)),

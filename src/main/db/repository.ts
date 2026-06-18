@@ -11,6 +11,7 @@ import type {
   TagCategory
 } from './schema'
 import type { ConfirmedGroup } from '@shared/grouping'
+import type { ApprovalTag } from '@shared/approval'
 
 export interface LibraryRow {
   id: number
@@ -274,6 +275,31 @@ export class Repository {
 
   clearTagsForMockup(mockupId: number): void {
     this.db.delete(mockupTags).where(eq(mockupTags.mockupId, mockupId)).run()
+  }
+
+  getApprovalTagsByIds(ids: number[]): ApprovalTag[] {
+    if (ids.length === 0) return []
+    const rows = this.db
+      .select({
+        tagId: tags.id,
+        label: tags.label,
+        categoryId: tagCategories.id,
+        categoryLabel: tagCategories.label
+      })
+      .from(tags)
+      .innerJoin(tagCategories, eq(tags.categoryId, tagCategories.id))
+      .where(inArray(tags.id, ids))
+      .all()
+    const byId = new Map(rows.map((r) => [r.tagId, r]))
+    const seen = new Set<number>()
+    const result: ApprovalTag[] = []
+    for (const id of ids) {
+      if (seen.has(id)) continue
+      seen.add(id)
+      const row = byId.get(id)
+      if (row) result.push(row)
+    }
+    return result
   }
 
   approveItem(

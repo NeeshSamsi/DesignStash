@@ -8,10 +8,9 @@ import type {
   ApprovalTag,
   ApproveItemRequest
 } from '../../shared/approval'
+import { TagService } from '../db/tag-service'
 
-type CoverSource = 'embedded' | 'sidecar' | 'user-uploaded' | 'none'
-
-function toCoverSource(dbSource: string | null): CoverSource {
+function toCoverSource(dbSource: string | null): ApprovalItem['coverSource'] {
   if (dbSource === 'embedded' || dbSource === 'sidecar' || dbSource === 'user-uploaded') {
     return dbSource
   }
@@ -19,10 +18,14 @@ function toCoverSource(dbSource: string | null): CoverSource {
 }
 
 export class ApprovalService {
+  private readonly tagService: TagService
   constructor(
     private readonly repo: Repository,
-    private readonly provider: InferenceProvider | null
-  ) {}
+    private readonly provider: InferenceProvider | null,
+    tagService?: TagService
+  ) {
+    this.tagService = tagService ?? new TagService(repo)
+  }
 
   async initQueue(batchId: string): Promise<ApprovalQueue> {
     const all = this.repo.getMockupsByBatchId(batchId)
@@ -107,10 +110,12 @@ export class ApprovalService {
           fileName,
           folderTrail
         })
+        const tagIds = await this.tagService.snapTags(result.tags)
+        const tags = this.repo.getApprovalTagsByIds(tagIds)
         return {
           title: result.title,
           description: result.description ?? '',
-          tags: []
+          tags
         }
       } catch {
         // fall through to filename fallback
@@ -146,6 +151,9 @@ export class ApprovalService {
     editedLeader: ApproveItemRequest
   ): Promise<ApprovalItem[]> {
     if (!this.provider || items.length === 0) return items
+    const originalTags = this.repo
+      .getApprovalTagsByIds(editedLeader.tagIds)
+      .map((t) => ({ category: t.categoryLabel, label: t.label }))
     return Promise.all(
       items.map(async (item) => {
         const m = this.repo.getMockup(item.mockupId)
@@ -159,10 +167,12 @@ export class ApprovalService {
             groupContext: {
               originalTitle: editedLeader.title,
               originalDescription: editedLeader.description,
-              originalTags: []
+              originalTags
             }
           })
-          return { ...item, title: result.title, description: result.description ?? '' }
+          const tagIds = await this.tagService.snapTags(result.tags)
+          const tags = this.repo.getApprovalTagsByIds(tagIds)
+          return { ...item, title: result.title, description: result.description ?? '', tags }
         } catch {
           return item
         }

@@ -116,6 +116,10 @@ export const IPC_CONTRACT = {
     request: z.object({ batchId: z.string() }),
     response: z.object({ cancelled: z.boolean() })
   },
+  // PUSH EVENT (main -> renderer), NOT a request/response invoke channel.
+  // Delivered via webContents.send and consumed through the preload onImportProgress listener.
+  // The `request` schema documents the event payload; `response: z.void()` is a placeholder —
+  // no handler is registered via registerIpcHandler.
   [IPC_CHANNELS.IMPORT_PROGRESS]: {
     request: ImportProgressSchema,
     response: z.void()
@@ -141,6 +145,10 @@ export const IPC_CONTRACT = {
     request: z.object({ id: z.string() }),
     response: z.object({ cancelled: z.boolean() })
   },
+  // PUSH EVENT (main -> renderer), NOT a request/response invoke channel.
+  // Delivered via webContents.send and consumed through the preload onAiDownloadProgress listener.
+  // The `request` schema documents the event payload; `response: z.void()` is a placeholder —
+  // no handler is registered via registerIpcHandler.
   [IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]: {
     request: AiDownloadProgressSchema,
     response: z.void()

@@ -47,6 +47,11 @@ describe('Repository — mockups', () => {
     expect(repo.getMockup(created.id)?.title).toBe('MacBook Mockup')
   })
 
+  it('coverSource: none round-trips through create/read', () => {
+    const created = repo.createMockup({ ...sample, coverSource: 'none' })
+    expect(repo.getMockup(created.id)?.coverSource).toBe('none')
+  })
+
   it('orders favourites first, then newest first', () => {
     repo.createMockup({ ...sample, title: 'A' })
     const b = repo.createMockup({ ...sample, title: 'B' })
@@ -765,5 +770,40 @@ describe('tag management — merge / delete / deleteCategory (M8.2)', () => {
     }
     expect(() => repo.deleteCategory(device.id)).not.toThrow()
     expect(repo.getAllCategories().find((c) => c.id === device.id)).toBeUndefined()
+  })
+})
+
+describe('Repository — getApprovalTagsByIds', () => {
+  beforeEach(() => seedTaxonomy(db))
+
+  it('returns [] for an empty id list', () => {
+    expect(repo.getApprovalTagsByIds([])).toEqual([])
+  })
+
+  it('returns ApprovalTags with correct label and categoryLabel for seeded ids', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const phone = repo.getAllTags().find((t) => t.label === 'phone')!
+    const result = repo.getApprovalTagsByIds([laptop.id, phone.id])
+    expect(result).toHaveLength(2)
+    expect(result[0]?.label).toBe('laptop')
+    expect(result[0]?.categoryLabel).toBe('Device')
+    expect(result[1]?.label).toBe('phone')
+    expect(result[1]?.categoryLabel).toBe('Device')
+  })
+
+  it('preserves input order and de-dupes a repeated id', () => {
+    const phone = repo.getAllTags().find((t) => t.label === 'phone')!
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const result = repo.getApprovalTagsByIds([phone.id, laptop.id, phone.id])
+    expect(result).toHaveLength(2)
+    expect(result[0]?.label).toBe('phone')
+    expect(result[1]?.label).toBe('laptop')
+  })
+
+  it('silently skips a non-existent id', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const result = repo.getApprovalTagsByIds([laptop.id, 999999])
+    expect(result).toHaveLength(1)
+    expect(result[0]?.label).toBe('laptop')
   })
 })

@@ -5,6 +5,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as schema from '../db/schema'
 import type { NewMockup } from '../db/schema'
 import { Repository } from '../db/repository'
+import { TagService } from '../db/tag-service'
 import { ApprovalService } from './approval-service'
 import type { InferenceProvider, AnalysisInput, InferenceResult } from '@shared/inference'
 import type { ApprovalItem, ApproveItemRequest } from '@shared/approval'
@@ -237,5 +238,87 @@ describe('ApprovalService.reinferGroupRemainder', () => {
 
     expect(result).toHaveLength(1)
     expect(result[0]!.title).toBe('Unchanged')
+  })
+})
+
+describe('ApprovalService — AI tags wired through TagService', () => {
+  it('initQueue: AI-returned tags are snapped and resolved into ApprovalTags', async () => {
+    const tagProvider: InferenceProvider = {
+      id: 'tag-provider',
+      name: 'TagProvider',
+      async analyze(): Promise<InferenceResult> {
+        return { title: 'AI Title', description: 'AI desc', tags: [{ category: 'Device', label: 'MacBook' }] }
+      }
+    }
+
+    repo.createMockup(makeMockup('bt1', { title: 'T1', libraryPath: '/lib/bt1/t1.psd' }))
+    const service = new ApprovalService(repo, tagProvider, new TagService(repo))
+    const queue = await service.initQueue('bt1')
+
+    expect(queue.items).toHaveLength(1)
+    const item = queue.items[0]!
+    expect(item.tags).toHaveLength(1)
+    expect(item.tags[0]!.label).toBe('MacBook')
+    expect(item.tags[0]!.categoryLabel).toBe('Device')
+  })
+
+  it('null-provider path still yields tags: []', async () => {
+    repo.createMockup(makeMockup('bt2', { title: 'T2', libraryPath: '/lib/bt2/t2.psd' }))
+    const service = new ApprovalService(repo, null, new TagService(repo))
+    const queue = await service.initQueue('bt2')
+    expect(queue.items[0]!.tags).toEqual([])
+  })
+
+  it('reinferGroupRemainder: re-inferred members carry resolved tags and leader tagIds → originalTags', async () => {
+    let capturedInput: AnalysisInput | null = null
+    const tagProvider: InferenceProvider = {
+      id: 'tp2',
+      name: 'TP2',
+      async analyze(input: AnalysisInput): Promise<InferenceResult> {
+        capturedInput = input
+        return { title: 'Retagged', description: '', tags: [{ category: 'Device', label: 'iPhone' }] }
+      }
+    }
+
+    const svc = new TagService(repo)
+    const leader = repo.createMockup(makeMockup('bt3', { title: 'Leader', libraryPath: '/lib/bt3/l.psd', isGroup: true, importContext: { batchId: 'bt3', folderTrail: [], originalFilename: 'l.psd' } }))
+    const member = repo.createMockup(makeMockup('bt3', { title: 'Member', libraryPath: '/lib/bt3/m.psd', groupId: leader.id, importContext: { batchId: 'bt3', folderTrail: [], originalFilename: 'm.psd' } }))
+
+    // Snap a tag for the leader so tagIds is non-empty
+    const [laptopTagId] = await svc.snapTags([{ category: 'Device', label: 'laptop' }])
+
+    const memberItem: ApprovalItem = {
+      mockupId: member.id,
+      leaderId: leader.id,
+      isLeader: false,
+      variantIndex: 1,
+      title: 'Old',
+      description: '',
+      tags: [],
+      coverPath: '/c/m.png',
+      coverSource: 'embedded',
+      sidecarFileName: null
+    }
+
+    const editedLeader: ApproveItemRequest = {
+      mockupId: leader.id,
+      title: 'MacBook Pro',
+      description: '',
+      tagIds: [laptopTagId!],
+      coverPath: '/c/l.png',
+      coverSource: 'embedded',
+      isLeader: true,
+      wasEdited: true,
+      leaderId: null
+    }
+
+    const service = new ApprovalService(repo, tagProvider, svc)
+    const result = await service.reinferGroupRemainder([memberItem], editedLeader)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]!.tags).toHaveLength(1)
+    expect(result[0]!.tags[0]!.label).toBe('iPhone')
+    expect(capturedInput).not.toBeNull()
+    expect(capturedInput!.groupContext?.originalTags).toEqual([{ category: 'Device', label: 'laptop' }])
   })
 })

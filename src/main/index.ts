@@ -26,6 +26,7 @@ import { LocalInferenceProvider } from './ai/local-provider'
 import { LibraryService } from './library/library-service'
 import { IntegrityService } from './library/integrity-service'
 import { EntitlementsService } from './entitlements/entitlements-service'
+import { TagService } from './db/tag-service'
 import { createTelemetry, type Telemetry } from './telemetry'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 
@@ -61,6 +62,14 @@ function registerHandlers(
   const modelsDir = join(settings.getLibraryRoot(), '..', 'models')
   const downloader = new ModelDownloader(modelsDir)
   const activeAiDownloads = new Map<string, AbortController>()
+
+  let cachedProvider: { path: string; provider: LocalInferenceProvider } | null = null
+  function getLocalProvider(modelPath: string): LocalInferenceProvider {
+    if (cachedProvider?.path !== modelPath) {
+      cachedProvider = { path: modelPath, provider: new LocalInferenceProvider(modelPath) }
+    }
+    return cachedProvider.provider
+  }
 
   registerIpcHandler(IPC_CHANNELS.APP_INFO, () => ({
     name: 'DesignStash',
@@ -275,10 +284,10 @@ function registerHandlers(
       const installed = await downloader.isInstalled(activeModelId)
       if (installed) {
         const modelPath = join(modelsDir, activeModelId, 'model.gguf')
-        provider = new LocalInferenceProvider(modelPath)
+        provider = getLocalProvider(modelPath)
       }
     }
-    const service = new ApprovalService(repo, provider)
+    const service = new ApprovalService(repo, provider, new TagService(repo))
     return service.initQueue(args.batchId)
   })
 
@@ -305,10 +314,10 @@ function registerHandlers(
         if (activeModelId) {
           const installed = await downloader.isInstalled(activeModelId)
           if (installed) {
-            provider = new LocalInferenceProvider(join(modelsDir, activeModelId, 'model.gguf'))
+            provider = getLocalProvider(join(modelsDir, activeModelId, 'model.gguf'))
           }
         }
-        const service = new ApprovalService(repo, provider)
+        const service = new ApprovalService(repo, provider, new TagService(repo))
         const memberItems = await service.initQueue_membersOnly(groupMembers)
         reinferredItems = await service.reinferGroupRemainder(memberItems, args)
       }

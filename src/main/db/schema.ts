@@ -20,7 +20,7 @@ const timestamps = {
 }
 
 const coverSource = (name: string) =>
-  text(name, { enum: ['embedded', 'sidecar', 'user-uploaded', 'default'] })
+  text(name, { enum: ['embedded', 'sidecar', 'user-uploaded', 'default', 'none'] })
 
 /** Mockups — the primary library entity (spec §5.4). No `source_path`: originals are untracked once copied in. */
 export const mockups = sqliteTable('mockups', {
