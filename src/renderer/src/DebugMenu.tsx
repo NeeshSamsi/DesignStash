@@ -10,10 +10,20 @@ interface SettingsSnapshot {
 export default function DebugMenu() {
   const [open, setOpen] = useState(false)
   const [settings, setSettings] = useState<SettingsSnapshot | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchSettings = useCallback(async () => {
-    const res = await window.api.invoke(IPC_CHANNELS.DEBUG_READ_SETTINGS, undefined)
-    if (res.success) setSettings(res.data)
+    try {
+      const res = await window.api.invoke(IPC_CHANNELS.DEBUG_READ_SETTINGS, undefined)
+      if (res.success) {
+        setSettings(res.data)
+        setError(null)
+      } else {
+        setError(res.error.message)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }, [])
 
   useEffect(() => {
@@ -50,12 +60,16 @@ export default function DebugMenu() {
                 Refresh
               </button>
             </div>
-            <pre className="bg-neutral-900 rounded-lg p-2 text-xs text-slate-100 overflow-auto max-h-48 whitespace-pre-wrap break-all">
-              {settings === null
-                ? 'Loading…'
-                : settings.exists === false
-                  ? '(no settings.json yet)'
-                  : settings.json}
+            <pre className="bg-neutral-900 rounded-lg p-2 text-xs overflow-auto max-h-48 whitespace-pre-wrap break-all">
+              {error !== null ? (
+                <span className="text-red-400">{error}</span>
+              ) : settings === null ? (
+                <span className="text-slate-100">Loading…</span>
+              ) : settings.exists === false ? (
+                <span className="text-slate-100">(no settings.json yet)</span>
+              ) : (
+                <span className="text-slate-100">{settings.json}</span>
+              )}
             </pre>
           </div>
         </div>

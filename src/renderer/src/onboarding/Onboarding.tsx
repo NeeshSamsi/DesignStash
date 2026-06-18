@@ -12,6 +12,10 @@ interface StepProps {
   onNext: () => void
 }
 
+interface BackableStepProps extends StepProps {
+  onBack: () => void
+}
+
 // ── shared card shell ─────────────────────────────────────────────────────────
 
 function OnboardingCard({
@@ -63,7 +67,7 @@ function StepWelcome({ onNext }: StepProps) {
 
 // ── Step 2: Library location ───────────────────────────────────────────────────
 
-function StepLibrary({ onNext }: StepProps) {
+function StepLibrary({ onNext, onBack }: BackableStepProps) {
   const [libraryPath, setLibraryPath] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -101,6 +105,12 @@ function StepLibrary({ onNext }: StepProps) {
       </div>
       <div className="flex items-center gap-3">
         <button
+          onClick={onBack}
+          className="text-sm px-4 py-2 rounded-lg text-neutral-400 hover:text-slate-200 transition-colors"
+        >
+          ← Back
+        </button>
+        <button
           onClick={() => void handleChooseFolder()}
           disabled={busy}
           className="text-sm px-4 py-2 rounded-lg bg-neutral-700 hover:bg-neutral-600 text-slate-200 disabled:opacity-50 transition-colors"
@@ -134,7 +144,7 @@ function formatBytes(bytes: number): string {
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / 1e6).toFixed(0)} MB`
 }
 
-function StepAI({ onNext }: StepProps) {
+function StepAI({ onNext, onBack }: BackableStepProps) {
   const [hardware, setHardware] = useState<HardwareInfo | null>(null)
   const [models, setModels] = useState<AiModelInfo[]>([])
   const [selected, setSelected] = useState<string | null>(null)
@@ -334,6 +344,13 @@ function StepAI({ onNext }: StepProps) {
 
       {/* Action buttons */}
       <div className="flex items-center gap-3 mt-2">
+        <button
+          onClick={onBack}
+          disabled={aiMode === 'downloading' && !downloadDone}
+          className="text-sm px-4 py-2 rounded-lg text-neutral-400 hover:text-slate-200 disabled:opacity-40 transition-colors"
+        >
+          ← Back
+        </button>
         {aiMode === 'choose' && enableAI && (
           <button
             onClick={() => void handleDownload()}
@@ -366,7 +383,7 @@ function StepAI({ onNext }: StepProps) {
 
 // ── Step 4: Privacy ────────────────────────────────────────────────────────────
 
-function StepPrivacy({ onNext }: StepProps) {
+function StepPrivacy({ onNext, onBack }: BackableStepProps) {
   const [busy, setBusy] = useState(false)
 
   const decide = useCallback(
@@ -393,6 +410,13 @@ function StepPrivacy({ onNext }: StepProps) {
       </p>
       <div className="flex gap-3 mt-6">
         <button
+          onClick={onBack}
+          disabled={busy}
+          className="text-sm px-4 py-2.5 rounded-lg text-neutral-400 hover:text-slate-200 disabled:opacity-40 transition-colors"
+        >
+          ← Back
+        </button>
+        <button
           onClick={() => void decide(true)}
           disabled={busy}
           className="bg-brand-500 hover:bg-brand-500/80 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors"
@@ -413,7 +437,7 @@ function StepPrivacy({ onNext }: StepProps) {
 
 // ── Step 5: Done ───────────────────────────────────────────────────────────────
 
-function StepDone({ onEnter }: { onEnter: () => void }) {
+function StepDone({ onEnter, onBack }: { onEnter: () => void; onBack: () => void }) {
   return (
     <div>
       <h2 className="text-xl font-bold text-slate-100 mb-2">You&apos;re all set!</h2>
@@ -422,12 +446,20 @@ function StepDone({ onEnter }: { onEnter: () => void }) {
         <strong className="text-slate-300">+ Files</strong> or{' '}
         <strong className="text-slate-300">+ Folder</strong> buttons in the sidebar.
       </p>
-      <button
-        onClick={onEnter}
-        className="bg-brand-500 hover:bg-brand-500/80 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
-      >
-        Open Library
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onBack}
+          className="text-sm px-4 py-2.5 rounded-lg text-neutral-400 hover:text-slate-200 transition-colors"
+        >
+          ← Back
+        </button>
+        <button
+          onClick={onEnter}
+          className="bg-brand-500 hover:bg-brand-500/80 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+        >
+          Open Library
+        </button>
+      </div>
     </div>
   )
 }
@@ -448,13 +480,20 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     })
   }, [])
 
+  const back = useCallback(() => {
+    setStep((s) => {
+      const idx = STEPS.indexOf(s)
+      return idx > 0 ? (STEPS[idx - 1] ?? s) : s
+    })
+  }, [])
+
   return (
     <OnboardingCard step={step}>
       {step === 'welcome' && <StepWelcome onNext={next} />}
-      {step === 'library' && <StepLibrary onNext={next} />}
-      {step === 'ai' && <StepAI onNext={next} />}
-      {step === 'privacy' && <StepPrivacy onNext={next} />}
-      {step === 'done' && <StepDone onEnter={onComplete} />}
+      {step === 'library' && <StepLibrary onNext={next} onBack={back} />}
+      {step === 'ai' && <StepAI onNext={next} onBack={back} />}
+      {step === 'privacy' && <StepPrivacy onNext={next} onBack={back} />}
+      {step === 'done' && <StepDone onEnter={onComplete} onBack={back} />}
     </OnboardingCard>
   )
 }
