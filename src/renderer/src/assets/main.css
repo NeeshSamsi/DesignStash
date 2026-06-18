@@ -6,6 +6,8 @@
  */
 @theme {
   --color-brand-500: oklch(0.55 0.18 270);
+  --aspect-card: 4 / 3;
+  --max-h-modal-body: 70vh;
 }
 
 :root {

@@ -1,34 +1,40 @@
-// PLACEHOLDER UI — replace in design pass
 import { useState, useEffect, useCallback } from 'react'
 import type { ImportProgress, ImportSummary } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
-import SettingsAiPane from './SettingsAiPane'
-import SettingsTagsPane from './SettingsTagsPane'
-import SettingsPrivacyPane from './SettingsPrivacyPane'
-import TelemetryDisclosure from './TelemetryDisclosure'
+import Onboarding from './onboarding/Onboarding'
 import GroupingReview from './GroupingReview'
 import ApprovalStepper from './ApprovalStepper'
 import LibraryView from './LibraryView'
-import ReconciliationView from './ReconciliationView'
+import LibraryTopBar from './LibraryTopBar'
+import TrashView from './TrashView'
+import SettingsPage from './SettingsPage'
+import AppShell from './AppShell'
 import { useGroupingStore } from './stores/groupingStore'
 import { useApprovalStore } from './stores/approvalStore'
 import { useEntitlementStore } from './stores/entitlementStore'
+import { useUiStore } from './stores/uiStore'
+import { useLibraryStore } from './stores/libraryStore'
 
-type AppView = 'import' | 'grouping-review' | 'approval' | 'library' | 'reconciliation'
+type AddFlow = 'grouping' | 'approval' | null
 
 export default function App() {
-  const [view, setView] = useState<AppView>('import')
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null)
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
   const [isDropping, setIsDropping] = useState(false)
-  const [showAiSettings, setShowAiSettings] = useState(false)
-  const [showTagSettings, setShowTagSettings] = useState(false)
-  const [showPrivacy, setShowPrivacy] = useState(false)
-  // null = consent state not yet loaded; false = show first-run disclosure first.
   const [onboarded, setOnboarded] = useState<boolean | null>(null)
+  const [addFlow, setAddFlow] = useState<AddFlow>(null)
+
   const groupingStore = useGroupingStore()
   const approvalStore = useApprovalStore()
   const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
+  const view = useUiStore((s) => s.view)
+  const openModal = useUiStore((s) => s.openModal)
+  const libraryQuery = useLibraryStore((s) => s.query)
+  const librarySort = useLibraryStore((s) => s.sort)
+  const libraryTagFilter = useLibraryStore((s) => s.tagFilter)
+  const setLibraryItems = useLibraryStore((s) => s.setItems)
+  const setLibraryStats = useLibraryStore((s) => s.setStats)
+  const setLibraryLoading = useLibraryStore((s) => s.setLoading)
 
   useEffect(() => {
     const unsubscribe = window.api.onImportProgress(setImportProgress)
@@ -49,213 +55,175 @@ export default function App() {
     })()
   }, [setSnapshot])
 
-  const handleImport = useCallback(async (paths: string[]) => {
-    setImportSummary(null)
-    setImportProgress(null)
-    const result = await window.api.invoke(IPC_CHANNELS.IMPORT_START, { paths })
-    if (result.success) {
-      const summary = result.data
-      setImportSummary(summary)
-      groupingStore.setLoading(true)
-      const proposeRes = await window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, { batchId: summary.batchId })
-      groupingStore.setLoading(false)
-      if (proposeRes.success) {
-        groupingStore.setProposal(proposeRes.data)
-        setView('grouping-review')
+  // Boot integrity scan — runs once when the shell is first entered.
+  useEffect(() => {
+    if (onboarded !== true) return
+    void (async () => {
+      const res = await window.api.invoke(IPC_CHANNELS.INTEGRITY_SCAN, undefined)
+      if (res.success) {
+        const report = res.data
+        if (report.orphanFiles.length > 0 || report.orphanRecords.length > 0) {
+          openModal({ kind: 'reconcile', report })
+        }
       }
-    } else {
-      console.error(result.error)
-    }
-  }, [groupingStore])
+    })()
+  }, [onboarded, openModal])
 
-  const handleFileSelect = async () => {
+  const refreshLibrary = useCallback(async () => {
+    setLibraryLoading(true)
+    const [listRes, statsRes] = await Promise.all([
+      window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
+        tagIds: libraryTagFilter.length ? libraryTagFilter : undefined,
+        query: libraryQuery || undefined,
+        sort: librarySort,
+      }),
+      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined),
+    ])
+    setLibraryLoading(false)
+    if (listRes.success) setLibraryItems(listRes.data.items)
+    if (statsRes.success) setLibraryStats(statsRes.data)
+  }, [libraryQuery, librarySort, libraryTagFilter, setLibraryLoading, setLibraryItems, setLibraryStats])
+
+  const handleImport = useCallback(
+    async (paths: string[]) => {
+      setImportSummary(null)
+      setImportProgress(null)
+      const result = await window.api.invoke(IPC_CHANNELS.IMPORT_START, { paths })
+      if (result.success) {
+        const summary = result.data
+        setImportSummary(summary)
+        groupingStore.setLoading(true)
+        const proposeRes = await window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, {
+          batchId: summary.batchId,
+        })
+        groupingStore.setLoading(false)
+        if (proposeRes.success) {
+          groupingStore.setProposal(proposeRes.data)
+          setAddFlow('grouping')
+        }
+      } else {
+        console.error(result.error)
+      }
+    },
+    [groupingStore]
+  )
+
+  const handleFileSelect = useCallback(async () => {
     const result = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_PSD_FILES, undefined)
     if (result.success && result.data.paths.length > 0) {
-      handleImport(result.data.paths)
+      void handleImport(result.data.paths)
     }
-  }
+  }, [handleImport])
 
-  const handleFolderSelect = async () => {
+  const handleFolderSelect = useCallback(async () => {
     const result = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_DIRECTORY, undefined)
     if (result.success && result.data.path) {
-      handleImport([result.data.path])
+      void handleImport([result.data.path])
     }
-  }
+  }, [handleImport])
 
   const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
+    (event: React.DragEvent<HTMLElement>) => {
       event.preventDefault()
       event.stopPropagation()
       setIsDropping(false)
       const files = Array.from(event.dataTransfer.files)
       if (files.length > 0) {
         const paths = files.map((file) => window.api.getPathForFile(file))
-        handleImport(paths)
+        void handleImport(paths)
       }
     },
     [handleImport]
   )
 
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (event: React.DragEvent<HTMLElement>) => {
     event.preventDefault()
     event.stopPropagation()
   }
 
-  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragEnter = (event: React.DragEvent<HTMLElement>) => {
     event.preventDefault()
     event.stopPropagation()
     setIsDropping(true)
   }
 
-  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = (event: React.DragEvent<HTMLElement>) => {
     event.preventDefault()
     event.stopPropagation()
     setIsDropping(false)
   }
 
-  // Hold rendering until consent state is known so the disclosure shows before the app.
   if (onboarded === null) {
     return <div className="min-h-screen bg-neutral-900" />
   }
 
   if (!onboarded) {
-    return <TelemetryDisclosure onDecision={() => setOnboarded(true)} />
+    return <Onboarding onComplete={() => setOnboarded(true)} />
   }
 
-  if (view === 'grouping-review') {
-    return (
-      <GroupingReview
-        onConfirm={async () => {
-          const batchId = importSummary?.batchId
-          if (!batchId) { setView('import'); return }
-          approvalStore.setInitializing(true)
-          const res = await window.api.invoke(IPC_CHANNELS.APPROVAL_INIT, { batchId })
-          approvalStore.setInitializing(false)
-          if (res.success) {
-            approvalStore.setQueue(res.data)
-            groupingStore.reset()
-            setView('approval')
-          }
-        }}
-        onCancel={() => {
-          setView('import')
-          groupingStore.reset()
-        }}
-      />
-    )
+  const handleGroupingConfirm = async () => {
+    const batchId = importSummary?.batchId
+    if (!batchId) { setAddFlow(null); return }
+    approvalStore.setInitializing(true)
+    const res = await window.api.invoke(IPC_CHANNELS.APPROVAL_INIT, { batchId })
+    approvalStore.setInitializing(false)
+    if (res.success) {
+      approvalStore.setQueue(res.data)
+      groupingStore.reset()
+      setAddFlow('approval')
+    }
   }
 
-  if (view === 'approval') {
-    return (
-      <ApprovalStepper
-        onComplete={() => {
-          setView('library')
-          approvalStore.reset()
-        }}
-        onCancel={() => {
-          setView('import')
-          approvalStore.reset()
-        }}
-      />
-    )
+  const handlePipelineCancel = () => {
+    setAddFlow(null)
+    groupingStore.reset()
+    approvalStore.reset()
   }
 
-  if (view === 'library') {
-    return <LibraryView onBack={() => setView('import')} />
-  }
-
-  if (view === 'reconciliation') {
-    return <ReconciliationView onBack={() => setView('import')} />
+  const handleApprovalComplete = async () => {
+    setAddFlow(null)
+    approvalStore.reset()
+    await refreshLibrary()
   }
 
   return (
-    <main
-      className={`min-h-screen bg-neutral-900 text-slate-100 flex flex-col items-center justify-center p-8 font-sans ${
-        isDropping ? 'bg-blue-900' : ''
-      }`}
+    <AppShell
+      topBar={view === 'library' && addFlow === null ? <LibraryTopBar /> : undefined}
+      onAddFiles={() => void handleFileSelect()}
+      onAddFolder={() => void handleFolderSelect()}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
+      isDropping={isDropping}
     >
-      <div className="max-w-md w-full bg-neutral-800 rounded-xl shadow-2xl p-8 border border-neutral-700">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-3xl font-bold text-white tracking-tight">DesignStash</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setView('library')}
-              className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
-            >
-              Library
-            </button>
-            <button
-              onClick={() => setView('reconciliation')}
-              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
-            >
-              Check Library
-            </button>
-            <button
-              onClick={() => setShowAiSettings((v) => !v)}
-              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
-            >
-              AI Settings
-            </button>
-            <button
-              onClick={() => setShowTagSettings((v) => !v)}
-              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
-            >
-              Tags
-            </button>
-            <button
-              onClick={() => setShowPrivacy((v) => !v)}
-              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-1 rounded transition-colors"
-            >
-              Privacy
-            </button>
+      {addFlow === 'grouping' && (
+        <GroupingReview
+          onConfirm={() => void handleGroupingConfirm()}
+          onCancel={handlePipelineCancel}
+        />
+      )}
+      {addFlow === 'approval' && (
+        <ApprovalStepper
+          onComplete={() => void handleApprovalComplete()}
+          onCancel={handlePipelineCancel}
+        />
+      )}
+      {addFlow === null && view === 'library' && <LibraryView />}
+      {addFlow === null && view === 'trash' && <TrashView />}
+      {addFlow === null && view === 'settings' && <SettingsPage />}
+      {importProgress && importProgress.phase !== 'done' && (
+        <div className="fixed bottom-6 right-6 z-40 bg-neutral-800 border border-neutral-600 rounded-xl p-4 shadow-xl w-72">
+          <p className="text-sm font-medium text-slate-100 mb-1 capitalize">{importProgress.phase}…</p>
+          <p className="text-xs text-neutral-400 mb-2 truncate">{importProgress.currentTitle}</p>
+          <div className="w-full bg-neutral-700 rounded-full h-1.5">
+            <div
+              className="bg-brand-500 h-1.5 rounded-full transition-all"
+              style={{ width: `${Math.round((importProgress.completed / importProgress.total) * 100)}%` }}
+            />
           </div>
         </div>
-        {showAiSettings && <SettingsAiPane />}
-        {showTagSettings && <SettingsTagsPane />}
-        {showPrivacy && <SettingsPrivacyPane />}
-        <div className="flex space-x-2 my-4">
-          <button
-            onClick={handleFileSelect}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md font-medium transition-colors"
-          >
-            Add Files
-          </button>
-          <button
-            onClick={handleFolderSelect}
-            className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-md font-medium transition-colors"
-          >
-            Add Folder
-          </button>
-        </div>
-        {importProgress && importProgress.phase !== 'done' && (
-          <div>
-            <p>
-              {importProgress.phase}: {importProgress.completed} / {importProgress.total}
-            </p>
-            <p>{importProgress.currentTitle}</p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-              <div
-                className="bg-blue-600 h-2.5 rounded-full"
-                style={{ width: `${(importProgress.completed / importProgress.total) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-        )}
-        {importSummary && (
-          <div>
-            <p>Import Complete!</p>
-            <p>Imported: {importSummary.imported}</p>
-            <p>Pending Preview: {importSummary.pendingPreview}</p>
-            <p>Duplicates: {importSummary.duplicates}</p>
-            <p>Errors: {importSummary.errors}</p>
-            <p>Skipped (non-PSD): {importSummary.skippedNonPsd}</p>
-          </div>
-        )}
-      </div>
-    </main>
+      )}
+    </AppShell>
   )
 }
