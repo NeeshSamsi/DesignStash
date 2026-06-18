@@ -18,6 +18,7 @@ import {
 import { TagTreeSchema } from './tags'
 import { IntegrityReportSchema } from './integrity'
 import { TelemetryEventSchema, TelemetryConsentSchema } from './telemetry'
+import { EntitlementsSnapshotSchema } from './entitlements'
 
 export const AiModelTierSchema = z.enum(['small', 'medium', 'large'])
 export type AiModelTier = z.infer<typeof AiModelTierSchema>
@@ -292,6 +293,10 @@ export const IPC_CONTRACT = {
   [IPC_CHANNELS.TELEMETRY_SET_CONSENT]: {
     request: TelemetryConsentSchema,
     response: TelemetryConsentSchema
+  },
+  [IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT]: {
+    request: z.void(),
+    response: EntitlementsSnapshotSchema
   }
 } as const
 

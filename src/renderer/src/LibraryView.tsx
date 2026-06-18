@@ -1,7 +1,9 @@
 // MOCK UI — deliberately raw; every M7 channel exercised
 import { useCallback, useEffect, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import { FEATURE_KEYS } from '@shared/entitlements'
 import { useLibraryStore } from './stores/libraryStore'
+import Locked from './Locked'
 
 interface Props {
   onBack: () => void
@@ -142,12 +144,15 @@ export default function LibraryView({ onBack }: Props) {
       </div>
 
       <div className="flex gap-3 mb-4 flex-wrap">
-        <input
-          className="bg-neutral-800 border border-neutral-600 px-2 py-1 rounded w-48"
-          placeholder="Search…"
-          value={store.query}
-          onChange={handleQueryChange}
-        />
+        {/* Gating seam demo — SEARCH_SEMANTIC is 'free' in Phase 1, so this renders normally. */}
+        <Locked feature={FEATURE_KEYS.SEARCH_SEMANTIC}>
+          <input
+            className="bg-neutral-800 border border-neutral-600 px-2 py-1 rounded w-48"
+            placeholder="Search…"
+            value={store.query}
+            onChange={handleQueryChange}
+          />
+        </Locked>
         <input
           className="bg-neutral-800 border border-neutral-600 px-2 py-1 rounded w-36"
           placeholder="Tag IDs (1,2,3)"

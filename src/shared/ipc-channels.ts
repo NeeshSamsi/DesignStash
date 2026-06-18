@@ -50,7 +50,8 @@ export const IPC_CHANNELS = {
   INTEGRITY_DELETE_RECORD: 'integrity:delete-record',
   TELEMETRY_TRACK: 'telemetry:track',
   TELEMETRY_GET_CONSENT: 'telemetry:get-consent',
-  TELEMETRY_SET_CONSENT: 'telemetry:set-consent'
+  TELEMETRY_SET_CONSENT: 'telemetry:set-consent',
+  ENTITLEMENTS_SNAPSHOT: 'entitlements:snapshot'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

@@ -48,6 +48,9 @@ beforeEach(() => {
       if (channel === IPC_CHANNELS.INTEGRITY_SCAN) {
         return { success: true, data: { orphanFiles: [], orphanRecords: [] } }
       }
+      if (channel === IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT) {
+        return { success: true, data: { tier: 'free', enabled: { 'search.semantic': true, 'app.core': true } } }
+      }
       return { success: true, data: { success: true, message: 'pong', timestamp: 0 } }
     }),
     onImportProgress: vi.fn(() => () => {}),

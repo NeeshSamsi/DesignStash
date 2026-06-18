@@ -12,6 +12,7 @@ import LibraryView from './LibraryView'
 import ReconciliationView from './ReconciliationView'
 import { useGroupingStore } from './stores/groupingStore'
 import { useApprovalStore } from './stores/approvalStore'
+import { useEntitlementStore } from './stores/entitlementStore'
 
 type AppView = 'import' | 'grouping-review' | 'approval' | 'library' | 'reconciliation'
 
@@ -27,6 +28,7 @@ export default function App() {
   const [onboarded, setOnboarded] = useState<boolean | null>(null)
   const groupingStore = useGroupingStore()
   const approvalStore = useApprovalStore()
+  const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
 
   useEffect(() => {
     const unsubscribe = window.api.onImportProgress(setImportProgress)
@@ -39,6 +41,13 @@ export default function App() {
       setOnboarded(res.success ? res.data.onboarded : true)
     })()
   }, [])
+
+  useEffect(() => {
+    void (async () => {
+      const res = await window.api.invoke(IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT, undefined)
+      if (res.success) setSnapshot(res.data)
+    })()
+  }, [setSnapshot])
 
   const handleImport = useCallback(async (paths: string[]) => {
     setImportSummary(null)

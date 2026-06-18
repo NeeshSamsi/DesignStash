@@ -25,6 +25,7 @@ import { ModelDownloader } from './ai/download'
 import { LocalInferenceProvider } from './ai/local-provider'
 import { LibraryService } from './library/library-service'
 import { IntegrityService } from './library/integrity-service'
+import { EntitlementsService } from './entitlements/entitlements-service'
 import { createTelemetry, type Telemetry } from './telemetry'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 
@@ -497,6 +498,11 @@ function registerHandlers(
     integrityService.deleteOrphanRecord(args.mockupId)
     return { deleted: true }
   })
+
+  // Phase 1: defaults → free tier, all-free registry → everything unlocked.
+  // Tier source becomes license-backed in a later phase.
+  const entitlements = new EntitlementsService()
+  registerIpcHandler(IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT, () => entitlements.snapshot())
 }
 
 function createWindow(): BrowserWindow {
