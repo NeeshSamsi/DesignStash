@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { ApprovalTag, TagsByCategory } from '@shared/approval'
-import { Button } from '../ui/button'
-import { Input } from '../ui/input'
-import { Badge } from '../ui/badge'
+import { Button } from '@renderer/ui/button'
+import { Input } from '@renderer/ui/input'
+import { Badge } from '@renderer/ui/badge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +12,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '../ui/alert-dialog'
+} from '@renderer/ui/alert-dialog'
 
 interface NewTagConfirmDialogProps {
   label: string

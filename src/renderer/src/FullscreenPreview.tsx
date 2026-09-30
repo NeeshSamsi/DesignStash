@@ -1,4 +1,4 @@
-import { Modal } from './components/Modal'
+import { Modal } from './components/_legacy/Modal'
 
 interface FullscreenPreviewProps {
   coverPath: string

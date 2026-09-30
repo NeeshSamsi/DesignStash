@@ -1,4 +1,4 @@
-import { Button } from '../ui/button'
+import { Button } from '@renderer/ui/button'
 
 interface EmptyStateProps {
   title: string

@@ -1,5 +1,5 @@
 import { useUiStore } from './stores/uiStore'
-import { ConfirmDialog } from './components/ConfirmDialog'
+import { ConfirmDialog } from './components/_legacy/ConfirmDialog'
 import { FullscreenPreview } from './FullscreenPreview'
 import { DetailModal } from './DetailModal'
 import { ReconciliationModal } from './ReconciliationModal'

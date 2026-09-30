@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { IntegrityReport } from '@shared/integrity'
-import { Modal } from './components/Modal'
+import { Modal } from './components/_legacy/Modal'
 import { Button } from './ui/button'
 
 interface Props {

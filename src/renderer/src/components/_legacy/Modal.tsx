@@ -1,5 +1,5 @@
-import { Dialog, DialogContent, DialogTitle } from '../ui/dialog'
-import { cn } from '../lib/utils'
+import { Dialog, DialogContent, DialogTitle } from '@renderer/ui/dialog'
+import { cn } from '@renderer/lib/utils'
 
 interface ModalProps {
   children: React.ReactNode

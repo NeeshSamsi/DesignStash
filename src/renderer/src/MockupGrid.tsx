@@ -1,6 +1,6 @@
 import type { LibraryItem } from '@shared/library'
 import MockupTile from './MockupTile'
-import { EmptyState, LoadingState } from './components/States'
+import { EmptyState, LoadingState } from './components/_legacy/States'
 import { Button } from './ui/button'
 
 interface MockupGridProps {
