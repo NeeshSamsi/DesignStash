@@ -1,6 +1,6 @@
-// PLACEHOLDER UI — replace in design pass
 import { useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import { Button } from './ui/button'
 
 interface TelemetryDisclosureProps {
   /** Called once the consent choice has been persisted (and onboarding marked complete). */
@@ -23,32 +23,24 @@ export default function TelemetryDisclosure({ onDecision }: TelemetryDisclosureP
   }
 
   return (
-    <main className="min-h-screen bg-neutral-900 text-slate-100 flex flex-col items-center justify-center p-8 font-sans">
-      <div className="max-w-md w-full bg-neutral-800 rounded-xl shadow-2xl p-8 border border-neutral-700">
-        <h1 className="text-2xl font-bold text-white tracking-tight mb-4">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-8 font-sans text-foreground">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-card-foreground shadow-2xl">
+        <h1 className="mb-4 text-2xl font-bold tracking-tight text-foreground">
           Help improve DesignStash (optional)
         </h1>
-        <p className="text-sm text-neutral-300 leading-relaxed mb-2">
+        <p className="mb-2 text-sm leading-relaxed text-muted-foreground">
           We collect anonymous usage data — which features you use, how long things take, your
           Mac&apos;s chip/memory tier, and crash reports. We <strong>never</strong> see your files,
           file names, images, or the titles/tags you create. There&apos;s no account and no personal
           info. You can turn this off now or anytime in Settings.
         </p>
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={() => void decide(true)}
-            disabled={busy}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-md font-medium transition-colors"
-          >
+        <div className="mt-6 flex gap-3">
+          <Button onClick={() => void decide(true)} disabled={busy}>
             Keep it on
-          </button>
-          <button
-            onClick={() => void decide(false)}
-            disabled={busy}
-            className="bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 text-neutral-200 px-4 py-2 rounded-md font-medium transition-colors"
-          >
+          </Button>
+          <Button variant="secondary" onClick={() => void decide(false)} disabled={busy}>
             No thanks
-          </button>
+          </Button>
         </div>
       </div>
     </main>

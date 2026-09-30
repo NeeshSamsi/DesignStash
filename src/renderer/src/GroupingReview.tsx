@@ -7,6 +7,8 @@ import {
 import { IPC_CHANNELS } from '@shared/ipc'
 import { useGroupingStore } from './stores/groupingStore'
 import type { GroupMember } from '@shared/grouping'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 interface GroupingReviewProps {
   onConfirm: () => void
@@ -26,22 +28,20 @@ function MockupTile({ member, groupId }: { member: GroupMember; groupId: string 
       {...attributes}
       className={`relative flex flex-col items-center gap-1 w-20 cursor-grab select-none ${isDragging ? 'opacity-50' : ''}`}
     >
-      <div className="w-20 h-20 bg-neutral-700 rounded-lg overflow-hidden flex items-center justify-center">
+      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg bg-muted">
         <img
           src={`file://${member.coverPath}`}
           alt={member.fileName}
-          className="w-full h-full object-cover"
+          className="h-full w-full object-cover"
           onError={(e) => {
             ;(e.target as HTMLImageElement).style.display = 'none'
           }}
         />
       </div>
       {member.isPrimary && (
-        <span className="absolute top-1 left-1 text-xs bg-blue-600 text-white px-1 py-0.5 rounded leading-none">
-          Primary
-        </span>
+        <Badge className="absolute left-1 top-1">Primary</Badge>
       )}
-      <p className="text-xs text-neutral-400 text-center truncate w-full">{member.fileName}</p>
+      <p className="w-full truncate text-center text-xs text-muted-foreground">{member.fileName}</p>
     </div>
   )
 }
@@ -51,29 +51,22 @@ function GroupCard({ group }: { group: { id: string; members: GroupMember[]; con
   const { setNodeRef, isOver } = useDroppable({ id: group.id })
 
   return (
-    <div className={`bg-neutral-800 rounded-xl p-3 w-64 shrink-0 flex flex-col gap-2 ${isOver ? 'ring-2 ring-blue-500' : ''}`}>
+    <div className={`flex w-64 shrink-0 flex-col gap-2 rounded-xl bg-card p-3 ${isOver ? 'ring-2 ring-ring' : ''}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span
-            className={`text-xs px-1.5 py-0.5 rounded font-medium ${group.confidence === 'high' ? 'bg-green-700 text-green-200' : 'bg-yellow-700 text-yellow-200'}`}
-          >
+          <Badge variant={group.confidence === 'high' ? 'default' : 'secondary'}>
             {group.confidence}
-          </span>
-          <span className="text-xs bg-neutral-700 text-neutral-300 px-1.5 py-0.5 rounded">
-            {group.reason}
-          </span>
-          <span className="text-xs text-neutral-400">{group.members.length} items</span>
+          </Badge>
+          <Badge variant="outline">{group.reason}</Badge>
+          <span className="text-xs text-muted-foreground">{group.members.length} items</span>
         </div>
-        <button
-          onClick={() => disbandGroup(group.id)}
-          className="text-xs text-neutral-500 hover:text-red-400 transition-colors"
-        >
+        <Button variant="ghost" size="xs" onClick={() => disbandGroup(group.id)}>
           Disband
-        </button>
+        </Button>
       </div>
       <div
         ref={setNodeRef}
-        className="flex flex-wrap gap-2 min-h-24 rounded-lg p-2 bg-neutral-700/50"
+        className="flex min-h-24 flex-wrap gap-2 rounded-lg bg-muted/50 p-2"
       >
         {group.members.map((member) => (
           <MockupTile key={member.mockupId} member={member} groupId={group.id} />
@@ -87,20 +80,20 @@ function SingletonsTray({ singletons }: { singletons: GroupMember[] }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'singletons' })
 
   return (
-    <div className="flex-1 bg-neutral-800 rounded-xl p-3 flex flex-col gap-2">
+    <div className="flex flex-1 flex-col gap-2 rounded-xl bg-card p-3">
       <div className="flex items-center gap-2">
-        <h3 className="text-sm font-medium text-neutral-300">Standalone</h3>
-        <span className="text-xs text-neutral-500">{singletons.length} items</span>
+        <h3 className="text-sm font-medium text-foreground">Standalone</h3>
+        <span className="text-xs text-muted-foreground">{singletons.length} items</span>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex flex-wrap gap-2 min-h-24 rounded-lg p-2 bg-neutral-700/50 ${isOver ? 'ring-2 ring-blue-500' : ''}`}
+        className={`flex min-h-24 flex-wrap gap-2 rounded-lg bg-muted/50 p-2 ${isOver ? 'ring-2 ring-ring' : ''}`}
       >
         {singletons.map((member) => (
           <MockupTile key={member.mockupId} member={member} groupId="singletons" />
         ))}
         {singletons.length === 0 && (
-          <p className="text-xs text-neutral-600 self-center w-full text-center">Drop tiles here</p>
+          <p className="w-full self-center text-center text-xs text-muted-foreground">Drop tiles here</p>
         )}
       </div>
     </div>
@@ -133,40 +126,33 @@ export default function GroupingReview({ onConfirm, onCancel }: GroupingReviewPr
 
   if (store.isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
-        <p className="text-neutral-400">Loading grouping proposal…</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground">Loading grouping proposal…</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-neutral-900 flex flex-col">
-      <header className="border-b border-neutral-700 px-6 py-4 flex items-center justify-between shrink-0">
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">Review Groups</h2>
-          <p className="text-sm text-neutral-400">
+          <h2 className="text-lg font-semibold text-foreground">Review Groups</h2>
+          <p className="text-sm text-muted-foreground">
             Drag mockups between groups, then confirm to continue.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={onCancel}
-            className="text-sm bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded-lg transition-colors"
-          >
+          <Button variant="secondary" onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            onClick={() => void handleConfirm()}
-            disabled={store.isConfirming}
-            className="text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors"
-          >
+          </Button>
+          <Button onClick={() => void handleConfirm()} disabled={store.isConfirming}>
             {store.isConfirming ? 'Confirming…' : 'Confirm'}
-          </button>
+          </Button>
         </div>
       </header>
 
       <DndContext onDragEnd={handleDragEnd}>
-        <div className="flex-1 overflow-auto p-6 flex flex-col gap-6">
+        <div className="flex flex-1 flex-col gap-6 overflow-auto p-6">
           {store.groups.length > 0 && (
             <div className="flex flex-wrap gap-4">
               {store.groups.map((group) => (

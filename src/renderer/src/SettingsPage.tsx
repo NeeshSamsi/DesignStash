@@ -5,6 +5,9 @@ import { toast } from './stores/toastStore'
 import SettingsAiPane from './SettingsAiPane'
 import SettingsPrivacyPane from './SettingsPrivacyPane'
 import SettingsTagsPane from './SettingsTagsPane'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 
 type Tab = 'library' | 'ai' | 'privacy' | 'tags' | 'about'
 
@@ -51,40 +54,41 @@ function LibrarySection({ onCheckLibrary }: { onCheckLibrary: () => Promise<void
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="text-sm font-semibold text-slate-100 mb-1">Library folder</h3>
-        <p className="text-xs text-neutral-400 mb-3">
+        <h3 className="mb-1 text-sm font-semibold text-foreground">Library folder</h3>
+        <p className="mb-3 text-xs text-muted-foreground">
           All mockups are stored in this folder. Changing it takes effect on next launch.
         </p>
         <div className="flex items-center gap-3">
-          <code className="flex-1 text-xs bg-neutral-700 text-neutral-300 px-3 py-2 rounded-lg truncate">
+          <code className="flex-1 truncate rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
             {libraryRoot ?? '—'}
           </code>
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
             onClick={() => void handleChangeFolder()}
-            className="text-xs bg-neutral-700 hover:bg-neutral-600 text-slate-200 px-3 py-2 rounded-lg transition-colors shrink-0"
           >
             Change folder…
-          </button>
+          </Button>
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-slate-100 mb-1">Library integrity</h3>
-        <p className="text-xs text-neutral-400 mb-3">
+        <h3 className="mb-1 text-sm font-semibold text-foreground">Library integrity</h3>
+        <p className="mb-3 text-xs text-muted-foreground">
           Scan for orphaned files or records that have drifted out of sync.
         </p>
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           disabled={scanStatus === 'scanning'}
           onClick={() => void handleCheckLibrary()}
-          className="text-xs bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 text-slate-200 px-4 py-2 rounded-lg transition-colors"
         >
           {scanStatus === 'scanning' ? 'Scanning…' : 'Check Library'}
-        </button>
-        {scanStatus === 'ok' && (
-          <p className="mt-2 text-xs text-green-400">Library is in sync</p>
-        )}
+        </Button>
+        {scanStatus === 'ok' && <p className="mt-2 text-xs text-primary">Library is in sync</p>}
         {scanStatus === 'error' && (
-          <p className="mt-2 text-xs text-red-400">Scan failed — check console for details</p>
+          <p className="mt-2 text-xs text-destructive">Scan failed — check console for details</p>
         )}
       </div>
     </div>
@@ -110,18 +114,18 @@ function AboutSection() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <span className="text-2xl font-bold text-brand-500 tracking-widest">DS</span>
+        <span className="text-2xl font-bold tracking-widest text-primary">DS</span>
         <div>
-          <p className="text-base font-semibold text-slate-100">{appInfo?.name ?? 'DesignStash'}</p>
-          <p className="text-xs text-neutral-400">Version {appInfo?.version ?? '—'}</p>
+          <p className="text-base font-semibold text-foreground">{appInfo?.name ?? 'DesignStash'}</p>
+          <p className="text-xs text-muted-foreground">Version {appInfo?.version ?? '—'}</p>
         </div>
       </div>
       {appInfo?.env && appInfo.env !== 'production' && (
-        <span className="text-xs bg-amber-700/40 text-amber-300 px-2 py-1 rounded w-fit">
+        <Badge variant="secondary" className="w-fit">
           {appInfo.env}
-        </span>
+        </Badge>
       )}
-      <p className="text-xs text-neutral-500">A local-first mockup library for designers.</p>
+      <p className="text-xs text-muted-foreground">A local-first mockup library for designers.</p>
     </div>
   )
 }
@@ -145,39 +149,45 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <Tabs
+      value={activeTab}
+      onValueChange={(v) => setActiveTab(v as Tab)}
+      className="flex flex-1 flex-col gap-0 overflow-hidden"
+    >
       {/* Page header */}
-      <div className="px-6 py-4 border-b border-neutral-800">
-        <h2 className="text-base font-semibold text-slate-100">Settings</h2>
+      <div className="border-b border-border px-6 py-4">
+        <h2 className="text-base font-semibold text-foreground">Settings</h2>
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 px-6 pt-3 border-b border-neutral-800">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-3 py-2 text-sm font-medium rounded-t-lg transition-colors -mb-px border-b-2 ${
-              activeTab === tab.id
-                ? 'text-brand-500 border-brand-500'
-                : 'text-neutral-400 border-transparent hover:text-slate-200'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="border-b border-border px-6 pt-3 pb-3">
+        <TabsList>
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
       </div>
 
       {/* Tab content */}
       <div className="flex-1 overflow-auto p-6">
-        {activeTab === 'library' && (
+        <TabsContent value="library">
           <LibrarySection onCheckLibrary={handleCheckLibrary} />
-        )}
-        {activeTab === 'ai' && <SettingsAiPane />}
-        {activeTab === 'privacy' && <SettingsPrivacyPane />}
-        {activeTab === 'tags' && <SettingsTagsPane />}
-        {activeTab === 'about' && <AboutSection />}
+        </TabsContent>
+        <TabsContent value="ai">
+          <SettingsAiPane />
+        </TabsContent>
+        <TabsContent value="privacy">
+          <SettingsPrivacyPane />
+        </TabsContent>
+        <TabsContent value="tags">
+          <SettingsTagsPane />
+        </TabsContent>
+        <TabsContent value="about">
+          <AboutSection />
+        </TabsContent>
       </div>
-    </div>
+    </Tabs>
   )
 }

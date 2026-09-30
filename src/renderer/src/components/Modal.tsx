@@ -1,33 +1,53 @@
-import { useEffect } from 'react'
+import { Dialog, DialogContent, DialogTitle } from '../ui/dialog'
+import { cn } from '../lib/utils'
 
 interface ModalProps {
   children: React.ReactNode
   onClose?: () => void
   blocking?: boolean
   className?: string
+  /** Show the built-in shadcn close button. Set false when the consumer renders its own. */
+  showClose?: boolean
+  /**
+   * Accessible name for the dialog (visually hidden). Consumers render their own
+   * visible heading inside `children`; this satisfies the Radix a11y requirement.
+   */
+  label?: string
 }
 
-export function Modal({ children, onClose, blocking = false, className = '' }: ModalProps) {
-  useEffect(() => {
-    if (blocking) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose?.()
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [blocking, onClose])
-
+/**
+ * Thin wrapper over the shadcn Dialog primitive. Renders content padding-free so
+ * existing consumers keep control of their own internal layout. Esc / outside-click
+ * close unless `blocking`.
+ */
+export function Modal({
+  children,
+  onClose,
+  blocking = false,
+  className,
+  showClose = true,
+  label = 'Dialog',
+}: ModalProps) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={blocking ? undefined : () => onClose?.()}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !blocking) onClose?.()
+      }}
     >
-      <div
-        className={`relative bg-neutral-800 rounded-xl shadow-2xl border border-neutral-700 max-w-lg w-full mx-4 ${className}`}
-        onClick={(e) => e.stopPropagation()}
+      <DialogContent
+        showCloseButton={showClose && !blocking}
+        onEscapeKeyDown={(e) => {
+          if (blocking) e.preventDefault()
+        }}
+        onInteractOutside={(e) => {
+          if (blocking) e.preventDefault()
+        }}
+        className={cn('gap-0 p-0 sm:max-w-lg', className)}
       >
+        <DialogTitle className="sr-only">{label}</DialogTitle>
         {children}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

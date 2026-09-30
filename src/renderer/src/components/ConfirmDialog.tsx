@@ -1,4 +1,13 @@
-import { Modal } from './Modal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog'
 
 interface ConfirmDialogProps {
   title: string
@@ -20,29 +29,24 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Modal onClose={onCancel}>
-      <div className="p-6">
-        <h2 className="text-base font-semibold text-slate-100 mb-2">{title}</h2>
-        <p className="text-sm text-neutral-400 mb-6 leading-relaxed">{message}</p>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 rounded-md text-sm font-medium bg-neutral-700 hover:bg-neutral-600 text-slate-200 transition-colors"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            onClick={onConfirm}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors text-white ${
-              danger
-                ? 'bg-red-700 hover:bg-red-600'
-                : 'bg-brand-500 hover:bg-brand-500/80'
-            }`}
-          >
+    <AlertDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{message}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogAction variant={danger ? 'destructive' : 'default'} onClick={onConfirm}>
             {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </Modal>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

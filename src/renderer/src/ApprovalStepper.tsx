@@ -4,7 +4,10 @@ import { useApprovalStore } from './stores/approvalStore'
 import type { ApprovalItem, ApprovalTag, TagsByCategory, ApproveItemRequest } from '@shared/approval'
 import { track } from './telemetry'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
-import { TagEditor } from './ui/TagEditor'
+import { TagEditor } from './components/TagEditor'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Badge } from './ui/badge'
 
 interface ApprovalStepperProps {
   onComplete: () => void
@@ -51,16 +54,16 @@ function CoverSection({ item, onCoverUpdated }: CoverSectionProps) {
     return (
       <div className="flex flex-col gap-2">
         {item.coverSource === 'none' && (
-          <p className="text-xs text-amber-400">A cover image is required before saving</p>
+          <p className="text-xs text-muted-foreground">A cover image is required before saving</p>
         )}
         <div
-          className="border-2 border-dashed border-neutral-600 rounded-xl flex flex-col items-center justify-center gap-2 p-6 cursor-pointer hover:border-blue-500 transition-colors"
+          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-6 transition-colors hover:border-ring"
           onClick={() => fileInputRef.current?.click()}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
         >
-          <p className="text-sm text-neutral-400">Drag & drop or click to upload cover</p>
-          <p className="text-xs text-neutral-600">PNG, JPG, WebP</p>
+          <p className="text-sm text-muted-foreground">Drag &amp; drop or click to upload cover</p>
+          <p className="text-xs text-muted-foreground">PNG, JPG, WebP</p>
         </div>
         <input
           ref={fileInputRef}
@@ -73,12 +76,9 @@ function CoverSection({ item, onCoverUpdated }: CoverSectionProps) {
           }}
         />
         {item.coverSource !== 'none' && (
-          <button
-            onClick={() => setShowUploadZone(false)}
-            className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
-          >
+          <Button variant="ghost" size="xs" onClick={() => setShowUploadZone(false)}>
             Cancel
-          </button>
+          </Button>
         )}
       </div>
     )
@@ -86,32 +86,31 @@ function CoverSection({ item, onCoverUpdated }: CoverSectionProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="w-full aspect-square bg-neutral-800 rounded-xl overflow-hidden">
+      <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted">
         <img
           src={`file://${item.coverPath}`}
           alt="Cover"
-          className="w-full h-full object-cover"
+          className="h-full w-full object-cover"
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
         />
       </div>
       {item.coverSource === 'sidecar' && item.sidecarFileName && (
-        <p className="text-xs text-neutral-500 text-center truncate">{item.sidecarFileName}</p>
+        <p className="truncate text-center text-xs text-muted-foreground">{item.sidecarFileName}</p>
       )}
       <div className="flex gap-2">
         {item.coverSource === 'sidecar' && (
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
+            className="flex-1"
             onClick={() => onCoverUpdated(item.coverPath, 'sidecar')}
-            className="flex-1 text-xs bg-neutral-700 hover:bg-neutral-600 text-white px-2 py-1.5 rounded-lg transition-colors"
           >
             Use this cover
-          </button>
+          </Button>
         )}
-        <button
-          onClick={() => setShowUploadZone(true)}
-          className="flex-1 text-xs bg-neutral-700 hover:bg-neutral-600 text-white px-2 py-1.5 rounded-lg transition-colors"
-        >
+        <Button variant="secondary" size="sm" className="flex-1" onClick={() => setShowUploadZone(true)}>
           Replace
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -181,31 +180,30 @@ function ItemEditor({
           <CoverSection item={item} onCoverUpdated={onCoverUpdated} />
         </div>
 
-        <div className="flex-1 flex flex-col gap-4">
+        <div className="flex flex-1 flex-col gap-4">
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Title</label>
-            <input
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Title</label>
+            <Input
               type="text"
               value={localTitle}
               onChange={(e) => setLocalTitle(e.target.value)}
-              className="w-full bg-neutral-800 border border-neutral-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
               placeholder="Mockup title"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Description</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
             <textarea
               value={localDesc}
               onChange={(e) => setLocalDesc(e.target.value)}
               rows={3}
-              className="w-full bg-neutral-800 border border-neutral-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
               placeholder="Short description…"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Tags</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Tags</label>
             <TagEditor
               tags={localTags}
               categories={categories}
@@ -215,32 +213,24 @@ function ItemEditor({
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button
-              disabled={currentIndex === 0}
-              onClick={onBack}
-              className="text-sm bg-neutral-700 hover:bg-neutral-600 disabled:opacity-40 text-white px-4 py-2 rounded-lg transition-colors"
-            >
+            <Button variant="secondary" disabled={currentIndex === 0} onClick={onBack}>
               Back
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => {
                 const stem = item.title.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim()
                 setLocalTitle(stem || item.title)
                 setLocalDesc('')
                 setLocalTags([])
               }}
-              className="text-sm text-neutral-400 hover:text-neutral-200 px-4 py-2 rounded-lg transition-colors"
             >
               Skip AI
-            </button>
+            </Button>
             <div className="flex-1" />
-            <button
-              disabled={!canSave}
-              onClick={() => void handleApprove()}
-              className="text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors"
-            >
+            <Button disabled={!canSave} onClick={() => void handleApprove()}>
               {isSaving ? 'Saving…' : isLastItem ? 'Approve & Finish' : 'Approve & Next'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -309,8 +299,8 @@ export default function ApprovalStepper({ onComplete, onCancel }: ApprovalSteppe
 
   if (store.isInitializing) {
     return (
-      <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
-        <p className="text-neutral-400">Preparing review queue…</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground">Preparing review queue…</p>
       </div>
     )
   }
@@ -318,30 +308,19 @@ export default function ApprovalStepper({ onComplete, onCancel }: ApprovalSteppe
   if (!item) return null
 
   return (
-    <div className="min-h-screen bg-neutral-900 flex flex-col">
-      <header className="border-b border-neutral-700 px-6 py-3 flex items-center justify-between shrink-0">
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-3">
         <div>
-          <h2 className="text-lg font-semibold text-white">Review Mockup</h2>
-          <p className="text-sm text-neutral-400 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-foreground">Review Mockup</h2>
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{store.currentIndex + 1} of {store.totalItems()}</span>
-            {item.isLeader && (
-              <span className="text-xs bg-blue-700 text-blue-200 px-1.5 py-0.5 rounded">
-                Group leader
-              </span>
-            )}
-            {item.leaderId !== null && (
-              <span className="text-xs bg-neutral-700 text-neutral-300 px-1.5 py-0.5 rounded">
-                Variant {item.variantIndex}
-              </span>
-            )}
+            {item.isLeader && <Badge>Group leader</Badge>}
+            {item.leaderId !== null && <Badge variant="secondary">Variant {item.variantIndex}</Badge>}
           </p>
         </div>
-        <button
-          onClick={onCancel}
-          className="text-sm bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
+        <Button variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </header>
 
       {/* key forces remount when index changes, resetting local state cleanly */}

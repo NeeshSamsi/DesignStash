@@ -1,7 +1,8 @@
-// PLACEHOLDER UI — replace in design pass
 import { useState, useEffect, useCallback } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { AiModelInfo, AiDownloadProgress } from '@shared/ipc'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 interface HardwareInfo {
   chip: string
@@ -60,16 +61,16 @@ export default function SettingsAiPane() {
   }
 
   return (
-    <div className="mt-6 border-t border-neutral-700 pt-6">
-      <h2 className="text-lg font-semibold text-white mb-1">AI Tagging</h2>
-      <p className="text-sm text-neutral-400 mb-4">
+    <div className="mt-6 border-t border-border pt-6">
+      <h2 className="mb-1 text-lg font-semibold text-foreground">AI Tagging</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
         Download a model once to automatically tag imported mockups with title, description, and categories.
       </p>
 
       {hardware && (
-        <p className="text-xs text-neutral-500 mb-4">
+        <p className="mb-4 text-xs text-muted-foreground">
           {hardware.chip} · {hardware.totalMemoryGB.toFixed(0)} GB ·{' '}
-          <span className="text-blue-400">Recommended: {hardware.recommendedTier}</span>
+          <span className="text-primary">Recommended: {hardware.recommendedTier}</span>
         </p>
       )}
 
@@ -85,56 +86,42 @@ export default function SettingsAiPane() {
           return (
             <div
               key={model.id}
-              className="bg-neutral-700 rounded-lg p-3 flex items-center justify-between gap-3"
+              className="flex items-center justify-between gap-3 rounded-lg bg-muted p-3"
             >
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-white truncate">{model.name}</span>
-                  {isRecommended && (
-                    <span className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded">
-                      Recommended
-                    </span>
-                  )}
-                  {model.installed && (
-                    <span className="text-xs bg-green-700 text-green-200 px-1.5 py-0.5 rounded">
-                      Downloaded
-                    </span>
-                  )}
+                  <span className="truncate text-sm font-medium text-foreground">{model.name}</span>
+                  {isRecommended && <Badge>Recommended</Badge>}
+                  {model.installed && <Badge variant="secondary">Downloaded</Badge>}
                 </div>
-                <p className="text-xs text-neutral-400 mt-0.5">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {model.tier} · {formatBytes(model.sizeBytes)} · downloaded once, runs offline
                 </p>
                 {progress && (
                   <div className="mt-2">
-                    <div className="w-full bg-neutral-600 rounded-full h-1.5">
+                    <div className="h-1.5 w-full rounded-full bg-secondary">
                       <div
-                        className="bg-blue-500 h-1.5 rounded-full transition-all"
+                        className="h-1.5 rounded-full bg-primary transition-all"
                         style={{ width: `${Math.min(pct, 100)}%` }}
                       />
                     </div>
-                    <p className="text-xs text-neutral-400 mt-0.5">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {progress.phase === 'verifying' ? 'Verifying…' : `Downloading ${pct}%`}
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
                 {!model.installed && !progress && (
-                  <button
-                    onClick={() => void handleDownload(model.id)}
-                    className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded transition-colors"
-                  >
+                  <Button size="sm" onClick={() => void handleDownload(model.id)}>
                     Download
-                  </button>
+                  </Button>
                 )}
                 {progress && (
-                  <button
-                    onClick={() => void handleCancel(model.id)}
-                    className="text-xs bg-neutral-600 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors"
-                  >
+                  <Button variant="destructive" size="sm" onClick={() => void handleCancel(model.id)}>
                     Cancel
-                  </button>
+                  </Button>
                 )}
                 {model.installed && (
                   <input
@@ -142,17 +129,14 @@ export default function SettingsAiPane() {
                     name="active-model"
                     checked={model.active}
                     onChange={() => void handleSetActive(model.id)}
-                    className="accent-blue-500"
+                    className="accent-primary"
                     title="Use this model"
                   />
                 )}
                 {model.installed && model.active && (
-                  <button
-                    onClick={() => void handleSetActive(null)}
-                    className="text-xs text-neutral-500 hover:text-red-400 transition-colors"
-                  >
+                  <Button variant="link" size="sm" onClick={() => void handleSetActive(null)}>
                     Disable
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

@@ -1,5 +1,18 @@
 import { useState } from 'react'
 import type { ApprovalTag, TagsByCategory } from '@shared/approval'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Badge } from '../ui/badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog'
 
 interface NewTagConfirmDialogProps {
   label: string
@@ -10,29 +23,26 @@ interface NewTagConfirmDialogProps {
 
 function NewTagConfirmDialog({ label, categoryLabel, onConfirm, onCancel }: NewTagConfirmDialogProps) {
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-neutral-800 border border-neutral-700 rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
-        <p className="text-white text-sm mb-4">
-          <span className="font-semibold">'{label}'</span> is a new tag in{' '}
-          <span className="font-semibold">{categoryLabel}</span> — adding it affects how your
-          library is organised. Add it?
-        </p>
-        <div className="flex gap-2 justify-end">
-          <button
-            onClick={onCancel}
-            className="text-sm bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            Add
-          </button>
-        </div>
-      </div>
-    </div>
+    <AlertDialog
+      open
+      onOpenChange={(o) => {
+        if (!o) onCancel()
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Add new tag?</AlertDialogTitle>
+          <AlertDialogDescription>
+            &apos;{label}&apos; is a new tag in {categoryLabel} — adding it affects how your library
+            is organised. Add it?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Add</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -121,27 +131,24 @@ export function TagEditor({ tags, categories, onChange, onNewTagRequest }: TagEd
 
   return (
     <div>
-      <div className="flex flex-wrap gap-1.5 mb-2">
+      <div className="mb-2 flex flex-wrap gap-1.5">
         {tags.map((tag) => (
-          <span
-            key={tag.tagId}
-            className="inline-flex items-center gap-1 text-xs bg-neutral-700 text-neutral-200 px-2 py-1 rounded-full"
-          >
-            <span className="text-neutral-500 text-xs">{tag.categoryLabel}</span>
+          <Badge key={tag.tagId} variant="secondary" className="gap-1">
+            <span className="text-muted-foreground">{tag.categoryLabel}</span>
             <span>{tag.label}</span>
             <button
               onClick={() => onChange(tags.filter((t) => t.tagId !== tag.tagId))}
-              className="text-neutral-400 hover:text-red-400 transition-colors leading-none ml-0.5"
+              className="ml-0.5 leading-none text-muted-foreground transition-colors hover:text-destructive"
               aria-label={`Remove tag ${tag.label}`}
             >
               ×
             </button>
-          </span>
+          </Badge>
         ))}
       </div>
 
       <div className="relative">
-        <input
+        <Input
           type="text"
           value={inputValue}
           onChange={(e) => {
@@ -151,41 +158,42 @@ export function TagEditor({ tags, categories, onChange, onNewTagRequest }: TagEd
           onFocus={() => setIsOpen(true)}
           onBlur={() => setTimeout(() => setIsOpen(false), 150)}
           placeholder="Add tag…"
-          className="w-full bg-neutral-700 border border-neutral-600 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500"
         />
         {isOpen && inputValue.trim() && (filtered.length > 0 || !exactMatch) && (
-          <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl overflow-hidden">
+          <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl">
             {filtered.slice(0, 8).map((tag) => (
-              <button
+              <Button
                 key={tag.tagId}
+                variant="ghost"
+                className="w-full justify-start gap-2 rounded-none"
                 onMouseDown={() => handleSelectExisting(tag)}
-                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-neutral-700 flex items-center gap-2 transition-colors"
               >
-                <span className="text-neutral-500 text-xs">{tag.categoryLabel}</span>
+                <span className="text-xs text-muted-foreground">{tag.categoryLabel}</span>
                 <span>{tag.label}</span>
-              </button>
+              </Button>
             ))}
             {!exactMatch && (
-              <button
+              <Button
+                variant="ghost"
+                className="w-full justify-start rounded-none text-primary"
                 onMouseDown={handleNewTagClick}
-                className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-neutral-700 transition-colors"
               >
-                Add '{inputValue.trim()}' as a new tag
-              </button>
+                Add &apos;{inputValue.trim()}&apos; as a new tag
+              </Button>
             )}
           </div>
         )}
       </div>
 
       {pendingNewLabel && (
-        <div className="mt-2 p-3 border border-neutral-600 rounded-lg">
-          <p className="text-xs text-neutral-400 mb-2">
-            Choose a category for '{pendingNewLabel}':
+        <div className="mt-2 rounded-lg border border-border p-3">
+          <p className="mb-2 text-xs text-muted-foreground">
+            Choose a category for &apos;{pendingNewLabel}&apos;:
           </p>
           <select
             value={selectedCategoryId ?? ''}
             onChange={(e) => setSelectedCategoryId(Number(e.target.value))}
-            className="w-full bg-neutral-700 border border-neutral-600 text-white text-sm rounded-lg px-2 py-1.5 mb-2 focus:outline-none"
+            className="mb-2 w-full rounded-lg border border-input bg-transparent px-2 py-1.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
           >
             {categories.map((cat) => (
               <option key={cat.categoryId} value={cat.categoryId}>
@@ -193,20 +201,14 @@ export function TagEditor({ tags, categories, onChange, onNewTagRequest }: TagEd
               </option>
             ))}
           </select>
-          <p className="text-xs text-amber-400 mb-2">New categories can be added in Settings.</p>
+          <p className="mb-2 text-xs text-muted-foreground">New categories can be added in Settings.</p>
           <div className="flex gap-2">
-            <button
-              onClick={() => setPendingNewLabel(null)}
-              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-white px-3 py-1 rounded transition-colors"
-            >
+            <Button variant="secondary" size="sm" onClick={() => setPendingNewLabel(null)}>
               Cancel
-            </button>
-            <button
-              onClick={handleCategoryConfirm}
-              className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded transition-colors"
-            >
+            </Button>
+            <Button size="sm" onClick={handleCategoryConfirm}>
               Confirm
-            </button>
+            </Button>
           </div>
         </div>
       )}

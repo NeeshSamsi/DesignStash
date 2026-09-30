@@ -1,3 +1,5 @@
+import { Button } from '../ui/button'
+
 interface EmptyStateProps {
   title: string
   description?: string
@@ -6,9 +8,9 @@ interface EmptyStateProps {
 
 export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8 py-16">
-      <p className="text-base font-medium text-neutral-400">{title}</p>
-      {description && <p className="text-sm text-neutral-500 max-w-xs">{description}</p>}
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-8 py-16 text-center">
+      <p className="text-base font-medium text-foreground">{title}</p>
+      {description && <p className="max-w-xs text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   )
@@ -20,7 +22,7 @@ interface LoadingStateProps {
 
 export function LoadingState({ message = 'Loading…' }: LoadingStateProps) {
   return (
-    <div className="flex items-center justify-center h-full gap-2 text-neutral-400">
+    <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">
       <span className="text-sm">{message}</span>
     </div>
   )
@@ -33,15 +35,12 @@ interface ErrorStateProps {
 
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8 py-16">
-      <p className="text-sm text-red-400">{message}</p>
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-8 py-16 text-center">
+      <p className="text-sm text-destructive">{message}</p>
       {onRetry && (
-        <button
-          onClick={onRetry}
-          className="px-3 py-1.5 text-sm rounded-md bg-neutral-700 hover:bg-neutral-600 text-slate-200 transition-colors"
-        >
+        <Button variant="outline" size="sm" onClick={onRetry}>
           Retry
-        </button>
+        </Button>
       )}
     </div>
   )

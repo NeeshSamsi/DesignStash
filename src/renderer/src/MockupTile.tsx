@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import type { LibraryItem } from '@shared/library'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { useUiStore } from './stores/uiStore'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 interface MockupTileProps {
   item: LibraryItem
@@ -46,75 +48,62 @@ export default function MockupTile({ item, onRefresh }: MockupTileProps) {
   }, [item.id, openModal])
 
   return (
-    <div
-      className="group relative bg-neutral-800 rounded-xl overflow-hidden cursor-pointer border border-neutral-700 hover:border-neutral-500 transition-colors"
-      onClick={handleClickBody}
-    >
-      {/* Cover image */}
-      <div className="aspect-card w-full overflow-hidden bg-neutral-700">
+    <div className="group relative cursor-pointer" onClick={handleClickBody}>
+      {/* Cover image — squircle-clipped (the bulged superellipse). Badges and the
+          hover overlay live inside so they clip to the squircle too. */}
+      <div className="squircle relative aspect-card w-full overflow-hidden bg-muted transition-opacity group-hover:opacity-95">
         {item.coverPath ? (
           <img
             src={`file://${item.coverPath}`}
             alt={item.title}
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
+          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
             No preview
           </div>
         )}
+
+        {/* +N badge for group tiles */}
+        {item.isGroup && item.variantCount > 1 && (
+          <Badge variant="secondary" className="absolute left-2 top-2">
+            +{item.variantCount - 1}
+          </Badge>
+        )}
+
+        {/* Favourite indicator (always visible when favourited) */}
+        {item.favourite && (
+          <div className="absolute right-2 top-2 text-xs leading-none text-primary">★</div>
+        )}
+
+        {/* Hover overlay with actions */}
+        <div className="absolute inset-0 flex items-end justify-end gap-1 bg-background/80 p-2 opacity-0 transition-opacity group-hover:opacity-100">
+          <Button aria-label="Open in Photoshop" onClick={handleOpenExternal} variant="secondary" size="xs">
+            Open
+          </Button>
+          <Button aria-label="Zoom preview" onClick={handlePreview} variant="secondary" size="xs">
+            Zoom
+          </Button>
+          <Button
+            aria-label="Toggle favourite"
+            onClick={handleToggleFavourite}
+            variant={item.favourite ? 'default' : 'secondary'}
+            size="xs"
+          >
+            {item.favourite ? '★' : '☆'}
+          </Button>
+        </div>
       </div>
 
-      {/* Title row */}
-      <div className="px-2 py-1.5">
-        <p className="text-xs font-medium text-slate-200 truncate">{item.title}</p>
+      {/* Title + tags — plain text below the squircle, so nothing gets clipped */}
+      <div className="px-1 pt-1.5">
+        <p className="truncate text-xs font-medium text-foreground">{item.title}</p>
         {item.tags.length > 0 && (
-          <p className="text-xs text-neutral-500 truncate mt-0.5">
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {item.tags.map((t) => t.label).join(', ')}
           </p>
         )}
-      </div>
-
-      {/* +N badge for group tiles */}
-      {item.isGroup && item.variantCount > 1 && (
-        <div className="absolute top-1.5 left-1.5 bg-neutral-900/80 text-xs px-1.5 py-0.5 rounded text-slate-300 font-medium">
-          +{item.variantCount - 1}
-        </div>
-      )}
-
-      {/* Favourite indicator (always visible when favourited) */}
-      {item.favourite && (
-        <div className="absolute top-1.5 right-1.5 text-yellow-400 text-xs leading-none">★</div>
-      )}
-
-      {/* Hover overlay with actions */}
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end gap-1 p-1.5">
-        <button
-          aria-label="Open in Photoshop"
-          onClick={handleOpenExternal}
-          className="bg-neutral-800/90 hover:bg-neutral-700 text-slate-200 text-xs px-2 py-1 rounded transition-colors"
-        >
-          Open
-        </button>
-        <button
-          aria-label="Zoom preview"
-          onClick={handlePreview}
-          className="bg-neutral-800/90 hover:bg-neutral-700 text-slate-200 text-xs px-2 py-1 rounded transition-colors"
-        >
-          Zoom
-        </button>
-        <button
-          aria-label="Toggle favourite"
-          onClick={handleToggleFavourite}
-          className={`text-xs px-2 py-1 rounded transition-colors ${
-            item.favourite
-              ? 'bg-yellow-600/80 hover:bg-yellow-600 text-white'
-              : 'bg-neutral-800/90 hover:bg-neutral-700 text-slate-200'
-          }`}
-        >
-          {item.favourite ? '★' : '☆'}
-        </button>
       </div>
     </div>
   )
