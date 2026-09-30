@@ -1,4 +1,9 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/inter';
+
+@custom-variant dark (&:is(.dark *));
 
 /*
  * Design tokens (Tailwind v4 CSS-first theme).
@@ -10,8 +15,131 @@
   --max-h-modal-body: 70vh;
 }
 
+/* shadcn/ui token mapping (radix-rhea style, "mist" base color). */
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: 'Inter Variable', sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
 :root {
   color-scheme: light dark;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.148 0.004 228.8);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.148 0.004 228.8);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.148 0.004 228.8);
+  --primary: oklch(0.553 0.195 38.402);
+  --primary-foreground: oklch(0.98 0.016 73.684);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.963 0.002 197.1);
+  --muted-foreground: oklch(0.56 0.021 213.5);
+  --accent: oklch(0.963 0.002 197.1);
+  --accent-foreground: oklch(0.218 0.008 223.9);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.925 0.005 214.3);
+  --input: oklch(0.925 0.005 214.3);
+  --ring: oklch(0.723 0.014 214.4);
+  --chart-1: oklch(0.872 0.007 219.6);
+  --chart-2: oklch(0.56 0.021 213.5);
+  --chart-3: oklch(0.45 0.017 213.2);
+  --chart-4: oklch(0.378 0.015 216);
+  --chart-5: oklch(0.275 0.011 216.9);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.987 0.002 197.1);
+  --sidebar-foreground: oklch(0.148 0.004 228.8);
+  --sidebar-primary: oklch(0.646 0.222 41.116);
+  --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
+  --sidebar-accent: oklch(0.963 0.002 197.1);
+  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
+  --sidebar-border: oklch(0.925 0.005 214.3);
+  --sidebar-ring: oklch(0.723 0.014 214.4);
+}
+
+.dark {
+  --background: oklch(0.148 0.004 228.8);
+  --foreground: oklch(0.987 0.002 197.1);
+  --card: oklch(0.218 0.008 223.9);
+  --card-foreground: oklch(0.987 0.002 197.1);
+  --popover: oklch(0.218 0.008 223.9);
+  --popover-foreground: oklch(0.987 0.002 197.1);
+  --primary: oklch(0.47 0.157 37.304);
+  --primary-foreground: oklch(0.98 0.016 73.684);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.275 0.011 216.9);
+  --muted-foreground: oklch(0.723 0.014 214.4);
+  --accent: oklch(0.275 0.011 216.9);
+  --accent-foreground: oklch(0.987 0.002 197.1);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.56 0.021 213.5);
+  --chart-1: oklch(0.872 0.007 219.6);
+  --chart-2: oklch(0.56 0.021 213.5);
+  --chart-3: oklch(0.45 0.017 213.2);
+  --chart-4: oklch(0.378 0.015 216);
+  --chart-5: oklch(0.275 0.011 216.9);
+  --sidebar: oklch(0.218 0.008 223.9);
+  --sidebar-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-primary: oklch(0.705 0.213 47.604);
+  --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
+  --sidebar-accent: oklch(0.275 0.011 216.9);
+  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.56 0.021 213.5);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
 
 html,
@@ -22,4 +150,27 @@ body,
 
 body {
   margin: 0;
+}
+
+/*
+ * True "squircle" — a full superellipse (n=4): rounded corners AND gently bulged
+ * sides, the continuous Lamé curve. Applied via clip-path (percentage points, so it
+ * scales to any element). Best on square-ish, image-dominant surfaces (mockup tiles,
+ * avatars). Avoid on wide elements — the long edges balloon — and on bordered ones,
+ * since clip-path cuts borders (drop-shadows still work via filter: drop-shadow).
+ */
+@utility squircle {
+  clip-path: polygon(
+    100% 50%, 99.88% 65.65%, 99.52% 72.08%, 98.91% 76.94%, 98.06% 80.93%, 96.96% 84.33%,
+    95.59% 87.27%, 93.96% 89.82%, 92.04% 92.04%, 89.82% 93.96%, 87.27% 95.59%, 84.33% 96.96%,
+    80.93% 98.06%, 76.94% 98.91%, 72.08% 99.52%, 65.65% 99.88%, 50% 100%, 34.35% 99.88%,
+    27.92% 99.52%, 23.06% 98.91%, 19.07% 98.06%, 15.67% 96.96%, 12.73% 95.59%, 10.18% 93.96%,
+    7.96% 92.04%, 6.04% 89.82%, 4.41% 87.27%, 3.04% 84.33%, 1.94% 80.93%, 1.09% 76.94%,
+    0.48% 72.08%, 0.12% 65.65%, 0% 50%, 0.12% 34.35%, 0.48% 27.92%, 1.09% 23.06%, 1.94% 19.07%,
+    3.04% 15.67%, 4.41% 12.73%, 6.04% 10.18%, 7.96% 7.96%, 10.18% 6.04%, 12.73% 4.41%,
+    15.67% 3.04%, 19.07% 1.94%, 23.06% 1.09%, 27.92% 0.48%, 34.35% 0.12%, 50% 0%, 65.65% 0.12%,
+    72.08% 0.48%, 76.94% 1.09%, 80.93% 1.94%, 84.33% 3.04%, 87.27% 4.41%, 89.82% 6.04%,
+    92.04% 7.96%, 93.96% 10.18%, 95.59% 12.73%, 96.96% 15.67%, 98.06% 19.07%, 98.91% 23.06%,
+    99.52% 27.92%, 99.88% 34.35%
+  );
 }
