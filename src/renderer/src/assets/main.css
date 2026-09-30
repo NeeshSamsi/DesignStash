@@ -3,6 +3,11 @@
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/inter';
 
+/* Design system (generated from Figma — pnpm ds:tokens). Additive: no shadcn keys overlap. */
+@import '../styles/tokens.css';
+@import '../styles/theme.css';
+/* TODO(port): import '../styles/shadcn-bridge.css' after the shadcn block below and drop shadcn's colour values. */
+
 @custom-variant dark (&:is(.dark *));
 
 /*

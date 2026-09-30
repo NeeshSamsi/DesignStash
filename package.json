@@ -27,7 +27,11 @@
     "predb:studio": "node scripts/rebuild-better-sqlite3.mjs node",
     "dev:ingest": "tsx --tsconfig tsconfig.node.json scripts/dev-ingest.ts",
     "predev:ingest": "node scripts/rebuild-better-sqlite3.mjs node",
-    "dev:reset": "node scripts/dev-reset.mjs"
+    "dev:reset": "node scripts/dev-reset.mjs",
+    "ds:tokens": "node scripts/ds/build-tokens.mjs",
+    "ds:scaffold": "node scripts/ds/scaffold-components.mjs",
+    "ds:check": "node scripts/ds/scaffold-components.mjs --check",
+    "ds": "pnpm ds:tokens && pnpm ds:scaffold"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

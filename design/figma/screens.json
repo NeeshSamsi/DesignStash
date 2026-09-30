@@ -1,0 +1,1700 @@
+{
+  "$schema": "Flows-page screen map: every mocked screen with its Figma node id, flow and the design-system components it composes. Consumed by the port (and the DEV catalog screen index).",
+  "source": {
+    "fileKey": "fB8PHTrzz89lAQOhXbsHMK",
+    "flowsPage": "0:1",
+    "exportedAt": "2026-09-30"
+  },
+  "prototype": {
+    "start": "A1 Welcome",
+    "happyPath": [
+      "A1 Welcome",
+      "A2 Library location",
+      "A3a Choose model",
+      "A3c Downloading",
+      "A3d Verifying checksum",
+      "A3e Download complete",
+      "A4 Privacy consent",
+      "A5 All set",
+      "C3 Empty library",
+      "B1 Add menu",
+      "B5 Import progress",
+      "B6 Import summary",
+      "B8 Grouping review board",
+      "B10 Item editor",
+      "B17 Saving…",
+      "C1 Library grid",
+      "D2 Single mockup"
+    ]
+  },
+  "screens": [
+    {
+      "title": "0.1 Boot blank",
+      "figmaId": "178:5",
+      "flow": "0 · Launch",
+      "components": [
+        "CenteredLayout",
+        "LoadingState"
+      ]
+    },
+    {
+      "title": "Library failed to open",
+      "figmaId": "178:95",
+      "flow": "0 · Launch",
+      "components": [
+        "CenteredLayout",
+        "ErrorState"
+      ]
+    },
+    {
+      "title": "Library folder unavailable",
+      "figmaId": "178:185",
+      "flow": "0 · Launch",
+      "components": [
+        "CenteredLayout",
+        "ErrorState"
+      ]
+    },
+    {
+      "title": "settings.json corrupt",
+      "figmaId": "178:274",
+      "flow": "0 · Launch",
+      "components": [
+        "Banner",
+        "CenteredLayout",
+        "OnboardingStep",
+        "StepIndicator"
+      ]
+    },
+    {
+      "title": "A1 Welcome",
+      "figmaId": "180:5",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "OnboardingStep",
+        "StepIndicator"
+      ]
+    },
+    {
+      "title": "A2 Library location",
+      "figmaId": "180:90",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "OnboardingStep",
+        "PathField",
+        "StepIndicator"
+      ]
+    },
+    {
+      "title": "A4 Privacy consent",
+      "figmaId": "180:181",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "ConsentPanel",
+        "OnboardingStep",
+        "StepIndicator"
+      ]
+    },
+    {
+      "title": "A5 All set",
+      "figmaId": "180:272",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "OnboardingStep",
+        "StepIndicator"
+      ]
+    },
+    {
+      "title": "Folder not writable",
+      "figmaId": "180:358",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "OnboardingStep",
+        "PathField",
+        "StepIndicator"
+      ]
+    },
+    {
+      "title": "Existing library found",
+      "figmaId": "180:446",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "ChoiceDialog",
+        "ModalLayer",
+        "OnboardingStep",
+        "PathField",
+        "StepIndicator"
+      ]
+    },
+    {
+      "title": "No connection",
+      "figmaId": "180:535",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "HardwareSummary",
+        "ModelPicker",
+        "ModelRow",
+        "OnboardingStep",
+        "StepIndicator",
+        "Switch"
+      ]
+    },
+    {
+      "title": "Not enough disk space",
+      "figmaId": "180:623",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "HardwareSummary",
+        "ModelPicker",
+        "ModelRow",
+        "OnboardingStep",
+        "StepIndicator",
+        "Switch"
+      ]
+    },
+    {
+      "title": "Unsupported hardware",
+      "figmaId": "180:711",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "HardwareSummary",
+        "OnboardingStep",
+        "StepIndicator"
+      ]
+    },
+    {
+      "title": "Resume partial download?",
+      "figmaId": "180:799",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "ChoiceDialog",
+        "HardwareSummary",
+        "ModalLayer",
+        "ModelPicker",
+        "ModelRow",
+        "OnboardingStep",
+        "StepIndicator",
+        "Switch"
+      ]
+    },
+    {
+      "title": "Model list empty",
+      "figmaId": "180:887",
+      "flow": "A · Onboarding",
+      "components": [
+        "CenteredLayout",
+        "EmptyState",
+        "OnboardingStep",
+        "StepIndicator"
+      ]
+    },
+    {
+      "title": "A3a Choose model",
+      "figmaId": "180:977",
+      "flow": "A3 · AI setup",
+      "components": [
+        "CenteredLayout",
+        "HardwareSummary",
+        "ModelPicker",
+        "ModelRow",
+        "OnboardingStep",
+        "StepIndicator",
+        "Switch"
+      ]
+    },
+    {
+      "title": "A3b Skip selected",
+      "figmaId": "180:1067",
+      "flow": "A3 · AI setup",
+      "components": [
+        "CenteredLayout",
+        "HardwareSummary",
+        "ModelPicker",
+        "ModelRow",
+        "OnboardingStep",
+        "StepIndicator",
+        "Switch"
+      ]
+    },
+    {
+      "title": "A3c Downloading",
+      "figmaId": "180:1152",
+      "flow": "A3 · AI setup",
+      "components": [
+        "CenteredLayout",
+        "HardwareSummary",
+        "ModelPicker",
+        "ModelRow",
+        "OnboardingStep",
+        "StepIndicator",
+        "Switch"
+      ]
+    },
+    {
+      "title": "A3d Verifying checksum",
+      "figmaId": "180:1238",
+      "flow": "A3 · AI setup",
+      "components": [
+        "CenteredLayout",
+        "HardwareSummary",
+        "ModelPicker",
+        "ModelRow",
+        "OnboardingStep",
+        "StepIndicator",
+        "Switch"
+      ]
+    },
+    {
+      "title": "A3e Download complete",
+      "figmaId": "180:1324",
+      "flow": "A3 · AI setup",
+      "components": [
+        "CenteredLayout",
+        "HardwareSummary",
+        "ModelPicker",
+        "ModelRow",
+        "OnboardingStep",
+        "StepIndicator",
+        "Switch"
+      ]
+    },
+    {
+      "title": "B1 Add menu",
+      "figmaId": "180:1412",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "DropdownMenu",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "B4 Drag-over state",
+      "figmaId": "180:1503",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "DropOverlay",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "B5 Import progress",
+      "figmaId": "180:1588",
+      "flow": "B · Import pipeline",
+      "components": [
+        "ActivityDock",
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "ImportProgressCard",
+        "LibraryToolbar",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "B6 Import summary",
+      "figmaId": "180:1682",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "ImportSummary",
+        "ListRow",
+        "PageHeader",
+        "SectionHeader",
+        "SidebarNav",
+        "StatTile"
+      ]
+    },
+    {
+      "title": "B7 Loading proposal",
+      "figmaId": "180:1771",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LoadingState",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "B8 Grouping review board",
+      "figmaId": "180:1858",
+      "flow": "B · Import pipeline",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "GroupCard",
+        "GroupMemberThumb",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "B9 Preparing queue",
+      "figmaId": "180:1947",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LoadingState",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "No PSD files found",
+      "figmaId": "180:2035",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "EmptyState",
+        "GlobalSearch",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Import already running",
+      "figmaId": "180:2123",
+      "flow": "B · Import pipeline",
+      "components": [
+        "ActivityDock",
+        "AddMenu",
+        "AppWindow",
+        "ChoiceDialog",
+        "GlobalSearch",
+        "ImportProgressCard",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Import cancelled",
+      "figmaId": "180:2211",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "ImportSummary",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Skipped files detail",
+      "figmaId": "180:2299",
+      "flow": "B · Import pipeline",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "ImportSummary",
+        "ListGroup",
+        "ListRow",
+        "Modal",
+        "ModalLayer",
+        "PageHeader",
+        "SectionHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Nothing imported",
+      "figmaId": "180:2387",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "EmptyState",
+        "GlobalSearch",
+        "ImportSummary",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "B8 with nothing to group",
+      "figmaId": "180:2475",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "EmptyState",
+        "GlobalSearch",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "B8 all standalone",
+      "figmaId": "180:2563",
+      "flow": "B · Import pipeline",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "GroupCard",
+        "GroupMemberThumb",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Queue init failed",
+      "figmaId": "180:2648",
+      "flow": "B · Import pipeline",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ErrorState",
+        "GlobalSearch",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "B10 without AI",
+      "figmaId": "180:2736",
+      "flow": "B · Import pipeline",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "Banner",
+        "CoverImage",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "SidebarNav",
+        "StepperHeader"
+      ]
+    },
+    {
+      "title": "Updating variants…",
+      "figmaId": "180:2821",
+      "flow": "B · Import pipeline",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "CoverImage",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "ModalLayer",
+        "Progress",
+        "ProgressDialog",
+        "SidebarNav",
+        "StepperHeader"
+      ]
+    },
+    {
+      "title": "Cover upload failed",
+      "figmaId": "180:2906",
+      "flow": "B · Import pipeline",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "CoverDropZone",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "SidebarNav",
+        "StepperHeader"
+      ]
+    },
+    {
+      "title": "B10 Item editor",
+      "figmaId": "180:2996",
+      "flow": "B3 · Approval stepper",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "CoverImage",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "SidebarNav",
+        "StepperHeader",
+        "TagChip",
+        "TagEditor"
+      ]
+    },
+    {
+      "title": "B14 Tag suggestion dropdown",
+      "figmaId": "180:3089",
+      "flow": "B3 · Approval stepper",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "CoverImage",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "SidebarNav",
+        "StepperHeader",
+        "TagChip",
+        "TagEditor"
+      ]
+    },
+    {
+      "title": "B15 New tag — category picker",
+      "figmaId": "180:3177",
+      "flow": "B3 · Approval stepper",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "CoverImage",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "Select",
+        "SidebarNav",
+        "StepperHeader",
+        "TagEditor"
+      ]
+    },
+    {
+      "title": "B16 New tag — confirm dialog",
+      "figmaId": "180:3263",
+      "flow": "B3 · Approval stepper",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "CoverImage",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "SidebarNav",
+        "StepperHeader",
+        "TagChip",
+        "TagEditor"
+      ]
+    },
+    {
+      "title": "B11 Sidecar cover",
+      "figmaId": "180:3349",
+      "flow": "B3 · Approval stepper",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "CoverImage",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "SidebarNav",
+        "StepperHeader"
+      ]
+    },
+    {
+      "title": "B12 Upload required — BLOCKED",
+      "figmaId": "180:3434",
+      "flow": "B3 · Approval stepper",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "CoverDropZone",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "SidebarNav",
+        "StepperHeader",
+        "Tooltip"
+      ]
+    },
+    {
+      "title": "B17 Saving…",
+      "figmaId": "180:3519",
+      "flow": "B3 · Approval stepper",
+      "components": [
+        "ActionBar",
+        "ActivityDock",
+        "AddMenu",
+        "AppWindow",
+        "CoverImage",
+        "CoverPanel",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "SidebarNav",
+        "StepperHeader",
+        "Toast"
+      ]
+    },
+    {
+      "title": "B13 Replace drop zone",
+      "figmaId": "180:3605",
+      "flow": "B3 · Approval stepper",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "CoverDropZone",
+        "Field",
+        "GlobalSearch",
+        "MockupMetaForm",
+        "Progress",
+        "SidebarNav",
+        "StepperHeader"
+      ]
+    },
+    {
+      "title": "C1 Library grid",
+      "figmaId": "182:5",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupCard",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "C5 Top bar",
+      "figmaId": "182:103",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupCard",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav",
+        "TagChip"
+      ]
+    },
+    {
+      "title": "C6 Tag filter popover",
+      "figmaId": "182:190",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupCard",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav",
+        "TagFilterPopover"
+      ]
+    },
+    {
+      "title": "C2 Loading",
+      "figmaId": "182:276",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "LoadingState",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav",
+        "Skeleton"
+      ]
+    },
+    {
+      "title": "C3 Empty library",
+      "figmaId": "182:358",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "EmptyState",
+        "GlobalSearch",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "C4 No search / filter results",
+      "figmaId": "182:444",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "EmptyState",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "C7 Tile + hover overlay",
+      "figmaId": "182:531",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "FavouriteToggle",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupCard",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "D7 Fullscreen preview",
+      "figmaId": "182:622",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "Lightbox",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Library load failed",
+      "figmaId": "182:704",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "Banner",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Cover file missing",
+      "figmaId": "182:793",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "CoverImage",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupCard",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Favourites view",
+      "figmaId": "182:881",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupCard",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "C6 Filter · \"No tags yet\"",
+      "figmaId": "182:969",
+      "flow": "C · Library",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "EmptyState",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav",
+        "TagFilterPopover"
+      ]
+    },
+    {
+      "title": "D1 Detail modal — loading",
+      "figmaId": "182:1060",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "DetailModal layout",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "D2 Single mockup",
+      "figmaId": "182:1147",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "DetailModal layout",
+        "FavouriteToggle",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "MockupMetaForm",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "D3 Group + variant carousel",
+      "figmaId": "182:1244",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "DetailModal layout",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav",
+        "VariantStrip"
+      ]
+    },
+    {
+      "title": "D4 Confirm — Move to Trash",
+      "figmaId": "182:1342",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "D5 Confirm — Ungroup",
+      "figmaId": "182:1428",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "D6 Confirm — Delete Group",
+      "figmaId": "182:1514",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Detail load failed",
+      "figmaId": "182:1600",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "DetailModal layout",
+        "ErrorState",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Could not open in Photoshop",
+      "figmaId": "182:1688",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ChoiceDialog",
+        "DetailModal layout",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Save failed — recovery",
+      "figmaId": "182:1776",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "Banner",
+        "DetailModal layout",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "MockupMetaForm",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Duplicate created — where did it go?",
+      "figmaId": "182:1864",
+      "flow": "D · Detail & edit",
+      "components": [
+        "ActivityDock",
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav",
+        "Toast"
+      ]
+    },
+    {
+      "title": "Title emptied — Save disabled",
+      "figmaId": "182:1952",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "DetailModal layout",
+        "GlobalSearch",
+        "Input",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav",
+        "Tooltip"
+      ]
+    },
+    {
+      "title": "Variant cover missing",
+      "figmaId": "182:2037",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "CoverImage",
+        "DetailModal layout",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav",
+        "VariantStrip"
+      ]
+    },
+    {
+      "title": "Unsaved-changes guard",
+      "figmaId": "182:2122",
+      "flow": "D · Detail & edit",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ChoiceDialog",
+        "DetailModal layout",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "E3 Loading",
+      "figmaId": "182:2214",
+      "flow": "E · Trash",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LoadingState",
+        "PageHeader",
+        "SidebarNav",
+        "Skeleton"
+      ]
+    },
+    {
+      "title": "E2 Trash empty",
+      "figmaId": "182:2300",
+      "flow": "E · Trash",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "EmptyState",
+        "GlobalSearch",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "E1 Trash list",
+      "figmaId": "182:2382",
+      "flow": "E · Trash",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "ListGroup",
+        "ListRow",
+        "PageHeader",
+        "SectionHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "E4 Confirm permanent delete",
+      "figmaId": "182:2476",
+      "flow": "E · Trash",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "ListGroup",
+        "ListRow",
+        "ModalLayer",
+        "PageHeader",
+        "SectionHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Empty Trash",
+      "figmaId": "182:2563",
+      "flow": "E · Trash",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "ListGroup",
+        "ListRow",
+        "ModalLayer",
+        "PageHeader",
+        "SectionHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Restore failed",
+      "figmaId": "182:2652",
+      "flow": "E · Trash",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "ListGroup",
+        "ListRow",
+        "ModalLayer",
+        "PageHeader",
+        "SectionHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "F1 Settings shell",
+      "figmaId": "182:2744",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "F2 Library",
+      "figmaId": "182:2834",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "Banner",
+        "GlobalSearch",
+        "PageHeader",
+        "SettingRow",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "F3 AI Models",
+      "figmaId": "182:2923",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "HardwareSummary",
+        "ModelRow",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "F4 Privacy",
+      "figmaId": "182:3015",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConsentPanel",
+        "GlobalSearch",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "F5 Tags",
+      "figmaId": "182:3100",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs",
+        "TagTree"
+      ]
+    },
+    {
+      "title": "F6 About",
+      "figmaId": "182:3188",
+      "flow": "F · Settings",
+      "components": [
+        "AboutPanel",
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "F5a Tag tree",
+      "figmaId": "182:3274",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "DropdownMenu",
+        "GlobalSearch",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs",
+        "TagTree"
+      ]
+    },
+    {
+      "title": "F5b Merge tags",
+      "figmaId": "182:3371",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "Field",
+        "FormDialog",
+        "GlobalSearch",
+        "ModalLayer",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs",
+        "TagTree"
+      ]
+    },
+    {
+      "title": "F5c Delete tag",
+      "figmaId": "182:3459",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "ModalLayer",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs",
+        "TagTree"
+      ]
+    },
+    {
+      "title": "F5d New category",
+      "figmaId": "182:3547",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "Field",
+        "FormDialog",
+        "GlobalSearch",
+        "ModalLayer",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs",
+        "TagTree"
+      ]
+    },
+    {
+      "title": "F5e Delete category",
+      "figmaId": "182:3635",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "Field",
+        "FormDialog",
+        "GlobalSearch",
+        "ModalLayer",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs",
+        "TagTree"
+      ]
+    },
+    {
+      "title": "Move library here?",
+      "figmaId": "182:3723",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ChoiceDialog",
+        "GlobalSearch",
+        "ModalLayer",
+        "PageHeader",
+        "SettingRow",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "Delete model",
+      "figmaId": "182:3812",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "ModalLayer",
+        "ModelRow",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "F6a Check for updates",
+      "figmaId": "182:3900",
+      "flow": "F · Settings",
+      "components": [
+        "AboutPanel",
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "F5f No tags yet",
+      "figmaId": "182:3985",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "EmptyState",
+        "GlobalSearch",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs",
+        "TagTree"
+      ]
+    },
+    {
+      "title": "Download failed",
+      "figmaId": "182:4073",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "HardwareSummary",
+        "ModelRow",
+        "PageHeader",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "Moving library…",
+      "figmaId": "182:4161",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "ModalLayer",
+        "PageHeader",
+        "Progress",
+        "ProgressDialog",
+        "SettingRow",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "Restart required",
+      "figmaId": "182:4246",
+      "flow": "F · Settings",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ChoiceDialog",
+        "GlobalSearch",
+        "ModalLayer",
+        "PageHeader",
+        "SettingRow",
+        "SettingsLayout",
+        "SidebarNav",
+        "Tabs"
+      ]
+    },
+    {
+      "title": "G1 Reconciliation modal — BLOCKING",
+      "figmaId": "182:4338",
+      "flow": "G · Library integrity",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "ListRow",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "ReconciliationPanel",
+        "SectionHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "G2 Rescanning",
+      "figmaId": "182:4438",
+      "flow": "G · Library integrity",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "LoadingState",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "ReconciliationPanel",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Route orphan into approval",
+      "figmaId": "182:4527",
+      "flow": "G · Library integrity",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ChoiceDialog",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "ReconciliationPanel",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Ignore all",
+      "figmaId": "182:4616",
+      "flow": "G · Library integrity",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "ReconciliationPanel",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Scan failed",
+      "figmaId": "182:4704",
+      "flow": "G · Library integrity",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ErrorState",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "Modal",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Resume on launch?",
+      "figmaId": "182:4794",
+      "flow": "H · Pending review & recovery",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ChoiceDialog",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "C1 Pending review banner",
+      "figmaId": "182:4883",
+      "flow": "H · Pending review & recovery",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "Banner",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "H1 Pending review queue",
+      "figmaId": "182:4972",
+      "flow": "H · Pending review & recovery",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "MockupCard",
+        "PageHeader",
+        "PendingBatchGroup",
+        "SectionHeader",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Discard unreviewed batch?",
+      "figmaId": "182:5066",
+      "flow": "H · Pending review & recovery",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "ConfirmDialog",
+        "GlobalSearch",
+        "ModalLayer",
+        "PageHeader",
+        "PendingBatchGroup",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Crash / error boundary",
+      "figmaId": "182:5157",
+      "flow": "X · Cross-cutting & errors",
+      "components": [
+        "CenteredLayout",
+        "ErrorState"
+      ]
+    },
+    {
+      "title": "IPC failure — generic",
+      "figmaId": "182:5242",
+      "flow": "X · Cross-cutting & errors",
+      "components": [
+        "ActivityDock",
+        "AddMenu",
+        "AppWindow",
+        "Banner",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "PageHeader",
+        "SidebarNav",
+        "Toast"
+      ]
+    },
+    {
+      "title": "Z3 Pro gate",
+      "figmaId": "182:5330",
+      "flow": "X · Cross-cutting & errors",
+      "components": [
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "PageHeader",
+        "ProGate",
+        "SidebarNav"
+      ]
+    },
+    {
+      "title": "Upgrade / licence (Phase 2)",
+      "figmaId": "182:5412",
+      "flow": "X · Cross-cutting & errors",
+      "components": [
+        "ActionBar",
+        "AddMenu",
+        "AppWindow",
+        "GlobalSearch",
+        "LibraryToolbar",
+        "MockupGrid",
+        "Modal",
+        "ModalLayer",
+        "PageHeader",
+        "ProGate",
+        "SidebarNav"
+      ]
+    }
+  ]
+}
