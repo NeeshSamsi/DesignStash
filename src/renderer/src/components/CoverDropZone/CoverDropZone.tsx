@@ -25,7 +25,7 @@ export function CoverDropZone({ className, ...rest }: CoverDropZoneProps) {
       contract={COVER_DROP_ZONE_CONTRACT}
       props={props}
       className={cn(
-        coverDropZoneVariants({ variant: props.variant, state: props.state }),
+        coverDropZoneVariants({ state: props.state }),
         className
       )}
     />
