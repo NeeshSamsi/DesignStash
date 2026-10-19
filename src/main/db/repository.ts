@@ -117,6 +117,7 @@ export class Repository {
   getTagTree(): {
     categoryId: number
     categoryLabel: string
+    tagCount: number
     tags: { tagId: number; label: string; usageCount: number }[]
   }[] {
     const categories = this.getAllCategories()
@@ -128,17 +129,21 @@ export class Repository {
       .all()
     const usageMap = new Map(usageRows.map((r) => [r.tagId, r.count]))
 
-    return categories.map((cat) => ({
-      categoryId: cat.id,
-      categoryLabel: cat.label,
-      tags: allTags
+    return categories.map((cat) => {
+      const catTags = allTags
         .filter((t) => t.categoryId === cat.id)
         .map((t) => ({
           tagId: t.id,
           label: t.label,
           usageCount: usageMap.get(t.id) ?? 0
         }))
-    }))
+      return {
+        categoryId: cat.id,
+        categoryLabel: cat.label,
+        tagCount: catTags.length,
+        tags: catTags
+      }
+    })
   }
 
   /** Count distinct mockups carrying the tag. (mockup_tags PK makes rows == distinct mockups.) */
@@ -369,8 +374,13 @@ export class Repository {
     for (const m of rows) this.upsertSearchIndex(m.id)
   }
 
-  getLibrary(opts: { tagIds?: number[]; query?: string; sort: 'date' | 'name' }): LibraryRow[] {
-    const { tagIds = [], sort } = opts
+  getLibrary(opts: {
+    tagIds?: number[]
+    categoryIds?: number[]
+    query?: string
+    sort: 'date' | 'name'
+  }): LibraryRow[] {
+    const { tagIds = [], categoryIds = [], sort } = opts
     const rawQuery = opts.query?.trim() ?? ''
 
     let candidates = this.db
@@ -397,17 +407,31 @@ export class Repository {
       }
     }
 
-    // Tag filter
-    if (tagIds.length > 0) {
+    // Tag filter: every picked tag must match (AND).
+    for (const tagId of new Set(tagIds)) {
       const taggedIds = new Set(
         this.db
           .select({ mockupId: mockupTags.mockupId })
           .from(mockupTags)
-          .where(inArray(mockupTags.tagId, tagIds))
+          .where(eq(mockupTags.tagId, tagId))
           .all()
           .map((r) => r.mockupId)
       )
       candidates = candidates.filter((c) => taggedIds.has(c.id))
+    }
+
+    // Category filter: rolls up to every tag in the category; categories AND together.
+    for (const categoryId of new Set(categoryIds)) {
+      const inCategory = new Set(
+        this.db
+          .select({ mockupId: mockupTags.mockupId })
+          .from(mockupTags)
+          .innerJoin(tags, eq(tags.id, mockupTags.tagId))
+          .where(eq(tags.categoryId, categoryId))
+          .all()
+          .map((r) => r.mockupId)
+      )
+      candidates = candidates.filter((c) => inCategory.has(c.id))
     }
 
     // Sort: favourites first, then FTS rank / name / date

@@ -407,12 +407,13 @@ function registerHandlers(
     if (args.query && args.query.trim().length > 0) {
       telemetry.get().track(TELEMETRY_EVENTS.SEARCH_PERFORMED, {
         hasQuery: true,
-        tagFilter: args.tagIds?.length ?? 0
+        tagFilter: (args.tagIds?.length ?? 0) + (args.categoryIds?.length ?? 0)
       })
     }
     return {
       items: repo.getLibrary({
         ...(args.tagIds !== undefined && { tagIds: args.tagIds }),
+        ...(args.categoryIds !== undefined && { categoryIds: args.categoryIds }),
         ...(args.query !== undefined && { query: args.query }),
         sort: args.sort
       })

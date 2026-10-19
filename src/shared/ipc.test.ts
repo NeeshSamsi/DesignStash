@@ -270,6 +270,7 @@ describe('IPC Contract', () => {
         tree: [{
           categoryId: 1,
           categoryLabel: 'Device',
+          tagCount: 2,
           tags: [
             { tagId: 10, label: 'laptop', usageCount: 3 },
             { tagId: 11, label: 'macbook', usageCount: 0 }
@@ -327,6 +328,12 @@ describe('IPC Contract', () => {
       const { request } = IPC_CONTRACT[IPC_CHANNELS.LIBRARY_LIST]
       const valid = { tagIds: [1, 2], query: 'macbook', sort: 'name' as const }
       expect(request.parse(valid)).toEqual(valid)
+    })
+
+    it('accepts categoryIds for a category-level filter', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.LIBRARY_LIST]
+      expect(request.parse({ categoryIds: [3], sort: 'date' })).toEqual({ categoryIds: [3], sort: 'date' })
+      expect(() => request.parse({ categoryIds: ['3'] })).toThrow()
     })
 
     it('defaults sort to "date" when omitted', () => {

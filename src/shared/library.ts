@@ -21,7 +21,10 @@ export const LibraryItemSchema = z.object({
 export type LibraryItem = z.infer<typeof LibraryItemSchema>
 
 export const LibraryQuerySchema = z.object({
+  /** Every picked tag must match (AND). */
   tagIds: z.array(z.number()).optional(),
+  /** Category-level roll-up: a mockup matches a category if it has any tag in it; categories AND together. */
+  categoryIds: z.array(z.number()).optional(),
   query: z.string().optional(),
   sort: z.enum(['date', 'name']).default('date')
 })

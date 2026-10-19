@@ -13,6 +13,7 @@ export const TagTreeSchema = z.array(
   z.object({
     categoryId: z.number(),
     categoryLabel: z.string(),
+    tagCount: z.number(),
     tags: z.array(TagTreeNodeSchema)
   })
 )

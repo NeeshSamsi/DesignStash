@@ -324,6 +324,51 @@ describe('getLibrary', () => {
     expect(ids).toEqual([b.id])
   })
 
+  it('getLibrary needs every picked tag to match (AND)', () => {
+    const tags = repo.getAllTags()
+    const laptop = tags.find((t) => t.label === 'laptop')!
+    const minimal = tags.find((t) => t.label === 'minimal')!
+
+    const both = repo.createMockup(approvedMockup({ title: 'Both', libraryPath: '/lib/both.psd' }))
+    const one = repo.createMockup(approvedMockup({ title: 'One', libraryPath: '/lib/one.psd' }))
+    repo.addTagToMockup(both.id, laptop.id)
+    repo.addTagToMockup(both.id, minimal.id)
+    repo.addTagToMockup(one.id, laptop.id)
+
+    const ids = repo.getLibrary({ tagIds: [laptop.id, minimal.id], sort: 'date' }).map((r) => r.id)
+    expect(ids).toEqual([both.id])
+  })
+
+  it('getLibrary rolls a category filter up to every tag in it', () => {
+    const tags = repo.getAllTags()
+    const device = repo.getAllCategories().find((c) => c.label === 'Device')!
+    const style = repo.getAllCategories().find((c) => c.label === 'Style')!
+    const laptop = tags.find((t) => t.label === 'laptop')!
+    const iphone = tags.find((t) => t.label === 'iphone')!
+    const minimal = tags.find((t) => t.label === 'minimal')!
+
+    const a = repo.createMockup(approvedMockup({ title: 'Laptop', libraryPath: '/lib/c1.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'iPhone', libraryPath: '/lib/c2.psd' }))
+    const c = repo.createMockup(approvedMockup({ title: 'Minimal only', libraryPath: '/lib/c3.psd' }))
+    repo.addTagToMockup(a.id, laptop.id)
+    repo.addTagToMockup(b.id, iphone.id)
+    repo.addTagToMockup(b.id, minimal.id)
+    repo.addTagToMockup(c.id, minimal.id)
+
+    const byDevice = repo.getLibrary({ categoryIds: [device.id], sort: 'name' }).map((r) => r.id)
+    expect(byDevice).toEqual([b.id, a.id])
+
+    // Categories AND together, and with picked tags.
+    const deviceAndStyle = repo
+      .getLibrary({ categoryIds: [device.id, style.id], sort: 'date' })
+      .map((r) => r.id)
+    expect(deviceAndStyle).toEqual([b.id])
+    const deviceAndMinimal = repo
+      .getLibrary({ categoryIds: [device.id], tagIds: [minimal.id], sort: 'date' })
+      .map((r) => r.id)
+    expect(deviceAndMinimal).toEqual([b.id])
+  })
+
   it('search filters and prefix-matches by title/description/tags', () => {
     const a = repo.createMockup(approvedMockup({ title: 'MacBook Pro Hero', libraryPath: '/lib/a.psd' }))
     const b = repo.createMockup(approvedMockup({ title: 'iPhone Screen', libraryPath: '/lib/b.psd' }))
@@ -619,6 +664,10 @@ describe('tag management — reads + simple edits (M8.1)', () => {
 
     const macbookNode = device.tags.find((t) => t.label === 'macbook')!
     expect(macbookNode.usageCount).toBe(0)
+
+    // The category carries its own tag count for the "3 tags" header.
+    expect(device.tagCount).toBe(device.tags.length)
+    expect(device.tagCount).toBe(16)
   })
 
   it('getTagUsageCount counts distinct mockups carrying the tag', () => {
