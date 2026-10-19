@@ -3,6 +3,7 @@ import type {
   IpcRequest,
   IpcResponse,
   IpcResult,
+  PushChannel,
   ImportProgress,
   AiDownloadProgress
 } from './ipc'
@@ -16,6 +17,12 @@ export interface DesignStashApi {
     channel: C,
     args: IpcRequest<C>
   ): Promise<IpcResult<IpcResponse<C>>>
+  /**
+   * Listen to a main -> renderer push channel (PUSH_CHANNELS only; anything else throws).
+   * The payload is NOT validated here: the preload stays schema-free. Renderer code should
+   * go through `subscribePush`, which validates it against the channel's zod schema.
+   */
+  subscribe(channel: PushChannel, callback: (payload: unknown) => void): () => void
   onImportProgress(callback: (progress: ImportProgress) => void): () => void
   onAiDownloadProgress(callback: (progress: AiDownloadProgress) => void): () => void
   getPathForFile(file: File): string
