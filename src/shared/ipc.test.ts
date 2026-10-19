@@ -1,6 +1,43 @@
 import { describe, it, expect } from 'vitest'
-import { IPC_CONTRACT, IPC_CHANNELS, AiModelInfoSchema, AiDownloadProgressSchema } from './ipc'
+import {
+  IPC_CONTRACT,
+  IPC_CHANNELS,
+  IPC_DOMAIN_CONTRACTS,
+  PUSH_CHANNELS,
+  isPushChannel,
+  AiModelInfoSchema,
+  AiDownloadProgressSchema
+} from './ipc'
 import { TagsByCategorySchema } from './approval'
+
+describe('IPC contract structure', () => {
+  const channels = Object.values(IPC_CHANNELS)
+
+  it('has exactly one contract per channel', () => {
+    expect(Object.keys(IPC_CONTRACT).sort()).toEqual([...channels].sort())
+  })
+
+  it('puts every channel in exactly one domain file', () => {
+    const owners = new Map<string, string[]>()
+    for (const [domain, contract] of Object.entries(IPC_DOMAIN_CONTRACTS)) {
+      for (const channel of Object.keys(contract)) {
+        owners.set(channel, [...(owners.get(channel) ?? []), domain])
+      }
+    }
+    expect([...owners.keys()].sort()).toEqual([...channels].sort())
+    for (const [channel, domains] of owners) expect([channel, domains.length]).toEqual([channel, 1])
+  })
+
+  it('lists only real channels as push channels, each with a void response', () => {
+    for (const channel of PUSH_CHANNELS) {
+      expect(channels).toContain(channel)
+      expect(IPC_CONTRACT[channel].response.safeParse(undefined).success).toBe(true)
+    }
+    expect(isPushChannel(IPC_CHANNELS.IMPORT_PROGRESS)).toBe(true)
+    expect(isPushChannel(IPC_CHANNELS.TAG_TREE)).toBe(false)
+    expect(isPushChannel('not:a-channel')).toBe(false)
+  })
+})
 
 describe('IPC Contract', () => {
   describe('APP_INFO channel', () => {

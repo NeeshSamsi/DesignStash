@@ -60,3 +60,16 @@ export const IPC_CHANNELS = {
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
+
+/**
+ * Main → renderer push events (webContents.send). The preload relays only these, and the
+ * renderer validates each payload against the channel's `request` schema in IPC_CONTRACT.
+ * No invoke handler is registered for them.
+ */
+export const PUSH_CHANNELS = [IPC_CHANNELS.IMPORT_PROGRESS, IPC_CHANNELS.AI_DOWNLOAD_PROGRESS] as const
+
+export type PushChannel = (typeof PUSH_CHANNELS)[number]
+
+export function isPushChannel(channel: string): channel is PushChannel {
+  return (PUSH_CHANNELS as readonly string[]).includes(channel)
+}
