@@ -37,7 +37,7 @@ The rule from `tags.md` holds here too: **add where the result appears.**
 - **Tag menu:** ⋯ on hover or right-click: Rename (inline), Move to ›, Merge into…, Delete.
 - **Delete** is instant: the row goes, the count drops, and the toast offers Undo, which restores the tag on every mockup. No confirm.
 - **Merge** asks first (it changes many mockups at once): pick the tag to keep and see how many mockups move. It joins two names for the same thing, for example “iPhone” into “iPhone 15 Pro”.
-- **Two tiers, no nesting:** category, then tag. Each category is its own container with its own Add tag row; New category closes the list. Roll-up is at the category level: filtering by a category includes all its tags. Search already matches partial names (“iPhone” finds iPhone 15 Pro and iPhone 14). Tags have a parent field in the code (`parent_tag_id`, `TAG_SET_PARENT`) that nothing uses; drop it when porting.
+- **Two tiers, no nesting:** category, then tag. Each category is its own container with its own Add tag row; New category closes the list. Roll-up is at the category level: filtering by a category includes all its tags. Search already matches partial names (“iPhone” finds iPhone 15 Pro and iPhone 14). The old parent field (`parent_tag_id`, `TAG_SET_PARENT`) has been removed.
 - **New category:** the dashed New category row closes the list and turns into a header input.
 - **Delete a category:** with tags, it asks where they go (mockups keep their tags); an empty one deletes at once with Undo.
 - **Empty:** one line on where tags come from, and New category.
