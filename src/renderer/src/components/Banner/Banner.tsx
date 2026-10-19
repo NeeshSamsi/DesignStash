@@ -50,12 +50,12 @@ export function Banner({ className, actionLabel, onAction, onDismiss, ...rest }:
         <p className="type-caption-xs-regular text-muted-foreground">{props.message}</p>
       </div>
       {props.action && actionLabel && (
-        <Button variant="secondary" size="xs" onClick={onAction}>
+        <Button variant="secondary" size="xs" type="button" onClick={onAction}>
           {actionLabel}
         </Button>
       )}
       {props.dismissible && (
-        <Button variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={onDismiss}>
+        <Button variant="ghost" size="icon-xs" type="button" aria-label="Dismiss" onClick={onDismiss}>
           <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
         </Button>
       )}
