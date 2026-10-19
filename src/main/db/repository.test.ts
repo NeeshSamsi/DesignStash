@@ -790,6 +790,115 @@ describe('tag management — merge / delete / deleteCategory (M8.2)', () => {
     expect(() => repo.deleteCategory(device.id)).not.toThrow()
     expect(repo.getAllCategories().find((c) => c.id === device.id)).toBeUndefined()
   })
+
+  it('deleteTag returns a snapshot that restoreTag uses to bring the tag back on every mockup', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const a = repo.createMockup(approvedMockup({ title: 'Undo A', libraryPath: '/lib/ua.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'Undo B', libraryPath: '/lib/ub.psd' }))
+    repo.addTagToMockup(a.id, laptop.id)
+    repo.addTagToMockup(b.id, laptop.id)
+    repo.upsertSearchIndex(a.id)
+    repo.upsertSearchIndex(b.id)
+
+    const { snapshot } = repo.deleteTag(laptop.id)
+    expect(snapshot.tag).toMatchObject({ id: laptop.id, label: 'laptop', categoryId: laptop.categoryId })
+    expect(snapshot.mockupIds.sort()).toEqual([a.id, b.id].sort())
+
+    const restored = repo.restoreTag(snapshot)
+
+    expect(restored).toEqual({ tagId: laptop.id, restoredMockups: 2 })
+    expect(repo.getTagsForMockup(a.id).map((t) => t.label)).toEqual(['laptop'])
+    expect(repo.getTagsForMockup(b.id).map((t) => t.label)).toEqual(['laptop'])
+    expect(matchFts('laptop').sort()).toEqual([a.id, b.id].sort())
+  })
+
+  it('restoreTag relinks to a same-named tag created since the delete, skipping gone mockups', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const a = repo.createMockup(approvedMockup({ title: 'Kept', libraryPath: '/lib/rk.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'Gone', libraryPath: '/lib/rg.psd' }))
+    repo.addTagToMockup(a.id, laptop.id)
+    repo.addTagToMockup(b.id, laptop.id)
+
+    const { snapshot } = repo.deleteTag(laptop.id)
+    const again = repo.createTag({ label: 'laptop', categoryId: laptop.categoryId })
+    repo.deleteMockup(b.id)
+
+    expect(repo.restoreTag(snapshot)).toEqual({ tagId: again.id, restoredMockups: 1 })
+    expect(repo.getTagsForMockup(a.id).map((t) => t.id)).toEqual([again.id])
+  })
+
+  it('previewMergeTags counts the mockups that would move, without changing anything', () => {
+    const all = repo.getAllTags()
+    const macbook = all.find((t) => t.label === 'macbook')!
+    const laptop = all.find((t) => t.label === 'laptop')!
+    const a = repo.createMockup(approvedMockup({ title: 'P1', libraryPath: '/lib/p1.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'P2', libraryPath: '/lib/p2.psd' }))
+    repo.addTagToMockup(a.id, macbook.id)
+    repo.addTagToMockup(b.id, macbook.id)
+
+    expect(repo.previewMergeTags(macbook.id, laptop.id)).toEqual({ affectedMockups: 2 })
+    expect(repo.getTagsForMockup(a.id).map((t) => t.label)).toEqual(['macbook'])
+    expect(() => repo.previewMergeTags(laptop.id, laptop.id)).toThrow()
+    expect(() => repo.previewMergeTags(99999, laptop.id)).toThrow()
+  })
+
+  it('deleteCategory with moveTagsTo moves its tags (merging same names) and keeps mockups tagged', () => {
+    const cats = repo.getAllCategories()
+    const angle = cats.find((c) => c.label === 'Angle')!
+    const environment = cats.find((c) => c.label === 'Environment')!
+    const front = repo.getAllTags().find((t) => t.label === 'front')!
+    const clash = repo.createTag({ label: 'side', categoryId: environment.id })
+    const sideInAngle = repo
+      .getAllTags()
+      .find((t) => t.label === 'side' && t.categoryId === angle.id)!
+    const m = repo.createMockup(approvedMockup({ title: 'Moved', libraryPath: '/lib/mv.psd' }))
+    repo.addTagToMockup(m.id, front.id)
+    repo.addTagToMockup(m.id, sideInAngle.id)
+
+    const result = repo.deleteCategory(angle.id, environment.id)
+
+    expect(result.movedTags).toBe(4)
+    expect(result.snapshot).toMatchObject({ id: angle.id, label: 'Angle' })
+    expect(repo.getAllCategories().find((c) => c.id === angle.id)).toBeUndefined()
+    const labels = repo
+      .getTagsForMockup(m.id)
+      .map((t) => `${t.categoryId}:${t.label}`)
+      .sort()
+    expect(labels).toEqual([`${environment.id}:front`, `${environment.id}:side`])
+    expect(repo.getTagsForMockup(m.id).map((t) => t.id)).toContain(clash.id)
+  })
+
+  it('deleteCategory rejects moving tags into itself or a missing category', () => {
+    const angle = repo.getAllCategories().find((c) => c.label === 'Angle')!
+    expect(() => repo.deleteCategory(angle.id, angle.id)).toThrow()
+    expect(() => repo.deleteCategory(angle.id, 99999)).toThrow()
+  })
+
+  it('restoreCategory brings back an empty category that was deleted', () => {
+    const empty = repo.createCategory({ label: 'Mood' })
+    const { snapshot } = repo.deleteCategory(empty.id)
+
+    expect(repo.restoreCategory(snapshot)).toEqual({ categoryId: empty.id })
+    expect(repo.getAllCategories().find((c) => c.id === empty.id)?.label).toBe('Mood')
+  })
+
+  it('findTagsByLabel matches across categories, ignoring case and spaces, with use counts', () => {
+    const style = repo.getAllCategories().find((c) => c.label === 'Style')!
+    const minimal = repo.getAllTags().find((t) => t.label === 'minimal')!
+    const m = repo.createMockup(approvedMockup({ title: 'Clean', libraryPath: '/lib/fd.psd' }))
+    repo.addTagToMockup(m.id, minimal.id)
+
+    expect(repo.findTagsByLabel('  Minimal ')).toEqual([
+      {
+        tagId: minimal.id,
+        label: 'minimal',
+        categoryId: style.id,
+        categoryLabel: 'Style',
+        usageCount: 1
+      }
+    ])
+    expect(repo.findTagsByLabel('nothing-like-this')).toEqual([])
+  })
 })
 
 describe('Repository — getApprovalTagsByIds', () => {

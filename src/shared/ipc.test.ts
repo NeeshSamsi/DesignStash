@@ -297,6 +297,59 @@ describe('IPC Contract', () => {
     })
   })
 
+  describe('TagTree operation channels', () => {
+    const snapshot = {
+      tag: { id: 7, label: 'laptop', categoryId: 1, isCanonical: true, createdBy: 'seed' as const },
+      mockupIds: [3, 4]
+    }
+
+    it('TAG_DELETE returns the affected count and an undo snapshot', () => {
+      const { response } = IPC_CONTRACT[IPC_CHANNELS.TAG_DELETE]
+      expect(response.parse({ affectedMockups: 2, snapshot })).toEqual({ affectedMockups: 2, snapshot })
+      expect(() => response.parse({ affectedMockups: 2 })).toThrow()
+    })
+
+    it('TAG_RESTORE takes the snapshot back', () => {
+      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_RESTORE]
+      expect(request.parse({ snapshot })).toEqual({ snapshot })
+      expect(response.parse({ tagId: 7, restoredMockups: 2 })).toEqual({ tagId: 7, restoredMockups: 2 })
+    })
+
+    it('TAG_MERGE_PREVIEW mirrors TAG_MERGE', () => {
+      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_MERGE_PREVIEW]
+      expect(request.parse({ sourceTagId: 1, targetTagId: 2 })).toEqual({ sourceTagId: 1, targetTagId: 2 })
+      expect(response.parse({ affectedMockups: 5 })).toEqual({ affectedMockups: 5 })
+    })
+
+    it('CATEGORY_DELETE takes an optional move target and returns a snapshot', () => {
+      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.CATEGORY_DELETE]
+      expect(request.parse({ categoryId: 1 })).toEqual({ categoryId: 1 })
+      expect(request.parse({ categoryId: 1, moveTagsTo: 2 })).toEqual({ categoryId: 1, moveTagsTo: 2 })
+      const valid = {
+        deleted: true,
+        movedTags: 3,
+        snapshot: { id: 1, label: 'Angle', sortOrder: 5, isCanonical: true }
+      }
+      expect(response.parse(valid)).toEqual(valid)
+    })
+
+    it('CATEGORY_RESTORE takes a category snapshot', () => {
+      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.CATEGORY_RESTORE]
+      const snap = { id: 1, label: 'Mood', sortOrder: 6, isCanonical: false }
+      expect(request.parse({ snapshot: snap })).toEqual({ snapshot: snap })
+      expect(response.parse({ categoryId: 1 })).toEqual({ categoryId: 1 })
+    })
+
+    it('TAG_FIND needs a label and lists matches across categories', () => {
+      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_FIND]
+      expect(() => request.parse({ label: '' })).toThrow()
+      const valid = {
+        matches: [{ tagId: 9, label: 'clay', categoryId: 2, categoryLabel: 'Style', usageCount: 12 }]
+      }
+      expect(response.parse(valid)).toEqual(valid)
+    })
+  })
+
   describe('tag nesting', () => {
     it('has no channel for setting a tag parent', () => {
       expect(Object.values(IPC_CHANNELS)).not.toContain('tag:set-parent')

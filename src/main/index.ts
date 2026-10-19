@@ -376,7 +376,15 @@ function registerHandlers(
     repo.mergeTags(args.sourceTagId, args.targetTagId)
   )
 
-  registerIpcHandler(IPC_CHANNELS.TAG_DELETE, (args) => repo.deleteTag(args.tagId))
+  const tagService = new TagService(repo)
+
+  registerIpcHandler(IPC_CHANNELS.TAG_MERGE_PREVIEW, tagService.previewMergeTags)
+
+  registerIpcHandler(IPC_CHANNELS.TAG_DELETE, tagService.deleteTag)
+
+  registerIpcHandler(IPC_CHANNELS.TAG_RESTORE, tagService.restoreTag)
+
+  registerIpcHandler(IPC_CHANNELS.TAG_FIND, tagService.findTag)
 
   registerIpcHandler(IPC_CHANNELS.TAG_SET_CATEGORY, (args) => {
     repo.reassignTagCategory(args.tagId, args.categoryId)
@@ -393,10 +401,9 @@ function registerHandlers(
     return { ok: true }
   })
 
-  registerIpcHandler(IPC_CHANNELS.CATEGORY_DELETE, (args) => {
-    repo.deleteCategory(args.categoryId)
-    return { deleted: true }
-  })
+  registerIpcHandler(IPC_CHANNELS.CATEGORY_DELETE, tagService.deleteCategory)
+
+  registerIpcHandler(IPC_CHANNELS.CATEGORY_RESTORE, tagService.restoreCategory)
 
   const libraryService = new LibraryService(repo, settings.getLibraryRoot(), {
     openPath: (p) => shell.openPath(p)

@@ -6,6 +6,8 @@ import * as schema from './schema'
 import { Repository } from './repository'
 import { seedTaxonomy } from './bootstrap'
 import { TagService } from './tag-service'
+import { ensureSearchIndex } from './search-index'
+import { IPC_CONTRACT, IPC_CHANNELS } from '@shared/ipc'
 
 let sqlite: Database.Database
 let db: BetterSQLite3Database<typeof schema>
@@ -68,5 +70,74 @@ describe('TagService.snapTags', () => {
     ])
     expect(ids).toHaveLength(2)
     expect(ids[0]).not.toBe(ids[1])
+  })
+})
+
+describe('TagService · TagTree operations (IPC handler layer)', () => {
+  beforeEach(() => ensureSearchIndex(db))
+
+  const approved = (title: string, libraryPath: string) =>
+    repo.createMockup({
+      title,
+      libraryPath,
+      coverPath: '/c.png',
+      coverSource: 'embedded',
+      reviewStatus: 'approved'
+    })
+
+  it('deleteTag and restoreTag round-trip and match their IPC contracts', () => {
+    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const m = approved('Svc', '/lib/svc.psd')
+    repo.addTagToMockup(m.id, laptop.id)
+
+    const deleted = svc.deleteTag({ tagId: laptop.id })
+    expect(IPC_CONTRACT[IPC_CHANNELS.TAG_DELETE].response.parse(deleted)).toEqual(deleted)
+    expect(deleted.affectedMockups).toBe(1)
+
+    const request = IPC_CONTRACT[IPC_CHANNELS.TAG_RESTORE].request.parse({
+      snapshot: deleted.snapshot
+    })
+    const restored = svc.restoreTag(request)
+    expect(IPC_CONTRACT[IPC_CHANNELS.TAG_RESTORE].response.parse(restored)).toEqual({
+      tagId: laptop.id,
+      restoredMockups: 1
+    })
+  })
+
+  it('previewMergeTags matches its IPC contract', () => {
+    const all = repo.getAllTags()
+    const macbook = all.find((t) => t.label === 'macbook')!
+    const laptop = all.find((t) => t.label === 'laptop')!
+    const preview = svc.previewMergeTags({ sourceTagId: macbook.id, targetTagId: laptop.id })
+    expect(IPC_CONTRACT[IPC_CHANNELS.TAG_MERGE_PREVIEW].response.parse(preview)).toEqual({
+      affectedMockups: 0
+    })
+  })
+
+  it('deleteCategory (with and without a target) and restoreCategory match their IPC contracts', () => {
+    const cats = repo.getAllCategories()
+    const angle = cats.find((c) => c.label === 'Angle')!
+    const style = cats.find((c) => c.label === 'Style')!
+
+    const moved = svc.deleteCategory({ categoryId: angle.id, moveTagsTo: style.id })
+    expect(IPC_CONTRACT[IPC_CHANNELS.CATEGORY_DELETE].response.parse(moved)).toEqual(moved)
+    expect(moved).toMatchObject({ deleted: true, movedTags: 4 })
+
+    const empty = repo.createCategory({ label: 'Mood' })
+    const deleted = svc.deleteCategory({ categoryId: empty.id })
+    expect(deleted.movedTags).toBe(0)
+    const restored = svc.restoreCategory(
+      IPC_CONTRACT[IPC_CHANNELS.CATEGORY_RESTORE].request.parse({ snapshot: deleted.snapshot })
+    )
+    expect(IPC_CONTRACT[IPC_CHANNELS.CATEGORY_RESTORE].response.parse(restored)).toEqual({
+      categoryId: empty.id
+    })
+  })
+
+  it('findTag matches its IPC contract', () => {
+    const found = svc.findTag({ label: 'clay-nothing' })
+    expect(IPC_CONTRACT[IPC_CHANNELS.TAG_FIND].response.parse(found)).toEqual({ matches: [] })
+    const minimal = svc.findTag({ label: 'MINIMAL' })
+    expect(minimal.matches.map((t) => t.label)).toEqual(['minimal'])
   })
 })
