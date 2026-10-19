@@ -1,0 +1,33 @@
+import { IPC_CHANNELS } from '@shared/ipc'
+import { TELEMETRY_EVENTS } from '@shared/telemetry'
+import type { GroupMember } from '@shared/grouping'
+import { GroupingService } from '../import/grouping-service'
+import type { HandlerContext } from './context'
+import { registerIpcHandler } from './register'
+
+export function registerGroupingHandlers({ telemetry, repo }: HandlerContext): void {
+  registerIpcHandler(IPC_CHANNELS.GROUPING_PROPOSE, (args) => {
+    const dbMockups = repo.getMockupsByBatchId(args.batchId)
+    const members: GroupMember[] = dbMockups.map((m) => {
+      const ctx = m.importContext as { batchId?: string; folderTrail?: string[]; originalFilename?: string } | null
+      return {
+        mockupId: m.id,
+        fileName: ctx?.originalFilename ?? m.title,
+        folderTrail: ctx?.folderTrail ?? [],
+        coverPath: m.coverPath,
+        isPrimary: false
+      }
+    })
+    return GroupingService.propose(args.batchId, members)
+  })
+
+  registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
+    repo.confirmGroupings(args.groups, args.singletonIds)
+    // Telemetry: counts only — never group contents.
+    telemetry.get().track(TELEMETRY_EVENTS.GROUP_CONFIRMED, {
+      groups: args.groups.length,
+      singletons: args.singletonIds.length
+    })
+    return { confirmed: true }
+  })
+}
