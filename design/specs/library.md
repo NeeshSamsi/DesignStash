@@ -30,14 +30,15 @@ Tags                     Clear all
 (All) (Device 5) (Style 4) (Scene 4) (Colour 3)
 Device
 ☑ iPhone 24
-   ☑ iPhone 15 Pro 12
+☑ iPhone 15 Pro 12
 ...
 ```
 
 - **Search:** filters the tags live. Categories with no matches disappear, and each pill shows how many tags match in it. There's no ⌘K hint inside the popover.
 - **Pills:** `All` comes first and is active by default. Picking a category narrows the list to it.
 - **The list:** scrolls once it's taller than about 240px.
-- **Ticking a tag:** filters the grid immediately and adds a chip to the toolbar. A parent tag includes its children. Every picked tag must match (AND).
+- **Ticking a tag:** filters the grid immediately and adds a chip to the toolbar. Every picked tag must match (AND).
+- **Two tiers, no nesting:** tags sit one level under their category. Roll-up is at the category level: filtering by a category includes all its tags (`LIBRARY_LIST` `categoryIds`; categories AND together, and with picked tags).
 - **No match:** shows “No tags match ‘x’”.
 - **No tags yet:** the existing `empty` state, with Manage tags.
 

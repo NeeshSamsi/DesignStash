@@ -11,7 +11,7 @@ describe('Library · grid, search, filter, sort', () => {
   it.todo('offers Clear search, Clear filters or Clear search and filters depending on what is active')
   it.todo('filters the tag list live in the filter popover and updates category counts')
   it.todo('narrows the tag list to a category from its pill')
-  it.todo('matches every picked tag (AND), with a parent tag including its children')
+  it.todo('matches every picked tag (AND), and a category filter includes all its tags')
   it.todo('sorts by date added (newest first) by default, or by name')
   it.todo('keeps an unstarred card in Starred until the view is left, with Undo')
   it.todo('selects with click, Cmd-click, Shift-click range, marquee and Cmd+A; never the Add card')
