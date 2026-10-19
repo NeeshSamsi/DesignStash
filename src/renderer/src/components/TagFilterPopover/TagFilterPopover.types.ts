@@ -9,7 +9,7 @@ export const TAG_FILTER_POPOVER_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-2113',
   section: '6 · Library',
   description:
-    'Tag filter: search on top, CategoryPills with live counts, tags grouped by category (scrolls past ~240px); parent matches children. Rules: design/specs/library.md.',
+    'Tag filter: search on top, CategoryPills with live counts, tags grouped by category (scrolls past ~240px); parent matches children. Rules: design/specs/library.md. Tags are two tiers (category, then tag), so the list is flat; filtering by a category includes all its tags.',
   code: 'LibraryTopBar.tsx popover',
   axes: {
     state: ['open', 'some-selected', 'searching', 'no-match', 'empty']
