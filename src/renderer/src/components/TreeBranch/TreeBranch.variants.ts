@@ -1,11 +1,8 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=233-4667
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const treeBranchVariants = cva('', {
+// Figma TreeBranch 233:4667: 16×32, stroke border/base. The curve is a bordered corner 12 wide
+// (the stub stops 4px short of the child row); `middle` adds the line running on to the next row.
+export const treeBranchVariants = cva('relative h-8 w-4 shrink-0', {
   variants: {
     position: {
       middle: '',
@@ -14,3 +11,7 @@ export const treeBranchVariants = cva('', {
   },
   defaultVariants: { position: 'middle' }
 })
+
+export const treeBranchCurveClass =
+  'absolute top-0 left-0 h-4 w-3 rounded-bl-lg border-b border-l border-base'
+export const treeBranchLineClass = 'absolute top-4 bottom-0 left-0 border-l border-base'

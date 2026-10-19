@@ -1,11 +1,8 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-2499
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const activityDockVariants = cva('', {
+// Figma ActivityDock 220:2499: a right-aligned stack, 12px apart, so toasts, the copy card and
+// the DEV debug button never overlap. Pin it with className ("fixed right-4 bottom-4 z-50").
+export const activityDockVariants = cva('flex flex-col items-end gap-3', {
   variants: {
     build: {
       production: '',

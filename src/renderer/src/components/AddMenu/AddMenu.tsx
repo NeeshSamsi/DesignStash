@@ -1,26 +1,74 @@
-import { ScaffoldStub } from '@renderer/design-system/ScaffoldStub'
+import { FileAddIcon, FolderAddIcon, AddSquareIcon } from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/react'
+import {
+  DropdownMenu,
+  DropdownMenuDivider,
+  DropdownMenuHint
+} from '@renderer/components/DropdownMenu/DropdownMenu'
+import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import { cn } from '@renderer/lib/utils'
-import { ADD_MENU_CONTRACT, ADD_MENU_DEFAULTS, type AddMenuContractProps } from './AddMenu.types'
-import { addMenuVariants } from './AddMenu.variants'
+import { Button } from '@renderer/ui/button'
+import { ADD_MENU_DEFAULTS, type AddMenuContractProps } from './AddMenu.types'
+import { addMenuNoteClass, addMenuTriggerClass, addMenuVariants } from './AddMenu.variants'
 
 export interface AddMenuProps extends AddMenuContractProps {
+  onAddFiles?: () => void
+  onAddFolder?: () => void
+  onOpenChange?: (open: boolean) => void
   className?: string
 }
 
 /**
  * AddMenu — Import entry point: Add files… / Add folder… + drop hint. Disabled while an import runs.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1767
- * Today: AppShell.tsx AddMenu
+ * The `open` prop controls the menu; leave it out and the trigger opens it. The Figma `shortcut`
+ * slot is the exposed KeyboardShortcut of a menu row: the row hints are fixed here (⌘O, ⇧⌘O).
  */
-export function AddMenu({ className, ...rest }: AddMenuProps) {
-  const props = { ...ADD_MENU_DEFAULTS, ...rest }
-  // TODO(port): replace ScaffoldStub with the real markup. Keep the props contract and
-  // data-ds="AddMenu" on the root element.
+export function AddMenu({
+  className,
+  onAddFiles,
+  onAddFolder,
+  onOpenChange,
+  ...rest
+}: AddMenuProps) {
+  const { open } = rest
+  const { disabled } = { ...ADD_MENU_DEFAULTS, ...rest }
   return (
-    <ScaffoldStub
-      contract={ADD_MENU_CONTRACT}
-      props={props}
-      className={cn(addMenuVariants({ open: props.open }), className)}
-    />
+    <div
+      data-ds="AddMenu"
+      data-state={disabled ? 'disabled' : open ? 'open' : 'closed'}
+      className={cn(addMenuVariants({ open: open ?? false, disabled }), className)}
+    >
+      <DropdownMenu
+        {...(open !== undefined ? { open } : {})}
+        {...(onOpenChange ? { onOpenChange } : {})}
+        align="start"
+        trigger={
+          <Button size="lg" disabled={disabled} className={addMenuTriggerClass}>
+            <HugeiconsIcon icon={AddSquareIcon} strokeWidth={1.5} />
+            Add a mockup
+          </Button>
+        }
+        items={
+          <>
+            <DropdownMenuItem
+              label="Add files…"
+              icon={FileAddIcon}
+              shortcut="⌘O"
+              {...(onAddFiles ? { onSelect: onAddFiles } : {})}
+            />
+            <DropdownMenuItem
+              label="Add folder…"
+              icon={FolderAddIcon}
+              shortcut="⇧⌘O"
+              {...(onAddFolder ? { onSelect: onAddFolder } : {})}
+            />
+            <DropdownMenuDivider />
+            <DropdownMenuHint>or drop PSDs anywhere</DropdownMenuHint>
+          </>
+        }
+      />
+      {disabled && <p className={addMenuNoteClass}>Import running…</p>}
+    </div>
   )
 }

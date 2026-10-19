@@ -1,13 +1,14 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1767
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const addMenuVariants = cva('', {
+// Figma AddMenu 218:1767. The trigger is Button (primary, lg); while the menu is open it keeps
+// the 2px focus ring. The menu panel is DropdownMenu.
+export const addMenuVariants = cva('flex w-full flex-col gap-1', {
   variants: {
-    open: { true: '', false: '' }
+    open: { true: '', false: '' },
+    disabled: { true: '', false: '' }
   },
-  defaultVariants: { open: false }
+  defaultVariants: { open: false, disabled: false }
 })
+
+export const addMenuTriggerClass = 'w-full aria-expanded:ring-2 aria-expanded:ring-ring'
+export const addMenuNoteClass = 'type-caption-xs-regular text-tertiary'

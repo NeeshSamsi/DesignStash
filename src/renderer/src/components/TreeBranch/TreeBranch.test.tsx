@@ -10,3 +10,12 @@ describe('TreeBranch', () => {
     expect(baseElement.querySelector('[data-ds="TreeBranch"]')).not.toBeNull()
   })
 })
+
+describe('TreeBranch behaviour', () => {
+  it('middle continues past the curve, last stops at it', () => {
+    const { baseElement, rerender } = render(<TreeBranch position="middle" />)
+    expect(baseElement.querySelectorAll('[data-ds="TreeBranch"] > span')).toHaveLength(2)
+    rerender(<TreeBranch position="last" />)
+    expect(baseElement.querySelectorAll('[data-ds="TreeBranch"] > span')).toHaveLength(1)
+  })
+})

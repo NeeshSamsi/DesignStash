@@ -1,17 +1,21 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-2248
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const appWindowVariants = cva('', {
-  variants: {
-    state: {
-      idle: '',
-      'modal-open': '',
-      'drag-over': ''
-    }
-  },
-  defaultVariants: { state: 'idle' }
-})
+// Figma AppWindow 218:2248: surface-2 window; sidebar (w-sidebar) on the left; the content panel
+// is surface-1 with a 24px top-left radius and 32px padding. The GlobalSearch is centred over the panel.
+export const appWindowVariants = cva(
+  'relative flex h-full w-full flex-col overflow-hidden bg-surface-2',
+  {
+    variants: {
+      state: {
+        idle: '',
+        'modal-open': '',
+        'drag-over': ''
+      }
+    },
+    defaultVariants: { state: 'idle' }
+  }
+)
+
+export const appWindowTitleBarClass = 'flex shrink-0 py-3'
+export const appWindowPanelClass =
+  'flex min-w-0 flex-1 flex-col gap-6 overflow-hidden rounded-tl-3xl bg-surface-1 p-8'

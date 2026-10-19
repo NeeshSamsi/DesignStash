@@ -1,16 +1,38 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1990
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const dropOverlayVariants = cva('', {
+// Figma DropOverlay 218:1990: the window-wide drop state. drag-over = primary dashes,
+// rejected = error dashes (no PSDs), queued = warning fill (an import is already running).
+export const dropOverlayVariants = cva('absolute inset-0 z-50 flex flex-col bg-overlay p-6', {
   variants: {
     state: {
       'drag-over': '',
       rejected: '',
       queued: ''
+    }
+  },
+  defaultVariants: { state: 'drag-over' }
+})
+
+export const dropOverlayZoneVariants = cva(
+  'flex flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-3xl border-2 border-dashed',
+  {
+    variants: {
+      state: {
+        'drag-over': 'border-primary bg-overlay',
+        rejected: 'border-error bg-overlay',
+        queued: 'border-warning bg-warning-weak'
+      }
+    },
+    defaultVariants: { state: 'drag-over' }
+  }
+)
+
+export const dropOverlayIconVariants = cva('size-6', {
+  variants: {
+    state: {
+      'drag-over': 'text-brand',
+      rejected: 'text-error',
+      queued: 'text-warning'
     }
   },
   defaultVariants: { state: 'drag-over' }
