@@ -49,17 +49,6 @@ export default function SettingsTagsPane() {
     await refresh()
   }
 
-  const handleSetParent = async () => {
-    const tagId = promptNumber('Tag id:')
-    if (tagId === null) return
-    const raw = window.prompt('Parent tag id (blank = clear/null):')
-    if (raw === null) return
-    const parentTagId = raw.trim() === '' ? null : Number(raw)
-    const res = await window.api.invoke(IPC_CHANNELS.TAG_SET_PARENT, { tagId, parentTagId })
-    setStatus(res.success ? `Set parent of ${tagId} → ${parentTagId}` : `Error: ${res.error.message}`)
-    await refresh()
-  }
-
   const handleMerge = async () => {
     const sourceTagId = promptNumber('Source tag id (will be deleted):')
     if (sourceTagId === null) return
@@ -135,7 +124,6 @@ export default function SettingsTagsPane() {
       <div className="mb-4 flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" onClick={() => void handleRenameTag()}>Rename tag</Button>
         <Button variant="secondary" size="sm" onClick={() => void handleSetCategory()}>Set tag category</Button>
-        <Button variant="secondary" size="sm" onClick={() => void handleSetParent()}>Set tag parent</Button>
         <Button variant="secondary" size="sm" onClick={() => void handleMerge()}>Merge tags</Button>
         <Button variant="secondary" size="sm" onClick={() => void handleDeleteTag()}>Delete tag</Button>
         <Button variant="secondary" size="sm" onClick={() => void handleCreateCategory()}>Create category</Button>
@@ -152,7 +140,7 @@ export default function SettingsTagsPane() {
             <span className="text-foreground">[{cat.categoryId}] {cat.categoryLabel}</span>
             {cat.tags.map((t) => (
               <div key={t.tagId} className="pl-4 text-muted-foreground">
-                ({t.tagId}) {t.label} · parent={String(t.parentTagId)} · used={t.usageCount}
+                ({t.tagId}) {t.label} · used={t.usageCount}
               </div>
             ))}
           </div>

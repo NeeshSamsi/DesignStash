@@ -117,7 +117,7 @@ export class Repository {
   getTagTree(): {
     categoryId: number
     categoryLabel: string
-    tags: { tagId: number; label: string; parentTagId: number | null; usageCount: number }[]
+    tags: { tagId: number; label: string; usageCount: number }[]
   }[] {
     const categories = this.getAllCategories()
     const allTags = this.db.select().from(tags).all()
@@ -136,7 +136,6 @@ export class Repository {
         .map((t) => ({
           tagId: t.id,
           label: t.label,
-          parentTagId: t.parentTagId,
           usageCount: usageMap.get(t.id) ?? 0
         }))
     }))
@@ -167,22 +166,6 @@ export class Repository {
   /** Move a tag to a different category. (No FTS change — category label isn't indexed.) */
   reassignTagCategory(tagId: number, categoryId: number): void {
     this.db.update(tags).set({ categoryId }).where(eq(tags.id, tagId)).run()
-  }
-
-  /** Set (or clear) a tag's roll-up parent. A non-null parent must be in the SAME category
-   *  as the tag and must not be the tag itself. */
-  setTagParent(tagId: number, parentTagId: number | null): void {
-    if (parentTagId !== null) {
-      if (parentTagId === tagId) throw new Error('A tag cannot be its own parent')
-      const tag = this.db.select().from(tags).where(eq(tags.id, tagId)).get()
-      if (!tag) throw new Error(`Tag ${tagId} not found`)
-      const parent = this.db.select().from(tags).where(eq(tags.id, parentTagId)).get()
-      if (!parent) throw new Error(`Parent tag ${parentTagId} not found`)
-      if (parent.categoryId !== tag.categoryId) {
-        throw new Error('Parent tag must belong to the same category as the tag')
-      }
-    }
-    this.db.update(tags).set({ parentTagId }).where(eq(tags.id, tagId)).run()
   }
 
   /** Merge sourceTag into targetTag: re-point every association, dedupe, delete source, reindex FTS. */
@@ -386,16 +369,6 @@ export class Repository {
     for (const m of rows) this.upsertSearchIndex(m.id)
   }
 
-  expandTagIds(tagIds: number[]): number[] {
-    if (tagIds.length === 0) return []
-    const children = this.db
-      .select({ id: tags.id })
-      .from(tags)
-      .where(inArray(tags.parentTagId, tagIds))
-      .all()
-    return [...new Set([...tagIds, ...children.map((c) => c.id)])]
-  }
-
   getLibrary(opts: { tagIds?: number[]; query?: string; sort: 'date' | 'name' }): LibraryRow[] {
     const { tagIds = [], sort } = opts
     const rawQuery = opts.query?.trim() ?? ''
@@ -426,18 +399,15 @@ export class Repository {
 
     // Tag filter
     if (tagIds.length > 0) {
-      const expandedIds = this.expandTagIds(tagIds)
-      if (expandedIds.length > 0) {
-        const taggedIds = new Set(
-          this.db
-            .select({ mockupId: mockupTags.mockupId })
-            .from(mockupTags)
-            .where(inArray(mockupTags.tagId, expandedIds))
-            .all()
-            .map((r) => r.mockupId)
-        )
-        candidates = candidates.filter((c) => taggedIds.has(c.id))
-      }
+      const taggedIds = new Set(
+        this.db
+          .select({ mockupId: mockupTags.mockupId })
+          .from(mockupTags)
+          .where(inArray(mockupTags.tagId, tagIds))
+          .all()
+          .map((r) => r.mockupId)
+      )
+      candidates = candidates.filter((c) => taggedIds.has(c.id))
     }
 
     // Sort: favourites first, then FTS rank / name / date

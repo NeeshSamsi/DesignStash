@@ -355,7 +355,7 @@ function registerHandlers(
       categoryLabel: cat.label,
       tags: allTags
         .filter((t) => t.categoryId === cat.id)
-        .map((t) => ({ tagId: t.id, label: t.label, parentTagId: t.parentTagId ?? null }))
+        .map((t) => ({ tagId: t.id, label: t.label }))
     }))
     return { categories }
   })
@@ -380,11 +380,6 @@ function registerHandlers(
 
   registerIpcHandler(IPC_CHANNELS.TAG_SET_CATEGORY, (args) => {
     repo.reassignTagCategory(args.tagId, args.categoryId)
-    return { ok: true }
-  })
-
-  registerIpcHandler(IPC_CHANNELS.TAG_SET_PARENT, (args) => {
-    repo.setTagParent(args.tagId, args.parentTagId)
     return { ok: true }
   })
 

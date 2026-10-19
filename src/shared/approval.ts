@@ -65,8 +65,7 @@ export const TagsByCategorySchema = z.object({
   categoryLabel: z.string(),
   tags: z.array(z.object({
     tagId: z.number(),
-    label: z.string(),
-    parentTagId: z.number().nullable()
+    label: z.string()
   }))
 })
 export type TagsByCategory = z.infer<typeof TagsByCategorySchema>

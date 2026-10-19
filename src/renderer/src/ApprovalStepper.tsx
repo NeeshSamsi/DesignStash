@@ -290,7 +290,7 @@ export default function ApprovalStepper({ onComplete, onCancel }: ApprovalSteppe
     setCategories((prev) =>
       prev.map((c) =>
         c.categoryId === categoryId
-          ? { ...c, tags: [...c.tags, { tagId: newTag.tagId, label: newTag.label, parentTagId: null }] }
+          ? { ...c, tags: [...c.tags, { tagId: newTag.tagId, label: newTag.label }] }
           : c
       )
     )

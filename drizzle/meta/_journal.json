@@ -22,6 +22,13 @@
       "when": 1781670991490,
       "tag": "0002_melted_virginia_dare",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792428487843,
+      "tag": "0003_drop_tag_parent",
+      "breakpoints": true
     }
   ]
 }

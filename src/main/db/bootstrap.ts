@@ -15,79 +15,76 @@ export function bootstrapLibrary(libraryRoot: string): void {
   }
 }
 
-interface SeedTag {
-  label: string
-  children?: string[]
-}
 interface SeedCategory {
   label: string
-  tags: SeedTag[]
+  tags: string[]
 }
 
-/** Seed taxonomy with two-tier category→tag hierarchy + roll-up parents (spec §3.7). */
+/** Seed taxonomy: two tiers, category then tag (spec §3.7). */
 const TAXONOMY: SeedCategory[] = [
   {
     label: 'Device',
     tags: [
-      { label: 'laptop', children: ['macbook', 'windows-laptop'] },
-      { label: 'phone', children: ['iphone', 'android-phone'] },
-      { label: 'tablet', children: ['ipad', 'android-tablet'] },
-      { label: 'desktop-monitor', children: ['imac', 'studio-display'] },
-      { label: 'smartwatch', children: ['apple-watch'] },
-      { label: 'e-reader' },
-      { label: 'tv' }
+      'laptop',
+      'macbook',
+      'windows-laptop',
+      'phone',
+      'iphone',
+      'android-phone',
+      'tablet',
+      'ipad',
+      'android-tablet',
+      'desktop-monitor',
+      'imac',
+      'studio-display',
+      'smartwatch',
+      'apple-watch',
+      'e-reader',
+      'tv'
     ]
   },
   {
     label: 'Print & Branding',
     tags: [
-      { label: 'business-card' },
-      { label: 'poster' },
-      { label: 'flyer' },
-      { label: 'billboard' },
-      { label: 'packaging', children: ['box', 'bottle', 'bag', 'label'] },
-      { label: 'book-magazine' },
-      { label: 'stationery', children: ['letterhead', 'envelope'] },
-      { label: 'signage' }
+      'business-card',
+      'poster',
+      'flyer',
+      'billboard',
+      'packaging',
+      'box',
+      'bottle',
+      'bag',
+      'label',
+      'book-magazine',
+      'stationery',
+      'letterhead',
+      'envelope',
+      'signage'
     ]
   },
   {
     label: 'Apparel',
-    tags: [
-      { label: 't-shirt' },
-      { label: 'hoodie' },
-      { label: 'cap' },
-      { label: 'tote-bag' },
-      { label: 'mug' },
-      { label: 'sticker' }
-    ]
+    tags: ['t-shirt', 'hoodie', 'cap', 'tote-bag', 'mug', 'sticker']
   },
   {
     label: 'Environment',
     tags: [
-      { label: 'indoor' },
-      { label: 'outdoor' },
-      { label: 'desk-scene' },
-      { label: 'isometric' },
-      { label: 'flat-lay' },
-      { label: 'hand-held' },
-      { label: 'floating-perspective' }
+      'indoor',
+      'outdoor',
+      'desk-scene',
+      'isometric',
+      'flat-lay',
+      'hand-held',
+      'floating-perspective'
     ]
   },
   {
     label: 'Style',
-    tags: [
-      { label: 'minimal' },
-      { label: 'realistic' },
-      { label: '3d-render' },
-      { label: 'dark' },
-      { label: 'light' },
-      { label: 'colorful' }
-    ]
+    tags: ['minimal', 'realistic', '3d-render', 'dark', 'light', 'colorful']
   },
   {
     label: 'Angle',
-    tags: [{ label: 'front' }, { label: 'side' }, { label: 'angle' }, { label: 'top-down' }]
+    tags: ['front', 'side', 'angle', 'top-down']
   }
 ]
 
@@ -104,18 +101,8 @@ export function seedTaxonomy(db: AppDatabase): void {
         .returning({ id: tagCategories.id })
         .get()
 
-      for (const tag of category.tags) {
-        const parent = tx
-          .insert(tags)
-          .values({ label: tag.label, categoryId: cat.id, createdBy: 'seed' })
-          .returning({ id: tags.id })
-          .get()
-
-        for (const child of tag.children ?? []) {
-          tx.insert(tags)
-            .values({ label: child, categoryId: cat.id, parentTagId: parent.id, createdBy: 'seed' })
-            .run()
-        }
+      for (const label of category.tags) {
+        tx.insert(tags).values({ label, categoryId: cat.id, createdBy: 'seed' }).run()
       }
     })
   })

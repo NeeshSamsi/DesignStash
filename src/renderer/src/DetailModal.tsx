@@ -174,7 +174,7 @@ export function DetailModal({ mockupId, onClose }: Props) {
               ...c,
               tags: [
                 ...c.tags,
-                { tagId: newTag.tagId, label: newTag.label, parentTagId: null },
+                { tagId: newTag.tagId, label: newTag.label },
               ],
             }
           : c

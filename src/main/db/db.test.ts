@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import { isNotNull, isNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import * as schema from './schema'
 import { seedTaxonomy, bootstrapLibrary } from './bootstrap'
-import { mkdtempSync, rmSync, existsSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -59,6 +59,14 @@ describe('migrations', () => {
     expect(cols).toContain('deleted_at')
   })
 
+  it('tags are two tiers: the tags table holds only a category, no parent', () => {
+    const cols = sqlite
+      .prepare('PRAGMA table_info(tags)')
+      .all()
+      .map((r) => (r as { name: string }).name)
+    expect(cols).toEqual(['id', 'label', 'category_id', 'is_canonical', 'created_by'])
+  })
+
   it('enforces foreign key constraint on mockup_tags', () => {
     expect(() => {
       sqlite.prepare('INSERT INTO mockup_tags (mockup_id, tag_id) VALUES (9999, 9999)').run()
@@ -75,16 +83,78 @@ describe('migrations', () => {
   })
 })
 
+describe('migration: drop tag nesting', () => {
+  /** A copy of ./drizzle whose journal stops before the nesting drop. */
+  function migrationsBeforeNestingDrop(): string {
+    const dir = tempDir()
+    cpSync('./drizzle', dir, { recursive: true })
+    const journalPath = join(dir, 'meta', '_journal.json')
+    const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cut = journal.entries.findIndex((e) => e.tag.endsWith('_drop_tag_parent'))
+    expect(cut).toBeGreaterThan(0)
+    journal.entries = journal.entries.slice(0, cut)
+    writeFileSync(journalPath, JSON.stringify(journal))
+    return dir
+  }
+
+  it('keeps tags and mockup tag links on a database that had parent links', () => {
+    const old = new Database(':memory:')
+    old.pragma('foreign_keys = ON')
+    const oldDb = drizzle(old, { schema })
+    migrate(oldDb, { migrationsFolder: migrationsBeforeNestingDrop() })
+
+    // The pre-drop tags table: id, label, category_id, parent, is_canonical, created_by.
+    // Insert positionally so 'iphone' is nested under 'phone'.
+    const legacyCols = old.prepare('PRAGMA table_info(tags)').all()
+    expect(legacyCols).toHaveLength(6)
+    old.exec(`
+      INSERT INTO tag_categories (id, label) VALUES (1, 'Device');
+      INSERT INTO tags VALUES (1, 'phone', 1, NULL, 1, 'seed');
+      INSERT INTO tags VALUES (2, 'iphone', 1, 1, 1, 'seed');
+      INSERT INTO mockups (id, title, library_path, cover_path, cover_source)
+        VALUES (1, 'Clay iPhone', '/lib/a.psd', '/lib/a.png', 'embedded');
+      INSERT INTO mockup_tags (mockup_id, tag_id) VALUES (1, 1), (1, 2);
+    `)
+
+    migrate(oldDb, { migrationsFolder: './drizzle' })
+
+    const cols = old
+      .prepare('PRAGMA table_info(tags)')
+      .all()
+      .map((r) => (r as { name: string }).name)
+    expect(cols).toEqual(['id', 'label', 'category_id', 'is_canonical', 'created_by'])
+    expect(old.prepare('SELECT id, label, category_id FROM tags ORDER BY id').all()).toEqual([
+      { id: 1, label: 'phone', category_id: 1 },
+      { id: 2, label: 'iphone', category_id: 1 }
+    ])
+    expect(old.prepare('SELECT count(*) AS c FROM mockup_tags').get()).toEqual({ c: 2 })
+    expect(old.pragma('foreign_key_check')).toEqual([])
+    old.close()
+  })
+})
+
 describe('seedTaxonomy', () => {
   it('seeds all 6 categories', () => {
     seedTaxonomy(db)
     expect(db.select().from(schema.tagCategories).all()).toHaveLength(6)
   })
 
-  it('seeds child tags with parentTagId set', () => {
+  it('seeds a flat tag list under each category', () => {
     seedTaxonomy(db)
-    const children = db.select().from(schema.tags).where(isNotNull(schema.tags.parentTagId)).all()
-    expect(children.length).toBeGreaterThan(0)
+    const device = db
+      .select()
+      .from(schema.tagCategories)
+      .where(eq(schema.tagCategories.label, 'Device'))
+      .get()!
+    const labels = db
+      .select()
+      .from(schema.tags)
+      .where(eq(schema.tags.categoryId, device.id))
+      .all()
+      .map((t) => t.label)
+    expect(labels).toEqual(expect.arrayContaining(['laptop', 'macbook', 'phone', 'iphone']))
   })
 
   it('all seeded tags have createdBy=seed', () => {
@@ -92,7 +162,6 @@ describe('seedTaxonomy', () => {
     const nonSeed = db
       .select()
       .from(schema.tags)
-      .where(isNull(schema.tags.parentTagId))
       .all()
       .filter((t) => t.createdBy !== 'seed')
     expect(nonSeed).toHaveLength(0)

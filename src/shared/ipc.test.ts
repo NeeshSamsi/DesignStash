@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { IPC_CONTRACT, IPC_CHANNELS, AiModelInfoSchema, AiDownloadProgressSchema } from './ipc'
+import { TagsByCategorySchema } from './approval'
 
 describe('IPC Contract', () => {
   describe('APP_INFO channel', () => {
@@ -238,10 +239,14 @@ describe('IPC Contract', () => {
       const valid = {
         categories: [{
           categoryId: 1, categoryLabel: 'Device',
-          tags: [{ tagId: 10, label: 'iphone', parentTagId: null }]
+          tags: [{ tagId: 10, label: 'iphone' }]
         }]
       }
       expect(response.parse(valid)).toEqual(valid)
+    })
+
+    it('describes a tag by id and label only (tags are two tiers)', () => {
+      expect(Object.keys(TagsByCategorySchema.shape.tags.element.shape)).toEqual(['tagId', 'label'])
     })
   })
 
@@ -266,8 +271,8 @@ describe('IPC Contract', () => {
           categoryId: 1,
           categoryLabel: 'Device',
           tags: [
-            { tagId: 10, label: 'laptop', parentTagId: null, usageCount: 3 },
-            { tagId: 11, label: 'macbook', parentTagId: 10, usageCount: 0 }
+            { tagId: 10, label: 'laptop', usageCount: 3 },
+            { tagId: 11, label: 'macbook', usageCount: 0 }
           ]
         }]
       }
@@ -291,11 +296,10 @@ describe('IPC Contract', () => {
     })
   })
 
-  describe('TAG_SET_PARENT channel', () => {
-    it('accepts parentTagId: null', () => {
-      const { request } = IPC_CONTRACT[IPC_CHANNELS.TAG_SET_PARENT]
-      expect(request.parse({ tagId: 1, parentTagId: null })).toEqual({ tagId: 1, parentTagId: null })
-      expect(request.parse({ tagId: 1, parentTagId: 5 })).toEqual({ tagId: 1, parentTagId: 5 })
+  describe('tag nesting', () => {
+    it('has no channel for setting a tag parent', () => {
+      expect(Object.values(IPC_CHANNELS)).not.toContain('tag:set-parent')
+      expect(Object.keys(IPC_CONTRACT)).not.toContain('tag:set-parent')
     })
   })
 

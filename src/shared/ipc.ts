@@ -209,10 +209,6 @@ export const IPC_CONTRACT = {
     request: z.object({ tagId: z.number(), categoryId: z.number() }),
     response: z.object({ ok: z.boolean() })
   },
-  [IPC_CHANNELS.TAG_SET_PARENT]: {
-    request: z.object({ tagId: z.number(), parentTagId: z.number().nullable() }),
-    response: z.object({ ok: z.boolean() })
-  },
   [IPC_CHANNELS.CATEGORY_CREATE]: {
     request: z.object({ label: z.string().min(1) }),
     response: z.object({ categoryId: z.number(), label: z.string() })

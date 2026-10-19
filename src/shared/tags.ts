@@ -4,7 +4,6 @@ import { z } from 'zod'
 export const TagTreeNodeSchema = z.object({
   tagId: z.number(),
   label: z.string(),
-  parentTagId: z.number().nullable(),
   usageCount: z.number()
 })
 export type TagTreeNode = z.infer<typeof TagTreeNodeSchema>

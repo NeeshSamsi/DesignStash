@@ -68,7 +68,7 @@ export const tagCategories = sqliteTable('tag_categories', {
   isCanonical: integer('is_canonical', { mode: 'boolean' }).notNull().default(true)
 })
 
-/** Tags — two-tier hierarchy: belong to a category, optional parent tag for roll-up (spec §3.6). */
+/** Tags: two tiers, category then tag. No nesting; roll-up is at the category level. */
 export const tags = sqliteTable(
   'tags',
   {
@@ -77,9 +77,6 @@ export const tags = sqliteTable(
     categoryId: integer('category_id')
       .notNull()
       .references(() => tagCategories.id, { onDelete: 'cascade' }),
-    parentTagId: integer('parent_tag_id').references((): AnySQLiteColumn => tags.id, {
-      onDelete: 'set null'
-    }),
     isCanonical: integer('is_canonical', { mode: 'boolean' }).notNull().default(true),
     createdBy: text('created_by', { enum: ['seed', 'ai', 'user'] })
       .notNull()

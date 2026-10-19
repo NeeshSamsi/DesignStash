@@ -130,11 +130,12 @@ describe('Repository — tags', () => {
     expect(repo.getTagsForMockup(m.id)).toHaveLength(0)
   })
 
-  it('getAllTags includes both parent and child tags', () => {
+  it('getAllTags returns every seeded tag as a flat list', () => {
     const all = repo.getAllTags()
     const labels = all.map((t) => t.label)
     expect(labels).toContain('laptop')
-    expect(labels).toContain('macbook') // child of laptop
+    expect(labels).toContain('macbook')
+    expect(Object.keys(all[0]!).sort()).toEqual(['categoryId', 'createdBy', 'id', 'isCanonical', 'label'])
   })
 })
 
@@ -309,25 +310,18 @@ describe('getLibrary', () => {
     expect(ids[0]).toBe(b.id)         // favourite first
   })
 
-  it('expandTagIds rolls up parent tag to include children; getLibrary respects roll-up', () => {
+  it('getLibrary matches a picked tag directly, with no roll-up to other tags', () => {
     const allTags = repo.getAllTags()
     const laptop = allTags.find((t) => t.label === 'laptop')!
     const macbook = allTags.find((t) => t.label === 'macbook')!
-    const phone = allTags.find((t) => t.label === 'phone')!
-
-    const expanded = repo.expandTagIds([laptop.id])
-    expect(expanded).toContain(laptop.id)
-    expect(expanded).toContain(macbook.id)
 
     const a = repo.createMockup(approvedMockup({ title: 'MacBook', libraryPath: '/lib/mb.psd' }))
-    const b = repo.createMockup(approvedMockup({ title: 'Phone', libraryPath: '/lib/ph.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'Laptop', libraryPath: '/lib/lp.psd' }))
     repo.addTagToMockup(a.id, macbook.id)
-    repo.addTagToMockup(b.id, phone.id)
+    repo.addTagToMockup(b.id, laptop.id)
 
-    const result = repo.getLibrary({ tagIds: [laptop.id], sort: 'date' })
-    const ids = result.map((r) => r.id)
-    expect(ids).toContain(a.id)    // matched via roll-up
-    expect(ids).not.toContain(b.id)
+    const ids = repo.getLibrary({ tagIds: [laptop.id], sort: 'date' }).map((r) => r.id)
+    expect(ids).toEqual([b.id])
   })
 
   it('search filters and prefix-matches by title/description/tags', () => {
@@ -621,10 +615,9 @@ describe('tag management — reads + simple edits (M8.1)', () => {
 
     const laptopNode = device.tags.find((t) => t.label === 'laptop')!
     expect(laptopNode.usageCount).toBe(1)
-    expect(laptopNode.parentTagId).toBeNull()
+    expect(Object.keys(laptopNode).sort()).toEqual(['label', 'tagId', 'usageCount'])
 
     const macbookNode = device.tags.find((t) => t.label === 'macbook')!
-    expect(macbookNode.parentTagId).toBe(laptop.id)
     expect(macbookNode.usageCount).toBe(0)
   })
 
@@ -662,29 +655,6 @@ describe('tag management — reads + simple edits (M8.1)', () => {
     const deviceNode = tree.find((c) => c.categoryLabel === 'Device')!
     expect(apparelNode.tags.map((t) => t.label)).toContain('laptop')
     expect(deviceNode.tags.map((t) => t.label)).not.toContain('laptop')
-  })
-
-  it('setTagParent sets a parent in the same category', () => {
-    const tags = repo.getAllTags()
-    const phone = tags.find((t) => t.label === 'phone')!
-    const tablet = tags.find((t) => t.label === 'tablet')! // same category (Device)
-    repo.setTagParent(tablet.id, phone.id)
-    expect(repo.getAllTags().find((t) => t.id === tablet.id)!.parentTagId).toBe(phone.id)
-
-    repo.setTagParent(tablet.id, null)
-    expect(repo.getAllTags().find((t) => t.id === tablet.id)!.parentTagId).toBeNull()
-  })
-
-  it('setTagParent throws when parent is in a different category', () => {
-    const tags = repo.getAllTags()
-    const laptop = tags.find((t) => t.label === 'laptop')! // Device
-    const tshirt = tags.find((t) => t.label === 't-shirt')! // Apparel
-    expect(() => repo.setTagParent(laptop.id, tshirt.id)).toThrow()
-  })
-
-  it('setTagParent throws when parent === tag', () => {
-    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
-    expect(() => repo.setTagParent(laptop.id, laptop.id)).toThrow()
   })
 
   it('renameCategory changes the category label', () => {

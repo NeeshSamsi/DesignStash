@@ -9,8 +9,8 @@ const mockCategories = [
     categoryId: 1,
     categoryLabel: 'Style',
     tags: [
-      { tagId: 10, label: 'Minimal', parentTagId: null },
-      { tagId: 11, label: 'Bold', parentTagId: null },
+      { tagId: 10, label: 'Minimal' },
+      { tagId: 11, label: 'Bold' },
     ],
   },
 ]

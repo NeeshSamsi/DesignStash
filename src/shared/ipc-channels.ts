@@ -28,7 +28,6 @@ export const IPC_CHANNELS = {
   TAG_MERGE: 'tag:merge',
   TAG_DELETE: 'tag:delete',
   TAG_SET_CATEGORY: 'tag:set-category',
-  TAG_SET_PARENT: 'tag:set-parent',
   CATEGORY_CREATE: 'category:create',
   CATEGORY_RENAME: 'category:rename',
   CATEGORY_DELETE: 'category:delete',
