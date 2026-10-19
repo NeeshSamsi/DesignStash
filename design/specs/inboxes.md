@@ -1,0 +1,31 @@
+# Inboxes and Trash
+
+**Status:** designed and approved 2026-10-19, not built.
+**Figma:** MockupGrid, MockupCard (`pending-review` and `trash`), ActionBar, PageHeader, ConfirmDialog and Toast. The flows are on _↳ Inboxes & Trash_, one section each: _I1 · To sort_, _I2 · To stash_, _I3–I5 · Finish later, done & relaunch_ and _E · Trash_.
+
+All three pages use the same grid, cards, action bar and selection as My Stash: click, ⌘-click, ⇧-click, marquee, ⌘A and Esc. The action bar's buttons act on the selection when there is one (“Look over 3”, “Toss 3”, “Restore 3”).
+
+## To sort
+
+- **Cards:** file names only, singles (no +N yet).
+- **AI status badge** (decided 2026-10-19): most cards will be ready, so only the few still in progress get a quiet badge, “Sniffing…”, matching Look it over's “Sniffing out a title…”. The action bar's line counts them (“Still sniffing 7 of 38”) and reads “AI suggestions ready for all 38” once they're done.
+
+## To stash
+
+- **Cards:** piles with their +N and single mockups, in sorted order. No per-card status badge: everything on this page is waiting, and the page title says so.
+- **Hover:** one full-width primary **Look it over** along the cover's bottom, over a soft scrim, styled like Open in Photoshop on My Stash cards. It opens that pile or mockup in Look it over. Click still selects.
+- **Action bar:** Toss these (secondary) · Look them over (primary).
+
+## Done
+
+- **All tucked away:** a success toast in the usual place, bottom-right, styled like “Saved your changes”: “All tucked away · 12 mockups stashed”. It times out like any toast. There's no separate celebration popup.
+- **Some skipped:** the same toast: “10 tucked away · 2 skipped ones are waiting in To stash.”
+
+## Trash
+
+- **Layout:** the same grid as My Stash, with no Add card. Cards show the cover (+N on piles), the title and when it was trashed (“Trashed 2 days ago”), newest first. A pile comes back whole.
+- **Hover:** Restore (primary, full width) with Delete for good under it, the same stack as Open in Photoshop and Edit details on My Stash cards. Right-click offers the same two.
+- **Action bar:** Empty Trash (secondary) · Restore all (primary). Restore all needs no confirm: it's undoable from the toast. Empty Trash asks once for the whole Trash, naming the count and the space it frees.
+- **Loading:** the action bar with both buttons disabled, then the grid's loading cards.
+- **Delete for good:** a ConfirmDialog naming the item. There's no undo.
+- **Restore failed:** the PSD is gone from the stash folder; the card says so, and the dialog offers Keep in Trash or Delete entry.

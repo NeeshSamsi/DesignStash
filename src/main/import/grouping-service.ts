@@ -27,6 +27,7 @@ export function extractStem(fileName: string): string {
   return stem
 }
 
+// Pile titles, and which folders/stems are too generic to group by: design/specs/pile-titles.md
 export class GroupingService {
   /**
    * Takes an array of GroupMember objects, returns a GroupingProposal.
