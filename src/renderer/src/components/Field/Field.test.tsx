@@ -11,7 +11,8 @@ describe('Field', () => {
   })
 
   it('renders the Figma default text', () => {
-    render(<Field />)
+    // The error text only shows while invalid, as in Figma.
+    render(<Field invalid />)
     for (const text of Object.values<string>(FIELD_CONTRACT.texts)) {
       expect(screen.getAllByText(text).length).toBeGreaterThan(0)
     }
