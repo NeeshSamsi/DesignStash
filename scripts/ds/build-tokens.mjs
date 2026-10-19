@@ -114,7 +114,12 @@ const lines = ['  /* primitives */']
 for (const [name, hex] of Object.entries(snap.primitives.colors))
   lines.push(`  ${v(name)}: ${hex};`)
 lines.push('', '  /* semantic colours (aliases keep the primitive chain visible) */')
-for (const t of snap.tokens.colors) lines.push(`  ${v(t.name)}: var(${v(t.alias)});`)
+// An alias can carry an alpha (Figma: alias + opacity), e.g. background/selection = maple-300 @ 20%.
+const aliasValue = (t) =>
+  t.alpha == null
+    ? `var(${v(t.alias)})`
+    : `color-mix(in srgb, var(${v(t.alias)}) ${Math.round(t.alpha * 100)}%, transparent)`
+for (const t of snap.tokens.colors) lines.push(`  ${v(t.name)}: ${aliasValue(t)};`)
 lines.push('', '  /* spacing, radius, border width, icon sizes — equal to Tailwind defaults */')
 for (const t of snap.tokens.numbers) lines.push(`  ${v(t.name)}: ${px(t.value)};`)
 const families = {}
@@ -215,6 +220,7 @@ const data = {
     return {
       name: t.name,
       alias: t.alias,
+      alpha: t.alpha,
       description: t.description,
       cssVar: v(t.name),
       utility,

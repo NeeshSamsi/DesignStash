@@ -311,6 +311,8 @@ await emit(
   title: string
   figmaId: string
   flow: string
+  /** The ↳ Figma page the screen lives on (one per journey stage). */
+  page: string
   /** Code names of the design-system components the screen composes. */
   components: string[]
 }
@@ -324,6 +326,7 @@ export const SCREENS: ScreenEntry[] = ${JSON.stringify(
       title: s.title,
       figmaId: s.figmaId,
       flow: s.flow,
+      page: s.page,
       components: s.components
         .filter((n) => !['ContentSlot', 'ModalLayer'].includes(n))
         .map(codeName)
