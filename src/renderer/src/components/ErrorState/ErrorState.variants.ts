@@ -1,16 +1,12 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-666
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const errorStateVariants = cva('', {
+// `inline` is a Banner (see ErrorState.tsx); page and full-window are centred at the top of the view.
+export const errorStateVariants = cva('flex flex-col items-center text-center', {
   variants: {
     variant: {
       inline: '',
-      page: '',
-      'full-window': ''
+      page: 'mx-auto w-full max-w-120 gap-4 p-12',
+      'full-window': 'mx-auto w-full max-w-120 gap-4 p-16'
     }
   },
   defaultVariants: { variant: 'inline' }

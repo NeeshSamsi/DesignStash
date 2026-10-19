@@ -1,17 +1,28 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-777
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const bannerVariants = cva('', {
+// Neutral card; tone colour lives only in the 3px left accent and the icon.
+export const bannerVariants = cva(
+  'flex items-center gap-3 rounded-lg border border-subtle border-l-3 bg-surface-2 py-3 pr-4 pl-4.5',
+  {
+    variants: {
+      tone: {
+        info: 'border-l-informational',
+        warning: 'border-l-warning',
+        error: 'border-l-error',
+        success: 'border-l-success'
+      }
+    },
+    defaultVariants: { tone: 'info' }
+  }
+)
+
+export const bannerIconVariants = cva('size-5 shrink-0', {
   variants: {
     tone: {
-      info: '',
-      warning: '',
-      error: '',
-      success: ''
+      info: 'text-informational',
+      warning: 'text-warning',
+      error: 'text-error',
+      success: 'text-success'
     }
   },
   defaultVariants: { tone: 'info' }
