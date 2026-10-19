@@ -124,7 +124,8 @@ lines.push('', '  /* spacing, radius, border width, icon sizes — equal to Tail
 for (const t of snap.tokens.numbers) lines.push(`  ${v(t.name)}: ${px(t.value)};`)
 const families = {}
 for (const s of snap.textStyles) families[s.name.split('/')[0]] ??= s.family
-const fontStack = (f) => `'${f}', ui-sans-serif, system-ui, sans-serif`
+// The bundled font first: @fontsource-variable registers it as '<Family> Variable'.
+const fontStack = (f) => `'${f} Variable', '${f}', ui-sans-serif, system-ui, sans-serif`
 lines.push('', '  /* font families (from the Figma text styles) */')
 lines.push(`  --ds-font-display: ${fontStack(families.display ?? families.body)};`)
 lines.push(`  --ds-font-body: ${fontStack(families.body)};`)
@@ -188,8 +189,7 @@ writeFileSync(
   `${HEADER}/*
  * PORT SWITCH — points shadcn's variables at the Figma tokens, re-theming every ui/
  * component (and any added later with \`shadcn add\`) without touching its classes.
- * Import it from assets/main.css after the shadcn :root/.dark blocks when the port starts,
- * then delete those blocks' colour values.
+ * Imported last by assets/main.css, which keeps shadcn's @theme mapping but no colour values.
  */
 :root,
 .dark {
