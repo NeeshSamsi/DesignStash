@@ -5,6 +5,7 @@ import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
 
 import { cn } from "@renderer/lib/utils"
 
+// Figma ScrollArea 211:101: an 8px scrollbar (2px side, 4px end padding) with a 4px surface-4 thumb.
 function ScrollArea({
   className,
   children,
@@ -18,7 +19,7 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        className="size-full transition-shadow outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
@@ -39,14 +40,14 @@ function ScrollBar({
       data-orientation={orientation}
       orientation={orientation}
       className={cn(
-        "flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent",
+        "flex touch-none transition-colors select-none data-horizontal:h-2 data-horizontal:flex-col data-horizontal:px-1 data-horizontal:py-0.5 data-vertical:h-full data-vertical:w-2 data-vertical:px-0.5 data-vertical:py-1",
         className
       )}
       {...props}
     >
       <ScrollAreaPrimitive.ScrollAreaThumb
         data-slot="scroll-area-thumb"
-        className="relative flex-1 rounded-full bg-border"
+        className="relative flex-1 rounded-full bg-surface-4"
       />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   )

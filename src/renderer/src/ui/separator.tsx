@@ -3,6 +3,7 @@ import { Separator as SeparatorPrimitive } from "radix-ui"
 
 import { cn } from "@renderer/lib/utils"
 
+// Figma Separator 211:87: a 1px line in border/subtle (drawn as a border, since it is a border token).
 function Separator({
   className,
   orientation = "horizontal",
@@ -15,7 +16,7 @@ function Separator({
       decorative={decorative}
       orientation={orientation}
       className={cn(
-        "shrink-0 bg-border data-horizontal:h-px data-horizontal:w-full data-vertical:w-px data-vertical:self-stretch",
+        "shrink-0 border-subtle data-horizontal:w-full data-horizontal:border-t data-vertical:self-stretch data-vertical:border-l",
         className
       )}
       {...props}
