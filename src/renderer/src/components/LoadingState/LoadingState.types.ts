@@ -23,7 +23,7 @@ export const LOADING_STATE_CONTRACT = {
     showSub: true
   },
   texts: {
-    message: 'Loading your library…'
+    message: 'Rummaging through your stash…'
   },
   icons: {},
   slots: {}
@@ -36,7 +36,7 @@ export interface LoadingStateContractProps {
   variant?: LoadingStateVariant
   /** Figma boolean. Default `true`. */
   showSub?: boolean
-  /** Figma text. Default "Loading your library…". */
+  /** Figma text. Default "Rummaging through your stash…". */
   message?: string
 }
 
@@ -44,5 +44,5 @@ export interface LoadingStateContractProps {
 export const LOADING_STATE_DEFAULTS = {
   variant: 'page',
   showSub: true,
-  message: 'Loading your library…'
+  message: 'Rummaging through your stash…'
 } satisfies LoadingStateContractProps

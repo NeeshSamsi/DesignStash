@@ -113,112 +113,112 @@ export const TOKENS = {
     },
     {
       name: 'color/moss-50',
-      value: '#f2fdf2',
+      value: '#f4fcf6',
       cssVar: '--ds-color-moss-50'
     },
     {
       name: 'color/moss-100',
-      value: '#e1fbe1',
+      value: '#e7f8ea',
       cssVar: '--ds-color-moss-100'
     },
     {
       name: 'color/moss-200',
-      value: '#c5f6c3',
+      value: '#d2f0d7',
       cssVar: '--ds-color-moss-200'
     },
     {
       name: 'color/moss-300',
-      value: '#98ee91',
+      value: '#b3e4b9',
       cssVar: '--ds-color-moss-300'
     },
     {
       name: 'color/moss-400',
-      value: '#68da4a',
+      value: '#85d18a',
       cssVar: '--ds-color-moss-400'
     },
     {
       name: 'color/moss-500',
-      value: '#55c30b',
+      value: '#73ba71',
       cssVar: '--ds-color-moss-500'
     },
     {
       name: 'color/moss-600',
-      value: '#45a100',
+      value: '#5a9b58',
       cssVar: '--ds-color-moss-600'
     },
     {
       name: 'color/moss-700',
-      value: '#367e12',
+      value: '#407b40',
       cssVar: '--ds-color-moss-700'
     },
     {
       name: 'color/moss-800',
-      value: '#2c641c',
+      value: '#2e6233',
       cssVar: '--ds-color-moss-800'
     },
     {
       name: 'color/moss-900',
-      value: '#26521d',
+      value: '#27512c',
       cssVar: '--ds-color-moss-900'
     },
     {
       name: 'color/moss-950',
-      value: '#112d0d',
+      value: '#112c15',
       cssVar: '--ds-color-moss-950'
     },
     {
       name: 'color/honey-50',
-      value: '#fefceb',
+      value: '#fdfcf3',
       cssVar: '--ds-color-honey-50'
     },
     {
       name: 'color/honey-100',
-      value: '#faf5c7',
+      value: '#f6f4e1',
       cssVar: '--ds-color-honey-100'
     },
     {
       name: 'color/honey-200',
-      value: '#f6e987',
+      value: '#ece8c5',
       cssVar: '--ds-color-honey-200'
     },
     {
       name: 'color/honey-300',
-      value: '#f6d734',
+      value: '#e5d89e',
       cssVar: '--ds-color-honey-300'
     },
     {
       name: 'color/honey-400',
-      value: '#f5bf00',
+      value: '#e9c260',
       cssVar: '--ds-color-honey-400'
     },
     {
       name: 'color/honey-500',
-      value: '#f69f00',
+      value: '#e7a653',
       cssVar: '--ds-color-honey-500'
     },
     {
       name: 'color/honey-600',
-      value: '#dc7600',
+      value: '#cb8146',
       cssVar: '--ds-color-honey-600'
     },
     {
       name: 'color/honey-700',
-      value: '#b85100',
+      value: '#a65e37',
       cssVar: '--ds-color-honey-700'
     },
     {
       name: 'color/honey-800',
-      value: '#943f00',
+      value: '#864a29',
       cssVar: '--ds-color-honey-800'
     },
     {
       name: 'color/honey-900',
-      value: '#793500',
+      value: '#6d3e22',
       cssVar: '--ds-color-honey-900'
     },
     {
       name: 'color/honey-950',
-      value: '#451b00',
+      value: '#3e200e',
       cssVar: '--ds-color-honey-950'
     },
     {
@@ -278,57 +278,57 @@ export const TOKENS = {
     },
     {
       name: 'color/juniper-50',
-      value: '#eff6fc',
+      value: '#edf2f9',
       cssVar: '--ds-color-juniper-50'
     },
     {
       name: 'color/juniper-100',
-      value: '#dbebf9',
+      value: '#dbe6f3',
       cssVar: '--ds-color-juniper-100'
     },
     {
       name: 'color/juniper-200',
-      value: '#bfdcf6',
+      value: '#c0d3eb',
       cssVar: '--ds-color-juniper-200'
     },
     {
       name: 'color/juniper-300',
-      value: '#90c8f3',
+      value: '#9bbae3',
       cssVar: '--ds-color-juniper-300'
     },
     {
       name: 'color/juniper-400',
-      value: '#4fa8ed',
+      value: '#6c9dde',
       cssVar: '--ds-color-juniper-400'
     },
     {
       name: 'color/juniper-500',
-      value: '#0f8ae9',
+      value: '#5685c4',
       cssVar: '--ds-color-juniper-500'
     },
     {
       name: 'color/juniper-600',
-      value: '#006edd',
+      value: '#436ca7',
       cssVar: '--ds-color-juniper-600'
     },
     {
       name: 'color/juniper-700',
-      value: '#005ac9',
+      value: '#35588c',
       cssVar: '--ds-color-juniper-700'
     },
     {
       name: 'color/juniper-800',
-      value: '#004aa2',
+      value: '#2b4874',
       cssVar: '--ds-color-juniper-800'
     },
     {
       name: 'color/juniper-900',
-      value: '#0b417e',
+      value: '#22385b',
       cssVar: '--ds-color-juniper-900'
     },
     {
       name: 'color/juniper-950',
-      value: '#10294d',
+      value: '#16243b',
       cssVar: '--ds-color-juniper-950'
     },
     {
@@ -452,6 +452,15 @@ export const TOKENS = {
       description: 'Selected row / nav item / tab background.',
       cssVar: '--ds-background-selected',
       utility: 'bg-selected',
+      via: 'figma'
+    },
+    {
+      name: 'background/selection',
+      alias: 'color/maple-300',
+      alpha: 0.2,
+      description: 'Drag-select (marquee) fill: color/maple-300 at 20% alpha.',
+      cssVar: '--ds-background-selection',
+      utility: 'bg-selection',
       via: 'figma'
     },
     {
@@ -784,7 +793,7 @@ export const TOKENS = {
     },
     {
       name: 'border/informational',
-      alias: 'color/juniper-500',
+      alias: 'color/juniper-400',
       description: 'Info border.',
       cssVar: '--ds-border-informational',
       utility: 'border-informational',

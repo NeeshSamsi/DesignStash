@@ -12,7 +12,7 @@ export interface ConsentPanelProps extends ConsentPanelContractProps {
 }
 
 /**
- * ConsentPanel — Telemetry disclosure + choice: collect / never collect.
+ * ConsentPanel — Telemetry disclosure + choice for onboarding (A4): what we collect / never collect, with No thanks · Keep it on. Settings › Privacy shows the same lists in its usage-data accordion.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4275
  * Today: SettingsPrivacyPane + TelemetryDisclosure
  */
@@ -24,10 +24,7 @@ export function ConsentPanel({ className, ...rest }: ConsentPanelProps) {
     <ScaffoldStub
       contract={CONSENT_PANEL_CONTRACT}
       props={props}
-      className={cn(
-        consentPanelVariants({ variant: props.variant, state: props.state }),
-        className
-      )}
+      className={cn(consentPanelVariants(), className)}
     />
   )
 }

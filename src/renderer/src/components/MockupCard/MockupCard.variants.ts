@@ -10,14 +10,17 @@ export const mockupCardVariants = cva('', {
     variant: {
       library: '',
       'pending-review': '',
-      compact: ''
+      compact: '',
+      trash: ''
     },
     state: {
       default: '',
       selected: '',
       loading: '',
       'no-preview': '',
-      'cover-missing': ''
+      'cover-missing': '',
+      'left-behind': '',
+      'group-target': ''
     }
   },
   defaultVariants: { variant: 'library', state: 'default' }

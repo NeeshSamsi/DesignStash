@@ -7,10 +7,6 @@ import { cva } from 'class-variance-authority'
 // shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
 export const coverDropZoneVariants = cva('', {
   variants: {
-    variant: {
-      required: '',
-      replace: ''
-    },
     state: {
       idle: '',
       'drag-over': '',
@@ -18,5 +14,5 @@ export const coverDropZoneVariants = cva('', {
       error: ''
     }
   },
-  defaultVariants: { variant: 'required', state: 'idle' }
+  defaultVariants: { state: 'idle' }
 })

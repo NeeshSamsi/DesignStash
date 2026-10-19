@@ -9,8 +9,11 @@ export const tagTreeVariants = cva('', {
   variants: {
     state: {
       default: '',
+      adding: '',
+      added: '',
+      duplicate: '',
       renaming: '',
-      'menu-open': '',
+      'new-category': '',
       empty: '',
       loading: ''
     }

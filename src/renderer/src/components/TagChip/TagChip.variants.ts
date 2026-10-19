@@ -12,8 +12,17 @@ export const tagChipVariants = cva('', {
       removable: '',
       filter: '',
       suggested: '',
-      new: ''
+      new: '',
+      add: '',
+      input: ''
+    },
+    state: {
+      default: '',
+      marked: '',
+      thinking: '',
+      typing: '',
+      invalid: ''
     }
   },
-  defaultVariants: { variant: 'display' }
+  defaultVariants: { variant: 'display', state: 'default' }
 })

@@ -12,7 +12,7 @@ export interface PathFieldProps extends PathFieldContractProps {
 }
 
 /**
- * PathField — Where the library lives, in plain language, with Choose….
+ * PathField — Where the stash lives during onboarding: friendly path + location, with Choose…. Errors: not writable, already a stash (→ ChoiceDialog), unavailable drive. Settings › My Stash has its own path field with Change….
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-3718
  */
 export function PathField({ className, ...rest }: PathFieldProps) {
@@ -23,7 +23,7 @@ export function PathField({ className, ...rest }: PathFieldProps) {
     <ScaffoldStub
       contract={PATH_FIELD_CONTRACT}
       props={props}
-      className={cn(pathFieldVariants({ variant: props.variant, state: props.state }), className)}
+      className={cn(pathFieldVariants({ state: props.state }), className)}
     />
   )
 }

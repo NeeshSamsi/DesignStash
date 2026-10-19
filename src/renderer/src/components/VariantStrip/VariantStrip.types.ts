@@ -8,10 +8,15 @@ export const VARIANT_STRIP_CONTRACT = {
   figmaId: '222:3432',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=222-3432',
   section: '8 · Approval & editing',
-  description: 'Thumbnail strip to switch the shown variant.',
+  description:
+    "A pile's variants under the cover (V1a): VariantThumbs on fixed 92px slots from the cover's left edge, an arrow on a fade only at an end with more, and a status row (name · n of N, then the Top mark or Put on top).",
   code: 'extract from DetailModal.tsx',
-  axes: {},
-  axisDefaults: {},
+  axes: {
+    overflow: ['fits', 'start', 'scrolled', 'end']
+  },
+  axisDefaults: {
+    overflow: 'fits'
+  },
   flags: {
     missingCover: {
       on: 'missing-cover',
@@ -20,23 +25,23 @@ export const VARIANT_STRIP_CONTRACT = {
   },
   interactionStates: [],
   disabled: false,
-  booleans: {
-    nav: true
-  },
+  booleans: {},
   texts: {},
   icons: {},
   slots: {}
 } as const satisfies ComponentContract
 
+export type VariantStripOverflow = 'fits' | 'start' | 'scrolled' | 'end'
+
 export interface VariantStripContractProps {
+  /** Figma `overflow` (4 options). Default `fits`. */
+  overflow?: VariantStripOverflow
   /** Figma `state=missing-cover` (false = `state=default`). */
   missingCover?: boolean
-  /** Figma boolean. Default `true`. */
-  nav?: boolean
 }
 
 /** Figma defaults. Slots have none. */
 export const VARIANT_STRIP_DEFAULTS = {
-  missingCover: false,
-  nav: true
+  overflow: 'fits',
+  missingCover: false
 } satisfies VariantStripContractProps

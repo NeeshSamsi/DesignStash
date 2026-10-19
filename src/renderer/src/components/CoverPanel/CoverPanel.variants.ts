@@ -12,7 +12,14 @@ export const coverPanelVariants = cva('', {
       sidecar: '',
       uploaded: '',
       none: ''
+    },
+    state: {
+      default: '',
+      'drag-over': '',
+      replacing: '',
+      uploading: '',
+      error: ''
     }
   },
-  defaultVariants: { source: 'embedded' }
+  defaultVariants: { source: 'embedded', state: 'default' }
 })

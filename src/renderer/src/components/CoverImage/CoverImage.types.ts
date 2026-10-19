@@ -8,7 +8,8 @@ export const COVER_IMAGE_CONTRACT = {
   figmaId: '217:1121',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1121',
   section: '6 · Library',
-  description: 'The one way to render a mockup cover (4:3, squircle mask).',
+  description:
+    'The one way to render a mockup cover (4:3, squircle mask). loading is a plain skeleton block in background/surface-3, never a spinner.',
   code: 'extract from MockupTile.tsx',
   axes: {
     size: ['xs', 'sm', 'md', 'lg'],

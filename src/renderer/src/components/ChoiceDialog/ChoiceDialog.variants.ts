@@ -5,12 +5,4 @@ import { cva } from 'class-variance-authority'
 // shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
 // Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
 // shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const choiceDialogVariants = cva('', {
-  variants: {
-    variant: {
-      neutral: '',
-      'destructive-secondary': ''
-    }
-  },
-  defaultVariants: { variant: 'neutral' }
-})
+export const choiceDialogVariants = cva('')

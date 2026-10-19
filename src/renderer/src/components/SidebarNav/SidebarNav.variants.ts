@@ -8,9 +8,11 @@ import { cva } from 'class-variance-authority'
 export const sidebarNavVariants = cva('', {
   variants: {
     variant: {
-      'no-pending': '',
-      'with-pending': ''
+      none: '',
+      'to-sort': '',
+      'to-stash': '',
+      both: ''
     }
   },
-  defaultVariants: { variant: 'no-pending' }
+  defaultVariants: { variant: 'none' }
 })

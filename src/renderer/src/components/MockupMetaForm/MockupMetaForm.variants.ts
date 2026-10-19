@@ -16,7 +16,7 @@ export const mockupMetaFormVariants = cva('', {
       invalid: '',
       edited: '',
       saving: '',
-      'save-failed': ''
+      thinking: ''
     }
   },
   defaultVariants: { variant: 'approval', state: 'pristine' }

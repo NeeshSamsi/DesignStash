@@ -9,8 +9,11 @@ export const groupMemberThumbVariants = cva('', {
   variants: {
     state: {
       idle: '',
-      dragging: '',
-      'drop-ghost': ''
+      selected: '',
+      lifted: '',
+      'left-behind': '',
+      'drop-ghost': '',
+      'pile-target': ''
     }
   },
   defaultVariants: { state: 'idle' }

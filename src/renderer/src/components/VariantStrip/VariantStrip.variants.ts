@@ -7,7 +7,13 @@ import { cva } from 'class-variance-authority'
 // shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
 export const variantStripVariants = cva('', {
   variants: {
+    overflow: {
+      fits: '',
+      start: '',
+      scrolled: '',
+      end: ''
+    },
     missingCover: { true: '', false: '' }
   },
-  defaultVariants: { missingCover: false }
+  defaultVariants: { overflow: 'fits', missingCover: false }
 })

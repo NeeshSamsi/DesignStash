@@ -8,40 +8,32 @@ export const CHOICE_DIALOG_CONTRACT = {
   figmaId: '216:1145',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=216-1145',
   section: '5 · Overlays & dialogs',
-  description: 'Three-way decision: tertiary (left) · secondary · primary.',
+  description:
+    'Three-way decision: tertiary (left) · secondary · primary, e.g. Move files · Point only · Cancel, or Resume · Later · Discard. Two-way decisions use ConfirmDialog.',
   code: null,
-  axes: {
-    variant: ['neutral', 'destructive-secondary']
-  },
-  axisDefaults: {
-    variant: 'neutral'
-  },
+  axes: {},
+  axisDefaults: {},
   flags: {},
   interactionStates: [],
   disabled: false,
   booleans: {},
   texts: {
-    title: 'Save changes before closing?',
-    description: 'You edited the title and 2 tags of “iPhone 15 Pro — Clay”.'
+    title: 'Save your changes before closing?',
+    description: 'You changed the title and 2 tags on “Clay iPhone 15 Pro”.'
   },
   icons: {},
   slots: {}
 } as const satisfies ComponentContract
 
-export type ChoiceDialogVariant = 'neutral' | 'destructive-secondary'
-
 export interface ChoiceDialogContractProps {
-  /** Figma `variant` (2 options). Default `neutral`. */
-  variant?: ChoiceDialogVariant
-  /** Figma text. Default "Save changes before closing?". */
+  /** Figma text. Default "Save your changes before closing?". */
   title?: string
-  /** Figma text. Default "You edited the title and 2 tags of “iPhone 15 Pro — Clay”.". */
+  /** Figma text. Default "You changed the title and 2 tags on “Clay iPhone 15 Pro”.". */
   description?: string
 }
 
 /** Figma defaults. Slots have none. */
 export const CHOICE_DIALOG_DEFAULTS = {
-  variant: 'neutral',
-  title: 'Save changes before closing?',
-  description: 'You edited the title and 2 tags of “iPhone 15 Pro — Clay”.'
+  title: 'Save your changes before closing?',
+  description: 'You changed the title and 2 tags on “Clay iPhone 15 Pro”.'
 } satisfies ChoiceDialogContractProps

@@ -8,7 +8,8 @@ export const PRO_GATE_CONTRACT = {
   figmaId: '223:6940',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-6940',
   section: '11 · Lists, trash, integrity & recovery',
-  description: 'Wraps a Pro feature; locked shows the pitch + Upgrade (dormant in Phase 1).',
+  description:
+    "Wraps a Pro feature: unlocked renders the child (everything is unlocked in Phase 1); locked shows the lock, a plain Pro tag, one line on what the feature does, and Upgrade. No crown (it means top of the pile) and no Learn more until there's somewhere to learn more. inline or page.",
   code: 'Locked.tsx',
   axes: {
     variant: ['inline', 'page']

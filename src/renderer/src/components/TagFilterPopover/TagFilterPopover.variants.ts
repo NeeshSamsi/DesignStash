@@ -10,6 +10,8 @@ export const tagFilterPopoverVariants = cva('', {
     state: {
       open: '',
       'some-selected': '',
+      searching: '',
+      'no-match': '',
       empty: ''
     }
   },

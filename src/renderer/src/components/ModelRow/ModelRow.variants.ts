@@ -7,19 +7,14 @@ import { cva } from 'class-variance-authority'
 // shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
 export const modelRowVariants = cva('', {
   variants: {
-    variant: {
-      picker: '',
-      manage: ''
-    },
     state: {
       'not-installed': '',
       downloading: '',
       paused: '',
       verifying: '',
       failed: '',
-      installed: '',
-      active: ''
+      installed: ''
     }
   },
-  defaultVariants: { variant: 'picker', state: 'not-installed' }
+  defaultVariants: { state: 'not-installed' }
 })

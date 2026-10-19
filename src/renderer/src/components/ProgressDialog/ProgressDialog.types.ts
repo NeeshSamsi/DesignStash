@@ -21,7 +21,7 @@ export const PROGRESS_DIALOG_CONTRACT = {
   disabled: false,
   booleans: {},
   texts: {
-    title: 'Moving library…',
+    title: 'Moving your stash…',
     description: 'Copying your PSDs and covers to ~/Pictures/DesignStash.'
   },
   icons: {},
@@ -33,7 +33,7 @@ export type ProgressDialogState = 'running' | 'cancelling' | 'done' | 'failed'
 export interface ProgressDialogContractProps {
   /** Figma `state` (4 options). Default `running`. */
   state?: ProgressDialogState
-  /** Figma text. Default "Moving library…". */
+  /** Figma text. Default "Moving your stash…". */
   title?: string
   /** Figma text. Default "Copying your PSDs and covers to ~/Pictures/DesignStash.". */
   description?: string
@@ -42,6 +42,6 @@ export interface ProgressDialogContractProps {
 /** Figma defaults. Slots have none. */
 export const PROGRESS_DIALOG_DEFAULTS = {
   state: 'running',
-  title: 'Moving library…',
+  title: 'Moving your stash…',
   description: 'Copying your PSDs and covers to ~/Pictures/DesignStash.'
 } satisfies ProgressDialogContractProps

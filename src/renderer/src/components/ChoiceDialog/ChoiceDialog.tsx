@@ -12,7 +12,7 @@ export interface ChoiceDialogProps extends ChoiceDialogContractProps {
 }
 
 /**
- * ChoiceDialog — Three-way decision: tertiary (left) · secondary · primary.
+ * ChoiceDialog — Three-way decision: tertiary (left) · secondary · primary, e.g. Move files · Point only · Cancel, or Resume · Later · Discard. Two-way decisions use ConfirmDialog.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=216-1145
  */
 export function ChoiceDialog({ className, ...rest }: ChoiceDialogProps) {
@@ -23,7 +23,7 @@ export function ChoiceDialog({ className, ...rest }: ChoiceDialogProps) {
     <ScaffoldStub
       contract={CHOICE_DIALOG_CONTRACT}
       props={props}
-      className={cn(choiceDialogVariants({ variant: props.variant }), className)}
+      className={cn(choiceDialogVariants(), className)}
     />
   )
 }

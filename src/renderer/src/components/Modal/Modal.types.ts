@@ -27,7 +27,7 @@ export const MODAL_CONTRACT = {
   },
   texts: {
     title: 'Skipped files',
-    description: 'Modal description — what this view is for.'
+    description: 'A short line about what this view is for.'
   },
   icons: {},
   slots: {
@@ -48,7 +48,7 @@ export interface ModalContractProps {
   footer?: boolean
   /** Figma text. Default "Skipped files". */
   title?: string
-  /** Figma text. Default "Modal description — what this view is for.". */
+  /** Figma text. Default "A short line about what this view is for.". */
   description?: string
   /** Slot — free content slot. */
   body?: ReactNode
@@ -61,5 +61,5 @@ export const MODAL_DEFAULTS = {
   showDescription: true,
   footer: true,
   title: 'Skipped files',
-  description: 'Modal description — what this view is for.'
+  description: 'A short line about what this view is for.'
 } satisfies ModalContractProps

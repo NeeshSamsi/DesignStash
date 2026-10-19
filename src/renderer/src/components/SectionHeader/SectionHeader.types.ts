@@ -24,7 +24,7 @@ export const SECTION_HEADER_CONTRACT = {
     count: true
   },
   texts: {
-    title: 'Files not in your library'
+    title: 'Strays in your stash folder'
   },
   icons: {},
   slots: {}
@@ -39,7 +39,7 @@ export interface SectionHeaderContractProps {
   actions?: boolean
   /** Figma boolean. Default `true`. */
   count?: boolean
-  /** Figma text. Default "Files not in your library". */
+  /** Figma text. Default "Strays in your stash folder". */
   title?: string
 }
 
@@ -48,5 +48,5 @@ export const SECTION_HEADER_DEFAULTS = {
   variant: 'static',
   actions: true,
   count: true,
-  title: 'Files not in your library'
+  title: 'Strays in your stash folder'
 } satisfies SectionHeaderContractProps

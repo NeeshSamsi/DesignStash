@@ -12,7 +12,7 @@ export interface VariantStripProps extends VariantStripContractProps {
 }
 
 /**
- * VariantStrip — Thumbnail strip to switch the shown variant.
+ * VariantStrip — A pile's variants under the cover (V1a): VariantThumbs on fixed 92px slots from the cover's left edge, an arrow on a fade only at an end with more, and a status row (name · n of N, then the Top mark or Put on top).
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=222-3432
  * Today: extract from DetailModal.tsx
  */
@@ -24,7 +24,10 @@ export function VariantStrip({ className, ...rest }: VariantStripProps) {
     <ScaffoldStub
       contract={VARIANT_STRIP_CONTRACT}
       props={props}
-      className={cn(variantStripVariants({ missingCover: props.missingCover }), className)}
+      className={cn(
+        variantStripVariants({ overflow: props.overflow, missingCover: props.missingCover }),
+        className
+      )}
     />
   )
 }

@@ -5,18 +5,4 @@ import { cva } from 'class-variance-authority'
 // shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
 // Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
 // shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const consentPanelVariants = cva('', {
-  variants: {
-    variant: {
-      onboarding: '',
-      settings: ''
-    },
-    state: {
-      default: '',
-      on: '',
-      off: '',
-      loading: ''
-    }
-  },
-  defaultVariants: { variant: 'onboarding', state: 'default' }
-})
+export const consentPanelVariants = cva('')

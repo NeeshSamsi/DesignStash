@@ -10,13 +10,13 @@ export const SIDEBAR_NAV_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1964',
   section: '3 · Layout & navigation',
   description:
-    'Primary navigation: AddMenu, Library › Starred / All on TreeBranch, To review (with-pending), Trash, Settings.',
+    'Primary navigation: AddMenu, My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.',
   code: 'AppShell.tsx',
   axes: {
-    variant: ['no-pending', 'with-pending']
+    variant: ['none', 'to-sort', 'to-stash', 'both']
   },
   axisDefaults: {
-    variant: 'no-pending'
+    variant: 'none'
   },
   flags: {},
   interactionStates: [],
@@ -29,16 +29,17 @@ export const SIDEBAR_NAV_CONTRACT = {
     library: 'SidebarNav Item',
     starred: 'SidebarNav Item',
     all: 'SidebarNav Item',
-    pending: 'SidebarNav Item',
+    toSort: 'SidebarNav Item',
+    toStash: 'SidebarNav Item',
     trash: 'SidebarNav Item',
     settings: 'SidebarNav Item'
   }
 } as const satisfies ComponentContract
 
-export type SidebarNavVariant = 'no-pending' | 'with-pending'
+export type SidebarNavVariant = 'none' | 'to-sort' | 'to-stash' | 'both'
 
 export interface SidebarNavContractProps {
-  /** Figma `variant` (2 options). Default `no-pending`. */
+  /** Figma `variant` (4 options). Default `none`. */
   variant?: SidebarNavVariant
   /** Slot — nests `AddMenu` in Figma. */
   add?: ReactNode
@@ -49,7 +50,9 @@ export interface SidebarNavContractProps {
   /** Slot — nests `SidebarNav Item` in Figma. */
   all?: ReactNode
   /** Slot — nests `SidebarNav Item` in Figma. */
-  pending?: ReactNode
+  toSort?: ReactNode
+  /** Slot — nests `SidebarNav Item` in Figma. */
+  toStash?: ReactNode
   /** Slot — nests `SidebarNav Item` in Figma. */
   trash?: ReactNode
   /** Slot — nests `SidebarNav Item` in Figma. */
@@ -58,5 +61,5 @@ export interface SidebarNavContractProps {
 
 /** Figma defaults. Slots have none. */
 export const SIDEBAR_NAV_DEFAULTS = {
-  variant: 'no-pending'
+  variant: 'none'
 } satisfies SidebarNavContractProps

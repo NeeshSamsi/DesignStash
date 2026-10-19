@@ -14,6 +14,10 @@ export const groupCardVariants = cva('', {
     state: {
       idle: '',
       'drag-over': '',
+      'merge-target': '',
+      'left-behind': '',
+      selected: '',
+      lifted: '',
       empty: ''
     }
   },

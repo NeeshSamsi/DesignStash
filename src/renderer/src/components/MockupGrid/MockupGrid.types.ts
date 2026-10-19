@@ -9,7 +9,7 @@ export const MOCKUP_GRID_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1902',
   section: '6 · Library',
   description:
-    'Fill-width wrapping grid of MockupCards with loading / empty / no-results / error slots.',
+    'Fill-width wrapping grid of MockupCards. show-add puts AddMockupCard first (on in My Stash › All only). loading = 10 skeleton cards in the same wrap; empty = just the AddMockupCard; no-results / error sit at the top under the toolbar, never vertically centred.',
   code: 'MockupGrid.tsx',
   axes: {
     state: ['populated', 'loading', 'empty', 'no-results', 'error']
@@ -20,7 +20,9 @@ export const MOCKUP_GRID_CONTRACT = {
   flags: {},
   interactionStates: [],
   disabled: false,
-  booleans: {},
+  booleans: {
+    showAdd: true
+  },
   texts: {},
   icons: {},
   slots: {}
@@ -31,9 +33,12 @@ export type MockupGridState = 'populated' | 'loading' | 'empty' | 'no-results' |
 export interface MockupGridContractProps {
   /** Figma `state` (5 options). Default `populated`. */
   state?: MockupGridState
+  /** Figma boolean. Default `true`. */
+  showAdd?: boolean
 }
 
 /** Figma defaults. Slots have none. */
 export const MOCKUP_GRID_DEFAULTS = {
-  state: 'populated'
+  state: 'populated',
+  showAdd: true
 } satisfies MockupGridContractProps

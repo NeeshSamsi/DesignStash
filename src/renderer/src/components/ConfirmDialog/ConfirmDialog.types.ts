@@ -28,9 +28,9 @@ export const CONFIRM_DIALOG_CONTRACT = {
     detail: true
   },
   texts: {
-    title: 'Ungroup variants?',
+    title: 'Break up this pile?',
     description: 'Each variant becomes its own mockup in the library.',
-    detailTitle: 'iPhone 15 Pro — Clay',
+    detailTitle: 'Clay iPhone 15 Pro',
     detailMeta: '5 files · 184 MB'
   },
   icons: {},
@@ -46,11 +46,11 @@ export interface ConfirmDialogContractProps {
   working?: boolean
   /** Figma boolean. Default `true`. */
   detail?: boolean
-  /** Figma text. Default "Ungroup variants?". */
+  /** Figma text. Default "Break up this pile?". */
   title?: string
   /** Figma text. Default "Each variant becomes its own mockup in the library.". */
   description?: string
-  /** Figma text. Default "iPhone 15 Pro — Clay". */
+  /** Figma text. Default "Clay iPhone 15 Pro". */
   detailTitle?: string
   /** Figma text. Default "5 files · 184 MB". */
   detailMeta?: string
@@ -61,8 +61,8 @@ export const CONFIRM_DIALOG_DEFAULTS = {
   variant: 'neutral',
   working: false,
   detail: true,
-  title: 'Ungroup variants?',
+  title: 'Break up this pile?',
   description: 'Each variant becomes its own mockup in the library.',
-  detailTitle: 'iPhone 15 Pro — Clay',
+  detailTitle: 'Clay iPhone 15 Pro',
   detailMeta: '5 files · 184 MB'
 } satisfies ConfirmDialogContractProps

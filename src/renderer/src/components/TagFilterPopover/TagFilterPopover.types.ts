@@ -8,10 +8,11 @@ export const TAG_FILTER_POPOVER_CONTRACT = {
   figmaId: '217:2113',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-2113',
   section: '6 · Library',
-  description: 'Filter by tags grouped by category; parent matches children.',
+  description:
+    'Tag filter: search on top, CategoryPills with live counts, tags grouped by category (scrolls past ~240px); parent matches children. Rules: design/specs/library.md.',
   code: 'LibraryTopBar.tsx popover',
   axes: {
-    state: ['open', 'some-selected', 'empty']
+    state: ['open', 'some-selected', 'searching', 'no-match', 'empty']
   },
   axisDefaults: {
     state: 'open'
@@ -25,10 +26,10 @@ export const TAG_FILTER_POPOVER_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type TagFilterPopoverState = 'open' | 'some-selected' | 'empty'
+export type TagFilterPopoverState = 'open' | 'some-selected' | 'searching' | 'no-match' | 'empty'
 
 export interface TagFilterPopoverContractProps {
-  /** Figma `state` (3 options). Default `open`. */
+  /** Figma `state` (5 options). Default `open`. */
   state?: TagFilterPopoverState
 }
 

@@ -8,16 +8,19 @@ export const TAG_CHIP_CONTRACT = {
   figmaId: '217:1203',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1203',
   section: '8 · Approval & editing',
-  description: 'A tag as a pill: category · label.',
+  description:
+    'Tag pill. Solid = your tag, dashed = not a tag yet. removable: × on hover; focus = keyboard ring; marked = selected by ⌫. suggested = AI suggestion (faint dashed outline, orange sparkle only; hover fills like a tag with ✓/×; clicking accepts); thinking = AI still working. new = just added (brand outline). add = the inline “+ Add tag” chip (stronger, longer dash), always first; input = that chip while typing. Rules: design/specs/tags.md.',
   code: null,
   axes: {
-    variant: ['display', 'removable', 'filter', 'suggested', 'new']
+    variant: ['display', 'removable', 'filter', 'suggested', 'new', 'add', 'input'],
+    state: ['default', 'marked', 'thinking', 'typing', 'invalid']
   },
   axisDefaults: {
-    variant: 'display'
+    variant: 'display',
+    state: 'default'
   },
   flags: {},
-  interactionStates: ['hover'],
+  interactionStates: ['hover', 'focus'],
   disabled: false,
   booleans: {
     showCategory: true
@@ -30,11 +33,21 @@ export const TAG_CHIP_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type TagChipVariant = 'display' | 'removable' | 'filter' | 'suggested' | 'new'
+export type TagChipVariant =
+  | 'display'
+  | 'removable'
+  | 'filter'
+  | 'suggested'
+  | 'new'
+  | 'add'
+  | 'input'
+export type TagChipState = 'default' | 'marked' | 'thinking' | 'typing' | 'invalid'
 
 export interface TagChipContractProps {
-  /** Figma `variant` (5 options). Default `display`. */
+  /** Figma `variant` (7 options). Default `display`. */
   variant?: TagChipVariant
+  /** Figma `state` (5 options). Default `default`. */
+  state?: TagChipState
   /** Figma boolean. Default `true`. */
   showCategory?: boolean
   /** Figma text. Default "Device". */
@@ -46,6 +59,7 @@ export interface TagChipContractProps {
 /** Figma defaults. Slots have none. */
 export const TAG_CHIP_DEFAULTS = {
   variant: 'display',
+  state: 'default',
   showCategory: true,
   category: 'Device',
   label: 'iPhone'

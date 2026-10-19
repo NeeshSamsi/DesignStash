@@ -24,7 +24,7 @@ export const STAT_TILE_CONTRACT = {
   },
   texts: {
     value: '40',
-    label: 'Imported'
+    label: 'Gathered'
   },
   icons: {},
   slots: {}
@@ -39,7 +39,7 @@ export interface StatTileContractProps {
   showAction?: boolean
   /** Figma text. Default "40". */
   value?: string
-  /** Figma text. Default "Imported". */
+  /** Figma text. Default "Gathered". */
   label?: string
 }
 
@@ -48,5 +48,5 @@ export const STAT_TILE_DEFAULTS = {
   tone: 'neutral',
   showAction: false,
   value: '40',
-  label: 'Imported'
+  label: 'Gathered'
 } satisfies StatTileContractProps

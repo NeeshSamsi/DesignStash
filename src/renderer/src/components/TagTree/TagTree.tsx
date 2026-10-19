@@ -8,7 +8,7 @@ export interface TagTreeProps extends TagTreeContractProps {
 }
 
 /**
- * TagTree — Manage the two-tier taxonomy with inline rename and row menus.
+ * TagTree — Settings › Tags: one grouped container per category (name, tag count, ⋯), tag rows with use counts and a child on a tree branch, ⋯ on hover (Rename, Move to, Nest under, Merge into, Delete). Add tag closes each category and New category closes the list. Delete is instant with Undo; Merge and Delete category ask first. Rules: design/specs/settings.md.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-5509
  * Today: SettingsTagsPane.tsx
  */

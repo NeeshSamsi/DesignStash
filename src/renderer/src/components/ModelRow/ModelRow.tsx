@@ -12,7 +12,7 @@ export interface ModelRowProps extends ModelRowContractProps {
 }
 
 /**
- * ModelRow — One on-device model through its whole lifecycle — picker or manage.
+ * ModelRow — One on-device model in the onboarding picker (a radio list): download, pause/resume, verify, installed, failed. Settings › AI model uses ModelCard.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4073
  * Today: Onboarding + SettingsAiPane
  */
@@ -24,7 +24,7 @@ export function ModelRow({ className, ...rest }: ModelRowProps) {
     <ScaffoldStub
       contract={MODEL_ROW_CONTRACT}
       props={props}
-      className={cn(modelRowVariants({ variant: props.variant, state: props.state }), className)}
+      className={cn(modelRowVariants({ state: props.state }), className)}
     />
   )
 }

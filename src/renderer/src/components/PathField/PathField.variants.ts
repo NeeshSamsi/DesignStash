@@ -7,17 +7,12 @@ import { cva } from 'class-variance-authority'
 // shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
 export const pathFieldVariants = cva('', {
   variants: {
-    variant: {
-      onboarding: '',
-      settings: ''
-    },
     state: {
       default: '',
       busy: '',
       'not-writable': '',
-      'existing-library': '',
-      unavailable: ''
+      'existing-library': ''
     }
   },
-  defaultVariants: { variant: 'onboarding', state: 'default' }
+  defaultVariants: { state: 'default' }
 })

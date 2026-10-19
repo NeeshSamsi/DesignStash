@@ -9,7 +9,8 @@ export const MODEL_PICKER_CONTRACT = {
   figmaId: '278:5325',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=278-5325',
   section: '9 · Onboarding & AI models',
-  description: 'HardwareSummary + AI Switch + 3 picker ModelRows; ai=off dims the list.',
+  description:
+    'Onboarding A3 model chooser: HardwareSummary card, then the AI panel — “Use on-device AI” label with the Switch on the right, 3 picker ModelRows inside. ai=off collapses the panel to its header.',
   code: null,
   axes: {
     ai: ['on', 'off']

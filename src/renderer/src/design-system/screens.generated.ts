@@ -3,6 +3,8 @@ export interface ScreenEntry {
   title: string
   figmaId: string
   flow: string
+  /** The ↳ Figma page the screen lives on (one per journey stage). */
+  page: string
   /** Code names of the design-system components the screen composes. */
   components: string[]
 }
@@ -20,12 +22,14 @@ export const HAPPY_PATH: string[] = [
   'A4 Privacy consent',
   'A5 All set',
   'C3 Empty library',
-  'B1 Add menu',
-  'B5 Import progress',
-  'B6 Import summary',
-  'B8 Grouping review board',
-  'B10 Item editor',
-  'B17 Saving…',
+  'G1.1 Add menu',
+  'G1.2 Copying starts',
+  'G3.2 Copied · 3 skipped',
+  'I1.1 To sort',
+  'S1.1 Board with suggested piles',
+  'L1.1 Look it over',
+  'L1.2 Stashed · next loading',
+  'I4.1 All tucked away',
   'C1 Library grid',
   'D2 Single mockup'
 ]
@@ -35,121 +39,77 @@ export const SCREENS: ScreenEntry[] = [
     title: '0.1 Boot blank',
     figmaId: '178:5',
     flow: '0 · Launch',
+    page: '↳ Start',
     components: ['CenteredLayout', 'LoadingState']
   },
   {
     title: 'Library failed to open',
     figmaId: '178:95',
     flow: '0 · Launch',
+    page: '↳ Start',
     components: ['CenteredLayout', 'ErrorState']
   },
   {
     title: 'Library folder unavailable',
     figmaId: '178:185',
     flow: '0 · Launch',
+    page: '↳ Start',
     components: ['CenteredLayout', 'ErrorState']
   },
   {
     title: 'settings.json corrupt',
     figmaId: '178:274',
     flow: '0 · Launch',
+    page: '↳ Start',
     components: ['Banner', 'CenteredLayout', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'A1 Welcome',
     figmaId: '180:5',
     flow: 'A · Onboarding',
+    page: '↳ Start',
     components: ['CenteredLayout', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'A2 Library location',
     figmaId: '180:90',
     flow: 'A · Onboarding',
+    page: '↳ Start',
     components: ['CenteredLayout', 'OnboardingStep', 'PathField', 'StepIndicator']
   },
   {
     title: 'A4 Privacy consent',
     figmaId: '180:181',
     flow: 'A · Onboarding',
+    page: '↳ Start',
     components: ['CenteredLayout', 'ConsentPanel', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'A5 All set',
     figmaId: '180:272',
     flow: 'A · Onboarding',
+    page: '↳ Start',
     components: ['CenteredLayout', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'Folder not writable',
     figmaId: '180:358',
     flow: 'A · Onboarding',
+    page: '↳ Start',
     components: ['CenteredLayout', 'OnboardingStep', 'PathField', 'StepIndicator']
   },
   {
     title: 'Existing library found',
     figmaId: '180:446',
     flow: 'A · Onboarding',
+    page: '↳ Start',
     components: ['CenteredLayout', 'ChoiceDialog', 'OnboardingStep', 'PathField', 'StepIndicator']
-  },
-  {
-    title: 'No connection',
-    figmaId: '180:535',
-    flow: 'A · Onboarding',
-    components: [
-      'CenteredLayout',
-      'HardwareSummary',
-      'ModelPicker',
-      'ModelRow',
-      'OnboardingStep',
-      'StepIndicator',
-      'Switch'
-    ]
-  },
-  {
-    title: 'Not enough disk space',
-    figmaId: '180:623',
-    flow: 'A · Onboarding',
-    components: [
-      'CenteredLayout',
-      'HardwareSummary',
-      'ModelPicker',
-      'ModelRow',
-      'OnboardingStep',
-      'StepIndicator',
-      'Switch'
-    ]
-  },
-  {
-    title: 'Unsupported hardware',
-    figmaId: '180:711',
-    flow: 'A · Onboarding',
-    components: ['CenteredLayout', 'HardwareSummary', 'OnboardingStep', 'StepIndicator']
-  },
-  {
-    title: 'Resume partial download?',
-    figmaId: '180:799',
-    flow: 'A · Onboarding',
-    components: [
-      'CenteredLayout',
-      'ChoiceDialog',
-      'HardwareSummary',
-      'ModelPicker',
-      'ModelRow',
-      'OnboardingStep',
-      'StepIndicator',
-      'Switch'
-    ]
-  },
-  {
-    title: 'Model list empty',
-    figmaId: '180:887',
-    flow: 'A · Onboarding',
-    components: ['CenteredLayout', 'EmptyState', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'A3a Choose model',
     figmaId: '180:977',
     flow: 'A3 · AI setup',
+    page: '↳ Start',
     components: [
       'CenteredLayout',
       'HardwareSummary',
@@ -164,6 +124,7 @@ export const SCREENS: ScreenEntry[] = [
     title: 'A3b Skip selected',
     figmaId: '180:1067',
     flow: 'A3 · AI setup',
+    page: '↳ Start',
     components: [
       'CenteredLayout',
       'HardwareSummary',
@@ -178,6 +139,7 @@ export const SCREENS: ScreenEntry[] = [
     title: 'A3c Downloading',
     figmaId: '180:1152',
     flow: 'A3 · AI setup',
+    page: '↳ Start',
     components: [
       'CenteredLayout',
       'HardwareSummary',
@@ -192,6 +154,7 @@ export const SCREENS: ScreenEntry[] = [
     title: 'A3d Verifying checksum',
     figmaId: '180:1238',
     flow: 'A3 · AI setup',
+    page: '↳ Start',
     components: [
       'CenteredLayout',
       'HardwareSummary',
@@ -206,6 +169,7 @@ export const SCREENS: ScreenEntry[] = [
     title: 'A3e Download complete',
     figmaId: '180:1324',
     flow: 'A3 · AI setup',
+    page: '↳ Start',
     components: [
       'CenteredLayout',
       'HardwareSummary',
@@ -217,418 +181,2249 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'B1 Add menu',
-    figmaId: '180:1412',
-    flow: 'B · Import pipeline',
+    title: 'No connection',
+    figmaId: '180:535',
+    flow: 'A3 · AI setup',
+    page: '↳ Start',
+    components: [
+      'CenteredLayout',
+      'HardwareSummary',
+      'ModelPicker',
+      'ModelRow',
+      'OnboardingStep',
+      'StepIndicator',
+      'Switch'
+    ]
+  },
+  {
+    title: 'Not enough disk space',
+    figmaId: '180:623',
+    flow: 'A3 · AI setup',
+    page: '↳ Start',
+    components: [
+      'CenteredLayout',
+      'HardwareSummary',
+      'ModelPicker',
+      'ModelRow',
+      'OnboardingStep',
+      'StepIndicator',
+      'Switch'
+    ]
+  },
+  {
+    title: 'Unsupported hardware',
+    figmaId: '180:711',
+    flow: 'A3 · AI setup',
+    page: '↳ Start',
+    components: ['CenteredLayout', 'HardwareSummary', 'OnboardingStep', 'StepIndicator']
+  },
+  {
+    title: 'Resume partial download?',
+    figmaId: '180:799',
+    flow: 'A3 · AI setup',
+    page: '↳ Start',
+    components: [
+      'CenteredLayout',
+      'ChoiceDialog',
+      'HardwareSummary',
+      'ModelPicker',
+      'ModelRow',
+      'OnboardingStep',
+      'StepIndicator',
+      'Switch'
+    ]
+  },
+  {
+    title: 'Model list empty',
+    figmaId: '180:887',
+    flow: 'A3 · AI setup',
+    page: '↳ Start',
+    components: ['CenteredLayout', 'EmptyState', 'OnboardingStep', 'StepIndicator']
+  },
+  {
+    title: 'G1.1 Add menu',
+    figmaId: '378:22825',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
     components: [
       'AddMenu',
       'AppWindow',
       'DropdownMenu',
+      'DropdownMenuItem',
       'GlobalSearch',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
       'SidebarNav'
     ]
   },
   {
-    title: 'B4 Drag-over state',
-    figmaId: '180:1503',
-    flow: 'B · Import pipeline',
+    title: 'G1.2 Copying starts',
+    figmaId: '378:22897',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
     components: [
-      'AddMenu',
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Progress',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G1.E1 Folder with no PSDs',
+    figmaId: '436:33289',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G1.E2 Very large selection · top of list',
+    figmaId: '436:33659',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Progress',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G1.E3 Very large selection · scrolled',
+    figmaId: '446:47742',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Progress',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G1.E4 Very large selection · end of list',
+    figmaId: '446:48222',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Progress',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G2.1 Drag over My Stash',
+    figmaId: '378:22861',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
       'AppWindow',
       'DropOverlay',
       'GlobalSearch',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
       'SidebarNav'
     ]
   },
   {
-    title: 'B5 Import progress',
-    figmaId: '180:1588',
-    flow: 'B · Import pipeline',
+    title: 'G2.2 Dropped · copying',
+    figmaId: '436:34113',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
     components: [
-      'ActivityDock',
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Progress',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G2.E1 Drag over To sort',
+    figmaId: '436:34491',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropOverlay',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G2.E2 Drag over Settings',
+    figmaId: '804:6523',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
       'AddMenu',
       'AppWindow',
+      'DropHint',
       'GlobalSearch',
-      'ImportProgressCard',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
+      'SettingsLayout',
       'SidebarNav'
     ]
   },
   {
-    title: 'B6 Import summary',
-    figmaId: '180:1682',
-    flow: 'B · Import pipeline',
+    title: 'G2.E3 Drop while copying',
+    figmaId: '436:34932',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
     components: [
-      'AddMenu',
       'AppWindow',
+      'DropOverlay',
       'GlobalSearch',
-      'ImportSummary',
-      'ListRow',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'PageHeader',
-      'SectionHeader',
-      'SidebarNav',
-      'StatTile'
+      'SidebarNav'
     ]
   },
   {
-    title: 'B7 Loading proposal',
-    figmaId: '180:1771',
-    flow: 'B · Import pipeline',
-    components: ['AddMenu', 'AppWindow', 'GlobalSearch', 'LoadingState', 'PageHeader', 'SidebarNav']
+    title: 'G2.E4 Only non-PSDs',
+    figmaId: '436:35289',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'DropOverlay',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
   },
   {
-    title: 'B8 Grouping review board',
-    figmaId: '180:1858',
-    flow: 'B · Import pipeline',
+    title: 'G3.1 Copying · collapsed',
+    figmaId: '378:23296',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
     components: [
-      'ActionBar',
-      'AddMenu',
+      'AppWindow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Progress',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G3.2 Copied · 3 skipped',
+    figmaId: '378:23479',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G3.3 Done · collapsed',
+    figmaId: '436:35571',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G3.E1 Disk full',
+    figmaId: '436:35916',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G3.E2 Drive unplugged',
+    figmaId: '436:36374',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G3.E3 Resumed after relaunch',
+    figmaId: '436:36773',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Progress',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G3.E4 Cancel · keep or undo',
+    figmaId: '378:23772',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AppWindow',
+      'CopyFileRow',
+      'CopyWidget',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'G3.E5 Undo all · done',
+    figmaId: '436:37167',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
       'AppWindow',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S1.1 Board with suggested piles',
+    figmaId: '379:25464',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
       'GroupCard',
       'GroupMemberThumb',
-      'PageHeader',
       'SidebarNav'
     ]
   },
   {
-    title: 'B9 Preparing queue',
-    figmaId: '180:1947',
-    flow: 'B · Import pipeline',
-    components: ['AddMenu', 'AppWindow', 'GlobalSearch', 'LoadingState', 'PageHeader', 'SidebarNav']
-  },
-  {
-    title: 'No PSD files found',
-    figmaId: '180:2035',
-    flow: 'B · Import pipeline',
-    components: ['AddMenu', 'AppWindow', 'EmptyState', 'GlobalSearch', 'PageHeader', 'SidebarNav']
-  },
-  {
-    title: 'Import already running',
-    figmaId: '180:2123',
-    flow: 'B · Import pipeline',
+    title: 'S1.E1 Still copying',
+    figmaId: '439:36602',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
     components: [
-      'ActivityDock',
-      'AddMenu',
+      'ActionBar',
       'AppWindow',
-      'ChoiceDialog',
+      'Banner',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S1.E2 Nothing pairs up',
+    figmaId: '379:25840',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S1.E3 Just one mockup',
+    figmaId: '439:37105',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S1.E4 Back after stashing some',
+    figmaId: '379:26066',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S1.E5 Couldn’t suggest piles',
+    figmaId: '467:60796',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S2.1 Click to select',
+    figmaId: '461:48950',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S2.2 ⌘-click to add',
+    figmaId: '461:49462',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S2.3 ⇧-click a range',
+    figmaId: '461:49983',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S2.E1 Marquee select',
+    figmaId: '461:50504',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S2.E2 Marquee across piles',
+    figmaId: '467:61219',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S2.E3 ⌘A select all',
+    figmaId: '461:51018',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S2.E4 Click empty space or Esc clears',
+    figmaId: '461:51615',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S2.E5 ⇧-click into another pile',
+    figmaId: '461:52109',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S3.1 Hover a tile',
+    figmaId: '439:37864',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S3.2 Drag onto a pile',
+    figmaId: '439:38362',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S3.3 Dropped into the pile',
+    figmaId: '439:38948',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S3.4 Grab a selection',
+    figmaId: '462:55229',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S3.5 Selection over a pile',
+    figmaId: '462:55809',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S3.6 Selection dropped',
+    figmaId: '462:56543',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S3.E1 Top mockup dragged out',
+    figmaId: '439:40012',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S3.E2 Last tile left',
+    figmaId: '439:40503',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S3.E3 Selection takes a top mockup',
+    figmaId: '462:57717',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S3.E4 Selection empties a pile',
+    figmaId: '462:58270',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S3.E5 Esc cancels',
+    figmaId: '462:58847',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S4.1 Right-click a tile',
+    figmaId: '461:52621',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S4.2 Right-click a selection',
+    figmaId: '461:53189',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S4.3 Move to ▸ submenu',
+    figmaId: '461:53772',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S4.E1 ⋯ opens the same menu',
+    figmaId: '439:39445',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S4.E2 Right-click outside the selection',
+    figmaId: '461:54417',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S4.E3 Right-click a pile',
+    figmaId: '461:54982',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S4.E4 Right-click the board',
+    figmaId: '461:55696',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S4.E5 Near the window edge',
+    figmaId: '461:56244',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S5.1 Drop a tile on a tile',
+    figmaId: '439:41018',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S5.2 New pile made',
+    figmaId: '439:41410',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S5.3 New pile from selection',
+    figmaId: '462:59368',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S5.4 Selection piled',
+    figmaId: '462:59951',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S5.E1 Drop a selection on a tile',
+    figmaId: '462:57131',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S5.E2 Already a pile',
+    figmaId: '462:60598',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S5.E3 New pile across two piles',
+    figmaId: '462:61769',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S6.1 Menu · Put on top',
+    figmaId: '439:42318',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S6.2 New top mockup',
+    figmaId: '439:42839',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S7.1 Click a pile header',
+    figmaId: '467:61758',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S7.2 Drag a pile by its header',
+    figmaId: '467:62417',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S7.3 Over another pile',
+    figmaId: '467:63092',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S7.4 Piles merged',
+    figmaId: '467:63826',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S7.E1 Marquee covers tiles only',
+    figmaId: '467:64519',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S7.E2 Marquee reaches the header',
+    figmaId: '467:65053',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S7.E3 Two piles selected',
+    figmaId: '467:65609',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S7.E4 Pile menu · Merge into',
+    figmaId: '440:44211',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S8.1 Pile menu',
+    figmaId: '440:41862',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Separator',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S8.2 Pile broken up',
+    figmaId: '440:42349',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S8.E1 Undo',
+    figmaId: '440:42886',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S8.E2 Disband with ⇧⌘G',
+    figmaId: '462:61192',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S8.E3 Drop a pile on On its own',
+    figmaId: '467:66285',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S9.1 Titles on the board',
+    figmaId: '472:65353',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S9.E1 Generic folder name',
+    figmaId: '472:66001',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S9.E2 Messy filenames',
+    figmaId: '472:66552',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'S9.E3 Primary changed, title follows',
+    figmaId: '472:67103',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'S9.E4 Top mockup stashed, title takes over',
+    figmaId: '472:67768',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'L2.1 Top of the pile',
+    figmaId: '441:44781',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'PileRail',
+      'PileStep',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L2.2 Variant · pre-filled',
+    figmaId: '441:45235',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'PileRail',
+      'PileStep',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L2.3 Last variant',
+    figmaId: '567:23861',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'PileRail',
+      'PileStep',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L2.4 Review the pile',
+    figmaId: '567:23877',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'MockupCard',
+      'PileRail',
+      'PileStep',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'L2.5 Next pile',
+    figmaId: '567:23893',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'PileRail',
+      'PileStep',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor',
+      'Toast'
+    ]
+  },
+  {
+    title: 'L2.E1 Top mockup edited · updating variants',
+    figmaId: '379:28978',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'PileRail',
+      'PileStep',
+      'Progress',
+      'ProgressDialog',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L2.E2 Jump back to the top mockup',
+    figmaId: '567:23909',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'PileRail',
+      'PileStep',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L2.E3 A skipped mockup at review',
+    figmaId: '567:23925',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'MockupCard',
+      'PileRail',
+      'PileStep',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'L2.E4 Finish later mid-pile',
+    figmaId: '567:23941',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'ConfirmDialog',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'PileRail',
+      'PileStep',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L2.E5 After the piles',
+    figmaId: '567:23957',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L1.1 Look it over',
+    figmaId: '379:26545',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L1.2 Stashed · next loading',
+    figmaId: '379:28011',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'ActivityDock',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor',
+      'Toast'
+    ]
+  },
+  {
+    title: 'L1.E1 Sniffing out a title',
+    figmaId: '379:29231',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'Skeleton',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L1.E2 Without AI',
+    figmaId: '379:28732',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Banner',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L1.E3 Title emptied',
+    figmaId: '441:44318',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'Field',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor',
+      'Tooltip'
+    ]
+  },
+  {
+    title: 'L1.E4 Couldn’t get ready',
+    figmaId: '379:29598',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'ErrorState',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L3.1 Click Add tag',
+    figmaId: '512:8365',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L3.2 Type → matching tags',
+    figmaId: '379:26845',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L3.3 No match → create inline',
+    figmaId: '379:27077',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L3.4 Added at the end',
+    figmaId: '379:27309',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L3.E1 Accept an AI suggestion',
+    figmaId: '512:8380',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L3.E2 No tags yet',
+    figmaId: '512:8395',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L3.E3 AI still thinking',
+    figmaId: '512:8410',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L3.E4 Already tagged',
+    figmaId: '512:8425',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L3.E5 Remove with ⌫',
+    figmaId: '512:8440',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.1 Hover the cover',
+    figmaId: '555:82983',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.2 Drag an image over the cover',
+    figmaId: '379:28268',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'DropOverlay',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.3 Replacing',
+    figmaId: '555:82998',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.4 Replaced',
+    figmaId: '555:83013',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.5 Back to the PSD’s preview',
+    figmaId: '555:83028',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.6 Zoom → full-screen preview',
+    figmaId: '555:83043',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'Lightbox',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.E1 Sidecar cover',
+    figmaId: '379:27541',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Banner',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.E2 Cover required',
+    figmaId: '379:27773',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverDropZone',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor',
+      'Tooltip'
+    ]
+  },
+  {
+    title: 'L4.E3 Required · drag over',
+    figmaId: '555:83058',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverDropZone',
+      'CoverImage',
+      'CoverPanel',
+      'DropOverlay',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor',
+      'Tooltip'
+    ]
+  },
+  {
+    title: 'L4.E4 Required · couldn’t read it',
+    figmaId: '379:28500',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverDropZone',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor',
+      'Tooltip'
+    ]
+  },
+  {
+    title: 'L4.E5 Replace failed',
+    figmaId: '555:83073',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Banner',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.E6 Not an image',
+    figmaId: '555:83088',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'DropOverlay',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.E7 Cropped to 4:3',
+    figmaId: '555:83103',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L4.E8 Shown whole with bars',
+    figmaId: '555:83118',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L5.1 Back inside a pile',
+    figmaId: '573:17382',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'PileRail',
+      'PileStep',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L5.2 Back into a stashed pile',
+    figmaId: '573:17398',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'MockupCard',
+      'PileRail',
+      'PileStep',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'L5.3 Back to a stashed mockup',
+    figmaId: '441:45731',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Badge',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L5.E1 Skip for now (on its own)',
+    figmaId: '441:46167',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor',
+      'Toast'
+    ]
+  },
+  {
+    title: 'L5.E2 Only skipped ones left',
+    figmaId: '441:46634',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Banner',
+      'CoverPanel',
+      'FlowModal',
+      'MockupMetaForm',
+      'SidebarNav',
+      'TagChip',
+      'TagEditor'
+    ]
+  },
+  {
+    title: 'L5.E3 Back from the very first mockup',
+    figmaId: '573:17426',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C1.1 Library grid',
+    figmaId: '182:5',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
       'GlobalSearch',
-      'ImportProgressCard',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C1.2 Loading',
+    figmaId: '182:276',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C1.3 Empty library',
+    figmaId: '182:358',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav'
     ]
   },
   {
-    title: 'Import cancelled',
-    figmaId: '180:2211',
-    flow: 'B · Import pipeline',
+    title: 'C1.4 Add card → Add menu',
+    figmaId: '584:9331',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'DropdownMenu',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C1.E1 Library load failed',
+    figmaId: '182:704',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'Banner',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C1.E2 Starred',
+    figmaId: '182:881',
+    flow: 'C · Library',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
       'GlobalSearch',
-      'ImportSummary',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav'
     ]
   },
   {
-    title: 'Skipped files detail',
-    figmaId: '180:2299',
-    flow: 'B · Import pipeline',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'GlobalSearch',
-      'ImportSummary',
-      'ListGroup',
-      'ListRow',
-      'Modal',
-      'PageHeader',
-      'SectionHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'Nothing imported',
-    figmaId: '180:2387',
-    flow: 'B · Import pipeline',
+    title: 'C1.E3 Nothing starred yet',
+    figmaId: '584:9337',
+    flow: 'C · Library',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
       'EmptyState',
       'GlobalSearch',
-      'ImportSummary',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'B8 with nothing to group',
-    figmaId: '180:2475',
-    flow: 'B · Import pipeline',
-    components: ['AddMenu', 'AppWindow', 'EmptyState', 'GlobalSearch', 'PageHeader', 'SidebarNav']
-  },
-  {
-    title: 'B8 all standalone',
-    figmaId: '180:2563',
-    flow: 'B · Import pipeline',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'GlobalSearch',
-      'GroupCard',
-      'GroupMemberThumb',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'Queue init failed',
-    figmaId: '180:2648',
-    flow: 'B · Import pipeline',
-    components: ['AddMenu', 'AppWindow', 'ErrorState', 'GlobalSearch', 'PageHeader', 'SidebarNav']
-  },
-  {
-    title: 'B10 without AI',
-    figmaId: '180:2736',
-    flow: 'B · Import pipeline',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'Banner',
-      'CoverImage',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'SidebarNav',
-      'StepperHeader'
-    ]
-  },
-  {
-    title: 'Updating variants…',
-    figmaId: '180:2821',
-    flow: 'B · Import pipeline',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'CoverImage',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'ProgressDialog',
-      'SidebarNav',
-      'StepperHeader'
-    ]
-  },
-  {
-    title: 'Cover upload failed',
-    figmaId: '180:2906',
-    flow: 'B · Import pipeline',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'CoverDropZone',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'SidebarNav',
-      'StepperHeader'
-    ]
-  },
-  {
-    title: 'B10 Item editor',
-    figmaId: '180:2996',
-    flow: 'B3 · Approval stepper',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'CoverImage',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'SidebarNav',
-      'StepperHeader',
-      'TagChip',
-      'TagEditor'
-    ]
-  },
-  {
-    title: 'B14 Tag suggestion dropdown',
-    figmaId: '180:3089',
-    flow: 'B3 · Approval stepper',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'CoverImage',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'SidebarNav',
-      'StepperHeader',
-      'TagChip',
-      'TagEditor'
-    ]
-  },
-  {
-    title: 'B15 New tag — category picker',
-    figmaId: '180:3177',
-    flow: 'B3 · Approval stepper',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'CoverImage',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'Select',
-      'SidebarNav',
-      'StepperHeader',
-      'TagEditor'
-    ]
-  },
-  {
-    title: 'B16 New tag — confirm dialog',
-    figmaId: '180:3263',
-    flow: 'B3 · Approval stepper',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'CoverImage',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'SidebarNav',
-      'StepperHeader',
-      'TagChip',
-      'TagEditor'
-    ]
-  },
-  {
-    title: 'B11 Sidecar cover',
-    figmaId: '180:3349',
-    flow: 'B3 · Approval stepper',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'CoverImage',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'SidebarNav',
-      'StepperHeader'
-    ]
-  },
-  {
-    title: 'B12 Upload required — BLOCKED',
-    figmaId: '180:3434',
-    flow: 'B3 · Approval stepper',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'CoverDropZone',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'SidebarNav',
-      'StepperHeader',
-      'Tooltip'
-    ]
-  },
-  {
-    title: 'B17 Saving…',
-    figmaId: '180:3519',
-    flow: 'B3 · Approval stepper',
-    components: [
-      'ActionBar',
-      'ActivityDock',
-      'AddMenu',
-      'AppWindow',
-      'CoverImage',
-      'CoverPanel',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'SidebarNav',
-      'StepperHeader',
-      'Toast'
-    ]
-  },
-  {
-    title: 'B13 Replace drop zone',
-    figmaId: '180:3605',
-    flow: 'B3 · Approval stepper',
-    components: [
-      'ActionBar',
-      'AddMenu',
-      'AppWindow',
-      'CoverDropZone',
-      'Field',
-      'GlobalSearch',
-      'MockupMetaForm',
-      'Progress',
-      'SidebarNav',
-      'StepperHeader'
-    ]
-  },
-  {
-    title: 'C1 Library grid',
-    figmaId: '182:5',
-    flow: 'C · Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'GlobalSearch',
       'LibraryToolbar',
-      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav'
     ]
   },
   {
-    title: 'C5 Top bar',
+    title: 'C2.1 Typing a search',
     figmaId: '182:103',
     flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C2.2 Search results',
+    figmaId: '584:9343',
+    flow: 'C · Library',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
@@ -637,137 +2432,116 @@ export const SCREENS: ScreenEntry[] = [
       'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C2.E1 No results',
+    figmaId: '584:9349',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'EmptyState',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C2.E2 No results with filters on',
+    figmaId: '182:444',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'EmptyState',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
       'TagChip'
     ]
   },
   {
-    title: 'C6 Tag filter popover',
+    title: 'C3.1 Open the tag filter',
     figmaId: '182:190',
     flow: 'C · Library',
+    page: '↳ Library',
     components: [
       'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'CategoryPill',
+      'Checkbox',
       'GlobalSearch',
+      'Input',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav',
       'TagFilterPopover'
     ]
   },
   {
-    title: 'C2 Loading',
-    figmaId: '182:276',
+    title: 'C3.2 Search the tags',
+    figmaId: '584:9355',
     flow: 'C · Library',
+    page: '↳ Library',
     components: [
       'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'CategoryPill',
+      'Checkbox',
       'GlobalSearch',
+      'Input',
       'LibraryToolbar',
-      'LoadingState',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav',
-      'Skeleton'
+      'TagFilterPopover'
     ]
   },
   {
-    title: 'C3 Empty library',
-    figmaId: '182:358',
+    title: 'C3.3 Pick tags',
+    figmaId: '584:9362',
     flow: 'C · Library',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
-      'EmptyState',
+      'CategoryPill',
+      'Checkbox',
       'GlobalSearch',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'C4 No search / filter results',
-    figmaId: '182:444',
-    flow: 'C · Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'EmptyState',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'C7 Tile + hover overlay',
-    figmaId: '182:531',
-    flow: 'C · Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'FavouriteToggle',
-      'GlobalSearch',
+      'Input',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'TagChip',
+      'TagFilterPopover'
     ]
   },
   {
-    title: 'D7 Fullscreen preview',
-    figmaId: '182:622',
+    title: 'C3.4 Filtered',
+    figmaId: '584:9369',
     flow: 'C · Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'Lightbox',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'Library load failed',
-    figmaId: '182:704',
-    flow: 'C · Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'Banner',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'Cover file missing',
-    figmaId: '182:793',
-    flow: 'C · Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'CoverImage',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupCard',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'Favourites view',
-    figmaId: '182:881',
-    flow: 'C · Library',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
@@ -776,13 +2550,57 @@ export const SCREENS: ScreenEntry[] = [
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'TagChip'
     ]
   },
   {
-    title: 'C6 Filter · "No tags yet"',
+    title: 'C3.E1 No tag matches',
+    figmaId: '584:9375',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'CategoryPill',
+      'GlobalSearch',
+      'Input',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'TagFilterPopover'
+    ]
+  },
+  {
+    title: 'C3.E2 No tags yet',
     figmaId: '182:969',
     flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'EmptyState',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'TagFilterPopover'
+    ]
+  },
+  {
+    title: 'C3.E3 Filtered to nothing',
+    figmaId: '584:9382',
+    flow: 'C · Library',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
@@ -791,14 +2609,640 @@ export const SCREENS: ScreenEntry[] = [
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav',
-      'TagFilterPopover'
+      'TagChip'
     ]
   },
   {
-    title: 'D1 Detail modal — loading',
+    title: 'C4.1 Sort menu',
+    figmaId: '584:9388',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C4.2 Sorted by name',
+    figmaId: '584:9394',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C5.1 Hover a card',
+    figmaId: '182:531',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C5.2 Star a card',
+    figmaId: '584:9400',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C5.3 Hover the Add card',
+    figmaId: '584:9406',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C5.E1 Keyboard focus',
+    figmaId: '584:9412',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C5.E2 No preview',
+    figmaId: '584:9418',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C5.E3 Cover file missing',
+    figmaId: '182:793',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C5.E4 Unstar in Starred',
+    figmaId: '594:13205',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'C6.1 Preview → fullscreen',
+    figmaId: '182:622',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: ['AppWindow', 'Lightbox', 'MockupGrid']
+  },
+  {
+    title: 'C6.2 Next mockup',
+    figmaId: '584:9424',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: ['AppWindow', 'Lightbox', 'MockupGrid']
+  },
+  {
+    title: 'C6.E1 A pile',
+    figmaId: '584:9431',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: ['AppWindow', 'Lightbox', 'MockupGrid']
+  },
+  {
+    title: 'C6.E2 Still loading',
+    figmaId: '584:9438',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: ['AppWindow', 'Lightbox', 'MockupGrid']
+  },
+  {
+    title: 'C6.E3 Preview missing',
+    figmaId: '584:9445',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: ['AppWindow', 'Lightbox', 'MockupGrid']
+  },
+  {
+    title: 'C7.1 Click to select',
+    figmaId: '594:13212',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C7.2 ⌘-click to add',
+    figmaId: '594:13218',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C7.3 ⇧-click a range',
+    figmaId: '594:13224',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C7.E1 Marquee select',
+    figmaId: '594:13231',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C7.E2 ⌘A selects all',
+    figmaId: '594:13237',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C7.E3 The Add card isn’t selectable',
+    figmaId: '594:13243',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C8.1 Drag a card onto a card',
+    figmaId: '594:13250',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C8.2 Piled',
+    figmaId: '594:13256',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'C8.3 Grab a selection',
+    figmaId: '594:13262',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C8.4 Selection over a card',
+    figmaId: '594:13268',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C8.5 ⌘G makes a pile from a selection',
+    figmaId: '594:13274',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'C8.E1 Drop onto a pile',
+    figmaId: '594:13281',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C8.E2 Pile onto a pile',
+    figmaId: '594:13287',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C8.E3 Disband with ⇧⌘G',
+    figmaId: '594:13293',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'C9.1 Right-click a card',
+    figmaId: '594:13300',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'DropdownMenu',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C9.2 ⋯ on hover',
+    figmaId: '594:13306',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'DropdownMenu',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C9.3 Right-click a selection',
+    figmaId: '594:13312',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'DropdownMenu',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C9.4 Moved to Trash',
+    figmaId: '594:13318',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'C9.E1 Right-click a pile',
+    figmaId: '594:13325',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'DropdownMenu',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C9.E2 Right-click outside the selection',
+    figmaId: '594:13331',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'DropdownMenu',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C9.E3 Near the window edge',
+    figmaId: '594:13337',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'DropdownMenu',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'C9.E4 ⌫ the selection',
+    figmaId: '594:13343',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'C9.E5 Right-click empty space',
+    figmaId: '594:13349',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'DropdownMenu',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'D1.1 Opening',
     figmaId: '182:1060',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
@@ -811,9 +3255,10 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'D2 Single mockup',
+    title: 'D1.2 A mockup',
     figmaId: '182:1147',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
@@ -828,9 +3273,10 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'D3 Group + variant carousel',
+    title: 'D1.3 A pile',
     figmaId: '182:1244',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
@@ -840,58 +3286,15 @@ export const SCREENS: ScreenEntry[] = [
       'MockupGrid',
       'PageHeader',
       'SidebarNav',
-      'VariantStrip'
+      'VariantStrip',
+      'VariantThumb'
     ]
   },
   {
-    title: 'D4 Confirm — Move to Trash',
-    figmaId: '182:1342',
-    flow: 'D · Detail & edit',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ConfirmDialog',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'D5 Confirm — Ungroup',
-    figmaId: '182:1428',
-    flow: 'D · Detail & edit',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ConfirmDialog',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'D6 Confirm — Delete Group',
-    figmaId: '182:1514',
-    flow: 'D · Detail & edit',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ConfirmDialog',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'Detail load failed',
+    title: 'D1.E1 Couldn’t load it',
     figmaId: '182:1600',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
@@ -905,30 +3308,34 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'Could not open in Photoshop',
-    figmaId: '182:1688',
+    title: 'D1.E2 A variant’s cover is missing',
+    figmaId: '182:2037',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
-      'ChoiceDialog',
+      'CoverImage',
       'DetailModalLayout',
       'GlobalSearch',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'SidebarNav',
+      'VariantStrip',
+      'VariantThumb'
     ]
   },
   {
-    title: 'Save failed — recovery',
-    figmaId: '182:1776',
+    title: 'D2.1 Change something',
+    figmaId: '599:20820',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
-      'Banner',
       'DetailModalLayout',
+      'FavouriteToggle',
       'GlobalSearch',
       'LibraryToolbar',
       'MockupGrid',
@@ -938,25 +3345,29 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'Duplicate created — where did it go?',
-    figmaId: '182:1864',
+    title: 'D2.2 Saved',
+    figmaId: '599:20829',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
-      'ActivityDock',
       'AddMenu',
       'AppWindow',
+      'DetailModalLayout',
+      'FavouriteToggle',
       'GlobalSearch',
       'LibraryToolbar',
       'MockupGrid',
+      'MockupMetaForm',
       'PageHeader',
       'SidebarNav',
       'Toast'
     ]
   },
   {
-    title: 'Title emptied — Save disabled',
+    title: 'D2.E1 Title emptied',
     figmaId: '182:1952',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
@@ -971,26 +3382,28 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'Variant cover missing',
-    figmaId: '182:2037',
+    title: 'D2.E2 Save failed',
+    figmaId: '182:1776',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
-      'CoverImage',
+      'Banner',
       'DetailModalLayout',
       'GlobalSearch',
       'LibraryToolbar',
       'MockupGrid',
+      'MockupMetaForm',
       'PageHeader',
-      'SidebarNav',
-      'VariantStrip'
+      'SidebarNav'
     ]
   },
   {
-    title: 'Unsaved-changes guard',
+    title: 'D2.E3 Close with unsaved changes',
     figmaId: '182:2122',
     flow: 'D · Detail & edit',
+    page: '↳ Library',
     components: [
       'AddMenu',
       'AppWindow',
@@ -998,6 +3411,240 @@ export const SCREENS: ScreenEntry[] = [
       'DetailModalLayout',
       'GlobalSearch',
       'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'D3.1 Move to Trash',
+    figmaId: '599:20838',
+    flow: 'D · Detail & edit',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'D3.2 Disband pile',
+    figmaId: '599:20845',
+    flow: 'D · Detail & edit',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AddMockupCard',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'D3.E1 Photoshop didn’t open',
+    figmaId: '182:1688',
+    flow: 'D · Detail & edit',
+    page: '↳ Library',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'ChoiceDialog',
+      'DetailModalLayout',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'I1.1 To sort',
+    figmaId: '378:24064',
+    flow: 'I1 · To sort',
+    page: '↳ Inboxes & Trash',
+    components: ['ActionBar', 'AppWindow', 'MockupCard', 'MockupGrid', 'PageHeader', 'SidebarNav']
+  },
+  {
+    title: 'I1.E1 To sort · still copying',
+    figmaId: '378:24816',
+    flow: 'I1 · To sort',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'Banner',
+      'CopyWidget',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'I1.E2 Toss this haul?',
+    figmaId: '378:25534',
+    flow: 'I1 · To sort',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'ConfirmDialog',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'I2.1 To stash',
+    figmaId: '380:31602',
+    flow: 'I2 · To stash',
+    page: '↳ Inboxes & Trash',
+    components: ['ActionBar', 'AppWindow', 'MockupCard', 'MockupGrid', 'PageHeader', 'SidebarNav']
+  },
+  {
+    title: 'I2.2 Hover a card',
+    figmaId: '769:118810',
+    flow: 'I2 · To stash',
+    page: '↳ Inboxes & Trash',
+    components: ['ActionBar', 'AppWindow', 'MockupCard', 'MockupGrid', 'PageHeader', 'SidebarNav']
+  },
+  {
+    title: 'I2.E1 Toss these?',
+    figmaId: '380:32277',
+    flow: 'I2 · To stash',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'ActionBar',
+      'AppWindow',
+      'ConfirmDialog',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'I3.1 Finish later?',
+    figmaId: '380:31280',
+    flow: 'I3–I5 · Finish later, done & relaunch',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'AppWindow',
+      'ConfirmDialog',
+      'CoverPanel',
+      'FlowModal',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'I3.2 My Stash · waiting banner',
+    figmaId: '380:32844',
+    flow: 'I3–I5 · Finish later, done & relaunch',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'AppWindow',
+      'Banner',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'I3.E1 Stray drop',
+    figmaId: '380:31553',
+    flow: 'I3–I5 · Finish later, done & relaunch',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'AppWindow',
+      'CoverPanel',
+      'DropHint',
+      'FlowModal',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'I3.E2 Finish later from Sort',
+    figmaId: '441:47090',
+    flow: 'I3–I5 · Finish later, done & relaunch',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'AppWindow',
+      'ConfirmDialog',
+      'FlowModal',
+      'GroupCard',
+      'GroupMemberThumb',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'I4.1 All tucked away',
+    figmaId: '367:24683',
+    flow: 'I3–I5 · Finish later, done & relaunch',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'AppWindow',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'I4.E1 Tucked away · some skipped',
+    figmaId: '441:47557',
+    flow: 'I3–I5 · Finish later, done & relaunch',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'AppWindow',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'Toast'
+    ]
+  },
+  {
+    title: 'I5.1 Launch with work waiting',
+    figmaId: '441:47947',
+    flow: 'I3–I5 · Finish later, done & relaunch',
+    page: '↳ Inboxes & Trash',
+    components: [
+      'AppWindow',
+      'Banner',
+      'CopyWidget',
+      'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
       'SidebarNav'
@@ -1007,34 +3654,28 @@ export const SCREENS: ScreenEntry[] = [
     title: 'E3 Loading',
     figmaId: '182:2214',
     flow: 'E · Trash',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'GlobalSearch',
-      'LoadingState',
-      'PageHeader',
-      'SidebarNav',
-      'Skeleton'
-    ]
+    page: '↳ Inboxes & Trash',
+    components: ['ActionBar', 'AppWindow', 'MockupGrid', 'PageHeader', 'SidebarNav']
   },
   {
     title: 'E2 Trash empty',
     figmaId: '182:2300',
     flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
     components: ['AddMenu', 'AppWindow', 'EmptyState', 'GlobalSearch', 'PageHeader', 'SidebarNav']
   },
   {
     title: 'E1 Trash list',
     figmaId: '182:2382',
     flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
     components: [
-      'AddMenu',
+      'ActionBar',
       'AppWindow',
-      'GlobalSearch',
-      'ListGroup',
-      'ListRow',
+      'DropdownMenu',
+      'MockupCard',
+      'MockupGrid',
       'PageHeader',
-      'SectionHeader',
       'SidebarNav'
     ]
   },
@@ -1042,15 +3683,14 @@ export const SCREENS: ScreenEntry[] = [
     title: 'E4 Confirm permanent delete',
     figmaId: '182:2476',
     flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
     components: [
-      'AddMenu',
+      'ActionBar',
       'AppWindow',
       'ConfirmDialog',
-      'GlobalSearch',
-      'ListGroup',
-      'ListRow',
+      'MockupCard',
+      'MockupGrid',
       'PageHeader',
-      'SectionHeader',
       'SidebarNav'
     ]
   },
@@ -1058,15 +3698,14 @@ export const SCREENS: ScreenEntry[] = [
     title: 'Empty Trash',
     figmaId: '182:2563',
     flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
     components: [
-      'AddMenu',
+      'ActionBar',
       'AppWindow',
       'ConfirmDialog',
-      'GlobalSearch',
-      'ListGroup',
-      'ListRow',
+      'MockupCard',
+      'MockupGrid',
       'PageHeader',
-      'SectionHeader',
       'SidebarNav'
     ]
   },
@@ -1074,331 +3713,494 @@ export const SCREENS: ScreenEntry[] = [
     title: 'Restore failed',
     figmaId: '182:2652',
     flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
     components: [
-      'AddMenu',
+      'ActionBar',
       'AppWindow',
       'ConfirmDialog',
-      'GlobalSearch',
-      'ListGroup',
-      'ListRow',
+      'MockupCard',
+      'MockupGrid',
       'PageHeader',
-      'SectionHeader',
       'SidebarNav'
     ]
   },
   {
-    title: 'F1 Settings shell',
-    figmaId: '182:2744',
+    title: 'F1.1 My Stash',
+    figmaId: '797:122009',
     flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
       'SettingsLayout',
-      'SidebarNav',
-      'Tabs'
+      'SidebarNav'
     ]
   },
   {
-    title: 'F2 Library',
-    figmaId: '182:2834',
+    title: 'F1.2 AI model',
+    figmaId: '797:122018',
     flow: 'F · Settings',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'Banner',
-      'GlobalSearch',
-      'PageHeader',
-      'SettingRow',
-      'SettingsLayout',
-      'SidebarNav',
-      'Tabs'
-    ]
-  },
-  {
-    title: 'F3 AI Models',
-    figmaId: '182:2923',
-    flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
       'GlobalSearch',
       'HardwareSummary',
-      'ModelRow',
+      'LibraryToolbar',
+      'MockupGrid',
+      'ModelCard',
       'PageHeader',
       'SettingsLayout',
       'SidebarNav',
-      'Tabs'
+      'Switch'
     ]
   },
   {
-    title: 'F4 Privacy',
-    figmaId: '182:3015',
+    title: 'F1.3 Tags',
+    figmaId: '797:122027',
     flow: 'F · Settings',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ConsentPanel',
-      'GlobalSearch',
-      'PageHeader',
-      'SettingsLayout',
-      'SidebarNav',
-      'Tabs'
-    ]
-  },
-  {
-    title: 'F5 Tags',
-    figmaId: '182:3100',
-    flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
       'SettingsLayout',
       'SidebarNav',
-      'Tabs',
       'TagTree'
     ]
   },
   {
-    title: 'F6 About',
-    figmaId: '182:3188',
+    title: 'F1.4 Privacy',
+    figmaId: '797:122036',
     flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
-      'AboutPanel',
       'AddMenu',
       'AppWindow',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
       'SettingsLayout',
       'SidebarNav',
-      'Tabs'
+      'Switch'
     ]
   },
   {
-    title: 'F5a Tag tree',
-    figmaId: '182:3274',
+    title: 'F1.5 About',
+    figmaId: '797:122045',
     flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'F2.1 The stash check found something',
+    figmaId: '797:122055',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'F2.2 Move your stash here?',
+    figmaId: '797:122064',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'ChoiceDialog',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'F2.3 Moving your stash',
+    figmaId: '797:122073',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'ProgressDialog',
+      'SettingsLayout',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'F2.4 Restart to use the new folder?',
+    figmaId: '797:122082',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'ChoiceDialog',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'F2.5 Empty Trash?',
+    figmaId: '797:122091',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'ConfirmDialog',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav'
+    ]
+  },
+  {
+    title: 'F3.1 AI switched off',
+    figmaId: '797:122101',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'HardwareSummary',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav',
+      'Switch'
+    ]
+  },
+  {
+    title: 'F3.2 Downloading a model',
+    figmaId: '797:122110',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'HardwareSummary',
+      'LibraryToolbar',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav',
+      'Switch'
+    ]
+  },
+  {
+    title: 'F3.3 Download failed',
+    figmaId: '797:122119',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'HardwareSummary',
+      'LibraryToolbar',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav',
+      'Switch'
+    ]
+  },
+  {
+    title: 'F3.4 Delete the model in use?',
+    figmaId: '797:122128',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'ConfirmDialog',
+      'GlobalSearch',
+      'HardwareSummary',
+      'LibraryToolbar',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav',
+      'Switch'
+    ]
+  },
+  {
+    title: 'F4.1 Add a tag',
+    figmaId: '797:122138',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav',
+      'TagTree'
+    ]
+  },
+  {
+    title: 'F4.2 Tag added',
+    figmaId: '797:122147',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav',
+      'TagTree'
+    ]
+  },
+  {
+    title: 'F4.3 Already a tag elsewhere',
+    figmaId: '797:122156',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav',
+      'TagTree'
+    ]
+  },
+  {
+    title: 'F4.4 Tag menu',
+    figmaId: '797:122165',
+    flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
       'DropdownMenu',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
       'SettingsLayout',
       'SidebarNav',
-      'Tabs',
       'TagTree'
     ]
   },
   {
-    title: 'F5b Merge tags',
-    figmaId: '182:3371',
+    title: 'F4.5 Rename a tag',
+    figmaId: '797:122174',
     flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
-      'Field',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav',
+      'TagTree'
+    ]
+  },
+  {
+    title: 'F4.6 Merge into…',
+    figmaId: '797:122183',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
       'FormDialog',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
       'SettingsLayout',
       'SidebarNav',
-      'Tabs',
       'TagTree'
     ]
   },
   {
-    title: 'F5c Delete tag',
-    figmaId: '182:3459',
+    title: 'F4.7 Deleted, with Undo',
+    figmaId: '797:122192',
     flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
-      'ConfirmDialog',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
       'SettingsLayout',
       'SidebarNav',
-      'Tabs',
+      'TagTree',
+      'Toast'
+    ]
+  },
+  {
+    title: 'F4.8 New category',
+    figmaId: '797:122201',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMenu',
+      'AppWindow',
+      'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'SettingsLayout',
+      'SidebarNav',
       'TagTree'
     ]
   },
   {
-    title: 'F5d New category',
-    figmaId: '182:3547',
+    title: 'F4.9 Delete a category?',
+    figmaId: '797:122210',
     flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
-      'Field',
       'FormDialog',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
       'SettingsLayout',
       'SidebarNav',
-      'Tabs',
       'TagTree'
     ]
   },
   {
-    title: 'F5e Delete category',
-    figmaId: '182:3635',
+    title: 'F4.10 No tags yet',
+    figmaId: '797:122219',
     flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
-      'Field',
-      'FormDialog',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
       'SettingsLayout',
       'SidebarNav',
-      'Tabs',
       'TagTree'
     ]
   },
   {
-    title: 'Move library here?',
-    figmaId: '182:3723',
+    title: 'F5.1 Downloading an update',
+    figmaId: '797:122229',
     flow: 'F · Settings',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ChoiceDialog',
-      'GlobalSearch',
-      'PageHeader',
-      'SettingRow',
-      'SettingsLayout',
-      'SidebarNav',
-      'Tabs'
-    ]
-  },
-  {
-    title: 'Delete model',
-    figmaId: '182:3812',
-    flow: 'F · Settings',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ConfirmDialog',
-      'GlobalSearch',
-      'ModelRow',
-      'PageHeader',
-      'SettingsLayout',
-      'SidebarNav',
-      'Tabs'
-    ]
-  },
-  {
-    title: 'F6a Check for updates',
-    figmaId: '182:3900',
-    flow: 'F · Settings',
-    components: [
-      'AboutPanel',
-      'AddMenu',
-      'AppWindow',
-      'GlobalSearch',
-      'PageHeader',
-      'SettingsLayout',
-      'SidebarNav',
-      'Tabs'
-    ]
-  },
-  {
-    title: 'F5f No tags yet',
-    figmaId: '182:3985',
-    flow: 'F · Settings',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'EmptyState',
-      'GlobalSearch',
-      'PageHeader',
-      'SettingsLayout',
-      'SidebarNav',
-      'Tabs',
-      'TagTree'
-    ]
-  },
-  {
-    title: 'Download failed',
-    figmaId: '182:4073',
-    flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
       'GlobalSearch',
-      'HardwareSummary',
-      'ModelRow',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
       'SettingsLayout',
-      'SidebarNav',
-      'Tabs'
+      'SidebarNav'
     ]
   },
   {
-    title: 'Moving library…',
-    figmaId: '182:4161',
+    title: 'F5.2 Restart to update',
+    figmaId: '797:122238',
     flow: 'F · Settings',
+    page: '↳ Settings',
     components: [
       'AddMenu',
       'AppWindow',
       'GlobalSearch',
+      'LibraryToolbar',
+      'MockupGrid',
       'PageHeader',
-      'Progress',
-      'ProgressDialog',
-      'SettingRow',
       'SettingsLayout',
-      'SidebarNav',
-      'Tabs'
+      'SidebarNav'
     ]
   },
   {
-    title: 'Restart required',
-    figmaId: '182:4246',
-    flow: 'F · Settings',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ChoiceDialog',
-      'GlobalSearch',
-      'PageHeader',
-      'SettingRow',
-      'SettingsLayout',
-      'SidebarNav',
-      'Tabs'
-    ]
-  },
-  {
-    title: 'G1 Reconciliation modal — BLOCKING',
+    title: 'G1.1 Changes found at launch',
     figmaId: '182:4338',
-    flow: 'G · Library integrity',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
     components: [
       'AddMenu',
       'AppWindow',
       'GlobalSearch',
       'LibraryToolbar',
-      'ListRow',
       'MockupGrid',
       'PageHeader',
       'ReconciliationPanel',
-      'SectionHeader',
       'SidebarNav'
     ]
   },
   {
-    title: 'G2 Rescanning',
+    title: 'G1.2 Checking again',
     figmaId: '182:4438',
-    flow: 'G · Library integrity',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
     components: [
       'AddMenu',
       'AppWindow',
       'GlobalSearch',
       'LibraryToolbar',
-      'LoadingState',
       'MockupGrid',
       'PageHeader',
       'ReconciliationPanel',
@@ -1406,122 +4208,67 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'Route orphan into approval',
+    title: 'G1.3 Added to To sort',
     figmaId: '182:4527',
-    flow: 'G · Library integrity',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
     components: [
       'AddMenu',
       'AppWindow',
-      'ChoiceDialog',
       'GlobalSearch',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
       'ReconciliationPanel',
-      'SidebarNav'
+      'SidebarNav',
+      'Toast'
     ]
   },
   {
-    title: 'Ignore all',
+    title: 'G1.4 Ignored, with Undo',
     figmaId: '182:4616',
-    flow: 'G · Library integrity',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
     components: [
       'AddMenu',
       'AppWindow',
-      'ConfirmDialog',
       'GlobalSearch',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
       'ReconciliationPanel',
-      'SidebarNav'
+      'SidebarNav',
+      'Toast'
     ]
   },
   {
-    title: 'Scan failed',
+    title: 'G1.E1 Couldn’t check at launch',
     figmaId: '182:4704',
-    flow: 'G · Library integrity',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
     components: [
       'AddMenu',
       'AppWindow',
-      'ErrorState',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'Modal',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'Resume on launch?',
-    figmaId: '182:4794',
-    flow: 'H · Pending review & recovery',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ChoiceDialog',
       'GlobalSearch',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'SidebarNav',
+      'Toast'
     ]
   },
   {
-    title: 'C1 Pending review banner',
-    figmaId: '182:4883',
-    flow: 'H · Pending review & recovery',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'Banner',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'H1 Pending review queue',
-    figmaId: '182:4972',
-    flow: 'H · Pending review & recovery',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'GlobalSearch',
-      'MockupCard',
-      'PageHeader',
-      'PendingBatchGroup',
-      'SectionHeader',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'Discard unreviewed batch?',
-    figmaId: '182:5066',
-    flow: 'H · Pending review & recovery',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ConfirmDialog',
-      'GlobalSearch',
-      'PageHeader',
-      'PendingBatchGroup',
-      'SidebarNav'
-    ]
-  },
-  {
-    title: 'Crash / error boundary',
+    title: 'X1 Something broke',
     figmaId: '182:5157',
     flow: 'X · Cross-cutting & errors',
+    page: '↳ Integrity & errors',
     components: ['CenteredLayout', 'ErrorState']
   },
   {
-    title: 'IPC failure — generic',
+    title: 'X2 Couldn’t load, couldn’t save',
     figmaId: '182:5242',
     flow: 'X · Cross-cutting & errors',
+    page: '↳ Integrity & errors',
     components: [
       'ActivityDock',
       'AddMenu',
@@ -1536,15 +4283,17 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'Z3 Pro gate',
+    title: 'X3 A Pro feature, locked',
     figmaId: '182:5330',
     flow: 'X · Cross-cutting & errors',
+    page: '↳ Integrity & errors',
     components: ['AddMenu', 'AppWindow', 'GlobalSearch', 'PageHeader', 'ProGate', 'SidebarNav']
   },
   {
-    title: 'Upgrade / licence (Phase 2)',
+    title: 'X4 Upgrade to Pro',
     figmaId: '182:5412',
     flow: 'X · Cross-cutting & errors',
+    page: '↳ Integrity & errors',
     components: [
       'ActionBar',
       'AddMenu',
@@ -1554,7 +4303,6 @@ export const SCREENS: ScreenEntry[] = [
       'MockupGrid',
       'Modal',
       'PageHeader',
-      'ProGate',
       'SidebarNav'
     ]
   }

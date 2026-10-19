@@ -7,13 +7,13 @@ import { cva } from 'class-variance-authority'
 // shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
 export const settingsLayoutVariants = cva('', {
   variants: {
-    tab: {
-      library: '',
-      'ai-models': '',
-      privacy: '',
+    section: {
+      'my-stash': '',
+      'ai-model': '',
       tags: '',
+      privacy: '',
       about: ''
     }
   },
-  defaultVariants: { tab: 'library' }
+  defaultVariants: { section: 'my-stash' }
 })

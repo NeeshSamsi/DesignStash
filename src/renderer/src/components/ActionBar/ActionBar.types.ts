@@ -20,7 +20,8 @@ export const ACTION_BAR_CONTRACT = {
   interactionStates: [],
   disabled: false,
   booleans: {
-    showStatus: false
+    showStatus: false,
+    showPileShortcut: false
   },
   texts: {
     status: 'Unsaved changes'
@@ -36,6 +37,8 @@ export interface ActionBarContractProps {
   variant?: ActionBarVariant
   /** Figma boolean. Default `false`. */
   showStatus?: boolean
+  /** Figma boolean. Default `false`. */
+  showPileShortcut?: boolean
   /** Figma text. Default "Unsaved changes". */
   status?: string
 }
@@ -44,5 +47,6 @@ export interface ActionBarContractProps {
 export const ACTION_BAR_DEFAULTS = {
   variant: 'modal',
   showStatus: false,
+  showPileShortcut: false,
   status: 'Unsaved changes'
 } satisfies ActionBarContractProps
