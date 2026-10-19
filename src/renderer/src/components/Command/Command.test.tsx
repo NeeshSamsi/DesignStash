@@ -10,10 +10,15 @@ describe('Command', () => {
     expect(baseElement.querySelector('[data-ds="Command"]')).not.toBeNull()
   })
 
-  it('renders the Figma default text', () => {
+  it('renders the Figma default text as the search placeholder', () => {
     render(<Command />)
-    for (const text of Object.values<string>(COMMAND_CONTRACT.texts)) {
-      expect(screen.getAllByText(text).length).toBeGreaterThan(0)
-    }
+    expect(screen.getByPlaceholderText(COMMAND_CONTRACT.texts.query)).not.toBeNull()
+  })
+
+  it('shows the empty and loading messages for those states', () => {
+    const { rerender } = render(<Command state="empty" />)
+    expect(screen.getByText('No matching tags')).not.toBeNull()
+    rerender(<Command state="loading" />)
+    expect(screen.getByText('Searching…')).not.toBeNull()
   })
 })
