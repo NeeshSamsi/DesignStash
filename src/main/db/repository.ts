@@ -1,714 +1,99 @@
-import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from './connection'
-import { mockups, variants, tags, mockupTags, tagCategories } from './schema'
-import type {
-  Mockup,
-  NewMockup,
-  Variant,
-  NewVariant,
-  Tag,
-  NewTag,
-  TagCategory
-} from './schema'
-import type { ConfirmedGroup } from '@shared/grouping'
-import type { ApprovalTag } from '@shared/approval'
-import type { CategorySnapshot, TagMatch, TagSnapshot } from '@shared/tags'
+import { MockupRepository } from './repositories/mockups'
+import { PileRepository } from './repositories/piles'
+import { TagRepository } from './repositories/tags'
+import { LibraryQueryRepository } from './repositories/library-query'
+import { TrashRepository } from './repositories/trash'
+import { SearchRepository } from './repositories/search'
 
-export interface LibraryRow {
-  id: number
-  title: string
-  description: string | null
-  coverPath: string
-  isGroup: boolean
-  favourite: boolean
-  reviewStatus: 'needs_review' | 'approved'
-  variantCount: number
-  tags: { id: number; label: string; categoryLabel: string }[]
-}
+export type { LibraryRow } from './repositories/library-query'
 
-/** Typed data-access layer over Drizzle. Keep all queries here. */
+type Args<T extends (...args: never[]) => unknown> = Parameters<T>
+
+/**
+ * Typed data-access layer over Drizzle. Queries live in the domain classes under
+ * ./repositories; this facade keeps the original flat API so services and handlers
+ * don't change. Add new queries to a domain class, not here.
+ */
 export class Repository {
-  constructor(private readonly db: AppDatabase) {}
+  readonly search: SearchRepository
+  readonly mockups: MockupRepository
+  readonly piles: PileRepository
+  readonly tags: TagRepository
+  readonly library: LibraryQueryRepository
+  readonly trash: TrashRepository
+
+  constructor(db: AppDatabase) {
+    this.search = new SearchRepository(db)
+    this.mockups = new MockupRepository(db, this.search)
+    this.piles = new PileRepository(db)
+    this.tags = new TagRepository(db, this.mockups, this.search)
+    this.library = new LibraryQueryRepository(db, this.mockups, this.piles, this.search)
+    this.trash = new TrashRepository(db, this.mockups, this.search, this.library)
+  }
 
   // Mockups
-  createMockup(data: NewMockup): Mockup {
-    return this.db.insert(mockups).values(data).returning().get()
-  }
-
-  getMockup(id: number): Mockup | undefined {
-    return this.db.select().from(mockups).where(eq(mockups.id, id)).get()
-  }
-
-  /** Favourites first, then newest first (spec §3.5).
-   *  @deprecated legacy — does not exclude soft-deleted; use getLibrary for the grid */
-  getAllMockups(): Mockup[] {
-    return this.db
-      .select()
-      .from(mockups)
-      .orderBy(desc(mockups.favourite), desc(mockups.createdAt))
-      .all()
-  }
-
-  deleteMockup(id: number): boolean {
-    return this.db.delete(mockups).where(eq(mockups.id, id)).run().changes > 0
-  }
-
-  setFavourite(id: number, favourite: boolean): void {
-    this.db
-      .update(mockups)
-      .set({ favourite, favouritedAt: favourite ? new Date().toISOString() : null })
-      .where(eq(mockups.id, id))
-      .run()
-  }
-
-  /** All non-deleted mockups (leaders, members, singletons) with their stored libraryPath. Used by integrity scan. */
-  getAllLibraryPaths(): { mockupId: number; libraryPath: string }[] {
-    return this.db
-      .select({ mockupId: mockups.id, libraryPath: mockups.libraryPath })
-      .from(mockups)
-      .where(isNull(mockups.deletedAt))
-      .all()
-  }
-
-  mockupExistsByHash(hash: string): boolean {
-    return !!this.db.select().from(mockups).where(eq(mockups.contentHash, hash)).get()
-  }
-
-  updateMockup(id: number, data: Partial<NewMockup>): void {
-    this.db.update(mockups).set(data).where(eq(mockups.id, id)).run()
-  }
-
-  // Variants
-  createVariant(data: NewVariant): Variant {
-    return this.db.insert(variants).values(data).returning().get()
-  }
-
-  getVariantsForMockup(mockupId: number): Variant[] {
-    return this.db
-      .select()
-      .from(variants)
-      .where(eq(variants.mockupId, mockupId))
-      .orderBy(variants.position)
-      .all()
-  }
-
-  // Categories
-  getCategoryByLabel(label: string): TagCategory | undefined {
-    return this.db.select().from(tagCategories).where(eq(tagCategories.label, label)).get()
-  }
-
-  createCategory(data: { label: string; isCanonical?: boolean }): TagCategory {
-    return this.db.insert(tagCategories).values(data).returning().get()
-  }
-
-  getAllCategories(): TagCategory[] {
-    return this.db.select().from(tagCategories).orderBy(tagCategories.sortOrder).all()
-  }
-
-  renameCategory(categoryId: number, label: string): void {
-    this.db.update(tagCategories).set({ label }).where(eq(tagCategories.id, categoryId)).run()
-  }
-
-  // Tags
-  getAllTags(): Tag[] {
-    return this.db.select().from(tags).all()
-  }
-
-  /** Categories (ordered by sortOrder) each with their tags + per-tag usage counts. */
-  getTagTree(): {
-    categoryId: number
-    categoryLabel: string
-    tagCount: number
-    tags: { tagId: number; label: string; usageCount: number }[]
-  }[] {
-    const categories = this.getAllCategories()
-    const allTags = this.db.select().from(tags).all()
-    const usageRows = this.db
-      .select({ tagId: mockupTags.tagId, count: sql<number>`count(*)` })
-      .from(mockupTags)
-      .groupBy(mockupTags.tagId)
-      .all()
-    const usageMap = new Map(usageRows.map((r) => [r.tagId, r.count]))
-
-    return categories.map((cat) => {
-      const catTags = allTags
-        .filter((t) => t.categoryId === cat.id)
-        .map((t) => ({
-          tagId: t.id,
-          label: t.label,
-          usageCount: usageMap.get(t.id) ?? 0
-        }))
-      return {
-        categoryId: cat.id,
-        categoryLabel: cat.label,
-        tagCount: catTags.length,
-        tags: catTags
-      }
-    })
-  }
-
-  /** Count distinct mockups carrying the tag. (mockup_tags PK makes rows == distinct mockups.) */
-  getTagUsageCount(tagId: number): number {
-    return (
-      this.db
-        .select({ c: sql<number>`count(distinct ${mockupTags.mockupId})` })
-        .from(mockupTags)
-        .where(eq(mockupTags.tagId, tagId))
-        .get()?.c ?? 0
-    )
-  }
-
-  /** Rename a tag and re-index FTS for every mockup carrying it (tag label lives in mockups_fts). */
-  renameTag(tagId: number, label: string): void {
-    this.db.update(tags).set({ label }).where(eq(tags.id, tagId)).run()
-    const affected = this.db
-      .select({ mockupId: mockupTags.mockupId })
-      .from(mockupTags)
-      .where(eq(mockupTags.tagId, tagId))
-      .all()
-    for (const { mockupId } of affected) this.upsertSearchIndex(mockupId)
-  }
-
-  /** Move a tag to a different category. (No FTS change — category label isn't indexed.) */
-  reassignTagCategory(tagId: number, categoryId: number): void {
-    this.db.update(tags).set({ categoryId }).where(eq(tags.id, tagId)).run()
-  }
-
-  /** Mockups carrying a tag. */
-  private mockupIdsForTag(tagId: number): number[] {
-    return this.db
-      .select({ mockupId: mockupTags.mockupId })
-      .from(mockupTags)
-      .where(eq(mockupTags.tagId, tagId))
-      .all()
-      .map((r) => r.mockupId)
-  }
-
-  private assertMergeable(sourceTagId: number, targetTagId: number): void {
-    if (sourceTagId === targetTagId) throw new Error('Cannot merge a tag into itself')
-    const source = this.db.select().from(tags).where(eq(tags.id, sourceTagId)).get()
-    if (!source) throw new Error(`Source tag ${sourceTagId} not found`)
-    const target = this.db.select().from(tags).where(eq(tags.id, targetTagId)).get()
-    if (!target) throw new Error(`Target tag ${targetTagId} not found`)
-  }
-
-  /** How many mockups a merge would move, without merging (the Merge into… dialog). */
-  previewMergeTags(sourceTagId: number, targetTagId: number): { affectedMockups: number } {
-    this.assertMergeable(sourceTagId, targetTagId)
-    return { affectedMockups: this.mockupIdsForTag(sourceTagId).length }
-  }
-
-  /** Merge sourceTag into targetTag: re-point every association, dedupe, delete source, reindex FTS. */
-  mergeTags(sourceTagId: number, targetTagId: number): { affectedMockups: number } {
-    this.assertMergeable(sourceTagId, targetTagId)
-    const affected = this.mockupIdsForTag(sourceTagId)
-
-    this.db.transaction((tx) => {
-      for (const mockupId of affected) {
-        tx.insert(mockupTags).values({ mockupId, tagId: targetTagId }).onConflictDoNothing().run()
-        tx.delete(mockupTags)
-          .where(and(eq(mockupTags.mockupId, mockupId), eq(mockupTags.tagId, sourceTagId)))
-          .run()
-      }
-      tx.delete(tags).where(eq(tags.id, sourceTagId)).run()
-    })
-
-    for (const mockupId of affected) this.upsertSearchIndex(mockupId)
-    return { affectedMockups: affected.length }
-  }
-
-  /**
-   * Delete a tag; mockup_tags cascade-deletes. Reindex FTS for affected mockups.
-   * Returns a snapshot so the delete can be undone with restoreTag.
-   */
-  deleteTag(tagId: number): { affectedMockups: number; snapshot: TagSnapshot } {
-    const tag = this.db.select().from(tags).where(eq(tags.id, tagId)).get()
-    if (!tag) throw new Error(`Tag ${tagId} not found`)
-    const affected = this.mockupIdsForTag(tagId)
-
-    this.db.delete(tags).where(eq(tags.id, tagId)).run()
-
-    for (const mockupId of affected) this.upsertSearchIndex(mockupId)
-    return {
-      affectedMockups: affected.length,
-      snapshot: {
-        tag: {
-          id: tag.id,
-          label: tag.label,
-          categoryId: tag.categoryId,
-          isCanonical: tag.isCanonical,
-          createdBy: tag.createdBy
-        },
-        mockupIds: affected
-      }
-    }
-  }
-
-  /**
-   * Undo a tag delete: recreate the tag (or reuse a same-named one made since) and put it back
-   * on every mockup that still exists.
-   */
-  restoreTag(snapshot: TagSnapshot): { tagId: number; restoredMockups: number } {
-    const { tag } = snapshot
-    const category = this.db
-      .select()
-      .from(tagCategories)
-      .where(eq(tagCategories.id, tag.categoryId))
-      .get()
-    if (!category) throw new Error(`Category ${tag.categoryId} not found`)
-
-    const tagId =
-      this.getTagByLabel(tag.categoryId, tag.label)?.id ??
-      this.db.insert(tags).values(tag).returning({ id: tags.id }).get().id
-
-    const restored = snapshot.mockupIds.filter((id) => this.getMockup(id) !== undefined)
-    for (const mockupId of restored) this.addTagToMockup(mockupId, tagId)
-    for (const mockupId of restored) this.upsertSearchIndex(mockupId)
-    return { tagId, restoredMockups: restored.length }
-  }
-
-  /**
-   * Delete a category. A category with tags needs moveTagsTo: its tags move there (merging into
-   * a same-named tag) and mockups keep them. Returns a snapshot of the category row for Undo.
-   */
-  deleteCategory(
-    categoryId: number,
-    moveTagsTo?: number
-  ): { deleted: true; movedTags: number; snapshot: CategorySnapshot } {
-    const category = this.db
-      .select()
-      .from(tagCategories)
-      .where(eq(tagCategories.id, categoryId))
-      .get()
-    if (!category) throw new Error(`Category ${categoryId} not found`)
-
-    const tagsIn = this.db.select().from(tags).where(eq(tags.categoryId, categoryId)).all()
-    if (tagsIn.length > 0) {
-      if (moveTagsTo === undefined) throw new Error('category not empty')
-      if (moveTagsTo === categoryId) throw new Error('Cannot move tags into the same category')
-      const target = this.db
-        .select()
-        .from(tagCategories)
-        .where(eq(tagCategories.id, moveTagsTo))
-        .get()
-      if (!target) throw new Error(`Category ${moveTagsTo} not found`)
-
-      for (const tag of tagsIn) {
-        const clash = this.getTagByLabel(moveTagsTo, tag.label)
-        if (clash) this.mergeTags(tag.id, clash.id)
-        else this.reassignTagCategory(tag.id, moveTagsTo)
-      }
-    }
-
-    this.db.delete(tagCategories).where(eq(tagCategories.id, categoryId)).run()
-    return {
-      deleted: true,
-      movedTags: tagsIn.length,
-      snapshot: {
-        id: category.id,
-        label: category.label,
-        sortOrder: category.sortOrder,
-        isCanonical: category.isCanonical
-      }
-    }
-  }
-
-  /** Undo deleting an empty category. */
-  restoreCategory(snapshot: CategorySnapshot): { categoryId: number } {
-    const row = this.db.insert(tagCategories).values(snapshot).returning().get()
-    return { categoryId: row.id }
-  }
-
-  /** Tags with this name in any category, ignoring case and surrounding spaces. */
-  findTagsByLabel(label: string): TagMatch[] {
-    const wanted = label.trim().toLowerCase()
-    if (!wanted) return []
-    return this.db
-      .select({
-        tagId: tags.id,
-        label: tags.label,
-        categoryId: tagCategories.id,
-        categoryLabel: tagCategories.label
-      })
-      .from(tags)
-      .innerJoin(tagCategories, eq(tags.categoryId, tagCategories.id))
-      .where(sql`lower(${tags.label}) = ${wanted}`)
-      .orderBy(tagCategories.sortOrder, tags.id)
-      .all()
-      .map((t) => ({ ...t, usageCount: this.getTagUsageCount(t.tagId) }))
-  }
-
-  getTagByLabel(categoryId: number, label: string): Tag | undefined {
-    return this.db
-      .select()
-      .from(tags)
-      .where(and(eq(tags.categoryId, categoryId), eq(tags.label, label)))
-      .get()
-  }
-
-  createTag(data: NewTag): Tag {
-    return this.db.insert(tags).values(data).returning().get()
-  }
-
-  getTagsForMockup(mockupId: number): Tag[] {
-    return this.db
-      .select()
-      .from(tags)
-      .innerJoin(mockupTags, eq(tags.id, mockupTags.tagId))
-      .where(eq(mockupTags.mockupId, mockupId))
-      .all()
-      .map((row) => row.tags)
-  }
-
-  addTagToMockup(mockupId: number, tagId: number): void {
-    this.db.insert(mockupTags).values({ mockupId, tagId }).onConflictDoNothing().run()
-  }
-
-  removeTagFromMockup(mockupId: number, tagId: number): void {
-    this.db
-      .delete(mockupTags)
-      .where(and(eq(mockupTags.mockupId, mockupId), eq(mockupTags.tagId, tagId)))
-      .run()
-  }
-
-  clearTagsForMockup(mockupId: number): void {
-    this.db.delete(mockupTags).where(eq(mockupTags.mockupId, mockupId)).run()
-  }
-
-  getApprovalTagsByIds(ids: number[]): ApprovalTag[] {
-    if (ids.length === 0) return []
-    const rows = this.db
-      .select({
-        tagId: tags.id,
-        label: tags.label,
-        categoryId: tagCategories.id,
-        categoryLabel: tagCategories.label
-      })
-      .from(tags)
-      .innerJoin(tagCategories, eq(tags.categoryId, tagCategories.id))
-      .where(inArray(tags.id, ids))
-      .all()
-    const byId = new Map(rows.map((r) => [r.tagId, r]))
-    const seen = new Set<number>()
-    const result: ApprovalTag[] = []
-    for (const id of ids) {
-      if (seen.has(id)) continue
-      seen.add(id)
-      const row = byId.get(id)
-      if (row) result.push(row)
-    }
-    return result
-  }
-
-  approveItem(
-    mockupId: number,
-    data: {
-      title: string
-      description: string
-      coverPath: string
-      coverSource: 'embedded' | 'sidecar' | 'user-uploaded'
-      reviewStatus: 'approved'
-    }
-  ): void {
-    this.db
-      .update(mockups)
-      .set({
-        title: data.title,
-        description: data.description,
-        coverPath: data.coverPath,
-        coverSource: data.coverSource,
-        reviewStatus: data.reviewStatus
-      })
-      .where(eq(mockups.id, mockupId))
-      .run()
-  }
-
-  setMockupCover(mockupId: number, coverPath: string, coverSource: 'user-uploaded'): void {
-    this.db
-      .update(mockups)
-      .set({ coverPath, coverSource })
-      .where(eq(mockups.id, mockupId))
-      .run()
-  }
-
-  getMockupsByGroupId(groupId: number): Mockup[] {
-    return this.db.select().from(mockups).where(eq(mockups.groupId, groupId)).all()
-  }
-
-  getMockupsByBatchId(batchId: string): Mockup[] {
-    return this.db
-      .select()
-      .from(mockups)
-      .where(sql`json_extract(${mockups.importContext}, '$.batchId') = ${batchId}`)
-      .all()
-  }
-
-  confirmGroupings(groups: ConfirmedGroup[], singletonIds: number[]): void {
-    this.db.transaction((tx) => {
-      for (const group of groups) {
-        const [leaderId, ...memberIds] = group.memberIds
-        if (leaderId === undefined) continue
-        tx.update(mockups).set({ isGroup: true, groupId: null }).where(eq(mockups.id, leaderId)).run()
-        for (const memberId of memberIds) {
-          tx.update(mockups).set({ isGroup: false, groupId: leaderId }).where(eq(mockups.id, memberId)).run()
-        }
-      }
-      for (const singletonId of singletonIds) {
-        tx.update(mockups).set({ isGroup: false, groupId: null }).where(eq(mockups.id, singletonId)).run()
-      }
-    })
-  }
-
-  upsertSearchIndex(mockupId: number): void {
-    const m = this.getMockup(mockupId)
-    if (!m) return
-    const tagLabels = this.getTagsForMockup(mockupId).map((t) => t.label).join(' ')
-    this.db.run(sql`DELETE FROM mockups_fts WHERE rowid = ${mockupId}`)
-    this.db.run(
-      sql`INSERT INTO mockups_fts(rowid, title, description, tags)
-          VALUES (${mockupId}, ${m.title}, ${m.description ?? ''}, ${tagLabels})`
-    )
-  }
-
-  removeSearchIndex(mockupId: number): void {
-    this.db.run(sql`DELETE FROM mockups_fts WHERE rowid = ${mockupId}`)
-  }
-
-  rebuildSearchIndex(): void {
-    this.db.run(sql`DELETE FROM mockups_fts`)
-    const rows = this.db
-      .select()
-      .from(mockups)
-      .where(and(eq(mockups.reviewStatus, 'approved'), isNull(mockups.deletedAt)))
-      .all()
-    for (const m of rows) this.upsertSearchIndex(m.id)
-  }
-
-  getLibrary(opts: {
-    tagIds?: number[]
-    categoryIds?: number[]
-    query?: string
-    sort: 'date' | 'name'
-  }): LibraryRow[] {
-    const { tagIds = [], categoryIds = [], sort } = opts
-    const rawQuery = opts.query?.trim() ?? ''
-
-    let candidates = this.db
-      .select()
-      .from(mockups)
-      .where(and(eq(mockups.reviewStatus, 'approved'), isNull(mockups.deletedAt), isNull(mockups.groupId)))
-      .all()
-
-    // FTS filter + rank map
-    let ftsRankMap: Map<number, number> | null = null
-    if (rawQuery) {
-      const ftsTerms = rawQuery
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((t) => t.replace(/[^a-zA-Z0-9\-_]/g, '') + '*')
-        .filter((t) => t.length > 1)
-        .join(' ')
-      if (ftsTerms) {
-        const ftsRows = this.db.all<{ rowid: number; rank: number }>(
-          sql`SELECT rowid, rank FROM mockups_fts WHERE mockups_fts MATCH ${ftsTerms}`
-        )
-        ftsRankMap = new Map(ftsRows.map((r) => [r.rowid, r.rank]))
-        candidates = candidates.filter((c) => ftsRankMap!.has(c.id))
-      }
-    }
-
-    // Tag filter: every picked tag must match (AND).
-    for (const tagId of new Set(tagIds)) {
-      const taggedIds = new Set(
-        this.db
-          .select({ mockupId: mockupTags.mockupId })
-          .from(mockupTags)
-          .where(eq(mockupTags.tagId, tagId))
-          .all()
-          .map((r) => r.mockupId)
-      )
-      candidates = candidates.filter((c) => taggedIds.has(c.id))
-    }
-
-    // Category filter: rolls up to every tag in the category; categories AND together.
-    for (const categoryId of new Set(categoryIds)) {
-      const inCategory = new Set(
-        this.db
-          .select({ mockupId: mockupTags.mockupId })
-          .from(mockupTags)
-          .innerJoin(tags, eq(tags.id, mockupTags.tagId))
-          .where(eq(tags.categoryId, categoryId))
-          .all()
-          .map((r) => r.mockupId)
-      )
-      candidates = candidates.filter((c) => inCategory.has(c.id))
-    }
-
-    // Sort: favourites first, then FTS rank / name / date
-    candidates.sort((a, b) => {
-      if (a.favourite !== b.favourite) return a.favourite ? -1 : 1
-      if (ftsRankMap) {
-        return (ftsRankMap.get(a.id) ?? 0) - (ftsRankMap.get(b.id) ?? 0)
-      }
-      if (sort === 'name') return a.title.localeCompare(b.title)
-      return b.createdAt.localeCompare(a.createdAt)
-    })
-
-    // Assemble rows (N+1 acceptable at this scale)
-    const categoryMap = new Map(
-      this.db.select().from(tagCategories).all().map((c) => [c.id, c.label])
-    )
-
-    return candidates.map((m) => ({
-      id: m.id,
-      title: m.title,
-      description: m.description ?? null,
-      coverPath: m.coverPath,
-      isGroup: m.isGroup,
-      favourite: m.favourite,
-      reviewStatus: m.reviewStatus,
-      variantCount: this.getMockupsByGroupId(m.id).length,
-      tags: this.getTagsForMockup(m.id).map((t) => ({
-        id: t.id,
-        label: t.label,
-        categoryLabel: categoryMap.get(t.categoryId) ?? ''
-      }))
-    }))
-  }
-
-  getMockupDetail(id: number): {
-    mockup: Mockup | undefined
-    tags: { id: number; label: string; categoryLabel: string }[]
-    variants: Mockup[]
-  } {
-    const mockup = this.getMockup(id)
-    if (!mockup) return { mockup: undefined, tags: [], variants: [] }
-    const categoryMap = new Map(
-      this.db.select().from(tagCategories).all().map((c) => [c.id, c.label])
-    )
-    const tagList = this.getTagsForMockup(id).map((t) => ({
-      id: t.id,
-      label: t.label,
-      categoryLabel: categoryMap.get(t.categoryId) ?? ''
-    }))
-    const variantList = mockup.isGroup
-      ? this.getMockupsByGroupId(id).sort((a, b) => a.id - b.id)
-      : []
-    return { mockup, tags: tagList, variants: variantList }
-  }
-
-  getTrash(): LibraryRow[] {
-    const trashed = this.db
-      .select()
-      .from(mockups)
-      .where(and(isNotNull(mockups.deletedAt), isNull(mockups.groupId)))
-      .orderBy(desc(mockups.deletedAt))
-      .all()
-    const categoryMap = new Map(
-      this.db.select().from(tagCategories).all().map((c) => [c.id, c.label])
-    )
-    return trashed.map((m) => ({
-      id: m.id,
-      title: m.title,
-      description: m.description ?? null,
-      coverPath: m.coverPath,
-      isGroup: m.isGroup,
-      favourite: m.favourite,
-      reviewStatus: m.reviewStatus,
-      variantCount: this.getMockupsByGroupId(m.id).length,
-      tags: this.getTagsForMockup(m.id).map((t) => ({
-        id: t.id,
-        label: t.label,
-        categoryLabel: categoryMap.get(t.categoryId) ?? ''
-      }))
-    }))
-  }
-
-  getLibraryStats(): { total: number; favourites: number; groups: number; trashed: number } {
-    const baseFilter = and(
-      eq(mockups.reviewStatus, 'approved'),
-      isNull(mockups.deletedAt),
-      isNull(mockups.groupId)
-    )
-    const total = this.db.select({ c: sql<number>`count(*)` }).from(mockups).where(baseFilter).get()?.c ?? 0
-    const favourites = this.db.select({ c: sql<number>`count(*)` }).from(mockups).where(and(baseFilter, eq(mockups.favourite, true))).get()?.c ?? 0
-    const groups = this.db.select({ c: sql<number>`count(*)` }).from(mockups).where(and(baseFilter, eq(mockups.isGroup, true))).get()?.c ?? 0
-    const trashed = this.db.select({ c: sql<number>`count(*)` }).from(mockups).where(and(isNotNull(mockups.deletedAt), isNull(mockups.groupId))).get()?.c ?? 0
-    return { total, favourites, groups, trashed }
-  }
-
-  moveToTrash(id: number): void {
-    this.db.update(mockups).set({ deletedAt: new Date().toISOString() }).where(eq(mockups.id, id)).run()
-    this.removeSearchIndex(id)
-  }
-
-  restore(id: number): void {
-    this.db.update(mockups).set({ deletedAt: null }).where(eq(mockups.id, id)).run()
-    const m = this.getMockup(id)
-    if (m?.reviewStatus === 'approved') this.upsertSearchIndex(id)
-  }
-
-  updateMockupMeta(id: number, data: { title: string; description: string; tagIds: number[] }): void {
-    this.db.update(mockups).set({ title: data.title, description: data.description }).where(eq(mockups.id, id)).run()
-    this.clearTagsForMockup(id)
-    for (const tagId of data.tagIds) this.addTagToMockup(id, tagId)
-    this.upsertSearchIndex(id)
-  }
-
-  ungroupGroup(leaderId: number): void {
-    this.db.transaction((tx) => {
-      tx.update(mockups).set({ isGroup: false }).where(eq(mockups.id, leaderId)).run()
-      tx.update(mockups).set({ groupId: null }).where(eq(mockups.groupId, leaderId)).run()
-    })
-  }
-
-  collectGroupIds(leaderId: number): number[] {
-    const members = this.getMockupsByGroupId(leaderId)
-    return [leaderId, ...members.map((m) => m.id)]
-  }
-
-  deleteMockupsHard(ids: number[]): { libraryPath: string; coverPath: string }[] {
-    // Collect paths and remove FTS entries before the transaction (FTS run() can't nest in tx)
-    const paths: { libraryPath: string; coverPath: string }[] = []
-    for (const id of ids) {
-      const m = this.getMockup(id)
-      if (m) {
-        paths.push({ libraryPath: m.libraryPath, coverPath: m.coverPath })
-        this.removeSearchIndex(id)
-      }
-    }
-    this.db.transaction((tx) => {
-      for (const id of ids) tx.delete(mockups).where(eq(mockups.id, id)).run()
-    })
-    return paths
-  }
-
-  duplicateMockupRow(
-    id: number
-  ): { newId: number; sourceLibraryPath: string; sourceCoverPath: string } | null {
-    const m = this.getMockup(id)
-    if (!m) return null
-    const newRow = this.db
-      .insert(mockups)
-      .values({
-        title: m.title,
-        description: m.description ?? undefined,
-        libraryPath: m.libraryPath,
-        coverPath: m.coverPath,
-        coverSource: m.coverSource,
-        reviewStatus: m.reviewStatus,
-        contentHash: m.contentHash ?? undefined,
-        importContext: m.importContext ?? undefined,
-        isGroup: false,
-        groupId: null,
-        favourite: false,
-        favouritedAt: null,
-        deletedAt: null
-      })
-      .returning()
-      .get()
-    const srcTags = this.getTagsForMockup(id)
-    for (const t of srcTags) this.addTagToMockup(newRow.id, t.id)
-    return { newId: newRow.id, sourceLibraryPath: m.libraryPath, sourceCoverPath: m.coverPath }
-  }
+  createMockup(...a: Args<MockupRepository['createMockup']>) { return this.mockups.createMockup(...a) }
+  getMockup(...a: Args<MockupRepository['getMockup']>) { return this.mockups.getMockup(...a) }
+  /** @deprecated legacy — does not exclude soft-deleted; use getLibrary for the grid */
+  getAllMockups() { return this.mockups.getAllMockups() }
+  deleteMockup(...a: Args<MockupRepository['deleteMockup']>) { return this.mockups.deleteMockup(...a) }
+  setFavourite(...a: Args<MockupRepository['setFavourite']>) { return this.mockups.setFavourite(...a) }
+  getAllLibraryPaths() { return this.mockups.getAllLibraryPaths() }
+  mockupExistsByHash(...a: Args<MockupRepository['mockupExistsByHash']>) { return this.mockups.mockupExistsByHash(...a) }
+  updateMockup(...a: Args<MockupRepository['updateMockup']>) { return this.mockups.updateMockup(...a) }
+  getMockupsByBatchId(...a: Args<MockupRepository['getMockupsByBatchId']>) { return this.mockups.getMockupsByBatchId(...a) }
+  approveItem(...a: Args<MockupRepository['approveItem']>) { return this.mockups.approveItem(...a) }
+  setMockupCover(...a: Args<MockupRepository['setMockupCover']>) { return this.mockups.setMockupCover(...a) }
+  updateMockupMeta(...a: Args<MockupRepository['updateMockupMeta']>) { return this.mockups.updateMockupMeta(...a) }
+  duplicateMockupRow(...a: Args<MockupRepository['duplicateMockupRow']>) { return this.mockups.duplicateMockupRow(...a) }
+  createVariant(...a: Args<MockupRepository['createVariant']>) { return this.mockups.createVariant(...a) }
+  getVariantsForMockup(...a: Args<MockupRepository['getVariantsForMockup']>) { return this.mockups.getVariantsForMockup(...a) }
+  getTagsForMockup(...a: Args<MockupRepository['getTagsForMockup']>) { return this.mockups.getTagsForMockup(...a) }
+  addTagToMockup(...a: Args<MockupRepository['addTagToMockup']>) { return this.mockups.addTagToMockup(...a) }
+  removeTagFromMockup(...a: Args<MockupRepository['removeTagFromMockup']>) { return this.mockups.removeTagFromMockup(...a) }
+  clearTagsForMockup(...a: Args<MockupRepository['clearTagsForMockup']>) { return this.mockups.clearTagsForMockup(...a) }
+
+  // Piles
+  getMockupsByGroupId(...a: Args<PileRepository['getMockupsByGroupId']>) { return this.piles.getMockupsByGroupId(...a) }
+  confirmGroupings(...a: Args<PileRepository['confirmGroupings']>) { return this.piles.confirmGroupings(...a) }
+  ungroupGroup(...a: Args<PileRepository['ungroupGroup']>) { return this.piles.ungroupGroup(...a) }
+  collectGroupIds(...a: Args<PileRepository['collectGroupIds']>) { return this.piles.collectGroupIds(...a) }
+
+  // Tags and categories
+  getCategoryByLabel(...a: Args<TagRepository['getCategoryByLabel']>) { return this.tags.getCategoryByLabel(...a) }
+  createCategory(...a: Args<TagRepository['createCategory']>) { return this.tags.createCategory(...a) }
+  getAllCategories() { return this.tags.getAllCategories() }
+  renameCategory(...a: Args<TagRepository['renameCategory']>) { return this.tags.renameCategory(...a) }
+  getAllTags() { return this.tags.getAllTags() }
+  getTagTree() { return this.tags.getTagTree() }
+  getTagUsageCount(...a: Args<TagRepository['getTagUsageCount']>) { return this.tags.getTagUsageCount(...a) }
+  renameTag(...a: Args<TagRepository['renameTag']>) { return this.tags.renameTag(...a) }
+  reassignTagCategory(...a: Args<TagRepository['reassignTagCategory']>) { return this.tags.reassignTagCategory(...a) }
+  previewMergeTags(...a: Args<TagRepository['previewMergeTags']>) { return this.tags.previewMergeTags(...a) }
+  mergeTags(...a: Args<TagRepository['mergeTags']>) { return this.tags.mergeTags(...a) }
+  deleteTag(...a: Args<TagRepository['deleteTag']>) { return this.tags.deleteTag(...a) }
+  restoreTag(...a: Args<TagRepository['restoreTag']>) { return this.tags.restoreTag(...a) }
+  deleteCategory(...a: Args<TagRepository['deleteCategory']>) { return this.tags.deleteCategory(...a) }
+  restoreCategory(...a: Args<TagRepository['restoreCategory']>) { return this.tags.restoreCategory(...a) }
+  findTagsByLabel(...a: Args<TagRepository['findTagsByLabel']>) { return this.tags.findTagsByLabel(...a) }
+  getTagByLabel(...a: Args<TagRepository['getTagByLabel']>) { return this.tags.getTagByLabel(...a) }
+  createTag(...a: Args<TagRepository['createTag']>) { return this.tags.createTag(...a) }
+  getApprovalTagsByIds(...a: Args<TagRepository['getApprovalTagsByIds']>) { return this.tags.getApprovalTagsByIds(...a) }
+
+  // Search index
+  upsertSearchIndex(...a: Args<SearchRepository['upsertSearchIndex']>) { return this.search.upsertSearchIndex(...a) }
+  removeSearchIndex(...a: Args<SearchRepository['removeSearchIndex']>) { return this.search.removeSearchIndex(...a) }
+  rebuildSearchIndex() { return this.search.rebuildSearchIndex() }
+
+  // Library reads
+  getLibrary(...a: Args<LibraryQueryRepository['getLibrary']>) { return this.library.getLibrary(...a) }
+  getMockupDetail(...a: Args<LibraryQueryRepository['getMockupDetail']>) { return this.library.getMockupDetail(...a) }
+  getLibraryStats() { return this.library.getLibraryStats() }
+
+  // Trash
+  getTrash() { return this.trash.getTrash() }
+  moveToTrash(...a: Args<TrashRepository['moveToTrash']>) { return this.trash.moveToTrash(...a) }
+  restore(...a: Args<TrashRepository['restore']>) { return this.trash.restore(...a) }
+  deleteMockupsHard(...a: Args<TrashRepository['deleteMockupsHard']>) { return this.trash.deleteMockupsHard(...a) }
 }
