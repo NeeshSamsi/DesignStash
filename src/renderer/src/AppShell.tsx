@@ -108,7 +108,7 @@ export default function AppShell({
 
         <SidebarFooter className="p-2 pb-4">
           <div className="flex items-center gap-2 px-2 py-2">
-            <span className="text-xs font-bold tracking-widest text-primary">DS</span>
+            <span className="text-xs font-bold tracking-widest text-brand">DS</span>
             <span className="text-sm font-semibold text-sidebar-foreground">DesignStash</span>
           </div>
           <SidebarMenu>

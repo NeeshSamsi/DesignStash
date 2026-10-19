@@ -225,7 +225,7 @@ function StepAI({ onNext, onBack }: BackableStepProps) {
       {hardware && (
         <p className="mb-4 text-xs text-muted-foreground">
           {hardware.chip} · {hardware.totalMemoryGB.toFixed(0)} GB RAM ·{' '}
-          <span className="text-primary">Recommended: {hardware.recommendedTier}</span>
+          <span className="text-brand">Recommended: {hardware.recommendedTier}</span>
         </p>
       )}
 
@@ -306,7 +306,7 @@ function StepAI({ onNext, onBack }: BackableStepProps) {
 
       {/* Download complete */}
       {downloadDone && (
-        <div className="mb-4 flex items-center gap-2 text-sm text-primary">
+        <div className="mb-4 flex items-center gap-2 text-sm text-brand">
           <span>✓</span>
           <span>Model downloaded and ready</span>
         </div>

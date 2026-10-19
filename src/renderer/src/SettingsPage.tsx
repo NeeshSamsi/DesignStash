@@ -86,7 +86,7 @@ function LibrarySection({ onCheckLibrary }: { onCheckLibrary: () => Promise<void
         >
           {scanStatus === 'scanning' ? 'Scanning…' : 'Check Library'}
         </Button>
-        {scanStatus === 'ok' && <p className="mt-2 text-xs text-primary">Library is in sync</p>}
+        {scanStatus === 'ok' && <p className="mt-2 text-xs text-brand">Library is in sync</p>}
         {scanStatus === 'error' && (
           <p className="mt-2 text-xs text-destructive">Scan failed — check console for details</p>
         )}
@@ -114,7 +114,7 @@ function AboutSection() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <span className="text-2xl font-bold tracking-widest text-primary">DS</span>
+        <span className="text-2xl font-bold tracking-widest text-brand">DS</span>
         <div>
           <p className="text-base font-semibold text-foreground">{appInfo?.name ?? 'DesignStash'}</p>
           <p className="text-xs text-muted-foreground">Version {appInfo?.version ?? '—'}</p>

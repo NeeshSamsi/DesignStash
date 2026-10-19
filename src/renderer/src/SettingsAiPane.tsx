@@ -70,7 +70,7 @@ export default function SettingsAiPane() {
       {hardware && (
         <p className="mb-4 text-xs text-muted-foreground">
           {hardware.chip} · {hardware.totalMemoryGB.toFixed(0)} GB ·{' '}
-          <span className="text-primary">Recommended: {hardware.recommendedTier}</span>
+          <span className="text-brand">Recommended: {hardware.recommendedTier}</span>
         </p>
       )}
 

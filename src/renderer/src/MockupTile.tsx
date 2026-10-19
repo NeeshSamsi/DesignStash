@@ -74,7 +74,7 @@ export default function MockupTile({ item, onRefresh }: MockupTileProps) {
 
         {/* Favourite indicator (always visible when favourited) */}
         {item.favourite && (
-          <div className="absolute right-2 top-2 text-xs leading-none text-primary">★</div>
+          <div className="absolute right-2 top-2 text-xs leading-none text-brand">★</div>
         )}
 
         {/* Hover overlay with actions */}

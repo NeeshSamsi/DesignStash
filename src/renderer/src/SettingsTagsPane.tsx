@@ -132,7 +132,7 @@ export default function SettingsTagsPane() {
         <Button variant="secondary" size="sm" onClick={() => void refresh()}>Refresh</Button>
       </div>
 
-      {status && <p className="mb-3 font-mono text-xs text-primary">{status}</p>}
+      {status && <p className="mb-3 font-mono text-xs text-brand">{status}</p>}
 
       <pre className="overflow-auto rounded-lg bg-muted p-3 font-mono text-xs text-muted-foreground">
         {tree.map((cat) => (

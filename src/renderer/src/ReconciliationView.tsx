@@ -79,7 +79,7 @@ export default function ReconciliationView({ onBack }: Props) {
         </div>
       </div>
 
-      {status && <p className="mb-3 font-mono text-xs text-primary">{status}</p>}
+      {status && <p className="mb-3 font-mono text-xs text-brand">{status}</p>}
 
       {report && (
         <p className="mb-6 text-sm text-muted-foreground">

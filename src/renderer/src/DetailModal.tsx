@@ -234,7 +234,7 @@ export function DetailModal({ mockupId, onClose }: Props) {
             />
             <button
               onClick={() => void handleFavouriteToggle()}
-              className={`text-xl leading-none transition-colors ${detail.item.favourite ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+              className={`text-xl leading-none transition-colors ${detail.item.favourite ? 'text-brand' : 'text-muted-foreground hover:text-brand'}`}
               aria-label={detail.item.favourite ? 'Remove from favourites' : 'Add to favourites'}
             >
               ★

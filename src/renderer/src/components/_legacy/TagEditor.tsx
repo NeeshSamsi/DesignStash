@@ -175,7 +175,7 @@ export function TagEditor({ tags, categories, onChange, onNewTagRequest }: TagEd
             {!exactMatch && (
               <Button
                 variant="ghost"
-                className="w-full justify-start rounded-none text-primary"
+                className="w-full justify-start rounded-none text-brand"
                 onMouseDown={handleNewTagClick}
               >
                 Add &apos;{inputValue.trim()}&apos; as a new tag
