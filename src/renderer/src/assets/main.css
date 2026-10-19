@@ -15,7 +15,25 @@
  */
 @theme {
   --aspect-card: 4 / 3;
-  --max-h-modal-body: 70vh;
+  --max-height-modal-body: 70vh;
+
+  /* Layout sizes the Figma screens rely on (approved D1). px in comments = Figma. */
+  --width-sidebar: 11rem; /* 176 */
+  --width-title-search: 20rem; /* 320 */
+  --width-settings-modal: 55rem; /* 880 */
+  --height-settings-modal: 47.5rem; /* 760 */
+  --width-flow-modal: 84.5rem; /* 1352 */
+  --height-flow-modal: 51.375rem; /* 822 */
+  --width-card: 15rem; /* 240 */
+  --width-detail-media: 30rem; /* 480 */
+  --width-variant-slot: 5.75rem; /* 92 */
+  --width-variant-thumb: 5.25rem; /* 84 */
+  --height-variant-thumb: 4rem; /* 64 */
+  --spacing-deck-peek: 0.75rem; /* 12 */
+  --width-toast: 22.5rem; /* 360 */
+  --min-width-tag-input: 7.5rem; /* 120 */
+  --max-width-tag-label: 9.375rem; /* 150 */
+  --max-height-tag-filter: 15rem; /* 240 */
 }
 
 /* shadcn/ui token mapping (radix-rhea style). Values come from shadcn-bridge.css below. */

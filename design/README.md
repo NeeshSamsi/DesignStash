@@ -45,7 +45,8 @@ It is left out of production builds.
 shadcn stays standard.
 
 - **Components in `ui/`, including anything added later with `shadcn add`, keep using shadcn's own variables** (`--primary`, `--background`, `--muted-foreground`, `--border`…).
-- At the port, `shadcn-bridge.css` points those variables at Figma tokens. That re-themes every shadcn component without editing its classes.
+- `shadcn-bridge.css` (imported last by `assets/main.css`) points those variables at Figma tokens. That re-themes every shadcn component without editing its classes. `main.css` keeps shadcn's `@theme inline` mapping (`--color-primary: var(--primary)`…) but no colour values, radius multipliers or fonts of its own.
+- **Dark only.** Figma defines one mode (Dark), so `:root` sets `color-scheme: dark` and `<html>` carries `.dark`. The bridge sets the same values for `:root` and `.dark`.
 - **Figma tokens use their own names**, scoped the way Figma scopes them: `background/X` → `bg-X`, `text/X` → `text-X`, `border/X` → `border-X`. These are Tailwind's `--background-color-*` / `--text-color-*` / `--border-color-*` namespaces. Examples: `bg-surface-3`, `text-tertiary`, `border-focus`, `bg-error-weak`, `text-on-success`.
 - **Five Figma tokens share a name shadcn already owns**, so code uses shadcn's utility for them:
 
@@ -59,9 +60,30 @@ shadcn stays standard.
 
   `build-tokens.mjs` refuses to emit a Figma key that would change a shadcn utility's meaning. The catalog's colour page lists the class for every token.
 
-- **Type:** Figma text styles → `type-<role>-<size>-<weight>` (e.g. `type-body-sm-medium`). Fonts come from the text styles; `--font-sans`/`--font-heading` switch with the bridge.
+- **Type:** Figma text styles → `type-<role>-<size>-<weight>` (e.g. `type-body-sm-medium`). Fonts come from the text styles; the bridge points `--font-sans`/`--font-heading` at them. The font stack puts the bundled `'Inter Variable'` (`@fontsource-variable/inter`) before `'Inter'`.
 - **Spacing, radius, border width, icon sizes** equal Tailwind's default scale (`p-4` = spacing/4 = 16px), so there are no new utilities. The bridge sets the exact Figma radii.
-- **No arbitrary values** (CLAUDE.md). If Figma needs a value that isn't a token, add it in Figma, refresh, regenerate.
+- **Layout sizes** that sit outside Tailwind's scale are named tokens in the `@theme` block of `assets/main.css` (approved list, decision D1). Each lives in the Tailwind namespace of the property it sets, so it produces only the utilities that make sense:
+
+  | Utility | Size (Figma px) | Used for |
+  | --- | --- | --- |
+  | `w-sidebar` | 176 | App sidebar |
+  | `w-title-search` | 320 | Title-bar search field |
+  | `w-settings-modal` · `h-settings-modal` | 880 × 760 | Settings modal |
+  | `w-flow-modal` · `h-flow-modal` | 1352 × 822 | FlowModal (Sort, Look it over, inboxes) |
+  | `w-card` | 240 | MockupCard column (grid gaps are `gap-x-4 gap-y-6`) |
+  | `w-detail-media` | 480 | Detail & edit media column |
+  | `w-variant-slot` | 92 | VariantStrip slot |
+  | `w-variant-thumb` · `h-variant-thumb` | 84 × 64 | VariantThumb |
+  | `*-deck-peek` (spacing: `top-`, `translate-y-`…) | 12 | Cover deck peek offset |
+  | `w-toast` | 360 | Toast |
+  | `min-w-tag-input` | 120 | TagEditor inline input |
+  | `max-w-tag-label` | 150 | Tag label truncation |
+  | `max-h-tag-filter` | 240 | TagFilterPopover list, scrolls past this |
+  | `max-h-modal-body` | 70vh | Legacy DetailModal body |
+  | `aspect-card` | 4:3 | Cover images |
+
+  A modal that can be wider than the window pairs its size with `max-w-full`/`max-h-full`. A new size needs approval first, then a token here.
+- **No arbitrary values** (CLAUDE.md). If Figma needs a value that isn't a token, add it in Figma, refresh, regenerate; for a layout size, see above.
 
 ## Component contract rules (`scripts/ds/contract.mjs`)
 
@@ -138,8 +160,8 @@ Figma shows how a component looks. When it also has rules that Figma can't hold 
 5. **Check it in the catalog** against the Figma table, then `pnpm ds:scaffold`, which flips its status to _ported_.
 6. **Screens:** once the catalog shows a flow's screens as _ready_, rebuild them from the components, in the flow order from the port checklist. Delete `_legacy/` pieces as their last user goes.
 
-## The port switch (do once, at the start of the port)
+## The port switch (done)
 
-1. In `assets/main.css`, import `../styles/shadcn-bridge.css` after the shadcn `:root`/`.dark` blocks, then delete those blocks' colour values and shadcn's `--radius-*` multipliers.
-2. App code that used shadcn `text-primary` as brand-coloured text becomes `text-brand`. In Figma, `text/primary` is body text and is written `text-foreground`.
-3. Restyle `ui/button.tsx`'s `destructive` variant to Figma's solid fill (`bg-error text-on-error`) if the design keeps it solid. The shadcn `--destructive` variable is mapped to the mid error tone because shadcn uses it for text, borders and tints.
+1. ✅ `assets/main.css` imports `../styles/shadcn-bridge.css` last; shadcn's colour values, `--radius-*` multipliers and the old `--color-brand-500` are gone.
+2. ✅ App code that used shadcn `text-primary` as brand-coloured text is now `text-brand`. In Figma, `text/primary` is body text and is written `text-foreground`. Don't use `text-primary` for text.
+3. Pending (with the Button port): restyle `ui/button.tsx`'s `destructive` variant to Figma's solid fill (`bg-error text-on-error`) if the design keeps it solid. The shadcn `--destructive` variable is mapped to the mid error tone because shadcn uses it for text, borders and tints.
