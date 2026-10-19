@@ -1,29 +1,38 @@
-import { ScaffoldStub } from '@renderer/design-system/ScaffoldStub'
+import type { ComponentProps } from 'react'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { PlusSignIcon } from '@hugeicons/core-free-icons'
 import { cn } from '@renderer/lib/utils'
-import {
-  ADD_MOCKUP_CARD_CONTRACT,
-  ADD_MOCKUP_CARD_DEFAULTS,
-  type AddMockupCardContractProps
-} from './AddMockupCard.types'
-import { addMockupCardVariants } from './AddMockupCard.variants'
+import type { AddMockupCardContractProps } from './AddMockupCard.types'
+import { addMockupCardCoverVariants, addMockupCardVariants } from './AddMockupCard.variants'
 
-export interface AddMockupCardProps extends AddMockupCardContractProps {
-  className?: string
-}
+export interface AddMockupCardProps extends AddMockupCardContractProps, ComponentProps<'button'> {}
 
 /**
  * AddMockupCard — The add affordance in the library grid: always the first card in My Stash › All (hidden in search, filter and Starred); on an empty library it is the only card. Recessed well with a faint dashed cover, same footprint as MockupCard. Click / ↵ opens the Add menu; dragging PSDs over the window shows DropOverlay. Rules: design/specs/library.md.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=583-6960
+ * A button, so the grid's DropdownMenu can wrap it with `asChild`. It is never selectable.
  */
-export function AddMockupCard({ className, ...rest }: AddMockupCardProps) {
-  const props = { ...ADD_MOCKUP_CARD_DEFAULTS, ...rest }
-  // TODO(port): replace ScaffoldStub with the real markup. Keep the props contract and
-  // data-ds="AddMockupCard" on the root element.
+export function AddMockupCard({ className, ...props }: AddMockupCardProps) {
   return (
-    <ScaffoldStub
-      contract={ADD_MOCKUP_CARD_CONTRACT}
-      props={props}
+    <button
+      type="button"
+      data-ds="AddMockupCard"
       className={cn(addMockupCardVariants(), className)}
-    />
+      {...props}
+    >
+      <span className={addMockupCardCoverVariants()}>
+        <HugeiconsIcon
+          icon={PlusSignIcon}
+          strokeWidth={1.5}
+          className="size-6 text-secondary transition-colors group-hover/add:text-brand"
+        />
+      </span>
+      <span className="flex flex-col gap-0.5 pl-1">
+        <span className="type-body-sm-medium text-secondary group-hover/add:text-foreground group-focus-visible/add:text-foreground">
+          Add mockup
+        </span>
+        <span className="type-caption-xs-regular text-tertiary">PSDs or a whole folder</span>
+      </span>
+    </button>
   )
 }
