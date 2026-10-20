@@ -10,7 +10,7 @@ export const MODEL_ROW_CONTRACT = {
   section: '9 · Onboarding & AI models',
   description:
     'One on-device model in the onboarding picker (a radio list): download, pause/resume, verify, installed, failed. Settings › AI model uses ModelCard.',
-  code: 'Onboarding + SettingsAiPane',
+  code: 'screens/onboarding/AiStep.tsx',
   axes: {
     state: ['not-installed', 'downloading', 'paused', 'verifying', 'failed', 'installed']
   },

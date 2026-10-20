@@ -10,7 +10,7 @@ export const VARIANT_THUMB_CONTRACT = {
   section: '8 · Approval & editing',
   description:
     "One variant in a pile's VariantStrip: its cover in an 84×64 ring, its name, and the crown-03 Top mark when it is the top mockup. shown uses the shared selected ring (border/primary, 2px).",
-  code: 'part of VariantStrip',
+  code: 'components/VariantStrip/VariantStrip.tsx',
   axes: {
     state: ['idle', 'shown', 'missing-cover']
   },

@@ -10,7 +10,7 @@ export const CONSENT_PANEL_CONTRACT = {
   section: '9 · Onboarding & AI models',
   description:
     'Telemetry disclosure + choice for onboarding (A4): what we collect / never collect, with No thanks · Keep it on. Settings › Privacy shows the same lists in its usage-data accordion.',
-  code: 'SettingsPrivacyPane + TelemetryDisclosure',
+  code: 'screens/settings/PrivacyPane.tsx',
   axes: {},
   axisDefaults: {},
   flags: {},

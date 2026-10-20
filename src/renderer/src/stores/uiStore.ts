@@ -7,7 +7,6 @@ export type AppView = 'all' | 'starred' | 'to-sort' | 'to-stash' | 'trash'
 
 export type Modal =
   | { kind: 'detail'; mockupId: number }
-  | { kind: 'confirm'; title: string; message: string; danger?: boolean; onConfirm: () => void }
   /** The stash check's changes. `report` is what the launch check already found, if anything. */
   | { kind: 'reconcile'; report?: DriftReport }
 

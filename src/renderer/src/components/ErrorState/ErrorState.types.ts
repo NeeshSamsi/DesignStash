@@ -10,7 +10,7 @@ export const ERROR_STATE_CONTRACT = {
   section: '4 · Feedback & states',
   description:
     'What failed, why, and what to do; every IPC {code, message} surfaces here or in a Toast. inline matches Banner: neutral surface-2 card, border/subtle, 3px left accent in border/error (no tinted fill).',
-  code: '_legacy/States.tsx',
+  code: 'components/ErrorState/ErrorState.tsx',
   axes: {
     variant: ['inline', 'page', 'full-window']
   },

@@ -105,10 +105,6 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
     return { restored }
   })
 
-  registerIpcHandler(IPC_CHANNELS.AI_GET_ACTIVE, () => ({
-    modelId: settings.get().activeModelId
-  }))
-
   registerIpcHandler(IPC_CHANNELS.AI_SET_ACTIVE, (args) => {
     settings.update({ activeModelId: args.id })
     // Telemetry: hardware/model tier enum only — never the model id beyond its tier.

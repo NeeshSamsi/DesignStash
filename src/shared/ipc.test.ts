@@ -62,19 +62,6 @@ describe('IPC Contract', () => {
     })
   })
 
-  describe('DB_PING channel', () => {
-    const { response } = IPC_CONTRACT[IPC_CHANNELS.DB_PING]
-
-    it('validates a correct response', () => {
-      const validResponse = {
-        success: true,
-        message: 'pong',
-        timestamp: Date.now()
-      }
-      expect(response.parse(validResponse)).toEqual(validResponse)
-    })
-  })
-
   describe('AI_HARDWARE_INFO channel', () => {
     const { response } = IPC_CONTRACT[IPC_CHANNELS.AI_HARDWARE_INFO]
 
@@ -134,13 +121,7 @@ describe('IPC Contract', () => {
     })
   })
 
-  describe('AI_GET_ACTIVE / AI_SET_ACTIVE channels', () => {
-    it('AI_GET_ACTIVE returns nullable modelId', () => {
-      const { response } = IPC_CONTRACT[IPC_CHANNELS.AI_GET_ACTIVE]
-      expect(response.parse({ modelId: null })).toEqual({ modelId: null })
-      expect(response.parse({ modelId: 'moondream2-q4' })).toEqual({ modelId: 'moondream2-q4' })
-    })
-
+  describe('AI_SET_ACTIVE channel', () => {
     it('AI_SET_ACTIVE request accepts null', () => {
       const { request } = IPC_CONTRACT[IPC_CHANNELS.AI_SET_ACTIVE]
       expect(request.parse({ id: null })).toEqual({ id: null })
@@ -291,14 +272,6 @@ describe('IPC Contract', () => {
       expect(response.parse({ categoryId: 1 })).toEqual({ categoryId: 1 })
     })
 
-    it('TAG_FIND needs a label and lists matches across categories', () => {
-      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_FIND]
-      expect(() => request.parse({ label: '' })).toThrow()
-      const valid = {
-        matches: [{ tagId: 9, label: 'clay', categoryId: 2, categoryLabel: 'Style', usageCount: 12 }]
-      }
-      expect(response.parse(valid)).toEqual(valid)
-    })
   })
 
   describe('tag nesting', () => {

@@ -10,7 +10,7 @@ export const GROUP_MEMBER_THUMB_CONTRACT = {
   section: '7 · Import & grouping',
   description:
     'A mockup tile inside a pile on the Sort board. Cover on top, filename in a padded caption bar. Top row: Primary badge (left) and the ⋯ menu (right, on hover). States: idle · hover (cover zooms like the library card) · selected (selection ring + accent caption, Finder-style) · lifted (in hand while dragging) · left-behind (dashed slot where it was) · drop-ghost (where it will land) · pile-target (dropping a tile on it starts a pile).',
-  code: 'GroupingReview.tsx',
+  code: 'screens/sort/SortBoard.tsx',
   axes: {
     state: ['idle', 'selected', 'lifted', 'left-behind', 'drop-ghost', 'pile-target']
   },

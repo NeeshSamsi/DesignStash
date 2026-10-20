@@ -55,8 +55,4 @@ export class TagService {
 
   restoreCategory: Handler<Channels['CATEGORY_RESTORE']> = ({ snapshot }) =>
     this.repo.restoreCategory(snapshot)
-
-  findTag: Handler<Channels['TAG_FIND']> = ({ label }) => ({
-    matches: this.repo.findTagsByLabel(label)
-  })
 }

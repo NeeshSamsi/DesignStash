@@ -10,7 +10,7 @@ export const GLOBAL_SEARCH_CONTRACT = {
   section: '3 · Layout & navigation',
   description:
     'Title-bar search; ⌘K focuses, 250 ms debounce; zero results → MockupGrid no-results.',
-  code: 'move out of LibraryTopBar.tsx',
+  code: 'AppShell.tsx (title bar)',
   axes: {
     state: ['idle', 'focused', 'with-query']
   },

@@ -11,7 +11,7 @@ export const GROUP_CARD_CONTRACT = {
   section: '7 · Import & grouping',
   description:
     'A proposed pile or the Standalone tray, as a drop zone of GroupMemberThumbs. Members layout: columns follow the pile width (min tile 128, gap 12), tiles fill their cells. In code: @container on the pile body + grid-cols-2 @md:grid-cols-3 @xl:grid-cols-4 @3xl:grid-cols-5 @4xl:grid-cols-6 @5xl:grid-cols-7 @6xl:grid-cols-8. The header is a band and acts as the pile’s handle: click to select the pile, drag it to move the whole pile. Marquee (like Figma): selects tiles across piles; a pile is only selected once the box covers all its tiles and reaches its header. No confidence badge: we only suggest piles we’re confident about. Header: [folder icon] title · count badge · reason badge · ⋯ — title and badge rules: design/specs/pile-titles.md.',
-  code: 'GroupingReview.tsx',
+  code: 'screens/sort/SortBoard.tsx',
   axes: {
     variant: ['group', 'standalone'],
     state: ['idle', 'drag-over', 'merge-target', 'left-behind', 'selected', 'lifted', 'empty']

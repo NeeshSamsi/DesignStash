@@ -22,7 +22,7 @@ export interface CoverDropZoneProps
 /**
  * CoverDropZone — Required cover drop zone (no cover yet). Drag-over is the shared DropOverlay.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-3425
- * Today: ApprovalStepper.tsx upload zone. Click, ↵ or Space opens the file picker; drop and ⌘V work too.
+ * Used inside CoverPanel. Click, ↵ or Space opens the file picker; drop and ⌘V work too.
  * A bad file shows the error state here, since there is no old cover to fall back to.
  */
 export function CoverDropZone({ className, onCover, percent, ...rest }: CoverDropZoneProps) {

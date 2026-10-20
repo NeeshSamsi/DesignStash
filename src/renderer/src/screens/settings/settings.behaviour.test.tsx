@@ -10,17 +10,21 @@ vi.mock('@renderer/stores/toastStore', () => toasts)
 vi.mock('../../stores/toastStore', () => toasts)
 
 // The tag tree has its own tests; here it is a stand-in that exposes the pane's handlers.
+// The real tree catches a rejected change; the stand-in does the same so none goes unhandled.
+const fire = (fn: ((...args: unknown[]) => unknown) | undefined, ...args: unknown[]) =>
+  void Promise.resolve(fn?.(...args)).catch(() => {})
+
 vi.mock('../../components/TagTree', () => ({
   TagTree: (p: Record<string, (...args: unknown[]) => unknown>) => (
     <div>
-      <button onClick={() => void p.onAddTag?.(1, 'Beige')}>add tag</button>
-      <button onClick={() => void p.onCreateCategory?.('Mood')}>new category</button>
-      <button onClick={() => void p.onDeleteTag?.({ tagId: 7, label: 'Clay', usageCount: 4 })}>
+      <button onClick={() => fire(p.onAddTag, 1, 'Beige')}>add tag</button>
+      <button onClick={() => fire(p.onCreateCategory, 'Mood')}>new category</button>
+      <button onClick={() => fire(p.onDeleteTag, { tagId: 7, label: 'Clay', usageCount: 4 })}>
         delete tag
       </button>
       <button
         onClick={() =>
-          void p.onMergeTag?.(
+          fire(p.onMergeTag,
             { tagId: 7, label: 'iPhone', usageCount: 2 },
             { tagId: 8, label: 'iPhone 15 Pro', usageCount: 9 }
           )
@@ -30,7 +34,7 @@ vi.mock('../../components/TagTree', () => ({
       </button>
       <button
         onClick={() =>
-          void p.onDeleteCategory?.({
+          fire(p.onDeleteCategory, {
             categoryId: 3,
             categoryLabel: 'Style',
             tagCount: 2,
@@ -42,7 +46,7 @@ vi.mock('../../components/TagTree', () => ({
       </button>
       <button
         onClick={() =>
-          void p.onDeleteCategory?.({
+          fire(p.onDeleteCategory, {
             categoryId: 9,
             categoryLabel: 'Empty',
             tagCount: 0,
@@ -68,7 +72,7 @@ const model = (over: Record<string, unknown> = {}) => ({
   id: 'qwen3b',
   name: 'Qwen 2.5 VL 3B',
   tier: 'medium',
-  sizeBytes: 2_100_000_000,
+  sizeBytes: 2_770_000_000,
   description: 'Good titles and tags in a few seconds per mockup.',
   languages: ['en', 'fr', 'de'],
   quality: 4,
@@ -80,6 +84,24 @@ const model = (over: Record<string, unknown> = {}) => ({
   active: true,
   ...over
 })
+
+/** The shipped pair with the 7B already on the Mac: 3B in use, 7B downloaded. */
+const bothDownloaded = {
+  [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+    ok({
+      models: [
+        model(),
+        model({
+          id: 'qwen7b',
+          name: 'Qwen 2.5 VL 7B',
+          active: false,
+          bestFit: false,
+          sizeBytes: 5_540_000_000
+        })
+      ],
+      legacy: []
+    })
+}
 
 function setup(overrides: Record<string, Handler> = {}) {
   const handlers: Record<string, Handler> = {
@@ -110,14 +132,13 @@ function setup(overrides: Record<string, Handler> = {}) {
       ok({
         models: [
           model(),
-          model({ id: 'smol', name: 'SmolVLM2 2.2B', active: false, bestFit: false }),
           model({
             id: 'qwen7b',
             name: 'Qwen 2.5 VL 7B',
             installed: false,
             active: false,
             bestFit: false,
-            sizeBytes: 5_200_000_000
+            sizeBytes: 5_540_000_000
           })
         ],
         legacy: []
@@ -397,7 +418,6 @@ describe('Settings · AI model', () => {
     const cards = Array.from(document.querySelectorAll('[data-ds="ModelCard"]'))
     expect(cards.map((c) => c.getAttribute('data-state'))).toEqual([
       'in-use',
-      'downloaded',
       'available'
     ])
     expect(screen.getByText('In use')).not.toBeNull()
@@ -427,8 +447,8 @@ describe('Settings · AI model', () => {
     act(() =>
       pushes[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]!({
         modelId: 'qwen7b',
-        receivedBytes: 2_184_000_000,
-        totalBytes: 5_200_000_000,
+        receivedBytes: 2_327_000_000,
+        totalBytes: 5_540_000_000,
         phase: 'downloading',
         bytesPerSecond: 18_000_000,
         secondsLeft: 180
@@ -449,7 +469,7 @@ describe('Settings · AI model', () => {
       pushes[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]!({
         modelId: 'qwen7b',
         receivedBytes: 1,
-        totalBytes: 5_200_000_000,
+        totalBytes: 5_540_000_000,
         phase: 'error',
         reason: 'disk-full'
       })
@@ -462,6 +482,7 @@ describe('Settings · AI model', () => {
   })
 
   it('uses a downloaded model with one button, never the whole card', async () => {
+    setup(bothDownloaded)
     open()
     goto('AI model')
     await screen.findByText('Your models')
@@ -470,7 +491,7 @@ describe('Settings · AI model', () => {
     expect(calls(IPC_CHANNELS.AI_SET_ACTIVE)).toHaveLength(0)
     fireEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Use this model' }))
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'smol' })
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'qwen7b' })
     )
   })
 
@@ -495,19 +516,20 @@ describe('Settings · AI model', () => {
   })
 
   it('deletes any other model at once with Undo', async () => {
+    setup(bothDownloaded)
     open()
     goto('AI model')
     await screen.findByText('Your models')
     const other = document.querySelector('[data-state="downloaded"]') as HTMLElement
     fireEvent.click(within(other).getByRole('button', { name: 'Delete' }))
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'smol' })
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen7b' })
     )
     expect(screen.queryByRole('alertdialog')).toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith('SmolVLM2 2.2B deleted', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith('Qwen 2.5 VL 7B deleted', expect.any(Function))
     toasts.undoToast.mock.calls[0]![1]()
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'smol' })
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen7b' })
     )
   })
 

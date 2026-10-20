@@ -38,7 +38,7 @@ const base = (extra: Record<string, (r: unknown) => unknown> = {}) => ({
     }),
   [IPC_CHANNELS.AI_HARDWARE_INFO]: () => ok(mac),
   [IPC_CHANNELS.AI_LIST_MODELS]: () =>
-    ok({ models: [model('a'), model('b'), model('c')], legacy: [] }),
+    ok({ models: [model('a'), model('b')], legacy: [] }),
   ...extra
 })
 
@@ -125,7 +125,7 @@ describe('AI setup', () => {
     installApi(base())
     mount('ai')
     expect(await screen.findByText('Model a')).toBeTruthy()
-    expect(lastRow()).toHaveLength(3)
+    expect(lastRow()).toHaveLength(2)
     expect(screen.getByText('Recommended')).toBeTruthy()
     expect(screen.getByText('Apple M2 Pro · 32 GB memory')).toBeTruthy()
     expect(screen.getByText('Use on-device AI')).toBeTruthy()
@@ -166,7 +166,7 @@ describe('AI setup', () => {
     const api = installApi(
       base({
         [IPC_CHANNELS.AI_LIST_MODELS]: () =>
-          ok({ models: [model('a', { installed: true }), model('b'), model('c')], legacy: [] })
+          ok({ models: [model('a', { installed: true }), model('b')], legacy: [] })
       })
     )
     mount('ai')
@@ -265,7 +265,7 @@ describe('AI setup', () => {
       base({
         [IPC_CHANNELS.AI_LIST_MODELS]: () =>
           ok({
-            models: [model('a', { downloadedBytes: 860_000_000 }), model('b'), model('c')],
+            models: [model('a', { downloadedBytes: 860_000_000 }), model('b')],
             legacy: []
           }),
         [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: () => ok({ started: true })
@@ -283,7 +283,7 @@ describe('AI setup', () => {
     const api = installApi(
       base({
         [IPC_CHANNELS.AI_LIST_MODELS]: () =>
-          ok({ models: [model('a', { downloadedBytes: 5 }), model('b'), model('c')], legacy: [] })
+          ok({ models: [model('a', { downloadedBytes: 5 }), model('b')], legacy: [] })
       })
     )
     mount('ai')

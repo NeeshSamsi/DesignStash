@@ -41,7 +41,6 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
 
   registerIpcHandler(IPC_CHANNELS.TAG_RESTORE, tagService.restoreTag)
 
-  registerIpcHandler(IPC_CHANNELS.TAG_FIND, tagService.findTag)
 
   registerIpcHandler(IPC_CHANNELS.TAG_SET_CATEGORY, (args) => {
     repo.reassignTagCategory(args.tagId, args.categoryId)

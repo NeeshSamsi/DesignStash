@@ -9,7 +9,7 @@ export const DROP_OVERLAY_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1990',
   section: '3 · Layout & navigation',
   description: 'Full-window drag-over state; rejected = no PSDs; queued = import already running.',
-  code: 'App.tsx drag handlers',
+  code: 'screens/gather/useGatherDrops.tsx',
   axes: {
     state: ['drag-over', 'rejected', 'queued']
   },

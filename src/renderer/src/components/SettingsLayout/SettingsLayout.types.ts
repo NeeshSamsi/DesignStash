@@ -11,7 +11,7 @@ export const SETTINGS_LAYOUT_CONTRACT = {
   section: '10 · Settings & tags',
   description:
     'Settings as a modal over the app (880×760): section list on the left (same selected style as the sidebar), pane title + close, grouped rows (title, real value, control on the right, all inline buttons secondary). Switches that unlock more are accordions. Sections: my-stash · ai-model · tags · privacy · about. Rules: design/specs/settings.md.',
-  code: 'SettingsModal.tsx (replaces SettingsPage.tsx)',
+  code: 'screens/settings/SettingsModal.tsx',
   axes: {
     section: ['my-stash', 'ai-model', 'tags', 'privacy', 'about']
   },
@@ -26,9 +26,7 @@ export const SETTINGS_LAYOUT_CONTRACT = {
   icons: {},
   slots: {
     modelQwen25VL3B: 'ModelCard',
-    modelSmolVLM2B: 'ModelCard',
     modelQwen25VL7B: 'ModelCard',
-    modelMoondream2: 'ModelCard',
     tagTree: 'TagTree'
   }
 } as const satisfies ComponentContract
@@ -41,11 +39,7 @@ export interface SettingsLayoutContractProps {
   /** Slot — nests `ModelCard` in Figma. */
   modelQwen25VL3B?: ReactNode
   /** Slot — nests `ModelCard` in Figma. */
-  modelSmolVLM2B?: ReactNode
-  /** Slot — nests `ModelCard` in Figma. */
   modelQwen25VL7B?: ReactNode
-  /** Slot — nests `ModelCard` in Figma. */
-  modelMoondream2?: ReactNode
   /** Slot — nests `TagTree` in Figma. */
   tagTree?: ReactNode
 }

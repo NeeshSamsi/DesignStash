@@ -10,7 +10,7 @@ export const VARIANT_STRIP_CONTRACT = {
   section: '8 · Approval & editing',
   description:
     "A pile's variants under the cover (V1a): VariantThumbs on fixed 92px slots from the cover's left edge, an arrow on a fade only at an end with more, and a status row (name · n of N, then the Top mark or Put on top).",
-  code: 'extract from DetailModal.tsx',
+  code: 'screens/detail/DetailModal.tsx',
   axes: {
     overflow: ['fits', 'start', 'scrolled', 'end']
   },

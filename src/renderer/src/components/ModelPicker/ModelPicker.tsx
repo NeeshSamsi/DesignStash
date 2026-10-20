@@ -22,9 +22,9 @@ export interface ModelPickerProps
  * ModelPicker — Onboarding's model chooser: the hardware card, then an accordion headed by the "Use on-device AI" switch, with the models (a radio list of ModelRows) underneath while it is on.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=278-5325
  * Uses node 278:5325, the one in the snapshot (795:9729 is a duplicate). Settings › AI model mirrors
- * the accordion. The catalogue is the vision models: SmolVLM2 2.2B (small), Qwen 2.5 VL 3B (the
- * default) and Qwen 2.5 VL 7B (large, 16 GB+); Figma's sample rows still show the old text models.
- * Screens pass the real `hardware`, `aiSwitch` and `model1` to `model3` slots; the defaults are samples.
+ * the accordion. The catalogue is two vision models: Qwen 2.5 VL 3B (the default, medium) and
+ * Qwen 2.5 VL 7B (large, 16 GB+); Figma's sample rows still show the old text models.
+ * Screens pass the real `hardware`, `aiSwitch`, `model1` and `model2` slots; the defaults are samples.
  */
 export function ModelPicker({
   className,
@@ -33,7 +33,7 @@ export function ModelPicker({
   offDescription = 'Off for now. Titles will come from file names.',
   ...rest
 }: ModelPickerProps) {
-  const { ai, hardware, aiSwitch, model1, model2, model3, ...props } = {
+  const { ai, hardware, aiSwitch, model1, model2, ...props } = {
     ...MODEL_PICKER_DEFAULTS,
     ...rest
   }
@@ -80,9 +80,6 @@ export function ModelPicker({
               />
             )}
             {model2 ?? (
-              <ModelRow state="installed" name="SmolVLM2 2.2B" detail="1.7 GB · small · fastest" />
-            )}
-            {model3 ?? (
               <ModelRow
                 state="installed"
                 name="Qwen 2.5 VL 7B"

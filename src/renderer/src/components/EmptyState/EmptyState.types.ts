@@ -12,7 +12,7 @@ export const EMPTY_STATE_CONTRACT = {
   section: '4 · Feedback & states',
   description:
     'Zero-data / zero-result state with a required primary action. secondary-action is off by default: only add one when it has a real destination (there is no help site).',
-  code: '_legacy/States.tsx',
+  code: 'components/EmptyState/EmptyState.tsx',
   axes: {
     variant: ['page', 'inline']
   },

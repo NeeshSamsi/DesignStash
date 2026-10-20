@@ -12,7 +12,6 @@ vi.mock('electron', () => ({
       handlers.set(channel, fn)
   }
 }))
-vi.mock('../db/connection', () => ({ getDb: vi.fn() }))
 
 import { registerAppHandlers } from './app'
 

@@ -60,7 +60,7 @@ const ERROR_MESSAGE = 'Your cover hasn’t changed. Try another file (PNG, JPG o
 /**
  * CoverPanel — Cover in Look it over and Detail: the image plus a tag row (source tag · optional note · Zoom).
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-3545
- * Today: ApprovalStepper.tsx CoverSection. Hover reveals Replace; drag-over is the shared DropOverlay;
+ * Used by Detail and Look it over. Hover reveals Replace; drag-over is the shared DropOverlay;
  * replacing keeps the old cover dimmed; no cover at all is the required CoverDropZone.
  * Crop or bars: design/specs/cover.md.
  */

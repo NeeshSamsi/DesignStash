@@ -10,7 +10,7 @@ export const ONBOARDING_STEP_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4473',
   section: '9 · Onboarding & AI models',
   description: 'One onboarding page: StepIndicator, title, body, content slot, footer.',
-  code: 'onboarding/Onboarding.tsx',
+  code: 'screens/onboarding/OnboardingFlow.tsx',
   axes: {
     variant: ['welcome', 'standard']
   },

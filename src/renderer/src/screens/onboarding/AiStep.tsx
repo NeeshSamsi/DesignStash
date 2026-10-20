@@ -111,7 +111,6 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
         }
         model1={rows[0]}
         model2={rows[1]}
-        model3={rows[2]}
       />
     )
   }

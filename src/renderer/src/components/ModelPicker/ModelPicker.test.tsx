@@ -15,7 +15,7 @@ describe('ModelPicker behaviour', () => {
   it('on shows the models under the switch', () => {
     render(<ModelPicker ai="on" />)
     expect(screen.getByRole('radiogroup')).not.toBeNull()
-    expect(screen.getAllByRole('radio')).toHaveLength(3)
+    expect(screen.getAllByRole('radio')).toHaveLength(2)
     expect(screen.getByText('Qwen 2.5 VL 3B')).not.toBeNull()
   })
 

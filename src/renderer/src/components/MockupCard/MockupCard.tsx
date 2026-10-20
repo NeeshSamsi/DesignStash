@@ -71,7 +71,7 @@ const COVER_STATE: Record<MockupCardState, 'loaded' | 'loading' | 'no-preview' |
 /**
  * MockupCard — A mockup in any grid: squircle container, cover zoom on hover, Open in Photoshop / Edit details over the cover.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1492
- * Today: MockupTile.tsx. The body is selection (click selects; double-click or ↵ opens Detail, wired by the screen);
+ * Used by My Stash, the inboxes and Trash. The body is selection (click selects; double-click or ↵ opens Detail, wired by the screen);
  * the buttons fire only their own action. Hover is CSS, so Figma's hover and focus states need no props.
  */
 export function MockupCard({

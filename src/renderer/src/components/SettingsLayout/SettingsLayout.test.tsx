@@ -49,7 +49,7 @@ describe('SettingsLayout', () => {
     rerender(<SettingsLayout section="ai-model" />)
     expect(screen.getByText('Use on-device AI')).not.toBeNull()
     expect(screen.getByText('Available to download')).not.toBeNull()
-    expect(document.querySelectorAll('[data-ds="ModelCard"]')).toHaveLength(4)
+    expect(document.querySelectorAll('[data-ds="ModelCard"]')).toHaveLength(2)
     rerender(<SettingsLayout section="about" />)
     expect(screen.getByText('Version 1.0.0 (42)')).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Report…' })).not.toBeNull()

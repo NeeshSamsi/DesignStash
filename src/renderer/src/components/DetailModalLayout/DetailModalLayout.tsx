@@ -94,7 +94,7 @@ function LoadingBody() {
 /**
  * DetailModalLayout — Two-pane mockup detail inside Modal xl, always editable.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=222-4366
- * Today: DetailModal.tsx. Header: title field · Move to Trash · star · close. Footer (F1): Disband pile on the
+ * Used by screens/detail/DetailModal.tsx. Header: title field · Move to Trash · star · close. Footer (F1): Disband pile on the
  * left for piles; on the right, Save (secondary, only once something changed) just left of Open in
  * Photoshop, which is always the primary and never moves. The layout shows no “unsaved” badge.
  * `loading` mirrors the loaded layout with the footer off; `error` shows the title as a plain heading.

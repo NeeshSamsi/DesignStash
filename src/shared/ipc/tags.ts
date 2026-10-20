@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
 import { TagsByCategorySchema } from '../approval'
-import { TagTreeSchema, TagSnapshotSchema, CategorySnapshotSchema, TagMatchSchema } from '../tags'
+import { TagTreeSchema, TagSnapshotSchema, CategorySnapshotSchema } from '../tags'
 
 /** Tags and tag categories (two tiers, no nesting). */
 export const tagsContract = {
@@ -36,10 +36,6 @@ export const tagsContract = {
   [IPC_CHANNELS.TAG_RESTORE]: {
     request: z.object({ snapshot: TagSnapshotSchema }),
     response: z.object({ tagId: z.number(), restoredMockups: z.number() })
-  },
-  [IPC_CHANNELS.TAG_FIND]: {
-    request: z.object({ label: z.string().min(1) }),
-    response: z.object({ matches: z.array(TagMatchSchema) })
   },
   [IPC_CHANNELS.TAG_SET_CATEGORY]: {
     request: z.object({ tagId: z.number(), categoryId: z.number() }),

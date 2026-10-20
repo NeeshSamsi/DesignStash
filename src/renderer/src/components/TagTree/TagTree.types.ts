@@ -10,7 +10,7 @@ export const TAG_TREE_CONTRACT = {
   section: '10 · Settings & tags',
   description:
     'Settings › Tags: two tiers, category then tag. Each category is its own grouped container (name, tag count, ⋯) with its tags, use counts and its own Add tag row; a dashed New category row closes the list. No nesting. ⋯ on hover: Rename, Move to, Merge into, Delete. Delete is instant with Undo; Merge and Delete category ask first. Rules: design/specs/settings.md.',
-  code: 'SettingsTagsPane.tsx',
+  code: 'screens/settings/TagsPane.tsx',
   axes: {
     state: [
       'default',

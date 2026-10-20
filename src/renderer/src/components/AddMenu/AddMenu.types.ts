@@ -11,7 +11,7 @@ export const ADD_MENU_CONTRACT = {
   section: '3 · Layout & navigation',
   description:
     'Import entry point: Add files… / Add folder… + drop hint. Disabled while an import runs.',
-  code: 'AppShell.tsx AddMenu',
+  code: 'components/AddMenu/AddMenu.tsx',
   axes: {},
   axisDefaults: {},
   flags: {

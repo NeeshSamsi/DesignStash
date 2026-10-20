@@ -10,7 +10,7 @@ export const MOCKUP_GRID_CONTRACT = {
   section: '6 · Library',
   description:
     'Fill-width wrapping grid of MockupCards. show-add puts AddMockupCard first (on in My Stash › All only). loading = 10 skeleton cards in the same wrap; empty = just the AddMockupCard; no-results / error sit at the top under the toolbar, never vertically centred.',
-  code: 'MockupGrid.tsx',
+  code: 'screens/library/LibraryPage.tsx',
   axes: {
     state: ['populated', 'loading', 'empty', 'no-results', 'error']
   },

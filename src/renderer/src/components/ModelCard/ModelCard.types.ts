@@ -10,7 +10,7 @@ export const MODEL_CARD_CONTRACT = {
   section: '9 · Onboarding & AI models',
   description:
     "One on-device model in Settings › AI model, after Handy's model card: name, In use / Best fit tags and one plain line, quality and speed as five-step bars; a divider; languages, size and the actions. States: in-use (orange border, Delete) · downloaded (Delete · Use this model) · downloading (progress, Cancel) · available (Download) · failed (reason, Try again).",
-  code: 'SettingsAiPane.tsx',
+  code: 'screens/settings/AiModelPane.tsx',
   axes: {
     state: ['in-use', 'downloaded', 'downloading', 'available', 'failed']
   },

@@ -75,7 +75,7 @@ function measureColumns(root: HTMLElement): number {
 /**
  * MockupGrid — Fill-width wrapping grid of MockupCards with loading / empty / no-results / error slots.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1902
- * Today: MockupGrid.tsx. Pass `selection` to get click, ⌘-click, ⇧-click, marquee, ⌘A, Esc and arrow-key
+ * Used by My Stash, the inboxes and Trash. Pass `selection` to get click, ⌘-click, ⇧-click, marquee, ⌘A, Esc and arrow-key
  * selection over the cards that carry a `mockupId`. The Add card never does, so it is never selected.
  */
 export function MockupGrid({

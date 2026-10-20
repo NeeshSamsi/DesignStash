@@ -50,7 +50,7 @@ function Marker({ index, state }: { index: number; state: 'done' | 'current' | '
 /**
  * FlowModal — Large captured modal for Sort + Look it over: named steps with counts, and the step's body.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=374-5650
- * Today: StepperHeader. Finish later always confirms (the screen owns that dialog), so Esc and outside
+ * Used by the Sort and Look it over flows. Finish later always confirms (the screen owns that dialog), so Esc and outside
  * presses only ask via `onRequestClose`. Padding is built in; pass the step's content as `body`.
  */
 export function FlowModal({

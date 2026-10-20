@@ -134,10 +134,4 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
     })
   })
 
-  it('findTag matches its IPC contract', () => {
-    const found = svc.findTag({ label: 'clay-nothing' })
-    expect(IPC_CONTRACT[IPC_CHANNELS.TAG_FIND].response.parse(found)).toEqual({ matches: [] })
-    const minimal = svc.findTag({ label: 'MINIMAL' })
-    expect(minimal.matches.map((t) => t.label)).toEqual(['minimal'])
-  })
 })

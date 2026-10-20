@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
 import {
-  LookOverProgressSchema,
   LookOverQueueSchema,
   SaveDraftRequestSchema,
   SaveDraftResponseSchema
@@ -27,9 +26,4 @@ export const approvalContract = {
     request: z.object({ unitId: z.number(), mockupId: z.number() }),
     response: z.object({ saved: z.boolean() })
   },
-  // PUSH EVENT (main -> renderer), listed in PUSH_CHANNELS. No invoke handler is registered.
-  [IPC_CHANNELS.LOOK_OVER_PROGRESS]: {
-    request: LookOverProgressSchema,
-    response: z.void()
-  }
 } as const

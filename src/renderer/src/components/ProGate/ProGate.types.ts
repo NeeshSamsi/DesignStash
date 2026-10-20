@@ -10,7 +10,7 @@ export const PRO_GATE_CONTRACT = {
   section: '11 · Lists, trash, integrity & recovery',
   description:
     "Wraps a Pro feature: unlocked renders the child (everything is unlocked in Phase 1); locked shows the lock, a plain Pro tag, one line on what the feature does, and Upgrade. No crown (it means top of the pile) and no Learn more until there's somewhere to learn more. inline or page.",
-  code: 'Locked.tsx',
+  code: 'components/ProGate/ProGate.tsx (dormant, decision D7)',
   axes: {
     variant: ['inline', 'page']
   },

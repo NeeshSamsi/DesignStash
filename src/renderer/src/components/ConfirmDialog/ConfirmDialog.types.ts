@@ -9,7 +9,7 @@ export const CONFIRM_DIALOG_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=216-1010',
   section: '5 · Overlays & dialogs',
   description: 'Two-choice confirmation that names the consequence (item, count, size).',
-  code: '_legacy/ConfirmDialog.tsx',
+  code: 'components/ConfirmDialog/ConfirmDialog.tsx',
   axes: {
     variant: ['neutral', 'destructive']
   },

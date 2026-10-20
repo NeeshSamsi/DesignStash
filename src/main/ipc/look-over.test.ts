@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
-import { IPC_CHANNELS, IPC_CONTRACT, PUSH_CHANNELS, type IpcResult } from '@shared/ipc'
+import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
 import type { LookOverQueue } from '@shared/approval'
 import type { Repository } from '../db/repository'
 import { seedTaxonomy } from '../db/bootstrap'
@@ -104,33 +104,18 @@ describe('look-over channels', () => {
     ).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
   })
 
-  it('pushes progress while an edit carries over to variants', async () => {
+  it('saves an edit on the top of a pile', async () => {
     const [top, side] = [waiting('top'), waiting('side')]
     repo.createPile([top.id, side.id], top.id)
     await call(IPC_CHANNELS.LOOK_OVER_OPEN)
 
-    await call(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, {
+    const saved = await call(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, {
       mockupId: top.id,
       title: 'Top',
       description: 'Shared',
       tagIds: []
     })
-
-    expect(push).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_PROGRESS, {
-      pileId: top.id,
-      completed: 1,
-      total: 1,
-      phase: 'done'
-    })
-  })
-
-  it('has a push channel for the progress', () => {
-    expect(PUSH_CHANNELS).toContain(IPC_CHANNELS.LOOK_OVER_PROGRESS)
-    const { request } = IPC_CONTRACT[IPC_CHANNELS.LOOK_OVER_PROGRESS]
-    expect(request.safeParse({ pileId: 1, completed: 0, total: 3, phase: 'running' }).success).toBe(
-      true
-    )
-    expect(request.safeParse({ pileId: 1 }).success).toBe(false)
+    expect(saved.success).toBe(true)
   })
 })
 

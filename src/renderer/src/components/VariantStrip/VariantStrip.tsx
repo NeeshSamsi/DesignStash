@@ -87,7 +87,7 @@ const WHEEL_STEP_PX = 60
  * cover's left edge, an arrow on a fade only at an end with more, and a status row (name · n of N,
  * then the Top mark or Put on top).
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=222-3432
- * Today: DetailModal.tsx. Arrows, ← →, a drag or the wheel always settle on a slot. Stepping keeps the shown
+ * Used by Detail and Look it over. Arrows, ← →, a drag or the wheel always settle on a slot. Stepping keeps the shown
  * variant in a clear slot (2nd to 4th), and stepping onto a faded end scrolls one slot.
  */
 export function VariantStrip({

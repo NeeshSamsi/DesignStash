@@ -181,37 +181,15 @@ function Sample({ section, slots }: { section: SettingsLayoutSection; slots: Slo
             <div className="flex flex-col gap-2 px-4 pt-3.5 pb-4">
               <p className="type-label-xs-medium text-tertiary">Your models</p>
               {slots.modelQwen25VL3B ?? <ModelCard state="in-use" bestFit />}
-              {slots.modelSmolVLM2B ?? (
-                <ModelCard
-                  state="downloaded"
-                  name="SmolVLM2 2.2B"
-                  size="1.4 GB"
-                  quality={3}
-                  speed={5}
-                  languages="English"
-                  description="Small and fast, for quick passes."
-                />
-              )}
               <p className="mt-2 type-label-xs-medium text-tertiary">Available to download</p>
               {slots.modelQwen25VL7B ?? (
                 <ModelCard
                   state="available"
                   name="Qwen 2.5 VL 7B"
-                  size="5.2 GB"
+                  size="5.5 GB"
                   quality={5}
                   speed={2}
                   description="The best titles and tags. Needs 16 GB of memory or more."
-                />
-              )}
-              {slots.modelMoondream2 ?? (
-                <ModelCard
-                  state="available"
-                  name="Moondream 2"
-                  size="1.8 GB"
-                  quality={3}
-                  speed={4}
-                  languages="English"
-                  description="Light and quick, with short descriptions."
                 />
               )}
             </div>
@@ -255,14 +233,14 @@ function Sample({ section, slots }: { section: SettingsLayoutSection; slots: Slo
 
 type SlotProps = Pick<
   SettingsLayoutContractProps,
-  'modelQwen25VL3B' | 'modelSmolVLM2B' | 'modelQwen25VL7B' | 'modelMoondream2' | 'tagTree'
+  'modelQwen25VL3B' | 'modelQwen25VL7B' | 'tagTree'
 >
 
 /**
  * SettingsLayout — Settings as a modal over the app (880×760): section list on the left (same selected
  * style as the sidebar), pane title + close, grouped rows. Panes scroll inside it.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4771
- * Today: SettingsPage.tsx. Pass the pane's rows as `children` (built from SettingsGroup and SettingsRow);
+ * Used by SettingsModal. Pass the pane's rows as `children` (built from SettingsGroup and SettingsRow);
  * without them it shows Figma's sample for the section. Every inline button is secondary; only the
  * close ✕ is a ghost icon button.
  */
@@ -276,9 +254,7 @@ export function SettingsLayout({
   const {
     section,
     modelQwen25VL3B,
-    modelSmolVLM2B,
     modelQwen25VL7B,
-    modelMoondream2,
     tagTree,
     ...props
   } = {
@@ -322,7 +298,7 @@ export function SettingsLayout({
           {children ?? (
             <Sample
               section={section}
-              slots={{ modelQwen25VL3B, modelSmolVLM2B, modelQwen25VL7B, modelMoondream2, tagTree }}
+              slots={{ modelQwen25VL3B, modelQwen25VL7B, tagTree }}
             />
           )}
         </div>

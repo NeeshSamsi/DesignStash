@@ -1,7 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useUiStore, type AppView } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
-import { ConfirmDialog } from './components/_legacy/ConfirmDialog'
 import { DetailModal } from './screens/detail/DetailModal'
 import { SettingsModal } from './screens/settings'
 import { StashCheckModal } from './screens/integrity'
@@ -140,18 +139,6 @@ export default function AppShell({
   const dialog =
     modal === null ? undefined : (
       <>
-        {modal.kind === 'confirm' && (
-          <ConfirmDialog
-            title={modal.title}
-            message={modal.message}
-            {...(modal.danger !== undefined && { danger: modal.danger })}
-            onConfirm={() => {
-              modal.onConfirm()
-              closeModal()
-            }}
-            onCancel={closeModal}
-          />
-        )}
         {modal.kind === 'detail' && <DetailModal mockupId={modal.mockupId} onClose={closeModal} />}
         {modal.kind === 'reconcile' && (
           <StashCheckModal

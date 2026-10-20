@@ -10,7 +10,7 @@ export const COVER_IMAGE_CONTRACT = {
   section: '6 · Library',
   description:
     'The one way to render a mockup cover (4:3, squircle mask). loading is a plain skeleton block in background/surface-3, never a spinner.',
-  code: 'extract from MockupTile.tsx',
+  code: 'components/CoverImage/CoverImage.tsx',
   axes: {
     size: ['xs', 'sm', 'md', 'lg'],
     state: ['loaded', 'loading', 'no-preview', 'missing-file']

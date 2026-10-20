@@ -28,8 +28,7 @@ export const MODEL_PICKER_CONTRACT = {
     hardware: 'HardwareSummary',
     aiSwitch: 'Switch',
     model1: 'ModelRow',
-    model2: 'ModelRow',
-    model3: 'ModelRow'
+    model2: 'ModelRow'
   }
 } as const satisfies ComponentContract
 
@@ -46,8 +45,6 @@ export interface ModelPickerContractProps {
   model1?: ReactNode
   /** Slot — nests `ModelRow` in Figma. */
   model2?: ReactNode
-  /** Slot — nests `ModelRow` in Figma. */
-  model3?: ReactNode
 }
 
 /** Figma defaults. Slots have none. */

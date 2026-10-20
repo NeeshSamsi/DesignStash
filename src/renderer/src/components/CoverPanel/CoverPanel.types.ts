@@ -10,7 +10,7 @@ export const COVER_PANEL_CONTRACT = {
   section: '8 · Approval & editing',
   description:
     'Cover in Look it over and Detail: the image plus a tag row (source tag · optional note · Zoom). Hover reveals Replace (and Use the PSD’s preview on your own cover); drag-over is the shared DropOverlay; replacing keeps the old cover dimmed; errors and the sidecar prompt are Banners. Crop-or-bars rule and limits: design/specs/cover.md. Deck (piles only): show-deck/deck-more peek the mockups still to come behind the cover, deck-label counts them; not clickable.',
-  code: 'ApprovalStepper.tsx CoverSection',
+  code: 'screens/detail/DetailModal.tsx',
   axes: {
     source: ['embedded', 'sidecar', 'uploaded', 'none'],
     state: ['default', 'drag-over', 'replacing', 'uploading', 'error']

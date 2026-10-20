@@ -10,7 +10,7 @@ export const MODAL_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=216-780',
   section: '5 · Overlays & dialogs',
   description: 'Base content dialog: header, scrolling body slot, ActionBar footer.',
-  code: '_legacy/Modal.tsx',
+  code: 'components/Modal/Modal.tsx',
   axes: {
     size: ['sm', 'md', 'lg', 'xl']
   },

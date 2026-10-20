@@ -9,7 +9,7 @@ export const LIGHTBOX_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-2719',
   section: '5 · Overlays & dialogs',
   description: 'Full-window cover viewer with zoom and prev/next for pile variants.',
-  code: 'FullscreenPreview.tsx',
+  code: 'screens/library/LibraryLightbox.tsx',
   axes: {
     mode: ['single', 'group'],
     state: ['loaded', 'loading', 'missing']

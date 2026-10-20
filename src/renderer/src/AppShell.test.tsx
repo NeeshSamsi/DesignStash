@@ -344,10 +344,8 @@ describe('AppShell modals', () => {
   it('renders a modal outside the page', () => {
     useUiStore.setState({
       modal: {
-        kind: 'confirm',
-        title: 'Empty Trash?',
-        message: 'Gone for good.',
-        onConfirm: vi.fn()
+        kind: 'reconcile',
+        report: { found: [{ id: 'f1', name: 'poster_new', sizeBytes: 2048 }], gone: [] }
       }
     })
     const { baseElement } = render(
@@ -356,8 +354,8 @@ describe('AppShell modals', () => {
       </AppShell>
     )
     expect(baseElement.querySelector('[data-slot="modal-layer"]')).toBeTruthy()
-    expect(screen.getByText('Empty Trash?')).toBeTruthy()
-    expect(baseElement.querySelector('main')?.textContent).not.toContain('Empty Trash?')
+    expect(screen.getByText('poster_new')).toBeTruthy()
+    expect(baseElement.querySelector('main')?.textContent).not.toContain('poster_new')
   })
 
   it('has no modal layer without a modal', () => {

@@ -9,7 +9,7 @@ export const STEP_INDICATOR_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-3556',
   section: '9 · Onboarding & AI models',
   description: 'Progress through the 5 onboarding steps.',
-  code: 'onboarding/Onboarding.tsx',
+  code: 'components/OnboardingStep/OnboardingStep.tsx',
   axes: {
     variant: ['segments', 'dots'],
     step: ['1', '2', '3', '4', '5']

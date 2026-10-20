@@ -10,7 +10,7 @@ export const TAG_EDITOR_CONTRACT = {
   section: '8 · Approval & editing',
   description:
     'Tags field with inline add: “+ Add tag” is first and becomes the input in place; added tags append at the end; AI suggestions sit after a divider and move into your tags when accepted. Rules: design/specs/tags.md.',
-  code: '_legacy/TagEditor.tsx',
+  code: 'components/TagEditor/TagEditor.tsx',
   axes: {
     variant: ['editable', 'read-only'],
     state: [

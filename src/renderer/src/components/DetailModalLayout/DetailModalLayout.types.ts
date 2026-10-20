@@ -10,7 +10,7 @@ export const DETAIL_MODAL_LAYOUT_CONTRACT = {
   section: '8 · Approval & editing',
   description:
     'Two-pane mockup detail, always editable. Header: title field · Move to Trash (trash icon) · favourite · close. Media: CoverPanel (piles add the deck and VariantStrip). Right: MockupMetaForm. Footer (F1): Disband pile bottom-left for piles; bottom-right, Open in Photoshop is always primary and Save (secondary) appears just left of it once something changes. Trash/Disband pile instant with Undo; no Duplicate, no permanent delete. loading mirrors the loaded layout with the footer disabled. error shows the title as a plain heading. A failed save is an error toast; closing with changes asks Keep editing or Discard. Rules: design/specs/detail.md.',
-  code: 'DetailModal.tsx',
+  code: 'screens/detail/DetailModal.tsx',
   axes: {
     variant: ['single', 'group'],
     state: ['loaded', 'dirty', 'saving', 'loading', 'error']

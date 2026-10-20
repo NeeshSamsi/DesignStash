@@ -22,7 +22,7 @@ export interface CoverImageProps
  * CoverImage — The one way to render a mockup cover (4:3, squircle mask). loading is a plain
  * skeleton block in surface-3, never a spinner.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1121
- * Today: MockupTile.tsx. The text labels show at md and lg only, as in Figma.
+ * Used wherever a cover shows. The text labels show at md and lg only, as in Figma.
  */
 export function CoverImage({
   className,

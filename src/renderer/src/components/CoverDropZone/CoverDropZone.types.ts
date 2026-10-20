@@ -10,7 +10,7 @@ export const COVER_DROP_ZONE_CONTRACT = {
   section: '8 · Approval & editing',
   description:
     'Required cover drop zone (no cover yet). Drag-over is the shared DropOverlay. Rules: design/specs/cover.md.',
-  code: 'ApprovalStepper.tsx upload zone',
+  code: 'components/CoverPanel/CoverPanel.tsx',
   axes: {
     state: ['idle', 'drag-over', 'uploading', 'error']
   },

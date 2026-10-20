@@ -43,12 +43,4 @@ export const appContract = {
   },
   [IPC_CHANNELS.LICENCES_TEXT]: { request: z.void(), response: z.object({ text: z.string() }) },
   [IPC_CHANNELS.REPORT_COPY]: { request: z.void(), response: z.object({ copied: z.boolean() }) },
-  [IPC_CHANNELS.DB_PING]: {
-    request: z.void(),
-    response: z.object({
-      success: z.boolean(),
-      message: z.string(),
-      timestamp: z.number()
-    })
-  }
 } as const

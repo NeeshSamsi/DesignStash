@@ -10,7 +10,7 @@ export const TAG_FILTER_POPOVER_CONTRACT = {
   section: '6 · Library',
   description:
     'Tag filter: search on top, CategoryPills with live counts, tags grouped by category (scrolls past ~240px). Rules: design/specs/library.md. Tags are two tiers (category, then tag), so the list is flat. Each group starts with an "All in <category>" row: ticking it filters by the whole category and disables that category\'s tag rows (state=category-picked); hidden while searching.',
-  code: 'LibraryTopBar.tsx popover',
+  code: 'screens/library/LibraryPage.tsx',
   axes: {
     state: ['open', 'some-selected', 'searching', 'no-match', 'empty', 'category-picked']
   },

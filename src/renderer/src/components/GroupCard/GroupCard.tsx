@@ -27,7 +27,7 @@ export interface GroupCardProps
 /**
  * GroupCard — A proposed pile or the Standalone tray, as a drop zone of GroupMemberThumbs.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-3163
- * Today: GroupingReview.tsx. The header band is the pile's handle: click selects the pile, drag moves it whole.
+ * Used by the Sort board. The header band is the pile's handle: click selects the pile, drag moves it whole.
  * Title and badge rules: design/specs/pile-titles.md. No confidence badge, and no renaming in Sort.
  * Pass the tiles as `members`; without them it shows Figma's four sample tiles.
  */

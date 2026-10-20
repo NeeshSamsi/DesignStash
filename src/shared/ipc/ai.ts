@@ -94,10 +94,6 @@ export const aiContract = {
     request: z.object({ id: z.string().min(1), makeActive: z.boolean().optional() }),
     response: z.object({ restored: z.boolean() })
   },
-  [IPC_CHANNELS.AI_GET_ACTIVE]: {
-    request: z.void(),
-    response: z.object({ modelId: z.string().nullable() })
-  },
   [IPC_CHANNELS.AI_SET_ACTIVE]: {
     request: z.object({ id: z.string().nullable() }),
     response: z.object({ modelId: z.string().nullable() })

@@ -338,7 +338,7 @@ export const SCREENS: ScreenEntry[] = ${JSON.stringify(
 )
 
 // ---------------------------------------------------------------- drift report
-const known = new Set([...names, '_legacy'])
+const known = new Set(names)
 for (const entry of readdirSync(COMPONENTS, { withFileTypes: true })) {
   if (entry.isDirectory() && !known.has(entry.name))
     problems.push(`orphan: components/${entry.name} is not in design/figma/components.json`)

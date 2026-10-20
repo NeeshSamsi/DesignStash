@@ -4,13 +4,8 @@ import { LookOverService } from '../import/look-over-service'
 import { registerIpcHandler } from './register'
 
 export function registerApprovalHandlers(ctx: HandlerContext): void {
-  const { repo, ai, push } = ctx
-  const lookOver = new LookOverService(
-    repo,
-    () => ai.activeProvider(),
-    undefined,
-    (progress) => push(IPC_CHANNELS.LOOK_OVER_PROGRESS, progress)
-  )
+  const { repo, ai } = ctx
+  const lookOver = new LookOverService(repo, () => ai.activeProvider())
 
   registerIpcHandler(IPC_CHANNELS.LOOK_OVER_OPEN, () => lookOver.open())
   registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, (args) => lookOver.saveDraft(args))

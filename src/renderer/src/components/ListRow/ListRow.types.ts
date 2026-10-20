@@ -12,7 +12,7 @@ export const LIST_ROW_CONTRACT = {
   section: '11 · Lists, trash, integrity & recovery',
   description:
     'Generic row: media or thumb · title/subtitle · actions. Row actions use the standard secondary button.',
-  code: 'ui/item.tsx → ListRow',
+  code: 'components/ListRow/ListRow.tsx',
   axes: {
     density: ['regular', 'compact'],
     state: ['default', 'selected', 'busy', 'error']

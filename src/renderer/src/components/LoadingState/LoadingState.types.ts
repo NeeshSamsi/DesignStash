@@ -9,7 +9,7 @@ export const LOADING_STATE_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-476',
   section: '4 · Feedback & states',
   description: 'Waiting states: spinner or content-shaped skeletons.',
-  code: '_legacy/States.tsx',
+  code: 'components/LoadingState/LoadingState.tsx',
   axes: {
     variant: ['page', 'inline', 'skeleton-grid', 'skeleton-list']
   },

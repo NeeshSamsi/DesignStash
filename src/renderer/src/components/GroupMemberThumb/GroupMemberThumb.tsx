@@ -27,7 +27,7 @@ export interface GroupMemberThumbProps
 /**
  * GroupMemberThumb — A mockup tile inside a pile on the Sort board: cover on top, filename in a caption bar.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-2979
- * Today: GroupingReview.tsx. Top row: the Top badge and the ⋯ menu. States: idle · hover (CSS, the cover zooms
+ * Used by the Sort board. Top row: the Top badge and the ⋯ menu. States: idle · hover (CSS, the cover zooms
  * like the library card) · selected · lifted · left-behind · drop-ghost · pile-target. The Figma name Primary is "Top" in the UI.
  */
 export function GroupMemberThumb({
