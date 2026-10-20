@@ -1,17 +1,17 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-3780
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const hardwareSummaryVariants = cva('', {
-  variants: {
-    variant: {
-      supported: '',
-      unsupported: '',
-      'low-disk': ''
-    }
-  },
-  defaultVariants: { variant: 'supported' }
-})
+// Figma HardwareSummary 223:3780. One card: icon tile, this Mac and what it can run, a status badge.
+// Unsupported and low-disk warn with a border/warning outline.
+export const hardwareSummaryVariants = cva(
+  'flex w-full items-center gap-3 rounded-lg border bg-surface-2 px-4 py-3',
+  {
+    variants: {
+      variant: {
+        supported: 'border-subtle',
+        unsupported: 'border-warning',
+        'low-disk': 'border-warning'
+      }
+    },
+    defaultVariants: { variant: 'supported' }
+  }
+)
