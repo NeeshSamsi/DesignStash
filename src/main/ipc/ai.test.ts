@@ -184,7 +184,7 @@ describe('AI_DOWNLOAD_MODEL tracking', () => {
     })
 
     // The cancelled download finally settles.
-    settle[0]()
+    settle[0]?.()
     await new Promise((r) => setTimeout(r, 0))
 
     expect(activeDownloads.has(id)).toBe(true)
@@ -195,7 +195,7 @@ describe('AI_DOWNLOAD_MODEL tracking', () => {
       data: { cancelled: true }
     })
 
-    settle[1]()
+    settle[1]?.()
     await new Promise((r) => setTimeout(r, 0))
     expect(activeDownloads.has(id)).toBe(false)
   })

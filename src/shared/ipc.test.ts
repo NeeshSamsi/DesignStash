@@ -1,41 +1,68 @@
 import { describe, it, expect } from 'vitest'
 import {
   IPC_CONTRACT,
+  PUSH_CONTRACT,
   IPC_CHANNELS,
   IPC_DOMAIN_CONTRACTS,
   PUSH_CHANNELS,
   isPushChannel,
   AiModelInfoSchema,
-  AiDownloadProgressSchema
+  AiDownloadProgressSchema,
+  type InvokeChannel,
+  type IpcRequest,
+  type PushChannel
 } from './ipc'
 import { TagsByCategorySchema } from './approval'
 
 describe('IPC contract structure', () => {
   const channels = Object.values(IPC_CHANNELS)
 
-  it('has exactly one contract per channel', () => {
-    expect(Object.keys(IPC_CONTRACT).sort()).toEqual([...channels].sort())
+  it('has exactly one contract per channel, push channels in PUSH_CONTRACT', () => {
+    expect([...Object.keys(IPC_CONTRACT), ...Object.keys(PUSH_CONTRACT)].sort()).toEqual(
+      [...channels].sort()
+    )
+    expect(Object.keys(PUSH_CONTRACT).sort()).toEqual([...PUSH_CHANNELS].sort())
   })
 
-  it('puts every channel in exactly one domain file', () => {
+  it('puts every invoke channel in exactly one domain file', () => {
     const owners = new Map<string, string[]>()
     for (const [domain, contract] of Object.entries(IPC_DOMAIN_CONTRACTS)) {
       for (const channel of Object.keys(contract)) {
         owners.set(channel, [...(owners.get(channel) ?? []), domain])
       }
     }
-    expect([...owners.keys()].sort()).toEqual([...channels].sort())
+    expect([...owners.keys()].sort()).toEqual(Object.keys(IPC_CONTRACT).sort())
     for (const [channel, domains] of owners) expect([channel, domains.length]).toEqual([channel, 1])
   })
 
-  it('lists only real channels as push channels, each with a void response', () => {
+  it('lists only real channels as push channels, each with a payload schema', () => {
     for (const channel of PUSH_CHANNELS) {
       expect(channels).toContain(channel)
-      expect(IPC_CONTRACT[channel].response.safeParse(undefined).success).toBe(true)
+      expect(typeof PUSH_CONTRACT[channel].payload.safeParse).toBe('function')
     }
     expect(isPushChannel(IPC_CHANNELS.AI_STATUS)).toBe(true)
     expect(isPushChannel(IPC_CHANNELS.TAG_TREE)).toBe(false)
     expect(isPushChannel('not:a-channel')).toBe(false)
+  })
+
+  it('keeps push channels out of the invoke types', () => {
+    const invoke = (_channel: InvokeChannel) => undefined
+    invoke(IPC_CHANNELS.TAG_TREE)
+    // @ts-expect-error a push channel cannot be invoked
+    invoke(IPC_CHANNELS.AI_STATUS)
+
+    const push = (_channel: PushChannel) => undefined
+    push(IPC_CHANNELS.AI_STATUS)
+    // @ts-expect-error an invoke channel cannot be pushed
+    push(IPC_CHANNELS.TAG_TREE)
+
+    // @ts-expect-error a push channel has no request type
+    const request: IpcRequest<typeof IPC_CHANNELS.COPY_PROGRESS> | null = null
+    // @ts-expect-error a push channel has no entry in IPC_CONTRACT
+    void IPC_CONTRACT[IPC_CHANNELS.COPY_PROGRESS]
+    // @ts-expect-error an invoke channel has no entry in PUSH_CONTRACT
+    void PUSH_CONTRACT[IPC_CHANNELS.TAG_TREE]
+    expect(request).toBeNull()
   })
 })
 
@@ -66,13 +93,23 @@ describe('IPC Contract', () => {
     const { response } = IPC_CONTRACT[IPC_CHANNELS.AI_HARDWARE_INFO]
 
     it('validates a correct response', () => {
-      const valid = { chip: 'M3', totalMemoryGB: 16, isAppleSilicon: true, recommendedTier: 'medium' }
+      const valid = {
+        chip: 'M3',
+        totalMemoryGB: 16,
+        isAppleSilicon: true,
+        recommendedTier: 'medium'
+      }
       expect(response.parse(valid)).toEqual(valid)
     })
 
     it('rejects an invalid tier', () => {
       expect(() =>
-        response.parse({ chip: 'X', totalMemoryGB: 8, isAppleSilicon: false, recommendedTier: 'xl' })
+        response.parse({
+          chip: 'X',
+          totalMemoryGB: 8,
+          isAppleSilicon: false,
+          recommendedTier: 'xl'
+        })
       ).toThrow()
     })
   })
@@ -83,7 +120,21 @@ describe('IPC Contract', () => {
     it('validates a list response', () => {
       const valid = {
         models: [
-          { id: 'qwen2.5-vl-3b', name: 'Qwen 2.5 VL 3B', tier: 'medium', sizeBytes: 2774658784, description: 'Fast.', languages: ['English'], quality: 3, speed: 5, minMemoryGB: 8, bestFit: false, downloadedBytes: 0, installed: false, active: false }
+          {
+            id: 'qwen2.5-vl-3b',
+            name: 'Qwen 2.5 VL 3B',
+            tier: 'medium',
+            sizeBytes: 2774658784,
+            description: 'Fast.',
+            languages: ['English'],
+            quality: 3,
+            speed: 5,
+            minMemoryGB: 8,
+            bestFit: false,
+            downloadedBytes: 0,
+            installed: false,
+            active: false
+          }
         ],
         legacy: [{ id: 'qwen2.5-1.5b', sizeBytes: 1040000000 }]
       }
@@ -109,15 +160,26 @@ describe('IPC Contract', () => {
 
   describe('AI_DOWNLOAD_PROGRESS channel', () => {
     it('validates a progress event payload', () => {
-      const { request } = IPC_CONTRACT[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]
-      const valid = { modelId: 'moondream2-q4', receivedBytes: 500, totalBytes: 1800000000, phase: 'downloading' }
-      expect(request.parse(valid)).toEqual(valid)
+      const { payload } = PUSH_CONTRACT[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]
+      const valid = {
+        modelId: 'moondream2-q4',
+        receivedBytes: 500,
+        totalBytes: 1800000000,
+        phase: 'downloading'
+      }
+      expect(payload.parse(valid)).toEqual(valid)
     })
 
     it('validates an error event payload with a reason', () => {
-      const { request } = IPC_CONTRACT[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]
-      const valid = { modelId: 'x', receivedBytes: 0, totalBytes: 0, phase: 'error', reason: 'checksum' }
-      expect(request.parse(valid)).toEqual(valid)
+      const { payload } = PUSH_CONTRACT[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]
+      const valid = {
+        modelId: 'x',
+        receivedBytes: 0,
+        totalBytes: 0,
+        phase: 'error',
+        reason: 'checksum'
+      }
+      expect(payload.parse(valid)).toEqual(valid)
     })
   })
 
@@ -131,12 +193,40 @@ describe('IPC Contract', () => {
   describe('AiModelInfoSchema', () => {
     it('rejects an invalid tier', () => {
       expect(() =>
-        AiModelInfoSchema.parse({ id: 'x', name: 'X', tier: 'xl', sizeBytes: 0, description: '', languages: [], quality: 3, speed: 3, minMemoryGB: 8, bestFit: false, downloadedBytes: 0, installed: false, active: false })
+        AiModelInfoSchema.parse({
+          id: 'x',
+          name: 'X',
+          tier: 'xl',
+          sizeBytes: 0,
+          description: '',
+          languages: [],
+          quality: 3,
+          speed: 3,
+          minMemoryGB: 8,
+          bestFit: false,
+          downloadedBytes: 0,
+          installed: false,
+          active: false
+        })
       ).toThrow()
     })
 
     it('validates a well-formed model entry', () => {
-      const valid = { id: 'qwen2.5-vl-3b', name: 'Qwen 2.5 VL 3B', tier: 'medium', sizeBytes: 2774658784, description: 'Balanced.', languages: ['English'], quality: 4, speed: 4, minMemoryGB: 12, bestFit: true, downloadedBytes: 0, installed: true, active: true }
+      const valid = {
+        id: 'qwen2.5-vl-3b',
+        name: 'Qwen 2.5 VL 3B',
+        tier: 'medium',
+        sizeBytes: 2774658784,
+        description: 'Balanced.',
+        languages: ['English'],
+        quality: 4,
+        speed: 4,
+        minMemoryGB: 12,
+        bestFit: true,
+        downloadedBytes: 0,
+        installed: true,
+        active: true
+      }
       expect(AiModelInfoSchema.parse(valid)).toEqual(valid)
     })
   })
@@ -144,7 +234,12 @@ describe('IPC Contract', () => {
   describe('AiDownloadProgressSchema', () => {
     it('rejects an unknown phase', () => {
       expect(() =>
-        AiDownloadProgressSchema.parse({ modelId: 'x', receivedBytes: 0, totalBytes: 0, phase: 'pending' })
+        AiDownloadProgressSchema.parse({
+          modelId: 'x',
+          receivedBytes: 0,
+          totalBytes: 0,
+          phase: 'pending'
+        })
       ).toThrow()
     })
   })
@@ -154,11 +249,21 @@ describe('IPC Contract', () => {
       const { response } = IPC_CONTRACT[IPC_CHANNELS.GROUPING_PROPOSE]
       const valid = {
         batchId: 'batch-abc',
-        groups: [{
-          id: 'g1',
-          members: [{ mockupId: 1, isPrimary: true, coverPath: '/covers/1.png', fileName: 'hero-A.psd', folderTrail: ['iPhone'] }],
-          reason: 'folder'
-        }],
+        groups: [
+          {
+            id: 'g1',
+            members: [
+              {
+                mockupId: 1,
+                isPrimary: true,
+                coverPath: '/covers/1.png',
+                fileName: 'hero-A.psd',
+                folderTrail: ['iPhone']
+              }
+            ],
+            reason: 'folder'
+          }
+        ],
         singletons: []
       }
       expect(response.parse(valid)).toEqual(valid)
@@ -169,10 +274,13 @@ describe('IPC Contract', () => {
     it('validates a categories response', () => {
       const { response } = IPC_CONTRACT[IPC_CHANNELS.TAG_LIST_BY_CATEGORY]
       const valid = {
-        categories: [{
-          categoryId: 1, categoryLabel: 'Device',
-          tags: [{ tagId: 10, label: 'iphone' }]
-        }]
+        categories: [
+          {
+            categoryId: 1,
+            categoryLabel: 'Device',
+            tags: [{ tagId: 10, label: 'iphone' }]
+          }
+        ]
       }
       expect(response.parse(valid)).toEqual(valid)
     })
@@ -185,8 +293,15 @@ describe('IPC Contract', () => {
   describe('TAG_CREATE channel', () => {
     it('validates request and response', () => {
       const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_CREATE]
-      expect(request.parse({ label: 'tablet', categoryId: 1 })).toEqual({ label: 'tablet', categoryId: 1 })
-      expect(response.parse({ tagId: 42, label: 'tablet', categoryId: 1 })).toEqual({ tagId: 42, label: 'tablet', categoryId: 1 })
+      expect(request.parse({ label: 'tablet', categoryId: 1 })).toEqual({
+        label: 'tablet',
+        categoryId: 1
+      })
+      expect(response.parse({ tagId: 42, label: 'tablet', categoryId: 1 })).toEqual({
+        tagId: 42,
+        label: 'tablet',
+        categoryId: 1
+      })
     })
 
     it('rejects empty label', () => {
@@ -199,15 +314,17 @@ describe('IPC Contract', () => {
     it('validates a tag-tree response', () => {
       const { response } = IPC_CONTRACT[IPC_CHANNELS.TAG_TREE]
       const valid = {
-        tree: [{
-          categoryId: 1,
-          categoryLabel: 'Device',
-          tagCount: 2,
-          tags: [
-            { tagId: 10, label: 'laptop', usageCount: 3 },
-            { tagId: 11, label: 'macbook', usageCount: 0 }
-          ]
-        }]
+        tree: [
+          {
+            categoryId: 1,
+            categoryLabel: 'Device',
+            tagCount: 2,
+            tags: [
+              { tagId: 10, label: 'laptop', usageCount: 3 },
+              { tagId: 11, label: 'macbook', usageCount: 0 }
+            ]
+          }
+        ]
       }
       expect(response.parse(valid)).toEqual(valid)
     })
@@ -216,7 +333,10 @@ describe('IPC Contract', () => {
   describe('TAG_MERGE channel', () => {
     it('validates request and affectedMockups response', () => {
       const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_MERGE]
-      expect(request.parse({ sourceTagId: 1, targetTagId: 2 })).toEqual({ sourceTagId: 1, targetTagId: 2 })
+      expect(request.parse({ sourceTagId: 1, targetTagId: 2 })).toEqual({
+        sourceTagId: 1,
+        targetTagId: 2
+      })
       expect(response.parse({ affectedMockups: 4 })).toEqual({ affectedMockups: 4 })
     })
   })
@@ -224,7 +344,10 @@ describe('IPC Contract', () => {
   describe('TAG_RENAME channel', () => {
     it('rejects an empty label', () => {
       const { request } = IPC_CONTRACT[IPC_CHANNELS.TAG_RENAME]
-      expect(request.parse({ tagId: 1, label: 'notebook' })).toEqual({ tagId: 1, label: 'notebook' })
+      expect(request.parse({ tagId: 1, label: 'notebook' })).toEqual({
+        tagId: 1,
+        label: 'notebook'
+      })
       expect(() => request.parse({ tagId: 1, label: '' })).toThrow()
     })
   })
@@ -237,26 +360,38 @@ describe('IPC Contract', () => {
 
     it('TAG_DELETE returns the affected count and an undo snapshot', () => {
       const { response } = IPC_CONTRACT[IPC_CHANNELS.TAG_DELETE]
-      expect(response.parse({ affectedMockups: 2, snapshot })).toEqual({ affectedMockups: 2, snapshot })
+      expect(response.parse({ affectedMockups: 2, snapshot })).toEqual({
+        affectedMockups: 2,
+        snapshot
+      })
       expect(() => response.parse({ affectedMockups: 2 })).toThrow()
     })
 
     it('TAG_RESTORE takes the snapshot back', () => {
       const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_RESTORE]
       expect(request.parse({ snapshot })).toEqual({ snapshot })
-      expect(response.parse({ tagId: 7, restoredMockups: 2 })).toEqual({ tagId: 7, restoredMockups: 2 })
+      expect(response.parse({ tagId: 7, restoredMockups: 2 })).toEqual({
+        tagId: 7,
+        restoredMockups: 2
+      })
     })
 
     it('TAG_MERGE_PREVIEW mirrors TAG_MERGE', () => {
       const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_MERGE_PREVIEW]
-      expect(request.parse({ sourceTagId: 1, targetTagId: 2 })).toEqual({ sourceTagId: 1, targetTagId: 2 })
+      expect(request.parse({ sourceTagId: 1, targetTagId: 2 })).toEqual({
+        sourceTagId: 1,
+        targetTagId: 2
+      })
       expect(response.parse({ affectedMockups: 5 })).toEqual({ affectedMockups: 5 })
     })
 
     it('CATEGORY_DELETE takes an optional move target and returns a snapshot', () => {
       const { request, response } = IPC_CONTRACT[IPC_CHANNELS.CATEGORY_DELETE]
       expect(request.parse({ categoryId: 1 })).toEqual({ categoryId: 1 })
-      expect(request.parse({ categoryId: 1, moveTagsTo: 2 })).toEqual({ categoryId: 1, moveTagsTo: 2 })
+      expect(request.parse({ categoryId: 1, moveTagsTo: 2 })).toEqual({
+        categoryId: 1,
+        moveTagsTo: 2
+      })
       const valid = {
         deleted: true,
         movedTags: 3,
@@ -271,7 +406,6 @@ describe('IPC Contract', () => {
       expect(request.parse({ snapshot: snap })).toEqual({ snapshot: snap })
       expect(response.parse({ categoryId: 1 })).toEqual({ categoryId: 1 })
     })
-
   })
 
   describe('tag nesting', () => {
@@ -309,7 +443,10 @@ describe('IPC Contract', () => {
 
     it('accepts categoryIds for a category-level filter', () => {
       const { request } = IPC_CONTRACT[IPC_CHANNELS.LIBRARY_LIST]
-      expect(request.parse({ categoryIds: [3], sort: 'date' })).toEqual({ categoryIds: [3], sort: 'date' })
+      expect(request.parse({ categoryIds: [3], sort: 'date' })).toEqual({
+        categoryIds: [3],
+        sort: 'date'
+      })
       expect(() => request.parse({ categoryIds: ['3'] })).toThrow()
     })
 
@@ -328,12 +465,23 @@ describe('IPC Contract', () => {
     it('validates a response with items array', () => {
       const { response } = IPC_CONTRACT[IPC_CHANNELS.LIBRARY_LIST]
       const valid = {
-        items: [{
-          id: 1, title: 'Test', description: null, coverPath: '/c.png',
-          coverSource: 'embedded' as const, coverMissing: false,
-          isGroup: false, favourite: false, reviewStatus: 'approved' as const,
-          createdAt: '2025-01-01T00:00:00', variantCount: 0, topId: null, tags: []
-        }]
+        items: [
+          {
+            id: 1,
+            title: 'Test',
+            description: null,
+            coverPath: '/c.png',
+            coverSource: 'embedded' as const,
+            coverMissing: false,
+            isGroup: false,
+            favourite: false,
+            reviewStatus: 'approved' as const,
+            createdAt: '2025-01-01T00:00:00',
+            variantCount: 0,
+            topId: null,
+            tags: []
+          }
+        ]
       }
       expect(response.parse(valid)).toEqual(valid)
     })
@@ -386,9 +534,7 @@ describe('IPC Contract', () => {
     })
 
     it('rejects an invalid tier', () => {
-      expect(() =>
-        response.parse({ tier: 'enterprise', enabled: {} })
-      ).toThrow()
+      expect(() => response.parse({ tier: 'enterprise', enabled: {} })).toThrow()
     })
   })
 })

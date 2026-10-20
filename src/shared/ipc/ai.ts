@@ -70,12 +70,6 @@ export const aiContract = {
     request: z.object({ id: z.string() }),
     response: z.object({ cancelled: z.boolean() })
   },
-  // PUSH EVENT (main -> renderer), listed in PUSH_CHANNELS. `request` is the event payload;
-  // `response: z.void()` is a placeholder and no invoke handler is registered.
-  [IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]: {
-    request: AiDownloadProgressSchema,
-    response: z.void()
-  },
   [IPC_CHANNELS.AI_DELETE_MODEL]: {
     request: z.object({
       id: z.string().min(1),

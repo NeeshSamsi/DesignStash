@@ -76,10 +76,5 @@ export const importContract = {
   [IPC_CHANNELS.COPY_UNDO_ALL]: {
     request: z.object({ haulId: z.string() }),
     response: z.object({ tossedIds: z.array(z.number()) })
-  },
-  // PUSH EVENT (main -> renderer), listed in PUSH_CHANNELS. No invoke handler is registered.
-  [IPC_CHANNELS.COPY_PROGRESS]: {
-    request: CopyProgressSchema,
-    response: z.void()
   }
 } as const

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
-import { IPC_CHANNELS, IPC_CONTRACT, PUSH_CHANNELS, type IpcResult } from '@shared/ipc'
+import { IPC_CHANNELS, PUSH_CHANNELS, PUSH_CONTRACT, type IpcResult } from '@shared/ipc'
 import type { CopyStatus } from '@shared/ipc/import'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
@@ -14,7 +14,10 @@ const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
 )
 vi.mock('electron', () => ({
-  ipcMain: { handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) => handlers.set(channel, fn) }
+  ipcMain: {
+    handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) =>
+      handlers.set(channel, fn)
+  }
 }))
 // Reading a real PSD preview needs real PSDs; the copy itself is what is under test here.
 vi.mock('../psd', () => ({
@@ -22,7 +25,11 @@ vi.mock('../psd', () => ({
     const { writeFileSync: write } = await import('node:fs')
     const { join: j } = await import('node:path')
     write(j(input.outDir, 'cover.webp'), 'c')
-    return { source: 'embedded', coverPath: j(input.outDir, 'cover.webp'), thumbPath: j(input.outDir, 'thumb.webp') }
+    return {
+      source: 'embedded',
+      coverPath: j(input.outDir, 'cover.webp'),
+      thumbPath: j(input.outDir, 'thumb.webp')
+    }
   },
   collectCandidateImages: () => []
 }))
@@ -86,8 +93,14 @@ describe('copy channels', () => {
     expect(done.success && done.data.haul).toMatchObject({ state: 'done', landed: 2 })
     expect(repo.getInboxList('to_sort')).toHaveLength(2)
 
-    expect(push).toHaveBeenCalledWith(IPC_CHANNELS.COPY_PROGRESS, expect.objectContaining({ state: 'done', landed: 2 }))
-    expect(push).toHaveBeenCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, expect.objectContaining({ toSort: 2 }))
+    expect(push).toHaveBeenCalledWith(
+      IPC_CHANNELS.COPY_PROGRESS,
+      expect.objectContaining({ state: 'done', landed: 2 })
+    )
+    expect(push).toHaveBeenCalledWith(
+      IPC_CHANNELS.INBOX_COUNTS_CHANGED,
+      expect.objectContaining({ toSort: 2 })
+    )
     await vi.waitFor(() => expect(analyze).toHaveBeenCalledTimes(2))
     expect(JSON.stringify(push.mock.calls)).not.toContain(base)
   })
@@ -103,7 +116,10 @@ describe('copy channels', () => {
 
     expect(res.success && res.data.tossedIds).toHaveLength(1)
     expect(repo.getInboxList('to_sort')).toEqual([])
-    expect(push).toHaveBeenLastCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, expect.objectContaining({ toSort: 0 }))
+    expect(push).toHaveBeenLastCalledWith(
+      IPC_CHANNELS.INBOX_COUNTS_CHANGED,
+      expect.objectContaining({ toSort: 0 })
+    )
   })
 
   it('Cancel answers with what landed so far, and Retry on an unknown haul is an error', async () => {
@@ -111,7 +127,9 @@ describe('copy channels', () => {
       success: true,
       data: { landedIds: [] }
     })
-    expect(await call(IPC_CHANNELS.COPY_RETRY, { haulId: 'nope' })).toMatchObject({ success: false })
+    expect(await call(IPC_CHANNELS.COPY_RETRY, { haulId: 'nope' })).toMatchObject({
+      success: false
+    })
   })
 
   it('has no haul before the first drop, and rejects an empty drop', async () => {
@@ -124,14 +142,22 @@ describe('copy channels', () => {
 
   it('has a push channel for copy progress', () => {
     expect(PUSH_CHANNELS).toContain(IPC_CHANNELS.COPY_PROGRESS)
-    const { request } = IPC_CONTRACT[IPC_CHANNELS.COPY_PROGRESS]
+    const { payload } = PUSH_CONTRACT[IPC_CHANNELS.COPY_PROGRESS]
     expect(
-      request.safeParse({
-        haulId: 'h', state: 'paused', pauseReason: 'disk-full', total: 3, landed: 1,
-        bytesTotal: 300, bytesCopied: 100, bytesPerSecond: 0, secondsLeft: null,
-        skipped: { notPsd: 0, duplicate: 1, unreadable: 0 }, file: null
+      payload.safeParse({
+        haulId: 'h',
+        state: 'paused',
+        pauseReason: 'disk-full',
+        total: 3,
+        landed: 1,
+        bytesTotal: 300,
+        bytesCopied: 100,
+        bytesPerSecond: 0,
+        secondsLeft: null,
+        skipped: { notPsd: 0, duplicate: 1, unreadable: 0 },
+        file: null
       }).success
     ).toBe(true)
-    expect(request.safeParse({ haulId: 'h', state: 'nope' }).success).toBe(false)
+    expect(payload.safeParse({ haulId: 'h', state: 'nope' }).success).toBe(false)
   })
 })

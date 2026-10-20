@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
 
-const UpdateStatusSchema = z.discriminatedUnion('state', [
+export const UpdateStatusSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('up-to-date'), lastCheckedAt: z.string().nullable() }),
   z.object({
     state: z.literal('available'),
@@ -16,6 +16,8 @@ const UpdateStatusSchema = z.discriminatedUnion('state', [
   }),
   z.object({ state: z.literal('ready'), version: z.string(), lastCheckedAt: z.string().nullable() })
 ])
+
+export type UpdateStatus = z.infer<typeof UpdateStatusSchema>
 
 /** App info and health. */
 export const appContract = {
@@ -42,5 +44,5 @@ export const appContract = {
     response: z.object({ installing: z.boolean() })
   },
   [IPC_CHANNELS.LICENCES_TEXT]: { request: z.void(), response: z.object({ text: z.string() }) },
-  [IPC_CHANNELS.REPORT_COPY]: { request: z.void(), response: z.object({ copied: z.boolean() }) },
+  [IPC_CHANNELS.REPORT_COPY]: { request: z.void(), response: z.object({ copied: z.boolean() }) }
 } as const

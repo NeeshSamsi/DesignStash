@@ -1,10 +1,7 @@
+import type { UpdateStatus } from '@shared/ipc/app'
 import type { SettingsStore } from '../settings'
 
-export type UpdateStatus =
-  | { state: 'up-to-date'; lastCheckedAt: string | null }
-  | { state: 'available'; version: string; lastCheckedAt: string | null }
-  | { state: 'downloading'; version: string; progress: number; lastCheckedAt: string | null }
-  | { state: 'ready'; version: string; lastCheckedAt: string | null }
+export type { UpdateStatus }
 
 /**
  * The seam for app updates (decision D3). Releases have no update channel yet, so the only

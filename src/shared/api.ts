@@ -1,5 +1,5 @@
 import type {
-  IpcChannel,
+  InvokeChannel,
   IpcRequest,
   IpcResponse,
   IpcResult,
@@ -12,7 +12,7 @@ import type {
  */
 export interface DesignStashApi {
   appName: string
-  invoke<C extends IpcChannel>(
+  invoke<C extends InvokeChannel>(
     channel: C,
     args: IpcRequest<C>
   ): Promise<IpcResult<IpcResponse<C>>>

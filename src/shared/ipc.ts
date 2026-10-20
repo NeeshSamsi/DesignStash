@@ -1,12 +1,18 @@
 import type { z } from 'zod'
-import { IPC_CHANNELS, PUSH_CHANNELS, isPushChannel, type IpcChannel, type PushChannel } from './ipc-channels'
+import {
+  IPC_CHANNELS,
+  PUSH_CHANNELS,
+  isPushChannel,
+  type InvokeChannel,
+  type IpcChannel,
+  type PushChannel
+} from './ipc-channels'
 import { appContract } from './ipc/app'
 import { bootContract } from './ipc/boot'
 import { settingsContract } from './ipc/settings'
 import { dialogContract } from './ipc/dialog'
 import { importContract } from './ipc/import'
 import { aiContract } from './ipc/ai'
-import { aiStatusContract } from './ipc/ai-status'
 import { groupingContract } from './ipc/grouping'
 import { approvalContract } from './ipc/approval'
 import { tagsContract } from './ipc/tags'
@@ -19,8 +25,17 @@ import { integrityContract } from './ipc/integrity'
 import { telemetryContract } from './ipc/telemetry'
 import { entitlementsContract } from './ipc/entitlements'
 import { debugContract } from './ipc/debug'
+import { PUSH_CONTRACT } from './ipc/push'
 
-export { IPC_CHANNELS, PUSH_CHANNELS, isPushChannel, type IpcChannel, type PushChannel }
+export {
+  IPC_CHANNELS,
+  PUSH_CHANNELS,
+  PUSH_CONTRACT,
+  isPushChannel,
+  type InvokeChannel,
+  type IpcChannel,
+  type PushChannel
+}
 export {
   AiModelTierSchema,
   AiModelInfoSchema,
@@ -32,7 +47,8 @@ export {
 
 /**
  * Domain contracts, one file per domain in ./ipc/. Each maps a channel to its request/response
- * zod schemas (validated on both ends). Every channel appears in exactly one domain.
+ * zod schemas (validated on both ends). Every invoke channel appears in exactly one domain;
+ * push channels are in PUSH_CONTRACT.
  */
 export const IPC_DOMAIN_CONTRACTS = {
   app: appContract,
@@ -41,7 +57,6 @@ export const IPC_DOMAIN_CONTRACTS = {
   dialog: dialogContract,
   import: importContract,
   ai: aiContract,
-  aiStatus: aiStatusContract,
   grouping: groupingContract,
   approval: approvalContract,
   tags: tagsContract,
@@ -56,7 +71,7 @@ export const IPC_DOMAIN_CONTRACTS = {
   debug: debugContract
 } as const
 
-/** Every channel's request/response schemas. */
+/** Every invoke channel's request/response schemas. */
 export const IPC_CONTRACT = {
   ...appContract,
   ...bootContract,
@@ -64,7 +79,6 @@ export const IPC_CONTRACT = {
   ...dialogContract,
   ...importContract,
   ...aiContract,
-  ...aiStatusContract,
   ...groupingContract,
   ...approvalContract,
   ...tagsContract,
@@ -79,11 +93,11 @@ export const IPC_CONTRACT = {
   ...debugContract
 } as const
 
-export type IpcRequest<C extends IpcChannel> = z.infer<(typeof IPC_CONTRACT)[C]['request']>
-export type IpcResponse<C extends IpcChannel> = z.infer<(typeof IPC_CONTRACT)[C]['response']>
+export type IpcRequest<C extends InvokeChannel> = z.infer<(typeof IPC_CONTRACT)[C]['request']>
+export type IpcResponse<C extends InvokeChannel> = z.infer<(typeof IPC_CONTRACT)[C]['response']>
 
-/** A push channel's payload (its contract `request` schema). */
-export type PushPayload<C extends PushChannel> = IpcRequest<C>
+/** A push channel's payload (its PUSH_CONTRACT schema). */
+export type PushPayload<C extends PushChannel> = z.infer<(typeof PUSH_CONTRACT)[C]['payload']>
 
 /** Standard wrapper so the renderer always gets a typed success/error result. */
 export type IpcResult<T> =

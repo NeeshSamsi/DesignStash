@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import {
   IPC_CONTRACT,
-  type IpcChannel,
+  type InvokeChannel,
   type IpcRequest,
   type IpcResponse,
   type IpcResult
@@ -12,7 +12,7 @@ import { ZodError } from 'zod'
  * Register a typed IPC handler in the main process.
  * Validates both input (request) and output (response) against the shared zod schemas.
  */
-export function registerIpcHandler<C extends IpcChannel>(
+export function registerIpcHandler<C extends InvokeChannel>(
   channel: C,
   handler: (args: IpcRequest<C>) => Promise<IpcResponse<C>> | IpcResponse<C>
 ): void {

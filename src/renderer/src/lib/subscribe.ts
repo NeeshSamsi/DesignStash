@@ -1,4 +1,4 @@
-import { IPC_CONTRACT, type PushChannel, type PushPayload } from '@shared/ipc'
+import { PUSH_CONTRACT, type PushChannel, type PushPayload } from '@shared/ipc'
 
 /**
  * Listen to a main -> renderer push event with its payload validated against the channel's
@@ -8,7 +8,7 @@ export function subscribePush<C extends PushChannel>(
   channel: C,
   callback: (payload: PushPayload<C>) => void
 ): () => void {
-  const schema = IPC_CONTRACT[channel].request
+  const schema = PUSH_CONTRACT[channel].payload
   return window.api.subscribe(channel, (raw) => {
     const parsed = schema.safeParse(raw)
     if (!parsed.success) {

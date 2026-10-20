@@ -109,8 +109,9 @@ export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
 
 /**
  * Main → renderer push events (webContents.send). The preload relays only these, and the
- * renderer validates each payload against the channel's `request` schema in IPC_CONTRACT.
- * No invoke handler is registered for them.
+ * renderer validates each payload against the channel's schema in PUSH_CONTRACT. They are not
+ * invoke channels: IPC_CONTRACT has no entry for them. The list lives here, schema-free, because
+ * the sandboxed preload imports it.
  */
 export const PUSH_CHANNELS = [
   IPC_CHANNELS.AI_DOWNLOAD_PROGRESS,
@@ -121,6 +122,9 @@ export const PUSH_CHANNELS = [
 ] as const
 
 export type PushChannel = (typeof PUSH_CHANNELS)[number]
+
+/** Every channel the renderer can invoke and the main process can handle. */
+export type InvokeChannel = Exclude<IpcChannel, PushChannel>
 
 export function isPushChannel(channel: string): channel is PushChannel {
   return (PUSH_CHANNELS as readonly string[]).includes(channel)

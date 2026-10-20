@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
-import { IPC_CHANNELS, IPC_CONTRACT, PUSH_CHANNELS, type IpcResult } from '@shared/ipc'
+import { IPC_CHANNELS, PUSH_CHANNELS, PUSH_CONTRACT, type IpcResult } from '@shared/ipc'
 import type { InferenceProvider } from '@shared/inference'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
@@ -75,15 +75,15 @@ const make = (name: string) => {
 describe('ai:status push', () => {
   it('is a push channel whose payload carries the per-mockup status and the totals', () => {
     expect(PUSH_CHANNELS).toContain(IPC_CHANNELS.AI_STATUS)
-    const { request } = IPC_CONTRACT[IPC_CHANNELS.AI_STATUS]
+    const { payload } = PUSH_CONTRACT[IPC_CHANNELS.AI_STATUS]
     expect(
-      request.safeParse({
+      payload.safeParse({
         updates: [{ mockupId: 1, status: 'sniffing' }],
         totals: { total: 38, remaining: 7 }
       }).success
     ).toBe(true)
     expect(
-      request.safeParse({
+      payload.safeParse({
         updates: [{ mockupId: 1, status: 'bogus' }],
         totals: { total: 1, remaining: 0 }
       }).success

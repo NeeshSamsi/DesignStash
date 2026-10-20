@@ -1,9 +1,9 @@
 import type { Repository } from '../db/repository'
-import type { IpcChannel, IpcRequest, IpcResponse } from '@shared/ipc'
+import type { InvokeChannel, IpcRequest, IpcResponse } from '@shared/ipc'
 import type { IPC_CHANNELS } from '@shared/ipc-channels'
 
 type Channels = typeof IPC_CHANNELS
-type Handler<C extends IpcChannel> = (args: IpcRequest<C>) => IpcResponse<C>
+type Handler<C extends InvokeChannel> = (args: IpcRequest<C>) => IpcResponse<C>
 
 export class TagService {
   constructor(private readonly repo: Repository) {}

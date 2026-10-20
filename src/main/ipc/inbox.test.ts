@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
-import { IPC_CHANNELS, IPC_CONTRACT, PUSH_CHANNELS, type IpcResult } from '@shared/ipc'
+import { IPC_CHANNELS, PUSH_CHANNELS, PUSH_CONTRACT, type IpcResult } from '@shared/ipc'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, sample } from '../db/repositories/__tests__/setup'
@@ -95,8 +95,8 @@ describe('inbox channels', () => {
 describe('inbox:counts push', () => {
   it('is a push channel whose payload is the counts', () => {
     expect(PUSH_CHANNELS).toContain(IPC_CHANNELS.INBOX_COUNTS_CHANGED)
-    const { request } = IPC_CONTRACT[IPC_CHANNELS.INBOX_COUNTS_CHANGED]
-    expect(request.safeParse({ toSort: 1, toStash: 2, sniffing: 0, trash: 3 }).success).toBe(true)
-    expect(request.safeParse({ toSort: 1 }).success).toBe(false)
+    const { payload } = PUSH_CONTRACT[IPC_CHANNELS.INBOX_COUNTS_CHANGED]
+    expect(payload.safeParse({ toSort: 1, toStash: 2, sniffing: 0, trash: 3 }).success).toBe(true)
+    expect(payload.safeParse({ toSort: 1 }).success).toBe(false)
   })
 })
