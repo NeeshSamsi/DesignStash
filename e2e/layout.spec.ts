@@ -10,7 +10,7 @@ import { test, expect, makePsds, type E2EApp } from './fixtures/app'
  */
 
 const SIZES = [
-  { width: 1024, height: 680 },
+  { width: 1088, height: 680 },
   { width: 1440, height: 900 }
 ] as const
 

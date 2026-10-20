@@ -260,14 +260,14 @@ test.describe('Details sidebar', () => {
     await expect(panel(window)).toBeVisible()
     await fits('wide, sidebar open')
     // Shrink with the sidebar open: the grid follows the container, it does not keep its old width.
-    await resize(1024, 680)
-    await fits('1024×680, sidebar open')
+    await resize(1088, 680)
+    await fits('1088×680, sidebar open')
     await panel(window).getByRole('button', { name: 'Close' }).click()
     await expect(panel(window)).toHaveCount(0)
-    await fits('1024×680, sidebar closed')
+    await fits('1088×680, sidebar closed')
     await clickCard(window)
     await expect(panel(window)).toBeVisible()
-    await fits('1024×680, sidebar opened again')
+    await fits('1088×680, sidebar opened again')
     // And back wider with it open: the grid grows into the room instead of keeping its old width.
     await resize(1440, 900)
     await fits('wide again, sidebar open')

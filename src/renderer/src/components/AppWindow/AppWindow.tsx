@@ -42,7 +42,7 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
         </div>
       </div>
       <div className="flex min-h-0 flex-1">
-        <div className="shrink-0">{props.sidebar}</div>
+        <div className="min-w-44 shrink-0">{props.sidebar}</div>
         <main
           className={cn(appWindowPanelClass, asideOpen ? 'rounded-tr-3xl' : 'rounded-tr-none')}
           style={containerTransition('border-top-right-radius', asideOpen, still)}

@@ -53,4 +53,22 @@ describe('AppWindow behaviour', () => {
     rerender(<AppWindow />)
     expect(baseElement.querySelector('[data-ds="DropOverlay"]')).toBeNull()
   })
+
+  it('gives every column a minimum width: the sidebar never shrinks, the panel keeps two card columns', () => {
+    const { baseElement } = render(
+      <AppWindow
+        sidebar={<div>sidebar</div>}
+        aside={<div>aside</div>}
+        asideOpen
+        page={<div>page</div>}
+      />
+    )
+    const sidebar = screen.getByText('sidebar').parentElement!
+    expect(sidebar.className).toContain('shrink-0')
+    expect(sidebar.className).toContain('min-w-44')
+    expect(baseElement.querySelector('main')!.className).toContain('min-w-main')
+    const aside = baseElement.querySelector('[data-slot="aside"]')!
+    expect(aside.className).toContain('shrink-0')
+    expect(aside.className).toContain('w-99')
+  })
 })

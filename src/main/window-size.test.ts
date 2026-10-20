@@ -21,7 +21,7 @@ describe('initialWindowSize', () => {
     expect(Number.isInteger(size.height)).toBe(true)
   })
 
-  it('keeps the minimum at 1024×680', () => {
-    expect(MIN_WINDOW).toEqual({ width: 1024, height: 680 })
+  it('keeps the minimum at 1088×680', () => {
+    expect(MIN_WINDOW).toEqual({ width: 1088, height: 680 })
   })
 })

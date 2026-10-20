@@ -3,8 +3,11 @@ export interface Size {
   height: number
 }
 
-/** The smallest the window can be resized to. */
-export const MIN_WINDOW: Size = { width: 1024, height: 680 }
+/**
+ * The smallest the window can be resized to: the sidebar (176), the main panel at its minimum (512) and
+ * the details sidebar's share (396) make 1084, rounded up to a multiple of 8.
+ */
+export const MIN_WINDOW: Size = { width: 1088, height: 680 }
 
 const DEFAULT_WINDOW: Size = { width: 1440, height: 900 }
 const WORK_AREA_SHARE = 0.95
