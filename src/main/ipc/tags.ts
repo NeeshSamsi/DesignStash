@@ -7,8 +7,8 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
   const tagService = new TagService(repo)
 
   registerIpcHandler(IPC_CHANNELS.TAG_LIST_BY_CATEGORY, () => {
-    const allCategories = repo.getAllCategories()
-    const allTags = repo.getAllTags()
+    const allCategories = repo.tags.getAllCategories()
+    const allTags = repo.tags.getAllTags()
     const categories = allCategories.map((cat) => ({
       categoryId: cat.id,
       categoryLabel: cat.label,
@@ -20,19 +20,19 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
   })
 
   registerIpcHandler(IPC_CHANNELS.TAG_CREATE, (args) => {
-    const tag = repo.createTag({ label: args.label, categoryId: args.categoryId })
+    const tag = repo.tags.createTag({ label: args.label, categoryId: args.categoryId })
     return { tagId: tag.id, label: tag.label, categoryId: tag.categoryId }
   })
 
-  registerIpcHandler(IPC_CHANNELS.TAG_TREE, () => ({ tree: repo.getTagTree() }))
+  registerIpcHandler(IPC_CHANNELS.TAG_TREE, () => ({ tree: repo.tags.getTagTree() }))
 
   registerIpcHandler(IPC_CHANNELS.TAG_RENAME, (args) => {
-    repo.renameTag(args.tagId, args.label)
+    repo.tags.renameTag(args.tagId, args.label)
     return { ok: true }
   })
 
   registerIpcHandler(IPC_CHANNELS.TAG_MERGE, (args) =>
-    repo.mergeTags(args.sourceTagId, args.targetTagId)
+    repo.tags.mergeTags(args.sourceTagId, args.targetTagId)
   )
 
   registerIpcHandler(IPC_CHANNELS.TAG_MERGE_PREVIEW, tagService.previewMergeTags)
@@ -43,17 +43,17 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
 
 
   registerIpcHandler(IPC_CHANNELS.TAG_SET_CATEGORY, (args) => {
-    repo.reassignTagCategory(args.tagId, args.categoryId)
+    repo.tags.reassignTagCategory(args.tagId, args.categoryId)
     return { ok: true }
   })
 
   registerIpcHandler(IPC_CHANNELS.CATEGORY_CREATE, (args) => {
-    const cat = repo.createCategory({ label: args.label })
+    const cat = repo.tags.createCategory({ label: args.label })
     return { categoryId: cat.id, label: cat.label }
   })
 
   registerIpcHandler(IPC_CHANNELS.CATEGORY_RENAME, (args) => {
-    repo.renameCategory(args.categoryId, args.label)
+    repo.tags.renameCategory(args.categoryId, args.label)
     return { ok: true }
   })
 

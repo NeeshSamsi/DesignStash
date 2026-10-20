@@ -7,23 +7,23 @@ export function registerMockupHandlers({ repo, library, settings }: HandlerConte
   const covers = new CoverService(repo, settings.getLibraryRoot())
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_DETAIL, (args) => {
-    const detail = repo.getMockupDetail(args.mockupId)
+    const detail = repo.library.getMockupDetail(args.mockupId)
     if (!detail.mockup) throw new Error(`Mockup ${args.mockupId} not found`)
     const [row] = repo.library.toRows([detail.mockup])
     if (!row) throw new Error(`Mockup ${args.mockupId} not found`)
     return {
       item: { ...row, description: detail.mockup.description ?? null, tags: detail.tags },
-      variants: repo.getDetailVariants(args.mockupId)
+      variants: repo.library.getDetailVariants(args.mockupId)
     }
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, (args) => {
-    repo.setFavourite(args.mockupId, args.favourite)
+    repo.mockups.setFavourite(args.mockupId, args.favourite)
     return { favourite: args.favourite }
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_UPDATE, (args) => {
-    repo.updateMockupMeta(args.mockupId, {
+    repo.mockups.updateMockupMeta(args.mockupId, {
       title: args.title,
       description: args.description,
       tagIds: args.tagIds

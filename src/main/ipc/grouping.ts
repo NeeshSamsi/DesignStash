@@ -11,7 +11,7 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.GROUPING_PROPOSE, (args) => {
     // Only what still waits in To sort: stashed, sorted and trashed mockups have left the board.
     const dbMockups = repo
-      .getMockupsByBatchId(args.batchId)
+      .mockups.getMockupsByBatchId(args.batchId)
       .filter((m) => m.stage === 'to_sort' && m.deletedAt === null)
     const members: GroupMember[] = dbMockups.map((m) => {
       const ctx = m.importContext as {
@@ -31,9 +31,9 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
   })
 
   registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
-    repo.confirmGroupings(args.groups, args.singletonIds)
+    repo.piles.confirmGroupings(args.groups, args.singletonIds)
     repo.sortBoards.clear(args.batchId)
-    repo.setStage([...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds], 'to_stash')
+    repo.mockups.setStage([...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds], 'to_stash')
     countsChanged(ctx)
     // Telemetry: counts only — never group contents.
     telemetry.get().track(TELEMETRY_EVENTS.GROUP_CONFIRMED, {

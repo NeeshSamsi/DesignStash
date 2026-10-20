@@ -10,7 +10,7 @@ export function registerTrashHandlers(ctx: HandlerContext): void {
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_TRASH, (args) => {
     const ids = args.ids
-    const count = repo.moveManyToTrash(ids)
+    const count = repo.trash.moveManyToTrash(ids)
     mockupsLeft(ctx, ids)
     countsChanged(ctx)
     return { ok: true, count }
@@ -18,7 +18,7 @@ export function registerTrashHandlers(ctx: HandlerContext): void {
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_RESTORE, (args) => {
     const ids = args.ids
-    const count = repo.restoreMany(ids)
+    const count = repo.trash.restoreMany(ids)
     mockupsArrived(ctx, ids)
     countsChanged(ctx)
     return { ok: true, count }

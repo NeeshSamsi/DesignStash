@@ -54,7 +54,7 @@ export function registerBootHandlers({ settings, repo, ...deps }: BootHandlerDep
   })
 
   registerIpcHandler(IPC_CHANNELS.REPORT_COPY, () => {
-    const counts = repo?.getInboxCounts()
+    const counts = repo?.inbox.getCounts()
     writeClipboard(
       buildReport({
         version: version(),
@@ -62,7 +62,7 @@ export function registerBootHandlers({ settings, repo, ...deps }: BootHandlerDep
         platform: process.platform,
         arch: process.arch,
         osRelease: release(),
-        stashCount: repo ? repo.getLibraryStats().total : null,
+        stashCount: repo ? repo.library.getLibraryStats().total : null,
         toSort: counts?.toSort ?? null,
         toStash: counts?.toStash ?? null,
         trash: counts?.trash ?? null,

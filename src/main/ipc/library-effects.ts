@@ -31,7 +31,7 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
 
 /** Ids plus the members of any pile among them. */
 function withPileMembers({ repo }: Pick<HandlerContext, 'repo'>, ids: number[]): number[] {
-  return [...new Set(ids.flatMap((id) => repo.collectGroupIds(id)))]
+  return [...new Set(ids.flatMap((id) => repo.piles.collectGroupIds(id)))]
 }
 
 /** Mockups were trashed, tossed, removed or undone: their suggestions are no longer wanted. */
@@ -51,5 +51,5 @@ export function mockupsArrived(ctx: HandlerContext, ids: number[]): void {
 
 /** Tell the renderer the sidebar counts after anything that moves mockups between inboxes, My Stash and Trash. */
 export function countsChanged({ repo, push }: Pick<HandlerContext, 'repo' | 'push'>): void {
-  push(IPC_CHANNELS.INBOX_COUNTS_CHANGED, repo.getInboxCounts())
+  push(IPC_CHANNELS.INBOX_COUNTS_CHANGED, repo.inbox.getCounts())
 }
