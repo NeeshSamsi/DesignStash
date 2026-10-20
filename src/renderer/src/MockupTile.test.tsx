@@ -10,10 +10,14 @@ const baseItem: LibraryItem = {
   title: 'My Mockup',
   description: null,
   coverPath: '/covers/1.jpg',
+  coverSource: 'embedded',
+  coverMissing: false,
   isGroup: false,
   favourite: false,
   reviewStatus: 'approved',
+  createdAt: '2025-01-01T00:00:00',
   variantCount: 1,
+  topId: null,
   tags: [],
 }
 

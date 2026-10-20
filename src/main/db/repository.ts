@@ -89,6 +89,7 @@ export class Repository {
   // Library reads
   getLibrary(...a: Args<LibraryQueryRepository['getLibrary']>) { return this.library.getLibrary(...a) }
   getMockupDetail(...a: Args<LibraryQueryRepository['getMockupDetail']>) { return this.library.getMockupDetail(...a) }
+  getDetailVariants(...a: Args<LibraryQueryRepository['getDetailVariants']>) { return this.library.getDetailVariants(...a) }
   getLibraryStats() { return this.library.getLibraryStats() }
 
   // Trash

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags, tagCategories } from '../schema'
@@ -11,10 +12,17 @@ export interface LibraryRow {
   title: string
   description: string | null
   coverPath: string
+  coverSource: Mockup['coverSource']
+  /** The cover file is gone from disk (the card offers Replace cover). */
+  coverMissing: boolean
   isGroup: boolean
   favourite: boolean
   reviewStatus: 'needs_review' | 'approved'
+  createdAt: string
+  /** Other mockups in the pile besides the top; 0 for a mockup on its own. */
   variantCount: number
+  /** The pile's top mockup (the leader row itself); null for a mockup on its own. */
+  topId: number | null
   tags: { id: number; label: string; categoryLabel: string }[]
 }
 
@@ -24,13 +32,15 @@ export class LibraryQueryRepository {
     private readonly db: AppDatabase,
     private readonly mockups: MockupRepository,
     private readonly piles: PileRepository,
-    private readonly search: SearchRepository
+    private readonly search: SearchRepository,
+    private readonly fileExists: (path: string) => boolean = existsSync
   ) {}
 
   getLibrary(opts: {
     tagIds?: number[]
     categoryIds?: number[]
     query?: string
+    starredOnly?: boolean
     sort: 'date' | 'name'
   }): LibraryRow[] {
     const { tagIds = [], categoryIds = [], sort } = opts
@@ -43,7 +53,8 @@ export class LibraryQueryRepository {
         and(
           eq(mockups.reviewStatus, 'approved'),
           isNull(mockups.deletedAt),
-          isNull(mockups.groupId)
+          isNull(mockups.groupId),
+          ...(opts.starredOnly ? [eq(mockups.favourite, true)] : [])
         )
       )
       .all()
@@ -79,9 +90,8 @@ export class LibraryQueryRepository {
       candidates = candidates.filter((c) => inCategory.has(c.id))
     }
 
-    // Sort: favourites first, then FTS rank / name / date
+    // Sort: FTS rank when searching, else name / date. Favourites don't jump the queue (Starred is its own view).
     candidates.sort((a, b) => {
-      if (a.favourite !== b.favourite) return a.favourite ? -1 : 1
       if (ftsRankMap) {
         return (ftsRankMap.get(a.id) ?? 0) - (ftsRankMap.get(b.id) ?? 0)
       }
@@ -100,10 +110,14 @@ export class LibraryQueryRepository {
       title: m.title,
       description: m.description ?? null,
       coverPath: m.coverPath,
+      coverSource: m.coverSource,
+      coverMissing: !this.fileExists(m.coverPath),
       isGroup: m.isGroup,
       favourite: m.favourite,
       reviewStatus: m.reviewStatus,
+      createdAt: m.createdAt,
       variantCount: this.piles.getMockupsByGroupId(m.id).length,
+      topId: m.isGroup ? m.id : null,
       tags: this.mockups.getTagsForMockup(m.id).map((t) => ({
         id: t.id,
         label: t.label,
@@ -129,6 +143,26 @@ export class LibraryQueryRepository {
       ? this.piles.getMockupsByGroupId(id).sort((a, b) => a.id - b.id)
       : []
     return { mockup, tags: tagList, variants: variantList }
+  }
+
+  /** Every mockup in a pile for the Detail strip: the top first, then the rest in order. Empty for a mockup on its own. */
+  getDetailVariants(id: number): {
+    id: number
+    title: string
+    coverPath: string
+    coverMissing: boolean
+    isTop: boolean
+  }[] {
+    const top = this.mockups.getMockup(id)
+    if (!top?.isGroup) return []
+    const rows = [top, ...this.piles.getMockupsByGroupId(id).sort((a, b) => a.id - b.id)]
+    return rows.map((m) => ({
+      id: m.id,
+      title: m.title,
+      coverPath: m.coverPath,
+      coverMissing: !this.fileExists(m.coverPath),
+      isTop: m.id === top.id
+    }))
   }
 
   getLibraryStats(): { total: number; favourites: number; groups: number; trashed: number } {

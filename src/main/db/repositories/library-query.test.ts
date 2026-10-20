@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
@@ -63,7 +66,18 @@ describe('getLibrary', () => {
     expect(result[0]!.variantCount).toBe(2)
   })
 
-  it('favourites pin to top within filtered set; favourites missing the filter do not bypass it', () => {
+  it('does not float favourites to the top (Starred has its own view)', () => {
+    const a = repo.createMockup(approvedMockup({ title: 'A', libraryPath: '/lib/fa.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'B', libraryPath: '/lib/fb.psd' }))
+    repo.updateMockup(a.id, { createdAt: '2025-01-02T00:00:00' })
+    repo.updateMockup(b.id, { createdAt: '2025-01-01T00:00:00' })
+    repo.setFavourite(b.id, true)
+
+    expect(repo.getLibrary({ sort: 'date' }).map((r) => r.id)).toEqual([a.id, b.id])
+    expect(repo.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([a.id, b.id])
+  })
+
+  it('starredOnly keeps only favourites and still respects the other filters', () => {
     const allTags = repo.getAllTags()
     const laptop = allTags.find((t) => t.label === 'laptop')!
     const phone = allTags.find((t) => t.label === 'phone')!
@@ -71,21 +85,50 @@ describe('getLibrary', () => {
     const a = repo.createMockup(approvedMockup({ title: 'Laptop A', libraryPath: '/lib/la.psd' }))
     const b = repo.createMockup(approvedMockup({ title: 'Laptop B', libraryPath: '/lib/lb.psd' }))
     const c = repo.createMockup(approvedMockup({ title: 'Phone Only', libraryPath: '/lib/ph.psd' }))
-
     repo.addTagToMockup(a.id, laptop.id)
     repo.addTagToMockup(b.id, laptop.id)
     repo.addTagToMockup(c.id, phone.id)
+    repo.setFavourite(c.id, true)
+    repo.setFavourite(b.id, true)
 
-    repo.setFavourite(c.id, true) // favourite but wrong tag
-    repo.setFavourite(b.id, true) // favourite with correct tag
+    expect(repo.getLibrary({ starredOnly: true, sort: 'date' }).map((r) => r.id).sort()).toEqual(
+      [b.id, c.id].sort()
+    )
+    expect(
+      repo.getLibrary({ starredOnly: true, tagIds: [laptop.id], sort: 'date' }).map((r) => r.id)
+    ).toEqual([b.id])
+    expect(repo.getLibrary({ starredOnly: false, sort: 'date' })).toHaveLength(3)
+  })
 
-    const result = repo.getLibrary({ tagIds: [laptop.id], sort: 'date' })
-    const ids = result.map((r) => r.id)
+  it('returns createdAt, coverSource, coverMissing and topId on every item', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ds-lib-'))
+    const coverPath = join(dir, 'cover.webp')
+    writeFileSync(coverPath, 'x')
+    try {
+      const present = repo.createMockup(
+        approvedMockup({ title: 'Present', libraryPath: '/lib/pr.psd', coverPath, coverSource: 'sidecar' })
+      )
+      const missing = repo.createMockup(
+        approvedMockup({ title: 'Missing', libraryPath: '/lib/mi.psd', coverPath: join(dir, 'gone.webp') })
+      )
+      const leader = repo.createMockup(
+        approvedMockup({ title: 'Leader', libraryPath: '/lib/ld.psd', isGroup: true })
+      )
+      repo.createMockup(approvedMockup({ title: 'V', libraryPath: '/lib/v.psd', groupId: leader.id }))
 
-    expect(ids).toContain(a.id)
-    expect(ids).toContain(b.id)
-    expect(ids).not.toContain(c.id) // filtered out — not in laptop tag set
-    expect(ids[0]).toBe(b.id) // favourite first
+      const byId = new Map(repo.getLibrary({ sort: 'date' }).map((r) => [r.id, r]))
+      expect(byId.get(present.id)).toMatchObject({
+        coverSource: 'sidecar',
+        coverMissing: false,
+        topId: null,
+        variantCount: 0
+      })
+      expect(typeof byId.get(present.id)!.createdAt).toBe('string')
+      expect(byId.get(missing.id)).toMatchObject({ coverSource: 'embedded', coverMissing: true })
+      expect(byId.get(leader.id)).toMatchObject({ topId: leader.id, variantCount: 1 })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('getLibrary matches a picked tag directly, with no roll-up to other tags', () => {
@@ -174,28 +217,17 @@ describe('getLibrary', () => {
     expect(prefixResult.map((r) => r.id)).toContain(a.id)
   })
 
-  it('sort:name vs sort:date produce different orderings; favourites always first', () => {
-    const a = repo.createMockup(approvedMockup({ title: 'Zebra', libraryPath: '/lib/z.psd' }))
-    const b = repo.createMockup(approvedMockup({ title: 'Apple', libraryPath: '/lib/ap.psd' }))
-    const c = repo.createMockup(approvedMockup({ title: 'Mango', libraryPath: '/lib/mg.psd' }))
-    repo.setFavourite(c.id, true)
+  it('sort:name orders A to Z and sort:date newest first', () => {
+    const z = repo.createMockup(approvedMockup({ title: 'Zebra', libraryPath: '/lib/z.psd' }))
+    const ap = repo.createMockup(approvedMockup({ title: 'Apple', libraryPath: '/lib/ap.psd' }))
+    const m = repo.createMockup(approvedMockup({ title: 'Mango', libraryPath: '/lib/mg.psd' }))
+    repo.updateMockup(z.id, { createdAt: '2025-01-01T00:00:00' })
+    repo.updateMockup(ap.id, { createdAt: '2025-01-02T00:00:00' })
+    repo.updateMockup(m.id, { createdAt: '2025-01-03T00:00:00' })
+    repo.setFavourite(m.id, true)
 
-    const byName = repo.getLibrary({ sort: 'name' }).map((r) => r.id)
-    const byDate = repo.getLibrary({ sort: 'date' }).map((r) => r.id)
-
-    // Favourite always first regardless of sort
-    expect(byName[0]).toBe(c.id)
-    expect(byDate[0]).toBe(c.id)
-
-    // After favourite, name sort: Apple(b) < Mango(c, already first as fav) < Zebra(a)
-    // so byName non-favourite order is: b then a
-    expect(byName.indexOf(b.id)).toBeLessThan(byName.indexOf(a.id))
-
-    // The two sort modes produce logically different orderings
-    // (byDate falls back to createdAt DESC; byName uses localeCompare)
-    // Just assert both return all 3 items with favourite pinned
-    expect(byName).toHaveLength(3)
-    expect(byDate).toHaveLength(3)
+    expect(repo.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([ap.id, m.id, z.id])
+    expect(repo.getLibrary({ sort: 'date' }).map((r) => r.id)).toEqual([m.id, ap.id, z.id])
   })
 })
 
@@ -234,6 +266,35 @@ describe('getMockupDetail', () => {
   it('returns mockup=undefined for missing id', () => {
     const detail = repo.getMockupDetail(9999)
     expect(detail.mockup).toBeUndefined()
+  })
+})
+
+describe('getDetailVariants', () => {
+  it('lists the top first, then the other mockups in the pile, with cover state', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ds-var-'))
+    const coverPath = join(dir, 'cover.webp')
+    writeFileSync(coverPath, 'x')
+    try {
+      const top = repo.createMockup(
+        approvedMockup({ title: 'front', libraryPath: '/lib/t.psd', isGroup: true, coverPath })
+      )
+      const side = repo.createMockup(
+        approvedMockup({ title: 'side', libraryPath: '/lib/s.psd', groupId: top.id })
+      )
+
+      expect(repo.getDetailVariants(top.id)).toEqual([
+        { id: top.id, title: 'front', coverPath, coverMissing: false, isTop: true },
+        { id: side.id, title: 'side', coverPath: '/c.png', coverMissing: true, isTop: false }
+      ])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('is empty for a mockup on its own or a missing id', () => {
+    const m = repo.createMockup(approvedMockup({ title: 'Solo', libraryPath: '/lib/so2.psd' }))
+    expect(repo.getDetailVariants(m.id)).toEqual([])
+    expect(repo.getDetailVariants(9999)).toEqual([])
   })
 })
 

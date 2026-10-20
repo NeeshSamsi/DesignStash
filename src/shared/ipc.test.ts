@@ -426,6 +426,12 @@ describe('IPC Contract', () => {
       expect(() => request.parse({ categoryIds: ['3'] })).toThrow()
     })
 
+    it('accepts starredOnly for the Starred view', () => {
+      const { request } = IPC_CONTRACT[IPC_CHANNELS.LIBRARY_LIST]
+      expect(request.parse({ starredOnly: true }).starredOnly).toBe(true)
+      expect(() => request.parse({ starredOnly: 'yes' })).toThrow()
+    })
+
     it('defaults sort to "date" when omitted', () => {
       const { request } = IPC_CONTRACT[IPC_CHANNELS.LIBRARY_LIST]
       const result = request.parse({})
@@ -437,8 +443,9 @@ describe('IPC Contract', () => {
       const valid = {
         items: [{
           id: 1, title: 'Test', description: null, coverPath: '/c.png',
+          coverSource: 'embedded' as const, coverMissing: false,
           isGroup: false, favourite: false, reviewStatus: 'approved' as const,
-          variantCount: 0, tags: []
+          createdAt: '2025-01-01T00:00:00', variantCount: 0, topId: null, tags: []
         }]
       }
       expect(response.parse(valid)).toEqual(valid)

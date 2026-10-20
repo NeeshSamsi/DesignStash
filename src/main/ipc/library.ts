@@ -17,6 +17,7 @@ export function registerLibraryHandlers({ telemetry, repo }: HandlerContext): vo
         ...(args.tagIds !== undefined && { tagIds: args.tagIds }),
         ...(args.categoryIds !== undefined && { categoryIds: args.categoryIds }),
         ...(args.query !== undefined && { query: args.query }),
+        ...(args.starredOnly !== undefined && { starredOnly: args.starredOnly }),
         sort: args.sort
       })
     }

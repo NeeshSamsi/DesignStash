@@ -6,19 +6,11 @@ export function registerMockupHandlers({ repo, library }: HandlerContext): void 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_DETAIL, (args) => {
     const detail = repo.getMockupDetail(args.mockupId)
     if (!detail.mockup) throw new Error(`Mockup ${args.mockupId} not found`)
+    const [row] = repo.library.toRows([detail.mockup])
+    if (!row) throw new Error(`Mockup ${args.mockupId} not found`)
     return {
-      item: {
-        id: detail.mockup.id,
-        title: detail.mockup.title,
-        description: detail.mockup.description ?? null,
-        coverPath: detail.mockup.coverPath,
-        isGroup: detail.mockup.isGroup,
-        favourite: detail.mockup.favourite,
-        reviewStatus: detail.mockup.reviewStatus,
-        variantCount: detail.variants.length,
-        tags: detail.tags
-      },
-      variants: detail.variants.map((v) => ({ id: v.id, title: v.title, coverPath: v.coverPath }))
+      item: { ...row, description: detail.mockup.description ?? null, tags: detail.tags },
+      variants: repo.getDetailVariants(args.mockupId)
     }
   })
 
