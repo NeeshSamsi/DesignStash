@@ -38,6 +38,7 @@ import {
   type DropTarget
 } from './board-model'
 import type { MenuTarget } from './menu-model'
+import { coverUrl } from '@shared/cover-url'
 
 export interface SortBoardProps {
   state: BoardState
@@ -53,7 +54,7 @@ const tileDnd = (id: number) => `tile:${id}`
 const pileDnd = (id: string) => `pile:${id}`
 
 /** A cover on disk, as the renderer loads it. */
-const coverSrc = (path: string) => (path ? `file://${path}` : undefined)
+const coverSrc = (path: string) => (path ? coverUrl(path) : undefined)
 
 function targetOf(id: string | number | undefined): DropTarget | null {
   const value = String(id ?? '')

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { coverUrl } from '@shared/cover-url'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { DetailModal } from '@renderer/screens/detail/DetailModal'
 import { shortcuts } from '@renderer/lib/shortcuts'
@@ -383,7 +384,7 @@ describe('Detail & edit · cover', () => {
   it('replaces the cover, shows the new image with its crop note, and offers Undo', async () => {
     setup({ [IPC_CHANNELS.MOCKUP_SET_COVER]: () => ok(change()) })
     await open()
-    expect(coverImg().getAttribute('src')).toBe('file:///lib/hero.png')
+    expect(coverImg().getAttribute('src')).toBe(coverUrl('/lib/hero.png'))
     choose()
 
     await waitFor(() =>
@@ -392,7 +393,7 @@ describe('Detail & edit · cover', () => {
         filePath: '/path/new.png'
       })
     )
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/new.png'))
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/new.png')))
     expect(screen.getByText('Uploaded')).not.toBeNull()
     expect(screen.getByText('Cropped to 4:3')).not.toBeNull()
     expect(toasts.undoToast).toHaveBeenCalledWith('Cover replaced', expect.any(Function))
@@ -420,7 +421,7 @@ describe('Detail & edit · cover', () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: 42 })
     )
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/hero.png'))
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png')))
     expect(screen.getByText('Embedded preview')).not.toBeNull()
   })
 
@@ -444,7 +445,7 @@ describe('Detail & edit · cover', () => {
         filePath: '/lib/hero.png'
       })
     )
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/hero.png'))
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png')))
   })
 
   it('keeps the cover and shows an error Banner when the image is refused', async () => {
@@ -452,7 +453,7 @@ describe('Detail & edit · cover', () => {
     await open()
     choose()
     expect(await screen.findByText('We couldn’t use that image')).not.toBeNull()
-    expect(coverImg().getAttribute('src')).toBe('file:///lib/hero.png')
+    expect(coverImg().getAttribute('src')).toBe(coverUrl('/lib/hero.png'))
     expect(toasts.undoToast).not.toHaveBeenCalled()
   })
 
@@ -474,7 +475,7 @@ describe('Detail & edit · cover', () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: 42 })
     )
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/psd.png'))
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/psd.png')))
     expect(screen.getByText('Embedded preview')).not.toBeNull()
     expect(button('Use the PSD’s preview')).toBeNull()
     expect(toasts.undoToast).toHaveBeenCalledWith('Using the PSD’s preview', expect.any(Function))
@@ -506,9 +507,9 @@ describe('Detail & edit · cover', () => {
         filePath: '/path/new.png'
       })
     )
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/new.png'))
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/new.png')))
     // The top's own cover is unchanged: step back to it.
     fireEvent.click(screen.getByRole('button', { name: /front/ }))
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/a.png'))
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/a.png')))
   })
 })

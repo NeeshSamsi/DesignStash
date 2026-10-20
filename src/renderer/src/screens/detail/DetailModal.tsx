@@ -25,6 +25,7 @@ import {
   type DetailForm
 } from './detail-edits'
 import { syncLibrary } from './library-sync'
+import { coverUrl } from '@shared/cover-url'
 
 interface Props {
   mockupId: number
@@ -34,8 +35,7 @@ interface Props {
 type Status = 'loading' | 'ready' | 'error'
 type CoverUi = 'default' | 'replacing' | 'error'
 
-const fileUrl = (path: string, version: number) =>
-  path === '' ? undefined : `file://${path}${version > 0 ? `?v=${version}` : ''}`
+const fileUrl = (path: string, version: number) => (path === '' ? undefined : coverUrl(path, version))
 
 const toVocabulary = (tree: TagTree): TagVocabularyCategory[] =>
   tree.map(({ categoryId, categoryLabel, tags }) => ({ categoryId, categoryLabel, tags }))

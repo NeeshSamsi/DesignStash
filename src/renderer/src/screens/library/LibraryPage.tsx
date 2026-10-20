@@ -52,6 +52,7 @@ import { LibraryLightbox } from './LibraryLightbox'
 import { useLibraryActions } from './useLibraryActions'
 import { useLibraryData } from './useLibraryData'
 import { useLibraryPiles } from './useLibraryPiles'
+import { coverUrl } from '@shared/cover-url'
 
 export interface LibraryPageProps {
   /** The Starred page. Defaults to the current view in the UI store. */
@@ -346,7 +347,7 @@ export default function LibraryPage({
           }`
 
   return (
-    <div className="flex min-h-full flex-col gap-4 p-6">
+    <div className="flex min-h-full flex-col gap-4">
       <LibraryToolbar
         stats={statsText}
         chips={chips}
@@ -422,7 +423,7 @@ export default function LibraryPage({
                 mockupId={key}
                 title={item.title}
                 tags={cardTags(item)}
-                {...(item.coverPath ? { coverSrc: `file://${item.coverPath}` } : {})}
+                {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
                 variantCount={item.variantCount}
                 favourite={item.favourite}
                 state={
@@ -455,7 +456,7 @@ export default function LibraryPage({
               )}
               <CoverImage
                 size="md"
-                {...(drag.items[0].coverPath ? { src: `file://${drag.items[0].coverPath}` } : {})}
+                {...(drag.items[0].coverPath ? { src: coverUrl(drag.items[0].coverPath) } : {})}
                 className="relative"
               />
               {drag.items.length > 1 && (

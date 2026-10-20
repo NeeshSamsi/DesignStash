@@ -5,6 +5,7 @@ import type { ReconciliationPanelProps } from '@renderer/components/Reconciliati
 import { formatBytes } from '@renderer/lib/inbox-list'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { stashCheckCopy as copy } from './stash-check-copy'
+import { coverUrl } from '@shared/cover-url'
 
 type PanelState = NonNullable<ReconciliationPanelProps['state']>
 type Item = NonNullable<ReconciliationPanelProps['found']>[number]
@@ -23,7 +24,7 @@ export interface StashCheck {
   relink: (id: string) => void
 }
 
-const cover = (path: string | undefined) => (path ? { coverSrc: `file://${path}` } : {})
+const cover = (path: string | undefined) => (path ? { coverSrc: coverUrl(path) } : {})
 
 function toItems(report: DriftReport): { found: Item[]; gone: Item[] } {
   return {

@@ -36,6 +36,7 @@ import {
   type FlowState
 } from './flow-model'
 import { NO_COVER_REASON, NO_TITLE_REASON, doneMessage, stashRefusal } from './look-over-copy'
+import { coverUrl } from '@shared/cover-url'
 
 export interface LookOverFlowProps {
   open: boolean
@@ -443,7 +444,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
                 tags={note ?? forms[it.mockupId]?.tags.map((t) => t.label).join(' · ') ?? ''}
                 variantCount={0}
                 favourite={false}
-                {...(c?.path ? { coverSrc: `file://${c.path}` } : {})}
+                {...(c?.path ? { coverSrc: coverUrl(c.path) } : {})}
                 onClick={() => void go((s) => jumpTo(s, step))}
                 onLookItOver={() => void go((s) => jumpTo(s, step))}
               />
@@ -466,7 +467,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
             showDeck={theDeck.showDeck}
             deckMore={theDeck.deckMore}
             deckLabel={theDeck.label}
-            {...(cover.path ? { coverSrc: `file://${cover.path}` } : {})}
+            {...(cover.path ? { coverSrc: coverUrl(cover.path) } : {})}
             {...(cover.width && cover.height
               ? { imageSize: { width: cover.width, height: cover.height } }
               : {})}

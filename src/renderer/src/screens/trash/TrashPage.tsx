@@ -18,6 +18,7 @@ import { usePinnedBar } from '@renderer/hooks/use-pinned-bar'
 import { agoText, formatBytes, newestFirst, pluralise } from '@renderer/lib/inbox-list'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { coverUrl } from '@shared/cover-url'
 
 type Ask =
   | { kind: 'delete'; items: TrashItem[] }
@@ -215,7 +216,7 @@ export default function TrashPage() {
               variant="trash"
               title={item.title}
               trashedAgo={agoText(item.trashedAt)}
-              {...(item.coverPath ? { coverSrc: `file://${item.coverPath}` } : {})}
+              {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
               variantCount={item.variantCount}
               state={cardState(item, selection.isSelected(key))}
               onRestore={() => void restore(targetsFor(item))}

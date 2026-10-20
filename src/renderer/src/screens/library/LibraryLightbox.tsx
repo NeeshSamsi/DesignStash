@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem } from '@shared/library'
 import { Lightbox } from '@renderer/components/Lightbox'
+import { coverUrl } from '@shared/cover-url'
 
 interface Entry {
   key: string
@@ -104,7 +105,7 @@ export function LibraryLightbox({
       mode={entry.fromPile ? 'group' : 'single'}
       state={state}
       caption={entry.title}
-      src={entry.coverPath ? `file://${entry.coverPath}` : ''}
+      src={entry.coverPath ? coverUrl(entry.coverPath) : ''}
       onClose={onClose}
       returnFocusTo={returnFocusTo}
       onCheckLibrary={onCheckLibrary}

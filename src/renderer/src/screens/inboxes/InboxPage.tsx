@@ -27,6 +27,7 @@ import {
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast } from '@renderer/stores/toastStore'
 import { useInboxList } from './useInboxList'
+import { coverUrl } from '@shared/cover-url'
 
 export interface InboxPageProps {
   stage: InboxStage
@@ -188,7 +189,7 @@ export default function InboxPage({
               mockupId={key}
               variant="pending-review"
               title={item.title}
-              {...(item.coverPath ? { coverSrc: `file://${item.coverPath}` } : {})}
+              {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
               variantCount={item.variantCount}
               showStatus={badge !== undefined}
               {...(badge ? { status: badge } : {})}

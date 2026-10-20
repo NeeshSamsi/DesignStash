@@ -1,4 +1,4 @@
-import { app, shell, screen, BrowserWindow } from 'electron'
+import { app, shell, screen, protocol, net, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { APP_ID } from '@shared/constants'
 import { createHandlerContext, type TelemetryRef } from './ipc/context'
@@ -10,6 +10,7 @@ import { ensureSearchIndex } from './db/search-index'
 import { createSettingsStore } from './settings'
 import { runBoot, setBootStatus } from './boot-status'
 import { MIN_WINDOW, initialWindowSize } from './window-size'
+import { handleCoverRequests, registerCoverScheme } from './cover-protocol'
 import { registerAppHandlers } from './ipc/app'
 import { registerBootHandlers } from './ipc/boot'
 import { logger } from './logger'
@@ -19,6 +20,9 @@ import { applyPendingStash } from './library/stash-folder-service'
 import { createTelemetry, type Telemetry } from './telemetry'
 
 const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
+
+// Covers are served through their own scheme (see shared/cover-url.ts). It has to be declared before ready.
+registerCoverScheme(protocol)
 
 // Module-scoped so the will-quit handler can flush telemetry on shutdown.
 let telemetryRef: TelemetryRef | null = null
@@ -66,6 +70,7 @@ app.whenReady().then(() => {
   app.setAppUserModelId(APP_ID)
 
   const settings = createSettingsStore(app.getPath('userData'))
+  handleCoverRequests(protocol, (fileUrl) => net.fetch(fileUrl), () => settings.getLibraryRoot())
   // A stash folder chosen last time takes effect now, before the database opens.
   applyPendingStash(settings)
 
