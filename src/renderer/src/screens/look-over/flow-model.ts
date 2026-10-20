@@ -123,8 +123,6 @@ export type BackTarget =
   | { kind: 'position'; position: Position; /** "Pile 1 of 3 · stashed". */ stashed: boolean }
   | { kind: 'sort' }
 
-const lastStep = (unit: LookOverUnit): number => stepCount(unit) - 1
-
 /**
  * Back always means "the previous thing" (piles.md). Null hides the button: the very first mockup,
  * once anything is stashed.
