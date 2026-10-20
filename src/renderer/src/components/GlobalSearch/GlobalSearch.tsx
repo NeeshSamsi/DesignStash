@@ -10,6 +10,9 @@ export const SEARCH_DEBOUNCE_MS = 250
 export interface GlobalSearchProps extends GlobalSearchContractProps {
   /** Starting text. Defaults to Figma's "phone clay" for `state="with-query"`. */
   defaultQuery?: string
+  /** Controlled text. With it, the field shows `value` and reports every keystroke to `onValueChange`. */
+  value?: string
+  onValueChange?: (value: string) => void
   /** Called 250 ms after typing stops. Clearing the field calls it at once. */
   onQueryChange?: (query: string) => void
   className?: string
@@ -38,13 +41,24 @@ export function useSearchFocusShortcut(ref: RefObject<HTMLInputElement | null>) 
 export function GlobalSearch({
   className,
   defaultQuery,
+  value,
+  onValueChange,
   onQueryChange,
   ...rest
 }: GlobalSearchProps) {
   const props = { ...GLOBAL_SEARCH_DEFAULTS, ...rest }
-  const [query, setQuery] = useState(
+  const [draft, setDraft] = useState(
     defaultQuery ?? (props.state === 'with-query' ? 'phone clay' : '')
   )
+  const query = value ?? draft
+  const emit = useRef(onValueChange)
+  useEffect(() => {
+    emit.current = onValueChange
+  })
+  const setQuery = useCallback((next: string) => {
+    setDraft(next)
+    emit.current?.(next)
+  }, [])
   const inputRef = useRef<HTMLInputElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const notify = useRef(onQueryChange)
@@ -64,7 +78,7 @@ export function GlobalSearch({
     setQuery('')
     clearTimeout(timer.current)
     notify.current?.('')
-  }, [])
+  }, [setQuery])
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'Escape') return
     if (query !== '') clear()

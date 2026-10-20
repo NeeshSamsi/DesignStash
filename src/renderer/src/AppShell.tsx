@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { useUiStore, type AppView } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { ConfirmDialog } from './components/_legacy/ConfirmDialog'
@@ -11,7 +11,8 @@ import { AppWindow } from './components/AppWindow'
 import { DropOverlay } from './components/DropOverlay'
 import { GlobalSearch } from './components/GlobalSearch'
 import { PageHeader } from './components/PageHeader'
-import { SidebarNav, type SidebarNavKey } from './components/SidebarNav'
+import { SidebarNav, sidebarNavVariant, type SidebarNavKey } from './components/SidebarNav'
+import { useInboxCounts } from './hooks/use-inbox-counts'
 import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
 
 interface AppShellProps {
@@ -24,6 +25,8 @@ interface AppShellProps {
   showHeader?: boolean
   onAddFiles?: () => void
   onAddFolder?: () => void
+  /** To sort / To stash clicked. Their pages arrive with WP3.3; until then App routes to the legacy flows. */
+  onOpenInbox?: (stage: 'to-sort' | 'to-stash') => void
   onDrop?: (e: React.DragEvent<HTMLElement>) => void
   onDragOver?: (e: React.DragEvent<HTMLElement>) => void
   onDragEnter?: (e: React.DragEvent<HTMLElement>) => void
@@ -39,7 +42,7 @@ function headerFor(view: AppView, total: number) {
     return {
       parent: 'My Stash',
       current: 'All',
-      description: `${mockups(total)} · favourites always sort first`
+      description: mockups(total)
     }
   }
   if (view === 'starred') {
@@ -61,6 +64,7 @@ export default function AppShell({
   showHeader = true,
   onAddFiles,
   onAddFolder,
+  onOpenInbox,
   onDrop,
   onDragOver,
   onDragEnter,
@@ -72,6 +76,9 @@ export default function AppShell({
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
   const stats = useLibraryStore((s) => s.stats)
+  const searchText = useUiStore((s) => s.searchText)
+  const setSearchText = useUiStore((s) => s.setSearchText)
+  const inbox = useInboxCounts()
   const query = useLibraryStore((s) => s.query)
   const setQuery = useLibraryStore((s) => s.setQuery)
 
@@ -92,6 +99,13 @@ export default function AppShell({
       if (!importing) onAddFolder?.()
     }
   })
+
+  // The page's "Clear search" empties the library query; the field follows it.
+  const lastQuery = useRef(query)
+  useEffect(() => {
+    if (query === '' && lastQuery.current !== '') useUiStore.getState().setSearchText('')
+    lastQuery.current = query
+  }, [query])
 
   const header = showHeader
     ? headerFor(view, view === 'starred' ? stats.favourites : stats.total)
@@ -137,19 +151,28 @@ export default function AppShell({
       <AppWindow
         state={isDropping ? 'drag-over' : 'idle'}
         showHeader={header !== null}
-        search={<GlobalSearch defaultQuery={query} onQueryChange={onQueryChange} />}
+        search={
+          <GlobalSearch
+            value={searchText}
+            onValueChange={setSearchText}
+            onQueryChange={onQueryChange}
+          />
+        }
         sidebar={
           <SidebarNav
-            variant="none"
+            variant={sidebarNavVariant(inbox?.toSort ?? 0, inbox?.toStash ?? 0)}
             {...(view !== 'settings' ? { selected: view as SidebarNavKey } : {})}
             counts={{
               library: stats.total,
               starred: stats.favourites,
               all: stats.total,
-              trash: stats.trashed
+              toSort: inbox?.toSort ?? 0,
+              toStash: inbox?.toStash ?? 0,
+              trash: inbox?.trash ?? stats.trashed
             }}
             settingsActive={view === 'settings'}
             onNavigate={(key) => {
+              if (key === 'to-sort' || key === 'to-stash') return onOpenInbox?.(key)
               const next = NAV_VIEWS[key]
               if (next) setView(next)
             }}

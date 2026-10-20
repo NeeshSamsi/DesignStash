@@ -4,6 +4,7 @@ import AppShell from './AppShell'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { shortcuts } from './lib/shortcuts'
+import { IPC_CHANNELS } from '@shared/ipc'
 
 beforeEach(() => {
   useUiStore.setState({ view: 'all', modal: null })
@@ -14,6 +15,7 @@ beforeEach(() => {
   window.api = {
     appName: 'DesignStash',
     invoke: vi.fn(async () => ({ success: true, data: {} })),
+    subscribe: vi.fn(() => () => {}),
     onImportProgress: vi.fn(() => () => {}),
     onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn((f) => `/path/${(f as File).name}`)
@@ -105,7 +107,7 @@ describe('AppShell header', () => {
       </AppShell>
     )
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('My StashAll')
-    expect(screen.getByText('128 mockups · favourites always sort first')).toBeTruthy()
+    expect(screen.getByText('128 mockups')).toBeTruthy()
   })
 
   it('titles Starred with the favourites count', () => {
@@ -327,5 +329,105 @@ describe('AppShell modals', () => {
       </AppShell>
     )
     expect(baseElement.querySelector('[data-slot="modal-layer"]')).toBeNull()
+  })
+})
+
+describe('AppShell inbox counts', () => {
+  const withInbox = (counts: object) => {
+    let push: (payload: unknown) => void = () => {}
+    window.api = {
+      ...window.api,
+      invoke: vi.fn(async (channel: string) =>
+        channel === IPC_CHANNELS.INBOX_COUNTS
+          ? { success: true, data: counts }
+          : { success: true, data: {} }
+      ),
+      subscribe: vi.fn((_channel: string, cb: (payload: unknown) => void) => {
+        push = cb
+        return () => {}
+      })
+    } as unknown as typeof window.api
+    return (payload: unknown) => act(() => push(payload))
+  }
+  const mount = () =>
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+
+  it('lists To sort and To stash with counts once they are above 0', async () => {
+    withInbox({ toSort: 38, toStash: 12, sniffing: 0, trash: 3 })
+    mount()
+    expect((await screen.findByRole('button', { name: /To sort/ })).textContent).toContain('38')
+    expect(screen.getByRole('button', { name: /To stash/ }).textContent).toContain('12')
+  })
+
+  it('hides empty inboxes', async () => {
+    withInbox({ toSort: 0, toStash: 0, sniffing: 0, trash: 3 })
+    mount()
+    await screen.findByRole('button', { name: /Trash/ })
+    expect(screen.queryByRole('button', { name: /To sort/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /To stash/ })).toBeNull()
+  })
+
+  it('updates live from push events, Trash included', async () => {
+    const push = withInbox({ toSort: 0, toStash: 0, sniffing: 0, trash: 3 })
+    mount()
+    await screen.findByRole('button', { name: /Trash/ })
+    push({ toSort: 5, toStash: 0, sniffing: 0, trash: 7 })
+    expect(screen.getByRole('button', { name: /To sort/ }).textContent).toContain('5')
+    expect(screen.getByRole('button', { name: /Trash/ }).textContent).toContain('7')
+  })
+
+  it('reports an inbox click', async () => {
+    withInbox({ toSort: 2, toStash: 0, sniffing: 0, trash: 0 })
+    const onOpenInbox = vi.fn()
+    render(
+      <AppShell onOpenInbox={onOpenInbox}>
+        <div />
+      </AppShell>
+    )
+    fireEvent.click(await screen.findByRole('button', { name: /To sort/ }))
+    expect(onOpenInbox).toHaveBeenCalledWith('to-sort')
+  })
+})
+
+describe('AppShell controlled search', () => {
+  it('shows the text from the ui store', () => {
+    useUiStore.setState({ searchText: 'clay' })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    expect((screen.getByRole('textbox', { name: 'Search' }) as HTMLInputElement).value).toBe('clay')
+  })
+
+  it('typing updates the store at once, the library query after the pause', () => {
+    vi.useFakeTimers()
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search' }), { target: { value: 'ph' } })
+    expect(useUiStore.getState().searchText).toBe('ph')
+    expect(useLibraryStore.getState().query).toBe('')
+    act(() => void vi.advanceTimersByTime(250))
+    expect(useLibraryStore.getState().query).toBe('ph')
+    vi.useRealTimers()
+  })
+
+  it('empties the field when the page clears the query', () => {
+    useUiStore.setState({ searchText: 'clay' })
+    useLibraryStore.setState({ query: 'clay' })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    act(() => useLibraryStore.getState().setQuery(''))
+    expect((screen.getByRole('textbox', { name: 'Search' }) as HTMLInputElement).value).toBe('')
   })
 })

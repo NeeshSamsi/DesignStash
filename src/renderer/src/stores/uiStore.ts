@@ -12,6 +12,9 @@ export type Modal =
 interface UiState {
   view: AppView
   modal: Modal | null
+  /** What the title-bar search field shows. The library query follows it after a 250 ms pause. */
+  searchText: string
+  setSearchText: (text: string) => void
   openModal: (modal: Modal) => void
   closeModal: () => void
   setView: (view: AppView) => void
@@ -20,7 +23,9 @@ interface UiState {
 export const useUiStore = create<UiState>((set) => ({
   view: 'all',
   modal: null,
+  searchText: '',
+  setSearchText: (searchText) => set({ searchText }),
   openModal: (modal) => set({ modal }),
   closeModal: () => set({ modal: null }),
-  setView: (view) => set({ view }),
+  setView: (view) => set({ view })
 }))

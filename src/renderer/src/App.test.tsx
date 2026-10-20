@@ -81,6 +81,9 @@ beforeEach(() => {
       if (channel === IPC_CHANNELS.LIBRARY_LIST) {
         return { success: true, data: { items: [] } }
       }
+      if (channel === IPC_CHANNELS.INBOX_COUNTS) {
+        return { success: true, data: { toSort: 0, toStash: 0, sniffing: 0, trash: 0 } }
+      }
       if (channel === IPC_CHANNELS.LIBRARY_STATS) {
         return { success: true, data: { total: 0, favourites: 0, groups: 0, trashed: 0 } }
       }
@@ -126,6 +129,7 @@ beforeEach(() => {
       }
       return { success: true, data: { success: true, message: 'pong', timestamp: 0 } }
     }),
+    subscribe: vi.fn(() => () => {}),
     onImportProgress: vi.fn(() => () => {}),
     onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn((file) => `/path/to/${file.name}`)

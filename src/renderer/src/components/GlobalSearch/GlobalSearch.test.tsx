@@ -71,5 +71,17 @@ describe('GlobalSearch', () => {
       expect(onQueryChange).toHaveBeenCalledTimes(1)
       expect(onQueryChange).toHaveBeenCalledWith('')
     })
+
+    it('is controlled by `value` and reports edits through onValueChange', () => {
+      const onValueChange = vi.fn()
+      const { rerender } = render(<GlobalSearch value="clay" onValueChange={onValueChange} />)
+      const input = screen.getByRole('textbox', { name: 'Search' }) as HTMLInputElement
+      expect(input.value).toBe('clay')
+      type('clays')
+      expect(onValueChange).toHaveBeenCalledWith('clays')
+      expect(input.value).toBe('clay')
+      rerender(<GlobalSearch value="" onValueChange={onValueChange} />)
+      expect(input.value).toBe('')
+    })
   })
 })

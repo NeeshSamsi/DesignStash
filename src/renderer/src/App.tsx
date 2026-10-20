@@ -14,6 +14,7 @@ import { useApprovalStore } from './stores/approvalStore'
 import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
+import { toast } from './stores/toastStore'
 
 type AddFlow = 'grouping' | 'approval' | null
 
@@ -194,6 +195,13 @@ export default function App() {
     }
   }
 
+  // To sort and To stash get their own pages in WP3.3; until then the rows resume the legacy flow.
+  const handleOpenInbox = (stage: 'to-sort' | 'to-stash') => {
+    if (stage === 'to-stash' && approvalStore.queue.length > 0) setAddFlow('approval')
+    else if (groupingStore.batchId !== null) setAddFlow('grouping')
+    else toast('Nothing to open here yet', 'info')
+  }
+
   const handlePipelineCancel = () => {
     setAddFlow(null)
     groupingStore.reset()
@@ -230,6 +238,7 @@ export default function App() {
         importCard={importCard}
         onAddFiles={() => void handleFileSelect()}
         onAddFolder={() => void handleFolderSelect()}
+        onOpenInbox={handleOpenInbox}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragEnter={handleDragEnter}
@@ -249,7 +258,11 @@ export default function App() {
           />
         )}
         {addFlow === null && (view === 'all' || view === 'starred') && (
-          <LibraryPage starredOnly={view === 'starred'} />
+          <LibraryPage
+            starredOnly={view === 'starred'}
+            onAddFiles={() => void handleFileSelect()}
+            onAddFolder={() => void handleFolderSelect()}
+          />
         )}
         {addFlow === null && view === 'trash' && <TrashView />}
         {addFlow === null && view === 'settings' && <SettingsPage />}
