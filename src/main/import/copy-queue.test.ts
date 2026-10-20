@@ -442,6 +442,41 @@ describe('cancel and undo', () => {
     expect((await q.status())!.state).toBe('undone')
   })
 
+  it('Undo all waits for its own haul\'s file in flight, not for a haul dropped after it', async () => {
+    const a = psd('a.psd', 'A')
+    const b = psd('b.psd', 'B')
+    const open: Record<string, () => void> = {}
+    const started: Record<string, Promise<void>> = {}
+    const gate = (path: string) => {
+      let begin!: () => void
+      started[path] = new Promise<void>((r) => (begin = r))
+      return { begin, wait: new Promise<void>((r) => (open[path] = r)) }
+    }
+    const gates = { [a]: gate(a), [b]: gate(b) }
+    const q = queue({
+      copyHashed: async (src, dest, onBytes) => {
+        gates[src]!.begin()
+        await gates[src]!.wait
+        return copyWithHash(src, dest, onBytes)
+      }
+    })
+    const first = await q.start([a])
+    await started[a]
+
+    const undone = q.undoAll(first.haulId)
+    const second = await q.start([b])
+    expect(second.haulId).not.toBe(first.haulId)
+    open[a]!()
+    await started[b]
+    const outcome = await Promise.race([undone.then(() => 'undone'), new Promise((r) => setTimeout(() => r('waiting'), 200))])
+
+    expect(outcome).toBe('undone')
+    expect((await undone).tossedIds).toHaveLength(1)
+    open[b]!()
+    await q.idle()
+    expect(last()).toMatchObject({ haulId: second.haulId, state: 'done', landed: 1 })
+  })
+
   it('Undo all leaves alone anything already looked over and stashed', async () => {
     psd('a.psd', 'A')
     psd('b.psd', 'B')

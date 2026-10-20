@@ -83,6 +83,8 @@ export class CopyQueue {
   private pumping: Promise<void> | null = null
   /** The file being copied and how much of it is written. */
   private live: { jobId: number; bytes: number } | null = null
+  /** The file being handled and the haul it belongs to. */
+  private inFlight: { haulId: string; settled: Promise<boolean> } | null = null
   private lastPush = 0
   private rate: { haulId: string; samples: { at: number; bytes: number }[] } = { haulId: '', samples: [] }
 
@@ -166,7 +168,8 @@ export class CopyQueue {
     const haul = this.repo.copyJobs.getHaul(haulId)
     if (!haul) return { tossedIds: [] }
     await this.cancel(haulId)
-    await this.idle()
+    // Only this haul's file in flight matters. Later hauls keep going while the undo finishes.
+    if (this.inFlight?.haulId === haulId) await this.inFlight.settled
 
     const { ids } = this.repo.collectTossable(this.repo.copyJobs.landedMockupIds(haulId))
     const removed = this.repo.deleteMockupsHard(ids)
@@ -210,23 +213,35 @@ export class CopyQueue {
         this.emit(haul.id, null)
         return
       }
+      const attempt = this.attempt(haul.id, job, haul.candidateImages)
+      this.inFlight = { haulId: haul.id, settled: attempt }
       try {
-        await this.handle(haul.id, job, haul.candidateImages)
-      } catch (err) {
-        if (err instanceof Pause) {
-          this.repo.copyJobs.setJobState(job.id, { status: 'queued' })
-          // A cancel that arrived meanwhile wins.
-          if (this.repo.copyJobs.getHaul(haul.id)?.state === 'running') {
-            this.repo.copyJobs.setHaulState(haul.id, { state: 'paused', pauseReason: err.reason })
-          }
-          this.emit(haul.id, null)
-          return
-        }
-        console.error('[Copy] Queue error:', err)
-        this.repo.copyJobs.setJobState(job.id, { status: 'skipped', skipReason: 'unreadable' })
-        this.emit(haul.id, job.id)
+        if (!(await attempt)) return
+      } finally {
+        this.inFlight = null
       }
     }
+  }
+
+  /** Copy one file. False when the loop should stop, because the haul paused. */
+  private async attempt(haulId: string, job: CopyJob, candidateImages: string[]): Promise<boolean> {
+    try {
+      await this.handle(haulId, job, candidateImages)
+    } catch (err) {
+      if (err instanceof Pause) {
+        this.repo.copyJobs.setJobState(job.id, { status: 'queued' })
+        // A cancel that arrived meanwhile wins.
+        if (this.repo.copyJobs.getHaul(haulId)?.state === 'running') {
+          this.repo.copyJobs.setHaulState(haulId, { state: 'paused', pauseReason: err.reason })
+        }
+        this.emit(haulId, null)
+        return false
+      }
+      console.error('[Copy] Queue error:', err)
+      this.repo.copyJobs.setJobState(job.id, { status: 'skipped', skipReason: 'unreadable' })
+      this.emit(haulId, job.id)
+    }
+    return true
   }
 
   private async handle(haulId: string, job: CopyJob, candidateImagePaths: string[]): Promise<void> {
