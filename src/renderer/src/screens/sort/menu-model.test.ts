@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { GroupMember, GroupingProposal } from '@shared/grouping'
-import { boardFromProposal, makeBoardReducer, type BoardAction, type BoardState } from './board-model'
+import {
+  boardFromProposal,
+  makeBoardReducer,
+  type BoardAction,
+  type BoardState
+} from './board-model'
 import { buildMenu, type MenuRow } from './menu-model'
 
 // The menus of the Sort board — Figma S4, S7.E3, S7.E4, S8.1.

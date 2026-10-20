@@ -470,11 +470,7 @@ function merge(state: BoardState, targetId: string, sourceIds: string[]): BoardS
   })
 }
 
-function drop(
-  state: BoardState,
-  target: DropTarget | null,
-  newPileId: () => string
-): BoardState {
+function drop(state: BoardState, target: DropTarget | null, newPileId: () => string): BoardState {
   const drag = state.drag
   // Dropping somewhere that isn't a pile, a tile or On its own sends the stack back.
   if (!drag || !target) return { ...state, drag: null }

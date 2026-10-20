@@ -848,10 +848,7 @@ describe('move to ▸ and take out (menu)', () => {
       8, 9, 10, 6
     ])
     expect(
-      members(
-        run(base, { type: 'move-to', destination: { kind: 'new-pile' } }),
-        'p1'
-      )
+      members(run(base, { type: 'move-to', destination: { kind: 'new-pile' } }), 'p1')
     ).toEqual([6, 8])
   })
 

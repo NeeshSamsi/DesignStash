@@ -319,9 +319,7 @@ export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps
       collisionDetection={collision}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
-      onDragEnd={(event) =>
-        dispatch({ type: 'drop', target: targetOf(event.over?.id) })
-      }
+      onDragEnd={(event) => dispatch({ type: 'drop', target: targetOf(event.over?.id) })}
       onDragCancel={() => dispatch({ type: 'cancel' })}
     >
       <div
