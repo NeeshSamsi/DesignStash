@@ -56,7 +56,9 @@ export async function launchLikeReal(
   const served = http ? await serveRenderer() : null
   return launchApp({
     userDataName: awkwardPath ? 'Application Support #1 100%' : 'userdata',
-    env: served ? { ELECTRON_RENDERER_URL: served.url } : undefined,
-    onClose: () => served?.server.close()
+    env: served ? { ELECTRON_RENDERER_URL: served.url } : {},
+    onClose: () => {
+      served?.server.close()
+    }
   })
 }
