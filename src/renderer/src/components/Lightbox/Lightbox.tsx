@@ -27,6 +27,8 @@ export interface LightboxProps extends LightboxContractProps {
   onReplace?: () => void
   /** `missing`: “Check library”, the way forward from a missing file. */
   onCheckLibrary?: () => void
+  /** Where focus goes on close. Defaults to whatever had focus when it opened (the card). */
+  returnFocusTo?: HTMLElement | null
   className?: string
 }
 
@@ -60,6 +62,7 @@ export function Lightbox({
   onNext,
   onReplace,
   onCheckLibrary,
+  returnFocusTo,
   ...rest
 }: LightboxProps) {
   const props = { ...LIGHTBOX_DEFAULTS, ...rest }
@@ -204,7 +207,7 @@ export function Lightbox({
             opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
           }}
           onCloseAutoFocus={(event) => {
-            const card = opener.current
+            const card = returnFocusTo ?? opener.current
             if (card?.isConnected) {
               event.preventDefault()
               card.focus()

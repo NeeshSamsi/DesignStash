@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, type MouseEvent } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Cancel01Icon, FileAddIcon, FolderAddIcon, Search02Icon, StarIcon } from '@hugeicons/core-free-icons'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem } from '@shared/library'
@@ -16,10 +16,14 @@ import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
 import { noResultsCopy } from '@renderer/lib/library-list'
 import { filterChips, toggleCategory } from '@renderer/lib/tag-filter'
+import { useShortcut } from '@renderer/lib/shortcuts'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
-import { toast, undoToast } from '@renderer/stores/toastStore'
+import { toast } from '@renderer/stores/toastStore'
 import { useUiStore } from '@renderer/stores/uiStore'
+import { CardMenu, type MenuTarget } from './CardMenu'
+import { LibraryLightbox } from './LibraryLightbox'
+import { useLibraryActions } from './useLibraryActions'
 import { useLibraryData } from './useLibraryData'
 
 export interface LibraryPageProps {
@@ -126,62 +130,106 @@ export default function LibraryPage({
     setCategoryIds(next.categoryIds)
   }
 
-  const toggleFavourite = useCallback(
-    async (item: LibraryItem, favourite: boolean) => {
-      const setFavourite = (id: number, value: boolean) => {
-        const state = useLibraryStore.getState()
-        state.setItems(state.items.map((i) => (i.id === id ? { ...i, favourite: value } : i)))
-      }
-      const apply = async (id: number, value: boolean) => {
-        setFavourite(id, value)
-        const res = await window.api.invoke(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, {
-          mockupId: id,
-          favourite: value
-        })
-        if (!res.success) {
-          setFavourite(id, !value)
-          toast({ variant: 'error', message: 'Couldn’t update the star. Try again.' })
-          return false
-        }
-        const statsRes = await window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
-        if (statsRes.success) useLibraryStore.getState().setStats(statsRes.data)
-        return true
-      }
-      if (!(await apply(item.id, favourite))) return
-      // In Starred the card stays until you leave, with Undo.
-      if (starredOnly && !favourite) {
-        keepLingering(item.id)
-        undoToast('Removed from Starred', () => {
-          releaseLingering(item.id)
-          void apply(item.id, true)
-        })
-      }
-    },
-    [starredOnly, keepLingering, releaseLingering]
-  )
+  const actions = useLibraryActions({
+    starredOnly,
+    refresh,
+    keepLingering,
+    releaseLingering,
+    clearSelection: selection.clear
+  })
+  const { openDetail, openInPhotoshop } = actions
 
-  const openDetail = (id: number) => openModal({ kind: 'detail', mockupId: id })
-
-  const itemFor = (target: EventTarget) => {
-    const id = (target as Element).closest<HTMLElement>('[data-mockup-id]')?.dataset.mockupId
-    return id === undefined ? undefined : items.find((item) => String(item.id) === id)
+  const itemById = (id: string) => items.find((item) => String(item.id) === id)
+  const selectedItems = selection.selectedIds
+    .map(itemById)
+    .filter((item): item is LibraryItem => item !== undefined)
+  const cardOf = (target: EventTarget | null) =>
+    (target as Element | null)?.closest<HTMLElement>('[data-mockup-id]') ?? null
+  const itemOf = (target: EventTarget | null) => {
+    const id = cardOf(target)?.dataset.mockupId
+    return id === undefined ? undefined : itemById(id)
   }
+
+  // ⋯ and right-click open the same menu; right-click selects the card first, like Finder.
+  const [menu, setMenu] = useState<{ target: MenuTarget; at: { x: number; y: number } } | null>(null)
+  const targetFor = (item: LibraryItem): MenuTarget =>
+    selection.isSelected(String(item.id)) && selection.count > 1
+      ? { kind: 'selection', items: selectedItems }
+      : item.isGroup
+        ? { kind: 'pile', item }
+        : { kind: 'card', item }
+  const openMenuFor = (item: LibraryItem, at: { x: number; y: number }) => {
+    if (!selection.isSelected(String(item.id))) selection.select(String(item.id))
+    setMenu({ target: targetFor(item), at })
+  }
+  const onContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const at = { x: event.clientX, y: event.clientY }
+    const item = itemOf(event.target)
+    if (item) openMenuFor(item, at)
+    else {
+      selection.clear()
+      setMenu({ target: { kind: 'space' }, at })
+    }
+  }
+
+  // The fullscreen preview steps in grid order and gives focus back to the card it opened from.
+  const [preview, setPreview] = useState<{ id: number; returnTo: HTMLElement | null } | null>(null)
+  const openPreview = (item: LibraryItem) =>
+    setPreview({
+      id: item.id,
+      returnTo: document.querySelector<HTMLElement>(`[data-mockup-id="${item.id}"]`)
+    })
+  const checkLibrary = async () => {
+    setPreview(null)
+    const res = await window.api.invoke(IPC_CHANNELS.INTEGRITY_SCAN, undefined)
+    if (res.success && (res.data.orphanFiles.length > 0 || res.data.orphanRecords.length > 0)) {
+      openModal({ kind: 'reconcile', report: res.data })
+    } else {
+      toast({ variant: 'success', message: 'Your stash is in sync' })
+    }
+  }
+
+  const trashSelection = () => void actions.trash(selectedItems)
+  useShortcut({ id: 'library.trash', combo: 'backspace', scope: 'grid', handler: trashSelection })
+  useShortcut({ id: 'library.trash-cmd', combo: 'mod+backspace', scope: 'grid', handler: trashSelection })
+
+  // Enter opens Detail and Space previews, on a focused card. Buttons inside a card keep their own keys.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+    const card = cardOf(event.target)
+    if (!card || card !== event.target) return
+    const item = itemOf(card)
+    if (!item) return
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      openDetail(item.id)
+    } else if (event.key === ' ') {
+      event.preventDefault()
+      openPreview(item)
+    }
+  }
+
   const onDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
-    const item = itemFor(event.target)
+    const item = itemOf(event.target)
     if (item) openDetail(item.id)
   }
+  // A marquee press keeps focus where it was; pull it into the grid so its shortcuts apply.
+  const onMouseUp = (event: MouseEvent<HTMLDivElement>) => {
+    const grid = event.currentTarget
+    if (!grid.contains(document.activeElement)) grid.focus()
+  }
 
-  const openInPhotoshop = async (item: LibraryItem) => {
-    const res = await window.api.invoke(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, { mockupId: item.id })
-    if (res.success && !res.data.opened) {
-      toast({
-        variant: 'error',
-        message:
-          res.data.reason === 'no-app'
-            ? 'Photoshop isn’t installed on this Mac.'
-            : 'Couldn’t open this in Photoshop. Try again.'
-      })
-    }
+  const menuActions = {
+    openInPhotoshop: (item: LibraryItem) => void openInPhotoshop(item),
+    editDetails: (item: LibraryItem) => openDetail(item.id),
+    preview: openPreview,
+    star: (targets: LibraryItem[], favourite: boolean) => void actions.setFavouriteFor(targets, favourite),
+    trash: (targets: LibraryItem[]) => void actions.trash(targets),
+    selectAll: selection.selectAll,
+    undo: () => void actions.undoLast(),
+    ...(onAddFiles ? { addFiles: onAddFiles } : {}),
+    ...(onAddFolder ? { addFolder: onAddFolder } : {})
   }
 
   const addCard = (
@@ -262,7 +310,11 @@ export default function LibraryPage({
         selection={selection}
         addCard={addCard}
         data-shortcut-scope="grid"
+        tabIndex={-1}
         onDoubleClick={onDoubleClick}
+        onContextMenu={onContextMenu}
+        onKeyDown={onKeyDown}
+        onMouseUp={onMouseUp}
         noResults={
           <EmptyState
             variant="page"
@@ -294,12 +346,32 @@ export default function LibraryPage({
             variantCount={item.variantCount}
             favourite={item.favourite}
             state={cardState(item, selection.isSelected(String(item.id)))}
-            onToggleFavourite={(favourite) => void toggleFavourite(item, favourite)}
+            onToggleFavourite={(favourite) => void actions.setFavouriteFor([item], favourite)}
+            onMore={(event) => {
+              const box = event.currentTarget.getBoundingClientRect()
+              openMenuFor(item, { x: box.left, y: box.bottom })
+            }}
             onOpenInPhotoshop={() => void openInPhotoshop(item)}
             onEditDetails={() => openDetail(item.id)}
           />
         ))}
       </MockupGrid>
+      <CardMenu
+        target={menu?.target ?? null}
+        at={menu?.at ?? { x: 0, y: 0 }}
+        onClose={() => setMenu(null)}
+        actions={menuActions}
+        lastUndo={actions.lastUndo}
+      />
+      {preview && (
+        <LibraryLightbox
+          items={items}
+          startId={preview.id}
+          returnFocusTo={preview.returnTo}
+          onClose={() => setPreview(null)}
+          onCheckLibrary={() => void checkLibrary()}
+        />
+      )}
     </div>
   )
 }

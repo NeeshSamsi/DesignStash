@@ -121,4 +121,17 @@ describe('Lightbox', () => {
     expect(screen.getByRole('button', { name: 'Previous' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Next' })).toBeTruthy()
   })
+
+  it('returns focus to returnFocusTo when given, for a preview opened from a menu', async () => {
+    const card = document.createElement('button')
+    document.body.append(card)
+    function Harness() {
+      const [open, setOpen] = useState(true)
+      return <Lightbox open={open} src="a.webp" returnFocusTo={card} onClose={() => setOpen(false)} />
+    }
+    render(<Harness />)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    await waitFor(() => expect(document.activeElement).toBe(card))
+    card.remove()
+  })
 })
