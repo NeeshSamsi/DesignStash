@@ -16,7 +16,7 @@ import {
   Search02Icon,
   StarIcon
 } from '@hugeicons/core-free-icons'
-import type { LibraryItem } from '@shared/library'
+import { coverDisplay, type LibraryItem } from '@shared/library'
 import { AddMockupCard } from '@renderer/components/AddMockupCard'
 import { Banner } from '@renderer/components/Banner'
 import { Badge } from '@renderer/ui/badge'
@@ -26,7 +26,6 @@ import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { LibraryToolbar } from '@renderer/components/LibraryToolbar'
 import { CoverImage } from '@renderer/components/CoverImage'
-import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard.types'
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
@@ -70,12 +69,6 @@ const cardTags = (item: LibraryItem) =>
     .slice(0, 3)
     .map((tag) => tag.label)
     .join(' · ')
-
-function cardState(item: LibraryItem, selected: boolean): MockupCardState {
-  if (item.coverMissing) return 'cover-missing'
-  if (item.coverSource === 'none') return 'no-preview'
-  return selected ? 'selected' : 'default'
-}
 
 /**
  * My Stash (All and Starred): toolbar, grid, search results and the states between.
@@ -457,7 +450,7 @@ export default function LibraryPage({
                     ? 'left-behind'
                     : target
                       ? 'group-target'
-                      : cardState(item, selection.isSelected(key))
+                      : coverDisplay(item, selection.isSelected(key))
                 }
                 {...(target ? { dropHint: dropHint(drag.items, item) } : {})}
                 onToggleFavourite={(favourite) => void actions.setFavouriteFor([item], favourite)}

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { LibraryItem } from '@shared/library'
+import { coverDisplay, type LibraryItem } from '@shared/library'
 import { coverUrl } from '@shared/cover-url'
 import { Button } from '@renderer/components/Button'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { MockupGrid } from '@renderer/components/MockupGrid'
-import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard.types'
 import { MockupCard } from '@renderer/components/MockupCard'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
 import { HeaderActions } from '@renderer/lib/page-header-slot'
@@ -21,12 +20,6 @@ const cardTags = (item: LibraryItem, isTop: boolean) =>
   [isTop ? 'Top' : null, ...item.tags.slice(0, 3).map((tag) => tag.label)]
     .filter((part): part is string => part !== null)
     .join(' · ')
-
-function cardState(item: LibraryItem, selected: boolean): MockupCardState {
-  if (item.coverMissing) return 'cover-missing'
-  if (item.coverSource === 'none') return 'no-preview'
-  return selected ? 'selected' : 'default'
-}
 
 /**
  * The pile page (Figma D2.3 C2): a view inside My Stash that lists one pile's mockups as full cards.
@@ -224,7 +217,7 @@ export function PilePage({ pile }: { pile: OpenPile }) {
                 tags={cardTags(item, item.id === topId)}
                 {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
                 favourite={item.favourite}
-                state={cardState(item, raw.isSelected(key))}
+                state={coverDisplay(item, raw.isSelected(key))}
                 onToggleFavourite={(favourite) => void setFavourite(item, favourite)}
                 onMore={(event) => {
                   const box = event.currentTarget.getBoundingClientRect()

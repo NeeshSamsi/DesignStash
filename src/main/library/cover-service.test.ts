@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
-import { COVER_MAX_BYTES } from '@shared/library'
+import { COVER_MAX_BYTES } from '@shared/cover-fit'
 import type { Repository } from '../db/repository'
 import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
 import { CoverService, type CoverServiceDeps } from './cover-service'

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'reac
 import { Delete02Icon, UndoIcon } from '@hugeicons/core-free-icons'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { TrashItem, TrashStats } from '@shared/inbox'
+import { coverDisplay } from '@shared/library'
 import { ActionBar } from '@renderer/components/ActionBar'
 import { Banner } from '@renderer/components/Banner'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
@@ -10,7 +11,6 @@ import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/Dropdown
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { MockupCard } from '@renderer/components/MockupCard'
-import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard.types'
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
@@ -24,12 +24,6 @@ type Ask =
   | { kind: 'delete'; items: TrashItem[] }
   | { kind: 'empty'; stats: TrashStats }
   | { kind: 'missing'; items: TrashItem[] }
-
-function cardState(item: TrashItem, selected: boolean): MockupCardState {
-  if (item.coverMissing) return 'cover-missing'
-  if (item.coverSource === 'none') return 'no-preview'
-  return selected ? 'selected' : 'default'
-}
 
 /**
  * Trash: the My Stash grid without the Add card. Restore is instant with Undo; deleting for good
@@ -217,7 +211,7 @@ export default function TrashPage() {
               trashedAgo={agoText(item.trashedAt)}
               {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
               variantCount={item.variantCount}
-              state={cardState(item, selection.isSelected(key))}
+              state={coverDisplay(item, selection.isSelected(key))}
               onRestore={() => void restore(targetsFor(item))}
               onDeleteForever={() => setAsk({ kind: 'delete', items: targetsFor(item) })}
             />

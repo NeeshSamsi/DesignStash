@@ -66,8 +66,18 @@ export const MockupDetailSchema = z.object({
 })
 export type MockupDetail = z.infer<typeof MockupDetailSchema>
 
-/** Largest cover image we take. */
-export const COVER_MAX_BYTES = 25 * 1024 * 1024
+/**
+ * How a card shows its cover, from the item alone. A missing file wins over "no preview", and
+ * both win over selection; the same rule on My Stash, the pile page, Trash and the inboxes.
+ */
+export function coverDisplay(
+  item: { coverMissing: boolean; coverSource: z.infer<typeof CoverSourceSchema> },
+  selected = false
+): 'cover-missing' | 'no-preview' | 'selected' | 'default' {
+  if (item.coverMissing) return 'cover-missing'
+  if (item.coverSource === 'none') return 'no-preview'
+  return selected ? 'selected' : 'default'
+}
 
 /**
  * The outcome of changing a cover. A refused image is a normal result, not an error,
