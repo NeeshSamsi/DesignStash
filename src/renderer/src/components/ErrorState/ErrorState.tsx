@@ -68,7 +68,7 @@ export function ErrorState({
       <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-error-weak text-error">
         <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-6" />
       </div>
-      <p
+      <h1
         className={
           isFullWindow
             ? 'type-display-2xl-medium text-foreground'
@@ -76,7 +76,7 @@ export function ErrorState({
         }
       >
         {props.title}
-      </p>
+      </h1>
       <p className="type-body-sm-regular text-muted-foreground">{props.message}</p>
       <div className="flex items-start gap-2">
         {secondary && (

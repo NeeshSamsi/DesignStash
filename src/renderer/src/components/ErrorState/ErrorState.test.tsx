@@ -67,4 +67,12 @@ describe('ErrorState', () => {
     render(<ErrorState variant="page" secondaryLabel={null} />)
     expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Retry'])
   })
+
+  it('heads page and full-window errors with an h1, so the screen has a heading', () => {
+    for (const variant of ['page', 'full-window'] as const) {
+      const { unmount } = render(<ErrorState variant={variant} title="Something broke" />)
+      expect(screen.getByRole('heading', { level: 1, name: 'Something broke' })).not.toBeNull()
+      unmount()
+    }
+  })
 })

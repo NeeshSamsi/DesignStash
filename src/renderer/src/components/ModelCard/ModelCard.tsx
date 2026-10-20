@@ -40,8 +40,8 @@ export interface ModelCardProps
 
 const FAILURE = 'The download stopped. Check your connection, then try again.'
 
-/** Five 12×4 steps; the first `value` are filled. */
-function Bar({ label, value, accent }: { label: string; value: number; accent: boolean }) {
+/** Five 12×4 steps; the first `value` are filled in the brand colour, on every card. */
+function Bar({ label, value }: { label: string; value: number }) {
   const filled = Math.max(0, Math.min(5, Math.round(value)))
   return (
     <div className="flex items-center gap-2">
@@ -51,7 +51,7 @@ function Bar({ label, value, accent }: { label: string; value: number; accent: b
           <span
             key={step}
             className={modelCardStepVariants({
-              filled: step >= filled ? 'none' : accent ? 'accent' : 'muted'
+              filled: step >= filled ? 'none' : 'accent'
             })}
           />
         ))}
@@ -113,8 +113,8 @@ export function ModelCard({
           <p className="type-body-sm-regular text-muted-foreground">{description}</p>
         </div>
         <div className="flex shrink-0 flex-col gap-1.5">
-          <Bar label="quality" value={quality} accent={inUse} />
-          <Bar label="speed" value={speed} accent={inUse} />
+          <Bar label="quality" value={quality} />
+          <Bar label="speed" value={speed} />
         </div>
       </div>
 
@@ -140,7 +140,13 @@ export function ModelCard({
         )}
 
         {(inUse || state === 'downloaded') && (
-          <Button variant="secondary" size="sm" label="Delete" onClick={onDelete} />
+          <Button
+            variant="secondary"
+            size="sm"
+            label="Delete"
+            className="text-error"
+            onClick={onDelete}
+          />
         )}
         {state === 'downloaded' && (
           <Button

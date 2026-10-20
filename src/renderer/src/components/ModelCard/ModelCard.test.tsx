@@ -78,8 +78,36 @@ describe('ModelCard', () => {
     expect(screen.getByText('Best fit for this Mac')).not.toBeNull()
     expect(screen.getByRole('img', { name: 'quality 5 of 5' }).children).toHaveLength(5)
     expect(
-      screen.getByRole('img', { name: 'speed 2 of 5' }).querySelectorAll('.bg-input')
+      screen.getByRole('img', { name: 'speed 2 of 5' }).querySelectorAll('.bg-primary')
     ).toHaveLength(2)
+  })
+
+  it('fills the steps in the brand colour on every card, not only the one in use', () => {
+    render(<ModelCard state="downloaded" quality={4} speed={3} />)
+    expect(
+      screen.getByRole('img', { name: 'quality 4 of 5' }).querySelectorAll('.bg-primary')
+    ).toHaveLength(4)
+  })
+
+  it('Delete reads as the destructive action with error-toned text', () => {
+    render(<ModelCard state="downloaded" />)
+    expect(screen.getByRole('button', { name: 'Delete' }).className).toContain('text-error')
+  })
+
+  it('shows a download being checked with nothing to cancel, and a stopped one as Resume', () => {
+    const { rerender } = render(<ModelCard state="downloading" verifying />)
+    expect(screen.getByText('Checking the download…')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
+    rerender(<ModelCard state="available" resumeNote="860 MB of 2.1 GB downloaded" />)
+    expect(screen.getByRole('button', { name: 'Resume' })).not.toBeNull()
+    expect(screen.getByText('860 MB of 2.1 GB downloaded')).not.toBeNull()
+  })
+
+  it('can turn Use this model off while AI is switched off', () => {
+    render(<ModelCard state="downloaded" useDisabled />)
+    expect(
+      (screen.getByRole('button', { name: 'Use this model' }) as HTMLButtonElement).disabled
+    ).toBe(true)
   })
 
   it('never makes the card itself clickable', () => {
