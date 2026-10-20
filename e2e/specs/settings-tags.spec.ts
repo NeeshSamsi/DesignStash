@@ -20,12 +20,8 @@ async function openTags(window: Page): Promise<Locator> {
   return dialog
 }
 
-/**
- * Right-click a tag the way a person does: the pointer is over the row first, then the button.
- * (Without the hover, the menu opens off-screen: see the report on the tag row's ⋯ anchor.)
- */
+/** Right-click a tag; its menu opens at the pointer. */
 async function openTagMenu(row: Locator): Promise<void> {
-  await row.hover()
   await row.click({ button: 'right' })
 }
 

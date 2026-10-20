@@ -146,16 +146,27 @@ function RowInput({
   )
 }
 
-/** ⋯ at the end of a header or row. It anchors the menu, so it stays in the layout while open. */
-function MoreButton({ label, always }: { label: string; always?: boolean }) {
+/**
+ * ⋯ at the end of a header or row. It is the menu's trigger, so it passes on everything Radix gives
+ * it (ref, aria-expanded, pointer handlers, data-state): without them it can't open the menu or
+ * anchor it. It stays in the layout while open.
+ */
+function MoreButton({
+  label,
+  always,
+  className,
+  ...rest
+}: { label: string; always?: boolean } & Omit<ComponentProps<typeof Button>, 'aria-label'>) {
   return (
     <Button
       variant="ghost"
       size="icon-xs"
       aria-label={label}
+      {...rest}
       className={cn(
         'size-7 shrink-0 p-1.5 text-muted-foreground [&_svg]:size-5',
-        !always && 'hidden group-focus-within/row:flex group-hover/row:flex data-[state=open]:flex'
+        !always && 'hidden group-focus-within/row:flex group-hover/row:flex data-[state=open]:flex',
+        className
       )}
     >
       <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={1.5} />
@@ -198,7 +209,15 @@ export function TagTree({
   } | null>(seed.renaming)
   const [newCategory, setNewCategory] = useState(seed.newCategory)
   const [fresh, setFresh] = useState(seed.fresh)
-  const [menu, setMenu] = useState<{ kind: 'tag' | 'category'; id: number } | null>(null)
+  /**
+   * The open menu. `at` is where a right-click happened: the menu opens there. Without it the menu
+   * hangs off the row's own ⋯ button (hover or keyboard).
+   */
+  const [menu, setMenu] = useState<{
+    kind: 'tag' | 'category'
+    id: number
+    at: { x: number; y: number } | null
+  } | null>(null)
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
 
   useEffect(() => {
@@ -262,8 +281,8 @@ export function TagTree({
   }
 
   const menuProps = (kind: 'tag' | 'category', id: number) => ({
-    open: menu?.kind === kind && menu.id === id,
-    onOpenChange: (open: boolean) => setMenu(open ? { kind, id } : null)
+    open: menu?.kind === kind && menu.id === id && menu.at === null,
+    onOpenChange: (open: boolean) => setMenu(open ? { kind, id, at: null } : null)
   })
 
   const newCategoryRow = newCategory ? (
@@ -290,13 +309,95 @@ export function TagTree({
     </button>
   )
 
-  const renderTag = (category: Category, tag: TagTreeNode) => {
-    const isFresh = fresh.includes(freshKey(category.categoryId, tag.label))
-    const editing = renaming?.kind === 'tag' && renaming.id === tag.tagId
+  /**
+   * Opens the inline rename input once the menu has closed and handed focus back. Starting it in the
+   * same tick lets the closing menu's focus return blur the new input, which cancels it.
+   */
+  const startRename = (next: NonNullable<typeof renaming>) => {
+    setTimeout(() => setRenaming(next), 0)
+  }
+
+  /** The rows of a tag's menu, shared by its ⋯ button and a right-click. */
+  const tagMenuItems = (category: Category, tag: TagTreeNode) => {
     const others = tree.filter((c) => c.categoryId !== category.categoryId)
     const mergeTargets = tree.flatMap((c) =>
       c.tags.filter((t) => t.tagId !== tag.tagId).map((t) => ({ category: c, tag: t }))
     )
+    return (
+      <>
+        <DropdownMenuItem
+          label="Rename"
+          icon={Edit02Icon}
+          onSelect={() => startRename({ kind: 'tag', id: tag.tagId, draft: tag.label })}
+        />
+        <DropdownMenuItem
+          label="Move to"
+          icon={FolderTransferIcon}
+          submenu
+          disabled={!others.length}
+        >
+          {others.map((c) => (
+            <DropdownMenuItem
+              key={c.categoryId}
+              label={c.categoryLabel}
+              showIcon={false}
+              onSelect={() => void attempt(() => onMoveTag?.(tag.tagId, c.categoryId))}
+            />
+          ))}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          label="Merge into…"
+          icon={GitMergeIcon}
+          submenu
+          disabled={!mergeTargets.length}
+        >
+          {mergeTargets.map(({ category: c, tag: target }) => (
+            <DropdownMenuItem
+              key={target.tagId}
+              label={`${c.categoryLabel} · ${target.label}`}
+              showIcon={false}
+              onSelect={() => void attempt(() => onMergeTag?.(tag, target))}
+            />
+          ))}
+        </DropdownMenuItem>
+        <DropdownMenuDivider />
+        <DropdownMenuItem
+          label="Delete"
+          icon={Delete02Icon}
+          variant="destructive"
+          onSelect={() => void attempt(() => onDeleteTag?.(tag))}
+        />
+      </>
+    )
+  }
+
+  /** The rows of a category's menu. */
+  const categoryMenuItems = (category: Category) => (
+    <>
+      <DropdownMenuItem
+        label="Rename"
+        icon={Edit02Icon}
+        onSelect={() =>
+          startRename({
+            kind: 'category',
+            id: category.categoryId,
+            draft: category.categoryLabel
+          })
+        }
+      />
+      <DropdownMenuDivider />
+      <DropdownMenuItem
+        label="Delete category…"
+        icon={Delete02Icon}
+        variant="destructive"
+        onSelect={() => void attempt(() => onDeleteCategory?.(category))}
+      />
+    </>
+  )
+
+  const renderTag = (category: Category, tag: TagTreeNode) => {
+    const isFresh = fresh.includes(freshKey(category.categoryId, tag.label))
+    const editing = renaming?.kind === 'tag' && renaming.id === tag.tagId
     return (
       <div
         key={tag.tagId}
@@ -305,13 +406,13 @@ export function TagTree({
         tabIndex={0}
         onContextMenu={(event) => {
           event.preventDefault()
-          setMenu({ kind: 'tag', id: tag.tagId })
+          setMenu({ kind: 'tag', id: tag.tagId, at: { x: event.clientX, y: event.clientY } })
         }}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return
           if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
             event.preventDefault()
-            setMenu({ kind: 'tag', id: tag.tagId })
+            setMenu({ kind: 'tag', id: tag.tagId, at: null })
           }
         }}
         className={tagRowClass({ fresh: isFresh })}
@@ -343,52 +444,7 @@ export function TagTree({
               align="end"
               {...menuProps('tag', tag.tagId)}
               trigger={<MoreButton label={`${tag.label} actions`} />}
-              items={
-                <>
-                  <DropdownMenuItem
-                    label="Rename"
-                    icon={Edit02Icon}
-                    onSelect={() => setRenaming({ kind: 'tag', id: tag.tagId, draft: tag.label })}
-                  />
-                  <DropdownMenuItem
-                    label="Move to"
-                    icon={FolderTransferIcon}
-                    submenu
-                    disabled={!others.length}
-                  >
-                    {others.map((c) => (
-                      <DropdownMenuItem
-                        key={c.categoryId}
-                        label={c.categoryLabel}
-                        showIcon={false}
-                        onSelect={() => void attempt(() => onMoveTag?.(tag.tagId, c.categoryId))}
-                      />
-                    ))}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    label="Merge into…"
-                    icon={GitMergeIcon}
-                    submenu
-                    disabled={!mergeTargets.length}
-                  >
-                    {mergeTargets.map(({ category: c, tag: target }) => (
-                      <DropdownMenuItem
-                        key={target.tagId}
-                        label={`${c.categoryLabel} · ${target.label}`}
-                        showIcon={false}
-                        onSelect={() => void attempt(() => onMergeTag?.(tag, target))}
-                      />
-                    ))}
-                  </DropdownMenuItem>
-                  <DropdownMenuDivider />
-                  <DropdownMenuItem
-                    label="Delete"
-                    icon={Delete02Icon}
-                    variant="destructive"
-                    onSelect={() => void attempt(() => onDeleteTag?.(tag))}
-                  />
-                </>
-              }
+              items={tagMenuItems(category, tag)}
             />
           </>
         )}
@@ -457,6 +513,36 @@ export function TagTree({
     )
   }
 
+  /** A right-click opens the menu at the pointer; the ⋯ button keeps its own anchor. */
+  const pointedTag =
+    menu?.at && menu.kind === 'tag'
+      ? tree
+          .flatMap((c) => c.tags.map((t) => ({ category: c, tag: t })))
+          .find((x) => x.tag.tagId === menu.id)
+      : undefined
+  const pointedCategory =
+    menu?.at && menu.kind === 'category' ? tree.find((c) => c.categoryId === menu.id) : undefined
+  const pointMenu = menu?.at && (pointedTag || pointedCategory) && (
+    <DropdownMenu
+      open
+      onOpenChange={(open) => !open && setMenu(null)}
+      align="start"
+      trigger={
+        <span
+          aria-hidden
+          data-menu-anchor=""
+          className="pointer-events-none fixed size-0"
+          style={{ left: menu.at.x, top: menu.at.y }}
+        />
+      }
+      items={
+        pointedTag
+          ? tagMenuItems(pointedTag.category, pointedTag.tag)
+          : categoryMenuItems(pointedCategory!)
+      }
+    />
+  )
+
   const renderCategory = (category: Category) => {
     const editing = renaming?.kind === 'category' && renaming.id === category.categoryId
     return (
@@ -469,7 +555,11 @@ export function TagTree({
           className={cn(categoryHeaderClass, 'group/row')}
           onContextMenu={(event) => {
             event.preventDefault()
-            setMenu({ kind: 'category', id: category.categoryId })
+            setMenu({
+              kind: 'category',
+              id: category.categoryId,
+              at: { x: event.clientX, y: event.clientY }
+            })
           }}
         >
           {editing ? (
@@ -498,28 +588,7 @@ export function TagTree({
                 align="end"
                 {...menuProps('category', category.categoryId)}
                 trigger={<MoreButton always label={`${category.categoryLabel} actions`} />}
-                items={
-                  <>
-                    <DropdownMenuItem
-                      label="Rename"
-                      icon={Edit02Icon}
-                      onSelect={() =>
-                        setRenaming({
-                          kind: 'category',
-                          id: category.categoryId,
-                          draft: category.categoryLabel
-                        })
-                      }
-                    />
-                    <DropdownMenuDivider />
-                    <DropdownMenuItem
-                      label="Delete category…"
-                      icon={Delete02Icon}
-                      variant="destructive"
-                      onSelect={() => void attempt(() => onDeleteCategory?.(category))}
-                    />
-                  </>
-                }
+                items={categoryMenuItems(category)}
               />
             </>
           )}
@@ -538,6 +607,7 @@ export function TagTree({
       className={cn(tagTreeVariants({ state }), className)}
       {...props}
     >
+      {pointMenu}
       {loading ? (
         <div aria-hidden className="flex flex-col gap-3">
           {[0, 1].map((n) => (

@@ -110,7 +110,8 @@ describe('TagTree · layout', () => {
 
   it('has no nesting: no chevrons, indents or child rows', () => {
     const { container } = render(<Harness />)
-    expect(container.querySelector('[aria-expanded]')).toBeNull()
+    // Menu triggers (⋯) carry aria-expanded; nothing else on a row expands.
+    expect(container.querySelector('[aria-expanded]:not([aria-haspopup])')).toBeNull()
     expect(container.querySelector('[data-slot="tree-branch"]')).toBeNull()
     const rows = container.querySelectorAll('[data-tag]')
     expect(rows).toHaveLength(5)
@@ -258,7 +259,7 @@ describe('TagTree · tag menu', () => {
     render(<Harness />)
     openTagMenu('iPad')
     await pick('Rename')
-    let input = screen.getByRole('textbox', { name: 'Rename iPad' }) as HTMLInputElement
+    let input = (await screen.findByRole('textbox', { name: 'Rename iPad' })) as HTMLInputElement
     expect(input.value).toBe('iPad')
     expect(screen.getByText('↵ to save · Esc to cancel')).toBeTruthy()
     type(input, 'iPad Pro')
@@ -270,7 +271,7 @@ describe('TagTree · tag menu', () => {
 
     openTagMenu('iPad Pro')
     await pick('Rename')
-    input = screen.getByRole('textbox', { name: 'Rename iPad Pro' }) as HTMLInputElement
+    input = (await screen.findByRole('textbox', { name: 'Rename iPad Pro' })) as HTMLInputElement
     type(input, 'Tablet')
     key(input, 'Escape')
     expect(labels('Device')).toEqual(['iPhone 15 Pro', 'iPhone', 'iPad Pro'])
@@ -311,12 +312,85 @@ describe('TagTree · tag menu', () => {
   })
 })
 
+describe('TagTree · where the menu opens', () => {
+  const anchor = () => document.querySelector<HTMLElement>('[data-menu-anchor]')
+
+  it('a right-click on a tag opens its menu at the pointer, whether or not the ⋯ is showing', async () => {
+    render(<Harness />)
+    fireEvent.contextMenu(tagRow('iPad'), { clientX: 140, clientY: 260 })
+    await screen.findAllByRole('menuitem')
+    expect(anchor()?.style.left).toBe('140px')
+    expect(anchor()?.style.top).toBe('260px')
+    // The row's own button is not what holds the menu open.
+    expect(
+      screen
+        .getByRole('button', { name: 'iPad actions', hidden: true })
+        .getAttribute('aria-expanded')
+    ).toBe('false')
+  })
+
+  it('a right-click on a category header opens its menu at the pointer', async () => {
+    render(<Harness />)
+    fireEvent.contextMenu(category('Style').querySelector('h3')!, { clientX: 55, clientY: 80 })
+    expect((await screen.findAllByRole('menuitem')).map((r) => r.textContent)).toEqual([
+      'Rename',
+      'Delete category…'
+    ])
+    expect(anchor()?.style.left).toBe('55px')
+    expect(anchor()?.style.top).toBe('80px')
+  })
+
+  it('each right-click moves the menu to the new pointer position', async () => {
+    render(<Harness />)
+    fireEvent.contextMenu(tagRow('iPad'), { clientX: 10, clientY: 20 })
+    await screen.findAllByRole('menuitem')
+    key(document.activeElement as HTMLElement, 'Escape')
+    await waitFor(() => expect(screen.queryByRole('menuitem')).toBeNull())
+    fireEvent.contextMenu(tagRow('Glass'), { clientX: 300, clientY: 400 })
+    await screen.findAllByRole('menuitem')
+    expect(anchor()?.style.left).toBe('300px')
+    expect(anchor()?.style.top).toBe('400px')
+  })
+
+  it('the ⋯ button opens the same menu from its own place, with no pointer anchor', async () => {
+    render(<Harness />)
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'iPad actions' }), {
+      button: 0,
+      ctrlKey: false
+    })
+    const rows = (await screen.findAllByRole('menuitem')).map((r) => r.textContent)
+    expect(rows).toEqual(['Rename', 'Move to', 'Merge into…', 'Delete'])
+    expect(anchor()).toBeNull()
+    expect(
+      screen
+        .getByRole('button', { name: 'iPad actions', hidden: true })
+        .getAttribute('aria-expanded')
+    ).toBe('true')
+  })
+
+  it('the ContextMenu key on a focused row uses the ⋯ button', async () => {
+    render(<Harness />)
+    key(tagRow('iPad'), 'ContextMenu')
+    await screen.findAllByRole('menuitem')
+    expect(anchor()).toBeNull()
+  })
+
+  it('picking a row from a pointer menu works like the ⋯ menu', async () => {
+    const onDeleteTag = vi.fn()
+    render(<Harness onDeleteTag={onDeleteTag} />)
+    fireEvent.contextMenu(tagRow('Glass'), { clientX: 30, clientY: 40 })
+    await pick('Delete')
+    expect(onDeleteTag).toHaveBeenCalledWith({ tagId: 5, label: 'Glass', usageCount: 7 })
+    await waitFor(() => expect(anchor()).toBeNull())
+  })
+})
+
 describe('TagTree · categories', () => {
   it('renames a category from its ⋯ menu', async () => {
     render(<Harness />)
     fireEvent.contextMenu(category('Style').querySelector('h3')!)
     await pick('Rename')
-    const input = screen.getByRole('textbox', { name: 'Rename Style' }) as HTMLInputElement
+    const input = (await screen.findByRole('textbox', { name: 'Rename Style' })) as HTMLInputElement
     type(input, 'Look')
     key(input, 'Enter')
     await act(async () => {
