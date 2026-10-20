@@ -46,9 +46,11 @@ describe('nameVisibleCards', () => {
     const { doc } = fakeDoc([inView, below], true)
     const undo = nameVisibleCards(doc, rect({ top: 0, left: 0, right: 800, bottom: 600 }))
     expect(inView.style.getPropertyValue('view-transition-name')).toBe(`${CARD_TRANSITION_PREFIX}1`)
+    expect(inView.style.getPropertyValue('view-transition-class')).toBe('card')
     expect(below.style.getPropertyValue('view-transition-name')).toBe('')
     undo()
     expect(inView.style.getPropertyValue('view-transition-name')).toBe('')
+    expect(inView.style.getPropertyValue('view-transition-class')).toBe('')
   })
 })
 

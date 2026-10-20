@@ -40,9 +40,32 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="min-w-44 shrink-0">{props.sidebar}</div>
-        <main className={cn(appWindowPanelClass, asideOpen ? 'rounded-tr-3xl' : 'rounded-tr-none')}>
-          {props.showHeader && props.header}
-          <div className="-m-2 min-h-0 flex-1 overflow-auto rounded-md p-2">{props.page}</div>
+        <main className={appWindowPanelClass}>
+          {/*
+            The panel's surface is an empty layer behind its content, named so it morphs width and corner
+            when the details sidebar opens. It comes first, so it paints below everything named after it.
+          */}
+          <div
+            aria-hidden
+            data-slot="main-panel-bg"
+            className={cn(
+              'absolute inset-0 -z-10 rounded-tl-3xl bg-surface-1',
+              asideOpen ? 'rounded-tr-3xl' : 'rounded-tr-none'
+            )}
+            style={{ viewTransitionName: 'main-panel-bg' }}
+          />
+          {/*
+            The content (header, toolbar, page) is one named block that is shown at its new size at once,
+            never scaled (styles/details-transition.css), so it paints above the surface layer.
+          */}
+          <div
+            data-slot="main-content"
+            className="flex min-h-0 flex-1 flex-col gap-6"
+            style={{ viewTransitionName: 'main-content' }}
+          >
+            {props.showHeader && props.header}
+            <div className="-m-2 min-h-0 flex-1 overflow-auto rounded-md p-2">{props.page}</div>
+          </div>
         </main>
         {aside !== undefined && (
           <div

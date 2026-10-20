@@ -1,7 +1,7 @@
 /*
  * The details sidebar opening and closing, as a view transition (lib/panel-transition.ts).
  * The browser morphs what has a `view-transition-name`: each visible card (named at the time), the
- * main panel, the dock and toasts, and the sidebar. Timing comes from the panel tokens in main.css.
+ * main panel's surface layer, the dock and toasts, and the sidebar. Timing comes from the panel tokens in main.css.
  * Under reduced motion, or without the API, the layout simply changes and none of this runs.
  */
 
@@ -10,12 +10,16 @@
   --details-panel-share: 24.75rem;
 }
 
-/* The page stays clickable and hoverable while it morphs. */
-::view-transition {
+/* The page stays clickable and hoverable while it morphs: no part of the transition takes the pointer. */
+::view-transition,
+::view-transition-group(*),
+::view-transition-image-pair(*),
+::view-transition-old(*),
+::view-transition-new(*) {
   pointer-events: none;
 }
 
-/* Cards, the main panel and the dock move together: 280ms settling out when opening, 180ms on the same curve closing. */
+/* Cards, the panel's surface and the dock move together: 280ms settling out when opening, 180ms on the same curve closing. */
 ::view-transition-group(*) {
   animation-duration: var(--duration-panel-open);
   animation-timing-function: var(--ease-panel-out);
@@ -26,10 +30,11 @@ html[data-panel-motion='close']::view-transition-group(*) {
 }
 
 /*
- * The page underneath is not animated: its new state (real surfaces, header, toolbar) is shown at once,
- * opaque, as the root image. Only what has a name morphs: the cards, the toolbar's right end, the
- * title-row actions, the dock and toasts. The sidebar slides. The panel's own surface is never named, so it
- * is always painted and never a hole; it changes width with the layout.
+ * Paint order. Whatever has a name paints above the root image, in the order the elements paint: the panel's
+ * empty surface layer (main-panel-bg) first, then the content block (main-content) above it, then the cards,
+ * the toolbar's right end and the title-row actions, then the dock and toasts, and the sidebar. The real
+ * window surface and the left navigation stay in the root image underneath, which is opaque: html and
+ * body keep their backgrounds, so nothing ever shows through to a black backdrop.
  */
 ::view-transition-image-pair(root) {
   isolation: auto;
@@ -38,6 +43,47 @@ html[data-panel-motion='close']::view-transition-group(*) {
   display: none;
 }
 ::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/*
+ * The panel's surface morphs its width and its top-right corner (an empty rounded rectangle, so scaling
+ * it shows nothing wrong). Only its new image is drawn, so it never double-draws.
+ */
+::view-transition-old(main-panel-bg) {
+  display: none;
+}
+::view-transition-new(main-panel-bg) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/*
+ * The content (header, toolbar, the page) is never scaled or faded: its new state, at its natural size,
+ * is clipped by a group whose box follows the panel. It appears at once and is revealed as the panel grows.
+ */
+::view-transition-group(main-content) {
+  overflow: clip;
+}
+::view-transition-old(main-content) {
+  display: none;
+}
+::view-transition-new(main-content) {
+  animation: none;
+  mix-blend-mode: normal;
+  inline-size: auto;
+  block-size: auto;
+}
+
+/*
+ * A card is one image: its final one, scaled from its old box to its new one. The old image is not
+ * drawn and the new one does not fade in, so a title is never shown twice.
+ */
+::view-transition-old(.card) {
+  display: none;
+}
+::view-transition-new(.card) {
   animation: none;
   mix-blend-mode: normal;
 }

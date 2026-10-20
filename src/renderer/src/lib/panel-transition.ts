@@ -25,6 +25,9 @@ let running: { skipTransition: () => void } | null = null
 /** A card carries this prefix plus its mockup id as its transition name. */
 export const CARD_TRANSITION_PREFIX = 'card-'
 
+/** Every named card shares this class (`::view-transition-old(.card)` in the stylesheet). */
+export const CARD_TRANSITION_CLASS = 'card'
+
 /**
  * Names the cards that are on screen, so the browser morphs each from its old box to its new one.
  * Cards off screen are left out: they appear with the page, which keeps it cheap with many mockups.
@@ -45,9 +48,15 @@ export function nameVisibleCards(doc: TransitionDocument, view: DOMRect | null):
       if (!visible) return
     }
     card.style.setProperty('view-transition-name', `${CARD_TRANSITION_PREFIX}${id}`)
+    // The class lets the stylesheet treat every card alike: only its box morphs, one image, no double text.
+    card.style.setProperty('view-transition-class', CARD_TRANSITION_CLASS)
     named.push(card)
   })
-  return () => named.forEach((card) => card.style.removeProperty('view-transition-name'))
+  return () =>
+    named.forEach((card) => {
+      card.style.removeProperty('view-transition-name')
+      card.style.removeProperty('view-transition-class')
+    })
 }
 
 /**

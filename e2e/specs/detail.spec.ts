@@ -178,6 +178,8 @@ test.describe('Details sidebar', () => {
     await showMyStash(app)
     await clickCard(window)
     await expect(panel(window)).toBeVisible()
+    // Let the open transition finish: a click while it runs is covered by its own test below.
+    await expect(window.locator('html')).not.toHaveAttribute('data-panel-motion', /.+/)
     const grid = window.locator('[data-ds="MockupGrid"]')
     const box = (await grid.boundingBox())!
     // Well below the one card row.
@@ -339,7 +341,16 @@ test.describe('Details sidebar', () => {
     await clickCard(window)
     await expect(panel(window)).toBeVisible()
     await settled()
-    // Clicks keep working while it morphs: a second card can be picked at once.
+    // Clicks keep working while it morphs: the next card is picked straight away, and so is empty space.
+    await clickCard(window, 1)
+    await expect(panel(window).getByRole('heading', { name: /^Stub / })).toBeVisible()
+    const grid = window.locator('[data-ds="MockupGrid"]')
+    const box = (await grid.boundingBox())!
+    await window.mouse.click(box.x + box.width / 2, box.y + box.height - 20)
+    await expect(panel(window)).toHaveCount(0)
+    await settled()
+    await clickCard(window)
+    await expect(panel(window)).toBeVisible()
     await window.keyboard.press('Escape')
     await expect(panel(window)).toHaveCount(0)
     await settled()

@@ -7,6 +7,13 @@ import { useDetailsStore } from './stores/detailsStore'
 import { shortcuts } from './lib/shortcuts'
 import { toast as sonnerToast } from 'sonner'
 import { nameSideMovers } from './lib/panel-transition'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+const css = readFileSync(
+  join(process.cwd(), 'src/renderer/src/styles/details-transition.css'),
+  'utf8'
+)
 import { IPC_CHANNELS } from '@shared/ipc'
 
 beforeEach(() => {
@@ -461,10 +468,14 @@ describe('AppShell details sidebar and pile page', () => {
     )
     const aside = () => document.querySelector('[data-slot="aside"]')!
     expect(aside().getAttribute('data-open')).toBe('false')
-    expect(document.querySelector('main')!.className).toContain('rounded-tr-none')
+    expect(document.querySelector('[data-slot="main-panel-bg"]')!.className).toContain(
+      'rounded-tr-none'
+    )
     act(() => useDetailsStore.getState().syncTarget(5))
     expect(aside().getAttribute('data-open')).toBe('true')
-    expect(document.querySelector('main')!.className).toContain('rounded-tr-3xl')
+    expect(document.querySelector('[data-slot="main-panel-bg"]')!.className).toContain(
+      'rounded-tr-3xl'
+    )
     act(() => useDetailsStore.getState().syncTarget(null))
     expect(aside().getAttribute('data-open')).toBe('false')
   })
@@ -491,12 +502,19 @@ describe('AppShell details sidebar and pile page', () => {
         <div>content</div>
       </AppShell>
     )
-    // The panel's own surface is never named: it is always painted and can never be a hole.
-    expect(document.querySelector<HTMLElement>('main')!.style.viewTransitionName).toBe('')
-    expect(
-      document.querySelector('[data-slot="main-panel-bg"], [data-slot="window-bg"]')
-    ).toBeNull()
-    expect(document.querySelector<HTMLElement>('main')!.className).toContain('bg-surface-1')
+    // The panel's surface is an empty named layer; the content above it is one named block.
+    const named = (selector: string) =>
+      document.querySelector<HTMLElement>(selector)!.style.viewTransitionName
+    expect(named('main')).toBe('')
+    expect(named('[data-slot="main-panel-bg"]')).toBe('main-panel-bg')
+    expect(named('[data-slot="main-content"]')).toBe('main-content')
+    // The layer comes first in the panel, so it paints below the content.
+    const children = [...document.querySelector('main')!.children]
+    expect(children.indexOf(document.querySelector('[data-slot="main-panel-bg"]')!)).toBeLessThan(
+      children.indexOf(document.querySelector('[data-slot="main-content"]')!)
+    )
+    // The window's own surface and the nav stay in the page image.
+    expect(document.querySelector('[data-slot="window-bg"]')).toBeNull()
     expect(document.querySelector<HTMLElement>('[data-ds="AppWindow"]')!.className).toContain(
       'bg-surface-2'
     )
@@ -533,7 +551,7 @@ describe('AppShell details sidebar and pile page', () => {
     expect(toaster().style.getPropertyValue('--offset-right')).toBe('16px')
   })
 
-  it('never scales text: no header or toolbar text sits inside a named group, and only sideways movers are named', () => {
+  it('never scales text: the header and toolbar are in one block shown at its natural size, and cards morph as a single image', () => {
     useDetailsStore.getState().openPile({ id: 1, title: 'Clay', count: 2, select: 1, edit: false })
     render(
       <AppShell>
@@ -546,7 +564,7 @@ describe('AppShell details sidebar and pile page', () => {
         </div>
       </AppShell>
     )
-    const named = (el: Element | null) => {
+    const nearestName = (el: Element | null) => {
       for (let node = el; node; node = node.parentElement) {
         const name = (node as HTMLElement).style?.viewTransitionName
         if (name) return name
@@ -554,22 +572,34 @@ describe('AppShell details sidebar and pile page', () => {
       return null
     }
     const header = document.querySelector('[data-ds="PageHeader"]')!
-    expect(named(header.querySelector('h1'))).toBeNull()
-    expect(named(header.querySelector('p'))).toBeNull()
-    expect(named(screen.getByText('Filter'))).toBeNull()
+    expect(nearestName(header.querySelector('h1'))).toBe('main-content')
+    expect(nearestName(screen.getByText('Filter'))).toBe('main-content')
 
-    // While a transition runs, only the sideways movers (and cards) carry names.
+    // The stylesheet draws that block's new image only, unscaled and unfaded, and a card's the same way.
+    const rule = (selector: string) => {
+      const at = css.indexOf(selector)
+      expect(at, selector).toBeGreaterThan(-1)
+      return css.slice(at, css.indexOf('}', at))
+    }
+    expect(rule('::view-transition-old(main-content)')).toContain('display: none')
+    expect(rule('::view-transition-new(main-content)')).toContain('animation: none')
+    expect(rule('::view-transition-new(main-content)')).toContain('inline-size: auto')
+    expect(rule('::view-transition-old(.card)')).toContain('display: none')
+    expect(rule('::view-transition-new(.card)')).toContain('animation: none')
+    expect(rule('::view-transition-old(root)')).toContain('display: none')
+    // html and body keep their backgrounds: nothing is made transparent for the transition.
+    expect(css).not.toMatch(/background:\s*transparent/)
+
+    // While a transition runs, the toolbar's right end and the title-row actions slide; the rest does not.
     const undo = nameSideMovers(document)
-    expect(named(screen.getByText('128 items'))).toBe('toolbar-end')
-    expect(named(screen.getByText('Date added'))).toBe('toolbar-end')
-    expect(named(screen.getByText('Filter'))).toBeNull()
-    expect(named(header.querySelector('h1'))).toBeNull()
-    expect(named(header.querySelector('p'))).toBeNull()
+    expect(nearestName(screen.getByText('128 items'))).toBe('toolbar-end')
+    expect(nearestName(screen.getByText('Date added'))).toBe('toolbar-end')
+    expect(nearestName(screen.getByText('Filter'))).toBe('main-content')
     expect(
       document.querySelector<HTMLElement>('[data-slot="page-header-actions"]')!.style
         .viewTransitionName
     ).toBe('header-actions')
     undo()
-    expect(named(screen.getByText('128 items'))).toBeNull()
+    expect(nearestName(screen.getByText('128 items'))).toBe('main-content')
   })
 })
