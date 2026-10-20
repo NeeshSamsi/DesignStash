@@ -50,12 +50,11 @@ describe('search index', () => {
     expect(matchFts('Remove')).not.toContain(m.id)
   })
 
-  it('rebuildSearchIndex indexes by stage, not reviewStatus', () => {
+  it('rebuildSearchIndex indexes by stage', () => {
     const waiting = repo.createMockup({
       ...sample,
       title: 'Waiting Approved',
       libraryPath: '/lib/fts/f.psd',
-      reviewStatus: 'approved',
       stage: 'to_stash'
     })
     const stashed = repo.createMockup({

@@ -85,7 +85,7 @@ describe('landing files', () => {
     expect(rows.map((r) => r.title).sort()).toEqual(['front', 'side'])
     expect(rows.map((r) => r.sizeBytes).sort()).toEqual([4, 6])
     const m = repo.getMockup(rows[0]!.id)!
-    expect(m).toMatchObject({ stage: 'to_sort', reviewStatus: 'needs_review', coverSource: 'embedded' })
+    expect(m).toMatchObject({ stage: 'to_sort', coverSource: 'embedded' })
     expect(m.libraryPath.startsWith(join(root, 'mockups'))).toBe(true)
     expect(readFileSync(m.libraryPath, 'utf8')).toMatch(/AAAA|BBBBBB/)
     expect(m.importContext).toMatchObject({ folderTrail: ['Phones'] })

@@ -14,7 +14,7 @@ const approvedRow = (overrides: Partial<NewMockup> = {}): NewMockup => ({
   libraryPath: '/lib/mockups/x/original.psd',
   coverPath: '/lib/mockups/x/cover.png',
   coverSource: 'embedded',
-  reviewStatus: 'approved',
+  stage: 'stashed',
   ...overrides
 })
 

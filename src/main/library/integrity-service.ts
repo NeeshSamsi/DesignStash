@@ -310,7 +310,7 @@ export class IntegrityService {
   }
 
   /**
-   * Register an in-place orphan file as a new `needs_review` mockup WITHOUT copying it
+   * Register an in-place orphan file as a new To sort mockup WITHOUT copying it
    * (the file already lives under the library root). The new row carries a fresh batchId so
    * it flows through the existing grouping/approval views like a normal import.
    * Not FTS-indexed here — indexing happens on approval.
@@ -339,7 +339,6 @@ export class IntegrityService {
       libraryPath: filePath,
       coverPath,
       coverSource,
-      reviewStatus: 'needs_review',
       stage: 'to_sort',
       sizeBytes,
       importContext: {

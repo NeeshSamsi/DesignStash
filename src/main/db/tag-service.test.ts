@@ -122,7 +122,7 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
       libraryPath,
       coverPath: '/c.png',
       coverSource: 'embedded',
-      reviewStatus: 'approved'
+      stage: 'stashed'
     })
 
   it('deleteTag and restoreTag round-trip and match their IPC contracts', () => {

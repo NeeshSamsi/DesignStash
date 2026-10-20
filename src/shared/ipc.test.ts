@@ -475,7 +475,6 @@ describe('IPC Contract', () => {
             coverMissing: false,
             isGroup: false,
             favourite: false,
-            reviewStatus: 'approved' as const,
             createdAt: '2025-01-01T00:00:00',
             variantCount: 0,
             topId: null,

@@ -292,7 +292,6 @@ export class CopyQueue {
         coverSource: cover.source,
         contentHash: sha256,
         importContext: { batchId: haulId, folderTrail: job.folderTrail, originalFilename: job.fileName },
-        reviewStatus: 'needs_review',
         stage: 'to_sort',
         sizeBytes: size
       })

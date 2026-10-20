@@ -39,6 +39,6 @@ export const approvedMockup = (overrides: Partial<NewMockup> = {}): NewMockup =>
   libraryPath: '/lib/x.psd',
   coverPath: '/c.png',
   coverSource: 'embedded' as const,
-  reviewStatus: 'approved',
+  stage: 'stashed',
   ...overrides
 })

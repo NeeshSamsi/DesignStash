@@ -21,7 +21,7 @@ describe('Repository — mockups', () => {
   it('creates and reads a mockup with correct defaults', () => {
     const created = repo.createMockup(sample)
     expect(created.id).toBeGreaterThan(0)
-    expect(created.reviewStatus).toBe('needs_review')
+    expect(created.stage).toBe('to_sort')
     expect(created.favourite).toBe(false)
     expect(created.deletedAt).toBeNull()
     expect(repo.getMockup(created.id)?.title).toBe('MacBook Mockup')

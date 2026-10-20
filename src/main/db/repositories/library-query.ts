@@ -19,7 +19,6 @@ export interface LibraryRow {
   coverMissing: boolean
   isGroup: boolean
   favourite: boolean
-  reviewStatus: 'needs_review' | 'approved'
   createdAt: string
   /** Other mockups in the pile besides the top; 0 for a mockup on its own. */
   variantCount: number
@@ -161,7 +160,6 @@ export class LibraryQueryRepository {
       coverMissing: !this.fileExists(m.coverPath),
       isGroup: m.isGroup,
       favourite: m.favourite,
-      reviewStatus: m.reviewStatus,
       createdAt: m.createdAt,
       variantCount: lookups.members.get(m.id)?.length ?? 0,
       topId: pileRole(m) === 'top' ? m.id : null,

@@ -20,7 +20,6 @@ export const LibraryItemSchema = z.object({
   coverMissing: z.boolean(),
   isGroup: z.boolean(),
   favourite: z.boolean(),
-  reviewStatus: z.enum(['needs_review', 'approved']),
   createdAt: z.string(),
   /** Other mockups in the pile besides the top; 0 for a mockup on its own. */
   variantCount: z.number(),

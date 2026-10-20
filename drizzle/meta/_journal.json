@@ -71,6 +71,13 @@
       "when": 1792485665541,
       "tag": "0009_copy_job_sizes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792518551497,
+      "tag": "0010_drop_review_status",
+      "breakpoints": true
     }
   ]
 }

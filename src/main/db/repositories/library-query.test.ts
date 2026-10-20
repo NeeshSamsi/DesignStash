@@ -34,7 +34,7 @@ describe('getLibrary', () => {
       approvedMockup({
         title: 'Needs Review',
         libraryPath: '/lib/nr.psd',
-        reviewStatus: 'needs_review'
+        stage: 'to_sort'
       })
     )
     const trashed = repo.createMockup(
@@ -49,12 +49,11 @@ describe('getLibrary', () => {
     expect(result.length).toBe(1)
   })
 
-  it('shows what is stashed and nothing else, whatever reviewStatus says', () => {
+  it('shows what is stashed and nothing else, whatever else it says', () => {
     const stashed = repo.createMockup(
       approvedMockup({
         title: 'Stashed',
         libraryPath: '/lib/st.psd',
-        reviewStatus: 'needs_review',
         stage: 'stashed'
       })
     )
@@ -62,7 +61,6 @@ describe('getLibrary', () => {
       approvedMockup({
         title: 'Waiting',
         libraryPath: '/lib/wt.psd',
-        reviewStatus: 'approved',
         stage: 'to_stash'
       })
     )
@@ -331,7 +329,7 @@ describe('getLibraryStats', () => {
     repo.createMockup(approvedMockup({ title: 'C', libraryPath: '/lib/c.psd', groupId: b.id })) // member, excluded
     repo.setFavourite(a.id, true)
 
-    // needs_review → not counted in total
+    // not stashed → not counted in total
     repo.createMockup({ ...sample, title: 'NR', libraryPath: '/lib/nr.psd' })
 
     // trashed (approved but deletedAt set)
@@ -340,7 +338,7 @@ describe('getLibraryStats', () => {
 
     const stats = repo.getLibraryStats()
 
-    expect(stats.total).toBe(2) // a and b (not member, not needs_review, not trashed)
+    expect(stats.total).toBe(2) // a and b (not member, not waiting to be stashed, not trashed)
     expect(stats.favourites).toBe(1) // a
     expect(stats.groups).toBe(1) // b
     expect(stats.trashed).toBe(1) // t

@@ -101,7 +101,6 @@ export const StashSnapshotSchema = z.object({
       title: z.string(),
       description: z.string().nullable(),
       tagIds: z.array(z.number()),
-      reviewStatus: z.enum(['needs_review', 'approved']),
       stage: z.enum(['to_sort', 'to_stash', 'stashed']),
       sortedAt: z.string().nullable()
     })

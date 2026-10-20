@@ -51,7 +51,6 @@ function referenceRows(ids: number[]): LibraryRow[] {
       coverMissing: true,
       isGroup: m.isGroup,
       favourite: m.favourite,
-      reviewStatus: m.reviewStatus,
       createdAt: m.createdAt,
       variantCount: repo.getMockupsByGroupId(m.id).length,
       topId: m.isGroup ? m.id : null,

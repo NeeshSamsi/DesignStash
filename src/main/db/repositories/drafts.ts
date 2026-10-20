@@ -134,7 +134,6 @@ export class DraftRepository {
           title: m.title,
           description: m.description,
           tagIds: tagRows.filter((t) => t.mockupId === m.id).map((t) => t.tagId),
-          reviewStatus: m.reviewStatus,
           stage: m.stage,
           sortedAt: m.sortedAt
         })),
@@ -158,7 +157,6 @@ export class DraftRepository {
           .set({
             title: draft.title,
             description: draft.description,
-            reviewStatus: 'approved',
             stage: 'stashed',
             sortedAt: m.sortedAt ?? now
           })
@@ -186,8 +184,7 @@ export class DraftRepository {
           .set({
             title: m.title,
             description: m.description,
-            reviewStatus: m.reviewStatus,
-            stage: m.stage,
+              stage: m.stage,
             sortedAt: m.sortedAt
           })
           .where(eq(mockups.id, m.id))

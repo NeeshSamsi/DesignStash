@@ -179,7 +179,7 @@ describe('saveDraft', () => {
     const item = (await service().open()).units[0]!.items[0]!
     expect(item).toMatchObject({ title: 'Edited', description: 'New', checked: true })
     expect(item.tags.map((t) => t.label)).toEqual(['Phone'])
-    expect(repo.getMockup(m.id)).toMatchObject({ title: 'a', reviewStatus: 'needs_review', stage: 'to_stash' })
+    expect(repo.getMockup(m.id)).toMatchObject({ title: 'a', stage: 'to_stash' })
     expect(repo.getTagsForMockup(m.id)).toEqual([])
   })
 

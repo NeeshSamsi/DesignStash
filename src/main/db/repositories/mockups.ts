@@ -11,9 +11,9 @@ export class MockupRepository {
     private readonly search: SearchRepository
   ) {}
 
-  /** A mockup still in review starts in To sort; an approved one is already stashed. */
+  /** A new mockup starts in To sort unless the caller says where it belongs. */
   createMockup(data: NewMockup): Mockup {
-    const stage = data.stage ?? (data.reviewStatus === 'approved' ? 'stashed' : 'to_sort')
+    const stage = data.stage ?? 'to_sort'
     return this.db
       .insert(mockups)
       .values({ ...data, stage })

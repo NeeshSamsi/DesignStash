@@ -16,7 +16,7 @@ const row = (overrides: Partial<NewMockup> = {}): NewMockup => ({
   libraryPath: `${mockupsDir}/a/original.psd`,
   coverPath: `${mockupsDir}/a/cover.webp`,
   coverSource: 'embedded',
-  reviewStatus: 'approved',
+  stage: 'stashed',
   ...overrides
 })
 
@@ -137,7 +137,7 @@ describe('IntegrityService.scan', () => {
 
     const created = repo.getMockup(mockupId)!
     expect(created.libraryPath).toBe(orphan) // NOT re-copied
-    expect(created.reviewStatus).toBe('needs_review')
+    expect(created.stage).toBe('to_sort')
     expect(created.coverSource).toBe('embedded')
     const ctx = created.importContext as { batchId?: string; originalFilename?: string }
     expect(ctx.batchId).toBeTruthy()
@@ -159,7 +159,7 @@ describe('IntegrityService.scan', () => {
 
     const created = repo.getMockup(mockupId)!
     expect(created.coverSource).toBe('none')
-    expect(created.reviewStatus).toBe('needs_review')
+    expect(created.stage).toBe('to_sort')
   })
 
   it('excludes soft-deleted records from the scan', async () => {

@@ -122,7 +122,6 @@ describe('add', () => {
       title: 'poster_new',
       libraryPath: path,
       stage: 'to_sort',
-      reviewStatus: 'needs_review',
       sizeBytes: 48
     })
     expect(disk.copies).toEqual([])

@@ -375,3 +375,95 @@ describe('bootstrapLibrary', () => {
     expect(() => bootstrapLibrary(root)).not.toThrow()
   })
 })
+
+describe('migration: drop review status, add the pile check', () => {
+  /** A copy of ./drizzle whose journal stops before review_status goes. */
+  function migrationsBeforeDrop(): string {
+    const dir = tempDir()
+    cpSync('./drizzle', dir, { recursive: true })
+    const journalPath = join(dir, 'meta', '_journal.json')
+    const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: { tag: string }[] }
+    const cut = journal.entries.findIndex((e) => e.tag.endsWith('_drop_review_status'))
+    expect(cut).toBeGreaterThan(0)
+    journal.entries = journal.entries.slice(0, cut)
+    writeFileSync(journalPath, JSON.stringify(journal))
+    return dir
+  }
+
+  const count = (db: Database.Database, table: string) =>
+    (db.prepare(`SELECT count(*) AS c FROM ${table}`).get() as { c: number }).c
+
+  it('keeps every mockup and every child table, and fixes a row that was top and member', () => {
+    const old = new Database(':memory:')
+    old.pragma('foreign_keys = ON')
+    const oldDb = drizzle(old, { schema })
+    migrate(oldDb, { migrationsFolder: migrationsBeforeDrop() })
+    expect(
+      old.prepare('PRAGMA table_info(mockups)').all().map((r) => (r as { name: string }).name)
+    ).toContain('review_status')
+
+    old.exec(`
+      INSERT INTO tag_categories (id, label) VALUES (1, 'Device');
+      INSERT INTO tags (id, label, category_id) VALUES (1, 'Phone', 1), (2, 'Laptop', 1);
+      INSERT INTO copy_hauls (id) VALUES ('h1');
+      -- 1 and 2: a pile (top 1), 3: on its own and in review, 4: a stale row that is top and member
+      INSERT INTO mockups (id, title, library_path, cover_path, cover_source, review_status, stage, is_group)
+        VALUES (1, 'Top', '/lib/1.psd', '/lib/1.png', 'embedded', 'approved', 'stashed', 1);
+      INSERT INTO mockups (id, title, library_path, cover_path, cover_source, review_status, stage, group_id)
+        VALUES (2, 'Side', '/lib/2.psd', '/lib/2.png', 'embedded', 'approved', 'stashed', 1);
+      INSERT INTO mockups (id, title, library_path, cover_path, cover_source, review_status, stage, favourite)
+        VALUES (3, 'Waiting', '/lib/3.psd', '/lib/3.png', 'embedded', 'needs_review', 'to_stash', 1);
+      INSERT INTO mockups (id, title, library_path, cover_path, cover_source, review_status, stage, is_group, group_id)
+        VALUES (4, 'Stale', '/lib/4.psd', '/lib/4.png', 'embedded', 'approved', 'stashed', 1, 1);
+      INSERT INTO mockup_tags (mockup_id, tag_id) VALUES (1, 1), (2, 1), (3, 2);
+      INSERT INTO drafts (mockup_id, title) VALUES (3, 'Waiting draft');
+      INSERT INTO look_over_resume (unit_id, mockup_id) VALUES (3, 3);
+      INSERT INTO variants (mockup_id, library_path, cover_path, cover_source)
+        VALUES (1, '/lib/v.psd', '/lib/v.png', 'embedded');
+      INSERT INTO embeddings (mockup_id, vector, model_id) VALUES (2, x'00', 'm');
+      INSERT INTO copy_jobs (haul_id, source_path, file_name, status, mockup_id)
+        VALUES ('h1', '/src/3.psd', '3.psd', 'done', 3);
+    `)
+
+    migrate(oldDb, { migrationsFolder: './drizzle' })
+
+    const cols = old
+      .prepare('PRAGMA table_info(mockups)')
+      .all()
+      .map((r) => (r as { name: string }).name)
+    expect(cols).not.toContain('review_status')
+    expect(old.prepare('SELECT id, title, stage, is_group, group_id, favourite FROM mockups ORDER BY id').all()).toEqual([
+      { id: 1, title: 'Top', stage: 'stashed', is_group: 1, group_id: null, favourite: 0 },
+      { id: 2, title: 'Side', stage: 'stashed', is_group: 0, group_id: 1, favourite: 0 },
+      { id: 3, title: 'Waiting', stage: 'to_stash', is_group: 0, group_id: null, favourite: 1 },
+      { id: 4, title: 'Stale', stage: 'stashed', is_group: 1, group_id: null, favourite: 0 }
+    ])
+    // Every table that points at a mockup kept its rows.
+    expect(count(old, 'mockup_tags')).toBe(3)
+    expect(count(old, 'drafts')).toBe(1)
+    expect(count(old, 'look_over_resume')).toBe(1)
+    expect(count(old, 'variants')).toBe(1)
+    expect(count(old, 'embeddings')).toBe(1)
+    expect(count(old, 'copy_jobs')).toBe(1)
+    expect(old.prepare('SELECT mockup_id FROM copy_jobs').get()).toEqual({ mockup_id: 3 })
+    expect(count(old, 'tags')).toBe(2)
+    expect(old.pragma('foreign_key_check')).toEqual([])
+    // The scratch copies are gone and the links still cascade.
+    const names = (old.prepare("SELECT name FROM sqlite_master WHERE name LIKE '\\_\\_%' ESCAPE '\\'").all() as { name: string }[]).map((r) => r.name)
+    expect(names.filter((n) => n.endsWith('_backup'))).toEqual([])
+    old.prepare('DELETE FROM mockups WHERE id = 3').run()
+    expect(count(old, 'drafts')).toBe(0)
+    expect(count(old, 'mockup_tags')).toBe(2)
+    old.close()
+  })
+
+  it('refuses a row that is both a pile top and a member', () => {
+    expect(() =>
+      sqlite.exec(`
+        INSERT INTO mockups (id, title, library_path, cover_path, cover_source) VALUES (1, 'T', '/l/1', '/c/1', 'embedded');
+        INSERT INTO mockups (id, title, library_path, cover_path, cover_source, is_group, group_id)
+          VALUES (2, 'Both', '/l/2', '/c/2', 'embedded', 1, 1);
+      `)
+    ).toThrow(/CHECK constraint failed/)
+  })
+})

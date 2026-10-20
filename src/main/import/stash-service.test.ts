@@ -62,8 +62,7 @@ describe('stash a pile', () => {
     expect(repo.getMockup(top!.id)).toMatchObject({
       title: 'Clay phone',
       description: 'On a stand',
-      stage: 'stashed',
-      reviewStatus: 'approved'
+      stage: 'stashed'
     })
     // The variant took the top's description and tags, and kept its own name.
     expect(repo.getMockup(side!.id)).toMatchObject({ title: 'phone side', description: 'On a stand', stage: 'stashed' })
@@ -128,7 +127,7 @@ describe('stash a pile', () => {
 
     await expect(failing.stashPile(top!.id)).rejects.toThrow()
 
-    expect(repo.getMockup(top!.id)).toMatchObject({ stage: 'to_stash', reviewStatus: 'needs_review', title: 'a' })
+    expect(repo.getMockup(top!.id)).toMatchObject({ stage: 'to_stash', title: 'a' })
     expect(repo.drafts.getDraft(top!.id)).toBeDefined()
     expect(search('a')).toEqual([])
   })
@@ -172,7 +171,7 @@ describe('undo', () => {
     const back = await stash.unstash(res.snapshot)
 
     expect(back.restoredIds.sort()).toEqual([top!.id, side!.id].sort())
-    expect(repo.getMockup(top!.id)).toMatchObject({ title: 'a', stage: 'to_stash', reviewStatus: 'needs_review' })
+    expect(repo.getMockup(top!.id)).toMatchObject({ title: 'a', stage: 'to_stash' })
     expect(repo.getTagsForMockup(top!.id)).toEqual([])
     expect(search('Edited')).toEqual([])
     expect(repo.getInboxCounts()).toMatchObject({ toStash: 1 })
