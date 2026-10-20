@@ -14,6 +14,7 @@ import { syncLibrary } from '../details/library-sync'
 import { disbandPile, putOnTop, removeFromPile } from '../details/pile-actions'
 import { useGuardedSelection } from '../details/use-guarded-selection'
 import { CardMenu, type MenuTarget } from './CardMenu'
+import { openInPhotoshop } from './open-in-photoshop'
 import { usePileItems } from './usePileItems'
 
 const cardTags = (item: LibraryItem, isTop: boolean) =>
@@ -76,21 +77,6 @@ export function PilePage({ pile }: { pile: OpenPile }) {
   const itemOf = (target: EventTarget | null) => {
     const id = cardOf(target)?.dataset.mockupId
     return id === undefined ? undefined : itemById(id)
-  }
-
-  const openInPhotoshop = async (item: LibraryItem) => {
-    const res = await window.api
-      .invoke(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, { mockupId: item.id })
-      .catch(() => null)
-    if (!res?.success || !res.data.opened) {
-      toast({
-        variant: 'error',
-        message:
-          res?.success && res.data.opened === false && res.data.reason === 'no-app'
-            ? 'Photoshop isn’t installed on this Mac.'
-            : 'Couldn’t open this in Photoshop. Try again.'
-      })
-    }
   }
 
   const setFavourite = async (item: LibraryItem, favourite: boolean) => {

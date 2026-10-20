@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem } from '@shared/library'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { openInPhotoshop } from './open-in-photoshop'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
 
 /** The last change that can still be undone, for “Undo …” in the empty-space menu. */
@@ -130,19 +131,6 @@ export function useLibraryActions({
     },
     [clearSelection, refresh, offerUndo]
   )
-
-  const openInPhotoshop = useCallback(async (item: LibraryItem) => {
-    const res = await window.api.invoke(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, { mockupId: item.id })
-    if (res.success && !res.data.opened) {
-      toast({
-        variant: 'error',
-        message:
-          res.data.reason === 'no-app'
-            ? 'Photoshop isn’t installed on this Mac.'
-            : 'Couldn’t open this in Photoshop. Try again.'
-      })
-    }
-  }, [])
 
   return {
     lastUndo,
