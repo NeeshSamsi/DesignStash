@@ -1,16 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { ImportProgress, ImportSummary } from '@shared/ipc'
+import type { ImportProgress } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem } from '@shared/inbox'
 import { BootGate } from './screens/boot/BootGate'
-import GroupingReview from './GroupingReview'
 import ApprovalStepper from './ApprovalStepper'
 import LibraryPage from './screens/library/LibraryPage'
 import InboxPage from './screens/inboxes/InboxPage'
 import TrashPage from './screens/trash/TrashPage'
+import { SortFlow } from './screens/sort'
 import AppShell from './AppShell'
 import DebugMenu from './DebugMenu'
-import { useGroupingStore } from './stores/groupingStore'
 import { useApprovalStore } from './stores/approvalStore'
 import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
@@ -18,16 +17,16 @@ import { useLibraryStore } from './stores/libraryStore'
 import { toast } from './stores/toastStore'
 import { doneMessage } from './lib/inbox-list'
 
-type AddFlow = 'grouping' | 'approval' | null
+type AddFlow = 'approval' | null
 
 /** The app window, once launch is fine and onboarding is done. */
 function AppMain() {
-  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null)
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
   const [isDropping, setIsDropping] = useState(false)
   const [addFlow, setAddFlow] = useState<AddFlow>(null)
+  /** The import batch on the Sort board, or null when it is closed. */
+  const [sortBatch, setSortBatch] = useState<string | null>(null)
 
-  const groupingStore = useGroupingStore()
   const approvalStore = useApprovalStore()
   const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
   const view = useUiStore((s) => s.view)
@@ -86,29 +85,16 @@ function AppMain() {
     setLibraryStats
   ])
 
-  const handleImport = useCallback(
-    async (paths: string[]) => {
-      setImportSummary(null)
-      setImportProgress(null)
-      const result = await window.api.invoke(IPC_CHANNELS.IMPORT_START, { paths })
-      if (result.success) {
-        const summary = result.data
-        setImportSummary(summary)
-        groupingStore.setLoading(true)
-        const proposeRes = await window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, {
-          batchId: summary.batchId
-        })
-        groupingStore.setLoading(false)
-        if (proposeRes.success) {
-          groupingStore.setProposal(proposeRes.data)
-          setAddFlow('grouping')
-        }
-      } else {
-        console.error(result.error)
-      }
-    },
-    [groupingStore]
-  )
+  const handleImport = useCallback(async (paths: string[]) => {
+    setImportProgress(null)
+    const result = await window.api.invoke(IPC_CHANNELS.IMPORT_START, { paths })
+    if (result.success) {
+      // Straight on to sorting what just arrived.
+      setSortBatch(result.data.batchId)
+    } else {
+      console.error(result.error)
+    }
+  }, [])
 
   const handleFileSelect = useCallback(async () => {
     const result = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_PSD_FILES, undefined)
@@ -155,41 +141,17 @@ function AppMain() {
     setIsDropping(false)
   }
 
-  const handleGroupingConfirm = async () => {
-    const batchId = importSummary?.batchId ?? groupingStore.batchId
-    if (!batchId) {
-      setAddFlow(null)
-      return
-    }
-    approvalStore.setInitializing(true)
-    const res = await window.api.invoke(IPC_CHANNELS.APPROVAL_INIT, { batchId })
-    approvalStore.setInitializing(false)
-    if (res.success) {
-      approvalStore.setQueue(res.data)
-      groupingStore.reset()
-      setAddFlow('approval')
-    }
-  }
-
-  // Until the Sort board and Look it over land, the inbox pages hand their cards to the legacy
-  // flows, which work per import batch. They open the batch of the first card that has one.
+  // Until Look it over lands, the inbox pages hand their cards to the legacy approval stepper,
+  // which works per import batch. They open the batch of the first card that has one.
   const batchOf = (items: InboxItem[]) =>
     items.find((item) => item.batchId !== null)?.batchId ?? null
-  const openSort = async (items: InboxItem[]) => {
+  const openSort = (items: InboxItem[]) => {
     const batchId = batchOf(items)
     if (batchId === null)
       return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
-    groupingStore.setLoading(true)
-    const res = await window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, { batchId })
-    groupingStore.setLoading(false)
-    if (!res.success) return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
-    groupingStore.setProposal(res.data)
-    setAddFlow('grouping')
+    setSortBatch(batchId)
   }
-  const openLookOver = async (items: InboxItem[]) => {
-    const batchId = batchOf(items)
-    if (batchId === null)
-      return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
+  const openApproval = async (batchId: string) => {
     approvalStore.setInitializing(true)
     const res = await window.api.invoke(IPC_CHANNELS.APPROVAL_INIT, { batchId })
     approvalStore.setInitializing(false)
@@ -197,10 +159,15 @@ function AppMain() {
     approvalStore.setQueue(res.data)
     setAddFlow('approval')
   }
+  const openLookOver = async (items: InboxItem[]) => {
+    const batchId = batchOf(items)
+    if (batchId === null)
+      return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
+    await openApproval(batchId)
+  }
 
   const handlePipelineCancel = () => {
     setAddFlow(null)
-    groupingStore.reset()
     approvalStore.reset()
   }
 
@@ -242,12 +209,6 @@ function AppMain() {
         onDragLeave={handleDragLeave}
         isDropping={isDropping}
       >
-        {addFlow === 'grouping' && (
-          <GroupingReview
-            onConfirm={() => void handleGroupingConfirm()}
-            onCancel={handlePipelineCancel}
-          />
-        )}
         {addFlow === 'approval' && (
           <ApprovalStepper
             onComplete={() => void handleApprovalComplete()}
@@ -281,6 +242,12 @@ function AppMain() {
         )}
         {addFlow === null && view === 'trash' && <TrashPage />}
       </AppShell>
+      <SortFlow
+        open={sortBatch !== null}
+        batchId={sortBatch}
+        onClose={() => setSortBatch(null)}
+        onLookThemOver={(batchId) => void openApproval(batchId)}
+      />
     </>
   )
 }

@@ -2,18 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from './App'
 import { IPC_CHANNELS } from '@shared/ipc'
-import { useGroupingStore } from './stores/groupingStore'
 import { useApprovalStore } from './stores/approvalStore'
 import { useLibraryStore } from './stores/libraryStore'
 
 beforeEach(() => {
-  useGroupingStore.setState({
-    groups: [],
-    singletons: [],
-    batchId: null,
-    isLoading: false,
-    isConfirming: false
-  })
   useApprovalStore.setState({
     queue: [],
     currentIndex: 0,
@@ -240,8 +232,8 @@ describe('App', () => {
     }
     fireEvent.drop(dropzone, { dataTransfer })
 
-    // GroupingReview appears — confirm grouping
-    const confirmBtn = await screen.findByRole('button', { name: 'Confirm' })
+    // The Sort board opens on the batch — carry on to Look it over
+    const confirmBtn = await screen.findByRole('button', { name: 'Look them over' })
     fireEvent.click(confirmBtn)
 
     // ApprovalStepper appears — approve the single item
@@ -281,7 +273,7 @@ describe('App', () => {
     })
   })
 
-  it('Sort on To sort opens the grouping review for the cards’ import batch', async () => {
+  it('Sort on To sort opens the Sort board for the cards’ import batch', async () => {
     const base = window.api.invoke as ReturnType<typeof vi.fn>
     const previous = base.getMockImplementation() as (c: string, r: unknown) => unknown
     base.mockImplementation(async (channel: string, request: unknown) => {
@@ -326,5 +318,9 @@ describe('App', () => {
         batchId: 'batch-7'
       })
     )
+    expect(await screen.findByRole('application', { name: 'Sort board' })).toBeTruthy()
+    expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.SORT_BOARD_LOAD, {
+      batchId: 'batch-7'
+    })
   })
 })
