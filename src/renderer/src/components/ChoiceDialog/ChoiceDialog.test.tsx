@@ -86,4 +86,15 @@ describe('ChoiceDialog without a middle choice', () => {
     expect(screen.getByRole('button', { name: 'Use this stash' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Point only' })).toBeNull()
   })
+
+  it('a very long name never widens or scrolls the dialog sideways', () => {
+    const long = 'A'.repeat(200) + '.psd'
+    render(<ChoiceDialog open title={`Save changes to ${long}?`} onTertiary={vi.fn()} />)
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog.className).toContain('overflow-x-hidden')
+    expect(dialog.className).toContain('*:min-w-0')
+    expect(dialog.textContent).toContain(long)
+    const named = screen.getAllByText(new RegExp(long))[0]!
+    expect(named.className).toMatch(/truncate|wrap-anywhere/)
+  })
 })

@@ -74,9 +74,15 @@ export function ConfirmDialog({
       <DialogHeading title={props.title} description={props.description} />
       {props.detail && (
         <div className="flex items-center gap-3 rounded-md bg-surface-3 px-3 py-2.5">
-          <HugeiconsIcon icon={detailIcon} strokeWidth={2} className="size-5 shrink-0 text-tertiary" />
+          <HugeiconsIcon
+            icon={detailIcon}
+            strokeWidth={2}
+            className="size-5 shrink-0 text-tertiary"
+          />
           <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="type-body-sm-medium truncate text-foreground">{props.detailTitle}</p>
+            <p title={props.detailTitle} className="type-body-sm-medium truncate text-foreground">
+              {props.detailTitle}
+            </p>
             <p className="type-caption-xs-regular text-tertiary">{props.detailMeta}</p>
           </div>
         </div>

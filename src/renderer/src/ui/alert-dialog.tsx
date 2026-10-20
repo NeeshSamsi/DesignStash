@@ -58,7 +58,7 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid max-h-viewport w-full max-w-viewport -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border border-base bg-surface-2 p-6 text-foreground duration-100 outline-none data-[size=default]:max-w-96 data-[size=sm]:max-w-80 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid max-h-viewport w-full max-w-viewport -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-hidden overflow-y-auto *:min-w-0 rounded-xl border border-base bg-surface-2 p-6 text-foreground duration-100 outline-none data-[size=default]:max-w-96 data-[size=sm]:max-w-80 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -123,7 +123,7 @@ function AlertDialogTitle({
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "type-title-lg-semibold text-foreground",
+        "type-title-lg-semibold wrap-anywhere text-foreground",
         className
       )}
       {...props}
@@ -139,7 +139,7 @@ function AlertDialogDescription({
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
       className={cn(
-        "type-body-sm-regular text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        "type-body-sm-regular wrap-anywhere text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
         className
       )}
       {...props}

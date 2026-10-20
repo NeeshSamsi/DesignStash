@@ -4,7 +4,6 @@ import { variantMatrix } from '@renderer/design-system/matrix'
 import { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog'
 import { CONFIRM_DIALOG_CONTRACT } from './ConfirmDialog.types'
 
-
 /** Buttons with a filled colour (primary or destructive); secondary and ghost are not filled. */
 const filled = (root: ParentNode) =>
   [...root.querySelectorAll('[data-slot="button"]')].filter((b) =>
@@ -29,7 +28,9 @@ describe('ConfirmDialog', () => {
       const { container, unmount } = render(<ConfirmDialog variant={variant} />)
       const buttons = filled(container)
       expect(buttons).toHaveLength(1)
-      expect(buttons[0]!.getAttribute('data-variant')).toBe(variant === 'destructive' ? 'destructive' : 'default')
+      expect(buttons[0]!.getAttribute('data-variant')).toBe(
+        variant === 'destructive' ? 'destructive' : 'default'
+      )
       unmount()
     }
   })
@@ -110,9 +111,15 @@ describe('ConfirmDialog', () => {
 
   it('while working: shows the working label, disables both buttons and ignores Esc', () => {
     const onCancel = vi.fn()
-    render(<ConfirmDialog open working variant="destructive" onConfirm={vi.fn()} onCancel={onCancel} />)
-    expect((screen.getByRole('button', { name: 'Deleting…' }) as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true)
+    render(
+      <ConfirmDialog open working variant="destructive" onConfirm={vi.fn()} onCancel={onCancel} />
+    )
+    expect((screen.getByRole('button', { name: 'Deleting…' }) as HTMLButtonElement).disabled).toBe(
+      true
+    )
+    expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(
+      true
+    )
     fireEvent.keyDown(screen.getByRole('alertdialog'), { key: 'Escape' })
     expect(onCancel).not.toHaveBeenCalled()
   })
@@ -120,5 +127,25 @@ describe('ConfirmDialog', () => {
   it('names the consequence in the detail row', () => {
     render(<ConfirmDialog detailTitle="Clay iPhone 15 Pro" detailMeta="5 files · 184 MB" />)
     expect(screen.getByText('5 files · 184 MB')).toBeTruthy()
+  })
+
+  it('a very long name never widens or scrolls the dialog sideways', () => {
+    const long = 'A'.repeat(200) + '.psd'
+    render(
+      <ConfirmDialog
+        open
+        variant="destructive"
+        title={`Delete ${long} for good?`}
+        detailTitle={long}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog.className).toContain('overflow-x-hidden')
+    expect(dialog.className).toContain('*:min-w-0')
+    expect(dialog.textContent).toContain(long)
+    const named = screen.getAllByText(long)[0]!
+    expect(named.className).toMatch(/truncate|wrap-anywhere/)
   })
 })
