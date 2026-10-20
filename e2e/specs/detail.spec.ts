@@ -319,6 +319,22 @@ test.describe('Details sidebar', () => {
           ).length
       )
       expect(left, 'no card keeps a transition name once it has finished').toBe(0)
+      // The header and toolbar are never inside a scaled group, and nothing keeps a mover's name.
+      const names = await window.evaluate(() => {
+        const named = (el: Element | null) => {
+          for (let node = el; node; node = node.parentElement) {
+            const name = (node as HTMLElement).style?.viewTransitionName
+            if (name) return name
+          }
+          return ''
+        }
+        return {
+          header: named(document.querySelector('[data-ds="PageHeader"] h1')),
+          toolbarEnd: named(document.querySelector('[data-ds="LibraryToolbar"] > :last-child'))
+        }
+      })
+      expect(names.header, 'the header is in no named group').toBe('')
+      expect(names.toolbarEnd, 'the toolbar end is unnamed once finished').toBe('')
     }
     await clickCard(window)
     await expect(panel(window)).toBeVisible()

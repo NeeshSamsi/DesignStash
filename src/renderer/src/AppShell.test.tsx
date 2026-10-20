@@ -6,6 +6,7 @@ import { useLibraryStore } from './stores/libraryStore'
 import { useDetailsStore } from './stores/detailsStore'
 import { shortcuts } from './lib/shortcuts'
 import { toast as sonnerToast } from 'sonner'
+import { nameSideMovers } from './lib/panel-transition'
 import { IPC_CHANNELS } from '@shared/ipc'
 
 beforeEach(() => {
@@ -460,10 +461,14 @@ describe('AppShell details sidebar and pile page', () => {
     )
     const aside = () => document.querySelector('[data-slot="aside"]')!
     expect(aside().getAttribute('data-open')).toBe('false')
-    expect(document.querySelector('main')!.className).toContain('rounded-tr-none')
+    expect(document.querySelector('[data-slot="main-panel-bg"]')!.className).toContain(
+      'rounded-tr-none'
+    )
     act(() => useDetailsStore.getState().syncTarget(5))
     expect(aside().getAttribute('data-open')).toBe('true')
-    expect(document.querySelector('main')!.className).toContain('rounded-tr-3xl')
+    expect(document.querySelector('[data-slot="main-panel-bg"]')!.className).toContain(
+      'rounded-tr-3xl'
+    )
     act(() => useDetailsStore.getState().syncTarget(null))
     expect(aside().getAttribute('data-open')).toBe('false')
   })
@@ -490,7 +495,14 @@ describe('AppShell details sidebar and pile page', () => {
         <div>content</div>
       </AppShell>
     )
-    expect(document.querySelector<HTMLElement>('main')!.style.viewTransitionName).toBe('main-panel')
+    // The panel's content is never named: only its empty surface layer morphs.
+    expect(document.querySelector<HTMLElement>('main')!.style.viewTransitionName).toBe('')
+    expect(
+      document.querySelector<HTMLElement>('[data-slot="main-panel-bg"]')!.style.viewTransitionName
+    ).toBe('main-panel-bg')
+    expect(
+      document.querySelector<HTMLElement>('[data-slot="window-bg"]')!.style.viewTransitionName
+    ).toBe('window-bg')
     expect(
       document.querySelector<HTMLElement>('[data-ds="ActivityDock"]')!.style.viewTransitionName
     ).toBe('activity-dock')
@@ -522,5 +534,45 @@ describe('AppShell details sidebar and pile page', () => {
     act(() => useDetailsStore.getState().syncTarget(null))
     expect(dock().style.right).toBe('16px')
     expect(toaster().style.getPropertyValue('--offset-right')).toBe('16px')
+  })
+
+  it('never scales text: no header or toolbar text sits inside a named group, and only sideways movers are named', () => {
+    useDetailsStore.getState().openPile({ id: 1, title: 'Clay', count: 2, select: 1, edit: false })
+    render(
+      <AppShell>
+        <div data-ds="LibraryToolbar">
+          <div>Filter</div>
+          <div>
+            <p>128 items</p>
+            <button>Date added</button>
+          </div>
+        </div>
+      </AppShell>
+    )
+    const named = (el: Element | null) => {
+      for (let node = el; node; node = node.parentElement) {
+        const name = (node as HTMLElement).style?.viewTransitionName
+        if (name) return name
+      }
+      return null
+    }
+    const header = document.querySelector('[data-ds="PageHeader"]')!
+    expect(named(header.querySelector('h1'))).toBeNull()
+    expect(named(header.querySelector('p'))).toBeNull()
+    expect(named(screen.getByText('Filter'))).toBeNull()
+
+    // While a transition runs, only the sideways movers (and cards) carry names.
+    const undo = nameSideMovers(document)
+    expect(named(screen.getByText('128 items'))).toBe('toolbar-end')
+    expect(named(screen.getByText('Date added'))).toBe('toolbar-end')
+    expect(named(screen.getByText('Filter'))).toBeNull()
+    expect(named(header.querySelector('h1'))).toBeNull()
+    expect(named(header.querySelector('p'))).toBeNull()
+    expect(
+      document.querySelector<HTMLElement>('[data-slot="page-header-actions"]')!.style
+        .viewTransitionName
+    ).toBe('header-actions')
+    undo()
+    expect(named(screen.getByText('128 items'))).toBeNull()
   })
 })

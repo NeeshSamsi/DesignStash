@@ -51,6 +51,28 @@ export function nameVisibleCards(doc: TransitionDocument, view: DOMRect | null):
 }
 
 /**
+ * Things that only slide sideways when the panel narrows: the same size in both layouts, so their
+ * group is a pure translate and nothing scales. Everything else in the page stays in the root image
+ * and just shows its new state, so no header or toolbar text is ever stretched.
+ */
+export const SIDE_MOVERS: ReadonlyArray<readonly [selector: string, name: string]> = [
+  ['[data-ds="LibraryToolbar"] > :last-child', 'toolbar-end'],
+  ['[data-slot="page-header-actions"]', 'header-actions']
+]
+
+/** Names the sideways movers for the length of a transition. Returns what to undo. */
+export function nameSideMovers(doc: TransitionDocument): () => void {
+  const named: HTMLElement[] = []
+  for (const [selector, name] of SIDE_MOVERS) {
+    const el = doc.querySelectorAll<HTMLElement>(selector)[0]
+    if (!el) continue
+    el.style.setProperty('view-transition-name', name)
+    named.push(el)
+  }
+  return () => named.forEach((el) => el.style.removeProperty('view-transition-name'))
+}
+
+/**
  * Applies a layout change that opens or closes the details sidebar, morphing the page between the
  * two states with the View Transitions API: every visible card moves and resizes to its new place, the
  * main panel changes width, and the sidebar slides. `apply` changes React state; it runs inside the
@@ -76,7 +98,12 @@ export function panelTransition(
   const root = doc.documentElement
   root.dataset.panelMotion = direction
   const main = doc.querySelectorAll<HTMLElement>('main')[0]
-  const forget = nameVisibleCards(doc, main?.getBoundingClientRect() ?? null)
+  const forgetCards = nameVisibleCards(doc, main?.getBoundingClientRect() ?? null)
+  const forgetMovers = nameSideMovers(doc)
+  const forget = () => {
+    forgetCards()
+    forgetMovers()
+  }
 
   const transition = doc.startViewTransition(() => flushSync(apply))
   running = transition

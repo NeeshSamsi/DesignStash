@@ -25,14 +25,34 @@ html[data-panel-motion='close']::view-transition-group(*) {
   animation-timing-function: var(--ease-panel-out);
 }
 
-/* What did not change shape (the nav, the header's text) only needs to stay put: no cross-fade flicker. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: var(--duration-panel-open);
+/*
+ * The page underneath is not animated: it just shows its new state at once. Only what has a name
+ * morphs (the cards, the panel's empty surface layer, the toolbar's right end, the title-row actions,
+ * the dock and toasts) and the sidebar slides. The header, the toolbar's left side and every other
+ * piece of text stay in this image, so none of it is ever scaled.
+ */
+::view-transition-old(root) {
+  display: none;
 }
-html[data-panel-motion='close']::view-transition-old(root),
-html[data-panel-motion='close']::view-transition-new(root) {
-  animation-duration: var(--duration-panel-container-close);
+::view-transition-new(root) {
+  animation: none;
+}
+
+/*
+ * The two surface layers sit below the page image, which must therefore be see-through where they are:
+ * the window's surface (window-bg) and the panel's (main-panel-bg) are layers of their own, so
+ * the page's content is what is left in the root image.
+ */
+html[data-panel-motion],
+html[data-panel-motion] body {
+  background: transparent;
+}
+::view-transition-group(window-bg) {
+  z-index: -2;
+  animation: none;
+}
+::view-transition-group(main-panel-bg) {
+  z-index: -1;
 }
 
 /* The sidebar enters as one block from the right, 40ms behind the container, fading in over its first 100ms. */

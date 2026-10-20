@@ -63,7 +63,9 @@ export function PageHeader({ children, className, onParent, ...rest }: PageHeade
           </TruncatedText>
         </Title>
         {children !== undefined && children !== null && (
-          <div className="flex shrink-0 items-start gap-2">{children}</div>
+          <div data-slot="page-header-actions" className="flex shrink-0 items-start gap-2">
+            {children}
+          </div>
         )}
       </div>
       {props.showDescription && <p className={pageHeaderDescriptionClass}>{props.description}</p>}
