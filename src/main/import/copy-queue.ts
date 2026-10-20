@@ -177,8 +177,8 @@ export class CopyQueue {
     // Only this haul's file in flight matters. Later hauls keep going while the undo finishes.
     if (this.inFlight?.haulId === haulId) await this.inFlight.settled
 
-    const { ids } = this.repo.collectTossable(this.repo.copyJobs.landedMockupIds(haulId))
-    const removed = this.repo.deleteMockupsHard(ids)
+    const { ids } = this.repo.inbox.collectTossable(this.repo.copyJobs.landedMockupIds(haulId))
+    const removed = this.repo.trash.deleteMockupsHard(ids)
     await removeAppCopies(this.root, removed, this.deps.rm)
     this.repo.copyJobs.setHaulState(haulId, { state: 'undone' })
     this.repo.copyJobs.forgetPendingSources(haulId)
@@ -281,7 +281,7 @@ export class CopyQueue {
       })
       this.live = null
 
-      if (this.repo.mockupExistsByHash(sha256)) {
+      if (this.repo.mockups.mockupExistsByHash(sha256)) {
         await this.deps.rm(destDir).catch(() => {})
         return skip('duplicate')
       }
@@ -292,7 +292,7 @@ export class CopyQueue {
         outDir: destDir
       })
 
-      const mockup = this.repo.createMockup({
+      const mockup = this.repo.mockups.createMockup({
         title: basename(job.fileName, extname(job.fileName)),
         libraryPath,
         coverPath: cover.source === 'none' ? '' : cover.coverPath,
