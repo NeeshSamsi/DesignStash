@@ -59,6 +59,13 @@ export class Repository {
   confirmGroupings(...a: Args<PileRepository['confirmGroupings']>) { return this.piles.confirmGroupings(...a) }
   ungroupGroup(...a: Args<PileRepository['ungroupGroup']>) { return this.piles.ungroupGroup(...a) }
   collectGroupIds(...a: Args<PileRepository['collectGroupIds']>) { return this.piles.collectGroupIds(...a) }
+  getPileRows(...a: Args<PileRepository['getPileRows']>) { return this.piles.getPileRows(...a) }
+  restorePileRows(...a: Args<PileRepository['restorePileRows']>) { return this.piles.restorePileRows(...a) }
+  createPile(...a: Args<PileRepository['createPile']>) { return this.piles.createPile(...a) }
+  addToPile(...a: Args<PileRepository['addToPile']>) { return this.piles.addToPile(...a) }
+  mergePiles(...a: Args<PileRepository['mergePiles']>) { return this.piles.mergePiles(...a) }
+  setPileTop(...a: Args<PileRepository['setPileTop']>) { return this.piles.setPileTop(...a) }
+  disbandPile(...a: Args<PileRepository['disbandPile']>) { return this.piles.disbandPile(...a) }
 
   // Tags and categories
   getCategoryByLabel(...a: Args<TagRepository['getCategoryByLabel']>) { return this.tags.getCategoryByLabel(...a) }
@@ -96,5 +103,7 @@ export class Repository {
   getTrash() { return this.trash.getTrash() }
   moveToTrash(...a: Args<TrashRepository['moveToTrash']>) { return this.trash.moveToTrash(...a) }
   restore(...a: Args<TrashRepository['restore']>) { return this.trash.restore(...a) }
+  moveManyToTrash(...a: Args<TrashRepository['moveManyToTrash']>) { return this.trash.moveManyToTrash(...a) }
+  restoreMany(...a: Args<TrashRepository['restoreMany']>) { return this.trash.restoreMany(...a) }
   deleteMockupsHard(...a: Args<TrashRepository['deleteMockupsHard']>) { return this.trash.deleteMockupsHard(...a) }
 }

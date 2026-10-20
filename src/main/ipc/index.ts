@@ -11,6 +11,7 @@ import { registerTagHandlers } from './tags'
 import { registerLibraryHandlers } from './library'
 import { registerTrashHandlers } from './trash'
 import { registerMockupHandlers } from './mockup'
+import { registerPileHandlers } from './pile'
 import { registerIntegrityHandlers } from './integrity'
 import { registerTelemetryHandlers } from './telemetry'
 import { registerEntitlementsHandlers } from './entitlements'
@@ -29,6 +30,7 @@ export function registerAllHandlers(ctx: HandlerContext): void {
   registerLibraryHandlers(ctx)
   registerTrashHandlers(ctx)
   registerMockupHandlers(ctx)
+  registerPileHandlers(ctx)
   registerIntegrityHandlers(ctx)
   registerTelemetryHandlers(ctx)
   registerEntitlementsHandlers()

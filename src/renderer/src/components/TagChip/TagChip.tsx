@@ -52,7 +52,7 @@ function RemoveButton({
 }: {
   label: string
   marked: boolean
-  onRemove?: () => void
+  onRemove?: (() => void) | undefined
 }) {
   return (
     <button

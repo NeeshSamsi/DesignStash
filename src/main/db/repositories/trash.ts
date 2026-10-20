@@ -33,6 +33,30 @@ export class TrashRepository {
     this.search.removeSearchIndex(id)
   }
 
+  /** Move several mockups (or piles) to Trash together, so they share one timestamp. Returns how many moved. */
+  moveManyToTrash(ids: number[]): number {
+    const deletedAt = new Date().toISOString()
+    let moved = 0
+    for (const id of new Set(ids)) {
+      if (!this.mockups.getMockup(id)) continue
+      this.db.update(mockups).set({ deletedAt }).where(eq(mockups.id, id)).run()
+      this.search.removeSearchIndex(id)
+      moved++
+    }
+    return moved
+  }
+
+  /** Bring several mockups (or piles) back from Trash. Returns how many came back. */
+  restoreMany(ids: number[]): number {
+    let restored = 0
+    for (const id of new Set(ids)) {
+      if (!this.mockups.getMockup(id)) continue
+      this.restore(id)
+      restored++
+    }
+    return restored
+  }
+
   restore(id: number): void {
     this.db.update(mockups).set({ deletedAt: null }).where(eq(mockups.id, id)).run()
     const m = this.mockups.getMockup(id)

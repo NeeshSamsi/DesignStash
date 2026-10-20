@@ -1,8 +1,11 @@
 import { IPC_CHANNELS } from '@shared/ipc'
+import { PileService } from '../library/pile-service'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
 export function registerMockupHandlers({ repo, library }: HandlerContext): void {
+  const piles = new PileService(repo)
+
   registerIpcHandler(IPC_CHANNELS.MOCKUP_DETAIL, (args) => {
     const detail = repo.getMockupDetail(args.mockupId)
     if (!detail.mockup) throw new Error(`Mockup ${args.mockupId} not found`)
@@ -37,7 +40,8 @@ export function registerMockupHandlers({ repo, library }: HandlerContext): void 
   )
 
   registerIpcHandler(IPC_CHANNELS.GROUP_UNGROUP, (args) => {
-    repo.ungroupGroup(args.leaderId)
+    // Kept for the old screens; WP2.7 moves them to PILE_DISBAND and removes this channel.
+    piles.disband(args.leaderId)
     return { ungrouped: true }
   })
 

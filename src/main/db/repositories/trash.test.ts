@@ -82,6 +82,51 @@ describe('moveToTrash / restore', () => {
   })
 })
 
+describe('moveManyToTrash / restoreMany', () => {
+  beforeEach(() => ensureSearchIndex(db))
+
+  it('moves several mockups together with one timestamp and skips ids that do not exist', () => {
+    const a = repo.createMockup(approvedMockup({ title: 'A', libraryPath: '/lib/ma.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'B', libraryPath: '/lib/mb.psd' }))
+    const keep = repo.createMockup(approvedMockup({ title: 'Keep', libraryPath: '/lib/mk.psd' }))
+
+    const moved = repo.moveManyToTrash([a.id, b.id, a.id, 9999])
+
+    expect(moved).toBe(2)
+    expect(repo.getMockup(a.id)?.deletedAt).not.toBeNull()
+    expect(repo.getMockup(a.id)?.deletedAt).toBe(repo.getMockup(b.id)?.deletedAt)
+    expect(repo.getMockup(keep.id)?.deletedAt).toBeNull()
+    expect(repo.getTrash().map((r) => r.id).sort()).toEqual([a.id, b.id].sort())
+  })
+
+  it('brings several back and re-indexes them', () => {
+    const a = repo.createMockup(approvedMockup({ title: 'Alpha', libraryPath: '/lib/ra.psd' }))
+    const b = repo.createMockup(approvedMockup({ title: 'Bravo', libraryPath: '/lib/rb.psd' }))
+    repo.moveManyToTrash([a.id, b.id])
+
+    const restored = repo.restoreMany([a.id, b.id, 9999])
+
+    expect(restored).toBe(2)
+    expect(repo.getTrash()).toHaveLength(0)
+    expect(repo.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([a.id, b.id])
+    expect(repo.getLibrary({ query: 'Bravo', sort: 'date' }).map((r) => r.id)).toEqual([b.id])
+  })
+
+  it('trashes and restores a pile as one', () => {
+    const top = repo.createMockup(
+      approvedMockup({ title: 'Top', libraryPath: '/lib/pt.psd', isGroup: true })
+    )
+    repo.createMockup(approvedMockup({ title: 'V', libraryPath: '/lib/pv.psd', groupId: top.id }))
+
+    repo.moveManyToTrash([top.id])
+    expect(repo.getLibrary({ sort: 'date' })).toHaveLength(0)
+    expect(repo.getTrash().map((r) => r.id)).toEqual([top.id])
+
+    repo.restoreMany([top.id])
+    expect(repo.getLibrary({ sort: 'date' }).map((r) => r.id)).toEqual([top.id])
+  })
+})
+
 describe('deleteMockupsHard', () => {
   beforeEach(() => ensureSearchIndex(db))
 

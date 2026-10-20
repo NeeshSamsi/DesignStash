@@ -136,7 +136,7 @@ export function TagEditor({
   )
 
   const [adding, setAdding] = useState(seed.adding)
-  const [draft, setDraft] = useState(seed.draft)
+  const [draft, setDraft] = useState<string>(seed.draft)
   const [active, setActive] = useState('')
   const lastTagId = tags[tags.length - 1]?.tagId
   const [markedId, setMarkedId] = useState<number | null>(
@@ -234,6 +234,7 @@ export function TagEditor({
   const runQueue = (names: string[]) => {
     for (let i = 0; i < names.length; i++) {
       const name = names[i]
+      if (name === undefined) continue
       if (tagsRef.current.some((tag) => same(tag.label, name))) continue
       const known = vocabulary
         .flatMap((category) => category.tags.map((tag) => ({ ...tag, category })))
@@ -320,7 +321,7 @@ export function TagEditor({
   const step = (delta: number) => {
     if (items.length === 0) return
     const at = items.indexOf(current ?? '')
-    setActive(items[(at + delta + items.length) % items.length])
+    setActive(items[(at + delta + items.length) % items.length] ?? '')
   }
 
   const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
