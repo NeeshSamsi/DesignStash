@@ -300,6 +300,27 @@ describe('tag management — merge / delete / deleteCategory (M8.2)', () => {
     expect(repo.getTagsForMockup(m.id).map((t) => t.id)).toContain(clash.id)
   })
 
+  it('deleteCategory leaves everything where it was when a move fails midway', () => {
+    const cats = repo.getAllCategories()
+    const angle = cats.find((c) => c.label === 'Angle')!
+    const environment = cats.find((c) => c.label === 'Environment')!
+    const inAngle = repo.getAllTags().filter((t) => t.categoryId === angle.id)
+    expect(inAngle.length).toBeGreaterThan(2)
+    const m = repo.createMockup(approvedMockup({ title: 'Kept', libraryPath: '/lib/kept.psd' }))
+    for (const t of inAngle) repo.addTagToMockup(m.id, t.id)
+    // The last tag cannot move, so the ones before it must not stay moved.
+    const stuck = inAngle.reduce((a, b) => (b.id > a.id ? b : a))
+    sqlite.exec(`CREATE TRIGGER stuck_tag BEFORE UPDATE OF category_id ON tags
+      WHEN OLD.id = ${stuck.id} BEGIN SELECT RAISE(ABORT, 'stuck'); END`)
+    const before = repo.getAllTags().map((t) => `${t.id}:${t.categoryId}`)
+
+    expect(() => repo.deleteCategory(angle.id, environment.id)).toThrow(/stuck/)
+
+    expect(repo.getAllTags().map((t) => `${t.id}:${t.categoryId}`)).toEqual(before)
+    expect(repo.getAllCategories().find((c) => c.id === angle.id)).toBeDefined()
+    expect(repo.getTagsForMockup(m.id)).toHaveLength(inAngle.length)
+  })
+
   it('deleteCategory rejects moving tags into itself or a missing category', () => {
     const angle = repo.getAllCategories().find((c) => c.label === 'Angle')!
     expect(() => repo.deleteCategory(angle.id, angle.id)).toThrow()
