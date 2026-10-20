@@ -46,6 +46,16 @@ const popover = () => within(document.querySelector('[data-slot="popover-content
 const key = (el: HTMLElement, name: string, init: KeyboardEventInit = {}) =>
   fireEvent.keyDown(el, { key: name, ...init })
 
+/** The web tsconfig doesn't type Node's `process`; vitest runs in Node, so it is there. */
+const nodeProcess = (
+  globalThis as unknown as {
+    process: {
+      on: (event: 'unhandledRejection', fn: (reason: unknown) => void) => void
+      off: (event: 'unhandledRejection', fn: (reason: unknown) => void) => void
+    }
+  }
+).process
+
 describe('TagEditor · inline add', () => {
   it('renders the add chip first, then your tags, then a divider and AI suggestions', () => {
     render(<Harness />)
@@ -153,7 +163,7 @@ describe('TagEditor · inline add', () => {
   it('keeps the input, the typed text and the popover when creating a tag fails', async () => {
     const onCreateTag = vi.fn().mockRejectedValue(new Error('offline'))
     const unhandled = vi.fn()
-    process.on('unhandledRejection', unhandled)
+    nodeProcess.on('unhandledRejection', unhandled)
     try {
       render(<Harness onCreateTag={onCreateTag} />)
       const input = openInput()
@@ -169,7 +179,7 @@ describe('TagEditor · inline add', () => {
       expect(open.value).toBe('terracotta')
       expect(popover().getByText('No “terracotta” tag yet. Add it to…')).toBeTruthy()
     } finally {
-      process.off('unhandledRejection', unhandled)
+      nodeProcess.off('unhandledRejection', unhandled)
     }
   })
 
