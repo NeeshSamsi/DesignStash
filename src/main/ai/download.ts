@@ -3,21 +3,79 @@ import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { getModel, MODEL_FILE_NAMES } from './registry'
 
+/** Why a download stopped. These are the only reasons the screen ever shows. */
+export type DownloadFailure = 'offline' | 'disk-full' | 'checksum' | 'server'
+
+export class DownloadError extends Error {
+  constructor(readonly reason: DownloadFailure) {
+    super(`Download failed: ${reason}`)
+    this.name = 'DownloadError'
+  }
+}
+
 export interface DownloadProgress {
   modelId: string
+  /** Both files together. */
   receivedBytes: number
   totalBytes: number
   phase: 'downloading' | 'verifying' | 'done'
+  /** Recent speed. 0 until there is enough to measure. */
+  bytesPerSecond: number
+  /** null until the speed is known. */
+  secondsLeft: number | null
+}
+
+export interface DownloaderOpts {
+  fetchImpl?: typeof fetch
+  /** Free bytes on the volume holding `path`. */
+  freeBytes?: (path: string) => Promise<number>
+  now?: () => number
+}
+
+/** Speed is measured over this many milliseconds, so it settles instead of jumping. */
+const SPEED_WINDOW_MS = 5000
+/** Room kept free beyond the download itself. */
+const DISK_MARGIN_BYTES = 256 * 1024 * 1024
+
+const NETWORK_CODES = new Set([
+  'ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENETUNREACH', 'ENETDOWN', 'EHOSTUNREACH', 'UND_ERR_SOCKET'
+])
+
+/** Turn whatever went wrong into one of the four reasons. A cancel is passed through untouched. */
+export function classifyDownloadError(err: unknown): Error {
+  if (err instanceof DownloadError) return err
+  if ((err as { name?: string } | null)?.name === 'AbortError') return err as Error
+  const codes: string[] = []
+  for (let e: unknown = err; e instanceof Error && codes.length < 4; e = e.cause) {
+    codes.push((e as NodeJS.ErrnoException).code ?? '')
+  }
+  if (codes.includes('ENOSPC')) return new DownloadError('disk-full')
+  if (codes.some((c) => NETWORK_CODES.has(c))) return new DownloadError('offline')
+  // fetch reports an unreachable network as a bare TypeError.
+  if (err instanceof TypeError && /fetch failed|network|Failed to fetch/i.test(err.message)) {
+    return new DownloadError('offline')
+  }
+  return new DownloadError('server')
 }
 
 export class ModelDownloader {
   constructor(
     private modelsDir: string,
-    private opts?: { fetchImpl?: typeof fetch }
+    private opts?: DownloaderOpts
   ) {}
 
   private get fetch() {
     return this.opts?.fetchImpl ?? fetch
+  }
+
+  private get now() {
+    return this.opts?.now ?? Date.now
+  }
+
+  private async freeBytes(path: string): Promise<number> {
+    if (this.opts?.freeBytes) return this.opts.freeBytes(path)
+    const s = await fs.statfs(path)
+    return s.bavail * s.bsize
   }
 
   private modelPath(id: string): string {
@@ -25,67 +83,92 @@ export class ModelDownloader {
   }
 
   private async verifyChecksum(filePath: string, expectedSha256: string): Promise<boolean> {
-    const fileBuffer = await fs.readFile(filePath)
-    const hash = createHash('sha256').update(fileBuffer).digest('hex')
-    return hash === expectedSha256
+    const hash = createHash('sha256')
+    const file = await fs.open(filePath, 'r')
+    try {
+      for await (const chunk of file.createReadStream()) hash.update(chunk as Buffer)
+    } finally {
+      await file.close()
+    }
+    return hash.digest('hex') === expectedSha256
+  }
+
+  private async sizeOf(path: string): Promise<number> {
+    return fs.stat(path).then((s) => s.size, () => 0)
+  }
+
+  /** Bytes already on disk for a model, finished or partial. A stopped download resumes from here. */
+  async downloadedBytes(id: string): Promise<number> {
+    const model = getModel(id)
+    if (!model) return 0
+    let sum = 0
+    for (const kind of ['model', 'mmproj'] as const) {
+      const final = await this.sizeOf(join(this.modelPath(id), MODEL_FILE_NAMES[kind]))
+      sum += final > 0 ? final : await this.sizeOf(join(this.modelPath(id), `${MODEL_FILE_NAMES[kind]}.part`))
+    }
+    return sum
   }
 
   private async downloadFile(
     url: string,
     destPath: string,
     expectedSize: number,
-    opts: {
-      onProgress: (received: number, total: number) => void
-      signal?: AbortSignal
-    }
+    opts: { onProgress: (received: number) => void; signal?: AbortSignal }
   ): Promise<void> {
-    let receivedBytes = 0
+    let receivedBytes = await this.sizeOf(destPath)
+    // A part file longer than the file can't be right.
+    if (receivedBytes > expectedSize) {
+      await fs.rm(destPath, { force: true })
+      receivedBytes = 0
+    }
+    opts.onProgress(receivedBytes)
+    // Already complete, only left to verify.
+    if (receivedBytes === expectedSize) return
+
     const headers = new Headers()
+    if (receivedBytes > 0) headers.append('Range', `bytes=${receivedBytes}-`)
 
+    let response: Response
     try {
-      const stat = await fs.stat(destPath)
-      if (stat.size > 0) {
-        receivedBytes = stat.size
-        headers.append('Range', `bytes=${receivedBytes}-`)
-      }
-    } catch {
-      // file doesn't exist, proceed
+      response = await this.fetch(url, { headers, signal: opts.signal ?? null })
+    } catch (err) {
+      throw classifyDownloadError(err)
     }
 
-    const response = await this.fetch(url, { headers, signal: opts.signal ?? null })
+    if (!response.ok && response.status !== 206) throw new DownloadError('server')
+    if (!response.body) throw new DownloadError('server')
 
-    if (!response.ok && response.status !== 206) {
-      throw new Error(`Failed to download: ${response.statusText}`)
+    // The server ignored the Range request and is sending the whole file: start over.
+    let flags = 'a'
+    if (receivedBytes > 0 && response.status === 200) {
+      receivedBytes = 0
+      flags = 'w'
     }
-    if (!response.body) {
-      throw new Error('Response has no body')
-    }
 
-    // Use the server's actual Content-Length so progress is always accurate.
-    // For range requests the header reflects remaining bytes; add the partial we already have.
-    const contentLength = response.headers.get('content-length')
-    const totalBytes = contentLength ? Number(contentLength) + receivedBytes : expectedSize
-    opts.onProgress(receivedBytes, totalBytes)
-
-    const writeStream = createWriteStream(destPath, { flags: 'a' })
+    const writeStream = createWriteStream(destPath, { flags })
+    let writeError: unknown = null
+    writeStream.on('error', (e) => (writeError = e))
     const reader = response.body.getReader()
 
     try {
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        if (opts.signal?.aborted) {
-          throw new DOMException('This operation was aborted', 'AbortError')
-        }
+        if (opts.signal?.aborted) throw new DOMException('This operation was aborted', 'AbortError')
+        if (writeError) throw writeError
         writeStream.write(value)
         receivedBytes += value.length
-        opts.onProgress(receivedBytes, totalBytes)
+        opts.onProgress(receivedBytes)
       }
+      if (writeError) throw writeError
+    } catch (err) {
+      throw classifyDownloadError(err)
     } finally {
       writeStream.end()
-      await new Promise((resolve) => writeStream.on('finish', resolve))
+      await new Promise((resolve) => writeStream.on('close', resolve))
       reader.releaseLock()
     }
+    if (receivedBytes < expectedSize) throw new DownloadError('server')
   }
 
   /** Installed means both files are there: the model and its image projector. */
@@ -105,9 +188,7 @@ export class ModelDownloader {
     try {
       const dirs = await fs.readdir(this.modelsDir, { withFileTypes: true })
       for (const dir of dirs) {
-        if (dir.isDirectory() && (await this.isInstalled(dir.name))) {
-          installed.push(dir.name)
-        }
+        if (dir.isDirectory() && (await this.isInstalled(dir.name))) installed.push(dir.name)
       }
     } catch {
       // models dir may not exist
@@ -134,11 +215,36 @@ export class ModelDownloader {
       fileName: MODEL_FILE_NAMES[kind]
     }))
     const total = files.reduce((sum, f) => sum + f.sizeBytes, 0)
-    let doneBytes = 0
+
+    // Enough room for what is still to come, before asking the network for anything.
+    const remaining = Math.max(0, total - (await this.downloadedBytes(id)))
+    if (remaining > 0 && (await this.freeBytes(modelDir)) < remaining + DISK_MARGIN_BYTES) {
+      throw new DownloadError('disk-full')
+    }
+
+    const samples: { at: number; bytes: number }[] = []
+    const measure = (received: number): { bytesPerSecond: number; secondsLeft: number | null } => {
+      const at = this.now()
+      samples.push({ at, bytes: received })
+      while (samples.length > 2 && at - samples[0]!.at > SPEED_WINDOW_MS) samples.shift()
+      const first = samples[0]!
+      const elapsed = (at - first.at) / 1000
+      const gained = received - first.bytes
+      if (elapsed <= 0 || gained <= 0) return { bytesPerSecond: 0, secondsLeft: null }
+      const bytesPerSecond = gained / elapsed
+      return { bytesPerSecond, secondsLeft: Math.ceil((total - received) / bytesPerSecond) }
+    }
 
     const report = (received: number, phase: DownloadProgress['phase']) =>
-      opts.onProgress?.({ modelId: id, receivedBytes: received, totalBytes: total, phase })
+      opts.onProgress?.({
+        modelId: id,
+        receivedBytes: received,
+        totalBytes: total,
+        phase,
+        ...(phase === 'done' ? { bytesPerSecond: 0, secondsLeft: 0 } : measure(received))
+      })
 
+    let doneBytes = 0
     for (const file of files) {
       const partPath = join(modelDir, `${file.fileName}.part`)
       const finalPath = join(modelDir, file.fileName)
@@ -160,7 +266,7 @@ export class ModelDownloader {
         report(doneBytes + file.sizeBytes, 'verifying')
         if (!(await this.verifyChecksum(partPath, file.sha256))) {
           await fs.unlink(partPath)
-          throw new Error(`Checksum failed for ${file.fileName}`)
+          throw new DownloadError('checksum')
         }
       }
 

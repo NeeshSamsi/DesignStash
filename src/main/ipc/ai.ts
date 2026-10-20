@@ -1,6 +1,7 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { detectHardware, recommendTier } from '../ai/hardware'
+import { DownloadError, classifyDownloadError } from '../ai/download'
 import { MODEL_REGISTRY, availableModels, bestFitModelId } from '../ai/registry'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
@@ -28,6 +29,7 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
         speed: entry.speed,
         minMemoryGB: entry.minMemoryGB,
         bestFit: entry.id === bestFit,
+        downloadedBytes: await downloader.downloadedBytes(entry.id),
         installed: await downloader.isInstalled(entry.id),
         active: entry.id === activeModelId
       }))
@@ -46,25 +48,17 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
           push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, p)
         }
       })
-      .then(() => {
+      .catch((err: unknown) => {
+        const failure = classifyDownloadError(err)
+        if (failure.name === 'AbortError') return
+        // Only the reason goes to the screen, never the system's own message.
         push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
           modelId: args.id,
           receivedBytes: 0,
           totalBytes: 0,
-          phase: 'done'
+          phase: 'error',
+          reason: failure instanceof DownloadError ? failure.reason : 'server'
         })
-      })
-      .catch((err: unknown) => {
-        const isAbort = err instanceof Error && err.name === 'AbortError'
-        if (!isAbort) {
-          push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
-            modelId: args.id,
-            receivedBytes: 0,
-            totalBytes: 0,
-            phase: 'error',
-            error: err instanceof Error ? err.message : String(err)
-          })
-        }
       })
       .finally(() => {
         activeDownloads.delete(args.id)

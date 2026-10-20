@@ -18,17 +18,28 @@ export const AiModelInfoSchema = z.object({
   minMemoryGB: z.number(),
   /** The model shown as "Best fit for this Mac". */
   bestFit: z.boolean(),
+  /** Bytes of a stopped download already on disk. Trying again carries on from here. */
+  downloadedBytes: z.number(),
   installed: z.boolean(),
   active: z.boolean()
 })
 export type AiModelInfo = z.infer<typeof AiModelInfoSchema>
+
+/** The only reasons a download stops. */
+export const AiDownloadFailureSchema = z.enum(['offline', 'disk-full', 'checksum', 'server'])
+export type AiDownloadFailure = z.infer<typeof AiDownloadFailureSchema>
 
 export const AiDownloadProgressSchema = z.object({
   modelId: z.string(),
   receivedBytes: z.number(),
   totalBytes: z.number(),
   phase: z.enum(['downloading', 'verifying', 'done', 'error']),
-  error: z.string().optional()
+  /** Recent speed in bytes per second. 0 until it can be measured. */
+  bytesPerSecond: z.number().optional(),
+  /** Seconds left at the current speed. null until the speed is known. */
+  secondsLeft: z.number().nullable().optional(),
+  /** Set with phase `error`: why the download stopped. Trying again resumes. */
+  reason: AiDownloadFailureSchema.optional()
 })
 export type AiDownloadProgress = z.infer<typeof AiDownloadProgressSchema>
 

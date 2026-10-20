@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Readable } from 'node:stream'
 import { createHash } from 'node:crypto'
-import { ModelDownloader } from './download'
+import { classifyDownloadError, DownloadError, ModelDownloader, type DownloadProgress } from './download'
 import * as registry from './registry'
 import type { ModelTier } from './hardware'
 
@@ -105,7 +105,7 @@ describe('ModelDownloader', () => {
       fetchImpl: createMockFetch({ big: Buffer.from(''.padStart(60, 'x')), proj: B })
     })
 
-    await expect(downloader.download('test-model')).rejects.toThrow('Checksum failed')
+    await expect(downloader.download('test-model')).rejects.toHaveProperty('reason', 'checksum')
 
     const dir = join(tempModelsDir, 'test-model')
     expect(await fs.readdir(dir)).toEqual([])
@@ -166,5 +166,173 @@ describe('ModelDownloader', () => {
     const downloader = new ModelDownloader(tempModelsDir, { fetchImpl: createMockFetch() })
     await downloader.download('test-model-nohash')
     expect(await downloader.isInstalled('test-model-nohash')).toBe(true)
+  })
+})
+
+const failureOf = async (promise: Promise<unknown>) => {
+  const err = await promise.then(() => null, (e: unknown) => e)
+  return err instanceof DownloadError ? err.reason : (err as Error | null)?.name
+}
+
+describe('failure reasons', () => {
+  it('says offline when the network cannot be reached, and leaves nothing behind', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(
+      Object.assign(new TypeError('fetch failed'), { cause: Object.assign(new Error('x'), { code: 'ENOTFOUND' }) })
+    )
+    const downloader = new ModelDownloader(tempModelsDir, { fetchImpl })
+
+    expect(await failureOf(downloader.download('test-model'))).toBe('offline')
+    expect(await downloader.isInstalled('test-model')).toBe(false)
+  })
+
+  it('says offline for a bare fetch failure', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError('fetch failed'))
+    expect(await failureOf(new ModelDownloader(tempModelsDir, { fetchImpl }).download('test-model'))).toBe('offline')
+  })
+
+  it.each([404, 500, 503])('says server for an HTTP %i', async (status) => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('no', { status }))
+    expect(await failureOf(new ModelDownloader(tempModelsDir, { fetchImpl }).download('test-model'))).toBe('server')
+  })
+
+  it('says server when the answer ends early', async () => {
+    const fetchImpl = createMockFetch({ big: A.subarray(0, 30), proj: B })
+    const downloader = new ModelDownloader(tempModelsDir, { fetchImpl })
+    expect(await failureOf(downloader.download('test-model'))).toBe('server')
+    // What arrived is kept for the retry.
+    expect((await fs.stat(join(tempModelsDir, 'test-model', 'model.gguf.part'))).size).toBe(30)
+  })
+
+  it('says checksum when a file does not match', async () => {
+    const fetchImpl = createMockFetch({ big: A, proj: Buffer.from(''.padStart(40, 'z')) })
+    expect(await failureOf(new ModelDownloader(tempModelsDir, { fetchImpl }).download('test-model'))).toBe('checksum')
+  })
+
+  it('says disk-full before downloading anything when there is no room', async () => {
+    const fetchImpl = createMockFetch()
+    const downloader = new ModelDownloader(tempModelsDir, { fetchImpl, freeBytes: async () => 50 })
+
+    expect(await failureOf(downloader.download('test-model'))).toBe('disk-full')
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('only needs room for what is left when part of it is already there', async () => {
+    const dir = join(tempModelsDir, 'test-model')
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(join(dir, 'model.gguf'), A)
+    // Margin is 256 MB; 40 bytes remain, so a little over the margin is enough.
+    const downloader = new ModelDownloader(tempModelsDir, {
+      fetchImpl: createMockFetch(),
+      freeBytes: async () => 256 * 1024 * 1024 + 40
+    })
+    await expect(downloader.download('test-model')).resolves.toBeUndefined()
+  })
+
+  it('maps a full disk while writing to disk-full', () => {
+    const err = classifyDownloadError(Object.assign(new Error('write failed'), { code: 'ENOSPC' }))
+    expect(err).toBeInstanceOf(DownloadError)
+    expect((err as DownloadError).reason).toBe('disk-full')
+  })
+
+  it('passes a cancel through, and never makes it a reason', () => {
+    const abort = new DOMException('aborted', 'AbortError')
+    expect(classifyDownloadError(abort)).toBe(abort)
+  })
+
+  it('never puts a system message in the reason', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED /Users/me/secret'))
+    const err = (await new ModelDownloader(tempModelsDir, { fetchImpl })
+      .download('test-model')
+      .catch((e: unknown) => e)) as Error
+    expect(err.message).not.toContain('/Users')
+  })
+})
+
+describe('resume', () => {
+  it('carries on from a stopped download after a failure, not from the start', async () => {
+    const failing = createMockFetch({ big: A.subarray(0, 30), proj: B })
+    const downloader = new ModelDownloader(tempModelsDir)
+    await new ModelDownloader(tempModelsDir, { fetchImpl: failing }).download('test-model').catch(() => {})
+    expect(await downloader.downloadedBytes('test-model')).toBe(30)
+
+    const retry = createMockFetch()
+    await new ModelDownloader(tempModelsDir, { fetchImpl: retry }).download('test-model')
+
+    expect(new Headers(retry.mock.calls[0]![1].headers).get('Range')).toBe('bytes=30-')
+    expect(await downloader.isInstalled('test-model')).toBe(true)
+  })
+
+  it('starts over cleanly when the server ignores the Range request', async () => {
+    const dir = join(tempModelsDir, 'test-model')
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(join(dir, 'model.gguf.part'), A.subarray(0, 25))
+    const ignoring = vi.fn().mockImplementation(async (url: string) =>
+      new Response(String(url).endsWith('proj.gguf') ? B : A, { status: 200 })
+    )
+
+    await new ModelDownloader(tempModelsDir, { fetchImpl: ignoring }).download('test-model')
+
+    expect((await fs.readFile(join(dir, 'model.gguf'))).equals(A)).toBe(true)
+  })
+
+  it('verifies a part file that is already complete without asking the network for it', async () => {
+    const dir = join(tempModelsDir, 'test-model')
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(join(dir, 'model.gguf.part'), A)
+    const fetchImpl = createMockFetch()
+
+    await new ModelDownloader(tempModelsDir, { fetchImpl }).download('test-model')
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(String(fetchImpl.mock.calls[0]![0])).toContain('proj.gguf')
+  })
+
+  it('discards a part file that is longer than the file should be', async () => {
+    const dir = join(tempModelsDir, 'test-model')
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(join(dir, 'model.gguf.part'), Buffer.concat([A, A]))
+    await new ModelDownloader(tempModelsDir, { fetchImpl: createMockFetch() }).download('test-model')
+    expect((await fs.readFile(join(dir, 'model.gguf'))).equals(A)).toBe(true)
+  })
+
+  it('reports how much of a model is already on disk', async () => {
+    const downloader = new ModelDownloader(tempModelsDir)
+    expect(await downloader.downloadedBytes('test-model')).toBe(0)
+    expect(await downloader.downloadedBytes('nope')).toBe(0)
+    const dir = join(tempModelsDir, 'test-model')
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(join(dir, 'model.gguf'), A)
+    await fs.writeFile(join(dir, 'mmproj.gguf.part'), B.subarray(0, 10))
+    expect(await downloader.downloadedBytes('test-model')).toBe(70)
+  })
+})
+
+describe('speed and time left', () => {
+  it('measures speed and estimates the time left against the size of both files', async () => {
+    let clock = 0
+    const fetchImpl = createMockFetch(undefined, 10)
+    const downloader = new ModelDownloader(tempModelsDir, {
+      fetchImpl,
+      now: () => (clock += 100) // every reading is 100 ms after the last
+    })
+    const seen: DownloadProgress[] = []
+
+    await downloader.download('test-model', { onProgress: (p) => seen.push(p) })
+
+    const downloading = seen.filter((p) => p.phase === 'downloading' && p.receivedBytes > 20 && p.receivedBytes < 100)
+    expect(downloading.length).toBeGreaterThan(0)
+    for (const p of downloading) {
+      expect(p.bytesPerSecond).toBeGreaterThan(0)
+      expect(p.secondsLeft).toBe(Math.ceil((100 - p.receivedBytes) / p.bytesPerSecond))
+    }
+    expect(seen.at(-1)).toMatchObject({ phase: 'done', secondsLeft: 0 })
+  })
+
+  it('reports no speed until there is something to measure', async () => {
+    const seen: DownloadProgress[] = []
+    await new ModelDownloader(tempModelsDir, { fetchImpl: createMockFetch() }).download('test-model', {
+      onProgress: (p) => seen.push(p)
+    })
+    expect(seen[0]).toMatchObject({ bytesPerSecond: 0, secondsLeft: null })
   })
 })
