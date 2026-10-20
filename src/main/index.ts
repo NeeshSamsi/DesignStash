@@ -2,7 +2,7 @@ import { app, shell, screen, protocol, net, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { APP_ID } from '@shared/constants'
 import { createHandlerContext, type TelemetryRef } from './ipc/context'
-import { registerAllHandlers } from './ipc'
+import { registerAllHandlers, registerPreAppHandlers } from './ipc'
 import { initDb, getDb, closeDb } from './db/connection'
 import { runMigrations } from './db/migrate'
 import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
@@ -11,8 +11,6 @@ import { createSettingsStore } from './settings'
 import { runBoot, setBootStatus } from './boot-status'
 import { MIN_WINDOW, windowSizeOptions } from './window-size'
 import { handleCoverRequests, registerCoverScheme } from './cover-protocol'
-import { registerAppHandlers } from './ipc/app'
-import { registerBootHandlers } from './ipc/boot'
 import { logger } from './logger'
 import { Repository } from './db/repository'
 import { createIntegrityService, createStashCheck } from './ipc/integrity'
@@ -144,18 +142,12 @@ app.whenReady().then(() => {
   process.on('unhandledRejection', (reason) => telemetry.captureError(reason))
 
   const window = createWindow()
-  if (libraryOpen) {
-    registerAllHandlers(
-      createHandlerContext({
-        settings,
-        telemetry: telemetryRef,
-        repo: new Repository(getDb()),
-        window
-      })
-    )
-  } else {
-    registerAppHandlers()
-    registerBootHandlers()
+  const repo = libraryOpen ? new Repository(getDb()) : null
+  // The screens before the app (launch error, onboarding) run on this set, so it is registered
+  // whether or not the library opened. The library domains come on top of it, never instead.
+  registerPreAppHandlers({ settings, repo })
+  if (repo) {
+    registerAllHandlers(createHandlerContext({ settings, telemetry: telemetryRef, repo, window }))
   }
 
   app.on('activate', () => {

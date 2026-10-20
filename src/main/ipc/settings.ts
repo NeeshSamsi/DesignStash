@@ -8,16 +8,6 @@ export function registerSettingsHandlers({ settings, repo, push }: HandlerContex
     push(IPC_CHANNELS.STASH_MOVE_PROGRESS, p)
   )
 
-  // Library location is a setting (default <userData>/Library); onboarding can override it.
-  registerIpcHandler(IPC_CHANNELS.SETTINGS_GET, () => settings.get())
-
-  registerIpcHandler(IPC_CHANNELS.SETTINGS_SET_LIBRARY_ROOT, (args) => {
-    // Persists the choice. Relocating an existing library + re-init applies on next launch
-    // (full move/restart handled when onboarding lands).
-    const next = settings.update({ libraryRoot: args.path })
-    return { libraryRoot: next.libraryRoot }
-  })
-
   registerIpcHandler(IPC_CHANNELS.STASH_INFO, () => stash.info())
 
   registerIpcHandler(IPC_CHANNELS.STASH_CHANGE, (args) => stash.change(args.path, args.mode))

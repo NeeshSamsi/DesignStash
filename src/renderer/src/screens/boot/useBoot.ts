@@ -31,14 +31,21 @@ export function useBoot(): Boot {
   useEffect(() => {
     let live = true
     void (async () => {
-      const [boot, settings] = await Promise.all([
-        window.api.invoke(IPC_CHANNELS.BOOT_STATUS, undefined),
-        window.api.invoke(IPC_CHANNELS.SETTINGS_GET, undefined)
-      ])
-      if (!live) return
-      setOnboarded(settings.success ? settings.data.onboarded : true)
-      setBackupKept(boot.success ? boot.data.backupKept : false)
-      setState(boot.success ? (boot.data.state ?? 'ok') : 'ok')
+      try {
+        const [boot, settings] = await Promise.all([
+          window.api.invoke(IPC_CHANNELS.BOOT_STATUS, undefined),
+          window.api.invoke(IPC_CHANNELS.SETTINGS_GET, undefined)
+        ])
+        if (!live) return
+        setOnboarded(settings.success ? settings.data.onboarded : true)
+        setBackupKept(boot.success ? boot.data.backupKept : false)
+        setState(boot.success ? (boot.data.state ?? 'ok') : 'ok')
+      } catch {
+        // A rejected invoke is a broken bridge, the same as a failed reply: carry on.
+        if (!live) return
+        setOnboarded(true)
+        setState('ok')
+      }
     })()
     return () => {
       live = false

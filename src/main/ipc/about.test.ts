@@ -25,14 +25,12 @@ import { registerAboutHandlers } from './about'
 
 let sqlite: Database.Database
 let base: string
-let copied: string[]
 
 const call = async <T = unknown>(channel: string): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, undefined)) as IpcResult<T>
 
 beforeEach(() => {
   handlers.clear()
-  copied = []
   base = mkdtempSync(join(tmpdir(), 'ds-about-'))
   const test = createTestDb()
   sqlite = test.sqlite
@@ -43,9 +41,7 @@ beforeEach(() => {
     packages: {
       readApp: () => ({ license: 'MIT', dependencies: { zod: '^4' } }),
       readDependency: () => ({ version: '4.0.0', license: 'MIT' })
-    },
-    writeClipboard: (t) => copied.push(t),
-    version: () => '0.4.0'
+    }
   })
 })
 
@@ -76,18 +72,5 @@ describe('licences', () => {
   it('returns the notice text', async () => {
     const res = await call<{ text: string }>(IPC_CHANNELS.LICENCES_TEXT)
     expect(res.success && res.data.text).toContain('zod 4.0.0  MIT')
-  })
-})
-
-describe('REPORT_COPY', () => {
-  it('copies a scrubbed report and says so, without sending the text back', async () => {
-    const res = await call(IPC_CHANNELS.REPORT_COPY)
-
-    expect(res).toEqual({ success: true, data: { copied: true } })
-    expect(copied).toHaveLength(1)
-    expect(copied[0]).toContain('Version: 0.4.0')
-    expect(copied[0]).toContain('Stash check: not checked yet')
-    expect(copied[0]).not.toContain('/Users')
-    expect(copied[0]).toContain('<path>')
   })
 })
