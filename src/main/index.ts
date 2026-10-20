@@ -29,7 +29,11 @@ function migrationsFolder(): string {
   return app.isPackaged ? join(process.resourcesPath, 'drizzle') : join(app.getAppPath(), 'drizzle')
 }
 
-function createWindow(): BrowserWindow {
+// The one window. Pushes go to whatever this holds; it is cleared when the window closes, and
+// macOS can open a new one later while the handlers stay registered.
+let mainWindow: BrowserWindow | null = null
+
+function openWindow(): BrowserWindow {
   // 1440×900 clamped to the display, resizable down to a minimum, centred on first launch.
   const window = new BrowserWindow({
     ...windowSizeOptions(screen.getPrimaryDisplay().workAreaSize),
@@ -49,6 +53,9 @@ function createWindow(): BrowserWindow {
   window.setMinimumSize(MIN_WINDOW.width, MIN_WINDOW.height)
 
   window.on('ready-to-show', () => window.show())
+  window.on('closed', () => {
+    if (mainWindow === window) mainWindow = null
+  })
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url)
@@ -60,6 +67,7 @@ function createWindow(): BrowserWindow {
   } else {
     void window.loadFile(join(__dirname, '../renderer/index.html'))
   }
+  mainWindow = window
   return window
 }
 
@@ -141,17 +149,24 @@ app.whenReady().then(() => {
   process.on('uncaughtException', (err) => telemetry.captureError(err))
   process.on('unhandledRejection', (reason) => telemetry.captureError(reason))
 
-  const window = createWindow()
+  openWindow()
   const repo = libraryOpen ? new Repository(getDb()) : null
   // The screens before the app (launch error, onboarding) run on this set, so it is registered
   // whether or not the library opened. The library domains come on top of it, never instead.
   registerPreAppHandlers({ settings, repo })
   if (repo) {
-    registerAllHandlers(createHandlerContext({ settings, telemetry: telemetryRef, repo, window }))
+    registerAllHandlers(
+      createHandlerContext({
+        settings,
+        telemetry: telemetryRef,
+        repo,
+        getWindow: () => mainWindow
+      })
+    )
   }
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (!mainWindow) openWindow()
   })
 })
 

@@ -71,11 +71,23 @@ export function createAiRuntime(settings: SettingsStore): AiRuntime {
   }
 }
 
+/**
+ * A push that goes to whichever window is open when it is sent. With no window (macOS keeps the
+ * app alive after the last one closes) or a destroyed one, it does nothing.
+ */
+export function createPush(getWindow: () => BrowserWindow | null): HandlerContext['push'] {
+  return (channel, payload) => {
+    const window = getWindow()
+    if (!window || window.isDestroyed()) return
+    window.webContents.send(channel, payload)
+  }
+}
+
 export function createHandlerContext(opts: {
   settings: SettingsStore
   telemetry: TelemetryRef
   repo: Repository
-  window: BrowserWindow
+  getWindow: () => BrowserWindow | null
 }): HandlerContext {
   return {
     settings: opts.settings,
@@ -85,6 +97,6 @@ export function createHandlerContext(opts: {
     library: new LibraryService(opts.repo, opts.settings.getLibraryRoot(), {
       openPath: (p) => shell.openPath(p)
     }),
-    push: (channel, payload) => opts.window.webContents.send(channel, payload)
+    push: createPush(opts.getWindow)
   }
 }
