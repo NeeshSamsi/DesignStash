@@ -4,6 +4,7 @@ import AppShell from './AppShell'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { shortcuts } from './lib/shortcuts'
+import { useDockStore } from './stores/dockStore'
 import { IPC_CHANNELS } from '@shared/ipc'
 
 beforeEach(() => {
@@ -238,6 +239,44 @@ describe('AppShell import', () => {
     )
     expect(screen.getByText('hint')).toBeTruthy()
     expect(baseElement.querySelector('[data-ds="ActivityDock"]')?.textContent).toContain('widget')
+  })
+})
+
+describe('AppShell activity dock', () => {
+  const dockBottom = (baseElement: HTMLElement) =>
+    (baseElement.querySelector('[data-ds="ActivityDock"]') as HTMLElement).style.bottom
+
+  it('keeps the normal margin when the page has no pinned action bar', () => {
+    useDockStore.setState({ barTop: null })
+    const { baseElement } = render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    expect(dockBottom(baseElement)).toBe('16px')
+  })
+
+  it('sits above a pinned action bar, with a gap', () => {
+    useDockStore.setState({ barTop: window.innerHeight - 72 })
+    const { baseElement } = render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    expect(dockBottom(baseElement)).toBe('88px')
+  })
+
+  it('follows the bar when it moves', () => {
+    useDockStore.setState({ barTop: null })
+    const { baseElement } = render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    act(() => useDockStore.setState({ barTop: window.innerHeight - 120 }))
+    expect(dockBottom(baseElement)).toBe('136px')
+    act(() => useDockStore.setState({ barTop: null }))
+    expect(dockBottom(baseElement)).toBe('16px')
   })
 })
 

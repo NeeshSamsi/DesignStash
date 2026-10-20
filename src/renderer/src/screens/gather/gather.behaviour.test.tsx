@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { SUMMARY_MS } from '@renderer/lib/dock'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { CopyProgress, CopyStatus } from '@shared/ipc/import'
 import { useCopyStore } from '@renderer/stores/copyStore'
@@ -217,6 +218,78 @@ describe('the widget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.COPY_RETRY)).toEqual([{ haulId: 'h1' }]))
     expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+  })
+})
+
+describe('a finished copy', () => {
+  const finish = (api: ReturnType<typeof installApi>) =>
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'done', landed: 4 }))
+
+  it('stays about as long as a toast, then collapses away', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const api = installApi(base())
+      render(<Harness />)
+      await act(async () => {})
+      finish(api)
+      expect(await screen.findByText('4 copied')).toBeTruthy()
+      act(() => void vi.advanceTimersByTime(SUMMARY_MS - 1500))
+      expect(screen.getByText('4 copied')).toBeTruthy()
+      act(() => void vi.advanceTimersByTime(1500))
+      expect(screen.queryByText('4 copied')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('hovering holds it, leaving starts the time again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const api = installApi(base())
+      render(<Harness />)
+      await act(async () => {})
+      finish(api)
+      const widget = (await screen.findByText('4 copied')).closest('[data-ds="CopyWidget"]')!
+      act(() => void vi.advanceTimersByTime(SUMMARY_MS - 1000))
+      fireEvent.mouseEnter(widget)
+      act(() => void vi.advanceTimersByTime(SUMMARY_MS * 3))
+      expect(screen.getByText('4 copied')).toBeTruthy()
+      fireEvent.mouseLeave(widget)
+      act(() => void vi.advanceTimersByTime(SUMMARY_MS))
+      expect(screen.queryByText('4 copied')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a copy that is still running never times out', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const api = installApi(base())
+      render(<Harness />)
+      await act(async () => {})
+      api.push(IPC_CHANNELS.COPY_PROGRESS, progress())
+      expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+      act(() => void vi.advanceTimersByTime(SUMMARY_MS * 5))
+      expect(screen.getByText('Copying 12 of 40')).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a stopped copy waits for Keep or Undo all', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const api = installApi(base())
+      render(<Harness />)
+      await act(async () => {})
+      api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled' }))
+      expect(await screen.findByText(/Copying stopped/)).toBeTruthy()
+      act(() => void vi.advanceTimersByTime(SUMMARY_MS * 5))
+      expect(screen.getByText(/Copying stopped/)).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

@@ -15,6 +15,7 @@ import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
+import { usePinnedBar } from '@renderer/hooks/use-pinned-bar'
 import {
   aiTotals,
   pluralise,
@@ -55,6 +56,7 @@ export default function InboxPage({
   onAddFiles,
   onAddFolder
 }: InboxPageProps) {
+  const pinnedBar = usePinnedBar()
   const toSortPage = stage === 'to_sort'
   const { items, failed, refresh } = useInboxList(stage)
   const pushedTotals = useInboxStore((s) => s.aiTotals)
@@ -197,7 +199,10 @@ export default function InboxPage({
         })}
       </MockupGrid>
       {state === 'populated' && (
-        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 bg-surface-1 px-6 pt-2 pb-6">
+        <div
+          ref={pinnedBar}
+          className="sticky bottom-0 z-10 -mx-6 -mb-6 bg-surface-1 px-6 pt-2 pb-6"
+        >
           <ActionBar
             variant="page"
             showStatus={line !== undefined}

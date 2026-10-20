@@ -14,6 +14,7 @@ import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
+import { usePinnedBar } from '@renderer/hooks/use-pinned-bar'
 import { agoText, formatBytes, newestFirst, pluralise } from '@renderer/lib/inbox-list'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
@@ -34,6 +35,7 @@ function cardState(item: TrashItem, selected: boolean): MockupCardState {
  * and emptying ask once. Figma: ↳ Inboxes & Trash › E · Trash. Rules: design/specs/inboxes.md.
  */
 export default function TrashPage() {
+  const pinnedBar = usePinnedBar()
   const items = useInboxStore((s) => s.trash)
   const setTrash = useInboxStore((s) => s.setTrash)
   const failed = useInboxStore((s) => s.failed.trash)
@@ -223,7 +225,10 @@ export default function TrashPage() {
         })}
       </MockupGrid>
       {(state === 'populated' || loading) && (
-        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 bg-surface-1 px-6 pt-2 pb-6">
+        <div
+          ref={pinnedBar}
+          className="sticky bottom-0 z-10 -mx-6 -mb-6 bg-surface-1 px-6 pt-2 pb-6"
+        >
           <ActionBar
             variant="page"
             cancelLabel="Empty Trash"

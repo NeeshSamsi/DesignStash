@@ -83,10 +83,20 @@ for (const { width, height } of SIZES) {
     expect((await app.invoke('copy:start', { paths: [desk] })).success).toBe(true)
     await window.getByRole('button', { name: /^To sort/ }).click()
     await expect(window.getByText('AI suggestions ready for all 4')).toBeVisible()
-    // The copy summary floats over the bottom-right corner, where the page's Sort button is.
-    // Dismiss it so the layout checks measure the page, not the overlap (reported separately).
-    const dismiss = window.getByRole('button', { name: 'Dismiss' })
-    if (await dismiss.count()) await dismiss.click()
+    // The finished-copy summary shares the corner with the page's Sort button: it must sit above
+    // the pinned bar, never over it, so the button stays clickable without dismissing anything.
+    const summary = window.locator('[data-ds="CopyWidget"]')
+    const sortBar = window.getByRole('button', { name: 'Sort', exact: true })
+    if (await summary.count()) {
+      const widget = (await summary.boundingBox())!
+      const bar = (await sortBar.boundingBox())!
+      expect(
+        widget.y + widget.height,
+        'the copy widget sits above the action bar'
+      ).toBeLessThanOrEqual(bar.y)
+    }
+    // And it goes by itself, like a toast.
+    await expect(summary).toHaveCount(0, { timeout: 12_000 })
     await shot('to-sort')
     await noSidewaysScroll(window, null, 'To sort')
 

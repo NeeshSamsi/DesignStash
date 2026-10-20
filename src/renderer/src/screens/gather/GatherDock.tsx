@@ -1,5 +1,7 @@
 import { CopyFileRow } from '@renderer/components/CopyFileRow'
 import { CopyWidget } from '@renderer/components/CopyWidget'
+import { useAutoDismiss } from '@renderer/hooks/use-auto-dismiss'
+import { SUMMARY_MS } from '@renderer/lib/dock'
 import { useCopyStore } from '@renderer/stores/copyStore'
 import { rowState, widgetCopy, widgetState } from './gather-model'
 import type { useGather } from './useGather'
@@ -18,12 +20,15 @@ export function GatherDock({ gather }: GatherDockProps) {
   const dismiss = useCopyStore((s) => s.dismiss)
   const { haul } = gather
   const state = haul ? widgetState(haul) : null
+  // A finished copy is a success message: it stays about as long as a toast, and hovering holds it.
+  const hover = useAutoDismiss(state === 'done', SUMMARY_MS, dismiss)
   if (!haul || !state) return null
   const copy = widgetCopy(haul)
 
   return (
     <CopyWidget
       view={view}
+      {...hover}
       state={state}
       title={copy.title}
       {...(copy.description ? { description: copy.description } : {})}

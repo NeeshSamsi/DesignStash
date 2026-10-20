@@ -13,6 +13,8 @@ import { GlobalSearch } from './components/GlobalSearch'
 import { PageHeader } from './components/PageHeader'
 import { SidebarNav, sidebarNavVariant, type SidebarNavKey } from './components/SidebarNav'
 import { useInboxCounts } from './hooks/use-inbox-counts'
+import { dockBottom } from './lib/dock'
+import { useDockStore } from './stores/dockStore'
 import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
 
 interface AppShellProps {
@@ -93,6 +95,8 @@ export default function AppShell({
   const searchText = useUiStore((s) => s.searchText)
   const setSearchText = useUiStore((s) => s.setSearchText)
   const inbox = useInboxCounts()
+  // The copy widget and the toasts sit above the page's pinned action bar, never over it.
+  const barTop = useDockStore((s) => s.barTop)
   const query = useLibraryStore((s) => s.query)
   const setQuery = useLibraryStore((s) => s.setQuery)
 
@@ -214,7 +218,8 @@ export default function AppShell({
         {...(dialog ? { dialog } : {})}
       />
       <ActivityDock
-        className="fixed right-4 bottom-4 z-50"
+        className="fixed right-4 z-50"
+        style={{ bottom: dockBottom(barTop, window.innerHeight) }}
         toastContent={<Toaster />}
         importContent={copyWidget}
       />
