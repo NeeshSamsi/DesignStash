@@ -12,7 +12,6 @@ beforeEach(() => {
   window.api = {
     invoke: vi.fn(async () => ({ success: true, data: { items: [card(1), card(2)] } })),
     subscribe: vi.fn(() => () => {}),
-    onAiDownloadProgress: vi.fn(() => () => {})
   } as unknown as typeof window.api
 })
 
