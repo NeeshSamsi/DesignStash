@@ -98,7 +98,7 @@ app.whenReady().then(() => {
       ensureSearchIndex(db)
       seedTaxonomy(db)
       try {
-        new Repository(db).rebuildSearchIndex()
+        new Repository(db).search.rebuildSearchIndex()
       } catch (err) {
         logger.error('Search index rebuild failed:', err)
       }

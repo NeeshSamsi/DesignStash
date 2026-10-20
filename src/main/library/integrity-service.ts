@@ -122,7 +122,7 @@ export class IntegrityService {
    * disk for them, for callers that only want what is visible.
    */
   private async drift(skipIgnoredStat = false): Promise<Drift> {
-    const rows = this.repo.getAllLibraryPaths()
+    const rows = this.repo.mockups.getAllLibraryPaths()
     const known = new Set(rows.map((p) => p.libraryPath))
     const found = new Map<string, string>()
     for (const f of await this.deps.listFiles(this.mockupsDir())) {
@@ -181,7 +181,7 @@ export class IntegrityService {
 
     const goneItems: GoneRecord[] = []
     for (const [id, row] of gone) {
-      const mockup = this.repo.getMockup(row.mockupId)
+      const mockup = this.repo.mockups.getMockup(row.mockupId)
       if (!mockup) continue
       const hasCover = mockup.coverPath !== '' && (await this.deps.exists(mockup.coverPath))
       goneItems.push({
@@ -213,10 +213,10 @@ export class IntegrityService {
   /** Undo an add: the records and their covers go. The PSD stays where it was. */
   async undoAdd(mockupIds: number[]): Promise<void> {
     const added = mockupIds.filter((id) => {
-      const m = this.repo.getMockup(id)
+      const m = this.repo.mockups.getMockup(id)
       return m !== undefined && m.stage === 'to_sort' && m.deletedAt === null
     })
-    const removed = this.repo.deleteMockupsHard(added)
+    const removed = this.repo.trash.deleteMockupsHard(added)
     await this.removeCovers(removed)
   }
 
@@ -228,8 +228,8 @@ export class IntegrityService {
       return row ? [row.mockupId] : []
     })
     // Hard delete reports only the paths it freed, so the ids that really go are read first.
-    const existing = mockupIds.filter((id) => this.repo.getMockup(id) !== undefined)
-    const rows = this.repo.deleteMockupsHard(existing)
+    const existing = mockupIds.filter((id) => this.repo.mockups.getMockup(id) !== undefined)
+    const rows = this.repo.trash.deleteMockupsHard(existing)
     await this.removeCovers(rows)
     return { removed: rows.length, mockupIds: existing }
   }
@@ -251,7 +251,7 @@ export class IntegrityService {
     const picked = await this.deps.pickFile()
     if (picked === null) return { outcome: 'cancelled' }
     if (!PSD.test(picked)) return { outcome: 'not-psd' }
-    if (this.repo.getAllLibraryPaths().some((p) => p.libraryPath === picked)) {
+    if (this.repo.mockups.getAllLibraryPaths().some((p) => p.libraryPath === picked)) {
       return { outcome: 'already-in-stash' }
     }
 
@@ -262,7 +262,7 @@ export class IntegrityService {
         await this.deps.copyInto(picked, target)
       }
       const { size } = await this.deps.stat(target)
-      this.repo.updateMockup(row.mockupId, { libraryPath: target, sizeBytes: size })
+      this.repo.mockups.updateMockup(row.mockupId, { libraryPath: target, sizeBytes: size })
     } catch {
       return { outcome: 'failed' }
     }
@@ -307,8 +307,8 @@ export class IntegrityService {
 
   /** Hard-delete a dangling DB row whose file is gone. No file to touch. */
   deleteOrphanRecord(mockupId: number): void {
-    this.repo.deleteMockup(mockupId)
-    this.repo.removeSearchIndex(mockupId)
+    this.repo.mockups.deleteMockup(mockupId)
+    this.repo.search.removeSearchIndex(mockupId)
   }
 
   /**
@@ -336,7 +336,7 @@ export class IntegrityService {
     const coverPath = resolution.source === 'none' ? '' : resolution.coverPath
     const coverSource = resolution.source
 
-    const mockup = this.repo.createMockup({
+    const mockup = this.repo.mockups.createMockup({
       title: basename(filePath, extname(filePath)),
       libraryPath: filePath,
       coverPath,

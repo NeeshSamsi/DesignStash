@@ -89,7 +89,7 @@ async function main(): Promise<void> {
       const libraryPsd = join(destDir, 'original.psd')
       copyFileSync(psdPath, libraryPsd)
 
-      repo.createMockup({
+      repo.mockups.createMockup({
         title,
         libraryPath: libraryPsd,
         coverPath: res.coverPath,

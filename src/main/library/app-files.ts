@@ -45,7 +45,7 @@ export async function ensureSizes(
 ): Promise<Map<number, number | null>> {
   const sizes = new Map<number, number | null>()
   for (const id of ids) {
-    const m = repo.getMockup(id)
+    const m = repo.mockups.getMockup(id)
     if (!m) continue
     if (m.sizeBytes !== null) {
       sizes.set(id, m.sizeBytes)
@@ -53,7 +53,7 @@ export async function ensureSizes(
     }
     try {
       const { size } = await stat(m.libraryPath)
-      repo.updateMockup(id, { sizeBytes: size })
+      repo.mockups.updateMockup(id, { sizeBytes: size })
       sizes.set(id, size)
     } catch {
       sizes.set(id, null)

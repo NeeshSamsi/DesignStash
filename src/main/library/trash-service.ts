@@ -33,7 +33,7 @@ export class TrashService {
   }
 
   async list(): Promise<TrashItem[]> {
-    const entries = this.repo.getTrashEntries()
+    const entries = this.repo.trash.getTrashEntries()
     const items: TrashItem[] = []
     for (const { row, trashedAt, ids } of entries) {
       items.push({ ...row, trashedAt, sizeBytes: await this.bytesOf(ids) })
@@ -51,22 +51,22 @@ export class TrashService {
     const wanted = new Set(ids)
     const restoredIds: number[] = []
     const missing: number[] = []
-    for (const entry of this.repo.getTrashEntries()) {
+    for (const entry of this.repo.trash.getTrashEntries()) {
       if (!wanted.has(entry.row.id)) continue
       if (await this.allPsdsPresent(entry.ids)) restoredIds.push(entry.row.id)
       else missing.push(entry.row.id)
     }
-    this.repo.restoreMany(restoredIds)
+    this.repo.trash.restoreMany(restoredIds)
     return { restoredIds, missing }
   }
 
   async restoreAll(): Promise<RestoreResult> {
-    return this.restore(this.repo.getTrashEntries().map((e) => e.row.id))
+    return this.restore(this.repo.trash.getTrashEntries().map((e) => e.row.id))
   }
 
   /** Delete everything in Trash for good. The screen asks first; this does not. */
   async empty(): Promise<{ deletedCount: number; bytesFreed: number }> {
-    const entries = this.repo.getTrashEntries()
+    const entries = this.repo.trash.getTrashEntries()
     if (entries.length === 0) return { deletedCount: 0, bytesFreed: 0 }
     const { bytes } = await this.stats()
     await this.removeAll(entries.flatMap((e) => e.ids))
@@ -75,7 +75,7 @@ export class TrashService {
 
   /** Delete piles or singles from Trash for good, or just their records when the PSD is already gone. */
   async deleteEntries(ids: number[]): Promise<{ deletedIds: number[]; skippedIds: number[] }> {
-    const byId = new Map(this.repo.getTrashEntries().map((e) => [e.row.id, e]))
+    const byId = new Map(this.repo.trash.getTrashEntries().map((e) => [e.row.id, e]))
     const found = [...new Set(ids)].filter((id) => byId.has(id))
     const deletedIds = found.flatMap((id) => byId.get(id)!.ids).sort((a, b) => a - b)
     await this.removeAll(deletedIds)
@@ -83,7 +83,7 @@ export class TrashService {
   }
 
   private async removeAll(ids: number[]): Promise<void> {
-    const removed = this.repo.deleteMockupsHard(ids)
+    const removed = this.repo.trash.deleteMockupsHard(ids)
     await removeAppCopies(this.libraryRoot, removed, this.deps.rm)
   }
 
@@ -94,7 +94,7 @@ export class TrashService {
 
   private async allPsdsPresent(ids: number[]): Promise<boolean> {
     for (const id of ids) {
-      const m = this.repo.getMockup(id)
+      const m = this.repo.mockups.getMockup(id)
       if (!m || !(await this.deps.exists(m.libraryPath))) return false
     }
     return true
