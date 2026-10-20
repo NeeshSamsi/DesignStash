@@ -280,7 +280,7 @@ function HoverActions({ children }: { children: ReactNode }) {
     <div className={cn('absolute inset-x-0 bottom-0', REVEAL_ON_HOVER)} {...keepToControl}>
       <div
         aria-hidden
-        className="absolute inset-x-0 bottom-0 h-22 bg-linear-to-b from-transparent to-black/60"
+        className="absolute inset-x-0 bottom-0 h-22 bg-linear-to-b from-transparent to-scrim"
       />
       <div className="relative flex flex-col gap-1 p-2">{children}</div>
     </div>

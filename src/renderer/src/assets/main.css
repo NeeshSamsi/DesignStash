@@ -34,6 +34,11 @@
   --min-width-tag-input: 7.5rem; /* 120 */
   --max-width-tag-label: 9.375rem; /* 150 */
   --max-height-tag-filter: 15rem; /* 240 */
+  --height-card-cover: 10.5rem; /* 168 */
+  --height-card-cover-compact: 6.75rem; /* 108 */
+
+  /* Same value as background/overlay; a colour token so gradients can use it (to-scrim). */
+  --color-scrim: var(--ds-color-black-alpha-60);
 }
 
 /* shadcn/ui token mapping (radix-rhea style). Values come from shadcn-bridge.css below. */

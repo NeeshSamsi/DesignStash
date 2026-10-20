@@ -32,10 +32,10 @@ export const mockupCardVariants = cva(
 export const mockupCardCoverVariants = cva('relative w-full shrink-0 overflow-clip rounded-xl', {
   variants: {
     variant: {
-      library: 'h-42',
-      'pending-review': 'h-42',
-      compact: 'h-27',
-      trash: 'h-42'
+      library: 'h-card-cover',
+      'pending-review': 'h-card-cover',
+      compact: 'h-card-cover-compact',
+      trash: 'h-card-cover'
     },
     hidden: { true: 'opacity-0', false: '' }
   },

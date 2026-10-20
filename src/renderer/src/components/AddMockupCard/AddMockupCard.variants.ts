@@ -7,5 +7,5 @@ export const addMockupCardVariants = cva(
 )
 
 export const addMockupCardCoverVariants = cva(
-  'flex h-42 items-center justify-center rounded-xl border border-dashed border-base transition-colors group-hover/add:border-strong'
+  'flex h-card-cover items-center justify-center rounded-xl border border-dashed border-base transition-colors group-hover/add:border-strong'
 )
