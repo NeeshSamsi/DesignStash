@@ -26,7 +26,7 @@ const handlers = {
     const id = (request as { mockupId: number }).mockupId
     const base = item(id, { title: `V${id}`, createdAt: '2026-10-12T09:00:00' })
     return ok({
-      item: id === 1 ? { ...base, isGroup: true, variantCount: 2, topId: 1 } : base,
+      item: id === 1 ? { ...base, pile: { memberCount: 3 } } : base,
       variants: id === 1 ? variants : []
     })
   },

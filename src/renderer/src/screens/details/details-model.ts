@@ -24,11 +24,11 @@ export type DetailsKind = 'mockup' | 'pile' | 'top'
  * the top mockup says so: "Top mockup · added 12 Oct".
  */
 export function detailsCaption(
-  item: Pick<LibraryItem, 'createdAt' | 'variantCount'>,
+  item: Pick<LibraryItem, 'createdAt' | 'pile'>,
   kind: DetailsKind,
   now?: Date
 ): string {
-  if (kind === 'pile') return `Pile · ${mockupsLabel(item.variantCount + 1)}`
+  if (kind === 'pile') return `Pile · ${mockupsLabel(item.pile?.memberCount ?? 1)}`
   const added = addedOn(item.createdAt, now)
   const lead = kind === 'top' ? 'Top mockup' : 'Mockup'
   return added ? `${lead} · added ${added}` : lead

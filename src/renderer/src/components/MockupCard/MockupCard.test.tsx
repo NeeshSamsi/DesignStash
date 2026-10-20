@@ -66,11 +66,11 @@ describe('MockupCard', () => {
     })
 
     it('shows the whole pile total for a pile and nothing for a single', () => {
-      const { rerender } = render(<MockupCard variantCount={2} />)
+      const { rerender } = render(<MockupCard pile={{ memberCount: 3 }} />)
       const badge = screen.getByLabelText('3 mockups in this pile')
       expect(badge.textContent).toBe('3')
       expect(badge.querySelector('svg')).not.toBeNull()
-      rerender(<MockupCard variantCount={0} />)
+      rerender(<MockupCard pile={null} />)
       expect(screen.queryByLabelText(/in this pile/)).toBeNull()
     })
 
@@ -177,7 +177,7 @@ describe('MockupCard', () => {
 
   describe('pile look', () => {
     it('stacks two card edges under a card with variants', () => {
-      const { container } = render(<MockupCard variantCount={3} />)
+      const { container } = render(<MockupCard pile={{ memberCount: 4 }} />)
       expect(container.querySelectorAll('[data-pile-edge]')).toHaveLength(2)
       expect(container.querySelector('[data-ds="MockupCard"]')!.className).toContain('mb-3')
     })

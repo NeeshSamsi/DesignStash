@@ -465,7 +465,6 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
                 mockupId={String(it.mockupId)}
                 title={forms[it.mockupId]?.title ?? it.title}
                 tags={note ?? forms[it.mockupId]?.tags.map((t) => t.label).join(' · ') ?? ''}
-                variantCount={0}
                 favourite={false}
                 {...(c?.path ? { coverSrc: coverUrl(c.path) } : {})}
                 onClick={() => void go((s) => jumpTo(s, step))}

@@ -12,7 +12,7 @@ describe('details model', () => {
   })
 
   it('captions a mockup, a pile and the top mockup of a pile', () => {
-    const item = { createdAt: '2026-10-12T09:00:00', variantCount: 3 }
+    const item = { createdAt: '2026-10-12T09:00:00', pile: { memberCount: 4 } }
     expect(detailsCaption(item, 'mockup', now)).toBe('Mockup · added 12 Oct')
     expect(detailsCaption(item, 'top', now)).toBe('Top mockup · added 12 Oct')
     expect(detailsCaption(item, 'pile', now)).toBe('Pile · 4 mockups')

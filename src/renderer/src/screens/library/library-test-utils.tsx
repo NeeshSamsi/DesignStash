@@ -17,17 +17,15 @@ export const item = (id: number, over: Partial<LibraryItem> = {}): LibraryItem =
   coverPath: `/stash/${id}.webp`,
   coverSource: 'embedded',
   coverMissing: false,
-  isGroup: false,
   favourite: false,
   createdAt: `2026-10-${String(10 + id).padStart(2, '0')}`,
-  variantCount: 0,
-  topId: null,
+  pile: null,
   tags: [],
   ...over
 })
 
 export const pile = (id: number, variants = 2, over: Partial<LibraryItem> = {}) =>
-  item(id, { isGroup: true, variantCount: variants, topId: id, ...over })
+  item(id, { pile: { memberCount: variants + 1 }, ...over })
 
 type Handler = (request: unknown) => unknown
 

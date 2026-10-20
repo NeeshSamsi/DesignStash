@@ -167,7 +167,7 @@ describe('To sort', () => {
 
 describe('To stash', () => {
   const stash = [
-    inbox(1, { stage: 'to_stash', isGroup: true, variantCount: 3, title: 'Clay pile' }),
+    inbox(1, { stage: 'to_stash', pile: { memberCount: 4 }, title: 'Clay pile' }),
     inbox(2, { stage: 'to_stash', title: 'Single' })
   ]
 

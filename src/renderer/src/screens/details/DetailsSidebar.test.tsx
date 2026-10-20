@@ -20,19 +20,17 @@ const single = {
     coverPath: '/lib/hero.png',
     coverSource: 'embedded',
     coverMissing: false,
-    isGroup: false,
     favourite: false,
     reviewStatus: 'approved',
     createdAt: `${new Date().getFullYear()}-10-12T09:00:00`,
-    variantCount: 0,
-    topId: null,
+    pile: null,
     tags: [{ id: 7, label: 'Clay', categoryLabel: 'Style' }]
   },
   variants: []
 }
 
 const pile = {
-  item: { ...single.item, id: 99, title: 'Login Pile', isGroup: true, variantCount: 2, topId: 99 },
+  item: { ...single.item, id: 99, title: 'Login Pile', pile: { memberCount: 3 } },
   variants: [
     { id: 100, title: 'side', coverPath: '/lib/b.png', coverMissing: false, isTop: false },
     { id: 99, title: 'front', coverPath: '/lib/a.png', coverMissing: false, isTop: true },

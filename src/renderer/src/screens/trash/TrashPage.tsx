@@ -213,7 +213,7 @@ export default function TrashPage() {
               title={item.title}
               trashedAgo={agoText(item.trashedAt)}
               {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
-              variantCount={item.variantCount}
+              pile={item.pile}
               state={coverDisplay(item, selection.isSelected(key))}
               onRestore={() => void restore(targetsFor(item))}
               onDeleteForever={() => setAsk({ kind: 'delete', items: targetsFor(item) })}

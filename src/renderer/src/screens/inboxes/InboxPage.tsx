@@ -163,7 +163,7 @@ export default function InboxPage({
               title={item.title}
               titleIsFileName={toSortPage}
               {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
-              variantCount={item.variantCount}
+              pile={item.pile}
               showStatus={badge !== undefined}
               {...(badge ? { status: badge } : {})}
               state={coverDisplay(item, selection.isSelected(key))}

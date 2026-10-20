@@ -32,8 +32,8 @@ export interface MockupCardProps
   mockupId?: string
   /** The cover file. Without it the cover shows a placeholder. */
   coverSrc?: string
-  /** Variants in the pile, shown as "+N". 0 (the default) shows no badge. */
-  variantCount?: number
+  /** Set for a pile's top: the card stacks and the badge shows how many mockups the pile holds. Default none. */
+  pile?: { memberCount: number } | null
   /** The title is a file name: a long one keeps its end (the date, the number) and loses its middle. */
   titleIsFileName?: boolean
   /** Starred. Shows the filled star at rest; unstarred cards show an outline star on hover. Default off. */
@@ -79,7 +79,7 @@ export function MockupCard({
   className,
   mockupId,
   coverSrc,
-  variantCount = 0,
+  pile = null,
   titleIsFileName = false,
   favourite = false,
   status,
@@ -110,7 +110,8 @@ export function MockupCard({
   const leftBehind = state === 'left-behind'
   const compact = variant === 'compact'
   const interactive = !loading && !leftBehind
-  const pile = variantCount > 0 && !compact && !loading && !leftBehind
+  const memberCount = pile?.memberCount ?? 0
+  const stacked = memberCount > 1 && !compact && !loading && !leftBehind
   const tagLine = variant === 'trash' && trashedAgo ? `Trashed ${trashedAgo}` : tags
 
   return (
@@ -119,13 +120,13 @@ export function MockupCard({
       data-mockup-id={mockupId}
       data-variant={variant}
       data-state={state === 'selected' ? 'selected' : undefined}
-      data-pile={pile || undefined}
+      data-pile={stacked || undefined}
       aria-busy={loading || undefined}
       tabIndex={interactive ? 0 : undefined}
-      className={cn(mockupCardVariants({ variant, pile }), className)}
+      className={cn(mockupCardVariants({ variant, pile: stacked }), className)}
       {...props}
     >
-      {pile && (
+      {stacked && (
         <>
           <span aria-hidden data-pile-edge className={cn(PILE_EDGE_BASE, PILE_EDGE_BACK)} />
           <span aria-hidden data-pile-edge className={cn(PILE_EDGE_BASE, PILE_EDGE_FRONT)} />
@@ -134,7 +135,7 @@ export function MockupCard({
       <div
         className={cn(
           mockupCardFaceVariants({ state }),
-          pile && 'delay-100 group-hover/card:delay-0'
+          stacked && 'delay-100 group-hover/card:delay-0'
         )}
       >
         <div className={mockupCardCoverVariants({ hidden: leftBehind })}>
@@ -150,15 +151,15 @@ export function MockupCard({
             {variant === 'pending-review' && showStatus && status && (
               <Badge variant="warning">{status}</Badge>
             )}
-            {showVariants && variantCount > 0 && !loading && (
+            {showVariants && memberCount > 1 && !loading && (
               // The whole pile, top included, so a pile of three reads 3.
               <Badge
                 variant="count"
-                aria-label={`${variantCount + 1} mockups in this pile`}
+                aria-label={`${memberCount} mockups in this pile`}
                 className="gap-1 px-2 text-muted-foreground"
               >
                 <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-3" />
-                {variantCount + 1}
+                {memberCount}
               </Badge>
             )}
           </div>

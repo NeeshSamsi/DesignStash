@@ -97,18 +97,18 @@ export function planDrop(
 ): PileIntent | null {
   const others = dragged.filter((item) => item.id !== target.id)
   if (others.length === 0) return null
-  if (others.some((item) => item.isGroup)) {
+  if (others.some((item) => item.pile)) {
     return { kind: 'merge', sourceIds: ids(others), targetId: target.id }
   }
-  if (target.isGroup) return { kind: 'add', pileId: target.id, memberIds: ids(others) }
+  if (target.pile) return { kind: 'add', pileId: target.id, memberIds: ids(others) }
   return { kind: 'create', memberIds: [target.id, ...ids(others)], topId: target.id }
 }
 
 /** The label a drop target shows while a drag is over it. */
 export function dropHint(dragged: readonly LibraryItem[], target: LibraryItem): string {
   const others = dragged.filter((item) => item.id !== target.id)
-  if (others.some((item) => item.isGroup)) return 'Merge into this pile'
-  if (target.isGroup) return 'Add to this pile'
+  if (others.some((item) => item.pile)) return 'Merge into this pile'
+  if (target.pile) return 'Add to this pile'
   return others.length <= 1 ? 'Start a pile' : `New pile from ${others.length + 1} mockups`
 }
 
@@ -119,7 +119,7 @@ export function dropHint(dragged: readonly LibraryItem[], target: LibraryItem): 
 export function planNewPile(selected: readonly LibraryItem[]): PileIntent | null {
   const [first, ...rest] = selected
   if (!first || rest.length === 0) return null
-  if (selected.some((item) => item.isGroup)) {
+  if (selected.some((item) => item.pile)) {
     return { kind: 'merge', sourceIds: ids(rest), targetId: first.id }
   }
   return { kind: 'create', memberIds: ids(selected), topId: first.id }
@@ -127,7 +127,7 @@ export function planNewPile(selected: readonly LibraryItem[]): PileIntent | null
 
 /** Piles in a selection, for ⇧⌘G (Disband pile). */
 export function pilesIn(selected: readonly LibraryItem[]): LibraryItem[] {
-  return selected.filter((item) => item.isGroup)
+  return selected.filter((item) => item.pile)
 }
 
 /**

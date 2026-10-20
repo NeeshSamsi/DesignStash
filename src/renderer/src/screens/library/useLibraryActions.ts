@@ -116,8 +116,8 @@ export function useLibraryActions({
       const description =
         targets.length > 1
           ? `${targets.length} mockups`
-          : first && first.isGroup
-            ? `${first.title} and ${first.variantCount} more in the pile`
+          : first && first.pile
+            ? `${first.title} and ${first.pile.memberCount - 1} more in the pile`
             : (first?.title ?? '')
       offerUndo(
         'move to Trash',
