@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { PlusSignIcon } from '@hugeicons/core-free-icons'
@@ -23,7 +24,7 @@ export function AddMockupCard({ className, ...props }: AddMockupCardProps) {
       <span className={addMockupCardCoverVariants()}>
         <HugeiconsIcon
           icon={PlusSignIcon}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           className="size-6 text-muted-foreground transition-colors group-hover/add:text-brand"
         />
       </span>

@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { Alert02Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Banner } from '@renderer/components/Banner'
@@ -66,7 +67,7 @@ export function ErrorState({
       className={cn(errorStateVariants({ variant: props.variant }), className)}
     >
       <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-error-weak text-error">
-        <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-6" />
+        <HugeiconsIcon icon={Alert02Icon} strokeWidth={ICON_STROKE} className="size-6" />
       </div>
       <h1
         className={

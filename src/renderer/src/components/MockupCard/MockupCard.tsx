@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useRef, useState } from 'react'
 import type { ComponentProps, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -158,7 +159,11 @@ export function MockupCard({
                 aria-label={`${memberCount} mockups in this pile`}
                 className="gap-1 px-2 text-muted-foreground"
               >
-                <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-3" />
+                <HugeiconsIcon
+                  icon={Layers01Icon}
+                  strokeWidth={ICON_STROKE}
+                  className="size-icon-2xs"
+                />
                 {memberCount}
               </Badge>
             )}
@@ -183,7 +188,7 @@ export function MockupCard({
                   onClick={onMore}
                   className={cn(OVERLAY_ICON_BUTTON, REVEAL_ON_HOVER)}
                 >
-                  <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={1.5} />
+                  <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={ICON_STROKE} />
                 </button>
               )}
             </div>
@@ -241,7 +246,11 @@ export function MockupCard({
             <>
               <div aria-hidden className="absolute inset-0 bg-selection" />
               <div className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-primary px-3 py-1 type-label-xs-medium whitespace-nowrap text-on-primary">
-                <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-3.5" />
+                <HugeiconsIcon
+                  icon={Layers01Icon}
+                  strokeWidth={ICON_STROKE}
+                  className="size-icon-xs"
+                />
                 {dropHint}
               </div>
             </>

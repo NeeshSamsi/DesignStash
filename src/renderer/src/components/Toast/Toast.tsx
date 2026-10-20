@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import {
   Alert02Icon,
   Cancel01Icon,
@@ -42,7 +43,7 @@ export function Toast({ className, actionLabel, onAction, onClose, ...rest }: To
       {props.showIcon && (
         <HugeiconsIcon
           icon={ICONS[props.variant]}
-          strokeWidth={2}
+          strokeWidth={ICON_STROKE}
           className={toastIconVariants({ variant: props.variant })}
         />
       )}
@@ -63,7 +64,7 @@ export function Toast({ className, actionLabel, onAction, onClose, ...rest }: To
         </Button>
       )}
       <Button variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={onClose}>
-        <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+        <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
       </Button>
     </div>
   )

@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useId, type ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { AiMagicIcon } from '@hugeicons/core-free-icons'
@@ -34,7 +35,11 @@ const THINKING_HINT = 'Sniffing out a title… this one’s still with the AI.'
 function AiHint({ children }: { children: string }) {
   return (
     <div className="flex items-start gap-1.5">
-      <HugeiconsIcon icon={AiMagicIcon} strokeWidth={1.5} className="size-4 shrink-0 text-brand" />
+      <HugeiconsIcon
+        icon={AiMagicIcon}
+        strokeWidth={ICON_STROKE}
+        className="size-4 shrink-0 text-brand"
+      />
       <p className="min-w-0 flex-1 type-caption-xs-regular text-muted-foreground">{children}</p>
     </div>
   )

@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { ArrowLeft01Icon, ArrowRight01Icon, FolderLibraryIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -69,7 +70,7 @@ export function OnboardingStep({
         <div className="flex size-14 items-center justify-center rounded-xl bg-primary">
           <HugeiconsIcon
             icon={FolderLibraryIcon}
-            strokeWidth={1.5}
+            strokeWidth={ICON_STROKE}
             aria-hidden
             className="size-6 text-on-primary"
           />

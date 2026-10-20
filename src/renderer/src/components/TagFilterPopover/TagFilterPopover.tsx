@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { Fragment, useState } from 'react'
 import { Cancel01Icon, Settings01Icon, Tag01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -238,7 +239,7 @@ export function TagFilterPopover({
             onClick={() => setQuery('')}
             className="rounded-sm text-tertiary outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.5} className="size-4" />
+            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} className="size-4" />
           </button>
         )}
       </InputGroup>

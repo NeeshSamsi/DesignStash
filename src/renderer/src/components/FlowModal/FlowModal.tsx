@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Tick02Icon } from '@hugeicons/core-free-icons'
@@ -39,7 +40,7 @@ function Marker({ index, state }: { index: number; state: 'done' | 'current' | '
       )}
     >
       {state === 'done' ? (
-        <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} className="size-4" />
+        <HugeiconsIcon icon={Tick02Icon} strokeWidth={ICON_STROKE} className="size-4" />
       ) : (
         index + 1
       )}

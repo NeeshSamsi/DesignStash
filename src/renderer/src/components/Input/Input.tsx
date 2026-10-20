@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useState, type ChangeEvent, type ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
@@ -51,7 +52,11 @@ export function Input({ className, onChange, onClear, shortcut = '⌘K', ...rest
   return (
     <InputGroup data-ds="Input" data-variant={variant} className={className}>
       {showIconStart && (
-        <HugeiconsIcon icon={iconStart} strokeWidth={1.5} className="size-4 text-tertiary" />
+        <HugeiconsIcon
+          icon={iconStart}
+          strokeWidth={ICON_STROKE}
+          className="size-4 text-tertiary"
+        />
       )}
       <InputGroupInput
         value={current}
@@ -67,7 +72,7 @@ export function Input({ className, onChange, onClear, shortcut = '⌘K', ...rest
           onClick={clear}
           className="rounded-sm text-tertiary outline-none focus-visible:focus-ring"
         >
-          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.5} className="size-4" />
+          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} className="size-4" />
         </button>
       )}
       {search && <KeyboardShortcut variant="plain" keys={shortcut} />}

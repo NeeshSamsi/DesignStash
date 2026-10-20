@@ -60,7 +60,7 @@ export const mockupCardCoverVariants = cva(
 
 /** Reveals hover-only controls on pointer hover or keyboard focus (not on mouse-click focus). */
 export const REVEAL_ON_HOVER =
-  'opacity-0 transition-opacity duration-120 group-hover/card:opacity-100 group-has-focus-visible/card:opacity-100'
+  'opacity-0 transition-opacity duration-(--duration-fast) group-hover/card:opacity-100 group-has-focus-visible/card:opacity-100'
 
 /** Square 28px control on a cover (⋯, compact Open in Photoshop). */
 export const OVERLAY_ICON_BUTTON =

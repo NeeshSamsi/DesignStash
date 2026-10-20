@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import {
   Alert02Icon,
   Cancel01Icon,
@@ -42,7 +43,7 @@ export function Banner({ className, actionLabel, onAction, onDismiss, ...rest }:
     >
       <HugeiconsIcon
         icon={ICONS[props.tone]}
-        strokeWidth={2}
+        strokeWidth={ICON_STROKE}
         className={bannerIconVariants({ tone: props.tone })}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -62,7 +63,7 @@ export function Banner({ className, actionLabel, onAction, onDismiss, ...rest }:
           aria-label="Dismiss"
           onClick={onDismiss}
         >
-          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
         </Button>
       )}
     </div>

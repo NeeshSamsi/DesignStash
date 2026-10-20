@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import {
   useEffect,
   useMemo,
@@ -169,7 +170,7 @@ function MoreButton({
         className
       )}
     >
-      <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={1.5} />
+      <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={ICON_STROKE} />
     </Button>
   )
 }
@@ -304,7 +305,11 @@ export function TagTree({
       className={newCategoryRowClass({ editing: false })}
       onClick={() => setNewCategory({ draft: '' })}
     >
-      <HugeiconsIcon icon={PlusSignIcon} strokeWidth={1.5} className="size-3.5 shrink-0" />
+      <HugeiconsIcon
+        icon={PlusSignIcon}
+        strokeWidth={ICON_STROKE}
+        className="size-icon-xs shrink-0"
+      />
       New category
     </button>
   )
@@ -419,8 +424,8 @@ export function TagTree({
       >
         <HugeiconsIcon
           icon={Tag01Icon}
-          strokeWidth={1.5}
-          className="size-3.5 shrink-0 text-tertiary"
+          strokeWidth={ICON_STROKE}
+          className="size-icon-xs shrink-0 text-tertiary"
         />
         {editing ? (
           <RowInput
@@ -460,7 +465,11 @@ export function TagTree({
           className={addRowClass}
           onClick={() => setAdding({ categoryId: category.categoryId, draft: '' })}
         >
-          <HugeiconsIcon icon={PlusSignIcon} strokeWidth={1.5} className="size-3.5 shrink-0" />
+          <HugeiconsIcon
+            icon={PlusSignIcon}
+            strokeWidth={ICON_STROKE}
+            className="size-icon-xs shrink-0"
+          />
           Add tag
         </button>
       )
@@ -472,8 +481,8 @@ export function TagTree({
         <div className={tagRowClass()}>
           <HugeiconsIcon
             icon={Tag01Icon}
-            strokeWidth={1.5}
-            className="size-3.5 shrink-0 text-tertiary"
+            strokeWidth={ICON_STROKE}
+            className="size-icon-xs shrink-0 text-tertiary"
           />
           <RowInput
             label={`New tag in ${category.categoryLabel}`}

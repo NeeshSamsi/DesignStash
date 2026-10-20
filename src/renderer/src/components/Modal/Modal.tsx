@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ReactNode } from 'react'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -54,7 +55,7 @@ export function Modal({
         />
         {isStatic && closable && (
           <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
-            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
           </Button>
         )}
       </div>

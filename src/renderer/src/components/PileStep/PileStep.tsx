@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Tick02Icon } from '@hugeicons/core-free-icons'
@@ -31,7 +32,7 @@ export function PileStep({ className, ...rest }: PileStepProps) {
     >
       <span className={pileStepMarkerVariants({ status })}>
         {status === 'done' && (
-          <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} className="size-2.5" />
+          <HugeiconsIcon icon={Tick02Icon} strokeWidth={ICON_STROKE} className="size-2.5" />
         )}
         {status === 'current' && <span className="size-1.5 rounded-full bg-primary" />}
       </span>

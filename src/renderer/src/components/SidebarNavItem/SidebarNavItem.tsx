@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
@@ -29,7 +30,9 @@ export function SidebarNavItem({ className, ...rest }: SidebarNavItemProps) {
       className={cn(sidebarNavItemVariants({ variant, active }), className)}
       {...props}
     >
-      {showIcon && <HugeiconsIcon icon={icon} strokeWidth={1.5} className="size-4 shrink-0" />}
+      {showIcon && (
+        <HugeiconsIcon icon={icon} strokeWidth={ICON_STROKE} className="size-4 shrink-0" />
+      )}
       <span className="min-w-0 flex-1 truncate type-body-sm-regular">{label}</span>
       {showCount && <span className="shrink-0 type-caption-xs-regular">{count}</span>}
     </button>

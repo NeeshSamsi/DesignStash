@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { CSSProperties, ReactNode } from 'react'
 import { Bug01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -44,7 +45,7 @@ export function ActivityDock({
       {props.import && importContent}
       {props.build === 'dev' && (
         <Button variant="secondary" size="icon" aria-label="Open debug panel" onClick={onDebug}>
-          <HugeiconsIcon icon={Bug01Icon} strokeWidth={1.5} />
+          <HugeiconsIcon icon={Bug01Icon} strokeWidth={ICON_STROKE} />
         </Button>
       )}
     </div>

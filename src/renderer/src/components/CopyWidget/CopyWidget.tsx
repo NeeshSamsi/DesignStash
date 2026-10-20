@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react'
 import {
   Alert02Icon,
@@ -119,7 +120,7 @@ export function CopyWidget({
         <div className="flex h-9 items-center">
           <HugeiconsIcon
             icon={LEAD[state]}
-            strokeWidth={1.5}
+            strokeWidth={ICON_STROKE}
             aria-hidden
             className={copyWidgetStatusVariants({ state })}
           />

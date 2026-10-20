@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Folder01Icon } from '@hugeicons/core-free-icons'
@@ -64,7 +65,7 @@ export function PathField({
       <div className={pathFieldBoxVariants({ state })}>
         <HugeiconsIcon
           icon={Folder01Icon}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           className={cn(
             'size-5 shrink-0',
             state === 'not-writable' && 'text-error',

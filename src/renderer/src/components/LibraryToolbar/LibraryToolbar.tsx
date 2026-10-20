@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { FilterHorizontalIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Select } from '@renderer/components/Select'
@@ -70,7 +71,7 @@ export function LibraryToolbar({
 
   const filterButton = (
     <Button variant="outline" size="sm" disabled={disabled} className={HAIRLINE_BUTTON}>
-      <HugeiconsIcon icon={FilterHorizontalIcon} strokeWidth={2} />
+      <HugeiconsIcon icon={FilterHorizontalIcon} strokeWidth={ICON_STROKE} />
       Filter
     </Button>
   )

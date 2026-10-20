@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, MouseEvent } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Folder01Icon, MoreHorizontalIcon } from '@hugeicons/core-free-icons'
@@ -74,7 +75,11 @@ export function GroupCard({
       ) : (
         <div data-handle="" className={groupCardHeaderVariants({ state })}>
           {showFolder && (
-            <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.5} className="size-4 shrink-0" />
+            <HugeiconsIcon
+              icon={Folder01Icon}
+              strokeWidth={ICON_STROKE}
+              className="size-4 shrink-0"
+            />
           )}
           <p
             className={cn(

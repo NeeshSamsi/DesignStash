@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Spinner } from '@renderer/components/Spinner'
@@ -55,15 +56,15 @@ export function Button({ children, ...rest }: ButtonProps) {
         loading ? (
           spinner
         ) : (
-          <HugeiconsIcon icon={iconStart} strokeWidth={1.5} />
+          <HugeiconsIcon icon={iconStart} strokeWidth={ICON_STROKE} />
         )
       ) : (
         <>
           {loading
             ? spinner
-            : showIconStart && <HugeiconsIcon icon={iconStart} strokeWidth={1.5} />}
+            : showIconStart && <HugeiconsIcon icon={iconStart} strokeWidth={ICON_STROKE} />}
           {children ?? label}
-          {showIconEnd && <HugeiconsIcon icon={iconEnd} strokeWidth={1.5} />}
+          {showIconEnd && <HugeiconsIcon icon={iconEnd} strokeWidth={ICON_STROKE} />}
         </>
       )}
     </UiButton>

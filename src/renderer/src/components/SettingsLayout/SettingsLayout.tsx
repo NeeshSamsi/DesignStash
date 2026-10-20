@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, ReactNode } from 'react'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import {
@@ -115,7 +116,7 @@ export function SettingsPathField({
   return (
     <div className="flex items-stretch overflow-clip rounded-lg border border-input bg-surface-2">
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-        <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.5} className="size-4 shrink-0" />
+        <HugeiconsIcon icon={Folder01Icon} strokeWidth={ICON_STROKE} className="size-4 shrink-0" />
         {fullPath && fullPath !== path ? (
           <Tooltip>
             <TooltipTrigger asChild>{pathText}</TooltipTrigger>

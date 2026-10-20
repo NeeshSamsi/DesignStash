@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { FileAddIcon, FolderAddIcon, AddSquareIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -45,7 +46,7 @@ export function AddMenu({
         align="start"
         trigger={
           <Button size="lg" disabled={disabled} className={addMenuTriggerClass}>
-            <HugeiconsIcon icon={AddSquareIcon} strokeWidth={1.5} />
+            <HugeiconsIcon icon={AddSquareIcon} strokeWidth={ICON_STROKE} />
             Add a mockup
           </Button>
         }

@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ReactNode } from 'react'
 import { MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -41,7 +42,7 @@ export function ListRow({
 }: ListRowProps) {
   const props = { ...LIST_ROW_DEFAULTS, ...rest }
   const mediaClass = listRowMediaVariants({ density: props.density })
-  const icon = <HugeiconsIcon icon={props.mediaIcon} strokeWidth={2} className="size-4" />
+  const icon = <HugeiconsIcon icon={props.mediaIcon} strokeWidth={ICON_STROKE} className="size-4" />
   return (
     <div
       data-ds="ListRow"
@@ -78,7 +79,7 @@ export function ListRow({
                 </Button>
                 {onMore && (
                   <Button variant="ghost" size="icon" aria-label="More actions" onClick={onMore}>
-                    <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={2} />
+                    <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={ICON_STROKE} />
                   </Button>
                 )}
               </>

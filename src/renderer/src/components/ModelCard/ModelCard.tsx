@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Alert02Icon, Download04Icon, Globe02Icon, HardDriveIcon } from '@hugeicons/core-free-icons'
@@ -124,15 +125,19 @@ export function ModelCard({
         {info && (
           <>
             <div className="flex items-center gap-1.5 type-caption-xs-regular text-tertiary">
-              <HugeiconsIcon icon={Globe02Icon} strokeWidth={1.5} className="size-3.5" />
+              <HugeiconsIcon
+                icon={Globe02Icon}
+                strokeWidth={ICON_STROKE}
+                className="size-icon-xs"
+              />
               {resumeNote ?? languages}
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-1.5 type-caption-xs-regular text-tertiary">
               <HugeiconsIcon
                 icon={state === 'available' ? Download04Icon : HardDriveIcon}
-                strokeWidth={1.5}
-                className="size-3.5"
+                strokeWidth={ICON_STROKE}
+                className="size-icon-xs"
               />
               {size}
             </div>
@@ -192,7 +197,11 @@ export function ModelCard({
         {state === 'failed' && (
           <>
             <div className="flex min-w-0 flex-1 items-center gap-1.5 type-caption-xs-regular text-error">
-              <HugeiconsIcon icon={Alert02Icon} strokeWidth={1.5} className="size-3.5 shrink-0" />
+              <HugeiconsIcon
+                icon={Alert02Icon}
+                strokeWidth={ICON_STROKE}
+                className="size-icon-xs shrink-0"
+              />
               <span role="alert">{failureReason}</span>
             </div>
             <Button variant="secondary" size="sm" label="Try again" onClick={onRetry} />

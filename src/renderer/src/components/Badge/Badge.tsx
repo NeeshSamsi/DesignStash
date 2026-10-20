@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Badge as UiBadge } from '@renderer/ui/badge'
@@ -18,7 +19,7 @@ export function Badge({ children, ...rest }: BadgeProps) {
   const { variant, showIcon, label, icon, ...props } = { ...BADGE_DEFAULTS, ...rest }
   return (
     <UiBadge data-ds="Badge" variant={variant === 'primary' ? 'default' : variant} {...props}>
-      {showIcon && <HugeiconsIcon icon={icon} strokeWidth={1.5} />}
+      {showIcon && <HugeiconsIcon icon={icon} strokeWidth={ICON_STROKE} />}
       {children ?? label}
     </UiBadge>
   )

@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useRef, useState } from 'react'
 import {
   ArrowLeft01Icon,
@@ -130,7 +131,7 @@ export function Lightbox({
           aria-label="Zoom out"
           onClick={() => setZoom(zoomedOut(zoom))}
         >
-          <HugeiconsIcon icon={ZoomOutAreaIcon} strokeWidth={2} />
+          <HugeiconsIcon icon={ZoomOutAreaIcon} strokeWidth={ICON_STROKE} />
         </Button>
         <Button
           variant="ghost"
@@ -138,7 +139,7 @@ export function Lightbox({
           aria-label="Zoom in"
           onClick={() => setZoom(zoomedIn(zoom))}
         >
-          <HugeiconsIcon icon={ZoomInAreaIcon} strokeWidth={2} />
+          <HugeiconsIcon icon={ZoomInAreaIcon} strokeWidth={ICON_STROKE} />
         </Button>
         <Button
           variant="ghost"
@@ -152,7 +153,7 @@ export function Lightbox({
           100%
         </Button>
         <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
-          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
         </Button>
       </div>
     </div>
@@ -168,7 +169,7 @@ export function Lightbox({
           disabled={!hasPrev}
           onClick={onPrev}
         >
-          <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+          <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={ICON_STROKE} />
         </Button>
       )}
       {cover}
@@ -180,7 +181,7 @@ export function Lightbox({
           disabled={!hasNext}
           onClick={onNext}
         >
-          <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
+          <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={ICON_STROKE} />
         </Button>
       )}
     </div>
@@ -200,7 +201,7 @@ export function Lightbox({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(next) => !next && onClose?.()}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay duration-(--duration-fast) data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none" />
         <DialogPrimitive.Content
           data-ds="Lightbox"
           data-mode={props.mode}

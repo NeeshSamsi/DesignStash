@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ReactNode } from 'react'
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -60,7 +61,7 @@ export function PageHeader({
               )}
               <HugeiconsIcon
                 icon={ArrowRight01Icon}
-                strokeWidth={1.5}
+                strokeWidth={ICON_STROKE}
                 className="size-6 shrink-0"
                 aria-hidden
               />

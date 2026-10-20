@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { Clock01Icon, FileNotFoundIcon, Upload01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
@@ -36,7 +37,7 @@ export function DropOverlay({ className, ...rest }: DropOverlayProps) {
         <div className="flex size-16 items-center justify-center rounded-xl bg-surface-2">
           <HugeiconsIcon
             icon={ICONS[props.state]}
-            strokeWidth={1.5}
+            strokeWidth={ICON_STROKE}
             className={dropOverlayIconVariants({ state: props.state })}
           />
         </div>

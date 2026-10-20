@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { MultiplicationSignCircleIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
@@ -19,7 +20,7 @@ export function DropHint({ className, ...rest }: DropHintProps) {
     <div data-ds="DropHint" role="status" className={cn(dropHintVariants(), className)}>
       <HugeiconsIcon
         icon={MultiplicationSignCircleIcon}
-        strokeWidth={2}
+        strokeWidth={ICON_STROKE}
         className="size-4 shrink-0"
       />
       <p className="type-caption-xs-regular text-foreground">{props.label}</p>

@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useRef, useState, type ComponentProps, type KeyboardEvent, type ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { AiMagicIcon, Cancel01Icon, PlusSignIcon, Tick02Icon } from '@hugeicons/core-free-icons'
@@ -68,7 +69,7 @@ function RemoveButton({
         marked ? 'inline-flex text-error' : 'hidden'
       )}
     >
-      <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.5} className="size-4" />
+      <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} className="size-4" />
     </button>
   )
 }
@@ -125,8 +126,8 @@ export function TagChip({
         <>
           <HugeiconsIcon
             icon={PlusSignIcon}
-            strokeWidth={1.5}
-            className="size-3 shrink-0 text-muted-foreground"
+            strokeWidth={ICON_STROKE}
+            className="size-icon-2xs shrink-0 text-muted-foreground"
           />
           <span className="type-label-xs-medium text-muted-foreground group-hover/chip:text-foreground">
             Add tag
@@ -151,7 +152,7 @@ export function TagChip({
         <>
           <HugeiconsIcon
             icon={AiMagicIcon}
-            strokeWidth={1.5}
+            strokeWidth={ICON_STROKE}
             className={cn('size-4 shrink-0', thinking ? 'text-tertiary' : 'text-brand')}
           />
           {thinking ? (
@@ -163,8 +164,8 @@ export function TagChip({
               <span className="hidden items-center gap-1 group-hover/chip:inline-flex group-focus-within/chip:inline-flex">
                 <HugeiconsIcon
                   icon={Tick02Icon}
-                  strokeWidth={1.5}
-                  className="size-3 text-muted-foreground"
+                  strokeWidth={ICON_STROKE}
+                  className="size-icon-2xs text-muted-foreground"
                 />
                 <span
                   aria-hidden
@@ -175,7 +176,11 @@ export function TagChip({
                   }}
                   className="inline-flex size-4 items-center justify-center text-muted-foreground hover:text-foreground"
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.5} className="size-3" />
+                  <HugeiconsIcon
+                    icon={Cancel01Icon}
+                    strokeWidth={ICON_STROKE}
+                    className="size-icon-2xs"
+                  />
                 </span>
               </span>
             </>

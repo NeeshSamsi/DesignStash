@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import {
   Alert02Icon,
@@ -63,7 +64,7 @@ export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFi
       <div className="flex size-8 shrink-0 items-center justify-center overflow-clip rounded-md bg-surface-3">
         <HugeiconsIcon
           icon={Image01Icon}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           className="size-4 text-muted-foreground"
         />
       </div>
@@ -82,7 +83,7 @@ export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFi
       ) : (
         <HugeiconsIcon
           icon={STATUS[state]}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           aria-hidden
           className={cn('size-4 shrink-0', state === 'unreadable' ? 'text-error' : 'text-tertiary')}
         />

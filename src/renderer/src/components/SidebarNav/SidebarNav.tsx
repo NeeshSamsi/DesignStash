@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Clock01Icon, Delete02Icon, Layers01Icon, Settings01Icon } from '@hugeicons/core-free-icons'
@@ -98,7 +99,7 @@ export function SidebarNav({
       {props.add}
       <div data-slot="brand" className={sidebarNavBrandClass}>
         <span aria-hidden className={sidebarNavLogoClass}>
-          <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-4" />
+          <HugeiconsIcon icon={Layers01Icon} strokeWidth={ICON_STROKE} className="size-4" />
         </span>
         <span className="type-title-lg-semibold whitespace-nowrap text-foreground">
           DesignStash

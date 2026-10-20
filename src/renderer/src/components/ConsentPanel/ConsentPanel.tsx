@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon, Shield01Icon, Tick02Icon } from '@hugeicons/core-free-icons'
@@ -59,7 +60,7 @@ function List({
           <li key={item} className="flex items-start gap-2">
             <HugeiconsIcon
               icon={icon}
-              strokeWidth={1.5}
+              strokeWidth={ICON_STROKE}
               aria-hidden
               className={cn('mt-0.5 size-4 shrink-0', tone)}
             />
@@ -156,7 +157,11 @@ export function ConsentPanel({
     >
       <div className="flex items-center gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-3">
-          <HugeiconsIcon icon={Shield01Icon} strokeWidth={1.5} className="size-5 text-foreground" />
+          <HugeiconsIcon
+            icon={Shield01Icon}
+            strokeWidth={ICON_STROKE}
+            className="size-5 text-foreground"
+          />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <p className="type-body-sm-medium text-foreground">{heading}</p>
