@@ -66,6 +66,44 @@ describe('IPC contract structure', () => {
   })
 })
 
+describe('copy status wire shape', () => {
+  const counts = {
+    haulId: 'h1',
+    total: 3,
+    landed: 1,
+    bytesTotal: 300,
+    bytesCopied: 100,
+    bytesPerSecond: 0,
+    secondsLeft: null,
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0 }
+  }
+  const { payload } = PUSH_CONTRACT[IPC_CHANNELS.COPY_PROGRESS]
+  const { response } = IPC_CONTRACT[IPC_CHANNELS.COPY_RETRY]
+
+  it('a paused haul says why', () => {
+    const paused = { ...counts, state: 'paused', pauseReason: 'disk-full' }
+    expect(response.parse({ ...paused, files: [] })).toEqual({ ...paused, files: [] })
+    expect(payload.parse({ ...paused, file: null })).toEqual({ ...paused, file: null })
+    expect(payload.safeParse({ ...counts, state: 'paused', file: null }).success).toBe(false)
+    expect(
+      payload.safeParse({ ...counts, state: 'paused', pauseReason: null, file: null }).success
+    ).toBe(false)
+  })
+
+  it.each(['running', 'done', 'cancelled', 'undone'] as const)(
+    'a %s haul carries no pause reason',
+    (state) => {
+      const parsed = response.parse({ ...counts, state, pauseReason: 'disk-full', files: [] })
+      expect(parsed).toEqual({ ...counts, state, files: [] })
+      expect('pauseReason' in parsed).toBe(false)
+    }
+  )
+
+  it('rejects a state that does not exist', () => {
+    expect(payload.safeParse({ ...counts, state: 'sleeping', file: null }).success).toBe(false)
+  })
+})
+
 describe('IPC Contract', () => {
   describe('APP_INFO channel', () => {
     const { response } = IPC_CONTRACT[IPC_CHANNELS.APP_INFO]
@@ -473,11 +511,9 @@ describe('IPC Contract', () => {
             coverPath: '/c.png',
             coverSource: 'embedded' as const,
             coverMissing: false,
-            isGroup: false,
             favourite: false,
             createdAt: '2025-01-01T00:00:00',
-            variantCount: 0,
-            topId: null,
+            pile: null,
             tags: []
           }
         ]

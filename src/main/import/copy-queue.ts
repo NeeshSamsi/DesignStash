@@ -86,7 +86,10 @@ export class CopyQueue {
   /** The file being handled and the haul it belongs to. */
   private inFlight: { haulId: string; settled: Promise<boolean> } | null = null
   private lastPush = 0
-  private rate: { haulId: string; samples: { at: number; bytes: number }[] } = { haulId: '', samples: [] }
+  private rate: { haulId: string; samples: { at: number; bytes: number }[] } = {
+    haulId: '',
+    samples: []
+  }
 
   constructor(private readonly opts: CopyQueueOptions) {
     this.repo = opts.repo
@@ -106,7 +109,10 @@ export class CopyQueue {
         fileName: basename(p.psdPath),
         folderTrail: p.importContext.folderTrail,
         // Read now so progress can be counted in bytes. A file that can't be read counts as nothing.
-        sizeBytes: await this.deps.stat(p.psdPath).then((st) => st.size, () => 0)
+        sizeBytes: await this.deps.stat(p.psdPath).then(
+          (st) => st.size,
+          () => 0
+        )
       }))
     )
 
@@ -261,7 +267,8 @@ export class CopyQueue {
       return skip('unreadable')
     }
 
-    if ((await this.deps.freeBytes(this.root)) < size + this.deps.reserveBytes) throw new Pause('disk-full')
+    if ((await this.deps.freeBytes(this.root)) < size + this.deps.reserveBytes)
+      throw new Pause('disk-full')
 
     const destDir = join(this.root, 'mockups', this.deps.newId())
     try {
@@ -291,7 +298,11 @@ export class CopyQueue {
         coverPath: cover.source === 'none' ? '' : cover.coverPath,
         coverSource: cover.source,
         contentHash: sha256,
-        importContext: { batchId: haulId, folderTrail: job.folderTrail, originalFilename: job.fileName },
+        importContext: {
+          batchId: haulId,
+          folderTrail: job.folderTrail,
+          originalFilename: job.fileName
+        },
         stage: 'to_sort',
         sizeBytes: size
       })
@@ -302,13 +313,17 @@ export class CopyQueue {
       this.live = null
       await this.deps.rm(destDir).catch(() => {})
       if (codeOf(err) === 'ENOSPC') throw new Pause('disk-full')
-      if (codeOf(err) === 'ENOENT' && !(await this.sourceStillThere(job.sourcePath))) throw new Pause('source-gone')
+      if (codeOf(err) === 'ENOENT' && !(await this.sourceStillThere(job.sourcePath)))
+        throw new Pause('source-gone')
       skip('unreadable')
     }
   }
 
   private async sourceStillThere(path: string): Promise<boolean> {
-    return this.deps.stat(path).then(() => true, () => false)
+    return this.deps.stat(path).then(
+      () => true,
+      () => false
+    )
   }
 
   // ---- reporting ----
@@ -332,8 +347,10 @@ export class CopyQueue {
     const rate = this.rateFor(haulId, haul.state === 'running', bytesCopied, bytesTotal)
     return {
       haulId,
-      state: haul.state,
-      pauseReason: haul.pauseReason ?? null,
+      // A paused haul always has its reason (setHaulState writes them together).
+      ...(haul.state === 'paused'
+        ? { state: 'paused' as const, pauseReason: haul.pauseReason ?? 'disk-full' }
+        : { state: haul.state }),
       total: jobs.length,
       landed: jobs.filter((j) => j.mockupId !== null).length,
       bytesTotal,
@@ -374,7 +391,10 @@ export class CopyQueue {
     const gained = bytesCopied - first.bytes
     if (elapsed < RATE_MIN_MS || gained <= 0) return { bytesPerSecond: 0, secondsLeft: null }
     const bytesPerSecond = (gained / elapsed) * 1000
-    return { bytesPerSecond, secondsLeft: Math.max(0, Math.ceil((bytesTotal - bytesCopied) / bytesPerSecond)) }
+    return {
+      bytesPerSecond,
+      secondsLeft: Math.max(0, Math.ceil((bytesTotal - bytesCopied) / bytesPerSecond))
+    }
   }
 
   private emit(haulId: string, changedJobId: number | null): void {
@@ -402,6 +422,10 @@ function toFile(j: CopyJob, live: { jobId: number; bytes: number } | null): Copy
     ...(j.mockupId !== null ? { mockupId: j.mockupId } : {}),
     size: j.sizeBytes,
     bytesCopied:
-      j.status === 'done' ? j.sizeBytes : live?.jobId === j.id ? Math.min(live.bytes, j.sizeBytes) : 0
+      j.status === 'done'
+        ? j.sizeBytes
+        : live?.jobId === j.id
+          ? Math.min(live.bytes, j.sizeBytes)
+          : 0
   }
 }

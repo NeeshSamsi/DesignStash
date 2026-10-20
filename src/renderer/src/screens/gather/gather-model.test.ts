@@ -16,20 +16,21 @@ import {
   widgetState
 } from './gather-model'
 
-const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
-  haulId: 'h1',
-  state: 'running',
-  pauseReason: null,
-  total: 40,
-  landed: 12,
-  bytesTotal: 0,
-  bytesCopied: 0,
-  bytesPerSecond: 0,
-  secondsLeft: null,
-  skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
-  files: [],
-  ...over
-})
+// The overrides may pick any state, so the merged object is checked against the union by the cast.
+const haul = (over: Partial<CopyStatus> = {}): CopyStatus =>
+  ({
+    haulId: 'h1',
+    state: 'running',
+    total: 40,
+    landed: 12,
+    bytesTotal: 0,
+    bytesCopied: 0,
+    bytesPerSecond: 0,
+    secondsLeft: null,
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
+    files: [],
+    ...over
+  }) as CopyStatus
 
 describe('smooth progress', () => {
   it('counts the bar in bytes, so a big file moves it while it copies', () => {

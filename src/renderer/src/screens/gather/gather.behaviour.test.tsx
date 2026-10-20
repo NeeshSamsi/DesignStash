@@ -11,24 +11,25 @@ import { GatherDock, useGather, useGatherDrops } from './index'
 const toasts = vi.hoisted(() => ({ toast: vi.fn(), undoToast: vi.fn() }))
 vi.mock('@renderer/stores/toastStore', () => toasts)
 
-const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
-  haulId: 'h1',
-  state: 'running',
-  pauseReason: null,
-  total: 40,
-  landed: 12,
-  bytesTotal: 0,
-  bytesCopied: 0,
-  bytesPerSecond: 0,
-  secondsLeft: null,
-  skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
-  files: [{ jobId: 1, name: 'phone_front.psd', status: 'done' }],
-  ...over
-})
+// The overrides may pick any state, so the merged object is checked against the union by the cast.
+const haul = (over: Partial<CopyStatus> = {}): CopyStatus =>
+  ({
+    haulId: 'h1',
+    state: 'running',
+    total: 40,
+    landed: 12,
+    bytesTotal: 0,
+    bytesCopied: 0,
+    bytesPerSecond: 0,
+    secondsLeft: null,
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
+    files: [{ jobId: 1, name: 'phone_front.psd', status: 'done' }],
+    ...over
+  }) as CopyStatus
 const progress = (over: Partial<CopyProgress> = {}): CopyProgress => {
   const { files, ...counts } = haul()
   void files
-  return { ...counts, file: null, ...over }
+  return { ...counts, file: null, ...over } as CopyProgress
 }
 
 function Harness() {

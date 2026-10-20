@@ -53,20 +53,21 @@ function land(items: InboxItem[], total = items.length) {
   act(() => pushes.get(IPC_CHANNELS.INBOX_COUNTS_CHANGED)?.forEach((cb) => cb(current)))
 }
 
-const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
-  haulId: 'h1',
-  state: 'running',
-  pauseReason: null,
-  total: 38,
-  landed: 12,
-  bytesTotal: 100,
-  bytesCopied: 30,
-  bytesPerSecond: 10,
-  secondsLeft: 7,
-  skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
-  files: [],
-  ...over
-})
+// The overrides may pick any state, so the merged object is checked against the union by the cast.
+const haul = (over: Partial<CopyStatus> = {}): CopyStatus =>
+  ({
+    haulId: 'h1',
+    state: 'running',
+    total: 38,
+    landed: 12,
+    bytesTotal: 100,
+    bytesCopied: 30,
+    bytesPerSecond: 10,
+    secondsLeft: 7,
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
+    files: [],
+    ...over
+  }) as CopyStatus
 
 // The strip folds away rather than leaving the tree: it counts as there only while open.
 const strip = () => document.querySelector('[data-open="true"] [data-ds="WaitingToSortStrip"]')

@@ -91,11 +91,12 @@ export function widgetCopy(haul: CopyStatus): WidgetCopy {
         percent
       }
     case 'error': {
-      const why = haul.pauseReason === 'source-gone' ? 'a drive was unplugged' : 'your disk is full'
+      const gone = haul.state === 'paused' && haul.pauseReason === 'source-gone'
+      const why = gone ? 'a drive was unplugged' : 'your disk is full'
       return {
         title: `Copying paused · ${why}`,
         description: `${
-          haul.pauseReason === 'source-gone' ? 'Plug it back in' : 'Free up some space'
+          gone ? 'Plug it back in' : 'Free up some space'
         }, then retry. The ${landed} already copied ${haul.landed === 1 ? 'is' : 'are'} safe in To sort.`,
         percent
       }

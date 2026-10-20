@@ -199,7 +199,8 @@ describe('pausing', () => {
     await q.retry(haulId)
     await q.idle()
 
-    expect(last()).toMatchObject({ state: 'done', landed: 2, pauseReason: null })
+    expect(last()).toMatchObject({ state: 'done', landed: 2 })
+    expect(last()).not.toHaveProperty('pauseReason')
   })
 
   it('pauses with disk-full when the disk fills while copying, and removes the half copy', async () => {

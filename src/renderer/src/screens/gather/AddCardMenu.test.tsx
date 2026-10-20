@@ -7,7 +7,6 @@ import { AddCardMenu } from './AddCardMenu'
 const running = (): CopyStatus => ({
   haulId: 'h1',
   state: 'running',
-  pauseReason: null,
   total: 4,
   landed: 1,
   bytesTotal: 0,

@@ -25,10 +25,8 @@ export const CopyFileSchema = z.object({
 })
 export type CopyFile = z.infer<typeof CopyFileSchema>
 
-const CopyCountsSchema = z.object({
+const copyCountsShape = {
   haulId: z.string(),
-  state: z.enum(['running', 'paused', 'done', 'cancelled', 'undone']),
-  pauseReason: CopyPauseReasonSchema.nullable(),
   /** PSDs in the haul. */
   total: z.number(),
   /** Landed in To sort. */
@@ -41,14 +39,31 @@ const CopyCountsSchema = z.object({
   /** Seconds left at that speed. null until the speed is known. */
   secondsLeft: z.number().nullable(),
   skipped: z.object({ notPsd: z.number(), duplicate: z.number(), unreadable: z.number() })
-})
+}
+
+/**
+ * A haul's overall figures. A paused haul always says why; every other state has no reason, so
+ * "paused without a reason" and "running with one" cannot be sent.
+ */
+const copyCountsVariants = [
+  z.object({ ...copyCountsShape, state: z.literal('paused'), pauseReason: CopyPauseReasonSchema }),
+  z.object({ ...copyCountsShape, state: z.enum(['running', 'done', 'cancelled', 'undone']) })
+] as const
+
+/** The overall figures plus whatever else rides with them, as one union on `state`. */
+function withExtra<S extends z.ZodRawShape>(extra: S) {
+  return z.discriminatedUnion('state', [
+    copyCountsVariants[0].extend(extra),
+    copyCountsVariants[1].extend(extra)
+  ])
+}
 
 /** A haul as the Gather screens show it: overall figures and every file. */
-export const CopyStatusSchema = CopyCountsSchema.extend({ files: z.array(CopyFileSchema) })
+export const CopyStatusSchema = withExtra({ files: z.array(CopyFileSchema) })
 export type CopyStatus = z.infer<typeof CopyStatusSchema>
 
 /** Pushed as the queue moves: the overall figures and the one file that changed. */
-export const CopyProgressSchema = CopyCountsSchema.extend({ file: CopyFileSchema.nullable() })
+export const CopyProgressSchema = withExtra({ file: CopyFileSchema.nullable() })
 export type CopyProgress = z.infer<typeof CopyProgressSchema>
 
 /** Import: copying PSDs into the stash. */
