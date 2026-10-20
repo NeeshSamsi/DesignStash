@@ -126,6 +126,38 @@ export const sortBoards = sqliteTable('sort_boards', {
   ...timestamps
 })
 
+/**
+ * Look it over: what the user sees for a mockup until it is stashed. Everything in a pile stays a
+ * draft until Stash pile, so nothing reaches My Stash one mockup at a time. A row is made when the
+ * queue opens and is removed when the mockup is stashed.
+ */
+export const drafts = sqliteTable('drafts', {
+  mockupId: integer('mockup_id')
+    .primaryKey()
+    .references(() => mockups.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description').notNull().default(''),
+  tagIds: text('tag_ids', { mode: 'json' }).$type<number[]>().notNull().default(sql`'[]'`),
+  /** The user changed this variant, so edits to the top mockup no longer overwrite it. */
+  touched: integer('touched', { mode: 'boolean' }).notNull().default(false),
+  /** The user opened it. An unchecked draft in a stashed pile reads "Not checked". */
+  checked: integer('checked', { mode: 'boolean' }).notNull().default(false),
+  /** Set by Skip for now (a mockup on its own): it moves to the end of the queue. */
+  skippedAt: text('skipped_at'),
+  ...timestamps
+})
+
+/** Where Finish later left off in a pile or on a mockup on its own, so coming back resumes there. */
+export const lookOverResume = sqliteTable('look_over_resume', {
+  /** The pile's id (its top mockup), or the mockup's own id when it stands alone. */
+  unitId: integer('unit_id')
+    .primaryKey()
+    .references(() => mockups.id, { onDelete: 'cascade' }),
+  /** The step to resume on. */
+  mockupId: integer('mockup_id').notNull(),
+  ...timestamps
+})
+
 /** Semantic-search vectors — placeholder for M13 (spec §8). */
 export const embeddings = sqliteTable('embeddings', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -139,6 +171,7 @@ export const embeddings = sqliteTable('embeddings', {
 // mockups_fts (FTS5 virtual table) is maintained via raw SQL in search-index.ts and repository.ts — NOT a Drizzle table.
 
 export type Mockup = InferSelectModel<typeof mockups>
+export type Draft = InferSelectModel<typeof drafts>
 export type NewMockup = InferInsertModel<typeof mockups>
 export type Variant = InferSelectModel<typeof variants>
 export type NewVariant = InferInsertModel<typeof variants>

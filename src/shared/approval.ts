@@ -69,3 +69,74 @@ export const TagsByCategorySchema = z.object({
   }))
 })
 export type TagsByCategory = z.infer<typeof TagsByCategorySchema>
+
+// ---- Look it over (drafts until Stash pile) ----
+
+const LookOverCoverSchema = z.object({
+  path: z.string(),
+  source: z.enum(['embedded', 'sidecar', 'user-uploaded', 'default', 'none']),
+  /** The cover file is gone from disk. */
+  missing: z.boolean(),
+  /** The image's own size, for the crop or bars note. null when it can't be read. */
+  width: z.number().nullable(),
+  height: z.number().nullable()
+})
+
+/** One step in Look it over: a mockup, shown as its draft. */
+export const LookOverItemSchema = z.object({
+  mockupId: z.number(),
+  /** The pile it belongs to (its top mockup's id), or null for a mockup on its own. */
+  pileId: z.number().nullable(),
+  role: z.enum(['top', 'variant', 'single']),
+  title: z.string(),
+  description: z.string(),
+  tags: z.array(ApprovalTagSchema),
+  /** The user changed this variant, so edits to the top mockup no longer overwrite it. */
+  touched: z.boolean(),
+  /** The user has opened it. An unchecked one reads "Not checked" on the review step. */
+  checked: z.boolean(),
+  cover: LookOverCoverSchema,
+  /** The image next to the PSD that became the cover, when there is one to offer. */
+  sidecarFileName: z.string().nullable()
+})
+export type LookOverItem = z.infer<typeof LookOverItemSchema>
+
+/** A pile (top first, then its variants) or a mockup on its own. */
+export const LookOverUnitSchema = z.object({
+  unitId: z.number(),
+  kind: z.enum(['pile', 'single']),
+  items: z.array(LookOverItemSchema).min(1)
+})
+export type LookOverUnit = z.infer<typeof LookOverUnitSchema>
+
+/** Piles first, then mockups on their own. */
+export const LookOverQueueSchema = z.object({
+  units: z.array(LookOverUnitSchema),
+  /** Where Finish later left off, if it did. */
+  resume: z.object({ unitId: z.number(), mockupId: z.number() }).nullable()
+})
+export type LookOverQueue = z.infer<typeof LookOverQueueSchema>
+
+export const SaveDraftRequestSchema = z.object({
+  mockupId: z.number(),
+  title: z.string().min(1),
+  description: z.string(),
+  tagIds: z.array(z.number()),
+  /** Defaults to true: saving means the user looked at it. */
+  checked: z.boolean().optional()
+})
+export type SaveDraftRequest = z.infer<typeof SaveDraftRequestSchema>
+
+export const SaveDraftResponseSchema = z.object({
+  /** Variants that took on the top mockup's new description and tags. */
+  propagatedIds: z.array(z.number())
+})
+
+/** Pushed while an edit to a top mockup carries over to the variants that were not touched. */
+export const LookOverProgressSchema = z.object({
+  pileId: z.number(),
+  completed: z.number(),
+  total: z.number(),
+  phase: z.enum(['running', 'done'])
+})
+export type LookOverProgress = z.infer<typeof LookOverProgressSchema>

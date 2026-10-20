@@ -6,6 +6,7 @@ import { LibraryQueryRepository } from './repositories/library-query'
 import { TrashRepository } from './repositories/trash'
 import { SearchRepository } from './repositories/search'
 import { InboxRepository } from './repositories/inbox'
+import { DraftRepository } from './repositories/drafts'
 
 export type { LibraryRow } from './repositories/library-query'
 
@@ -24,6 +25,7 @@ export class Repository {
   readonly library: LibraryQueryRepository
   readonly trash: TrashRepository
   readonly inbox: InboxRepository
+  readonly drafts: DraftRepository
 
   constructor(db: AppDatabase) {
     this.search = new SearchRepository(db)
@@ -33,6 +35,7 @@ export class Repository {
     this.library = new LibraryQueryRepository(db, this.mockups, this.piles, this.search)
     this.trash = new TrashRepository(db, this.mockups, this.search, this.library, this.piles)
     this.inbox = new InboxRepository(db, this.library, this.piles)
+    this.drafts = new DraftRepository(db)
   }
 
   // Mockups

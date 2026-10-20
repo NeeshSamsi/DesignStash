@@ -38,6 +38,11 @@ export const IPC_CHANNELS = {
   APPROVAL_INIT: 'approval:init',
   APPROVAL_SAVE_ITEM: 'approval:save-item',
   APPROVAL_SET_COVER: 'approval:set-cover',
+  LOOK_OVER_OPEN: 'look-over:open',
+  LOOK_OVER_SAVE_DRAFT: 'look-over:save-draft',
+  LOOK_OVER_SKIP: 'look-over:skip',
+  LOOK_OVER_SET_RESUME: 'look-over:set-resume',
+  LOOK_OVER_PROGRESS: 'look-over:progress',
   TAG_LIST_BY_CATEGORY: 'tag:list-by-category',
   TAG_CREATE: 'tag:create',
   TAG_TREE: 'tag:tree',
@@ -101,6 +106,7 @@ export const PUSH_CHANNELS = [
   IPC_CHANNELS.AI_DOWNLOAD_PROGRESS,
   IPC_CHANNELS.AI_STATUS,
   IPC_CHANNELS.STASH_MOVE_PROGRESS,
+  IPC_CHANNELS.LOOK_OVER_PROGRESS,
   IPC_CHANNELS.INBOX_COUNTS_CHANGED
 ] as const
 

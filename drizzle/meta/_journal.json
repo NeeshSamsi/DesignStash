@@ -43,6 +43,13 @@
       "when": 1792462239054,
       "tag": "0005_sort_boards",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792462373521,
+      "tag": "0006_look_over_drafts",
+      "breakpoints": true
     }
   ]
 }

@@ -5,11 +5,25 @@ import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { ApprovalService } from '../import/approval-service'
 import { TagService } from '../db/tag-service'
 import type { HandlerContext } from './context'
+import { LookOverService } from '../import/look-over-service'
 import { pushInboxCounts } from './inbox'
 import { registerIpcHandler } from './register'
 
 export function registerApprovalHandlers(ctx: HandlerContext): void {
-  const { settings, telemetry, repo, ai } = ctx
+  const { settings, telemetry, repo, ai, push } = ctx
+  const lookOver = new LookOverService(
+    repo,
+    () => ai.activeProvider(),
+    undefined,
+    (progress) => push(IPC_CHANNELS.LOOK_OVER_PROGRESS, progress)
+  )
+
+  registerIpcHandler(IPC_CHANNELS.LOOK_OVER_OPEN, () => lookOver.open())
+  registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, (args) => lookOver.saveDraft(args))
+  registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SKIP, (args) => lookOver.skip(args.mockupId))
+  registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SET_RESUME, (args) =>
+    lookOver.setResume(args.unitId, args.mockupId)
+  )
   registerIpcHandler(IPC_CHANNELS.APPROVAL_INIT, async (args) => {
     const service = new ApprovalService(repo, await ai.activeProvider(), new TagService(repo))
     return service.initQueue(args.batchId)
