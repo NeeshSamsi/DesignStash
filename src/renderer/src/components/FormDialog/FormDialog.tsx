@@ -50,7 +50,7 @@ export function FormDialog({
   const sample = (
     <Field
       label="Name"
-      description="Outside the built-in taxonomy — AI tagging won’t suggest it."
+      description="Outside the built-in taxonomy, so AI tagging won’t suggest it."
       error="A category with this name already exists."
       invalid={props.state === 'invalid'}
       disabled={submitting}
