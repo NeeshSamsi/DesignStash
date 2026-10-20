@@ -336,3 +336,56 @@ describe('speed and time left', () => {
     expect(seen[0]).toMatchObject({ bytesPerSecond: 0, secondsLeft: null })
   })
 })
+
+describe('deleting, undoing and old folders', () => {
+  const install = async (id: string, files = ['model.gguf', 'mmproj.gguf']) => {
+    const dir = join(tempModelsDir, id)
+    await fs.mkdir(dir, { recursive: true })
+    for (const f of files) await fs.writeFile(join(dir, f), 'x')
+  }
+
+  it('sets a model aside so it is not installed, and brings it back with Undo', async () => {
+    const downloader = new ModelDownloader(tempModelsDir)
+    await install('test-model')
+
+    expect(await downloader.setAside('test-model')).toBe(true)
+    expect(await downloader.isInstalled('test-model')).toBe(false)
+    expect(await downloader.listInstalled()).toEqual([])
+
+    expect(await downloader.restoreSetAside('test-model')).toBe(true)
+    expect(await downloader.isInstalled('test-model')).toBe(true)
+  })
+
+  it('removes set-aside models for good when purged, and then they cannot come back', async () => {
+    const downloader = new ModelDownloader(tempModelsDir)
+    await install('test-model')
+    await downloader.setAside('test-model')
+
+    await downloader.purgeSetAside()
+
+    expect(await downloader.restoreSetAside('test-model')).toBe(false)
+    expect(await fs.readdir(tempModelsDir)).toEqual([])
+  })
+
+  it('has nothing to set aside for a model that is not there', async () => {
+    expect(await new ModelDownloader(tempModelsDir).setAside('test-model')).toBe(false)
+  })
+
+  it('lists old text-model folders with their size, ignoring catalogue models and set-aside ones', async () => {
+    const downloader = new ModelDownloader(tempModelsDir)
+    await install('qwen2.5-1.5b', ['qwen2.5-1.5b-instruct-q4_k_m.gguf'])
+    await install('test-model')
+    await install('test-model-nohash')
+    await downloader.setAside('test-model-nohash')
+
+    expect(await downloader.listLegacy()).toEqual([{ id: 'qwen2.5-1.5b', sizeBytes: 1 }])
+    // An old folder is never counted as an installed model.
+    expect(await downloader.listInstalled()).toEqual(['test-model'])
+  })
+
+  it('refuses an id that is a path', async () => {
+    const downloader = new ModelDownloader(tempModelsDir)
+    await expect(downloader.setAside('../outside')).rejects.toThrow()
+    await expect(downloader.restoreSetAside('a/b')).rejects.toThrow()
+  })
+})

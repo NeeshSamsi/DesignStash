@@ -26,6 +26,8 @@ export const IPC_CHANNELS = {
   AI_DOWNLOAD_MODEL: 'ai:download-model',
   AI_CANCEL_DOWNLOAD: 'ai:cancel-download',
   AI_DOWNLOAD_PROGRESS: 'ai:download-progress',
+  AI_DELETE_MODEL: 'ai:delete-model',
+  AI_RESTORE_MODEL: 'ai:restore-model',
   AI_GET_ACTIVE: 'ai:get-active',
   AI_SET_ACTIVE: 'ai:set-active',
   AI_STATUS: 'ai:status',

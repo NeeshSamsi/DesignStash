@@ -58,6 +58,22 @@ export function classifyDownloadError(err: unknown): Error {
   return new DownloadError('server')
 }
 
+const ASIDE_SUFFIX = '.deleted'
+
+/** A model id is a folder name: letters, digits, dots, dashes and underscores, never a path. */
+export function assertSafeId(id: string): void {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id) || id.includes('..')) throw new Error('Not a model id')
+}
+
+async function folderSize(dir: string): Promise<number> {
+  let sum = 0
+  for (const e of await fs.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+    const path = join(dir, e.name)
+    sum += e.isDirectory() ? await folderSize(path) : (await fs.stat(path).catch(() => ({ size: 0 }))).size
+  }
+  return sum
+}
+
 export class ModelDownloader {
   constructor(
     private modelsDir: string,
@@ -198,6 +214,58 @@ export class ModelDownloader {
 
   async deleteModel(id: string): Promise<void> {
     await fs.rm(this.modelPath(id), { recursive: true, force: true })
+  }
+
+  /**
+   * Delete a model in a way Undo can reverse: the folder is set aside, not removed. It's gone for
+   * good when `purgeSetAside` runs (at the next launch). Returns false when there was nothing to delete.
+   */
+  async setAside(id: string): Promise<boolean> {
+    assertSafeId(id)
+    if (!(await fs.stat(this.modelPath(id)).then(() => true, () => false))) return false
+    await fs.rm(this.asidePath(id), { recursive: true, force: true })
+    await fs.rename(this.modelPath(id), this.asidePath(id))
+    return true
+  }
+
+  /** Undo a delete. Returns false when the set-aside copy is gone. */
+  async restoreSetAside(id: string): Promise<boolean> {
+    assertSafeId(id)
+    if (!(await fs.stat(this.asidePath(id)).then(() => true, () => false))) return false
+    await fs.rm(this.modelPath(id), { recursive: true, force: true })
+    await fs.rename(this.asidePath(id), this.modelPath(id))
+    return true
+  }
+
+  /** Remove every set-aside model for good. */
+  async purgeSetAside(): Promise<void> {
+    for (const name of await this.folderNames()) {
+      if (name.endsWith(ASIDE_SUFFIX)) await fs.rm(join(this.modelsDir, name), { recursive: true, force: true })
+    }
+  }
+
+  /** Folders left by earlier versions (the old text models): not in the catalogue, ignored, and deletable. */
+  async listLegacy(): Promise<{ id: string; sizeBytes: number }[]> {
+    const out: { id: string; sizeBytes: number }[] = []
+    for (const name of await this.folderNames()) {
+      if (name.endsWith(ASIDE_SUFFIX) || getModel(name)) continue
+      out.push({ id: name, sizeBytes: await folderSize(join(this.modelsDir, name)) })
+    }
+    return out
+  }
+
+  private asidePath(id: string): string {
+    return join(this.modelsDir, `${id}${ASIDE_SUFFIX}`)
+  }
+
+  private async folderNames(): Promise<string[]> {
+    try {
+      return (await fs.readdir(this.modelsDir, { withFileTypes: true }))
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name)
+    } catch {
+      return []
+    }
   }
 
   async download(

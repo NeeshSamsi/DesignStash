@@ -148,7 +148,8 @@ describe('IPC Contract', () => {
       const valid = {
         models: [
           { id: 'smolvlm2-2.2b', name: 'SmolVLM2 2.2B', tier: 'small', sizeBytes: 1705125856, description: 'Fast.', languages: ['English'], quality: 3, speed: 5, minMemoryGB: 8, bestFit: false, downloadedBytes: 0, installed: false, active: false }
-        ]
+        ],
+        legacy: [{ id: 'qwen2.5-1.5b', sizeBytes: 1040000000 }]
       }
       expect(response.parse(valid)).toEqual(valid)
     })

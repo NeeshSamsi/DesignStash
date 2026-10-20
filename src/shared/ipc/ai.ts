@@ -56,7 +56,11 @@ export const aiContract = {
   },
   [IPC_CHANNELS.AI_LIST_MODELS]: {
     request: z.void(),
-    response: z.object({ models: z.array(AiModelInfoSchema) })
+    response: z.object({
+      models: z.array(AiModelInfoSchema),
+      /** Folders from earlier versions (the old text models). Ignored by the app and deletable. */
+      legacy: z.array(z.object({ id: z.string(), sizeBytes: z.number() }))
+    })
   },
   [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: {
     request: z.object({ id: z.string() }),
@@ -71,6 +75,24 @@ export const aiContract = {
   [IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]: {
     request: AiDownloadProgressSchema,
     response: z.void()
+  },
+  [IPC_CHANNELS.AI_DELETE_MODEL]: {
+    request: z.object({
+      id: z.string().min(1),
+      /** Needed to delete the model in use; without it the model is kept and `inUse` comes back true. */
+      confirmed: z.boolean().optional()
+    }),
+    response: z.object({
+      deleted: z.boolean(),
+      /** The model is the one in use. When not confirmed, nothing was deleted: ask first. */
+      inUse: z.boolean(),
+      /** AI_RESTORE_MODEL can bring it back until the next launch. False for old text models. */
+      undoable: z.boolean()
+    })
+  },
+  [IPC_CHANNELS.AI_RESTORE_MODEL]: {
+    request: z.object({ id: z.string().min(1), makeActive: z.boolean().optional() }),
+    response: z.object({ restored: z.boolean() })
   },
   [IPC_CHANNELS.AI_GET_ACTIVE]: {
     request: z.void(),

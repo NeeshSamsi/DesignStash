@@ -1,13 +1,17 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { detectHardware, recommendTier } from '../ai/hardware'
-import { DownloadError, classifyDownloadError } from '../ai/download'
+import { getModel } from '../ai/registry'
+import { DownloadError, assertSafeId, classifyDownloadError } from '../ai/download'
 import { MODEL_REGISTRY, availableModels, bestFitModelId } from '../ai/registry'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
 export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerContext): void {
   const { downloader, activeDownloads } = ai
+
+  // Models deleted last session can no longer be undone.
+  void downloader.purgeSetAside().catch(() => {})
 
   registerIpcHandler(IPC_CHANNELS.AI_HARDWARE_INFO, () => {
     const hw = detectHardware()
@@ -34,7 +38,7 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
         active: entry.id === activeModelId
       }))
     )
-    return { models }
+    return { models, legacy: await downloader.listLegacy() }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_DOWNLOAD_MODEL, (args) => {
@@ -74,6 +78,31 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
       return { cancelled: true }
     }
     return { cancelled: false }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.AI_DELETE_MODEL, async (args) => {
+    assertSafeId(args.id)
+    const inUse = settings.get().activeModelId === args.id
+    if (inUse && !args.confirmed) return { deleted: false, inUse: true, undoable: false }
+
+    // A download in progress stops first.
+    activeDownloads.get(args.id)?.abort()
+    activeDownloads.delete(args.id)
+
+    const legacy = !getModel(args.id)
+    if (legacy) {
+      await downloader.deleteModel(args.id)
+      return { deleted: true, inUse: false, undoable: false }
+    }
+    const deleted = await downloader.setAside(args.id)
+    if (deleted && inUse) settings.update({ activeModelId: null })
+    return { deleted, inUse: deleted && inUse, undoable: deleted }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.AI_RESTORE_MODEL, async (args) => {
+    const restored = await downloader.restoreSetAside(args.id)
+    if (restored && args.makeActive) settings.update({ activeModelId: args.id })
+    return { restored }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_GET_ACTIVE, () => ({
