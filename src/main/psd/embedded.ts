@@ -7,7 +7,7 @@ import type { RawImage } from './types'
 // We only ever use useImageData:true (raw RGBA), so a plain Uint8ClampedArray is sufficient.
 initializeCanvas(
   () => { throw new Error('ag-psd canvas not supported — use useImageData:true') },
-  (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) })
+  (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4), colorSpace: 'srgb' })
 )
 
 export async function readEmbeddedPreview(psdPath: string): Promise<RawImage | null> {

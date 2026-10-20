@@ -8,7 +8,7 @@ import sharp from 'sharp'
 // Initialize here so fixture-building code is self-contained in tests.
 initializeCanvas(
   () => { throw new Error('ag-psd canvas not supported — use useImageData:true') },
-  (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) })
+  (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4), colorSpace: 'srgb' })
 )
 
 export interface CompositeOptions {
