@@ -105,6 +105,7 @@ export class Repository {
 
   // Inboxes
   getInboxList(...a: Args<InboxRepository['list']>) { return this.inbox.list(...a) }
+  getUnfinishedAiMockups() { return this.inbox.getUnfinishedAiMockups() }
   getInboxCounts() { return this.inbox.getCounts() }
   collectTossable(...a: Args<InboxRepository['collectTossable']>) { return this.inbox.collectTossable(...a) }
 

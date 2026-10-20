@@ -5,6 +5,7 @@ import { settingsContract } from './ipc/settings'
 import { dialogContract } from './ipc/dialog'
 import { importContract } from './ipc/import'
 import { aiContract } from './ipc/ai'
+import { aiStatusContract } from './ipc/ai-status'
 import { groupingContract } from './ipc/grouping'
 import { approvalContract } from './ipc/approval'
 import { tagsContract } from './ipc/tags'
@@ -44,6 +45,7 @@ export const IPC_DOMAIN_CONTRACTS = {
   dialog: dialogContract,
   import: importContract,
   ai: aiContract,
+  aiStatus: aiStatusContract,
   grouping: groupingContract,
   approval: approvalContract,
   tags: tagsContract,
@@ -65,6 +67,7 @@ export const IPC_CONTRACT = {
   ...dialogContract,
   ...importContract,
   ...aiContract,
+  ...aiStatusContract,
   ...groupingContract,
   ...approvalContract,
   ...tagsContract,

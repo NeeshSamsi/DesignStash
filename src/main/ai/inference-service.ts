@@ -1,8 +1,19 @@
 import type { Repository } from '../db/repository'
+import type { Mockup } from '../db/schema'
 import type { TagService } from '../db/tag-service'
 import type { InferenceProvider, AnalysisInput, InferenceResult } from '../../shared/inference'
 
 type ImportContext = { folderTrail?: string[]; userEdited?: boolean } | null
+
+/** What the provider is shown for a mockup: its cover, the file name it came in as, and the folders around it. */
+export function analysisInputFor(m: Mockup): AnalysisInput {
+  const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
+  return {
+    imagePath: m.coverPath,
+    fileName: ctx?.originalFilename ?? m.title,
+    folderTrail: ctx?.folderTrail ?? []
+  }
+}
 
 export class InferenceService {
   constructor(

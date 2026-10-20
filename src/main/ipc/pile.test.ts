@@ -35,6 +35,7 @@ beforeEach(() => {
   const ctx = {
     repo,
     push: vi.fn(),
+    ai: { activeProvider: async () => null },
     settings: { getLibraryRoot: () => '/library' }
   } as unknown as HandlerContext
   registerPileHandlers(ctx)

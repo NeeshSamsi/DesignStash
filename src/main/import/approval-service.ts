@@ -1,7 +1,7 @@
 import { basename } from 'node:path'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
-import type { InferenceProvider } from '../../shared/inference'
+import { InferenceResultSchema, type InferenceProvider } from '../../shared/inference'
 import type {
   ApprovalItem,
   ApprovalQueue,
@@ -9,6 +9,7 @@ import type {
   ApproveItemRequest
 } from '../../shared/approval'
 import { TagService } from '../db/tag-service'
+import { analysisInputFor } from '../ai/inference-service'
 
 function toCoverSource(dbSource: string | null): ApprovalItem['coverSource'] {
   if (dbSource === 'embedded' || dbSource === 'sidecar' || dbSource === 'user-uploaded') {
@@ -99,24 +100,16 @@ export class ApprovalService {
   }
 
   private async runInference(m: Mockup): Promise<{ title: string; description: string; tags: ApprovalTag[] }> {
-    const ctx = m.importContext as { batchId?: string; folderTrail?: string[]; originalFilename?: string } | null
-    const fileName = ctx?.originalFilename ?? m.title
-    const folderTrail = ctx?.folderTrail ?? []
+    const input = analysisInputFor(m)
+    const fileName = input.fileName
+
+    // The background queue may have made the suggestion already.
+    const cached = m.aiStatus === 'ready' ? InferenceResultSchema.safeParse(m.aiResult) : null
+    if (cached?.success) return this.toApprovalFields(cached.data)
 
     if (this.provider) {
       try {
-        const result = await this.provider.analyze({
-          imagePath: m.coverPath,
-          fileName,
-          folderTrail
-        })
-        const tagIds = await this.tagService.snapTags(result.tags)
-        const tags = this.repo.getApprovalTagsByIds(tagIds)
-        return {
-          title: result.title,
-          description: result.description ?? '',
-          tags
-        }
+        return await this.toApprovalFields(await this.provider.analyze(input))
       } catch {
         // fall through to filename fallback
       }
@@ -124,6 +117,19 @@ export class ApprovalService {
 
     const stem = fileName.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim()
     return { title: stem || m.title, description: '', tags: [] }
+  }
+
+  private async toApprovalFields(result: {
+    title: string
+    description?: string
+    tags: { category: string; label: string }[]
+  }): Promise<{ title: string; description: string; tags: ApprovalTag[] }> {
+    const tagIds = await this.tagService.snapTags(result.tags)
+    return {
+      title: result.title,
+      description: result.description ?? '',
+      tags: this.repo.getApprovalTagsByIds(tagIds)
+    }
   }
 
   async initQueue_membersOnly(mocks: Mockup[]): Promise<ApprovalItem[]> {

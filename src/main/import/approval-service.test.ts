@@ -49,6 +49,73 @@ beforeEach(() => {
 
 afterEach(() => sqlite.close())
 
+describe('ApprovalService.initQueue with suggestions from the background queue', () => {
+  const cached: InferenceResult = {
+    title: 'Clay iPhone 15 Pro',
+    description: 'A phone on a clay stand',
+    tags: [{ category: 'Device', label: 'phone' }]
+  }
+
+  const countingProvider = () => {
+    const calls: AnalysisInput[] = []
+    const provider: InferenceProvider = {
+      id: 'count',
+      name: 'Count',
+      async analyze(input) {
+        calls.push(input)
+        return { title: 'live', description: '', tags: [] }
+      }
+    }
+    return { provider, calls }
+  }
+
+  it('uses a finished suggestion without asking the provider again, even with no provider', async () => {
+    const m = repo.createMockup(makeMockup('c1'))
+    repo.updateMockup(m.id, { aiStatus: 'ready', aiResult: cached })
+    const { provider, calls } = countingProvider()
+
+    const withProvider = await new ApprovalService(repo, provider).initQueue('c1')
+    const withoutProvider = await new ApprovalService(repo, null).initQueue('c1')
+
+    expect(calls).toHaveLength(0)
+    for (const queue of [withProvider, withoutProvider]) {
+      expect(queue.items[0]).toMatchObject({
+        title: 'Clay iPhone 15 Pro',
+        description: 'A phone on a clay stand'
+      })
+      expect(queue.items[0]!.tags.map((t) => t.label)).toEqual(['phone'])
+    }
+  })
+
+  it('reads a whole pile from the cache', async () => {
+    const leader = repo.createMockup(makeMockup('c2', { isGroup: true }))
+    const member = repo.createMockup(makeMockup('c2', { libraryPath: '/lib/c2/m.psd', groupId: leader.id }))
+    repo.updateMockup(leader.id, { aiStatus: 'ready', aiResult: { ...cached, title: 'Top' } })
+    repo.updateMockup(member.id, { aiStatus: 'ready', aiResult: { ...cached, title: 'Side' } })
+    const { provider, calls } = countingProvider()
+
+    const queue = await new ApprovalService(repo, provider).initQueue('c2')
+
+    expect(calls).toHaveLength(0)
+    expect(queue.items.map((i) => i.title)).toEqual(['Top', 'Side'])
+  })
+
+  it('still asks the provider for a mockup whose suggestion is not ready, failed, or unreadable', async () => {
+    const pending = repo.createMockup(makeMockup('c3', { libraryPath: '/lib/c3/p.psd' }))
+    const failed = repo.createMockup(makeMockup('c3', { libraryPath: '/lib/c3/f.psd' }))
+    const broken = repo.createMockup(makeMockup('c3', { libraryPath: '/lib/c3/b.psd' }))
+    repo.updateMockup(pending.id, { aiStatus: 'sniffing' })
+    repo.updateMockup(failed.id, { aiStatus: 'failed' })
+    repo.updateMockup(broken.id, { aiStatus: 'ready', aiResult: { title: 5 } })
+    const { provider, calls } = countingProvider()
+
+    const queue = await new ApprovalService(repo, provider).initQueue('c3')
+
+    expect(calls).toHaveLength(3)
+    expect(queue.items.every((i) => i.title === 'live')).toBe(true)
+  })
+})
+
 describe('ApprovalService.initQueue', () => {
   it('returns all items from batch with AI-suggested titles', async () => {
     repo.createMockup(makeMockup('b1', { title: 'A', libraryPath: '/lib/b1/a.psd', importContext: { batchId: 'b1', folderTrail: [], originalFilename: 'a.psd' } }))

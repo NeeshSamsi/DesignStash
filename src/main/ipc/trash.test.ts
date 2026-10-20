@@ -37,6 +37,7 @@ beforeEach(() => {
   registerTrashHandlers({
     repo,
     push,
+    ai: { activeProvider: async () => null },
     settings: { getLibraryRoot: () => root },
     library: new LibraryService(repo, root)
   } as unknown as HandlerContext)

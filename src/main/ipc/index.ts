@@ -5,6 +5,7 @@ import { registerSettingsHandlers } from './settings'
 import { registerDialogHandlers } from './dialog'
 import { registerImportHandlers } from './import'
 import { registerAiHandlers } from './ai'
+import { registerAiStatusHandlers } from './ai-status'
 import { registerGroupingHandlers } from './grouping'
 import { registerApprovalHandlers } from './approval'
 import { registerTagHandlers } from './tags'
@@ -25,6 +26,7 @@ export function registerAllHandlers(ctx: HandlerContext): void {
   registerDialogHandlers()
   registerImportHandlers(ctx)
   registerAiHandlers(ctx)
+  registerAiStatusHandlers(ctx)
   registerGroupingHandlers(ctx)
   registerApprovalHandlers(ctx)
   registerTagHandlers(ctx)

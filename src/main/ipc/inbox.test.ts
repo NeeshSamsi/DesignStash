@@ -31,6 +31,7 @@ beforeEach(() => {
   registerInboxHandlers({
     repo,
     push,
+    ai: { activeProvider: async () => null },
     settings: { getLibraryRoot: () => '/library' }
   } as unknown as HandlerContext)
 })

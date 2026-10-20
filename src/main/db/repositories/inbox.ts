@@ -59,6 +59,21 @@ export class InboxRepository {
     }
   }
 
+  /** Mockups whose suggestion was waiting or half read, e.g. when the app closed. */
+  getUnfinishedAiMockups(): Mockup[] {
+    return this.db
+      .select()
+      .from(mockups)
+      .where(
+        and(
+          inArray(mockups.aiStatus, ['pending', 'sniffing']),
+          isNull(mockups.deletedAt),
+          inArray(mockups.stage, ['to_sort', 'to_stash'])
+        )
+      )
+      .all()
+  }
+
   /**
    * What a toss would remove: the given mockups still in an inbox, plus every member of a pile
    * among them. Anything already in My Stash, in Trash or gone is left out.

@@ -16,6 +16,7 @@ export const IPC_CHANNELS = {
   AI_DOWNLOAD_PROGRESS: 'ai:download-progress',
   AI_GET_ACTIVE: 'ai:get-active',
   AI_SET_ACTIVE: 'ai:set-active',
+  AI_STATUS: 'ai:status',
   GROUPING_PROPOSE: 'grouping:propose',
   GROUPING_CONFIRM: 'grouping:confirm',
   APPROVAL_INIT: 'approval:init',
@@ -87,6 +88,7 @@ export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
 export const PUSH_CHANNELS = [
   IPC_CHANNELS.IMPORT_PROGRESS,
   IPC_CHANNELS.AI_DOWNLOAD_PROGRESS,
+  IPC_CHANNELS.AI_STATUS,
   IPC_CHANNELS.INBOX_COUNTS_CHANGED
 ] as const
 

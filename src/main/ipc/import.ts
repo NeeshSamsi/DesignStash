@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { ImportService } from '../import/import-service'
 import type { HandlerContext } from './context'
+import { enqueueInBackground } from './ai-status'
 import { pushInboxCounts } from './inbox'
 import { registerIpcHandler } from './register'
 
@@ -36,6 +37,11 @@ export function registerImportHandlers(ctx: HandlerContext): void {
         durationMs: Date.now() - startedAt
       })
       pushInboxCounts(ctx)
+      // Suggestions are made in the background as files land.
+      enqueueInBackground(
+        ctx,
+        summary.items.flatMap((item) => (item.mockupId === undefined ? [] : [item.mockupId]))
+      )
       return summary
     } finally {
       activeImports.delete(batchId)
