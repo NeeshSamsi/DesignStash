@@ -29,5 +29,3 @@ export interface ComponentContract {
   readonly slots: Readonly<Record<string, string>>
 }
 
-/** Scaffold status of a component, tracked by pnpm ds:scaffold (stub until the body is ported). */
-export type PortStatus = 'stub' | 'ported'

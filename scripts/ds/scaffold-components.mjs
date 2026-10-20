@@ -281,24 +281,21 @@ await emit(
 await emit(
   resolve(DS, 'catalog.generated.ts'),
   `${GENERATED}import type { ComponentType } from 'react'
-import type { ComponentContract, PortStatus } from './contract'
+import type { ComponentContract } from './contract'
 ${contracts.map((c) => `import { ${c.name}, ${upper(c.name)}_CONTRACT } from '@renderer/components/${c.name}'`).join('\n')}
 
 export interface CatalogEntry {
   contract: ComponentContract
   component: ComponentType<Record<string, unknown>>
-  /** 'stub' while <Name>.tsx still renders ScaffoldStub (refreshed by pnpm ds:scaffold). */
-  status: PortStatus
 }
 
-const entry = (contract: ComponentContract, component: unknown, status: PortStatus): CatalogEntry => ({
+const entry = (contract: ComponentContract, component: unknown): CatalogEntry => ({
   contract,
-  component: component as ComponentType<Record<string, unknown>>,
-  status
+  component: component as ComponentType<Record<string, unknown>>
 })
 
 export const CATALOG: CatalogEntry[] = [
-${contracts.map((c) => `  entry(${upper(c.name)}_CONTRACT, ${c.name}, ${q(isStub(c) ? 'stub' : 'ported')}),`).join('\n')}
+${contracts.map((c) => `  entry(${upper(c.name)}_CONTRACT, ${c.name}),`).join('\n')}
 ]
 `
 )
@@ -353,11 +350,11 @@ if (CHECK) {
     process.exit(1)
   }
   console.log(
-    `ds:scaffold --check ok — ${contracts.length} components, ${contracts.length - stubs} ported, ${stubs} stubs`
+    `ds:scaffold --check ok — ${contracts.length} components`
   )
 } else {
   for (const p of problems) console.warn(`warn  ${p}`)
   console.log(
-    `ds:scaffold — ${written.length} file(s) written · ${contracts.length} components · ${contracts.length - stubs} ported · ${stubs} stubs`
+    `ds:scaffold — ${written.length} file(s) written · ${contracts.length} components · ${stubs} stubs`
   )
 }

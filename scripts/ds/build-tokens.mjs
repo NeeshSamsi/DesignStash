@@ -5,8 +5,8 @@
 //
 //   shadcn's own variables (--primary, --background, --muted-foreground, --border…) stay
 //   the contract for everything in ui/ — including components added later with
-//   `shadcn add`. shadcn-bridge.css points those variables at Figma tokens. That file is
-//   the PORT SWITCH: not imported until the port starts, so today nothing changes.
+//   `shadcn add`. shadcn-bridge.css points those variables at Figma tokens; assets/main.css
+//   imports it, so every ui/ component takes its colours from the Figma tokens.
 //
 //   Figma tokens shadcn has no name for become ordinary Tailwind colours, scoped the way
 //   Figma scopes them: background/X → bg-X, text/X → text-X, border/X → border-X
@@ -16,7 +16,7 @@
 //
 //   tokens.css          :root --ds-* custom properties (primitives + semantic aliases)
 //   theme.css           Tailwind keys for the Figma-only names, font families, type-* utilities
-//   shadcn-bridge.css   shadcn variables → Figma tokens (port switch)
+//   shadcn-bridge.css   shadcn variables → Figma tokens
 //   tokens.generated.ts token data for the DEV catalog (incl. the class to use for each token)
 //
 // Run: pnpm ds:tokens   (never edit the generated files by hand)
@@ -181,14 +181,14 @@ ${utilities.join('\n\n')}
 `
 )
 
-// ---------- shadcn-bridge.css (port switch)
+// ---------- shadcn-bridge.css
 const radii = snap.tokens.numbers.filter(
   (n) => n.name.startsWith('radius/') && !['none', 'full'].includes(n.name.split('/')[1])
 )
 writeFileSync(
   resolve(OUT, 'shadcn-bridge.css'),
   `${HEADER}/*
- * PORT SWITCH — points shadcn's variables at the Figma tokens, re-theming every ui/
+ * Points shadcn's variables at the Figma tokens, re-theming every ui/
  * component (and any added later with \`shadcn add\`) without touching its classes.
  * Imported last by assets/main.css, which keeps shadcn's @theme mapping but no colour values.
  */

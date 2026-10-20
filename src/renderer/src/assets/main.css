@@ -163,7 +163,7 @@
   color-scheme: dark;
 }
 
-/* PORT SWITCH: shadcn variables, radii and fonts → Figma tokens. */
+/* shadcn variables, radii and fonts → Figma tokens. */
 @import '../styles/shadcn-bridge.css';
 
 @layer base {

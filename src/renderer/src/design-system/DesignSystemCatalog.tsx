@@ -61,15 +61,12 @@ export default function DesignSystemCatalog({ onClose }: { onClose: () => void }
     return [...groups]
   }, [query])
   const flows = useMemo(() => [...new Set(SCREENS.map((s) => s.flow))], [])
-  const ported = CATALOG.filter((e) => e.status === 'ported').length
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
       <header className="flex items-center gap-3 border-b border-border px-4 py-2">
         <span className="font-heading text-sm font-semibold">Design system</span>
-        <Badge variant="secondary">
-          {ported} / {CATALOG.length} ported
-        </Badge>
+        <Badge variant="secondary">{CATALOG.length} components</Badge>
         <span className="text-xs text-muted-foreground">
           Generated from design/figma · pnpm ds to refresh
         </span>
@@ -106,7 +103,6 @@ export default function DesignSystemCatalog({ onClose }: { onClose: () => void }
                       key={e.contract.name}
                       active={selection.kind === 'component' && selection.name === e.contract.name}
                       onClick={() => setSelection({ kind: 'component', name: e.contract.name })}
-                      trailing={<StatusDot status={e.status} />}
                     >
                       {e.contract.name}
                     </NavItem>
@@ -181,18 +177,6 @@ function NavItem(props: {
   )
 }
 
-function StatusDot({ status }: { status: CatalogEntry['status'] }) {
-  return (
-    <span
-      title={status}
-      className={cn(
-        'size-2 shrink-0 rounded-full',
-        status === 'ported' ? 'bg-primary' : 'bg-muted-foreground/40'
-      )}
-    />
-  )
-}
-
 function PageTitle({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
@@ -249,12 +233,11 @@ function ColorTokens() {
         </section>
       ))}
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold">shadcn variables at the port</h2>
+        <h2 className="text-sm font-semibold">shadcn variables</h2>
         <p className="text-xs text-muted-foreground">
           styles/shadcn-bridge.css points shadcn&apos;s variables at these tokens, re-theming every
-          ui/ component (and any added later) without editing its classes. Not imported until the
-          port starts — until then, swatches on the right show the Figma value, ui/ still shows
-          shadcn&apos;s.
+          ui/ component (and any added later) without editing its classes. It is imported by
+          assets/main.css.
         </p>
         <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {TOKENS.shadcn.map((b) => (
@@ -391,9 +374,6 @@ function ComponentPage({ entry }: { entry: CatalogEntry | undefined }) {
       <PageTitle title={c.name}>
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={entry.status === 'ported' ? 'default' : 'outline'}>
-              {entry.status}
-            </Badge>
             <a className="underline" href={c.figmaUrl} target="_blank" rel="noreferrer">
               Open in Figma
             </a>
@@ -448,26 +428,22 @@ function ComponentPage({ entry }: { entry: CatalogEntry | undefined }) {
 // ---------------------------------------------------------------- screens
 
 function FlowPage({ flow, onOpen }: { flow: string; onOpen: (name: string) => void }) {
-  const status = new Map(CATALOG.map((e) => [e.contract.name, e.status]))
   const screens = SCREENS.filter((s) => s.flow === flow)
   return (
     <>
       <PageTitle title={flow}>
-        Screens mocked on the Figma Flows page and the components each one composes. A screen is
-        ready to port once all its components are ported.{' '}
+        Screens mocked on the Figma Flows page and the components each one composes.{' '}
         <a className="underline" href={FIGMA_FLOWS_URL} target="_blank" rel="noreferrer">
           Open Flows page
         </a>
       </PageTitle>
       <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
         {screens.map((s) => {
-          const ready = s.components.every((n) => status.get(n) === 'ported')
           return (
             <div key={s.figmaId} className="flex flex-col gap-2 p-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{s.title}</span>
                 {HAPPY_PATH.includes(s.title) && <Badge variant="secondary">happy path</Badge>}
-                <Badge variant={ready ? 'default' : 'outline'}>{ready ? 'ready' : 'blocked'}</Badge>
                 <a
                   className="ml-auto text-xs underline"
                   href={FIGMA_FLOWS_URL.replace(
@@ -483,7 +459,7 @@ function FlowPage({ flow, onOpen }: { flow: string; onOpen: (name: string) => vo
               <div className="flex flex-wrap gap-1">
                 {s.components.map((n) => (
                   <button key={n} type="button" onClick={() => onOpen(n)}>
-                    <Badge variant={status.get(n) === 'ported' ? 'default' : 'outline'}>{n}</Badge>
+                    <Badge variant="outline">{n}</Badge>
                   </button>
                 ))}
               </div>
