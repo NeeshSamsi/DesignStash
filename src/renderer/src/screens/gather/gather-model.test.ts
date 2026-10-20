@@ -3,9 +3,12 @@ import type { CopyFile, CopyStatus } from '@shared/ipc/import'
 import {
   dragVerdict,
   dropTarget,
+  filePercent,
   keepDropped,
+  overallPercent,
   overlayFor,
   processed,
+  remainingText,
   rowState,
   undoneMessage,
   widgetCopy,
@@ -18,9 +21,55 @@ const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
   pauseReason: null,
   total: 40,
   landed: 12,
+  bytesTotal: 0,
+  bytesCopied: 0,
+  bytesPerSecond: 0,
+  secondsLeft: null,
   skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
   files: [],
   ...over
+})
+
+describe('smooth progress', () => {
+  it('counts the bar in bytes, so a big file moves it while it copies', () => {
+    const mid = haul({ total: 2, landed: 0, bytesTotal: 1000, bytesCopied: 410 })
+    expect(overallPercent(mid)).toBe(41)
+    expect(widgetCopy(mid).percent).toBe(41)
+    expect(overallPercent(haul({ bytesTotal: 1000, bytesCopied: 1000 }))).toBe(100)
+    expect(overallPercent(haul({ bytesTotal: 1000, bytesCopied: 5000 }))).toBe(100)
+  })
+
+  it('never reads 100 before it is done, and falls back to counting files without sizes', () => {
+    expect(overallPercent(haul({ bytesTotal: 1000, bytesCopied: 999 }))).toBe(99)
+    expect(overallPercent(haul({ total: 40, landed: 10, bytesTotal: 0 }))).toBe(25)
+    expect(overallPercent(haul({ total: 0, landed: 0, bytesTotal: 0 }))).toBe(0)
+  })
+
+  it('gives each file its own percent from its bytes', () => {
+    const file = (over: Partial<CopyFile>): CopyFile => ({ jobId: 1, name: 'a.psd', status: 'copying', ...over })
+    expect(filePercent(file({ size: 200, bytesCopied: 50 }))).toBe(25)
+    expect(filePercent(file({ size: 200, bytesCopied: 0 }))).toBe(0)
+    expect(filePercent(file({ status: 'queued' }))).toBe(0)
+    expect(filePercent(file({ status: 'done', size: 200, bytesCopied: 200 }))).toBe(100)
+    expect(filePercent(file({ size: 0, bytesCopied: 0 }))).toBe(0)
+  })
+
+  it('says how long is left in steps that settle, and nothing until it is measured', () => {
+    const left = (secondsLeft: number | null, state: CopyStatus['state'] = 'running') =>
+      remainingText(haul({ secondsLeft, state }))
+    expect(left(null)).toBe('')
+    expect(left(3)).toBe('A few seconds left')
+    expect(left(12)).toBe('About 15 seconds left')
+    expect(left(55)).toBe('About 55 seconds left')
+    expect(left(56)).toBe('About 1 min left')
+    expect(left(61)).toBe('About 2 min left')
+    expect(left(600)).toBe('About 10 min left')
+    expect(left(3540)).toBe('About 59 min left')
+    expect(left(3600)).toBe('About 1 hr left')
+    expect(left(3 * 3600)).toBe('About 3 hr left')
+    expect(left(3600 + 20 * 60 + 1)).toBe('About 1 hr 21 min left')
+    expect(left(30, 'paused')).toBe('')
+  })
 })
 
 describe('widget', () => {

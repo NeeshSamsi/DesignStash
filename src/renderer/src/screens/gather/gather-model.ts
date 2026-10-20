@@ -31,6 +31,34 @@ export function skippedTotal(haul: CopyStatus): number {
   return haul.skipped.notPsd + haul.skipped.duplicate + haul.skipped.unreadable
 }
 
+/** How far along, 0 to 100. Counted in bytes, so one big PSD moves the bar as it copies; by files only when sizes are unknown. */
+export function overallPercent(haul: CopyStatus): number {
+  if (haul.bytesTotal > 0) {
+    return Math.min(100, Math.floor((haul.bytesCopied / haul.bytesTotal) * 100))
+  }
+  return haul.total > 0 ? Math.min(100, Math.round((processed(haul) / haul.total) * 100)) : 0
+}
+
+/** One file's own progress, 0 to 100. */
+export function filePercent(file: CopyFile): number {
+  if (file.status === 'done') return 100
+  if (!file.size || !file.bytesCopied) return 0
+  return Math.min(100, Math.floor((file.bytesCopied / file.size) * 100))
+}
+
+/** "About 2 min left", in steps that don't flicker. Empty until there is a measured speed. */
+export function remainingText(haul: CopyStatus): string {
+  const seconds = haul.secondsLeft
+  if (haul.state !== 'running' || seconds === null) return ''
+  if (seconds < 10) return 'A few seconds left'
+  if (seconds <= 55) return `About ${Math.ceil(seconds / 5) * 5} seconds left`
+  const minutes = Math.ceil(seconds / 60)
+  if (minutes < 60) return `About ${minutes} min left`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest === 0 ? `About ${hours} hr left` : `About ${hours} hr ${rest} min left`
+}
+
 export interface WidgetCopy {
   title: string
   description?: string
@@ -40,7 +68,7 @@ export interface WidgetCopy {
 /** The headline and the line under it, from Figma's CopyWidget states. */
 export function widgetCopy(haul: CopyStatus): WidgetCopy {
   const done = processed(haul)
-  const percent = haul.total > 0 ? Math.min(100, Math.round((done / haul.total) * 100)) : 0
+  const percent = overallPercent(haul)
   const count = `${done} of ${haul.total}`
   switch (widgetState(haul)) {
     case 'done': {

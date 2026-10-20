@@ -3,7 +3,7 @@ import { CopyWidget } from '@renderer/components/CopyWidget'
 import { useAutoDismiss } from '@renderer/hooks/use-auto-dismiss'
 import { SUMMARY_MS } from '@renderer/lib/dock'
 import { useCopyStore } from '@renderer/stores/copyStore'
-import { rowState, widgetCopy, widgetState } from './gather-model'
+import { filePercent, remainingText, rowState, widgetCopy, widgetState } from './gather-model'
 import type { useGather } from './useGather'
 
 export interface GatherDockProps {
@@ -33,10 +33,15 @@ export function GatherDock({ gather }: GatherDockProps) {
       title={copy.title}
       {...(copy.description ? { description: copy.description } : {})}
       percent={copy.percent}
-      remaining=""
+      remaining={remainingText(haul)}
       keepCount={haul.landed}
       files={haul.files.map((file) => (
-        <CopyFileRow key={file.jobId} state={rowState(file)} name={file.name} />
+        <CopyFileRow
+          key={file.jobId}
+          state={rowState(file)}
+          name={file.name}
+          percent={filePercent(file)}
+        />
       ))}
       onToggleView={toggleView}
       onCancel={() => void gather.cancel()}

@@ -17,6 +17,10 @@ const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
   pauseReason: null,
   total: 40,
   landed: 12,
+  bytesTotal: 0,
+  bytesCopied: 0,
+  bytesPerSecond: 0,
+  secondsLeft: null,
   skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
   files: [{ jobId: 1, name: 'phone_front.psd', status: 'done' }],
   ...over
@@ -137,6 +141,36 @@ describe('the widget', () => {
     )
     expect(screen.getByText('Copying 13 of 40')).toBeTruthy()
     expect(screen.getAllByText('phone_front.psd')).toHaveLength(1)
+  })
+
+  it('moves the bar and the time left as bytes are pushed, and shows each file\u2019s own percent', async () => {
+    const api = installApi(base())
+    render(<Harness />)
+    const push = (bytesCopied: number, fileBytes: number, secondsLeft: number | null) =>
+      api.push(
+        IPC_CHANNELS.COPY_PROGRESS,
+        progress({
+          bytesTotal: 1000,
+          bytesCopied,
+          bytesPerSecond: secondsLeft === null ? 0 : 100,
+          secondsLeft,
+          file: { jobId: 2, name: 'big.psd', status: 'copying', size: 400, bytesCopied: fileBytes }
+        })
+      )
+
+    push(100, 100, null)
+    expect(await screen.findByRole('progressbar', { name: 'Copying 12 of 40' })).toBeTruthy()
+    expect(screen.queryByText(/left/)).toBeNull()
+    expect(screen.getByRole('progressbar', { name: 'Copying big.psd' }).getAttribute('aria-valuenow')).toBe('25')
+
+    push(600, 300, 125)
+    expect(screen.getByText('About 3 min left')).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'Copying 12 of 40' }).getAttribute('aria-valuenow')).toBe('60')
+    expect(screen.getByRole('progressbar', { name: 'Copying big.psd' }).getAttribute('aria-valuenow')).toBe('75')
+
+    push(900, 400, 8)
+    expect(screen.getByText('A few seconds left')).toBeTruthy()
+    expect(screen.getByRole('progressbar', { name: 'Copying 12 of 40' }).getAttribute('aria-valuenow')).toBe('90')
   })
 
   it('picks up a haul that was running before a relaunch', async () => {
