@@ -92,6 +92,32 @@ export function SettingsRow({ title, status, value, note, controls }: SettingsRo
   )
 }
 
+interface SettingsPathFieldProps {
+  path?: string
+  /** "128 mockups · 14.2 GB". */
+  meta?: string
+  onChange?: () => void
+}
+
+/** The Stash folder's path field: folder icon, path, size, and Change… attached on the right. */
+export function SettingsPathField({
+  path = '~/Pictures/DesignStash',
+  meta = '128 mockups · 14.2 GB',
+  onChange
+}: SettingsPathFieldProps) {
+  return (
+    <div className="flex items-stretch overflow-clip rounded-lg border border-input bg-surface-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
+        <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.5} className="size-4 shrink-0" />
+        <span className="min-w-0 flex-1 truncate type-body-sm-regular text-foreground">{path}</span>
+        <span className="shrink-0 type-caption-xs-regular text-tertiary">{meta}</span>
+      </div>
+      <div className="w-px bg-input" aria-hidden />
+      <Button variant="secondary" label="Change…" className="rounded-none" onClick={onChange} />
+    </div>
+  )
+}
+
 const secondary = (label: string) => <Button variant="secondary" size="sm" label={label} />
 
 /** Figma's sample content for each section, so the catalog shows the real pane shapes. */
@@ -109,23 +135,7 @@ function Sample({ section, slots }: { section: SettingsLayoutSection; slots: Slo
                   move everything or just point DesignStash at the new folder.
                 </p>
               </div>
-              <div className="flex items-stretch overflow-clip rounded-lg border border-input bg-surface-2">
-                <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-                  <HugeiconsIcon
-                    icon={Folder01Icon}
-                    strokeWidth={1.5}
-                    className="size-4 shrink-0"
-                  />
-                  <span className="min-w-0 flex-1 truncate type-body-sm-regular text-foreground">
-                    ~/Pictures/DesignStash
-                  </span>
-                  <span className="shrink-0 type-caption-xs-regular text-tertiary">
-                    128 mockups · 14.2 GB
-                  </span>
-                </div>
-                <div className="w-px bg-input" aria-hidden />
-                <Button variant="secondary" label="Change…" className="rounded-none" />
-              </div>
+              <SettingsPathField />
             </div>
             <SettingsRow
               title="Stash check"
