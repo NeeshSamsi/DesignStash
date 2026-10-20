@@ -625,8 +625,8 @@ export const TOKENS = {
     },
     {
       name: 'text/placeholder',
-      alias: 'color/bark-500',
-      description: 'Input placeholders, disabled-looking hints.',
+      alias: 'color/bark-400',
+      description: 'Input placeholders and disabled-looking hints (bark-400, 7:1 on surface-1).',
       cssVar: '--ds-text-placeholder',
       utility: 'text-placeholder',
       via: 'figma'

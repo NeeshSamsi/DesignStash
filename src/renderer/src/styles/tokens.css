@@ -108,7 +108,7 @@
   --ds-text-primary: var(--ds-color-bark-100);
   --ds-text-secondary: var(--ds-color-bark-300);
   --ds-text-tertiary: var(--ds-color-bark-400);
-  --ds-text-placeholder: var(--ds-color-bark-500);
+  --ds-text-placeholder: var(--ds-color-bark-400);
   --ds-text-inverse: var(--ds-color-bark-950);
   --ds-text-on-primary: var(--ds-color-maple-50);
   --ds-text-brand: var(--ds-color-maple-400);
