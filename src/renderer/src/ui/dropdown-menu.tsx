@@ -30,7 +30,7 @@ const dropdownMenuItemVariants = cva(
 )
 
 // Menu hints sit on raised and hovered rows (bark-800/700), where tertiary falls to 3.9:1; secondary holds 4.6:1.
-const dropdownMenuShortcutClass = "ml-auto type-caption-xs-light text-muted-foreground"
+const dropdownMenuShortcutClass = "ml-auto type-caption-xs-regular text-muted-foreground"
 const dropdownMenuLabelClass = "px-2 py-1.5 type-caption-xs-regular text-muted-foreground"
 const dropdownMenuSeparatorClass = "border-t border-subtle"
 

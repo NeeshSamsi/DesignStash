@@ -1272,15 +1272,6 @@ export const TOKENS = {
       description: 'Nav items, larger body.'
     },
     {
-      name: 'body/base/light',
-      utility: 'type-body-base-light',
-      family: 'Inter',
-      style: 'Light',
-      size: 16,
-      lineHeight: 24,
-      description: 'Search field text.'
-    },
-    {
       name: 'body/sm/regular',
       utility: 'type-body-sm-regular',
       family: 'Inter',
@@ -1306,15 +1297,6 @@ export const TOKENS = {
       size: 12,
       lineHeight: 16,
       description: 'Meta, counts, helper text (text-xs).'
-    },
-    {
-      name: 'caption/xs/light',
-      utility: 'type-caption-xs-light',
-      family: 'Inter',
-      style: 'Light',
-      size: 12,
-      lineHeight: 16,
-      description: 'Keyboard hints.'
     },
     {
       name: 'label/xs/medium',
