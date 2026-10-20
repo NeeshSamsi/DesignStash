@@ -143,6 +143,7 @@ export class CopyQueue {
     if (!haul) return { landedIds: [] }
     if (haul.state === 'running' || haul.state === 'paused') {
       this.repo.copyJobs.setHaulState(haulId, { state: 'cancelled' })
+      this.repo.copyJobs.forgetPendingSources(haulId)
       this.emit(haulId, null)
     }
     return { landedIds: this.repo.copyJobs.landedMockupIds(haulId) }
@@ -171,6 +172,7 @@ export class CopyQueue {
     const removed = this.repo.deleteMockupsHard(ids)
     await removeAppCopies(this.root, removed, this.deps.rm)
     this.repo.copyJobs.setHaulState(haulId, { state: 'undone' })
+    this.repo.copyJobs.forgetPendingSources(haulId)
     this.emit(haulId, null)
     return { tossedIds: ids }
   }

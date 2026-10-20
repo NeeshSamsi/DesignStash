@@ -130,6 +130,15 @@ export class CopyJobRepository {
       .run()
   }
 
+  /** The haul will not run again, so the files still waiting (or mid-copy) lose their way back. */
+  forgetPendingSources(haulId: string): void {
+    this.db
+      .update(copyJobs)
+      .set({ sourcePath: '', updatedAt: sql`CURRENT_TIMESTAMP` })
+      .where(and(eq(copyJobs.haulId, haulId), inArray(copyJobs.status, ['queued', 'copying'])))
+      .run()
+  }
+
   /** After a restart a file that was mid-copy has to be done again. */
   resetCopying(haulId: string): void {
     this.db

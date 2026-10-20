@@ -395,6 +395,35 @@ describe('cancel and undo', () => {
     expect((await q.status())!.landed).toBe(1)
   })
 
+  it('forgets the way back to files that will now never be copied', async () => {
+    psd('a.psd', 'A')
+    psd('b.psd', 'B')
+    psd('c.psd', 'C')
+    free = 1 // nothing copies, so every file is still waiting
+    const q = queue()
+    const { haulId } = await q.start([drop])
+    await q.idle()
+    expect(repo.copyJobs.getJobs(haulId).every((j) => j.sourcePath !== '')).toBe(true)
+
+    await q.cancel(haulId)
+
+    expect(repo.copyJobs.getJobs(haulId).map((j) => j.sourcePath)).toEqual(['', '', ''])
+  })
+
+  it('forgets the way back to waiting files when a paused haul is undone', async () => {
+    psd('a.psd', 'A')
+    psd('b.psd', 'B')
+    free = 1
+    const q = queue()
+    const { haulId } = await q.start([drop])
+    await q.idle()
+
+    await q.undoAll(haulId)
+
+    expect(repo.copyJobs.getJobs(haulId).map((j) => j.sourcePath)).toEqual(['', ''])
+    expect((await q.status())!.state).toBe('undone')
+  })
+
   it('Undo all removes the records and the app copies and never touches the originals', async () => {
     const a = psd('a.psd', 'A')
     const b = psd('b.psd', 'B')
