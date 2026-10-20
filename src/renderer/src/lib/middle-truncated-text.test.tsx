@@ -1,18 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
-import { MiddleTruncatedText, NAME_TAIL, splitName } from './middle-truncated-text'
+import { MiddleTruncatedText, splitName } from './middle-truncated-text'
 
 describe('splitName', () => {
   it('keeps a short name whole', () => {
     expect(splitName('cap_navy.psd')).toEqual({ head: 'cap_navy.psd', tail: '' })
   })
 
-  it('keeps the end of a long name, where files differ', () => {
+  it('gives about two thirds to the start and one third to the end, keeping the extension', () => {
     const name = 'M003T1513 A long scroll Macbook mockup 08Agu25.psd'
     const { head, tail } = splitName(name)
-    expect(tail).toBe(name.slice(-NAME_TAIL))
-    expect(tail.endsWith('08Agu25.psd')).toBe(true)
     expect(head + tail).toBe(name)
+    expect(tail.endsWith('08Agu25.psd')).toBe(true)
+    expect(tail.length).toBe(Math.ceil(name.length / 3))
+    expect(head.length).toBeGreaterThan(tail.length)
+  })
+
+  it('always keeps the whole extension', () => {
+    const { tail } = splitName('a_very_long_name_with_a_long.extension')
+    expect(tail.endsWith('.extension')).toBe(true)
   })
 })
 
