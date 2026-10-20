@@ -320,7 +320,7 @@ export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={(event) =>
-        dispatch({ type: 'drop', target: targetOf(event.over?.id), newPileId: '' })
+        dispatch({ type: 'drop', target: targetOf(event.over?.id) })
       }
       onDragCancel={() => dispatch({ type: 'cancel' })}
     >

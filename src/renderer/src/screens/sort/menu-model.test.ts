@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GroupMember, GroupingProposal } from '@shared/grouping'
-import { boardFromProposal, boardReducer, type BoardAction, type BoardState } from './board-model'
+import { boardFromProposal, makeBoardReducer, type BoardAction, type BoardState } from './board-model'
 import { buildMenu, type MenuRow } from './menu-model'
 
 // The menus of the Sort board — Figma S4, S7.E3, S7.E4, S8.1.
@@ -32,6 +32,9 @@ function fixture(): BoardState {
   }
   return boardFromProposal(proposal)
 }
+
+let minted = 0
+const boardReducer = makeBoardReducer(() => `p${++minted}`)
 
 const run = (state: BoardState, ...actions: BoardAction[]) => actions.reduce(boardReducer, state)
 const labels = (rows: MenuRow[]) =>
@@ -96,7 +99,7 @@ describe('tile menu', () => {
       { type: 'click-tile', id: 9, meta: true }
     )
     const rows = buildMenu(s, { kind: 'tile', tileId: 8 })
-    expect(row(rows, 'new-pile')).toMatchObject({ action: { type: 'new-pile', newPileId: '' } })
+    expect(row(rows, 'new-pile')).toMatchObject({ action: { type: 'new-pile' } })
   })
 
   it('lists every pile, On its own and New pile under Move to, by title and count (S4.3)', () => {

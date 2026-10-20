@@ -13,7 +13,7 @@ import { Skeleton } from '@renderer/ui/skeleton'
 import {
   boardFromProposal,
   boardFromSaved,
-  boardReducer,
+  makeBoardReducer,
   canDisband,
   canNewPile,
   toSortBoard,
@@ -22,7 +22,7 @@ import {
 } from './board-model'
 import { SortBoard } from './SortBoard'
 import { SortMenu } from './SortMenu'
-import { NEW_PILE_ID, type MenuTarget } from './menu-model'
+import type { MenuTarget } from './menu-model'
 
 export interface SortFlowProps {
   open: boolean
@@ -45,20 +45,7 @@ type Loaded =
 const freshPileId = () =>
   globalThis.crypto?.randomUUID?.() ?? `pile-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-/** Actions that make a pile arrive with a placeholder id; this swaps in a real one. */
-function withPileId(action: BoardAction): BoardAction {
-  if ((action.type === 'new-pile' || action.type === 'drop') && action.newPileId === NEW_PILE_ID) {
-    return { ...action, newPileId: freshPileId() }
-  }
-  if (
-    action.type === 'move-to' &&
-    action.destination.kind === 'new-pile' &&
-    action.destination.newPileId === NEW_PILE_ID
-  ) {
-    return { ...action, destination: { kind: 'new-pile', newPileId: freshPileId() } }
-  }
-  return action
-}
+const boardReducer = makeBoardReducer(freshPileId)
 
 function BoardSkeleton() {
   return (
@@ -98,7 +85,7 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
   /** Every board change goes through here, so each one can raise its Undo toast. */
   const send = useCallback(
     (action: BoardAction) => {
-      let next = boardReducer(latest.current, withPileId(action))
+      let next = boardReducer(latest.current, action)
       if (next.notice) {
         undoToast(next.notice, () => apply({ type: 'undo' }))
         next = { ...next, notice: null }
@@ -119,7 +106,7 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
     id: 'sort.new-pile',
     combo: 'mod+g',
     scope: 'sort',
-    handler: () => canNewPile(latest.current) && send({ type: 'new-pile', newPileId: NEW_PILE_ID })
+    handler: () => canNewPile(latest.current) && send({ type: 'new-pile' })
   })
   useShortcut({
     id: 'sort.disband',

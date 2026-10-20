@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import type { GroupMember, GroupingProposal } from '@shared/grouping'
 import {
   boardFromProposal,
   boardFromSaved,
   boardOrder,
-  boardReducer,
+  makeBoardReducer,
   canDisband,
   canNewPile,
   canPutOnTop,
@@ -56,6 +56,12 @@ function fixture(): BoardState {
   return boardFromProposal(proposal)
 }
 
+let minted = 0
+const boardReducer = makeBoardReducer(() => `p${++minted}`)
+beforeEach(() => {
+  minted = 0
+})
+
 const run = (state: BoardState, ...actions: BoardAction[]) => actions.reduce(boardReducer, state)
 const members = (state: BoardState, pileId: string) => getPile(state, pileId)?.memberIds
 const click = (id: number, mods: { meta?: boolean; shift?: boolean } = {}): BoardAction => ({
@@ -105,8 +111,7 @@ describe('building a board', () => {
 
   it('round-trips through save and restore', () => {
     const moved = run(fixture(), click(8), click(9, { meta: true }), {
-      type: 'new-pile',
-      newPileId: 'n'
+      type: 'new-pile'
     })
     const saved = toSortBoard(moved, 'b1')
     const restored = boardFromSaved(
@@ -129,8 +134,8 @@ describe('titles follow the members (pile-titles.md)', () => {
       source: 'filename',
       reason: 'similar names'
     })
-    const made = run(s, click(8), click(10, { meta: true }), { type: 'new-pile', newPileId: 'n' })
-    expect(titleOfPile(made, getPile(made, 'n')!)).toEqual({
+    const made = run(s, click(8), click(10, { meta: true }), { type: 'new-pile' })
+    expect(titleOfPile(made, getPile(made, 'p1')!)).toEqual({
       title: 'cap_navy.psd',
       source: 'primary'
     })
@@ -138,11 +143,10 @@ describe('titles follow the members (pile-titles.md)', () => {
 
   it('renames a top-titled pile straight away when another mockup goes on top', () => {
     const made = run(fixture(), click(8), click(10, { meta: true }), {
-      type: 'new-pile',
-      newPileId: 'n'
+      type: 'new-pile'
     })
     const after = run(made, { type: 'put-on-top', tileId: 10 })
-    expect(titleOfPile(after, getPile(after, 'n')!).title).toBe('poster_a3.psd')
+    expect(titleOfPile(after, getPile(after, 'p1')!).title).toBe('poster_a3.psd')
   })
 
   it('leaves folder and filename-start titles alone when the top changes', () => {
@@ -380,7 +384,7 @@ describe('dragging a tile', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-tile', id: 8 },
-      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' } }
     )
     expect(members(s, 'mugs')).toEqual([5, 6, 7, 8])
     expect(s.standalone).toEqual([9, 10])
@@ -396,7 +400,7 @@ describe('dragging a tile', () => {
       click(9, { meta: true }),
       click(10, { meta: true }),
       { type: 'drag-start-tile', id: 9 },
-      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' } }
     )
     expect(members(s, 'mugs')).toEqual([5, 6, 7, 8, 9, 10])
     expect(s.standalone).toEqual([])
@@ -410,7 +414,7 @@ describe('dragging a tile', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-tile', id: 3 },
-      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' } }
     )
     expect(members(s, 'phones')).toEqual([1, 2, 4])
     expect(members(s, 'mugs')).toEqual([5, 6, 7, 3])
@@ -421,7 +425,7 @@ describe('dragging a tile', () => {
     const s = run(
       before,
       { type: 'drag-start-tile', id: 6 },
-      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' } }
     )
     expect(s.piles).toEqual(before.piles)
     expect(s.history).toHaveLength(0)
@@ -432,7 +436,7 @@ describe('dragging a tile', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-tile', id: 3 },
-      { type: 'drop', target: { kind: 'standalone' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'standalone' } }
     )
     expect(members(s, 'phones')).toEqual([1, 2, 4])
     expect(s.standalone).toEqual([8, 9, 10, 3])
@@ -442,9 +446,9 @@ describe('dragging a tile', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-tile', id: 8 },
-      { type: 'drop', target: { kind: 'tile', tileId: 9 }, newPileId: 'new' }
+      { type: 'drop', target: { kind: 'tile', tileId: 9 } }
     )
-    expect(s.piles[0]).toEqual({ id: 'new', memberIds: [9, 8] })
+    expect(s.piles[0]).toEqual({ id: 'p1', memberIds: [9, 8] })
     expect(s.standalone).toEqual([10])
     expect(titleOfPile(s, s.piles[0]!).title).toBe('tote_red.psd')
   })
@@ -453,9 +457,9 @@ describe('dragging a tile', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-tile', id: 8 },
-      { type: 'drop', target: { kind: 'tile', tileId: 9 }, newPileId: 'new' }
+      { type: 'drop', target: { kind: 'tile', tileId: 9 } }
     )
-    expect(s.piles.map((p) => p.id)).toEqual(['new', 'phones', 'mugs'])
+    expect(s.piles.map((p) => p.id)).toEqual(['p1', 'phones', 'mugs'])
   })
 
   it('dropping a selection on a tile starts a pile of all of them with the target on top (S5.E1)', () => {
@@ -465,9 +469,9 @@ describe('dragging a tile', () => {
       click(2, { meta: true }),
       click(5, { meta: true }),
       { type: 'drag-start-tile', id: 1 },
-      { type: 'drop', target: { kind: 'tile', tileId: 10 }, newPileId: 'new' }
+      { type: 'drop', target: { kind: 'tile', tileId: 10 } }
     )
-    expect(members(s, 'new')).toEqual([10, 1, 2, 5])
+    expect(members(s, 'p1')).toEqual([10, 1, 2, 5])
     expect(s.notice).toMatch(/New pile of 4 mockups/)
   })
 
@@ -475,7 +479,7 @@ describe('dragging a tile', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-tile', id: 8 },
-      { type: 'drop', target: { kind: 'tile', tileId: 6 }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'tile', tileId: 6 } }
     )
     expect(members(s, 'mugs')).toEqual([5, 6, 7, 8])
   })
@@ -485,7 +489,7 @@ describe('dragging a tile', () => {
     const s = run(
       before,
       { type: 'drag-start-tile', id: 8 },
-      { type: 'drop', target: { kind: 'tile', tileId: 8 }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'tile', tileId: 8 } }
     )
     expect(s.piles).toEqual(before.piles)
     expect(s.history).toHaveLength(0)
@@ -497,7 +501,7 @@ describe('tops and dissolving', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-tile', id: 1 },
-      { type: 'drop', target: { kind: 'standalone' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'standalone' } }
     )
     expect(members(s, 'phones')).toEqual([2, 3, 4])
     expect(s.notice).toContain('phone_side.psd is now the top mockup')
@@ -531,25 +535,23 @@ describe('tops and dissolving', () => {
 
   it('dragging out of a two-tile pile leaves its last tile on its own', () => {
     const two = run(fixture(), click(8), click(9, { meta: true }), {
-      type: 'new-pile',
-      newPileId: 'duo'
+      type: 'new-pile'
     })
     const s = run(
       two,
       { type: 'drag-start-tile', id: 8 },
-      { type: 'drop', target: { kind: 'standalone' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'standalone' } }
     )
-    expect(getPile(s, 'duo')).toBeUndefined()
+    expect(getPile(s, 'p1')).toBeUndefined()
     expect(s.standalone).toContain(9)
   })
 
   it('a deselected pile id does not linger after its pile dissolves', () => {
     const two = run(fixture(), click(8), click(9, { meta: true }), {
-      type: 'new-pile',
-      newPileId: 'duo'
+      type: 'new-pile'
     })
-    const s = run(two, { type: 'click-pile-header', pileId: 'duo' }, { type: 'take-out' })
-    expect(s.selectedPiles).toEqual(['duo'])
+    const s = run(two, { type: 'click-pile-header', pileId: 'p1' }, { type: 'take-out' })
+    expect(s.selectedPiles).toEqual(['p1'])
     const gone = run(two, { type: 'click-tile', id: 8 }, { type: 'take-out' })
     expect(gone.selectedPiles).toEqual([])
   })
@@ -584,7 +586,7 @@ describe('esc and cancelling a drag', () => {
       fixture(),
       click(8),
       { type: 'drag-start-tile', id: 8 },
-      { type: 'drop', target: null, newPileId: 'x' }
+      { type: 'drop', target: null }
     )
     expect(s.piles).toEqual(fixture().piles)
     expect(s.selectedTiles).toEqual([8])
@@ -596,10 +598,9 @@ describe('esc and cancelling a drag', () => {
 describe('new pile (⌘G)', () => {
   it('makes a pile from the selection with the first selected tile on top (S5.3, S5.4)', () => {
     const s = run(fixture(), click(10), click(8, { meta: true }), click(9, { meta: true }), {
-      type: 'new-pile',
-      newPileId: 'new'
+      type: 'new-pile'
     })
-    expect(s.piles[0]).toEqual({ id: 'new', memberIds: [10, 8, 9] })
+    expect(s.piles[0]).toEqual({ id: 'p1', memberIds: [10, 8, 9] })
     expect(s.standalone).toEqual([])
     expect(s.selectedTiles).toEqual([10, 8, 9])
   })
@@ -607,27 +608,24 @@ describe('new pile (⌘G)', () => {
   it('uses the right-clicked tile as the top when told which (S5.4)', () => {
     const s = run(fixture(), click(10), click(8, { meta: true }), {
       type: 'new-pile',
-      newPileId: 'new',
       topId: 8
     })
-    expect(members(s, 'new')).toEqual([8, 10])
+    expect(members(s, 'p1')).toEqual([8, 10])
   })
 
   it('ignores a top that is not selected', () => {
     const s = run(fixture(), click(10), click(8, { meta: true }), {
       type: 'new-pile',
-      newPileId: 'new',
       topId: 1
     })
-    expect(members(s, 'new')).toEqual([10, 8])
+    expect(members(s, 'p1')).toEqual([10, 8])
   })
 
   it('pulls tiles from different piles and shrinks the piles they left (S5.E3)', () => {
     const s = run(fixture(), click(2), click(6, { meta: true }), click(7, { meta: true }), {
-      type: 'new-pile',
-      newPileId: 'new'
+      type: 'new-pile'
     })
-    expect(members(s, 'new')).toEqual([2, 6, 7])
+    expect(members(s, 'p1')).toEqual([2, 6, 7])
     expect(members(s, 'phones')).toEqual([1, 3, 4])
     expect(getPile(s, 'mugs')).toBeUndefined()
     expect(s.standalone).toContain(5)
@@ -636,13 +634,13 @@ describe('new pile (⌘G)', () => {
   it('needs two or more tiles (S4.1)', () => {
     const one = run(fixture(), click(8))
     expect(canNewPile(one)).toBe(false)
-    expect(run(one, { type: 'new-pile', newPileId: 'n' })).toBe(one)
+    expect(run(one, { type: 'new-pile' })).toBe(one)
   })
 
   it('is off for a selection that is exactly one whole pile (S5.E2)', () => {
     const whole = run(fixture(), { type: 'select-pile-tiles', pileId: 'mugs' })
     expect(canNewPile(whole)).toBe(false)
-    expect(run(whole, { type: 'new-pile', newPileId: 'n' })).toBe(whole)
+    expect(run(whole, { type: 'new-pile' })).toBe(whole)
     expect(whole.history).toHaveLength(0)
   })
 
@@ -663,8 +661,8 @@ describe('disband (⇧⌘G)', () => {
     expect(s.standalone).toEqual([8, 9, 10, 5, 6, 7])
     expect(s.selectedTiles).toEqual([5, 6, 7])
     expect(s.notice).toBe('Pile broken up.')
-    const again = run(s, { type: 'new-pile', newPileId: 'again' })
-    expect(members(again, 'again')).toEqual([5, 6, 7])
+    const again = run(s, { type: 'new-pile' })
+    expect(members(again, 'p1')).toEqual([5, 6, 7])
   })
 
   it('works on a pile with any of its tiles selected (S8.E2)', () => {
@@ -700,7 +698,7 @@ describe('disband (⇧⌘G)', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-pile', pileId: 'mugs' },
-      { type: 'drop', target: { kind: 'standalone' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'standalone' } }
     )
     expect(getPile(s, 'mugs')).toBeUndefined()
     expect(s.selectedTiles).toEqual([5, 6, 7])
@@ -723,7 +721,7 @@ describe('merge', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-pile', pileId: 'phones' },
-      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' } }
     )
     expect(s.piles.map((p) => p.id)).toEqual(['mugs'])
     expect(members(s, 'mugs')).toEqual([5, 6, 7, 1, 2, 3, 4])
@@ -733,7 +731,7 @@ describe('merge', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-pile', pileId: 'phones' },
-      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'pile', pileId: 'mugs' } }
     )
     expect(s.selectedPiles).toEqual(['mugs'])
     const undone = run(s, { type: 'undo' })
@@ -744,7 +742,7 @@ describe('merge', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-pile', pileId: 'phones' },
-      { type: 'drop', target: { kind: 'tile', tileId: 6 }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'tile', tileId: 6 } }
     )
     expect(s.piles.map((p) => p.id)).toEqual(['mugs'])
   })
@@ -753,7 +751,7 @@ describe('merge', () => {
     const s = run(
       fixture(),
       { type: 'drag-start-pile', pileId: 'phones' },
-      { type: 'drop', target: { kind: 'pile', pileId: 'phones' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'pile', pileId: 'phones' } }
     )
     expect(s.piles).toEqual(fixture().piles)
     expect(s.history).toHaveLength(0)
@@ -781,18 +779,17 @@ describe('merge', () => {
 
   it('dragging two selected piles by one header merges both into the target', () => {
     const three = run(fixture(), click(8), click(9, { meta: true }), {
-      type: 'new-pile',
-      newPileId: 'duo'
+      type: 'new-pile'
     })
     const s = run(
       three,
       { type: 'click-pile-header', pileId: 'phones' },
       { type: 'click-pile-header', pileId: 'mugs', meta: true },
       { type: 'drag-start-pile', pileId: 'mugs' },
-      { type: 'drop', target: { kind: 'pile', pileId: 'duo' }, newPileId: 'x' }
+      { type: 'drop', target: { kind: 'pile', pileId: 'p1' } }
     )
-    expect(s.piles.map((p) => p.id)).toEqual(['duo'])
-    expect(members(s, 'duo')).toHaveLength(9)
+    expect(s.piles.map((p) => p.id)).toEqual(['p1'])
+    expect(members(s, 'p1')).toHaveLength(9)
   })
 })
 
@@ -852,8 +849,8 @@ describe('move to ▸ and take out (menu)', () => {
     ])
     expect(
       members(
-        run(base, { type: 'move-to', destination: { kind: 'new-pile', newPileId: 'n' } }),
-        'n'
+        run(base, { type: 'move-to', destination: { kind: 'new-pile' } }),
+        'p1'
       )
     ).toEqual([6, 8])
   })
@@ -887,7 +884,7 @@ describe('undo', () => {
 
   it('steps back one change at a time, restoring selection too', () => {
     const one = run(fixture(), click(3), { type: 'put-on-top' })
-    const two = run(one, click(8), click(9, { meta: true }), { type: 'new-pile', newPileId: 'n' })
+    const two = run(one, click(8), click(9, { meta: true }), { type: 'new-pile' })
     const back = run(two, { type: 'undo' })
     expect(back.piles).toEqual(one.piles)
     expect(back.selectedTiles).toEqual([8, 9])
@@ -942,9 +939,9 @@ describe('invariants', () => {
     const script: BoardAction[] = [
       click(1),
       click(5, { meta: true }),
-      { type: 'new-pile', newPileId: 'a' },
+      { type: 'new-pile' },
       { type: 'drag-start-tile', id: 8 },
-      { type: 'drop', target: { kind: 'pile', pileId: 'a' }, newPileId: 'z' },
+      { type: 'drop', target: { kind: 'pile', pileId: 'p1' } },
       { type: 'click-pile-header', pileId: 'phones' },
       { type: 'merge', targetId: 'mugs' },
       click(2),
