@@ -77,7 +77,6 @@ function setup(overrides: Record<string, Handler> = {}, queue: unknown = queueOf
     appName: 'DesignStash',
     invoke,
     subscribe: vi.fn(() => () => {}),
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn()
   } as unknown as typeof window.api
 }
