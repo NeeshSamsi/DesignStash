@@ -134,7 +134,7 @@ export function AboutPane() {
         <SettingsRow
           title="Report a problem"
           value="Copies a short report with your app version. No files are included."
-          controls={secondary('Report…', () => void report())}
+          controls={secondary('Copy report', () => void report())}
         />
       </SettingsGroup>
       <DialogFrame

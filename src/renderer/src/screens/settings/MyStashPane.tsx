@@ -128,10 +128,28 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
     }
   }
 
+  const what = info
+    ? `${mockupCount(info.count)} (${formatBytes(info.bytes)})`
+    : 'every PSD and cover'
+  const moveDescription = `Moving copies ${what} to the new folder. Using the folder leaves your files where they are and starts fresh from the new folder.`
+
   const view = check ? stashCheckView(check) : null
-  const secondary = (label: string, onClick: () => void, loading = false) => (
-    <Button variant="secondary" size="sm" label={label} loading={loading} onClick={onClick} />
+  const secondary = (
+    label: string,
+    onClick: () => void,
+    opts: { loading?: boolean; disabled?: boolean; destructive?: boolean } = {}
+  ) => (
+    <Button
+      variant="secondary"
+      size="sm"
+      label={label}
+      loading={opts.loading ?? false}
+      disabled={opts.disabled ?? false}
+      className={opts.destructive ? 'text-error' : ''}
+      onClick={onClick}
+    />
   )
+  const trashEmpty = trash !== null && trash.count === 0
 
   return (
     <>
@@ -164,7 +182,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
           controls={
             <>
               {view?.review && secondary('Review…', review)}
-              {secondary('Check now', () => void checkNow(), checking)}
+              {secondary('Check now', () => void checkNow(), { loading: checking })}
             </>
           }
         />
@@ -175,13 +193,18 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
           title="Trash"
           value={
             trash
-              ? `${mockupCount(trash.count)} · ${formatBytes(trash.bytes)}, kept until you empty it.`
+              ? trashEmpty
+                ? 'Trash is empty.'
+                : `${mockupCount(trash.count)} · ${formatBytes(trash.bytes)}, kept until you empty it.`
               : ' '
           }
           controls={
             <>
               {secondary('Open Trash', onOpenTrash)}
-              {secondary('Empty Trash…', () => setEmptying(true))}
+              {secondary('Empty Trash…', () => setEmptying(true), {
+                disabled: trash === null || trashEmpty,
+                destructive: true
+              })}
             </>
           }
         />
@@ -189,11 +212,11 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
 
       <ChoiceDialog
         open={picked !== null}
-        title="Move your stash or just point to the new folder?"
-        description="Moving copies every PSD and cover to the new folder. Pointing leaves your files where they are and starts using the new folder."
-        primaryLabel="Move files"
+        title="Move your stash or use the new folder as it is?"
+        description={moveDescription}
+        primaryLabel="Move my files here"
         onPrimary={() => void apply('move')}
-        secondaryLabel="Point only"
+        secondaryLabel="Use this folder, leave files"
         onSecondary={() => void apply('point')}
         tertiaryLabel="Cancel"
         onTertiary={() => setPicked(null)}

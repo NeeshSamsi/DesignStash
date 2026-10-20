@@ -262,7 +262,7 @@ describe('Settings · My Stash', () => {
     expect(screen.getByText('128 mockups · 14.2 GB')).not.toBeNull()
   })
 
-  it('asks Move files, Point only or Cancel after Change… picks a folder', async () => {
+  it('asks Move my files here, Use this folder, leave files or Cancel after Change… picks a folder', async () => {
     open()
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
@@ -270,7 +270,9 @@ describe('Settings · My Stash', () => {
     const names = within(dialog)
       .getAllByRole('button')
       .map((b) => b.textContent)
-    expect(names.sort()).toEqual(['Cancel', 'Move files', 'Point only'])
+    expect(names.sort()).toEqual(['Cancel', 'Move my files here', 'Use this folder, leave files'])
+    // The description says how much would move.
+    expect(dialog.textContent).toContain('128 mockups (14.2 GB)')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
     expect(calls(IPC_CHANNELS.STASH_CHANGE)).toHaveLength(0)
@@ -292,7 +294,9 @@ describe('Settings · My Stash', () => {
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
     fireEvent.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Move files' })
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Move my files here'
+      })
     )
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.STASH_CHANGE, {
@@ -325,7 +329,9 @@ describe('Settings · My Stash', () => {
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
     fireEvent.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Point only' })
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Use this folder, leave files'
+      })
     )
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.STASH_CHANGE, {
@@ -348,7 +354,9 @@ describe('Settings · My Stash', () => {
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
     fireEvent.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Point only' })
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Use this folder, leave files'
+      })
     )
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
     const { description } = toasts.toast.mock.calls[0]![0]
@@ -406,6 +414,17 @@ describe('Settings · My Stash', () => {
     await waitFor(() => expect(calls(IPC_CHANNELS.TRASH_EMPTY)).toHaveLength(1))
     // No undo for this one.
     expect(toasts.undoToast).not.toHaveBeenCalled()
+  })
+})
+
+describe('Settings · Trash row', () => {
+  it('says Trash is empty at 0 and turns Empty Trash… off, keeping Open Trash', async () => {
+    setup({ [IPC_CHANNELS.TRASH_STATS]: () => ok({ count: 0, bytes: 0 }) })
+    open()
+    expect(await screen.findByText('Trash is empty.')).not.toBeNull()
+    expect((btn('Empty Trash…') as HTMLButtonElement).disabled).toBe(true)
+    expect((btn('Open Trash') as HTMLButtonElement).disabled).toBe(false)
+    expect(document.body.textContent).not.toContain('0 mockups · 0 B')
   })
 })
 
@@ -759,7 +778,7 @@ describe('Settings · About', () => {
   it('copies the problem report', async () => {
     open()
     goto('About')
-    fireEvent.click(await screen.findByRole('button', { name: 'Report…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy report' }))
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
     expect(toasts.toast.mock.calls[0]![0].message).toBe('Copied your problem report')
   })

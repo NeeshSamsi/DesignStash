@@ -239,7 +239,7 @@ function Sample({ section, slots }: { section: SettingsLayoutSection; slots: Slo
             <SettingsRow
               title="Report a problem"
               value="Opens a short form with your app version filled in. No files are sent."
-              controls={secondary('Report…')}
+              controls={secondary('Copy report')}
             />
           </SettingsGroup>
         </>
