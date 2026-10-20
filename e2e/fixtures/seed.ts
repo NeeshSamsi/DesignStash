@@ -61,6 +61,18 @@ export async function seedStash(app: E2EApp, names: string[]): Promise<Seeded[]>
   return seeded
 }
 
+/**
+ * Opens My Stash > All on what is stored now. Specs that seed through channels call this after
+ * the last change: the page loads its list when it opens, so a reload is how it sees them.
+ */
+export async function showMyStash(app: E2EApp): Promise<void> {
+  const { window } = app
+  await window.reload()
+  await window.waitForLoadState('domcontentloaded')
+  await expect(window.getByRole('navigation', { name: 'Primary' })).toBeVisible()
+  await window.getByRole('button', { name: /^All/ }).click()
+}
+
 /** The id of a tag category, made if the fresh stash doesn't have it. */
 export async function categoryId(app: E2EApp, label: string): Promise<number> {
   const { categories } = await ok<{ categories: { categoryId: number; categoryLabel: string }[] }>(

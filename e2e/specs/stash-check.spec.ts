@@ -13,29 +13,26 @@ function dropStrays(app: E2EApp, names: string[]): void {
   makePsds(join(app.stash, 'mockups', `stray-${Date.now()}`), names)
 }
 
-/** Settings › My Stash › Check now, then Review… on what it found. */
-async function reviewFindings(window: Page, count: number): Promise<Locator> {
-  await window.getByRole('button', { name: 'Settings' }).click()
-  const settings = window.getByRole('dialog')
-  await settings.getByRole('button', { name: 'My Stash', exact: true }).click()
-  await settings.getByRole('button', { name: 'Check now' }).click()
-  await expect(settings.getByText(`${count} to review`)).toBeVisible()
-  await settings.getByRole('button', { name: 'Review…' }).click()
-  const modal = window.getByRole('dialog').filter({ hasText: 'Found in your stash folder' })
-  await expect(modal).toBeVisible()
+/**
+ * The launch check: reloading starts the app's window again, which checks the stash folder against
+ * its records. A blocking modal lists what it found.
+ */
+async function reviewFindings(window: Page): Promise<Locator> {
+  await window.reload()
+  const modal = window.getByRole('dialog', { name: 'Stash check' })
+  await expect(modal.getByText('Found in your stash folder').first()).toBeVisible()
   return modal
 }
 
 test.describe('Stash check', () => {
   test.describe.configure({ timeout: 90_000 })
 
-  test('Add puts a found file in To sort, with Undo', async ({ app }) => {
+  test('Add puts a found file in To sort', async ({ app }) => {
     const { window } = app
     dropStrays(app, ['stray_one'])
-    const modal = await reviewFindings(window, 1)
+    const modal = await reviewFindings(window)
 
     await expect(modal.getByText('stray_one', { exact: true })).toBeVisible()
-    await expect(modal.getByText('1 left')).toBeVisible()
     await modal.getByRole('button', { name: 'Add', exact: true }).click()
 
     await expect(window.getByText('Added 1 file to To sort')).toBeVisible()
@@ -46,7 +43,6 @@ test.describe('Stash check', () => {
     // Like anything you gather, it waits in To sort.
     const counts = await app.invoke<{ toSort: number }>('inbox:get-counts')
     expect(counts.data?.toSort).toBe(1)
-    await window.keyboard.press('Escape')
     await window.getByRole('button', { name: /^To sort/ }).click()
     await expect(window.getByText('stray_one', { exact: true })).toBeVisible()
   })
@@ -54,7 +50,7 @@ test.describe('Stash check', () => {
   test('Ignore all clears every found file at once, and Undo brings them back', async ({ app }) => {
     const { window } = app
     dropStrays(app, ['stray_one', 'stray_two'])
-    const modal = await reviewFindings(window, 2)
+    const modal = await reviewFindings(window)
 
     await expect(modal.getByText('stray_one', { exact: true })).toBeVisible()
     await expect(modal.getByText('stray_two', { exact: true })).toBeVisible()

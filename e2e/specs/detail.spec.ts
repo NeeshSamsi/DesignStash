@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/app'
-import { seedStash } from '../fixtures/seed'
+import { seedStash, showMyStash } from '../fixtures/seed'
 
 /** Detail: edit the title, Save appears and saves, and closing with changes asks first. */
 
@@ -9,8 +9,13 @@ test.describe('Detail', () => {
   test('Save appears once the title changes, saves, and goes away', async ({ app }) => {
     const { window } = app
     const [only] = await seedStash(app, ['laptop'])
-    await window.getByRole('button', { name: /^All/ }).click()
-    await window.locator('[data-mockup-id]').first().dblclick()
+    await showMyStash(app)
+    // The title, not the card's middle: the hover buttons over the cover would take the click.
+    await window
+      .locator('[data-mockup-id]')
+      .first()
+      .getByText(/^Stub /)
+      .dblclick()
 
     const dialog = window.getByRole('dialog')
     const title = dialog.getByRole('textbox', { name: 'Title' })
@@ -34,8 +39,13 @@ test.describe('Detail', () => {
   test('an empty title can’t be saved and says why', async ({ app }) => {
     const { window } = app
     await seedStash(app, ['laptop'])
-    await window.getByRole('button', { name: /^All/ }).click()
-    await window.locator('[data-mockup-id]').first().dblclick()
+    await showMyStash(app)
+    // The title, not the card's middle: the hover buttons over the cover would take the click.
+    await window
+      .locator('[data-mockup-id]')
+      .first()
+      .getByText(/^Stub /)
+      .dblclick()
 
     const dialog = window.getByRole('dialog')
     await dialog.getByRole('textbox', { name: 'Title' }).fill('')
@@ -47,8 +57,13 @@ test.describe('Detail', () => {
   test('closing with changes asks Keep editing or Discard', async ({ app }) => {
     const { window } = app
     const [only] = await seedStash(app, ['laptop'])
-    await window.getByRole('button', { name: /^All/ }).click()
-    await window.locator('[data-mockup-id]').first().dblclick()
+    await showMyStash(app)
+    // The title, not the card's middle: the hover buttons over the cover would take the click.
+    await window
+      .locator('[data-mockup-id]')
+      .first()
+      .getByText(/^Stub /)
+      .dblclick()
 
     const dialog = window.getByRole('dialog')
     await dialog.getByRole('textbox', { name: 'Title' }).fill('Something else')
@@ -74,8 +89,13 @@ test.describe('Detail', () => {
   test('closing without changes just closes', async ({ app }) => {
     const { window } = app
     await seedStash(app, ['laptop'])
-    await window.getByRole('button', { name: /^All/ }).click()
-    await window.locator('[data-mockup-id]').first().dblclick()
+    await showMyStash(app)
+    // The title, not the card's middle: the hover buttons over the cover would take the click.
+    await window
+      .locator('[data-mockup-id]')
+      .first()
+      .getByText(/^Stub /)
+      .dblclick()
     await expect(window.getByRole('dialog')).toBeVisible()
     await window.keyboard.press('Escape')
     await expect(window.getByRole('dialog')).toHaveCount(0)
