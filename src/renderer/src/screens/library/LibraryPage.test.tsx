@@ -210,14 +210,32 @@ describe('LibraryPage states', () => {
     expect(useLibraryStore.getState().tagFilter).toEqual([])
   })
 
-  it('nothing starred yet explains how to star, with no button', async () => {
+  it('nothing starred yet explains how to star and offers Go to All', async () => {
     setupApi([item(1)])
+    useUiStore.setState({ view: 'starred' })
     render(<LibraryPage starredOnly />)
     await ready()
     expect(screen.getByText('Nothing starred yet')).toBeTruthy()
+    fireEvent.click(
+      within(document.querySelector('[data-ds="EmptyState"]')!).getByRole('button', {
+        name: 'Go to All'
+      })
+    )
+    expect(useUiStore.getState().view).toBe('all')
+  })
+
+  it('an empty stash quiets Filter and sort and says what to do by the Add card', async () => {
+    setupApi([])
+    render(<LibraryPage />)
+    await ready()
+    expect((screen.getByRole('button', { name: /Filter/ }) as HTMLButtonElement).disabled).toBe(
+      true
+    )
     expect(
-      within(document.querySelector('[data-ds="EmptyState"]')!).queryByRole('button')
-    ).toBeNull()
+      (screen.getByRole('combobox', { name: 'Sort order' }) as HTMLButtonElement).disabled
+    ).toBe(true)
+    expect(screen.getByText(/drop them anywhere in this window/)).toBeTruthy()
+    expect(screen.queryByText('0 items')).toBeNull()
   })
 
   it('keeps no-results and error states at the top under the toolbar', async () => {

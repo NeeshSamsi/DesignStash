@@ -73,10 +73,10 @@ describe('noResultsCopy', () => {
     expect(copy.title).toContain('“clay”')
   })
 
-  it('an empty Starred explains how to star, with no button', () => {
+  it('an empty Starred explains how to star and offers Go to All', () => {
     const copy = noResultsCopy({ query: '', filterCount: 0, starred: true })
     expect(copy.title).toBe('Nothing starred yet')
-    expect(copy.clearLabel).toBeNull()
+    expect(copy.clearLabel).toBe('Go to All')
   })
 
   it('never says the library is empty', () => {

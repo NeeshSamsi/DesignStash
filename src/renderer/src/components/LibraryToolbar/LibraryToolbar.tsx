@@ -30,6 +30,8 @@ export interface LibraryToolbarProps extends LibraryToolbarContractProps {
   onClearFilters?: () => void
   /** Props for the tag filter popover the Filter button opens. */
   tagFilter?: Omit<TagFilterPopoverProps, 'trigger'>
+  /** Nothing to filter or sort yet (an empty stash): both controls go quiet. */
+  disabled?: boolean
   sort?: LibrarySort
   onSortChange?: (sort: LibrarySort) => void
   className?: string
@@ -59,6 +61,7 @@ export function LibraryToolbar({
   tagFilter,
   sort = 'date',
   onSortChange,
+  disabled = false,
   ...rest
 }: LibraryToolbarProps) {
   const props = { ...LIBRARY_TOOLBAR_DEFAULTS, ...rest }
@@ -66,7 +69,7 @@ export function LibraryToolbar({
   const active = picked.length > 0
 
   const filterButton = (
-    <Button variant="outline" size="sm" className={HAIRLINE_BUTTON}>
+    <Button variant="outline" size="sm" disabled={disabled} className={HAIRLINE_BUTTON}>
       <HugeiconsIcon icon={FilterHorizontalIcon} strokeWidth={2} />
       Filter
     </Button>
@@ -108,6 +111,7 @@ export function LibraryToolbar({
           value={sort}
           options={SORT_OPTIONS}
           aria-label="Sort order"
+          disabled={disabled}
           className={HAIRLINE_SORT}
           onValueChange={(value) => onSortChange?.(value as LibrarySort)}
         />

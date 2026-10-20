@@ -393,7 +393,8 @@ describe('Trash', () => {
   it('says so when Trash is empty', async () => {
     setup({ [IPC_CHANNELS.TRASH_LIST]: () => ok({ items: [] }) })
     render(<TrashPage />)
-    expect(await screen.findByText('Trash is empty')).toBeTruthy()
+    expect(await screen.findByText('Not a crumb in here')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Back to My Stash' })).toBeTruthy()
   })
 })
 

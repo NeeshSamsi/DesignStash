@@ -73,7 +73,7 @@ export function noResultsCopy({ query, filterCount, starred }: NoResultsInput): 
     ? {
         title: 'Nothing starred yet',
         description: 'Hover a mockup and press its star to keep it here.',
-        clearLabel: null
+        clearLabel: 'Go to All'
       }
     : { title: 'Nothing here yet', description: '', clearLabel: null }
 }

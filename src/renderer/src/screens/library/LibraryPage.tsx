@@ -9,7 +9,7 @@ import {
   type DragOverEvent,
   type DragStartEvent
 } from '@dnd-kit/core'
-import { Cancel01Icon, Search02Icon, StarIcon } from '@hugeicons/core-free-icons'
+import { ArrowLeft01Icon, Cancel01Icon, Search02Icon, StarIcon } from '@hugeicons/core-free-icons'
 import { coverDisplay, type LibraryItem } from '@shared/library'
 import { Banner } from '@renderer/components/Banner'
 import { Badge } from '@renderer/ui/badge'
@@ -313,15 +313,18 @@ export default function LibraryPage({
   const addCard = <AddCardMenu onAddFiles={onAddFiles} onAddFolder={onAddFolder} />
 
   const copy = noResultsCopy({ query, filterCount, starred: starredOnly })
+  const goToAll = () => useUiStore.getState().setView('all')
   const clearAction =
-    searching && filtering
-      ? () => {
-          setQuery('')
-          clearFilters()
-        }
-      : searching
-        ? () => setQuery('')
-        : clearFilters
+    !searching && !filtering && starredOnly
+      ? goToAll
+      : searching && filtering
+        ? () => {
+            setQuery('')
+            clearFilters()
+          }
+        : searching
+          ? () => setQuery('')
+          : clearFilters
 
   const total = stats.total
   // The header carries the count of the view and of a search or filter; the toolbar only says what is picked.
@@ -338,6 +341,7 @@ export default function LibraryPage({
         className="sticky top-0 z-20 flex-wrap bg-surface-1 pb-2"
         stats={statsText}
         chips={chips}
+        disabled={state === 'empty'}
         onClearFilters={clearFilters}
         sort={sort}
         onSortChange={setSort}
@@ -387,7 +391,7 @@ export default function LibraryPage({
               title={copy.title}
               description={copy.description}
               primaryLabel={copy.clearLabel}
-              primaryIcon={Cancel01Icon}
+              primaryIcon={!searching && !filtering && starredOnly ? ArrowLeft01Icon : Cancel01Icon}
               onPrimary={clearAction}
             />
           }
@@ -433,6 +437,11 @@ export default function LibraryPage({
             )
           })}
         </MockupGrid>
+        {state === 'empty' && (
+          <p className="type-body-sm-regular text-muted-foreground">
+            Add PSDs with the card, or drop them anywhere in this window.
+          </p>
+        )}
         <DragOverlay dropAnimation={null}>
           {drag && drag.items[0] && (
             <div className="relative w-card">

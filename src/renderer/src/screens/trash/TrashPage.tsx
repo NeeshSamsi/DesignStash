@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
-import { Delete02Icon, UndoIcon } from '@hugeicons/core-free-icons'
+import { ArrowLeft01Icon, Delete02Icon, UndoIcon } from '@hugeicons/core-free-icons'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { TrashItem, TrashStats } from '@shared/inbox'
 import { coverDisplay } from '@shared/library'
@@ -17,6 +17,7 @@ import { useGridSelection } from '@renderer/hooks/use-grid-selection'
 import { agoText, formatBytes, newestFirst, pluralise } from '@renderer/lib/inbox-list'
 import { HeaderActions } from '@renderer/lib/page-header-slot'
 import { useInboxStore } from '@renderer/stores/inboxStore'
+import { useUiStore } from '@renderer/stores/uiStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { coverUrl } from '@shared/cover-url'
 
@@ -185,9 +186,11 @@ export default function TrashPage() {
           <EmptyState
             variant="page"
             icon={Delete02Icon}
-            title="Trash is empty"
+            title="Not a crumb in here"
             description="Things you move to Trash wait here until you delete them for good."
-            primaryLabel={null}
+            primaryLabel="Back to My Stash"
+            primaryIcon={ArrowLeft01Icon}
+            onPrimary={() => useUiStore.getState().setView('all')}
           />
         }
         error={
