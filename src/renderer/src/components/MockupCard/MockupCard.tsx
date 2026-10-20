@@ -142,7 +142,7 @@ export function MockupCard({
             state={COVER_STATE[state]}
             {...(coverSrc ? { src: coverSrc } : {})}
             imageClassName="group-hover/card:scale-105"
-            className="size-full"
+            className="size-full rounded-none"
           />
 
           <div className="absolute top-2 left-2 flex gap-1">

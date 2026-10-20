@@ -19,7 +19,7 @@ export interface CoverImageProps
 }
 
 /**
- * CoverImage — The one way to render a mockup cover (4:3, squircle mask). loading is a plain
+ * CoverImage — The one way to render a mockup cover (4:3, plain rounded rectangle). loading is a plain
  * skeleton block in surface-3, never a spinner.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1121
  * Used wherever a cover shows. The text labels show at md and lg only, as in Figma.

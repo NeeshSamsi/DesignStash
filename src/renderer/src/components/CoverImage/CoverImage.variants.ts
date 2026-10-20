@@ -1,6 +1,6 @@
 import { cva } from 'class-variance-authority'
 
-// Figma CoverImage 217:1121 (4:3). Radius steps with size; missing-file swaps the fill for a dashed error border.
+// Figma CoverImage 217:1121 (4:3). A plain rounded rectangle, radius steps with size; missing-file swaps the fill for a dashed error border.
 export const coverImageVariants = cva(
   'relative flex shrink-0 flex-col items-center justify-center overflow-clip bg-surface-3',
   {
@@ -12,10 +12,9 @@ export const coverImageVariants = cva(
         lg: 'h-90 w-120 gap-2 rounded-xl'
       },
       state: {
-        loaded: 'squircle',
-        loading: 'squircle',
-        'no-preview': 'squircle',
-        // clip-path would cut the dashed border, so this state skips the squircle.
+        loaded: '',
+        loading: '',
+        'no-preview': '',
         'missing-file': 'border border-dashed border-error bg-surface-2'
       }
     },

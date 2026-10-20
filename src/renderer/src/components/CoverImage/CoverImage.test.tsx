@@ -39,4 +39,14 @@ describe('CoverImage', () => {
     const { container } = render(<CoverImage state="loading" />)
     expect(container.querySelector('[data-ds="CoverImage"]')?.childElementCount).toBe(0)
   })
+
+  it.each(variantMatrix(COVER_IMAGE_CONTRACT))(
+    'has no squircle clip-path in %s',
+    (_label, props) => {
+      const { container } = render(<CoverImage {...(props as CoverImageProps)} />)
+      const cover = container.querySelector('[data-ds="CoverImage"]')!
+      expect(cover.className).not.toMatch(/squircle|clip-path/)
+      expect(cover.className).toMatch(/rounded-/)
+    }
+  )
 })
