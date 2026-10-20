@@ -28,7 +28,7 @@ const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcRe
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
 
 const make = (title: string) =>
-  repo.createMockup(approvedMockup({ title, libraryPath: `/lib/${title}.psd` })).id
+  repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/${title}.psd` })).id
 
 beforeEach(() => {
   handlers.clear()
@@ -57,7 +57,7 @@ describe('pile handlers', () => {
     )
     expect(res).toMatchObject({ success: true, data: { pileId: b } })
     expect(res.success && res.data.snapshot.rows).toHaveLength(2)
-    expect(repo.getMockup(a)?.groupId).toBe(b)
+    expect(repo.mockups.getMockup(a)?.groupId).toBe(b)
   })
 
   it('rejects a pile of one at the contract, before the repository runs', async () => {
@@ -102,13 +102,13 @@ describe('pile handlers', () => {
       { pileId: d }
     )
     expect(disbanded.success && disbanded.data.freedIds.sort()).toEqual([a, b, c, d, e].sort())
-    expect(repo.getLibrary({ sort: 'name' })).toHaveLength(5)
+    expect(repo.library.getLibrary({ sort: 'name' })).toHaveLength(5)
 
     const restored = await call<{ restoredIds: number[] }>(IPC_CHANNELS.PILE_RESTORE, {
       snapshot: disbanded.success && disbanded.data.snapshot
     })
     expect(restored.success && restored.data.restoredIds.sort()).toEqual([a, b, c, d, e].sort())
-    expect(repo.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([d])
+    expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([d])
   })
 
   it('removes a mockup from a pile, validates the request, and restores from the snapshot', async () => {
@@ -126,15 +126,15 @@ describe('pile handlers', () => {
       { pileId: a, mockupId: a }
     )
     expect(removed).toMatchObject({ success: true, data: { pileId: b, freedIds: [a] } })
-    expect(repo.getMockup(b)).toMatchObject({ isGroup: true })
-    expect(repo.getMockup(c)).toMatchObject({ groupId: b })
+    expect(repo.mockups.getMockup(b)).toMatchObject({ isGroup: true })
+    expect(repo.mockups.getMockup(c)).toMatchObject({ groupId: b })
 
     const restored = await call<{ restoredIds: number[] }>(IPC_CHANNELS.PILE_RESTORE, {
       snapshot: removed.success && removed.data.snapshot
     })
     expect(restored.success && restored.data.restoredIds.sort()).toEqual([a, b, c].sort())
-    expect(repo.getMockup(a)).toMatchObject({ isGroup: true, groupId: null })
-    expect(repo.getMockup(c)).toMatchObject({ groupId: a })
+    expect(repo.mockups.getMockup(a)).toMatchObject({ isGroup: true, groupId: null })
+    expect(repo.mockups.getMockup(c)).toMatchObject({ groupId: a })
 
     // A pile of two dissolves.
     await call(IPC_CHANNELS.PILE_DISBAND, { pileId: a })
@@ -143,7 +143,7 @@ describe('pile handlers', () => {
       success: true,
       data: { pileId: null }
     })
-    expect(repo.getMockup(a)).toMatchObject({ isGroup: false, groupId: null })
+    expect(repo.mockups.getMockup(a)).toMatchObject({ isGroup: false, groupId: null })
   })
 
   it('reports a mockup that is not in the pile as an error result', async () => {
@@ -163,13 +163,13 @@ describe('trash handlers', () => {
       success: true,
       data: { ok: true, count: 2 }
     })
-    expect(repo.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([c])
+    expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([c])
 
     expect(await call(IPC_CHANNELS.MOCKUP_RESTORE, { ids: [a, b] })).toEqual({
       success: true,
       data: { ok: true, count: 2 }
     })
-    expect(repo.getLibrary({ sort: 'name' })).toHaveLength(3)
+    expect(repo.library.getLibrary({ sort: 'name' })).toHaveLength(3)
   })
 
   it('no longer takes the single mockupId form', async () => {

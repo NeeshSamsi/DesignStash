@@ -91,7 +91,7 @@ describe('copy channels', () => {
 
     const done = await settle()
     expect(done.success && done.data.haul).toMatchObject({ state: 'done', landed: 2 })
-    expect(repo.getInboxList('to_sort')).toHaveLength(2)
+    expect(repo.inbox.list('to_sort')).toHaveLength(2)
 
     expect(push).toHaveBeenCalledWith(
       IPC_CHANNELS.COPY_PROGRESS,
@@ -115,7 +115,7 @@ describe('copy channels', () => {
     })
 
     expect(res.success && res.data.tossedIds).toHaveLength(1)
-    expect(repo.getInboxList('to_sort')).toEqual([])
+    expect(repo.inbox.list('to_sort')).toEqual([])
     expect(push).toHaveBeenLastCalledWith(
       IPC_CHANNELS.INBOX_COUNTS_CHANGED,
       expect.objectContaining({ toSort: 0 })

@@ -39,7 +39,7 @@ const makeService = (deps: Partial<IntegrityDeps>) => new IntegrityService(repo,
 
 describe('IntegrityService.scan', () => {
   it('detects an orphan record (DB row whose file is missing)', async () => {
-    repo.createMockup(row({ libraryPath: `${mockupsDir}/a/original.psd` }))
+    repo.mockups.createMockup(row({ libraryPath: `${mockupsDir}/a/original.psd` }))
     const service = makeService({
       listFiles: async () => [],
       exists: async () => false
@@ -53,7 +53,7 @@ describe('IntegrityService.scan', () => {
   it('detects an orphan file (on disk, no DB row)', async () => {
     const known = `${mockupsDir}/a/original.psd`
     const stray = `${mockupsDir}/x/stray.psd`
-    repo.createMockup(row({ libraryPath: known }))
+    repo.mockups.createMockup(row({ libraryPath: known }))
 
     const service = makeService({
       listFiles: async () => [known, stray],
@@ -67,7 +67,7 @@ describe('IntegrityService.scan', () => {
 
   it('ignores generated cover/thumb files in the disk listing', async () => {
     const known = `${mockupsDir}/a/original.psd`
-    repo.createMockup(row({ libraryPath: known }))
+    repo.mockups.createMockup(row({ libraryPath: known }))
 
     const service = makeService({
       listFiles: async () => [
@@ -87,8 +87,8 @@ describe('IntegrityService.scan', () => {
   it('reports nothing for a clean library', async () => {
     const a = `${mockupsDir}/a/original.psd`
     const b = `${mockupsDir}/b/original.psd`
-    repo.createMockup(row({ libraryPath: a }))
-    repo.createMockup(row({ libraryPath: b }))
+    repo.mockups.createMockup(row({ libraryPath: a }))
+    repo.mockups.createMockup(row({ libraryPath: b }))
 
     const service = makeService({
       listFiles: async () => [a, b, `${mockupsDir}/a/cover.webp`, `${mockupsDir}/b/thumb.webp`],
@@ -102,8 +102,8 @@ describe('IntegrityService.scan', () => {
 
   it('deleteOrphanRecord removes the row and its FTS entry', async () => {
     const path = `${mockupsDir}/a/original.psd`
-    const m = repo.createMockup(row({ libraryPath: path }))
-    repo.upsertSearchIndex(m.id)
+    const m = repo.mockups.createMockup(row({ libraryPath: path }))
+    repo.search.upsertSearchIndex(m.id)
     const service = makeService({ listFiles: async () => [], exists: async () => false })
 
     // present before
@@ -111,7 +111,7 @@ describe('IntegrityService.scan', () => {
 
     service.deleteOrphanRecord(m.id)
 
-    expect(repo.getMockup(m.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(m.id)).toBeUndefined()
     const fts = sqlite.prepare(`SELECT rowid FROM mockups_fts WHERE rowid = ?`).all(m.id)
     expect(fts).toHaveLength(0)
     // no longer reported as an orphan record
@@ -135,7 +135,7 @@ describe('IntegrityService.scan', () => {
 
     const { mockupId } = await service.addOrphanFile(orphan)
 
-    const created = repo.getMockup(mockupId)!
+    const created = repo.mockups.getMockup(mockupId)!
     expect(created.libraryPath).toBe(orphan) // NOT re-copied
     expect(created.stage).toBe('to_sort')
     expect(created.coverSource).toBe('embedded')
@@ -157,7 +157,7 @@ describe('IntegrityService.scan', () => {
 
     const { mockupId } = await service.addOrphanFile(orphan)
 
-    const created = repo.getMockup(mockupId)!
+    const created = repo.mockups.getMockup(mockupId)!
     expect(created.coverSource).toBe('none')
     expect(created.stage).toBe('to_sort')
   })
@@ -165,9 +165,9 @@ describe('IntegrityService.scan', () => {
   it('excludes soft-deleted records from the scan', async () => {
     const live = `${mockupsDir}/a/original.psd`
     const trashedPath = `${mockupsDir}/t/original.psd`
-    repo.createMockup(row({ libraryPath: live }))
-    const trashed = repo.createMockup(row({ libraryPath: trashedPath }))
-    repo.updateMockup(trashed.id, { deletedAt: new Date().toISOString() })
+    repo.mockups.createMockup(row({ libraryPath: live }))
+    const trashed = repo.mockups.createMockup(row({ libraryPath: trashedPath }))
+    repo.mockups.updateMockup(trashed.id, { deletedAt: new Date().toISOString() })
 
     const service = makeService({
       listFiles: async () => [live],

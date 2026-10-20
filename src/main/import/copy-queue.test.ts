@@ -81,17 +81,17 @@ describe('landing files', () => {
     await q.idle()
 
     expect(started).toMatchObject({ state: 'running', total: 2 })
-    const rows = repo.getInboxList('to_sort')
+    const rows = repo.inbox.list('to_sort')
     expect(rows.map((r) => r.title).sort()).toEqual(['front', 'side'])
     expect(rows.map((r) => r.sizeBytes).sort()).toEqual([4, 6])
-    const m = repo.getMockup(rows[0]!.id)!
+    const m = repo.mockups.getMockup(rows[0]!.id)!
     expect(m).toMatchObject({ stage: 'to_sort', coverSource: 'embedded' })
     expect(m.libraryPath.startsWith(join(root, 'mockups'))).toBe(true)
     expect(readFileSync(m.libraryPath, 'utf8')).toMatch(/AAAA|BBBBBB/)
     expect(m.importContext).toMatchObject({ folderTrail: ['Phones'] })
     // Originals are untouched, and no record of where they were is kept.
     expect(existsSync(a) && existsSync(b)).toBe(true)
-    expect(JSON.stringify(repo.getMockup(rows[0]!.id))).not.toContain(drop)
+    expect(JSON.stringify(repo.mockups.getMockup(rows[0]!.id))).not.toContain(drop)
     expect(landed.flat().sort()).toEqual(rows.map((r) => r.id).sort())
     expect(last()).toMatchObject({ state: 'done', total: 2, landed: 2 })
   })
@@ -102,7 +102,7 @@ describe('landing files', () => {
     const q = queue()
     await q.start([join(drop, 'a.psd')])
     await q.idle()
-    const m = repo.getMockup(repo.getInboxList('to_sort')[0]!.id)!
+    const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
     expect(m).toMatchObject({ coverSource: 'none', coverPath: '' })
   })
 
@@ -155,7 +155,7 @@ describe('skipping', () => {
     await again.start([drop])
     await again.idle()
     expect((await again.status())!).toMatchObject({ landed: 0, skipped: { duplicate: 3 } })
-    expect(repo.getInboxList('to_sort')).toHaveLength(2)
+    expect(repo.inbox.list('to_sort')).toHaveLength(2)
   })
 
   it('skips a PSD it cannot read, cleans up what it wrote, and carries on', async () => {
@@ -193,7 +193,7 @@ describe('pausing', () => {
     await q.idle()
 
     expect(last()).toMatchObject({ state: 'paused', pauseReason: 'disk-full', landed: 0 })
-    expect(repo.getInboxList('to_sort')).toHaveLength(0)
+    expect(repo.inbox.list('to_sort')).toHaveLength(0)
 
     free = 10_000_000
     await q.retry(haulId)
@@ -320,7 +320,7 @@ describe('a drop that is still being read', () => {
 
     expect(status.haulId).not.toBe(first.haulId)
     expect(last()).toMatchObject({ haulId: status.haulId, state: 'done', landed: 1 })
-    expect(repo.getInboxList('to_sort')).toHaveLength(2)
+    expect(repo.inbox.list('to_sort')).toHaveLength(2)
   })
 
   it('starts a new haul when the haul it would have joined is cancelled during the read', async () => {
@@ -392,7 +392,7 @@ describe('cancel and undo', () => {
 
     expect(last().state).toBe('cancelled')
     expect(landedIds.landedIds).toHaveLength(1)
-    expect(repo.getInboxList('to_sort')).toHaveLength(1)
+    expect(repo.inbox.list('to_sort')).toHaveLength(1)
     expect((await q.status())!.landed).toBe(1)
   })
 
@@ -437,7 +437,7 @@ describe('cancel and undo', () => {
     const res = await q.undoAll(haulId)
 
     expect(res.tossedIds).toHaveLength(2)
-    expect(repo.getInboxList('to_sort')).toEqual([])
+    expect(repo.inbox.list('to_sort')).toEqual([])
     expect(readdirSync(join(root, 'mockups')).flatMap((d) => readdirSync(join(root, 'mockups', d)))).toEqual([])
     expect(existsSync(a) && existsSync(b)).toBe(true)
     expect((await q.status())!.state).toBe('undone')
@@ -484,13 +484,13 @@ describe('cancel and undo', () => {
     const q = queue()
     const { haulId } = await q.start([drop])
     await q.idle()
-    const [first] = repo.getInboxList('to_sort')
-    repo.setStage([first!.id], 'stashed')
+    const [first] = repo.inbox.list('to_sort')
+    repo.mockups.setStage([first!.id], 'stashed')
 
     const res = await q.undoAll(haulId)
 
     expect(res.tossedIds).toHaveLength(1)
-    expect(repo.getMockup(first!.id)).toBeDefined()
+    expect(repo.mockups.getMockup(first!.id)).toBeDefined()
   })
 
   it('ignores a haul id it does not know', async () => {
@@ -512,7 +512,7 @@ describe('resuming at launch', () => {
     // Simulate a crash mid-way: c is mid-copy and nothing has landed for it.
     const jobs = repo.copyJobs.getJobs(haulId)
     const c = jobs.find((j) => j.fileName === 'c.psd')!
-    repo.deleteMockupsHard([c.mockupId!])
+    repo.trash.deleteMockupsHard([c.mockupId!])
     repo.copyJobs.setJobState(c.id, { status: 'copying' })
     repo.copyJobs.updateJob(c.id, { sourcePath: join(drop, 'c.psd') })
     repo.copyJobs.setHaulState(haulId, { state: 'running' })
@@ -521,7 +521,7 @@ describe('resuming at launch', () => {
     await restarted.resume()
     await restarted.idle()
 
-    expect(repo.getInboxList('to_sort')).toHaveLength(3)
+    expect(repo.inbox.list('to_sort')).toHaveLength(3)
     expect(last()).toMatchObject({ state: 'done', landed: 3 })
   })
 
@@ -538,7 +538,7 @@ describe('resuming at launch', () => {
     await restarted.idle()
 
     expect((await restarted.status())!).toMatchObject({ state: 'paused', pauseReason: 'disk-full' })
-    expect(repo.getInboxList('to_sort')).toHaveLength(0)
+    expect(repo.inbox.list('to_sort')).toHaveLength(0)
   })
 
   it('does nothing when there is no haul', async () => {

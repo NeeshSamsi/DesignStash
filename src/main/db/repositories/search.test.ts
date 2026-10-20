@@ -29,68 +29,68 @@ describe('search index', () => {
   }
 
   it('upsertSearchIndex makes mockup findable by title and tag', () => {
-    const m = repo.createMockup({ ...sample, title: 'MacBook Hero', libraryPath: '/lib/fts/a.psd' })
-    repo.setStage([m.id], 'stashed')
+    const m = repo.mockups.createMockup({ ...sample, title: 'MacBook Hero', libraryPath: '/lib/fts/a.psd' })
+    repo.mockups.setStage([m.id], 'stashed')
     seedTaxonomy(db)
-    const laptop = repo.getAllTags().find((t) => t.label === 'Laptop')!
-    repo.addTagToMockup(m.id, laptop.id)
+    const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
+    repo.mockups.addTagToMockup(m.id, laptop.id)
 
-    repo.upsertSearchIndex(m.id)
+    repo.search.upsertSearchIndex(m.id)
 
     expect(matchFts('MacBook')).toContain(m.id)
     expect(matchFts('laptop')).toContain(m.id)
   })
 
   it('removeSearchIndex removes mockup from FTS', () => {
-    const m = repo.createMockup({ ...sample, title: 'Remove Me', libraryPath: '/lib/fts/b.psd' })
-    repo.upsertSearchIndex(m.id)
+    const m = repo.mockups.createMockup({ ...sample, title: 'Remove Me', libraryPath: '/lib/fts/b.psd' })
+    repo.search.upsertSearchIndex(m.id)
     expect(matchFts('Remove')).toContain(m.id)
 
-    repo.removeSearchIndex(m.id)
+    repo.search.removeSearchIndex(m.id)
     expect(matchFts('Remove')).not.toContain(m.id)
   })
 
   it('rebuildSearchIndex indexes by stage', () => {
-    const waiting = repo.createMockup({
+    const waiting = repo.mockups.createMockup({
       ...sample,
       title: 'Waiting Approved',
       libraryPath: '/lib/fts/f.psd',
       stage: 'to_stash'
     })
-    const stashed = repo.createMockup({
+    const stashed = repo.mockups.createMockup({
       ...sample,
       title: 'Stashed Pending',
       libraryPath: '/lib/fts/g.psd',
       stage: 'stashed'
     })
-    repo.rebuildSearchIndex()
+    repo.search.rebuildSearchIndex()
     expect(matchFts('Waiting')).not.toContain(waiting.id)
     expect(matchFts('Stashed')).toContain(stashed.id)
   })
 
   it('rebuildSearchIndex indexes only approved non-deleted mockups', () => {
-    const approved = repo.createMockup({
+    const approved = repo.mockups.createMockup({
       ...sample,
       title: 'Approved One',
       libraryPath: '/lib/fts/c.psd'
     })
-    repo.setStage([approved.id], 'stashed')
+    repo.mockups.setStage([approved.id], 'stashed')
 
-    const pending = repo.createMockup({
+    const pending = repo.mockups.createMockup({
       ...sample,
       title: 'Pending One',
       libraryPath: '/lib/fts/d.psd'
     })
 
-    const deleted = repo.createMockup({
+    const deleted = repo.mockups.createMockup({
       ...sample,
       title: 'Deleted One',
       libraryPath: '/lib/fts/e.psd'
     })
-    repo.setStage([deleted.id], 'stashed')
-    repo.updateMockup(deleted.id, { deletedAt: new Date().toISOString() })
+    repo.mockups.setStage([deleted.id], 'stashed')
+    repo.mockups.updateMockup(deleted.id, { deletedAt: new Date().toISOString() })
 
-    repo.rebuildSearchIndex()
+    repo.search.rebuildSearchIndex()
 
     expect(matchFts('Approved')).toContain(approved.id)
     expect(matchFts('Pending')).not.toContain(pending.id)

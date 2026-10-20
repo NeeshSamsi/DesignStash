@@ -34,7 +34,7 @@ beforeEach(() => {
 afterEach(() => sqlite.close())
 
 const make = (overrides = {}) =>
-  repo.createMockup(
+  repo.mockups.createMockup(
     approvedMockup({
       title: 'Phone',
       libraryPath: '/lib/mockups/u1/original.psd',
@@ -61,7 +61,7 @@ describe('setCover', () => {
       previous: { coverPath: '/lib/mockups/u1/cover.webp', coverSource: 'embedded' }
     })
     expect(deps.makeCover).toHaveBeenCalledWith('/Users/x/new.png', `/library/covers/${m.id}-abc`)
-    expect(repo.getMockup(m.id)).toMatchObject({
+    expect(repo.mockups.getMockup(m.id)).toMatchObject({
       coverPath: `/library/covers/${m.id}-abc/cover.webp`,
       coverSource: 'user-uploaded'
     })
@@ -83,7 +83,7 @@ describe('setCover', () => {
 
     expect(await service().setCover(m.id, '/x/cover.png')).toEqual({ ok: false, reason: 'not-image' })
     expect(deps.makeCover).not.toHaveBeenCalled()
-    expect(repo.getMockup(m.id)?.coverSource).toBe('embedded')
+    expect(repo.mockups.getMockup(m.id)?.coverSource).toBe('embedded')
   })
 
   it('rejects a file over 25 MB, and accepts exactly 25 MB', async () => {
@@ -107,7 +107,7 @@ describe('setCover', () => {
     deps.makeCover.mockRejectedValueOnce(new Error('corrupt'))
     expect(await service().setCover(m.id, '/x/bad2.png')).toEqual({ ok: false, reason: 'unreadable' })
 
-    expect(repo.getMockup(m.id)).toMatchObject({
+    expect(repo.mockups.getMockup(m.id)).toMatchObject({
       coverPath: '/lib/mockups/u1/cover.webp',
       coverSource: 'embedded'
     })
@@ -133,7 +133,7 @@ describe('useEmbeddedCover', () => {
       height: 600,
       previous: { coverPath: '/library/covers/1-old/cover.webp', coverSource: 'user-uploaded' }
     })
-    expect(repo.getMockup(m.id)).toMatchObject({ coverSource: 'embedded' })
+    expect(repo.mockups.getMockup(m.id)).toMatchObject({ coverSource: 'embedded' })
   })
 
   it('does nothing when the cover is already the embedded preview', async () => {
@@ -155,7 +155,7 @@ describe('useEmbeddedCover', () => {
     deps.readEmbedded.mockResolvedValueOnce(null)
 
     expect(await service().useEmbeddedCover(m.id)).toEqual({ ok: false, reason: 'no-embedded' })
-    expect(repo.getMockup(m.id)?.coverSource).toBe('sidecar')
+    expect(repo.mockups.getMockup(m.id)?.coverSource).toBe('sidecar')
   })
 
   it('reports an unreadable PSD', async () => {

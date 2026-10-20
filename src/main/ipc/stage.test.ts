@@ -43,12 +43,12 @@ beforeEach(() => {
 afterEach(() => sqlite.close())
 
 const make = (title: string) =>
-  repo.createMockup({ ...sample, title, libraryPath: `/lib/${title}.psd` }).id
+  repo.mockups.createMockup({ ...sample, title, libraryPath: `/lib/${title}.psd` }).id
 
 describe('stage changes from the older channels', () => {
   it('GROUPING_CONFIRM moves piles and singles to To stash', async () => {
     const [a, b, c, d] = ['a', 'b', 'c', 'd'].map(make) as [number, number, number, number]
-    expect(repo.getMockup(a)?.stage).toBe('to_sort')
+    expect(repo.mockups.getMockup(a)?.stage).toBe('to_sort')
 
     const res = await call(IPC_CHANNELS.GROUPING_CONFIRM, {
       batchId: 'x',
@@ -57,8 +57,8 @@ describe('stage changes from the older channels', () => {
     })
 
     expect(res).toMatchObject({ success: true })
-    for (const id of [a, b, c, d]) expect(repo.getMockup(id)?.stage).toBe('to_stash')
-    expect(repo.getMockup(a)?.sortedAt).toEqual(expect.any(String))
+    for (const id of [a, b, c, d]) expect(repo.mockups.getMockup(id)?.stage).toBe('to_stash')
+    expect(repo.mockups.getMockup(a)?.sortedAt).toEqual(expect.any(String))
     expect(push).toHaveBeenCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, {
       toSort: 0,
       toStash: 2,

@@ -41,7 +41,7 @@ const makeDeps = () => ({
 
 describe('openExternal', () => {
   it('calls openPath with the mockup libraryPath and returns {opened:true}', async () => {
-    const m = repo.createMockup(approvedRow({ title: 'Open Me', libraryPath: '/lib/open.psd' }))
+    const m = repo.mockups.createMockup(approvedRow({ title: 'Open Me', libraryPath: '/lib/open.psd' }))
     const deps = makeDeps()
     const svc = new LibraryService(repo, '/library', deps)
 
@@ -62,7 +62,7 @@ describe('openExternal', () => {
   })
 
   it('says it failed when the PSD is no longer on disk', async () => {
-    const m = repo.createMockup(approvedRow({ title: 'Gone', libraryPath: '/lib/gone.psd' }))
+    const m = repo.mockups.createMockup(approvedRow({ title: 'Gone', libraryPath: '/lib/gone.psd' }))
     const deps = makeDeps()
     deps.exists.mockResolvedValueOnce(false)
     const svc = new LibraryService(repo, '/library', deps)
@@ -72,7 +72,7 @@ describe('openExternal', () => {
   })
 
   it('says there is no app when the system has nothing to open it with', async () => {
-    const m = repo.createMockup(approvedRow({ title: 'NoApp', libraryPath: '/lib/noapp.psd' }))
+    const m = repo.mockups.createMockup(approvedRow({ title: 'NoApp', libraryPath: '/lib/noapp.psd' }))
     const deps = makeDeps()
     deps.openPath.mockResolvedValueOnce('Failed to open path /lib/noapp.psd')
     const svc = new LibraryService(repo, '/library', deps)
@@ -84,7 +84,7 @@ describe('openExternal', () => {
   })
 
   it('says it failed when opening throws', async () => {
-    const m = repo.createMockup(approvedRow({ title: 'Boom', libraryPath: '/lib/boom.psd' }))
+    const m = repo.mockups.createMockup(approvedRow({ title: 'Boom', libraryPath: '/lib/boom.psd' }))
     const deps = makeDeps()
     deps.openPath.mockRejectedValueOnce(new Error('boom'))
     const svc = new LibraryService(repo, '/library', deps)
@@ -93,10 +93,10 @@ describe('openExternal', () => {
   })
 
   it('opens a pile through its top mockup', async () => {
-    const top = repo.createMockup(
+    const top = repo.mockups.createMockup(
       approvedRow({ title: 'Top', libraryPath: '/lib/top.psd', isGroup: true })
     )
-    repo.createMockup(approvedRow({ title: 'Side', libraryPath: '/lib/side.psd', groupId: top.id }))
+    repo.mockups.createMockup(approvedRow({ title: 'Side', libraryPath: '/lib/side.psd', groupId: top.id }))
     const deps = makeDeps()
     const svc = new LibraryService(repo, '/library', deps)
 

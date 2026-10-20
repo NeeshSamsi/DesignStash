@@ -19,11 +19,11 @@ beforeEach(() => {
 afterEach(() => sqlite.close())
 
 const make = (title: string) =>
-  repo.createMockup(approvedMockup({ title, libraryPath: `/lib/${title}.psd` })).id
+  repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/${title}.psd` })).id
 
 const place = (ids: number[]) =>
   ids.map((id) => {
-    const m = repo.getMockup(id)!
+    const m = repo.mockups.getMockup(id)!
     return { id, isGroup: m.isGroup, groupId: m.groupId }
   })
 
@@ -48,7 +48,7 @@ describe('PileService undo', () => {
     piles.restore(snapshot)
 
     expect(place([c])).toEqual([{ id: c, isGroup: false, groupId: null }])
-    expect(repo.getMockupsByGroupId(a).map((m) => m.id)).toEqual([b])
+    expect(repo.piles.getMockupsByGroupId(a).map((m) => m.id)).toEqual([b])
   })
 
   it('undoes a merge, giving the source pile back with its own top', () => {
@@ -63,7 +63,7 @@ describe('PileService undo', () => {
       { id: c, isGroup: true, groupId: null },
       { id: d, isGroup: false, groupId: c }
     ])
-    expect(repo.getMockupsByGroupId(a).map((m) => m.id)).toEqual([b])
+    expect(repo.piles.getMockupsByGroupId(a).map((m) => m.id)).toEqual([b])
   })
 
   it('undoes Put on top, so the old top leads again', () => {
@@ -86,17 +86,17 @@ describe('PileService undo', () => {
 
     const { snapshot, freedIds } = piles.disband(pileId)
     expect(freedIds.sort()).toEqual([a, b, c].sort())
-    expect(repo.getLibrary({ sort: 'name' })).toHaveLength(3)
+    expect(repo.library.getLibrary({ sort: 'name' })).toHaveLength(3)
 
     piles.restore(snapshot)
-    expect(repo.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([a])
-    expect(repo.getMockupsByGroupId(a).map((m) => m.id).sort()).toEqual([b, c].sort())
+    expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([a])
+    expect(repo.piles.getMockupsByGroupId(a).map((m) => m.id).sort()).toEqual([b, c].sort())
   })
 
   it('leaves out mockups that were deleted before the undo', () => {
     const [a, b] = [make('a'), make('b')] as [number, number]
     const { snapshot } = piles.create([a, b], a)
-    repo.deleteMockupsHard([b])
+    repo.trash.deleteMockupsHard([b])
 
     expect(piles.restore(snapshot).restoredIds).toEqual([a])
   })

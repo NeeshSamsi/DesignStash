@@ -69,11 +69,11 @@ const tree = (dir: string, prefix = ''): string[] =>
 
 describe('info', () => {
   it('reports the folder, how many mockups are in it and their size', async () => {
-    const a = repo.createMockup(approvedMockup({ title: 'a', libraryPath: join(root, 'mockups/a/original.psd') }))
-    repo.createMockup(approvedMockup({ title: 'b', libraryPath: join(root, 'mockups/b/original.psd') }))
-    repo.updateMockup(a.id, { sizeBytes: 1000 })
-    const gone = repo.createMockup(approvedMockup({ title: 'c', libraryPath: join(root, 'mockups/c/original.psd') }))
-    repo.moveToTrash(gone.id)
+    const a = repo.mockups.createMockup(approvedMockup({ title: 'a', libraryPath: join(root, 'mockups/a/original.psd') }))
+    repo.mockups.createMockup(approvedMockup({ title: 'b', libraryPath: join(root, 'mockups/b/original.psd') }))
+    repo.mockups.updateMockup(a.id, { sizeBytes: 1000 })
+    const gone = repo.mockups.createMockup(approvedMockup({ title: 'c', libraryPath: join(root, 'mockups/c/original.psd') }))
+    repo.trash.moveToTrash(gone.id)
 
     const info = await service({ stat: async () => ({ size: 500 }) }).info()
 

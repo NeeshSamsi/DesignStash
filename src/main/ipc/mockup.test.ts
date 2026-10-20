@@ -61,7 +61,7 @@ const png = async (name: string, width: number, height: number) => {
 
 describe('cover channels', () => {
   it('replaces a cover with a real image and reports its size', async () => {
-    const m = repo.createMockup(approvedMockup({ title: 'Phone', libraryPath: join(dir, 'a.psd') }))
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Phone', libraryPath: join(dir, 'a.psd') }))
     const file = await png('new.png', 900, 1600)
 
     const res = await call<CoverChange>(IPC_CHANNELS.MOCKUP_SET_COVER, {
@@ -76,7 +76,7 @@ describe('cover channels', () => {
       height: 1600,
       previous: { coverPath: '/c.png', coverSource: 'embedded' }
     })
-    const stored = repo.getMockup(m.id)!
+    const stored = repo.mockups.getMockup(m.id)!
     expect(stored.coverSource).toBe('user-uploaded')
     expect(existsSync(stored.coverPath)).toBe(true)
     expect(stored.coverPath.startsWith(join(dir, 'library', 'covers'))).toBe(true)
@@ -84,18 +84,18 @@ describe('cover channels', () => {
   })
 
   it('turns away a text file renamed to .png and keeps the cover', async () => {
-    const m = repo.createMockup(approvedMockup({ title: 'Phone', libraryPath: join(dir, 'a.psd') }))
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Phone', libraryPath: join(dir, 'a.psd') }))
     const fake = join(dir, 'fake.png')
     writeFileSync(fake, 'this is not an image')
 
     const res = await call(IPC_CHANNELS.MOCKUP_SET_COVER, { mockupId: m.id, filePath: fake })
 
     expect(res).toEqual({ success: true, data: { ok: false, reason: 'not-image' } })
-    expect(repo.getMockup(m.id)?.coverPath).toBe('/c.png')
+    expect(repo.mockups.getMockup(m.id)?.coverPath).toBe('/c.png')
   })
 
   it('reports a file that is not there as unreadable', async () => {
-    const m = repo.createMockup(approvedMockup({ title: 'Phone', libraryPath: join(dir, 'a.psd') }))
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Phone', libraryPath: join(dir, 'a.psd') }))
     const res = await call(IPC_CHANNELS.MOCKUP_SET_COVER, {
       mockupId: m.id,
       filePath: join(dir, 'nope.png')
@@ -104,7 +104,7 @@ describe('cover channels', () => {
   })
 
   it('reports an unreadable PSD when going back to the embedded preview', async () => {
-    const m = repo.createMockup(
+    const m = repo.mockups.createMockup(
       approvedMockup({
         title: 'Phone',
         libraryPath: join(dir, 'missing.psd'),
@@ -113,13 +113,13 @@ describe('cover channels', () => {
     )
     const res = await call(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: m.id })
     expect(res).toEqual({ success: true, data: { ok: false, reason: 'unreadable' } })
-    expect(repo.getMockup(m.id)?.coverSource).toBe('user-uploaded')
+    expect(repo.mockups.getMockup(m.id)?.coverSource).toBe('user-uploaded')
   })
 })
 
 describe('MOCKUP_OPEN_EXTERNAL', () => {
   it('opens the top mockup of a pile', async () => {
-    const top = repo.createMockup(
+    const top = repo.mockups.createMockup(
       approvedMockup({ title: 'Top', libraryPath: join(dir, 'top.psd'), isGroup: true })
     )
     writeFileSync(join(dir, 'top.psd'), 'psd')
@@ -131,7 +131,7 @@ describe('MOCKUP_OPEN_EXTERNAL', () => {
   })
 
   it('gives a reason and nothing else when it cannot open', async () => {
-    const m = repo.createMockup(approvedMockup({ title: 'M', libraryPath: join(dir, 'm.psd') }))
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'M', libraryPath: join(dir, 'm.psd') }))
     writeFileSync(join(dir, 'm.psd'), 'psd')
     openPath.mockResolvedValueOnce('Failed to open path /Users/someone/m.psd')
 

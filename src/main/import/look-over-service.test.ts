@@ -31,7 +31,7 @@ const service = (provider: InferenceProvider | null = null) =>
 
 /** An imported mockup waiting in To stash. */
 const waiting = (name: string, extra = {}) => {
-  const m = repo.createMockup({
+  const m = repo.mockups.createMockup({
     ...sample,
     title: name,
     libraryPath: `/lib/${name}.psd`,
@@ -39,19 +39,19 @@ const waiting = (name: string, extra = {}) => {
     importContext: { batchId: 'b', folderTrail: [], originalFilename: `${name}.psd` },
     ...extra
   })
-  repo.setStage([m.id], 'to_stash')
+  repo.mockups.setStage([m.id], 'to_stash')
   return m
 }
 
 /** A pile in To stash: the first is the top. */
 const pile = (...names: string[]) => {
   const rows = names.map((n) => waiting(n))
-  repo.createPile(rows.map((r) => r.id), rows[0]!.id)
+  repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
   return rows
 }
 
-const phone = () => repo.getAllTags().find((t) => t.label === 'Phone')!
-const laptop = () => repo.getAllTags().find((t) => t.label === 'Laptop')!
+const phone = () => repo.tags.getAllTags().find((t) => t.label === 'Phone')!
+const laptop = () => repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
 
 describe('open', () => {
   it('walks piles first, then mockups on their own, each pile top first', async () => {
@@ -77,15 +77,15 @@ describe('open', () => {
 
   it('leaves out anything not waiting in To stash', async () => {
     waiting('ok')
-    repo.createMockup({ ...sample, libraryPath: '/lib/fresh.psd' }) // still in To sort
+    repo.mockups.createMockup({ ...sample, libraryPath: '/lib/fresh.psd' }) // still in To sort
     const trashed = waiting('trashed')
-    repo.moveToTrash(trashed.id)
+    repo.trash.moveToTrash(trashed.id)
     expect((await service().open()).units).toHaveLength(1)
   })
 
   it('uses the cached AI suggestion without asking the provider again', async () => {
     const m = waiting('a')
-    repo.updateMockup(m.id, {
+    repo.mockups.updateMockup(m.id, {
       aiStatus: 'ready',
       aiResult: { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'Phone' }] }
     })
@@ -126,7 +126,7 @@ describe('open', () => {
 
   it('fills variants from the top mockup, keeping each variant\'s own name', async () => {
     const [top, side] = pile('phone_front', 'phone_side')
-    repo.updateMockup(top!.id, {
+    repo.mockups.updateMockup(top!.id, {
       aiStatus: 'ready',
       aiResult: { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'Phone' }] }
     })
@@ -179,8 +179,8 @@ describe('saveDraft', () => {
     const item = (await service().open()).units[0]!.items[0]!
     expect(item).toMatchObject({ title: 'Edited', description: 'New', checked: true })
     expect(item.tags.map((t) => t.label)).toEqual(['Phone'])
-    expect(repo.getMockup(m.id)).toMatchObject({ title: 'a', stage: 'to_stash' })
-    expect(repo.getTagsForMockup(m.id)).toEqual([])
+    expect(repo.mockups.getMockup(m.id)).toMatchObject({ title: 'a', stage: 'to_stash' })
+    expect(repo.mockups.getTagsForMockup(m.id)).toEqual([])
   })
 
   it('can save without marking it looked at', async () => {
@@ -257,7 +257,7 @@ describe('saveDraft', () => {
   })
 
   it('refuses a mockup that is not waiting in To stash', async () => {
-    const m = repo.createMockup({ ...sample, libraryPath: '/lib/fresh.psd' })
+    const m = repo.mockups.createMockup({ ...sample, libraryPath: '/lib/fresh.psd' })
     await expect(service().saveDraft({ mockupId: m.id, title: 'T', description: '', tagIds: [] })).rejects.toThrow()
     await expect(service().saveDraft({ mockupId: 9999, title: 'T', description: '', tagIds: [] })).rejects.toThrow()
   })
@@ -316,7 +316,7 @@ describe('resume pointer', () => {
   it('drops a pointer whose pile has been stashed or tossed', async () => {
     const [top, side] = pile('top', 'side')
     await service().setResume(top!.id, side!.id)
-    repo.setStage([top!.id, side!.id], 'stashed')
+    repo.mockups.setStage([top!.id, side!.id], 'stashed')
     expect((await service().open()).resume).toBeNull()
   })
 })

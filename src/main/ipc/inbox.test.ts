@@ -42,12 +42,12 @@ beforeEach(() => {
 afterEach(() => sqlite.close())
 
 const make = (title: string) =>
-  repo.createMockup({ ...sample, title, libraryPath: `/library/mockups/${title}/original.psd` }).id
+  repo.mockups.createMockup({ ...sample, title, libraryPath: `/library/mockups/${title}/original.psd` }).id
 
 describe('inbox channels', () => {
   it('lists a stage and counts both', async () => {
     const [a, b] = [make('a'), make('b')]
-    repo.setStage([b], 'to_stash')
+    repo.mockups.setStage([b], 'to_stash')
 
     const toSort = await call<{ items: { id: number }[] }>(IPC_CHANNELS.INBOX_LIST, {
       stage: 'to_sort'
@@ -77,8 +77,8 @@ describe('inbox channels', () => {
     const res = await call(IPC_CHANNELS.INBOX_TOSS, { ids: [a] })
 
     expect(res).toEqual({ success: true, data: { tossedIds: [a], skippedIds: [] } })
-    expect(repo.getMockup(a)).toBeUndefined()
-    expect(repo.getMockup(b)).toBeDefined()
+    expect(repo.mockups.getMockup(a)).toBeUndefined()
+    expect(repo.mockups.getMockup(b)).toBeDefined()
     expect(push).toHaveBeenCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, {
       toSort: 1,
       toStash: 0,

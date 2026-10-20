@@ -65,7 +65,7 @@ const make = (name: string) => {
   const dir = join(root, 'mockups', name)
   mkdirSync(dir, { recursive: true })
   writeFileSync(join(dir, 'original.psd'), 'psd')
-  return repo.createMockup({
+  return repo.mockups.createMockup({
     ...sample,
     title: name,
     libraryPath: join(dir, 'original.psd'),
@@ -116,10 +116,10 @@ describe('ai:status push', () => {
 describe('registerAiStatusHandlers', () => {
   it('picks up suggestions that were waiting when the app last closed', async () => {
     const a = make('a')
-    repo.updateMockup(a.id, { aiStatus: 'sniffing' })
+    repo.mockups.updateMockup(a.id, { aiStatus: 'sniffing' })
 
     registerAiStatusHandlers(ctx)
-    await vi.waitFor(() => expect(repo.getMockup(a.id)?.aiStatus).toBe('ready'))
+    await vi.waitFor(() => expect(repo.mockups.getMockup(a.id)?.aiStatus).toBe('ready'))
 
     expect(analyze).toHaveBeenCalledTimes(1)
   })
@@ -131,33 +131,33 @@ describe('cancelling and requeueing', () => {
     analyze.mockImplementationOnce(() => new Promise(() => {})) // a never finishes, b waits behind it
     const queue = inferenceQueueFor(ctx)
     await queue.enqueue([a.id, b.id])
-    await vi.waitFor(() => expect(repo.getMockup(a.id)?.aiStatus).toBe('sniffing'))
+    await vi.waitFor(() => expect(repo.mockups.getMockup(a.id)?.aiStatus).toBe('sniffing'))
 
     await call(IPC_CHANNELS.INBOX_TOSS, { ids: [b.id] })
 
-    expect(repo.getMockup(b.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(b.id)).toBeUndefined()
     expect(analyze).toHaveBeenCalledTimes(1)
   })
 
   it('trashing cancels the suggestion, and restoring queues it again', async () => {
     const a = make('a')
-    repo.updateMockup(a.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(a.id, { aiStatus: 'pending' })
 
     await call(IPC_CHANNELS.MOCKUP_TRASH, { ids: [a.id] })
     await inferenceQueueFor(ctx).idle()
     expect(analyze).not.toHaveBeenCalled()
 
     await call(IPC_CHANNELS.TRASH_RESTORE, { ids: [a.id] })
-    await vi.waitFor(() => expect(repo.getMockup(a.id)?.aiStatus).toBe('ready'))
+    await vi.waitFor(() => expect(repo.mockups.getMockup(a.id)?.aiStatus).toBe('ready'))
     expect(analyze).toHaveBeenCalledTimes(1)
   })
 
   it('trashing a pile cancels its members too, and restoring queues them again', async () => {
     const [blocker, a, b] = [make('blocker'), make('a'), make('b')]
-    const pile = repo.createPile([a.id, b.id], a.id)
+    const pile = repo.piles.createPile([a.id, b.id], a.id)
     analyze.mockImplementationOnce(() => new Promise(() => {})) // the blocker never finishes
     await inferenceQueueFor(ctx).enqueue([blocker.id, a.id, b.id])
-    await vi.waitFor(() => expect(repo.getMockup(blocker.id)?.aiStatus).toBe('sniffing'))
+    await vi.waitFor(() => expect(repo.mockups.getMockup(blocker.id)?.aiStatus).toBe('sniffing'))
 
     await call(IPC_CHANNELS.MOCKUP_TRASH, { ids: [pile.pileId] })
 

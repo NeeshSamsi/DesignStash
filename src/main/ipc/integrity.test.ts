@@ -35,7 +35,7 @@ beforeEach(() => {
   const test = createTestDb()
   sqlite = test.sqlite
   const settings = createSettingsStore(base)
-  test.repo.createMockup(approvedMockup({ title: 'Gone', libraryPath: join(base, 'missing.psd') }))
+  test.repo.mockups.createMockup(approvedMockup({ title: 'Gone', libraryPath: join(base, 'missing.psd') }))
   registerIntegrityHandlers({ settings, repo: test.repo } as unknown as HandlerContext)
 })
 
@@ -90,7 +90,7 @@ describe('resolving changes', () => {
   })
 
   const goneRow = () =>
-    ctx.repo.createMockup(
+    ctx.repo.mockups.createMockup(
       approvedMockup({
         title: 'Glass iPhone 14',
         libraryPath: join(base, 'Library', 'mockups', 'g', 'original.psd')
@@ -133,7 +133,7 @@ describe('resolving changes', () => {
       ids: [`m${gone.id}`]
     })
     expect(removed).toEqual({ success: true, data: { removed: 1 } })
-    expect(ctx.repo.getMockup(gone.id)).toBeUndefined()
+    expect(ctx.repo.mockups.getMockup(gone.id)).toBeUndefined()
     expect(pushed.at(-1)?.channel).toBe(IPC_CHANNELS.INBOX_COUNTS_CHANGED)
     const status = await call<StashCheckStatus>(IPC_CHANNELS.STASH_CHECK_STATUS)
     expect(status.success && status.data.lastRun).toMatchObject({ result: 'in-sync' })
@@ -184,13 +184,13 @@ describe('resolving changes', () => {
     const added = await call<{ mockupIds: number[] }>(IPC_CHANNELS.INTEGRITY_ADD, { ids: [id] })
     const mockupIds = added.success ? added.data.mockupIds : []
     expect(mockupIds).toHaveLength(1)
-    expect(ctx.repo.getMockup(mockupIds[0]!)).toMatchObject({
+    expect(ctx.repo.mockups.getMockup(mockupIds[0]!)).toMatchObject({
       stage: 'to_sort',
       title: 'poster_new'
     })
     expect(pushed.some((p) => p.channel === IPC_CHANNELS.INBOX_COUNTS_CHANGED)).toBe(true)
 
     await call(IPC_CHANNELS.INTEGRITY_UNDO_ADD, { mockupIds })
-    expect(ctx.repo.getMockup(mockupIds[0]!)).toBeUndefined()
+    expect(ctx.repo.mockups.getMockup(mockupIds[0]!)).toBeUndefined()
   })
 })

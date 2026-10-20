@@ -22,8 +22,8 @@ const makeCtx = () => {
   const push = vi.fn()
   const ctx = {
     repo: {
-      collectGroupIds: (id: number) => members[id] ?? [id],
-      getInboxCounts: () => ({ toSort: 1, toStash: 0, sniffing: 0, trash: 0 })
+      piles: { collectGroupIds: (id: number) => members[id] ?? [id] },
+      inbox: { getCounts: () => ({ toSort: 1, toStash: 0, sniffing: 0, trash: 0 }) }
     },
     ai: { activeProvider: async () => null },
     push

@@ -29,7 +29,7 @@ const toSort = (n: number) =>
   Array.from(
     { length: n },
     (_, i) =>
-      repo.createMockup({
+      repo.mockups.createMockup({
         ...batchSample('b1'),
         title: `M${i}`,
         libraryPath: `/lib/${i}.psd`,
@@ -108,8 +108,8 @@ describe('sort board handlers', () => {
 describe('grouping propose handler', () => {
   it('proposes only what is still waiting to be sorted (S1.E4)', async () => {
     const [a, b, c, d] = toSort(4) as [number, number, number, number]
-    repo.setStage([c], 'to_stash')
-    repo.updateMockup(d, { deletedAt: new Date().toISOString() })
+    repo.mockups.setStage([c], 'to_stash')
+    repo.mockups.updateMockup(d, { deletedAt: new Date().toISOString() })
     const res = await call<{ groups: unknown[]; singletons: { mockupId: number }[] }>(
       IPC_CHANNELS.GROUPING_PROPOSE,
       { batchId: 'b1' }
