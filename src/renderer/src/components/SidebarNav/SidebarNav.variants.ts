@@ -1,9 +1,9 @@
 import { cva } from 'class-variance-authority'
 
-// Figma SidebarNav 218:1964: w-sidebar, surface-2, 16px padding (none on top, the title bar owns it).
+// Figma SidebarNav 218:1964: w-sidebar, surface-2, 12px padding (one step under Figma's 16, none on top, the title bar owns it).
 // `variant` says which of To sort / To stash are listed; the rows come from the props.
 export const sidebarNavVariants = cva(
-  'flex h-full w-sidebar flex-col gap-4 bg-surface-2 px-4 pb-4',
+  'flex h-full w-sidebar flex-col gap-4 bg-surface-2 px-3 pb-3',
   {
     variants: {
       variant: {

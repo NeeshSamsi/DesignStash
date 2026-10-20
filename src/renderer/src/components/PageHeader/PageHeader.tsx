@@ -15,6 +15,8 @@ export interface PageHeaderProps extends PageHeaderContractProps {
   /** The trailing actions (buttons). Figma's `actions` boolean only says whether the area exists. */
   children?: ReactNode
   className?: string
+  /** Makes the parent crumb a button that goes back (the pile page's “My Stash”). */
+  onParent?: () => void
 }
 
 /**
@@ -23,7 +25,7 @@ export interface PageHeaderProps extends PageHeaderContractProps {
  * The header stays whatever the item count is: pass a description like "0 mockups" rather than
  * hiding it. The actions area renders when `children` are passed.
  */
-export function PageHeader({ children, className, ...rest }: PageHeaderProps) {
+export function PageHeader({ children, className, onParent, ...rest }: PageHeaderProps) {
   const props = { ...PAGE_HEADER_DEFAULTS, ...rest }
   const page = props.variant === 'page'
   const Title = page ? 'h1' : 'h2'
@@ -36,7 +38,17 @@ export function PageHeader({ children, className, ...rest }: PageHeaderProps) {
         <Title className={pageHeaderTitleVariants({ variant: props.variant })}>
           {page && props.breadcrumb && (
             <>
-              <span className="truncate">{props.parent}</span>
+              {onParent ? (
+                <button
+                  type="button"
+                  onClick={onParent}
+                  className="truncate rounded-sm outline-none hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {props.parent}
+                </button>
+              ) : (
+                <span className="truncate">{props.parent}</span>
+              )}
               <HugeiconsIcon
                 icon={ArrowRight01Icon}
                 strokeWidth={1.5}
