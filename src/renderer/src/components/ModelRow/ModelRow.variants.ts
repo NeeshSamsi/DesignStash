@@ -1,11 +1,8 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4073
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const modelRowVariants = cva('', {
+// Figma ModelRow 223:4073 (picker). The chosen row is surface-3 with a selected (orange) border; the
+// others sit back on surface-2 with the base border; a failed row keeps surface-3 with a red border.
+export const modelRowVariants = cva('flex w-full items-start gap-3 rounded-lg border px-4 py-3', {
   variants: {
     state: {
       'not-installed': '',
@@ -14,7 +11,25 @@ export const modelRowVariants = cva('', {
       verifying: '',
       failed: '',
       installed: ''
+    },
+    selected: {
+      true: 'border-selected bg-surface-3',
+      false: 'border-base bg-surface-2 hover:bg-surface-2-hover'
     }
   },
-  defaultVariants: { state: 'not-installed' }
+  compoundVariants: [{ state: 'failed', className: 'border-error bg-surface-3' }],
+  defaultVariants: { state: 'not-installed', selected: true }
 })
+
+export const modelRowRadioVariants = cva(
+  'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+  {
+    variants: {
+      selected: {
+        true: 'border-primary',
+        false: 'border-strong bg-surface-2'
+      }
+    },
+    defaultVariants: { selected: false }
+  }
+)
