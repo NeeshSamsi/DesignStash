@@ -37,11 +37,12 @@ export class TrashRepository {
       .where(and(isNotNull(mockups.deletedAt), isNull(mockups.groupId)))
       .orderBy(desc(mockups.deletedAt), desc(mockups.id))
       .all()
-    const rows = this.library.toRows(trashed)
+    const lookups = this.library.loadLookups(trashed.map((m) => m.id))
+    const rows = this.library.toRows(trashed, lookups)
     return trashed.map((m, i) => ({
       row: rows[i]!,
       trashedAt: m.deletedAt!,
-      ids: [m.id, ...this.piles.getMockupsByGroupId(m.id).map((x) => x.id)]
+      ids: [m.id, ...(lookups.members.get(m.id) ?? [])]
     }))
   }
 

@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags, tagCategories } from '../schema'
 import type { Mockup } from '../schema'
@@ -26,6 +26,19 @@ export interface LibraryRow {
   topId: number | null
   tags: { id: number; label: string; categoryLabel: string }[]
 }
+
+type LabelledTag = { id: number; label: string; categoryLabel: string }
+
+/** Tags and pile members for a set of mockups, read in one pass each. */
+export interface RowLookups {
+  /** Each mockup's tags in tag id order, with the id of the category each belongs to. */
+  tags: Map<number, (LabelledTag & { categoryId: number })[]>
+  /** The mockups pointing at each pile top through groupId, in id order. */
+  members: Map<number, number[]>
+}
+
+/** Ids per `IN (...)` list, well under SQLite's variable limit. */
+const LOOKUP_CHUNK = 500
 
 /** Read models for My Stash: the filtered grid, the detail view and the counts. */
 export class LibraryQueryRepository {
@@ -64,31 +77,18 @@ export class LibraryQueryRepository {
     const ftsRankMap = rawQuery ? this.search.rankMatches(rawQuery) : null
     if (ftsRankMap) candidates = candidates.filter((c) => ftsRankMap.has(c.id))
 
+    const lookups = this.loadLookups(candidates.map((c) => c.id))
+
     // Tag filter: every picked tag must match (AND).
     for (const tagId of new Set(tagIds)) {
-      const taggedIds = new Set(
-        this.db
-          .select({ mockupId: mockupTags.mockupId })
-          .from(mockupTags)
-          .where(eq(mockupTags.tagId, tagId))
-          .all()
-          .map((r) => r.mockupId)
-      )
-      candidates = candidates.filter((c) => taggedIds.has(c.id))
+      candidates = candidates.filter((c) => lookups.tags.get(c.id)?.some((t) => t.id === tagId))
     }
 
     // Category filter: rolls up to every tag in the category; categories AND together.
     for (const categoryId of new Set(categoryIds)) {
-      const inCategory = new Set(
-        this.db
-          .select({ mockupId: mockupTags.mockupId })
-          .from(mockupTags)
-          .innerJoin(tags, eq(tags.id, mockupTags.tagId))
-          .where(eq(tags.categoryId, categoryId))
-          .all()
-          .map((r) => r.mockupId)
+      candidates = candidates.filter((c) =>
+        lookups.tags.get(c.id)?.some((t) => t.categoryId === categoryId)
       )
-      candidates = candidates.filter((c) => inCategory.has(c.id))
     }
 
     // Sort: FTS rank when searching, else name / date. Favourites don't jump the queue (Starred is its own view).
@@ -100,12 +100,57 @@ export class LibraryQueryRepository {
       return b.createdAt.localeCompare(a.createdAt)
     })
 
-    return this.toRows(candidates)
+    return this.toRows(candidates, lookups)
   }
 
-  /** Assemble grid rows with variant counts and labelled tags (N+1 acceptable at this scale). */
-  toRows(list: Mockup[]): LibraryRow[] {
-    const categoryMap = this.categoryLabels()
+  /** Tags (with their category) and pile members for these mockups: two queries, however many ids. */
+  loadLookups(ids: number[]): RowLookups {
+    const tagMap: RowLookups['tags'] = new Map()
+    const members: RowLookups['members'] = new Map()
+    const unique = [...new Set(ids)]
+    for (let i = 0; i < unique.length; i += LOOKUP_CHUNK) {
+      const chunk = unique.slice(i, i + LOOKUP_CHUNK)
+      const tagRows = this.db
+        .select({
+          mockupId: mockupTags.mockupId,
+          id: tags.id,
+          label: tags.label,
+          categoryId: tags.categoryId,
+          categoryLabel: tagCategories.label
+        })
+        .from(mockupTags)
+        .innerJoin(tags, eq(tags.id, mockupTags.tagId))
+        .leftJoin(tagCategories, eq(tagCategories.id, tags.categoryId))
+        .where(inArray(mockupTags.mockupId, chunk))
+        .orderBy(asc(mockupTags.mockupId), asc(mockupTags.tagId))
+        .all()
+      for (const r of tagRows) {
+        const list = tagMap.get(r.mockupId) ?? []
+        list.push({
+          id: r.id,
+          label: r.label,
+          categoryId: r.categoryId,
+          categoryLabel: r.categoryLabel ?? ''
+        })
+        tagMap.set(r.mockupId, list)
+      }
+      const memberRows = this.db
+        .select({ id: mockups.id, groupId: mockups.groupId })
+        .from(mockups)
+        .where(inArray(mockups.groupId, chunk))
+        .orderBy(asc(mockups.id))
+        .all()
+      for (const r of memberRows) {
+        const list = members.get(r.groupId!) ?? []
+        list.push(r.id)
+        members.set(r.groupId!, list)
+      }
+    }
+    return { tags: tagMap, members }
+  }
+
+  /** Assemble grid rows with variant counts and labelled tags. */
+  toRows(list: Mockup[], lookups = this.loadLookups(list.map((m) => m.id))): LibraryRow[] {
     return list.map((m) => ({
       id: m.id,
       title: m.title,
@@ -117,12 +162,12 @@ export class LibraryQueryRepository {
       favourite: m.favourite,
       reviewStatus: m.reviewStatus,
       createdAt: m.createdAt,
-      variantCount: this.piles.getMockupsByGroupId(m.id).length,
+      variantCount: lookups.members.get(m.id)?.length ?? 0,
       topId: pileRole(m) === 'top' ? m.id : null,
-      tags: this.mockups.getTagsForMockup(m.id).map((t) => ({
-        id: t.id,
-        label: t.label,
-        categoryLabel: categoryMap.get(t.categoryId) ?? ''
+      tags: (lookups.tags.get(m.id) ?? []).map(({ id, label, categoryLabel }) => ({
+        id,
+        label,
+        categoryLabel
       }))
     }))
   }
@@ -134,12 +179,9 @@ export class LibraryQueryRepository {
   } {
     const mockup = this.mockups.getMockup(id)
     if (!mockup) return { mockup: undefined, tags: [], variants: [] }
-    const categoryMap = this.categoryLabels()
-    const tagList = this.mockups.getTagsForMockup(id).map((t) => ({
-      id: t.id,
-      label: t.label,
-      categoryLabel: categoryMap.get(t.categoryId) ?? ''
-    }))
+    const tagList = (this.loadLookups([id]).tags.get(id) ?? []).map(
+      ({ id: tagId, label, categoryLabel }) => ({ id: tagId, label, categoryLabel })
+    )
     const variantList = pileRole(mockup) === 'top'
       ? this.piles.getMockupsByGroupId(id).sort((a, b) => a.id - b.id)
       : []
@@ -199,15 +241,5 @@ export class LibraryQueryRepository {
         .where(and(isNotNull(mockups.deletedAt), isNull(mockups.groupId)))
         .get()?.c ?? 0
     return { total, favourites, groups, trashed }
-  }
-
-  private categoryLabels(): Map<number, string> {
-    return new Map(
-      this.db
-        .select()
-        .from(tagCategories)
-        .all()
-        .map((c) => [c.id, c.label])
-    )
   }
 }
