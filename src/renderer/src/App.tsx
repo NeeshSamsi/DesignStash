@@ -294,10 +294,17 @@ export default function App() {
             stage="to_sort"
             onSort={openSort}
             onAddFiles={() => void handleFileSelect()}
+            onAddFolder={() => void handleFolderSelect()}
           />
         )}
         {addFlow === null && view === 'to-stash' && (
-          <InboxPage key="to_stash" stage="to_stash" onLookOver={openLookOver} />
+          <InboxPage
+            key="to_stash"
+            stage="to_stash"
+            onLookOver={openLookOver}
+            onAddFiles={() => void handleFileSelect()}
+            onAddFolder={() => void handleFolderSelect()}
+          />
         )}
         {addFlow === null && view === 'trash' && <TrashPage />}
         {addFlow === null && view === 'settings' && <SettingsPage />}

@@ -93,3 +93,38 @@ export function trashDescription(count: number, bytes: number | null): string {
 }
 
 export const pluralise = plural
+
+export interface TossCopy {
+  title: string
+  description: string
+  confirmLabel: string
+  /** The "N mockups · size" row. Left out when the size can't be measured. */
+  detailTitle?: string
+  detailMeta?: string
+}
+
+/** The Toss confirm, worded as in Figma I1.E2 (To sort) and I2.E1 (To stash). */
+export function tossCopy(stage: 'to_sort' | 'to_stash', items: readonly InboxItem[]): TossCopy {
+  const n = items.length
+  const discard = `Discard ${plural(n, 'mockup', 'mockups')}`
+  if (stage === 'to_stash') {
+    return {
+      title: 'Toss these?',
+      description: `This deletes the ${n} sorted mockups and their PSDs from your stash folder. Your originals stay right where they are.`,
+      confirmLabel: discard
+    }
+  }
+  const sizes = items.map((item) => item.sizeBytes)
+  const measured = sizes.every((size): size is number => size !== null)
+  return {
+    title: 'Toss this haul?',
+    description: `This deletes the ${n} copied PSDs and their covers from your stash folder. Your originals stay right where they are.`,
+    confirmLabel: discard,
+    ...(measured
+      ? {
+          detailTitle: plural(n, 'mockup', 'mockups'),
+          detailMeta: formatBytes(sizes.reduce((sum, size) => sum + size, 0))
+        }
+      : {})
+  }
+}

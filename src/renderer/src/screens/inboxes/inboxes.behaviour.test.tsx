@@ -206,7 +206,15 @@ describe('To stash', () => {
     await screen.findByText('Clay pile')
     fireEvent.click(screen.getByRole('button', { name: 'Toss these' }))
     expect(sent(IPC_CHANNELS.INBOX_TOSS)).toEqual([])
-    fireEvent.click(await screen.findByRole('button', { name: 'Toss' }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog.textContent).toContain('Toss these?')
+    expect(dialog.textContent).toContain(
+      'This deletes the 2 sorted mockups and their PSDs from your stash folder. Your originals stay right where they are.'
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Toss these' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Discard 2 mockups' }))
     await waitFor(() => expect(sent(IPC_CHANNELS.INBOX_TOSS)).toEqual([{ ids: [1, 2] }]))
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
   })
@@ -216,6 +224,31 @@ describe('To stash', () => {
     render(<InboxPage stage="to_stash" />)
     expect(await screen.findByText('Nothing waiting to be stashed')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Look them over' })).toBeNull()
+  })
+})
+
+describe('Add card', () => {
+  it.each(['to_sort', 'to_stash'] as const)('%s starts with the Add mockup card', async (stage) => {
+    setup(listOf([inbox(1, { stage })]))
+    render(<InboxPage stage={stage} onAddFiles={vi.fn()} onAddFolder={vi.fn()} />)
+    await screen.findByText('file-1.psd')
+    const grid = document.querySelector('[data-ds="MockupGrid"]')!
+    expect(grid.textContent).toContain('Add mockup')
+    expect(grid.textContent).toContain('PSDs or a whole folder')
+    const first = grid.querySelector('[data-ds="AddMockupCard"], [data-ds="MockupCard"]')
+    expect(first?.getAttribute('data-ds')).toBe('AddMockupCard')
+  })
+
+  it('To sort offers Toss this haul, and its confirm shows the size', async () => {
+    setup(listOf([inbox(1, { sizeBytes: 3 * 1024 * 1024 }), inbox(2, { sizeBytes: 1024 * 1024 })]))
+    render(<InboxPage stage="to_sort" />)
+    await screen.findByText('file-1.psd')
+    fireEvent.click(screen.getByRole('button', { name: 'Toss this haul' }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog.textContent).toContain('Toss this haul?')
+    expect(dialog.textContent).toContain('2 mockups')
+    expect(dialog.textContent).toContain('4 MB')
+    expect(screen.getByRole('button', { name: 'Discard 2 mockups' })).toBeTruthy()
   })
 })
 

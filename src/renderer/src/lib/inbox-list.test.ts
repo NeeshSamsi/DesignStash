@@ -5,6 +5,7 @@ import {
   aiTotals,
   doneMessage,
   formatBytes,
+  tossCopy,
   newestFirst,
   sniffingBadge,
   sniffingLine,
@@ -72,5 +73,34 @@ describe('trash', () => {
     const list = [{ trashedAt: '2026-10-01T00:00:00Z' }, { trashedAt: '2026-10-05T00:00:00Z' }]
     expect(newestFirst(list)[0]).toBe(list[1])
     expect(list[0]?.trashedAt).toBe('2026-10-01T00:00:00Z')
+  })
+})
+
+describe('tossCopy', () => {
+  const items = (n: number, sizeBytes: number | null = 1024) =>
+    Array.from({ length: n }, () => ({ sizeBytes }) as InboxItem)
+
+  it('words the To stash confirm as Figma I2.E1', () => {
+    expect(tossCopy('to_stash', items(26))).toEqual({
+      title: 'Toss these?',
+      description:
+        'This deletes the 26 sorted mockups and their PSDs from your stash folder. Your originals stay right where they are.',
+      confirmLabel: 'Discard 26 mockups'
+    })
+  })
+
+  it('words the To sort confirm as Figma I1.E2, with the size row', () => {
+    expect(tossCopy('to_sort', items(38, 1024 * 1024))).toEqual({
+      title: 'Toss this haul?',
+      description:
+        'This deletes the 38 copied PSDs and their covers from your stash folder. Your originals stay right where they are.',
+      confirmLabel: 'Discard 38 mockups',
+      detailTitle: '38 mockups',
+      detailMeta: '38 MB'
+    })
+  })
+
+  it('leaves the size row out when a size is unknown', () => {
+    expect(tossCopy('to_sort', items(2, null)).detailTitle).toBeUndefined()
   })
 })

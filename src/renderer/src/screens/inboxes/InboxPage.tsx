@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react'
-import { FileAddIcon, Layers01Icon } from '@hugeicons/core-free-icons'
+import { FileAddIcon, FolderAddIcon, Layers01Icon } from '@hugeicons/core-free-icons'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem, InboxStage } from '@shared/inbox'
 import { ActionBar } from '@renderer/components/ActionBar'
+import { AddMockupCard } from '@renderer/components/AddMockupCard'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
+import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
+import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { MockupCard } from '@renderer/components/MockupCard'
@@ -11,7 +14,14 @@ import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
-import { aiTotals, pluralise, sniffingBadge, sniffingLine, verbFor } from '@renderer/lib/inbox-list'
+import {
+  aiTotals,
+  pluralise,
+  sniffingBadge,
+  sniffingLine,
+  tossCopy,
+  verbFor
+} from '@renderer/lib/inbox-list'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast } from '@renderer/stores/toastStore'
 import { useInboxList } from './useInboxList'
@@ -22,8 +32,9 @@ export interface InboxPageProps {
   onSort?: (items: InboxItem[]) => void
   /** Opens the legacy approval stepper (To stash) for these cards, until Look it over lands. */
   onLookOver?: (items: InboxItem[]) => void
-  /** The Add files action, for the empty To sort page. */
+  /** The import entry points behind the Add card (and the empty page's button). */
   onAddFiles?: () => void
+  onAddFolder?: () => void
 }
 
 function cardState(item: InboxItem, selected: boolean): MockupCardState {
@@ -36,7 +47,13 @@ function cardState(item: InboxItem, selected: boolean): MockupCardState {
  * To sort and To stash: the My Stash grid, cards and selection with an action bar underneath.
  * Figma: ↳ Inboxes & Trash › I1 · To sort, I2 · To stash. Rules: design/specs/inboxes.md.
  */
-export default function InboxPage({ stage, onSort, onLookOver, onAddFiles }: InboxPageProps) {
+export default function InboxPage({
+  stage,
+  onSort,
+  onLookOver,
+  onAddFiles,
+  onAddFolder
+}: InboxPageProps) {
   const toSortPage = stage === 'to_sort'
   const { items, failed, refresh } = useInboxList(stage)
   const pushedTotals = useInboxStore((s) => s.aiTotals)
@@ -75,6 +92,31 @@ export default function InboxPage({ stage, onSort, onLookOver, onAddFiles }: Inb
     toast({ variant: 'success', message: `Tossed ${pluralise(n, 'mockup', 'mockups')}` })
   }
 
+  // Both inboxes start with the Add card, as in Figma I1.1 and I2.1.
+  const addCard = (
+    <DropdownMenu
+      align="start"
+      trigger={<AddMockupCard />}
+      items={
+        <>
+          <DropdownMenuItem
+            label="Add files…"
+            icon={FileAddIcon}
+            shortcut="⌘O"
+            {...(onAddFiles ? { onSelect: onAddFiles } : { disabled: true })}
+          />
+          <DropdownMenuItem
+            label="Add folder…"
+            icon={FolderAddIcon}
+            shortcut="⇧⌘O"
+            {...(onAddFolder ? { onSelect: onAddFolder } : { disabled: true })}
+          />
+        </>
+      }
+    />
+  )
+  const tossText = tossing ? tossCopy(stage, tossing) : null
+
   const line = toSortPage ? sniffingLine(aiTotals(items ?? [], pushedTotals)) : undefined
   const primary = toSortPage
     ? verbFor('Sort', selected.length)
@@ -97,7 +139,8 @@ export default function InboxPage({ stage, onSort, onLookOver, onAddFiles }: Inb
     <div className="flex min-h-full flex-col gap-4 p-6">
       <MockupGrid
         state={state}
-        showAdd={false}
+        showAdd
+        addCard={addCard}
         selection={selection}
         data-shortcut-scope="grid"
         tabIndex={-1}
@@ -147,7 +190,11 @@ export default function InboxPage({ stage, onSort, onLookOver, onAddFiles }: Inb
           showStatus={line !== undefined}
           {...(line ? { status: line } : {})}
           cancelLabel={
-            toSortPage ? null : selected.length > 0 ? `Toss ${selected.length}` : 'Toss these'
+            selected.length > 0
+              ? `Toss ${selected.length}`
+              : toSortPage
+                ? 'Toss this haul'
+                : 'Toss these'
           }
           onCancel={() => setTossing(targets)}
           primaryLabel={primary}
@@ -158,12 +205,14 @@ export default function InboxPage({ stage, onSort, onLookOver, onAddFiles }: Inb
         open={tossing !== null}
         variant="destructive"
         working={working}
-        detail={false}
-        title={`Toss ${pluralise(tossing?.length ?? 0, 'mockup', 'mockups')}?`}
-        description="Their copies in your stash folder are deleted. The files you dropped in are never touched."
-        confirmLabel="Toss"
-        workingLabel="Tossing…"
-        cancelLabel="Keep"
+        detail={tossText?.detailTitle !== undefined}
+        title={tossText?.title ?? ''}
+        description={tossText?.description ?? ''}
+        detailTitle={tossText?.detailTitle ?? ''}
+        detailMeta={tossText?.detailMeta ?? ''}
+        confirmLabel={tossText?.confirmLabel ?? 'Discard'}
+        workingLabel="Discarding…"
+        cancelLabel="Cancel"
         onCancel={() => setTossing(null)}
         onConfirm={() => tossing && void toss(tossing)}
       />
