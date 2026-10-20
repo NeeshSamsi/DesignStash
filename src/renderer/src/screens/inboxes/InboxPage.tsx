@@ -28,7 +28,7 @@ import { useInboxList } from './useInboxList'
 
 export interface InboxPageProps {
   stage: InboxStage
-  /** Opens the legacy grouping review (To sort) for these cards, until the Sort board lands. */
+  /** Opens the Sort board (To sort) for these cards: the selection, or all of them. */
   onSort?: (items: InboxItem[]) => void
   /** Opens the legacy approval stepper (To stash) for these cards, until Look it over lands. */
   onLookOver?: (items: InboxItem[]) => void
