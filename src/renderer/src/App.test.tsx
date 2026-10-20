@@ -43,25 +43,8 @@ beforeEach(() => {
       if (channel === IPC_CHANNELS.TELEMETRY_TRACK) {
         return { success: true, data: undefined }
       }
-      if (channel === IPC_CHANNELS.IMPORT_START) {
-        return {
-          success: true,
-          data: {
-            batchId: '123',
-            items: [],
-            imported: 1,
-            pendingPreview: 0,
-            duplicates: 0,
-            errors: 0,
-            skippedNonPsd: 0
-          }
-        }
-      }
       if (channel === IPC_CHANNELS.GROUPING_PROPOSE) {
         return { success: true, data: { batchId: '123', groups: [], singletons: [] } }
-      }
-      if (channel === IPC_CHANNELS.APPROVAL_INIT) {
-        return { success: true, data: { batchId: '123', items: [] } }
       }
       if (channel === IPC_CHANNELS.TAG_LIST_BY_CATEGORY) {
         return { success: true, data: { categories: [] } }
@@ -115,7 +98,6 @@ beforeEach(() => {
       return { success: true, data: { success: true, message: 'pong', timestamp: 0 } }
     }),
     subscribe: vi.fn(() => () => {}),
-    onImportProgress: vi.fn(() => () => {}),
     onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn((file) => `/path/to/${file.name}`)
   } as unknown as typeof window.api
@@ -143,7 +125,6 @@ describe('App', () => {
         paths: ['/path/to/test.psd']
       })
     )
-    expect(window.api.invoke).not.toHaveBeenCalledWith(IPC_CHANNELS.IMPORT_START, expect.anything())
   })
 
   it('finishing Look it over re-fetches LIBRARY_LIST', async () => {

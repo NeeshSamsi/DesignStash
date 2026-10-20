@@ -18,9 +18,9 @@ beforeEach(() => {
 describe('subscribePush', () => {
   it('delivers payloads that match the channel schema', () => {
     const cb = vi.fn()
-    subscribePush(IPC_CHANNELS.IMPORT_PROGRESS, cb)
-    expect(window.api.subscribe).toHaveBeenCalledWith(IPC_CHANNELS.IMPORT_PROGRESS, expect.any(Function))
-    const payload = { batchId: 'b', phase: 'copying', completed: 1, total: 3 }
+    subscribePush(IPC_CHANNELS.INBOX_COUNTS_CHANGED, cb)
+    expect(window.api.subscribe).toHaveBeenCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, expect.any(Function))
+    const payload = { toSort: 1, toStash: 2, sniffing: 0, trash: 3 }
     relay(payload)
     expect(cb).toHaveBeenCalledWith(payload)
   })
@@ -28,8 +28,8 @@ describe('subscribePush', () => {
   it('drops payloads that fail validation', () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => {})
     const cb = vi.fn()
-    subscribePush(IPC_CHANNELS.IMPORT_PROGRESS, cb)
-    relay({ batchId: 'b', phase: 'nonsense' })
+    subscribePush(IPC_CHANNELS.INBOX_COUNTS_CHANGED, cb)
+    relay({ toSort: 'many' })
     expect(cb).not.toHaveBeenCalled()
     err.mockRestore()
   })

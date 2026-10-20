@@ -86,7 +86,6 @@ function setup(overrides: Record<string, Handler> = {}) {
     appName: 'DesignStash',
     invoke,
     subscribe: vi.fn(() => () => {}),
-    onImportProgress: vi.fn(() => () => {}),
     onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn((file) => `/path/${(file as File).name}`)
   } as unknown as typeof window.api

@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { DesignStashApi } from '@shared/api'
 import { IPC_CHANNELS, isPushChannel } from '@shared/ipc-channels'
-import type { ImportProgress, AiDownloadProgress } from '@shared/ipc'
+import type { AiDownloadProgress } from '@shared/ipc'
 
 /**
  * Sandbox-safe preload: imports ONLY from 'electron'. Keep this surface tiny and typed.
@@ -20,8 +20,6 @@ const api: DesignStashApi = {
   invoke: (channel, args) => ipcRenderer.invoke(channel, args),
   subscribe,
   // Wrappers kept until their callers move to `subscribePush`.
-  onImportProgress: (callback: (progress: ImportProgress) => void) =>
-    subscribe(IPC_CHANNELS.IMPORT_PROGRESS, (payload) => callback(payload as ImportProgress)),
   onAiDownloadProgress: (callback: (progress: AiDownloadProgress) => void) =>
     subscribe(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, (payload) =>
       callback(payload as AiDownloadProgress)

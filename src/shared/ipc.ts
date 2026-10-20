@@ -29,12 +29,6 @@ export {
   type AiModelInfo,
   type AiDownloadProgress
 } from './ipc/ai'
-export {
-  ImportProgressSchema,
-  ImportSummarySchema,
-  type ImportProgress,
-  type ImportSummary
-} from './ipc/import'
 
 /**
  * Domain contracts, one file per domain in ./ipc/. Each maps a channel to its request/response

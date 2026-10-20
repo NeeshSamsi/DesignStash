@@ -4,7 +4,6 @@ import type {
   IpcResponse,
   IpcResult,
   PushChannel,
-  ImportProgress,
   AiDownloadProgress
 } from './ipc'
 
@@ -23,7 +22,6 @@ export interface DesignStashApi {
    * go through `subscribePush`, which validates it against the channel's zod schema.
    */
   subscribe(channel: PushChannel, callback: (payload: unknown) => void): () => void
-  onImportProgress(callback: (progress: ImportProgress) => void): () => void
   onAiDownloadProgress(callback: (progress: AiDownloadProgress) => void): () => void
   getPathForFile(file: File): string
 }

@@ -33,7 +33,7 @@ describe('IPC contract structure', () => {
       expect(channels).toContain(channel)
       expect(IPC_CONTRACT[channel].response.safeParse(undefined).success).toBe(true)
     }
-    expect(isPushChannel(IPC_CHANNELS.IMPORT_PROGRESS)).toBe(true)
+    expect(isPushChannel(IPC_CHANNELS.AI_STATUS)).toBe(true)
     expect(isPushChannel(IPC_CHANNELS.TAG_TREE)).toBe(false)
     expect(isPushChannel('not:a-channel')).toBe(false)
   })
@@ -71,57 +71,6 @@ describe('IPC Contract', () => {
         message: 'pong',
         timestamp: Date.now()
       }
-      expect(response.parse(validResponse)).toEqual(validResponse)
-    })
-  })
-
-  describe('IMPORT_START channel', () => {
-    const { request, response } = IPC_CONTRACT[IPC_CHANNELS.IMPORT_START]
-
-    it('validates a correct request', () => {
-      const validRequest = { paths: ['/path/to/file.psd'] }
-      expect(request.parse(validRequest)).toEqual(validRequest)
-    })
-
-    it('validates a correct response', () => {
-      const validResponse = {
-        batchId: '123',
-        items: [],
-        imported: 0,
-        pendingPreview: 0,
-        duplicates: 0,
-        errors: 0,
-        skippedNonPsd: 0
-      }
-      expect(response.parse(validResponse)).toEqual(validResponse)
-    })
-  })
-
-  describe('IMPORT_PROGRESS channel', () => {
-    const { request } = IPC_CONTRACT[IPC_CHANNELS.IMPORT_PROGRESS]
-
-    it('validates a correct request', () => {
-      const validRequest = {
-        batchId: '123',
-        phase: 'copying',
-        completed: 1,
-        total: 2,
-        currentTitle: 'file.psd'
-      }
-      expect(request.parse(validRequest)).toEqual(validRequest)
-    })
-  })
-
-  describe('IMPORT_CANCEL channel', () => {
-    const { request, response } = IPC_CONTRACT[IPC_CHANNELS.IMPORT_CANCEL]
-
-    it('validates a correct request', () => {
-      const validRequest = { batchId: '123' }
-      expect(request.parse(validRequest)).toEqual(validRequest)
-    })
-
-    it('validates a correct response', () => {
-      const validResponse = { cancelled: true }
       expect(response.parse(validResponse)).toEqual(validResponse)
     })
   })
@@ -232,41 +181,6 @@ describe('IPC Contract', () => {
         singletons: []
       }
       expect(response.parse(valid)).toEqual(valid)
-    })
-  })
-
-  describe('APPROVAL_INIT channel', () => {
-    it('validates an approval queue response', () => {
-      const { response } = IPC_CONTRACT[IPC_CHANNELS.APPROVAL_INIT]
-      const valid = {
-        batchId: 'batch-1',
-        items: [{
-          mockupId: 1, leaderId: null, isLeader: false, variantIndex: 0,
-          title: 'Hero Mockup', description: '', tags: [],
-          coverPath: '/covers/1.png', coverSource: 'embedded', sidecarFileName: null
-        }]
-      }
-      expect(response.parse(valid)).toEqual(valid)
-    })
-  })
-
-  describe('APPROVAL_SAVE_ITEM channel', () => {
-    it('validates a save-item request', () => {
-      const { request } = IPC_CONTRACT[IPC_CHANNELS.APPROVAL_SAVE_ITEM]
-      const valid = {
-        mockupId: 1, title: 'Hero', description: '', tagIds: [3, 5],
-        coverPath: '/covers/1.png', coverSource: 'embedded',
-        isLeader: false, wasEdited: false, leaderId: null
-      }
-      expect(request.parse(valid)).toEqual(valid)
-    })
-
-    it('rejects coverSource: none at save time', () => {
-      const { request } = IPC_CONTRACT[IPC_CHANNELS.APPROVAL_SAVE_ITEM]
-      expect(() => request.parse({
-        mockupId: 1, title: 'X', description: '', tagIds: [],
-        coverPath: '/c.png', coverSource: 'none', isLeader: false, wasEdited: false, leaderId: null
-      })).toThrow()
     })
   })
 
@@ -449,32 +363,6 @@ describe('IPC Contract', () => {
         }]
       }
       expect(response.parse(valid)).toEqual(valid)
-    })
-  })
-
-  describe('INTEGRITY_SCAN channel', () => {
-    it('validates a report with one orphan file and one orphan record', () => {
-      const { response } = IPC_CONTRACT[IPC_CHANNELS.INTEGRITY_SCAN]
-      const valid = {
-        orphanFiles: ['/lib/mockups/x/stray.psd'],
-        orphanRecords: [{ mockupId: 7, libraryPath: '/lib/mockups/a/original.psd' }]
-      }
-      expect(response.parse(valid)).toEqual(valid)
-    })
-
-    it('rejects a response missing orphanRecords', () => {
-      const { response } = IPC_CONTRACT[IPC_CHANNELS.INTEGRITY_SCAN]
-      expect(() => response.parse({ orphanFiles: [] })).toThrow()
-    })
-  })
-
-  describe('INTEGRITY_ADD_ORPHAN channel', () => {
-    it('validates request and response', () => {
-      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.INTEGRITY_ADD_ORPHAN]
-      expect(request.parse({ filePath: '/lib/mockups/x/stray.psd' })).toEqual({
-        filePath: '/lib/mockups/x/stray.psd'
-      })
-      expect(response.parse({ mockupId: 12 })).toEqual({ mockupId: 12 })
     })
   })
 

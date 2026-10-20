@@ -63,20 +63,9 @@ export function registerIntegrityHandlers(
     return recheck({ mockupIds })
   }
 
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_SCAN, () => integrityService.scan())
-
   registerIpcHandler(IPC_CHANNELS.STASH_CHECK_STATUS, () => stashCheck.get())
 
   registerIpcHandler(IPC_CHANNELS.STASH_CHECK_RUN, () => stashCheck.run('manual'))
-
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_ADD_ORPHAN, (args) =>
-    integrityService.addOrphanFile(args.filePath)
-  )
-
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_DELETE_RECORD, (args) => {
-    integrityService.deleteOrphanRecord(args.mockupId)
-    return { deleted: true }
-  })
 
   registerIpcHandler(IPC_CHANNELS.INTEGRITY_REPORT, () => integrityService.report())
 

@@ -277,7 +277,6 @@ describe('CoverPanel · cover image', () => {
             }
           : { success: true, data: { tree: [] } },
       subscribe: () => () => {},
-      onImportProgress: () => () => {},
       onAiDownloadProgress: () => () => {},
       getPathForFile: () => ''
     } as unknown as typeof window.api

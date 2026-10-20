@@ -22,9 +22,6 @@ export const IPC_CHANNELS = {
   BOOT_CHECK_FOLDER: 'boot:check-folder',
   DIALOG_SELECT_DIRECTORY: 'dialog:select-directory',
   DIALOG_SELECT_PSD_FILES: 'dialog:select-psd-files',
-  IMPORT_START: 'import:start',
-  IMPORT_CANCEL: 'import:cancel',
-  IMPORT_PROGRESS: 'import:progress',
   COPY_START: 'copy:start',
   COPY_STATUS: 'copy:status',
   COPY_CANCEL: 'copy:cancel',
@@ -45,9 +42,6 @@ export const IPC_CHANNELS = {
   GROUPING_CONFIRM: 'grouping:confirm',
   SORT_BOARD_SAVE: 'sort-board:save',
   SORT_BOARD_LOAD: 'sort-board:load',
-  APPROVAL_INIT: 'approval:init',
-  APPROVAL_SAVE_ITEM: 'approval:save-item',
-  APPROVAL_SET_COVER: 'approval:set-cover',
   LOOK_OVER_OPEN: 'look-over:open',
   LOOK_OVER_SAVE_DRAFT: 'look-over:save-draft',
   LOOK_OVER_SKIP: 'look-over:skip',
@@ -96,9 +90,6 @@ export const IPC_CHANNELS = {
   INBOX_COUNTS: 'inbox:get-counts',
   INBOX_TOSS: 'inbox:toss',
   INBOX_COUNTS_CHANGED: 'inbox:counts',
-  INTEGRITY_SCAN: 'integrity:scan',
-  INTEGRITY_ADD_ORPHAN: 'integrity:add-orphan',
-  INTEGRITY_DELETE_RECORD: 'integrity:delete-record',
   INTEGRITY_REPORT: 'integrity:report',
   INTEGRITY_ADD: 'integrity:add',
   INTEGRITY_ADD_ALL: 'integrity:add-all',
@@ -125,7 +116,6 @@ export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
  * No invoke handler is registered for them.
  */
 export const PUSH_CHANNELS = [
-  IPC_CHANNELS.IMPORT_PROGRESS,
   IPC_CHANNELS.AI_DOWNLOAD_PROGRESS,
   IPC_CHANNELS.AI_STATUS,
   IPC_CHANNELS.STASH_MOVE_PROGRESS,

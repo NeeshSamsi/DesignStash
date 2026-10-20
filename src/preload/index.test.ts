@@ -26,15 +26,15 @@ beforeEach(async () => {
 describe('preload subscribe', () => {
   it('relays a push channel and returns an unsubscribe', () => {
     const cb = vi.fn()
-    const off = exposed.subscribe(IPC_CHANNELS.IMPORT_PROGRESS, cb)
-    expect(on).toHaveBeenCalledWith(IPC_CHANNELS.IMPORT_PROGRESS, expect.any(Function))
+    const off = exposed.subscribe(IPC_CHANNELS.INBOX_COUNTS_CHANGED, cb)
+    expect(on).toHaveBeenCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, expect.any(Function))
 
     const handler = on.mock.calls[0]![1] as (e: unknown, payload: unknown) => void
     handler({}, { phase: 'done' })
     expect(cb).toHaveBeenCalledWith({ phase: 'done' })
 
     off()
-    expect(removeListener).toHaveBeenCalledWith(IPC_CHANNELS.IMPORT_PROGRESS, handler)
+    expect(removeListener).toHaveBeenCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, handler)
   })
 
   it('refuses channels outside the push allowlist', () => {
