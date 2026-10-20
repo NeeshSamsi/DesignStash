@@ -368,8 +368,9 @@ export default function LibraryPage({
   return (
     <div className="flex min-h-full flex-col gap-4">
       {onSortWaiting && showAdd && <WaitingToSortStrip onSort={onSortWaiting} />}
+      {/* Stays put while the grid scrolls, on the page colour so cards slide under it. */}
       <LibraryToolbar
-        className="flex-wrap"
+        className="sticky top-0 z-20 flex-wrap bg-surface-1 pb-2"
         stats={statsText}
         chips={chips}
         onClearFilters={clearFilters}

@@ -117,6 +117,16 @@ describe('LibraryPage grid', () => {
     expect(screen.queryByText(/selected/)).toBeNull()
   })
 
+  it('keeps the toolbar in view while the grid scrolls', async () => {
+    setupApi([item(1)])
+    render(<LibraryPage />)
+    await ready()
+    const toolbar = document.querySelector('[data-ds="LibraryToolbar"]')!
+    expect(toolbar.className).toContain('sticky')
+    expect(toolbar.className).toContain('top-0')
+    expect(toolbar.className).toContain('bg-surface-1')
+  })
+
   it('selects with a click and reports it in the toolbar', async () => {
     setupApi([item(1), item(2), item(3)])
     render(<LibraryPage />)
