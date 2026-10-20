@@ -163,64 +163,6 @@ describe('App', () => {
     })
   })
 
-  it('shows onboarding Welcome step when not onboarded', async () => {
-    ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
-      if (channel === IPC_CHANNELS.SETTINGS_GET) {
-        return {
-          success: true,
-          data: { libraryRoot: '/lib', onboarded: false, telemetryEnabled: true }
-        }
-      }
-      return { success: true, data: {} }
-    })
-
-    render(<App />)
-    expect(await screen.findByText('Get Started')).toBeTruthy()
-  })
-
-  it('onboarding skip flow reaches privacy step and calls TELEMETRY_SET_CONSENT', async () => {
-    ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
-      if (channel === IPC_CHANNELS.SETTINGS_GET) {
-        return {
-          success: true,
-          data: { libraryRoot: '/lib', onboarded: false, telemetryEnabled: true }
-        }
-      }
-      if (channel === IPC_CHANNELS.AI_HARDWARE_INFO) {
-        return {
-          success: true,
-          data: {
-            chip: 'Apple M1',
-            totalMemoryGB: 8,
-            isAppleSilicon: true,
-            recommendedTier: 'small'
-          }
-        }
-      }
-      if (channel === IPC_CHANNELS.AI_LIST_MODELS) {
-        return { success: true, data: { models: [] } }
-      }
-      if (channel === IPC_CHANNELS.TELEMETRY_SET_CONSENT) {
-        return { success: true, data: { enabled: false } }
-      }
-      return { success: true, data: {} }
-    })
-
-    render(<App />)
-    // Welcome step → Library step
-    fireEvent.click(await screen.findByText('Get Started'))
-    // Library step → AI step
-    fireEvent.click(await screen.findByText('Continue'))
-    // AI step — switch to skip mode then advance
-    fireEvent.click(await screen.findByText('Skip for now'))
-    fireEvent.click(await screen.findByText('Skip — use manual tagging'))
-    // Privacy step — opt out
-    fireEvent.click(await screen.findByText('No thanks'))
-    expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.TELEMETRY_SET_CONSENT, {
-      enabled: false
-    })
-  })
-
   it('completing approval flow re-fetches LIBRARY_LIST', async () => {
     ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
       if (channel === IPC_CHANNELS.SETTINGS_GET)

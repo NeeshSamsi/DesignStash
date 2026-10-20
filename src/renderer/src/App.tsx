@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { ImportProgress, ImportSummary } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem } from '@shared/inbox'
-import Onboarding from './onboarding/Onboarding'
+import { BootGate } from './screens/boot/BootGate'
 import GroupingReview from './GroupingReview'
 import ApprovalStepper from './ApprovalStepper'
 import LibraryPage from './screens/library/LibraryPage'
@@ -20,11 +20,11 @@ import { doneMessage } from './lib/inbox-list'
 
 type AddFlow = 'grouping' | 'approval' | null
 
-export default function App() {
+/** The app window, once launch is fine and onboarding is done. */
+function AppMain() {
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null)
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
   const [isDropping, setIsDropping] = useState(false)
-  const [onboarded, setOnboarded] = useState<boolean | null>(null)
   const [addFlow, setAddFlow] = useState<AddFlow>(null)
 
   const groupingStore = useGroupingStore()
@@ -46,13 +46,6 @@ export default function App() {
 
   useEffect(() => {
     void (async () => {
-      const res = await window.api.invoke(IPC_CHANNELS.SETTINGS_GET, undefined)
-      setOnboarded(res.success ? res.data.onboarded : true)
-    })()
-  }, [])
-
-  useEffect(() => {
-    void (async () => {
       const res = await window.api.invoke(IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT, undefined)
       if (res.success) setSnapshot(res.data)
     })()
@@ -60,7 +53,6 @@ export default function App() {
 
   // Boot integrity scan — runs once when the shell is first entered.
   useEffect(() => {
-    if (onboarded !== true) return
     void (async () => {
       const res = await window.api.invoke(IPC_CHANNELS.INTEGRITY_SCAN, undefined)
       if (res.success) {
@@ -70,7 +62,7 @@ export default function App() {
         }
       }
     })()
-  }, [onboarded, openModal])
+  }, [openModal])
 
   const refreshLibrary = useCallback(async () => {
     setLibraryLoading(true)
@@ -161,24 +153,6 @@ export default function App() {
     event.preventDefault()
     event.stopPropagation()
     setIsDropping(false)
-  }
-
-  if (onboarded === null) {
-    return (
-      <>
-        <div className="min-h-screen bg-background" />
-        <DebugMenu />
-      </>
-    )
-  }
-
-  if (!onboarded) {
-    return (
-      <>
-        <Onboarding onComplete={() => setOnboarded(true)} />
-        <DebugMenu />
-      </>
-    )
   }
 
   const handleGroupingConfirm = async () => {
@@ -307,6 +281,16 @@ export default function App() {
         )}
         {addFlow === null && view === 'trash' && <TrashPage />}
       </AppShell>
+    </>
+  )
+}
+
+export default function App() {
+  return (
+    <>
+      <BootGate>
+        <AppMain />
+      </BootGate>
       <DebugMenu />
     </>
   )
