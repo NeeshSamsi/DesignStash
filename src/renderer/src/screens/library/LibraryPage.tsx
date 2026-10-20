@@ -336,25 +336,33 @@ export default function LibraryPage({
   return (
     <div className="flex min-h-full flex-col gap-4">
       {onSortWaiting && showAdd && <WaitingToSortStrip onSort={onSortWaiting} />}
-      {/* Stays put while the grid scrolls, on the page colour so cards slide under it. */}
-      <LibraryToolbar
-        className="sticky top-0 z-20 flex-wrap bg-surface-1 pb-2"
-        stats={statsText}
-        chips={chips}
-        disabled={state === 'empty'}
-        onClearFilters={clearFilters}
-        sort={sort}
-        onSortChange={setSort}
-        tagFilter={{
-          categories: tagCategories,
-          selectedTagIds: tagFilter,
-          onSelectedTagIdsChange: setTagFilter,
-          pickedCategoryIds: categoryIds,
-          onToggleCategory,
-          onClearAll: clearFilters,
-          onManageTags: () => openSettings('tags')
-        }}
-      />
+      {/*
+        Stays put while the grid scrolls. The wrapper paints the panel colour and reaches over the
+        scroller's 8px padding (-top-2, -mx-2), so cards slide under it and nothing shows above it.
+      */}
+      <div
+        data-slot="library-toolbar-sticky"
+        className="sticky -top-2 z-20 -mx-2 bg-surface-1 px-2 pt-2 pb-2"
+      >
+        <LibraryToolbar
+          className="flex-wrap"
+          stats={statsText}
+          chips={chips}
+          disabled={state === 'empty'}
+          onClearFilters={clearFilters}
+          sort={sort}
+          onSortChange={setSort}
+          tagFilter={{
+            categories: tagCategories,
+            selectedTagIds: tagFilter,
+            onSelectedTagIdsChange: setTagFilter,
+            pickedCategoryIds: categoryIds,
+            onToggleCategory,
+            onClearAll: clearFilters,
+            onManageTags: () => openSettings('tags')
+          }}
+        />
+      </div>
       {failed && items.length > 0 && (
         <Banner
           tone="error"

@@ -117,14 +117,15 @@ describe('LibraryPage grid', () => {
     expect(screen.queryByText(/selected/)).toBeNull()
   })
 
-  it('keeps the toolbar in view while the grid scrolls', async () => {
+  it('keeps the toolbar in view while the grid scrolls, on the panel colour with nothing above it', async () => {
     setupApi([item(1)])
     render(<LibraryPage />)
     await ready()
-    const toolbar = document.querySelector('[data-ds="LibraryToolbar"]')!
-    expect(toolbar.className).toContain('sticky')
-    expect(toolbar.className).toContain('top-0')
-    expect(toolbar.className).toContain('bg-surface-1')
+    const sticky = document.querySelector('[data-slot="library-toolbar-sticky"]')!
+    expect(sticky.contains(document.querySelector('[data-ds="LibraryToolbar"]'))).toBe(true)
+    for (const name of ['sticky', '-top-2', 'z-20', 'bg-surface-1', 'pt-2']) {
+      expect(sticky.className).toContain(name)
+    }
   })
 
   it('selects with a click and reports it in the toolbar', async () => {
