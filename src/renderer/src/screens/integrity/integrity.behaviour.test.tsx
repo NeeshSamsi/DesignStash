@@ -205,4 +205,53 @@ describe('stash check modal', () => {
     call.action.onClick()
     expect(onOpenSettings).toHaveBeenCalledOnce()
   })
+
+  it('an Undo clicked during an action waits for it and never blanks the rows', async () => {
+    let finishRemove!: (value: unknown) => void
+    open({
+      [IPC_CHANNELS.INTEGRITY_ADD]: () => ok({ mockupIds: [41] }),
+      [IPC_CHANNELS.INTEGRITY_REMOVE]: () => new Promise((r) => (finishRemove = r)),
+      [IPC_CHANNELS.INTEGRITY_UNDO_ADD]: () => ok({}),
+      [IPC_CHANNELS.INTEGRITY_REPORT]: () => ok(report)
+    })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]!)
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
+    fireEvent.click(button('Remove'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.INTEGRITY_REMOVE)).toHaveLength(1))
+
+    toasts.undoToast.mock.calls[0]![1]()
+    await new Promise((r) => setTimeout(r, 20))
+    // The Undo is queued behind the action: nothing sent yet, and no skeleton rows.
+    expect(api.sent(IPC_CHANNELS.INTEGRITY_UNDO_ADD)).toHaveLength(0)
+    expect(skeletons()).toHaveLength(0)
+
+    finishRemove(ok({ removed: 1 }))
+    await waitFor(() =>
+      expect(api.sent(IPC_CHANNELS.INTEGRITY_UNDO_ADD)).toEqual([{ mockupIds: [41] }])
+    )
+    expect(await screen.findByText('poster_new')).toBeTruthy()
+  })
+
+  it('two quick Undos apply the latest check, not the older one', async () => {
+    const first = { found: [{ id: 'old', name: 'older_scan', sizeBytes: null }], gone: [] }
+    const second = { found: [{ id: 'new', name: 'newer_scan', sizeBytes: null }], gone: [] }
+    const releases: Array<(value: unknown) => void> = []
+    open({
+      [IPC_CHANNELS.INTEGRITY_IGNORE]: () => ok({ ignoredIds: ['f1'] }),
+      [IPC_CHANNELS.INTEGRITY_UNIGNORE]: () => ok({}),
+      [IPC_CHANNELS.INTEGRITY_REPORT]: () => new Promise((r) => releases.push(r))
+    })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ignore' })[0]!)
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
+    const undo = toasts.undoToast.mock.calls[0]![1]
+    undo()
+    undo()
+    await waitFor(() => expect(releases).toHaveLength(1))
+    // The second check starts after the first lands, and its result is the one that shows.
+    releases[0]!(ok(first))
+    await waitFor(() => expect(releases).toHaveLength(2))
+    releases[1]!(ok(second))
+    expect(await screen.findByText('newer_scan')).toBeTruthy()
+    expect(screen.queryByText('older_scan')).toBeNull()
+  })
 })
