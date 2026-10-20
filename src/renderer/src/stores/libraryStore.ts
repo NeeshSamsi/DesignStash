@@ -12,6 +12,8 @@ interface LibraryState {
   sort: 'date' | 'name'
   selectedDetail: MockupDetail | null
   isLoading: boolean
+  /** The last list each view loaded (by search, filter, sort and view), shown at once on return. */
+  cache: Record<string, LibraryItem[]>
 
   setItems(items: LibraryItem[]): void
   setTrash(trash: LibraryItem[]): void
@@ -22,6 +24,7 @@ interface LibraryState {
   setSort(sort: 'date' | 'name'): void
   setDetail(detail: MockupDetail | null): void
   setLoading(isLoading: boolean): void
+  cacheList(key: string, items: LibraryItem[]): void
   reset(): void
 }
 
@@ -37,6 +40,7 @@ export const useLibraryStore = create<LibraryState>((set) => ({
   sort: 'date',
   selectedDetail: null,
   isLoading: false,
+  cache: {},
 
   setItems: (items) => set({ items }),
   setTrash: (trash) => set({ trash }),
@@ -47,5 +51,18 @@ export const useLibraryStore = create<LibraryState>((set) => ({
   setSort: (sort) => set({ sort }),
   setDetail: (selectedDetail) => set({ selectedDetail }),
   setLoading: (isLoading) => set({ isLoading }),
-  reset: () => set({ items: [], trash: [], stats: emptyStats, tagFilter: [], categoryIds: [], query: '', sort: 'date', selectedDetail: null, isLoading: false })
+  cacheList: (key, items) => set((state) => ({ cache: { ...state.cache, [key]: items } })),
+  reset: () =>
+    set({
+      items: [],
+      trash: [],
+      stats: emptyStats,
+      tagFilter: [],
+      categoryIds: [],
+      query: '',
+      sort: 'date',
+      selectedDetail: null,
+      isLoading: false,
+      cache: {}
+    })
 }))
