@@ -13,6 +13,7 @@ import { PileStep } from '@renderer/components/PileStep'
 import { Tooltip } from '@renderer/components/Tooltip'
 import { useTagVocabulary } from '@renderer/hooks/use-tag-vocabulary'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { useUiStore } from '@renderer/stores/uiStore'
 import { Skeleton } from '@renderer/ui/skeleton'
 import {
   afterStash,
@@ -241,6 +242,8 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
 
   const finish = (s: FlowState) => {
     if (finished(s)) {
+      // Everything is tucked away: land where it now lives, not on an empty inbox.
+      useUiStore.getState().setView('all')
       toast(doneMessage(stashedCount.current, 0), 'success')
       onClose()
     }

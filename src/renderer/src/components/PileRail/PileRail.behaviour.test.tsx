@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { LookOverFlow } from '@renderer/screens/look-over'
+import { useUiStore } from '@renderer/stores/uiStore'
 
 // Behaviour spec for piles in Look it over — see design/specs/piles.md. Run through the screen that owns the flow.
 
@@ -269,6 +270,21 @@ describe('Piles · drafts until Stash pile', () => {
     await toReview()
     fireEvent.click(btn('Stash pile (2)'))
     await waitFor(() => expect(document.body.textContent).toContain('6 of 6'))
+  })
+
+  it('lands on My Stash › All with the summary toast once everything is tucked away', async () => {
+    useUiStore.getState().setView('to-stash')
+    const { onClose } = await start()
+    await toReview()
+    fireEvent.click(btn('Stash pile (3)'))
+    await waitFor(() => expect(document.body.textContent).toContain('Pile 2 of 2'))
+    await toReview()
+    fireEvent.click(btn('Stash pile (2)'))
+    await waitFor(() => expect(document.body.textContent).toContain('6 of 6'))
+    fireEvent.click(btn('Stash'))
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(useUiStore.getState().view).toBe('all')
+    expect(toasts.toast).toHaveBeenCalledWith('All tucked away · 6 mockups stashed', 'success')
   })
 
   it('reviews the pile as MockupCards and commits it all with Stash pile (N), undoable', async () => {
