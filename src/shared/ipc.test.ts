@@ -147,7 +147,7 @@ describe('IPC Contract', () => {
     it('validates a list response', () => {
       const valid = {
         models: [
-          { id: 'smolvlm2-2.2b', name: 'SmolVLM2 2.2B', tier: 'small', sizeBytes: 1705125856, description: 'Fast.', languages: ['English'], quality: 3, speed: 5, minMemoryGB: 8, bestFit: false, downloadedBytes: 0, installed: false, active: false }
+          { id: 'qwen2.5-vl-3b', name: 'Qwen 2.5 VL 3B', tier: 'medium', sizeBytes: 2774658784, description: 'Fast.', languages: ['English'], quality: 3, speed: 5, minMemoryGB: 8, bestFit: false, downloadedBytes: 0, installed: false, active: false }
         ],
         legacy: [{ id: 'qwen2.5-1.5b', sizeBytes: 1040000000 }]
       }

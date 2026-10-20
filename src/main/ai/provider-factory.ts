@@ -18,13 +18,8 @@ export interface VisionModelFiles {
   extraArgs: readonly string[]
 }
 
-/**
- * llama-server flags a model needs. Moondream 2's own (jinja) chat template drops the image
- * marker, so every image request fails to tokenize; the built-in vicuna template keeps it.
- */
-export const MODEL_SERVER_ARGS: Record<string, readonly string[]> = {
-  moondream2: ['--no-jinja', '--chat-template', 'vicuna']
-}
+/** llama-server flags a model needs, by model id. The two Qwen models need none. */
+export const MODEL_SERVER_ARGS: Record<string, readonly string[]> = {}
 
 /** Set by the end-to-end tests, together with NODE_ENV=test, to answer with the stub below instead of a model. */
 export const STUB_AI_ENV = 'DESIGNSTASH_E2E_STUB_AI'

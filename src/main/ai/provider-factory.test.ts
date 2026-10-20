@@ -57,16 +57,6 @@ describe('createProviderFactory', () => {
     })
   })
 
-  it('starts Moondream 2 with the vicuna chat template, which keeps the image marker', async () => {
-    const { factory, createVision } = setup(['moondream2/model.gguf', 'moondream2/mmproj.gguf'])
-    await factory.forModel('moondream2')
-    expect(createVision.mock.calls[0]![0].extraArgs).toEqual([
-      '--no-jinja',
-      '--chat-template',
-      'vicuna'
-    ])
-  })
-
   it('names a model that is not in the catalogue by its id', async () => {
     const { factory, createVision } = setup(['custom/model.gguf', 'custom/mmproj.gguf'])
     await factory.forModel('custom')

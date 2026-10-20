@@ -20,7 +20,7 @@
 ## AI model
 
 - **This Mac** (HardwareSummary) on top, the same card as onboarding.
-- **Vision models.** The model looks at the mockup's cover (the PSD's embedded preview); the file name and folder trail are extra text context. Each model is a llama.cpp GGUF plus its mmproj projector, downloaded together with one progress figure; sizes include both. Catalogue: SmolVLM2 2.2B (small, fastest), Qwen 2.5 VL 3B (medium, the default and usual best fit), Qwen 2.5 VL 7B (large, 16 GB+), and Moondream 2 if a compatible build exists.
+- **Vision models.** The model looks at the mockup's cover (the PSD's embedded preview); the file name and folder trail are extra text context. Each model is a llama.cpp GGUF plus its mmproj projector, downloaded together with one progress figure; sizes include both. Catalogue (decided 2026-10-20): Qwen 2.5 VL 3B (the default, and Best fit on every Mac under 32 GB) and Qwen 2.5 VL 7B (Best fit from 32 GB, and runs on 16 GB+). SmolVLM2 and Moondream 2 were dropped: both read the image too poorly (`ai.md`).
 - **Use on-device AI:** the switch heads the container; your models open underneath. Off collapses them and says titles come from file names; downloaded models stay on the Mac.
 - **Lists:** Your models (the one in use first), then Available to download.
 - **ModelCard** (after Handy): name, In use / Best fit for this Mac, one plain line, quality and speed as five-step bars; a divider; languages, size, and the action. The model in use has an orange border and no fill.

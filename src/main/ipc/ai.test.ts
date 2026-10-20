@@ -52,7 +52,7 @@ beforeEach(() => {
 afterEach(() => rmSync(base, { recursive: true, force: true }))
 
 describe('AI_LIST_MODELS', () => {
-  it('lists the three vision models with Best fit marked, and old text models apart', async () => {
+  it('lists the two vision models with Best fit marked, and old text models apart', async () => {
     install('qwen2.5-vl-3b')
     install('qwen2.5-1.5b', ['old.gguf'])
 
@@ -61,11 +61,7 @@ describe('AI_LIST_MODELS', () => {
       legacy: { id: string }[]
     }>(IPC_CHANNELS.AI_LIST_MODELS)
 
-    expect(res.success && res.data.models.map((m) => m.id)).toEqual([
-      'smolvlm2-2.2b',
-      'qwen2.5-vl-3b',
-      'qwen2.5-vl-7b'
-    ])
+    expect(res.success && res.data.models.map((m) => m.id)).toEqual(['qwen2.5-vl-3b', 'qwen2.5-vl-7b'])
     expect(res.success && res.data.models.filter((m) => m.bestFit)).toHaveLength(1)
     expect(res.success && res.data.models.find((m) => m.id === 'qwen2.5-vl-3b')?.installed).toBe(
       true
@@ -76,19 +72,19 @@ describe('AI_LIST_MODELS', () => {
 
 describe('AI_DELETE_MODEL', () => {
   it('deletes a model that is not in use at once, and Undo brings it back', async () => {
-    install('smolvlm2-2.2b')
+    install('qwen2.5-vl-7b')
 
-    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'smolvlm2-2.2b' })).toEqual({
+    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-7b' })).toEqual({
       success: true,
       data: { deleted: true, inUse: false, undoable: true }
     })
-    expect(existsSync(join(modelsDir, 'smolvlm2-2.2b'))).toBe(false)
+    expect(existsSync(join(modelsDir, 'qwen2.5-vl-7b'))).toBe(false)
 
-    expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'smolvlm2-2.2b' })).toEqual({
+    expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen2.5-vl-7b' })).toEqual({
       success: true,
       data: { restored: true }
     })
-    expect(existsSync(join(modelsDir, 'smolvlm2-2.2b', 'model.gguf'))).toBe(true)
+    expect(existsSync(join(modelsDir, 'qwen2.5-vl-7b', 'model.gguf'))).toBe(true)
   })
 
   it('keeps the model in use and says so until the user confirms', async () => {
@@ -120,14 +116,14 @@ describe('AI_DELETE_MODEL', () => {
   })
 
   it('stops a download of the model being deleted', async () => {
-    install('smolvlm2-2.2b')
+    install('qwen2.5-vl-7b')
     const controller = new AbortController()
-    activeDownloads.set('smolvlm2-2.2b', controller)
+    activeDownloads.set('qwen2.5-vl-7b', controller)
 
-    await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'smolvlm2-2.2b' })
+    await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-7b' })
 
     expect(controller.signal.aborted).toBe(true)
-    expect(activeDownloads.has('smolvlm2-2.2b')).toBe(false)
+    expect(activeDownloads.has('qwen2.5-vl-7b')).toBe(false)
   })
 
   it('deletes an old text-model folder for good', async () => {
@@ -148,7 +144,7 @@ describe('AI_DELETE_MODEL', () => {
   })
 
   it('reports nothing deleted for a model that is not there', async () => {
-    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'smolvlm2-2.2b' })).toEqual({
+    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-7b' })).toEqual({
       success: true,
       data: { deleted: false, inUse: false, undoable: false }
     })

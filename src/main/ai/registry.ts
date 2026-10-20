@@ -29,8 +29,6 @@ export interface ModelEntry {
   files: { model: ModelFile; mmproj: ModelFile }
   /** Both files together. */
   sizeBytes: number
-  /** Set while the model is waiting on a check. Hidden from the catalogue unless asked for. */
-  pending?: 'wp4.1-confirmation'
 }
 
 export const MODEL_FILE_NAMES = { model: 'model.gguf', mmproj: 'mmproj.gguf' } as const
@@ -41,30 +39,8 @@ function entry(e: Omit<ModelEntry, 'sizeBytes'>): ModelEntry {
 
 const HF = 'https://huggingface.co'
 
-// Sizes and sha256 come from the Hugging Face file metadata (HEAD requests, no file was downloaded).
+// Sizes and sha256 are from design/specs/ai.md: the Hugging Face file listings, and every download matched.
 export const MODEL_REGISTRY: ModelEntry[] = [
-  entry({
-    id: 'smolvlm2-2.2b',
-    name: 'SmolVLM2 2.2B',
-    tier: 'small',
-    description: 'Fastest to start. Good enough for clear titles and the obvious tags.',
-    languages: ['English'],
-    quality: 3,
-    speed: 5,
-    minMemoryGB: 8,
-    files: {
-      model: {
-        url: `${HF}/ggml-org/SmolVLM2-2.2B-Instruct-GGUF/resolve/main/SmolVLM2-2.2B-Instruct-Q4_K_M.gguf`,
-        sizeBytes: 1_112_602_656,
-        sha256: '0cf76814555b8665149075b74ab6b5c1d428ea1d3d01c1918c12012e8d7c9f58'
-      },
-      mmproj: {
-        url: `${HF}/ggml-org/SmolVLM2-2.2B-Instruct-GGUF/resolve/main/mmproj-SmolVLM2-2.2B-Instruct-Q8_0.gguf`,
-        sizeBytes: 592_523_200,
-        sha256: 'ae07ea1facd07dd3230c4483b63e8cda96c6944ad2481f33d531f79e892dd024'
-      }
-    }
-  }),
   entry({
     id: 'qwen2.5-vl-3b',
     name: 'Qwen 2.5 VL 3B',
@@ -73,7 +49,8 @@ export const MODEL_REGISTRY: ModelEntry[] = [
     languages: ['English', 'Chinese', 'Japanese', 'Korean', 'French', 'German', 'Spanish'],
     quality: 4,
     speed: 4,
-    minMemoryGB: 12,
+    // Measured at about 3.5 GB resident (design/specs/ai.md), so 8 GB Macs are fine.
+    minMemoryGB: 8,
     files: {
       model: {
         url: `${HF}/ggml-org/Qwen2.5-VL-3B-Instruct-GGUF/resolve/main/Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf`,
@@ -94,7 +71,7 @@ export const MODEL_REGISTRY: ModelEntry[] = [
     description: 'The most careful reader. Slower, and best on a Mac with plenty of memory.',
     languages: ['English', 'Chinese', 'Japanese', 'Korean', 'French', 'German', 'Spanish'],
     quality: 5,
-    speed: 2,
+    speed: 3,
     minMemoryGB: 16,
     files: {
       model: {
@@ -108,49 +85,26 @@ export const MODEL_REGISTRY: ModelEntry[] = [
         sha256: '2ddb555391bae966e412deab9e07b58afa18bcc06930ba0f1c78a3695ab9e506'
       }
     }
-  }),
-  entry({
-    id: 'moondream2',
-    name: 'Moondream 2',
-    tier: 'small',
-    description: 'A small model that describes images in plain sentences.',
-    languages: ['English'],
-    quality: 2,
-    speed: 5,
-    minMemoryGB: 8,
-    pending: 'wp4.1-confirmation',
-    files: {
-      model: {
-        url: `${HF}/moondream/moondream2-gguf/resolve/main/moondream2-text-model-f16.gguf`,
-        sizeBytes: 2_839_534_976,
-        sha256: '4e17e9107fb8781629b3c8ce177de57ffeae90fe14adcf7b99f0eef025889696'
-      },
-      mmproj: {
-        url: `${HF}/moondream/moondream2-gguf/resolve/main/moondream2-mmproj-f16.gguf`,
-        sizeBytes: 909_777_984,
-        sha256: '4cc1cb3660d87ff56432ebeb7884ad35d67c48c7b9f6b2856f305e39c38eed8f'
-      }
-    }
   })
 ]
 
-/** The models to offer. Ones still waiting on a check stay out unless `includePending` is set. */
-export function availableModels(opts: { includePending?: boolean } = {}): ModelEntry[] {
-  return MODEL_REGISTRY.filter((m) => opts.includePending || !m.pending)
+/** The models to offer: Qwen 2.5 VL 3B (the default) and 7B. */
+export function availableModels(): ModelEntry[] {
+  return MODEL_REGISTRY
 }
 
 export function modelsForTier(tier: ModelTier): ModelEntry[] {
-  return availableModels().filter((m) => m.tier === tier)
+  return MODEL_REGISTRY.filter((m) => m.tier === tier)
 }
 
 export function getModel(id: string): ModelEntry | undefined {
   return MODEL_REGISTRY.find((m) => m.id === id)
 }
 
-/** The model shown as "Best fit for this Mac": 16 to 32 GB gets Qwen 2.5 VL 3B. */
+/** The model shown as "Best fit for this Mac": 3B on every Mac under 32 GB, 7B from 32 GB up. */
 export function bestFitModelId(hw: HardwareInfo): string {
   const tier = recommendTier(hw)
-  const fit = availableModels().find((m) => m.tier === tier)
+  const fit = MODEL_REGISTRY.find((m) => m.tier === tier)
   if (!fit) throw new Error(`No model for tier ${tier}`)
   return fit.id
 }
