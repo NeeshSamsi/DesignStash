@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, screen, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { APP_ID } from '@shared/constants'
 import { createHandlerContext, type TelemetryRef } from './ipc/context'
@@ -9,6 +9,7 @@ import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
 import { ensureSearchIndex } from './db/search-index'
 import { createSettingsStore } from './settings'
 import { runBoot, setBootStatus } from './boot-status'
+import { MIN_WINDOW, initialWindowSize } from './window-size'
 import { registerAppHandlers } from './ipc/app'
 import { registerBootHandlers } from './ipc/boot'
 import { logger } from './logger'
@@ -27,11 +28,14 @@ function migrationsFolder(): string {
 }
 
 function createWindow(): BrowserWindow {
+  // 1440×900 clamped to the display, resizable down to a minimum, centred on first launch.
+  const { width, height } = initialWindowSize(screen.getPrimaryDisplay().workAreaSize)
   const window = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 900,
-    minHeight: 600,
+    width,
+    height,
+    minWidth: MIN_WINDOW.width,
+    minHeight: MIN_WINDOW.height,
+    center: true,
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
