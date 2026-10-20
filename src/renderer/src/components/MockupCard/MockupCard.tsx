@@ -151,8 +151,14 @@ export function MockupCard({
               <Badge variant="warning">{status}</Badge>
             )}
             {showVariants && variantCount > 0 && !loading && (
-              <Badge variant="count" className="px-2 text-muted-foreground">
-                +{variantCount}
+              // The whole pile, top included, so a pile of three reads 3.
+              <Badge
+                variant="count"
+                aria-label={`${variantCount + 1} mockups in this pile`}
+                className="gap-1 px-2 text-muted-foreground"
+              >
+                <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-3" />
+                {variantCount + 1}
               </Badge>
             )}
           </div>

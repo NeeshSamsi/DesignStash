@@ -176,7 +176,7 @@ describe('To stash', () => {
     setup(listOf(stash))
     render(<InboxPage stage="to_stash" />)
     await screen.findByText('Clay pile')
-    expect(card(1).textContent).toContain('+3')
+    expect(card(1).textContent).toContain('4')
     expect(card(2).textContent).not.toContain('Sniffing…')
   })
 

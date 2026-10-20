@@ -65,11 +65,13 @@ describe('MockupCard', () => {
       )
     })
 
-    it('shows +N for a pile and nothing for a single', () => {
-      const { rerender } = render(<MockupCard variantCount={3} />)
-      expect(screen.getByText('+3')).not.toBeNull()
+    it('shows the whole pile total for a pile and nothing for a single', () => {
+      const { rerender } = render(<MockupCard variantCount={2} />)
+      const badge = screen.getByLabelText('3 mockups in this pile')
+      expect(badge.textContent).toBe('3')
+      expect(badge.querySelector('svg')).not.toBeNull()
       rerender(<MockupCard variantCount={0} />)
-      expect(screen.queryByText(/^\+/)).toBeNull()
+      expect(screen.queryByLabelText(/in this pile/)).toBeNull()
     })
 
     it('stars and unstars from the star button', () => {

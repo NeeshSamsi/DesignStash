@@ -171,7 +171,13 @@ export function PilePage({ pile }: { pile: OpenPile }) {
   return (
     <div className="flex min-h-full flex-col gap-4">
       <HeaderActions>
-        <Button variant="ghost" size="sm" label="Disband pile" onClick={() => void disband()} />
+        <Button
+          variant="outline"
+          size="sm"
+          label="Disband pile"
+          className="border-subtle bg-transparent hover:border-input hover:bg-transparent"
+          onClick={() => void disband()}
+        />
         <Button variant="secondary" size="sm" label="Edit pile details" onClick={editPile} />
       </HeaderActions>
       {status === 'error' ? (
