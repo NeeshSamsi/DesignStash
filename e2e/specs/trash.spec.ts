@@ -11,6 +11,8 @@ test.describe('Trash', () => {
     const seeded = await seedStash(app, ['phone_front', 'phone_side', 'laptop'])
     expect((await app.invoke('mockup:trash', { ids: seeded.map((s) => s.id) })).success).toBe(true)
 
+    // The shell may still be coming up after the boot gate: wait for the navigation before using it.
+    await expect(window.getByRole('navigation', { name: 'Primary' })).toBeVisible()
     await window.getByRole('button', { name: /^Trash/ }).click()
     const cards = window.locator('[data-mockup-id]')
     await expect(cards).toHaveCount(3)
@@ -34,6 +36,8 @@ test.describe('Trash', () => {
     const seeded = await seedStash(app, ['phone_front', 'laptop'])
     expect((await app.invoke('mockup:trash', { ids: seeded.map((s) => s.id) })).success).toBe(true)
 
+    // The shell may still be coming up after the boot gate: wait for the navigation before using it.
+    await expect(window.getByRole('navigation', { name: 'Primary' })).toBeVisible()
     await window.getByRole('button', { name: /^Trash/ }).click()
     await expect(window.locator('[data-mockup-id]')).toHaveCount(2)
 
