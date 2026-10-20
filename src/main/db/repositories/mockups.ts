@@ -11,8 +11,32 @@ export class MockupRepository {
     private readonly search: SearchRepository
   ) {}
 
+  /** A mockup still in review starts in To sort; an approved one is already stashed. */
   createMockup(data: NewMockup): Mockup {
-    return this.db.insert(mockups).values(data).returning().get()
+    const stage = data.stage ?? (data.reviewStatus === 'approved' ? 'stashed' : 'to_sort')
+    return this.db
+      .insert(mockups)
+      .values({ ...data, stage })
+      .returning()
+      .get()
+  }
+
+  /** Move mockups to a stage. Leaving To sort stamps `sortedAt` the first time. */
+  setStage(ids: number[], stage: 'to_sort' | 'to_stash' | 'stashed'): void {
+    if (ids.length === 0) return
+    const now = new Date().toISOString()
+    this.db.transaction((tx) => {
+      for (const id of new Set(ids)) {
+        tx.update(mockups)
+          .set(
+            stage === 'to_sort'
+              ? { stage, sortedAt: null }
+              : { stage, sortedAt: sql`coalesce(${mockups.sortedAt}, ${now})` }
+          )
+          .where(eq(mockups.id, id))
+          .run()
+      }
+    })
   }
 
   getMockup(id: number): Mockup | undefined {

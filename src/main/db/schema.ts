@@ -43,6 +43,23 @@ export const mockups = sqliteTable('mockups', {
   favourite: integer('favourite', { mode: 'boolean' }).notNull().default(false),
   favouritedAt: text('favourited_at'),
   deletedAt: text('deleted_at'),
+  /**
+   * Where the mockup is in the import flow: waiting to be sorted into piles, sorted and waiting
+   * to be looked over, or stashed (in My Stash). `reviewStatus` is the older form of the same fact.
+   */
+  stage: text('stage', { enum: ['to_sort', 'to_stash', 'stashed'] })
+    .notNull()
+    .default('stashed'),
+  /** When it left To sort. */
+  sortedAt: text('sorted_at'),
+  /** Size of the PSD in the stash folder, in bytes. Null until measured. */
+  sizeBytes: integer('size_bytes'),
+  /** The AI suggestion's progress. `off` when the AI is not in use. */
+  aiStatus: text('ai_status', { enum: ['pending', 'sniffing', 'ready', 'failed', 'off'] })
+    .notNull()
+    .default('off'),
+  /** The AI's suggestions for this mockup (title, tags). Written by the background queue. */
+  aiResult: text('ai_result', { mode: 'json' }),
   ...timestamps
 })
 

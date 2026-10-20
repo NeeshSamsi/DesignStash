@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { join, resolve } from 'node:path'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { ImportService } from './import-service'
 import { Repository } from '../db/repository'
 import { initDb, closeDb } from '../db/connection'
@@ -88,6 +88,13 @@ describe('ImportService', () => {
     const sidecar = mockups.find(m => m.title === 'sidecar')
     expect(sidecar).toBeDefined()
     expect(sidecar?.coverSource).toBe('sidecar')
+
+    // Everything imported waits in To sort, with the size of its copy in the stash folder.
+    for (const m of mockups) {
+      expect(m.stage).toBe('to_sort')
+      expect(m.sizeBytes).toBe(statSync(m.libraryPath).size)
+      expect(m.sizeBytes).toBeGreaterThan(0)
+    }
     
     // Test duplication
     const summary2 = await service.importPaths([importRoot], {})

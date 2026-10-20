@@ -34,6 +34,7 @@ export class Repository {
 
   // Mockups
   createMockup(...a: Args<MockupRepository['createMockup']>) { return this.mockups.createMockup(...a) }
+  setStage(...a: Args<MockupRepository['setStage']>) { return this.mockups.setStage(...a) }
   getMockup(...a: Args<MockupRepository['getMockup']>) { return this.mockups.getMockup(...a) }
   /** @deprecated legacy — does not exclude soft-deleted; use getLibrary for the grid */
   getAllMockups() { return this.mockups.getAllMockups() }

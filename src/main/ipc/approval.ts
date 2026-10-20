@@ -21,6 +21,7 @@ export function registerApprovalHandlers({ settings, telemetry, repo, ai }: Hand
       coverSource: args.coverSource,
       reviewStatus: 'approved'
     })
+    repo.setStage([args.mockupId], 'stashed')
     repo.clearTagsForMockup(args.mockupId)
     for (const tagId of args.tagIds) {
       repo.addTagToMockup(args.mockupId, tagId)

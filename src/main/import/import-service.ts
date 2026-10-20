@@ -1,6 +1,6 @@
 import { basename, extname, join } from 'node:path'
 import { randomUUID, createHash } from 'node:crypto'
-import { copyFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, rmSync, readFileSync, statSync } from 'node:fs'
 import { resolveCover } from '../psd'
 import type { Repository } from '../db/repository'
 import { scanForPsds } from './scanner'
@@ -101,7 +101,9 @@ export class ImportService {
           coverSource: cover.source,
           contentHash: hash,
           importContext: scannedPsd.importContext,
-          reviewStatus: 'needs_review'
+          reviewStatus: 'needs_review',
+          stage: 'to_sort',
+          sizeBytes: statSync(libraryPsdPath).size
         })
 
         summary.items.push({

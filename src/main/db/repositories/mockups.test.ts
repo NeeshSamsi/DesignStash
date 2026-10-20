@@ -61,6 +61,40 @@ describe('Repository — mockups', () => {
   })
 })
 
+describe('Repository — stage', () => {
+  it('puts a mockup in review into To sort and an approved one straight into My Stash', () => {
+    const fresh = repo.createMockup(sample)
+    const approved = repo.createMockup(approvedMockup({ libraryPath: '/lib/ap.psd' }))
+
+    expect(fresh).toMatchObject({ stage: 'to_sort', sortedAt: null, sizeBytes: null, aiStatus: 'off' })
+    expect(approved.stage).toBe('stashed')
+    expect(repo.createMockup({ ...sample, libraryPath: '/lib/s2.psd', stage: 'to_stash' }).stage).toBe(
+      'to_stash'
+    )
+  })
+
+  it('setStage stamps sortedAt when a mockup leaves To sort, and keeps the first stamp', () => {
+    const m = repo.createMockup(sample)
+
+    repo.setStage([m.id], 'to_stash')
+    const first = repo.getMockup(m.id)!
+    expect(first.stage).toBe('to_stash')
+    expect(first.sortedAt).toEqual(expect.any(String))
+
+    repo.setStage([m.id], 'stashed')
+    expect(repo.getMockup(m.id)).toMatchObject({ stage: 'stashed', sortedAt: first.sortedAt })
+
+    repo.setStage([m.id], 'to_sort')
+    expect(repo.getMockup(m.id)).toMatchObject({ stage: 'to_sort', sortedAt: null })
+  })
+
+  it('setStage with no ids does nothing', () => {
+    const m = repo.createMockup(sample)
+    repo.setStage([], 'stashed')
+    expect(repo.getMockup(m.id)?.stage).toBe('to_sort')
+  })
+})
+
 describe('Repository — variants', () => {
   it('creates variants ordered by position', () => {
     const m = repo.createMockup(sample)
