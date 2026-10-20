@@ -556,4 +556,20 @@ describe('details sidebar · cover', () => {
     finish(ok(change()))
     expect(toasts.undoToast).not.toHaveBeenCalled()
   })
+
+  it('Esc while replacing reloads the cover under a new address, so the old cached image is not shown', async () => {
+    setup({ [IPC_CHANNELS.MOCKUP_SET_COVER]: () => new Promise(() => {}) })
+    await editing()
+    useDetailsStore.getState().setClearSelection(vi.fn())
+    const before = coverImg().getAttribute('src')
+    choose()
+    await waitFor(() =>
+      expect(document.querySelector('[data-ds="CoverPanel"]')?.getAttribute('data-state')).toBe(
+        'replacing'
+      )
+    )
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    await waitFor(() => expect(coverImg().getAttribute('src')).not.toBe(before))
+    expect(coverImg().getAttribute('src')).toMatch(/\?v=\d+$/)
+  })
 })

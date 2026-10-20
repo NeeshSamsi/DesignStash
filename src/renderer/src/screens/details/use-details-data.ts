@@ -96,17 +96,33 @@ export function useDetailsData(id: number) {
     seen.current = { revision, gridItems }
     if (unchanged || status !== 'ready') return
     let live = true
-    void fetchDetail(id).then((loaded) => {
-      if (!live || !loaded) return
-      setDetail(loaded.detail)
-      setCoverVersion((version) => version + 1)
-    })
+    void refreshDetail(id, { keepCoverUi: true }, () => live)
     return () => {
       live = false
     }
     // Only a change elsewhere reloads; the form is the person's until they save or cancel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revision, gridItems])
+
+  /**
+   * Fetches the mockup again and shows it. The cover always asks for its file again, because a
+   * reload is how a change made elsewhere (or a cancelled replace) becomes visible. The cover panel
+   * goes back to its resting state unless `keepCoverUi` says a replace is still under way.
+   */
+  const refreshDetail = async (
+    mockupId: number,
+    options: { keepCoverUi?: boolean } = {},
+    stillWanted: () => boolean = () => true
+  ) => {
+    const loaded = await fetchDetail(mockupId)
+    if (!loaded || !stillWanted()) return
+    setDetail(loaded.detail)
+    setCoverVersion((version) => version + 1)
+    if (!options.keepCoverUi) {
+      setCoverUi('default')
+      setImageSize(undefined)
+    }
+  }
 
   const draft = draftOf(form)
   const dirty = status === 'ready' && isDirty(saved, draft)
@@ -235,12 +251,8 @@ export function useDetailsData(id: number) {
     const change = await run()
     if (token !== replaceToken.current) {
       // Cancelled with Esc: the change may still have happened, so show what is really there.
-      void fetchDetail(item.id).then((loaded) => {
-        if (loaded) {
-          setDetail(loaded.detail)
-          setCoverVersion((version) => version + 1)
-        }
-      })
+      // A newer replace may be under way; leave its panel state alone.
+      void refreshDetail(item.id, { keepCoverUi: true })
       return
     }
     if (!change) {
@@ -296,9 +308,7 @@ export function useDetailsData(id: number) {
     setCoverUi('default')
     const id = detail?.item.id
     if (id === undefined) return
-    void fetchDetail(id).then((loaded) => {
-      if (loaded) setDetail(loaded.detail)
-    })
+    void refreshDetail(id)
   }
 
   const createTag = async (request: NewTagRequest): Promise<ApprovalTag> => {
