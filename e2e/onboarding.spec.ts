@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test, expect } from './fixtures/app'
 
-test('first run: welcome, stash folder, skip AI, say no to usage data, open My Stash', async ({ firstRun: app }) => {
+test('first run: welcome, stash folder, skip AI, say no to usage data, open My Stash', async ({
+  firstRun: app
+}) => {
   const { window } = app
 
   await expect(window.getByText('Welcome to DesignStash')).toBeVisible()

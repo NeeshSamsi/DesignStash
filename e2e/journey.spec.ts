@@ -55,7 +55,9 @@ test('gather, sort, look over, and find the mockups in My Stash', async ({ app }
   })
 })
 
-test('mockups from one folder are proposed as a pile, looked over as one and stashed whole', async ({ app }) => {
+test('mockups from one folder are proposed as a pile, looked over as one and stashed whole', async ({
+  app
+}) => {
   const { window } = app
   const desk = join(app.userData, 'Desktop')
   makePsds(join(desk, 'Clay phones'), ['phone_front', 'phone_side', 'phone_back'])
@@ -74,7 +76,10 @@ test('mockups from one folder are proposed as a pile, looked over as one and sta
   // Piles come first, and the pile's top is the first step.
   await expect(window.getByText('Pile 1 of 1', { exact: true })).toBeVisible()
   await expect(window.getByRole('textbox', { name: 'Title' })).toHaveValue('Stub phone_back')
-  await window.getByRole('button', { name: /Review/ }).first().click()
+  await window
+    .getByRole('button', { name: /Review/ })
+    .first()
+    .click()
   await window.getByRole('button', { name: /^Stash pile/ }).click()
 
   // The laptop is next, on its own.

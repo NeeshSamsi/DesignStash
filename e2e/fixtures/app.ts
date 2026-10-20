@@ -22,7 +22,10 @@ export interface E2EApp {
   /** The stash folder the app was started with. */
   stash: string
   /** Call a typed IPC channel from the page, the way the renderer does. */
-  invoke: <T = unknown>(channel: string, args?: unknown) => Promise<{ success: boolean; data?: T; error?: { code: string } }>
+  invoke: <T = unknown>(
+    channel: string,
+    args?: unknown
+  ) => Promise<{ success: boolean; data?: T; error?: { code: string } }>
 }
 
 /** A folder of real PSDs (with a usable embedded preview) outside the stash, like files on a Desktop. */
@@ -34,7 +37,11 @@ export function makePsds(dir: string, names: string[]): string[] {
     const path = join(dir, `${name}.psd`)
     // Every file gets its own colour, so none is mistaken for a duplicate of another.
     const n = psdCounter++
-    buildPsdWithComposite(path, { width: 640, height: 480, color: { r: (n * 37) % 256, g: (n * 91 + 30) % 256, b: (n * 53 + 90) % 256 } })
+    buildPsdWithComposite(path, {
+      width: 640,
+      height: 480,
+      color: { r: (n * 37) % 256, g: (n * 91 + 30) % 256, b: (n * 53 + 90) % 256 }
+    })
     return path
   })
 }
@@ -43,7 +50,9 @@ export function makePsds(dir: string, names: string[]): string[] {
  * Launch the built app (`pnpm build` first) with a fresh userData folder. Nothing is shared between
  * tests and nothing touches the real user's stash.
  */
-export async function launchApp(opts: LaunchOptions = {}): Promise<E2EApp & { close: () => Promise<void> }> {
+export async function launchApp(
+  opts: LaunchOptions = {}
+): Promise<E2EApp & { close: () => Promise<void> }> {
   const { onboarded = true } = opts
   const userData = mkdtempSync(join(tmpdir(), 'designstash-e2e-'))
   const stash = join(userData, 'Library')
@@ -85,7 +94,10 @@ export async function launchApp(opts: LaunchOptions = {}): Promise<E2EApp & { cl
     stash,
     invoke: (channel, args) =>
       window.evaluate(
-        ([c, a]) => (window as unknown as { api: { invoke: (c: string, a: unknown) => Promise<never> } }).api.invoke(c as string, a),
+        ([c, a]) =>
+          (
+            window as unknown as { api: { invoke: (c: string, a: unknown) => Promise<never> } }
+          ).api.invoke(c as string, a),
         [channel, args] as const
       ),
     close: async () => {
