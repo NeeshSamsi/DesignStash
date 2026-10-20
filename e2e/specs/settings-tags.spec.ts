@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test'
 import { test, expect } from '../fixtures/app'
 import { makeTag, seedStash, tagMockup } from '../fixtures/seed'
+import { clickUndo } from '../fixtures/toast'
 
 /**
  * Settings › Tags: two tiers (category, then tag), edited where they are. Add, rename, move, merge
@@ -171,7 +172,7 @@ test.describe('Settings › Tags', () => {
     await expect(window.getByText('Removed from 1 mockup')).toBeVisible()
     await expect(tagRow(dialog, 'Zephyr Phone')).toHaveCount(0)
 
-    await window.getByRole('button', { name: 'Undo' }).click()
+    await clickUndo(window)
     await expect(tagRow(dialog, 'Zephyr Phone')).toBeVisible()
     await expect(tagRow(dialog, 'Zephyr Phone')).toContainText('1 mockup')
   })

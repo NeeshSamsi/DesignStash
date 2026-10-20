@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { test, expect, makePsds, type E2EApp } from '../fixtures/app'
+import { clickUndo } from '../fixtures/toast'
 
 /**
  * Stash check: a PSD that turns up in the stash folder can be added (it lands in To sort) or
@@ -60,7 +61,7 @@ test.describe('Stash check', () => {
     await expect(modal.getByText('stray_one', { exact: true })).toHaveCount(0)
     await expect(modal.getByRole('button', { name: 'Done' })).toBeEnabled()
 
-    await window.getByRole('button', { name: 'Undo' }).click()
+    await clickUndo(window)
     await expect(modal.getByText('stray_one', { exact: true })).toBeVisible()
     await expect(modal.getByText('stray_two', { exact: true })).toBeVisible()
     // Nothing was added to To sort by ignoring.

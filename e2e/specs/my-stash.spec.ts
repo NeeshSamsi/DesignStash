@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test'
 import { test, expect } from '../fixtures/app'
 import { makeTag, seedStash, showMyStash, tagMockup } from '../fixtures/seed'
+import { clickUndo } from '../fixtures/toast'
 
 /**
  * My Stash: selecting, making a pile, trashing with Undo, and filtering by tag.
@@ -82,16 +83,16 @@ test.describe('My Stash', () => {
     await title(cards.filter({ hasText: laptop!.title })).click()
     await window.keyboard.press('Backspace')
 
-    // Reversible, so there is no confirm: the card goes and a toast offers Undo.
+    // Reversible, so there is no confirm: the card goes and a toast offers Undo. The toast only
+    // stays a few seconds, so check the rest after pressing it.
     await expect(window.getByRole('alertdialog')).toHaveCount(0)
     await expect(window.getByText('Moved to Trash')).toBeVisible()
     await expect(cards).toHaveCount(3)
-    await expect(window.getByText(laptop!.title, { exact: true })).toHaveCount(0)
-    await expect(window.getByText(front!.title, { exact: true })).toBeVisible()
+    await clickUndo(window)
 
-    await window.getByRole('button', { name: 'Undo' }).click()
     await expect(cards).toHaveCount(4)
     await expect(window.getByText(laptop!.title, { exact: true })).toBeVisible()
+    await expect(window.getByText(front!.title, { exact: true })).toBeVisible()
   })
 
   test('filters by a tag, and by "All in <category>"', async ({ app }) => {
