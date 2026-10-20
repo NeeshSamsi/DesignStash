@@ -18,6 +18,8 @@ export interface PageHeaderProps extends PageHeaderContractProps {
   className?: string
   /** Makes the parent crumb a button that goes back (the pile page's “My Stash”). */
   onParent?: () => void
+  /** Sits right after the description, e.g. a Clear link while a search is on. */
+  descriptionAction?: ReactNode
 }
 
 /**
@@ -26,7 +28,13 @@ export interface PageHeaderProps extends PageHeaderContractProps {
  * The header stays whatever the item count is: pass a description like "0 mockups" rather than
  * hiding it. The actions area renders when `children` are passed.
  */
-export function PageHeader({ children, className, onParent, ...rest }: PageHeaderProps) {
+export function PageHeader({
+  children,
+  className,
+  onParent,
+  descriptionAction,
+  ...rest
+}: PageHeaderProps) {
   const props = { ...PAGE_HEADER_DEFAULTS, ...rest }
   const page = props.variant === 'page'
   const Title = page ? 'h1' : 'h2'
@@ -68,7 +76,15 @@ export function PageHeader({ children, className, onParent, ...rest }: PageHeade
           </div>
         )}
       </div>
-      {props.showDescription && <p className={pageHeaderDescriptionClass}>{props.description}</p>}
+      {props.showDescription &&
+        (descriptionAction ? (
+          <div className="flex items-center gap-2">
+            <p className={pageHeaderDescriptionClass}>{props.description}</p>
+            {descriptionAction}
+          </div>
+        ) : (
+          <p className={pageHeaderDescriptionClass}>{props.description}</p>
+        ))}
     </header>
   )
 }

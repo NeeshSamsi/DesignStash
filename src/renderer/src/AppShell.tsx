@@ -13,6 +13,7 @@ import { SettingsModal } from './screens/settings'
 import { StashCheckModal } from './screens/integrity'
 import { Toaster } from './ui/sonner'
 import { ActivityDock } from './components/ActivityDock'
+import { Button } from './components/Button'
 import { AppWindow } from './components/AppWindow'
 import { GlobalSearch } from './components/GlobalSearch'
 import { PageHeader } from './components/PageHeader'
@@ -240,6 +241,15 @@ export default function AppShell({
                   {...(pile ? { onParent: () => useDetailsStore.getState().closePile() } : {})}
                   {...(header.parent !== undefined ? { parent: header.parent } : {})}
                   description={status ? `${header.description} · ${status}` : header.description}
+                  {...(!pile && query.trim() !== '' && (view === 'all' || view === 'starred')
+                    ? {
+                        descriptionAction: (
+                          <Button variant="link" size="xs" onClick={() => setQuery('')}>
+                            Clear
+                          </Button>
+                        )
+                      }
+                    : {})}
                 >
                   {/* Pages put their actions here with HeaderActions. */}
                   <div ref={setActionsEl} className="contents" />

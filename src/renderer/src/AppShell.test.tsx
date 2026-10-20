@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { act, render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent, within } from '@testing-library/react'
 import AppShell from './AppShell'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
@@ -156,6 +156,29 @@ describe('AppShell header', () => {
       </AppShell>
     )
     expect(screen.getByText('2 results for “macbook”')).toBeTruthy()
+  })
+
+  it('offers a Clear link by the search count, which clears the search', () => {
+    useLibraryStore.setState({ query: 'macbook', items: [item(1)] })
+    useUiStore.setState({ searchText: 'macbook' })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    const header = document.querySelector('[data-ds="PageHeader"]')!
+    fireEvent.click(within(header as HTMLElement).getByRole('button', { name: 'Clear' }))
+    expect(useLibraryStore.getState().query).toBe('')
+  })
+
+  it('shows no Clear link without a search', () => {
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    const header = document.querySelector('[data-ds="PageHeader"]')!
+    expect(within(header as HTMLElement).queryByRole('button', { name: 'Clear' })).toBeNull()
   })
 
   it('hides a zero badge in the sidebar', () => {
