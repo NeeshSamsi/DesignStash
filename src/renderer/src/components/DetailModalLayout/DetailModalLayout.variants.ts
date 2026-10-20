@@ -1,23 +1,19 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=222-4366
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const detailModalLayoutVariants = cva('', {
+// Figma DetailModal layout 222:4366: a 896px panel (Modal xl) of header, two-pane body and footer.
+// The panel's own look (surface-2, border/base, radius xl, 24px padding) comes from the dialog it sits in.
+export const detailModalLayoutVariants = cva('flex flex-col gap-5 w-224 sm:max-w-none', {
   variants: {
-    variant: {
-      single: '',
-      group: ''
-    },
-    state: {
-      loaded: '',
-      dirty: '',
-      saving: '',
-      loading: '',
-      error: ''
-    }
+    variant: { single: '', group: '' },
+    // Each state changes the content (skeleton, error, Save), not the panel.
+    state: { loaded: '', dirty: '', saving: '', loading: '', error: '' }
   },
   defaultVariants: { variant: 'single', state: 'loaded' }
 })
+
+export const DETAIL_HEADER = 'flex items-center gap-2'
+export const DETAIL_BODY = 'flex items-start gap-6'
+/** The media column is 544 wide in Figma: the 480 cover, the deck's peek and room to breathe. */
+export const DETAIL_MEDIA = 'flex w-136 shrink-0 flex-col gap-3'
+export const DETAIL_META = 'flex min-w-0 flex-1 flex-col gap-3'
+export const DETAIL_FOOTER = 'flex items-center justify-between gap-2'

@@ -217,7 +217,7 @@ export function CoverPanel({
           )}
         />
 
-        {showDeck && (
+        {showDeck && deckLabel !== '' && (
           <Badge variant="secondary" className="absolute top-3 left-3">
             {deckLabel}
           </Badge>
