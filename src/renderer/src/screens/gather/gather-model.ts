@@ -2,10 +2,14 @@ import type { CopyFile, CopyStatus } from '@shared/ipc/import'
 import type { CopyFileRowState } from '@renderer/components/CopyFileRow/CopyFileRow.types'
 import type { CopyWidgetState } from '@renderer/components/CopyWidget/CopyWidget.types'
 import type { AppView } from '@renderer/stores/uiStore'
+import { formatBytes } from '../settings/settings-copy'
 
 /** Pure rules for Gather: what the widget says, what a drag means, what a drop becomes. */
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+/** 1204 reads as "1,204". */
+export const formatCount = (n: number) => n.toLocaleString('en-US')
+
+const plural = (n: number, one: string, many: string) => `${formatCount(n)} ${n === 1 ? one : many}`
 
 /** Files that were looked at: landed, or left out as a duplicate or unreadable (not-PSDs never count). */
 export function processed(haul: CopyStatus): number {
@@ -67,21 +71,23 @@ export interface WidgetCopy {
 
 /** The headline and the line under it, from Figma's CopyWidget states. */
 export function widgetCopy(haul: CopyStatus): WidgetCopy {
-  const done = processed(haul)
   const percent = overallPercent(haul)
-  const count = `${done} of ${haul.total}`
+  const total = formatCount(haul.total)
+  const count = `${formatCount(processed(haul))} of ${total}`
+  const landed = formatCount(haul.landed)
   switch (widgetState(haul)) {
     case 'done': {
       const skipped = skippedTotal(haul)
       return {
-        title: skipped > 0 ? `${haul.landed} copied · ${skipped} skipped` : `${haul.landed} copied`,
+        title:
+          skipped > 0 ? `${landed} copied · ${formatCount(skipped)} skipped` : `${landed} copied`,
         percent: 100
       }
     }
     case 'stopped':
       return {
         title: `Copying stopped at ${count}`,
-        description: `Keep the ${haul.landed} that made it in, or undo all?`,
+        description: `Keep the ${landed} that made it in, or undo all?`,
         percent
       }
     case 'error': {
@@ -90,13 +96,24 @@ export function widgetCopy(haul: CopyStatus): WidgetCopy {
         title: `Copying paused · ${why}`,
         description: `${
           haul.pauseReason === 'source-gone' ? 'Plug it back in' : 'Free up some space'
-        }, then retry. The ${haul.landed} already copied ${haul.landed === 1 ? 'is' : 'are'} safe in To sort.`,
+        }, then retry. The ${landed} already copied ${haul.landed === 1 ? 'is' : 'are'} safe in To sort.`,
         percent
       }
     }
     default:
-      return { title: `Copying ${count}`, percent }
+      // Files that landed, so the number matches the rows marked Copied.
+      return { title: `${landed} of ${total} copied`, percent }
   }
+}
+
+/**
+ * The line under a file's name. A copied file says how big it was; a file still queued when the
+ * copy was stopped never made it. Null leaves the row's plain sentence for the state.
+ */
+export function rowDetail(file: CopyFile, haul: CopyStatus): string | null {
+  if (file.status === 'done') return file.size ? `Copied · ${formatBytes(file.size)}` : 'Copied'
+  if (file.status === 'queued' && haul.state === 'cancelled') return 'Not copied'
+  return null
 }
 
 /** One file's row: a skipped file shows why, a landed one shows done. */

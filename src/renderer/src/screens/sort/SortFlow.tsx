@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { FlowModal } from '@renderer/components/FlowModal'
 import { useShortcut } from '@renderer/lib/shortcuts'
+import { useFlowOpen } from '@renderer/stores/copyStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { Button } from '@renderer/ui/button'
 import { Skeleton } from '@renderer/ui/skeleton'
@@ -256,7 +257,9 @@ export function SortFlow({
   onClose,
   onLookThemOver
 }: SortFlowProps) {
-  if (!open || batchId === null) return null
+  const shown = open && batchId !== null
+  useFlowOpen(shown)
+  if (!shown) return null
   return (
     <SortLoader
       key={batchId}

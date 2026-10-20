@@ -9,6 +9,7 @@ import {
   overlayFor,
   processed,
   remainingText,
+  rowDetail,
   rowState,
   undoneMessage,
   widgetCopy,
@@ -93,7 +94,33 @@ describe('widget', () => {
   })
 
   it('says how far along a copy is', () => {
-    expect(widgetCopy(haul())).toEqual({ title: 'Copying 12 of 40', percent: 30 })
+    expect(widgetCopy(haul())).toEqual({ title: '12 of 40 copied', percent: 30 })
+  })
+
+  it('puts thousands separators in the counts', () => {
+    expect(widgetCopy(haul({ total: 1204, landed: 1204 })).title).toBe('1,204 of 1,204 copied')
+    expect(
+      widgetCopy(
+        haul({
+          state: 'done',
+          landed: 1200,
+          skipped: { notPsd: 1000, duplicate: 4, unreadable: 0 }
+        })
+      ).title
+    ).toBe('1,200 copied · 1,004 skipped')
+  })
+
+  it('says how big a copied file is, and that a file never reached after a stop was not copied', () => {
+    const file = (over: Partial<CopyFile>): CopyFile => ({
+      jobId: 1,
+      name: 'a.psd',
+      status: 'done',
+      ...over
+    })
+    expect(rowDetail(file({ size: 312_000_000 }), haul())).toBe('Copied · 312 MB')
+    expect(rowDetail(file({}), haul())).toBe('Copied')
+    expect(rowDetail(file({ status: 'queued' }), haul())).toBeNull()
+    expect(rowDetail(file({ status: 'queued' }), haul({ state: 'cancelled' }))).toBe('Not copied')
   })
 
   it('summarises a finished haul with what was skipped', () => {

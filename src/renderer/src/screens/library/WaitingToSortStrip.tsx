@@ -35,11 +35,10 @@ export function WaitingToSortStrip({ onSort }: WaitingToSortStripProps) {
   const shown = waiting > 0 && !(hiddenAt !== null && waiting <= hiddenAt)
 
   const copying = haul !== null && (haul.state === 'running' || haul.state === 'paused')
-  const title = copying
-    ? `Copying ${haul.landed} of ${haul.total} · ${waiting} waiting to be sorted`
-    : `${pluralise(waiting, 'mockup', 'mockups')} waiting to be sorted`
+  // The copy card owns the "N of M copied" count and the per-file detail; the strip only says what waits.
+  const title = `${pluralise(waiting, 'mockup', 'mockups')} waiting to be sorted`
   const hint = copying
-    ? 'They land in To sort as they arrive. You can start sorting what is here.'
+    ? 'Still copying. They land in To sort as they arrive, so you can start on what is here.'
     : 'They landed in To sort. Sort them into piles, then look them over to stash them.'
 
   // The newest arrivals lead; a slot whose mockup has not been listed yet shows as loading.

@@ -2,7 +2,8 @@ import type { AiStatus, InboxItem } from '@shared/inbox'
 
 /** Pure copy and rules for To sort, To stash and Trash. The pages wire these to IPC. */
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+const plural = (n: number, one: string, many: string) =>
+  `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
 
 /** Cards still waiting on an AI suggestion get the quiet badge. Ready, failed and off get none. */
 export function sniffingBadge(status: AiStatus): string | undefined {

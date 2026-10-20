@@ -117,14 +117,14 @@ describe('WaitingToSortStrip', () => {
     await screen.findByText('1 mockup waiting to be sorted')
 
     act(() => useCopyStore.getState().setHaul(haul({ landed: 1 })))
-    expect(screen.getByText('Copying 1 of 38 · 1 waiting to be sorted')).toBeTruthy()
+    expect(screen.getByText('1 mockup waiting to be sorted')).toBeTruthy()
 
     land(
       [1, 2, 3, 4].map((id) => waitingItem(id)),
       12
     )
     act(() => useCopyStore.getState().setHaul(haul({ landed: 12 })))
-    expect(await screen.findByText('Copying 12 of 38 · 12 waiting to be sorted')).toBeTruthy()
+    expect(await screen.findByText('12 mockups waiting to be sorted')).toBeTruthy()
     expect(covers()).toHaveLength(3)
 
     act(() => useCopyStore.getState().setHaul(haul({ state: 'done', landed: 38 })))

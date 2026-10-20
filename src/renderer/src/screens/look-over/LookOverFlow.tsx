@@ -12,6 +12,7 @@ import { PileRail } from '@renderer/components/PileRail'
 import { PileStep } from '@renderer/components/PileStep'
 import { Tooltip } from '@renderer/components/Tooltip'
 import { useTagVocabulary } from '@renderer/hooks/use-tag-vocabulary'
+import { useFlowOpen } from '@renderer/stores/copyStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { Skeleton } from '@renderer/ui/skeleton'
@@ -101,6 +102,7 @@ function Skeletons() {
 export function LookOverFlow({ open, onClose, onBackToSort }: LookOverFlowProps) {
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  useFlowOpen(open)
 
   useEffect(() => {
     if (!open) return
