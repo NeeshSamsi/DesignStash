@@ -4,6 +4,7 @@ import { useLibraryStore } from './stores/libraryStore'
 import { DetailsSidebar, DiscardAsk } from './screens/details/DetailsSidebar'
 import { mockupsLabel } from './screens/details/details-model'
 import { usePanelLayout } from './screens/details/use-panel-layout'
+import { useRevealSelected } from './screens/details/use-reveal-selected'
 import { useDetailsEscape } from './screens/details/use-details-escape'
 import { useDetailsStore } from './stores/detailsStore'
 import { PANEL_SHARE } from './screens/details/panel-share'
@@ -139,6 +140,7 @@ export default function AppShell({
   useDetailsEscape()
   // The layout follows the selection inside a view transition, so the grid morphs instead of snapping.
   const panelOpen = usePanelLayout(sidebarOpen)
+  useRevealSelected(panelOpen)
   // Toasts and the dock sit 16px inside the container's bottom-right corner: left of the sidebar while
   // it is open, moving with the panel (they have transition names) so they never cover its buttons.
   const dockRight = DOCK_INSET + (panelOpen ? PANEL_SHARE : 0)
