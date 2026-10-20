@@ -5,6 +5,9 @@ import type { AiModelInfo } from '@shared/ipc/ai'
 import { OnboardingFlow, type OnboardingPage } from './OnboardingFlow'
 import { installApi, ok } from './test-api'
 
+const toasts = vi.hoisted(() => ({ toast: vi.fn(), undoToast: vi.fn() }))
+vi.mock('@renderer/stores/toastStore', () => toasts)
+
 const model = (id: string, over: Partial<AiModelInfo> = {}): AiModelInfo => ({
   id,
   name: `Model ${id}`,
@@ -117,6 +120,48 @@ describe('welcome and stash folder', () => {
   })
 })
 
+describe('stash folder choice', () => {
+  it('Choose another, then cancelling the picker, cannot leave the old stash proceedable', async () => {
+    let picks = 0
+    const api = installApi(
+      base({
+        [IPC_CHANNELS.DIALOG_SELECT_DIRECTORY]: () =>
+          ok({ path: picks++ === 0 ? '/Users/ada/Old' : null }),
+        [IPC_CHANNELS.BOOT_CHECK_FOLDER]: () => ok({ state: 'ok', hasLibrary: true }),
+        [IPC_CHANNELS.SETTINGS_SET_LIBRARY_ROOT]: (r) =>
+          ok({ libraryRoot: (r as { path: string }).path })
+      })
+    )
+    mount('stash')
+    await screen.findByText('~/Pictures/DesignStash')
+    fireEvent.click(btn('Choose…'))
+    await screen.findByRole('alertdialog')
+    fireEvent.click(btn('Choose another'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.DIALOG_SELECT_DIRECTORY)).toHaveLength(2))
+    // The picker was cancelled: back to the folder that was chosen before, nothing unconfirmed.
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByText('~/Pictures/DesignStash')).toBeTruthy()
+    fireEvent.click(btn('Continue'))
+    await screen.findByRole('heading', { name: 'Set up on-device AI' })
+    expect(api.sent(IPC_CHANNELS.SETTINGS_SET_LIBRARY_ROOT)).toHaveLength(0)
+  })
+
+  it('cuts a long path in the middle and keeps the whole one for the tooltip', async () => {
+    installApi(
+      base({
+        [IPC_CHANNELS.SETTINGS_GET]: () =>
+          ok({
+            libraryRoot: '/Volumes/Studio SSD/Work/Clients/Acme/DesignStash',
+            onboarded: false,
+            telemetryEnabled: true
+          })
+      })
+    )
+    mount('stash')
+    expect(await screen.findByText('Studio SSD/…/Acme/DesignStash')).toBeTruthy()
+  })
+})
+
 describe('AI setup', () => {
   const lastRow = () => document.querySelectorAll('[data-ds="ModelRow"]')
 
@@ -146,8 +191,8 @@ describe('AI setup', () => {
       secondsLeft: 70
     })
     expect(screen.getByText(/860 MB of 2.1 GB/)).toBeTruthy()
-    expect(btn('Cancel download')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+    expect(btn('Continue').hasAttribute('disabled')).toBe(false)
+    expect(btn('Back')).toBeTruthy()
 
     api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
       modelId: 'a',
@@ -156,8 +201,37 @@ describe('AI setup', () => {
       phase: 'verifying'
     })
     expect(await screen.findByText('Checking the download…')).toBeTruthy()
-    expect((screen.getByText('Checking…').closest('button') as HTMLButtonElement).disabled).toBe(
-      true
+    expect(btn('Continue').hasAttribute('disabled')).toBe(false)
+  })
+
+  it('Continue mid-download leaves it running, then switches the model on and says so', async () => {
+    const api = installApi(base({ [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: () => ok({ started: true }) }))
+    mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(btn('Download'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toHaveLength(1))
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
+      modelId: 'a',
+      receivedBytes: 860_000_000,
+      totalBytes: 2_100_000_000,
+      phase: 'downloading'
+    })
+    fireEvent.click(btn('Continue'))
+    expect(await screen.findByText('Your privacy')).toBeTruthy()
+    expect(api.sent(IPC_CHANNELS.AI_CANCEL_DOWNLOAD)).toHaveLength(0)
+
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
+      modelId: 'a',
+      receivedBytes: 2_100_000_000,
+      totalBytes: 2_100_000_000,
+      phase: 'done'
+    })
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_SET_ACTIVE)).toEqual([{ id: 'a' }]))
+    await waitFor(() =>
+      expect(toasts.toast).toHaveBeenCalledWith({
+        variant: 'success',
+        message: 'Model a is ready and switched on'
+      })
     )
   })
 

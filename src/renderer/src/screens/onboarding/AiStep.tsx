@@ -9,6 +9,7 @@ import { Switch } from '@renderer/components/Switch'
 import { formatBytes } from '../settings/settings-copy'
 import { aiHeading, aiScreen, hardwareView, modelDetail, rowView, type AiScreen } from './ai-setup'
 import { AI_STEP } from './onboarding-copy'
+import { continueInBackground } from './background-download'
 import { useAiSetup } from './useAiSetup'
 
 export interface AiStepProps {
@@ -39,9 +40,18 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
     screen === 'failed' && ai.event?.phase === 'error' ? (ai.event.reason ?? null) : null
   const heading = aiHeading(screen, AI_STEP, selected)
 
+  /** A download in flight carries on without this step, and switches the model on when it lands. */
+  const keepDownloading = () => {
+    if (ai.aiOn && working && selected) continueInBackground(selected)
+  }
   const leave = async () => {
     if (ai.aiOn && screen === 'complete') await ai.activate()
+    keepDownloading()
     onNext()
+  }
+  const back = () => {
+    keepDownloading()
+    onBack()
   }
   const skip = () => {
     ai.setAiOn(false)
@@ -126,15 +136,12 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
         body={heading.body}
         content={content}
         footer={screen !== 'empty'}
-        busy={screen === 'verifying'}
-        busyLabel="Checking…"
         primaryLabel={footer.primary}
         skipLabel="Skip AI"
         {...(footer.skip ? { onSkip: skip } : {})}
-        {...(working ? {} : { onBack })}
+        onBack={back}
         onPrimary={() => {
-          if (screen === 'downloading') void ai.cancel()
-          else if (screen === 'choose' || screen === 'failed') void ai.download()
+          if (screen === 'choose' || screen === 'failed') void ai.download()
           else if (screen === 'empty') void ai.reload()
           else void leave()
         }}
@@ -162,8 +169,6 @@ function footerFor(screen: AiScreen): { primary: string; skip: boolean } {
   switch (screen) {
     case 'choose':
       return { primary: 'Download', skip: true }
-    case 'downloading':
-      return { primary: 'Cancel download', skip: false }
     case 'failed':
       return { primary: 'Retry download', skip: true }
     case 'empty':

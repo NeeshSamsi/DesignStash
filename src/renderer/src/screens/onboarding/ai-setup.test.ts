@@ -7,9 +7,9 @@ import {
   hardwareView,
   modelDetail,
   partialDownload,
-  rowView,
-  type HardwareInfo
+  rowView
 } from './ai-setup'
+import type { HardwareInfo } from './model-phase'
 
 const model = (id: string, over: Partial<AiModelInfo> = {}): AiModelInfo => ({
   id,

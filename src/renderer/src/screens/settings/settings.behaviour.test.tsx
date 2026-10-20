@@ -422,7 +422,7 @@ describe('Settings · AI model', () => {
     expect(screen.getByText('Best fit for this Mac')).not.toBeNull()
   })
 
-  it('collapses the models when on-device AI is switched off, and says titles come from file names', async () => {
+  it('keeps the models listed when on-device AI is off, with Use disabled and a reason', async () => {
     open()
     goto('AI model')
     const toggle = await screen.findByRole('switch', { name: 'Use on-device AI' })
@@ -430,8 +430,13 @@ describe('Settings · AI model', () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: null })
     )
-    expect(screen.queryByText('Your models')).toBeNull()
     expect(screen.getByText(/Titles come from file names/)).not.toBeNull()
+    expect(screen.getByText('Your models')).not.toBeNull()
+    expect(screen.getByText('Turn on AI to use a model.')).not.toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Delete' }).length).toBeGreaterThan(0)
+    for (const use of screen.queryAllByRole('button', { name: 'Use this model' })) {
+      expect((use as HTMLButtonElement).disabled).toBe(true)
+    }
   })
 
   it('downloads a model with progress, speed and time left, and cancels it', async () => {
@@ -477,6 +482,40 @@ describe('Settings · AI model', () => {
     )
     fireEvent.click(btn('Try again'))
     await waitFor(() => expect(calls(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toHaveLength(1))
+  })
+
+  it('shows a model being checked as its own state, with nothing to cancel', async () => {
+    open()
+    goto('AI model')
+    await screen.findByText('Available to download')
+    act(() =>
+      pushes[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]!({
+        modelId: 'qwen7b',
+        receivedBytes: 5_540_000_000,
+        totalBytes: 5_540_000_000,
+        phase: 'verifying'
+      })
+    )
+    expect(await screen.findByText('Checking the download…')).not.toBeNull()
+    expect(screen.queryByText(/Downloading \d+%/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('loads the models again when a download fails, so sizes are never stale', async () => {
+    open()
+    goto('AI model')
+    await screen.findByText('Available to download')
+    const before = calls(IPC_CHANNELS.AI_LIST_MODELS).length
+    act(() =>
+      pushes[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]!({
+        modelId: 'qwen7b',
+        receivedBytes: 1,
+        totalBytes: 5_540_000_000,
+        phase: 'error',
+        reason: 'offline'
+      })
+    )
+    await waitFor(() => expect(calls(IPC_CHANNELS.AI_LIST_MODELS).length).toBe(before + 1))
   })
 
   it('uses a downloaded model with one button, never the whole card', async () => {

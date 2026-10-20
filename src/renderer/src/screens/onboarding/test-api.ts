@@ -15,7 +15,7 @@ export interface TestApi {
 
 /** `window.api` for the start screens: handlers by channel, a push bus, and unlisted channels succeed. */
 export function installApi(handlers: Record<string, Handler> = {}): TestApi {
-  const pushes = new Map<string, (payload: unknown) => void>()
+  const pushes = new Map<string, Set<(payload: unknown) => void>>()
   const invoke = vi.fn(async (channel: string, request: unknown) => {
     const handler = handlers[channel]
     return handler ? handler(request) : ok({})
@@ -24,13 +24,15 @@ export function installApi(handlers: Record<string, Handler> = {}): TestApi {
     appName: 'DesignStash',
     invoke,
     subscribe: vi.fn((channel: string, cb: (payload: unknown) => void) => {
-      pushes.set(channel, cb)
-      return () => pushes.delete(channel)
+      const listeners = pushes.get(channel) ?? new Set()
+      listeners.add(cb)
+      pushes.set(channel, listeners)
+      return () => void listeners.delete(cb)
     })
   } as unknown as typeof window.api
   return {
     invoke,
     sent: (channel) => invoke.mock.calls.filter(([c]) => c === channel).map(([, r]) => r),
-    push: (channel, payload) => act(() => pushes.get(channel)?.(payload))
+    push: (channel, payload) => act(() => pushes.get(channel)?.forEach((cb) => cb(payload)))
   }
 }

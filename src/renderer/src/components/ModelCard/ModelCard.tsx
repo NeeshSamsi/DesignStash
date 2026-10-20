@@ -24,6 +24,13 @@ export interface ModelCardProps
   remaining?: string
   /** `failed`: why it stopped, in plain words. */
   failureReason?: string
+  /** `downloading`: the file is whole and being checked, so there is nothing to cancel. */
+  verifying?: boolean
+  /** `available`: a stopped download is on disk. Replaces the languages and turns Download into Resume. */
+  resumeNote?: string
+  /** Use this model is off, with the reason as its tooltip (AI is switched off). */
+  useDisabled?: boolean
+  downloadDisabled?: boolean
   onUse?: () => void
   onDownload?: () => void
   onCancel?: () => void
@@ -68,6 +75,10 @@ export function ModelCard({
   rate = '18 MB/s',
   remaining = 'about 3 min left',
   failureReason = FAILURE,
+  verifying = false,
+  resumeNote,
+  useDisabled = false,
+  downloadDisabled = false,
   onUse,
   onDownload,
   onCancel,
@@ -114,7 +125,7 @@ export function ModelCard({
           <>
             <div className="flex items-center gap-1.5 type-caption-xs-regular text-tertiary">
               <HugeiconsIcon icon={Globe02Icon} strokeWidth={1.5} className="size-3.5" />
-              {languages}
+              {resumeNote ?? languages}
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-1.5 type-caption-xs-regular text-tertiary">
@@ -132,7 +143,13 @@ export function ModelCard({
           <Button variant="secondary" size="sm" label="Delete" onClick={onDelete} />
         )}
         {state === 'downloaded' && (
-          <Button variant="secondary" size="sm" label="Use this model" onClick={onUse} />
+          <Button
+            variant="secondary"
+            size="sm"
+            label="Use this model"
+            disabled={useDisabled}
+            onClick={onUse}
+          />
         )}
 
         {state === 'downloading' && (
@@ -140,14 +157,17 @@ export function ModelCard({
             <Progress
               size="sm"
               showLabel={false}
-              label={`Downloading ${name}`}
+              label={verifying ? `Checking ${name}` : `Downloading ${name}`}
               percent={percent}
+              {...(verifying ? { state: 'indeterminate' as const } : {})}
               className="min-w-0 flex-1"
             />
             <p role="status" className="type-caption-xs-regular text-muted-foreground">
-              {progress}
+              {verifying ? 'Checking the download…' : progress}
             </p>
-            <Button variant="secondary" size="sm" label="Cancel" onClick={onCancel} />
+            {!verifying && (
+              <Button variant="secondary" size="sm" label="Cancel" onClick={onCancel} />
+            )}
           </>
         )}
 
@@ -155,9 +175,10 @@ export function ModelCard({
           <Button
             variant="secondary"
             size="sm"
-            label="Download"
+            label={resumeNote ? 'Resume' : 'Download'}
             showIconStart
             iconStart={Download04Icon}
+            disabled={downloadDisabled}
             onClick={onDownload}
           />
         )}

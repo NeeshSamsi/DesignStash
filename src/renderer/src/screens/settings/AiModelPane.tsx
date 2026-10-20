@@ -1,62 +1,33 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { AiDownloadProgress, AiModelInfo } from '@shared/ipc/ai'
+import type { AiModelInfo } from '@shared/ipc/ai'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { HardwareSummary } from '../../components/HardwareSummary'
 import { ModelCard, type ModelCardProps } from '../../components/ModelCard'
 import { SettingsGroup } from '../../components/SettingsLayout'
 import { Switch } from '../../components/Switch'
-import { subscribePush } from '../../lib/subscribe'
 import { toast, undoToast } from '../../stores/toastStore'
+import { modelPhase } from '../onboarding/model-phase'
+import { useModelCatalogue } from '../onboarding/useModelCatalogue'
 import { downloadFailureCopy, downloadRate, downloadRemaining, formatBytes } from './settings-copy'
-
-interface Hardware {
-  chip: string
-  totalMemoryGB: number
-  isAppleSilicon: boolean
-  recommendedTier: 'small' | 'medium' | 'large'
-}
 
 const languagesText = (languages: string[]) =>
   languages.length === 1 ? (languages[0] ?? '') : `${languages.length} languages`
 
 /** Settings › AI model: this Mac, the on-device switch, and the model cards. Actions are buttons only. */
 export function AiModelPane() {
-  const [hardware, setHardware] = useState<Hardware | null>(null)
-  const [models, setModels] = useState<AiModelInfo[]>([])
-  const [progress, setProgress] = useState<Record<string, AiDownloadProgress>>({})
+  const { loaded, hardware, models, events, reload: load, setEvent } = useModelCatalogue()
   const [on, setOn] = useState(false)
+  const started = useRef(false)
   const [deleting, setDeleting] = useState<AiModelInfo | null>(null)
-
-  const load = useCallback(async () => {
-    const [hw, list] = await Promise.all([
-      window.api.invoke(IPC_CHANNELS.AI_HARDWARE_INFO, undefined),
-      window.api.invoke(IPC_CHANNELS.AI_LIST_MODELS, undefined)
-    ])
-    if (hw.success) setHardware(hw.data)
-    if (list.success) {
-      setModels(list.data.models)
-      return list.data.models
-    }
-    return null
-  }, [])
 
   // The switch starts on when a model is in use; after that only the person changes it.
   useEffect(() => {
+    if (!loaded || started.current) return
+    started.current = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load().then((list) => {
-      if (list) setOn(list.some((m) => m.active))
-    })
-  }, [load])
-
-  useEffect(
-    () =>
-      subscribePush(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, (p) => {
-        setProgress((current) => ({ ...current, [p.modelId]: p }))
-        if (p.phase === 'done') void load()
-      }),
-    [load]
-  )
+    setOn(models.some((m) => m.active))
+  }, [loaded, models])
 
   const toggle = async (next: boolean) => {
     setOn(next)
@@ -74,11 +45,16 @@ export function AiModelPane() {
     void load()
   }
   const download = async (id: string) => {
-    setProgress((current) =>
-      Object.fromEntries(Object.entries(current).filter(([key]) => key !== id))
-    )
+    const model = models.find((m) => m.id === id)
+    setEvent(id, {
+      modelId: id,
+      receivedBytes: model?.downloadedBytes ?? 0,
+      totalBytes: model?.sizeBytes ?? 0,
+      phase: 'downloading'
+    })
     const res = await window.api.invoke(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id })
     if (!res.success || !res.data.started) {
+      setEvent(id, null)
       toast({
         variant: 'error',
         message: 'Couldn’t start the download',
@@ -89,6 +65,7 @@ export function AiModelPane() {
   }
   const cancel = async (id: string) => {
     await window.api.invoke(IPC_CHANNELS.AI_CANCEL_DOWNLOAD, { id })
+    setEvent(id, null)
     void load()
   }
 
@@ -122,20 +99,20 @@ export function AiModelPane() {
     }
   }
 
+  const supported = hardware ? hardware.isAppleSilicon : true
+
   const cardFor = (model: AiModelInfo) => {
-    const p = progress[model.id]
-    const busy = p && (p.phase === 'downloading' || p.phase === 'verifying')
-    const stopped = !model.installed && (p?.phase === 'error' || (!p && model.downloadedBytes > 0))
-    const state: ModelCardProps['state'] = model.installed
-      ? model.active
-        ? 'in-use'
-        : 'downloaded'
-      : busy
-        ? 'downloading'
-        : stopped
-          ? 'failed'
-          : 'available'
-    const percent = p && p.totalBytes > 0 ? (p.receivedBytes / p.totalBytes) * 100 : 0
+    const status = modelPhase(model, events[model.id] ?? null)
+    const state: ModelCardProps['state'] =
+      status.phase === 'installed'
+        ? model.active
+          ? 'in-use'
+          : 'downloaded'
+        : status.phase === 'downloading' || status.phase === 'verifying'
+          ? 'downloading'
+          : status.phase === 'failed'
+            ? 'failed'
+            : 'available'
     return (
       <ModelCard
         key={model.id}
@@ -147,10 +124,18 @@ export function AiModelPane() {
         bestFit={model.bestFit}
         quality={model.quality}
         speed={model.speed}
-        percent={percent}
-        rate={downloadRate(p?.bytesPerSecond)}
-        remaining={downloadRemaining(p?.secondsLeft)}
-        failureReason={downloadFailureCopy(p?.reason)}
+        percent={status.percent}
+        rate={downloadRate(status.bytesPerSecond)}
+        remaining={downloadRemaining(status.secondsLeft)}
+        failureReason={downloadFailureCopy(status.reason)}
+        verifying={status.phase === 'verifying'}
+        {...(status.phase === 'paused'
+          ? {
+              resumeNote: `${formatBytes(status.receivedBytes)} of ${formatBytes(status.totalBytes)} downloaded`
+            }
+          : {})}
+        useDisabled={!on}
+        downloadDisabled={!supported}
         onUse={() => void use(model.id)}
         onDownload={() => void download(model.id)}
         onCancel={() => void cancel(model.id)}
@@ -188,21 +173,26 @@ export function AiModelPane() {
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <p className="type-body-sm-medium text-foreground">Use on-device AI</p>
             <p className="type-body-sm-regular text-muted-foreground">
-              {on
-                ? 'Suggests titles and tags by looking at each cover. Nothing leaves your Mac.'
-                : 'Titles come from file names. Models you downloaded stay on your Mac.'}
+              {!supported
+                ? 'This Mac can’t run on-device AI. It needs Apple Silicon.'
+                : on
+                  ? 'Suggests titles and tags by looking at each cover. Nothing leaves your Mac.'
+                  : 'Titles come from file names. Models you downloaded stay on your Mac.'}
             </p>
           </div>
           <Switch
             showLabel={false}
             aria-label="Use on-device AI"
             checked={on}
-            disabled={hardware ? !hardware.isAppleSilicon : false}
+            disabled={!supported}
             onCheckedChange={(next) => void toggle(next)}
           />
         </div>
-        {on && (
+        {models.length > 0 && (
           <div className="flex flex-col gap-2 px-4 pt-3.5 pb-4">
+            {!on && supported && (
+              <p className="type-caption-xs-regular text-tertiary">Turn on AI to use a model.</p>
+            )}
             {yours.length > 0 && (
               <>
                 <p className="type-label-xs-medium text-tertiary">Your models</p>
