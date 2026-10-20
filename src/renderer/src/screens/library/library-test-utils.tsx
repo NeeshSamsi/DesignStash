@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem, LibraryQuery } from '@shared/library'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
+import { useTagTreeStore } from '@renderer/stores/tagTreeStore'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { useShortcutDispatcher } from '@renderer/lib/shortcuts'
@@ -74,6 +75,7 @@ export function setupApi(
 
 export function resetStores() {
   useLibraryStore.getState().reset()
+  useTagTreeStore.getState().reset()
   useUiStore.setState({ view: 'all', modal: null })
   useDetailsStore.getState().closePile()
   useDetailsStore.getState().syncTarget(null)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ApprovalTag } from '@shared/approval'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { CoverChange, MockupDetail } from '@shared/library'
@@ -6,6 +6,7 @@ import type { TagTree } from '@shared/tags'
 import type { NewTagRequest, TagVocabularyCategory } from '@renderer/components/TagEditor'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
+import { useTagTreeStore } from '@renderer/stores/tagTreeStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import {
   draftOf,
@@ -28,12 +29,12 @@ const toVocabulary = (tree: TagTree): TagVocabularyCategory[] =>
 
 async function fetchDetail(id: number) {
   try {
-    const [detailRes, treeRes] = await Promise.all([
+    const [detailRes, tree] = await Promise.all([
       window.api.invoke(IPC_CHANNELS.MOCKUP_DETAIL, { mockupId: id }),
-      window.api.invoke(IPC_CHANNELS.TAG_TREE, undefined)
+      useTagTreeStore.getState().load()
     ])
     if (!detailRes.success || !detailRes.data?.item) return null
-    return { detail: detailRes.data, tree: treeRes.success ? treeRes.data.tree : [] }
+    return { detail: detailRes.data, tree }
   } catch {
     return null
   }
@@ -51,7 +52,8 @@ export function useDetailsData(id: number) {
   const [status, setStatus] = useState<Status>('loading')
   const [loadKey, setLoadKey] = useState(0)
   const [detail, setDetail] = useState<MockupDetail | null>(null)
-  const [vocabulary, setVocabulary] = useState<TagVocabularyCategory[]>([])
+  const tagTree = useTagTreeStore((s) => s.tree)
+  const vocabulary = useMemo(() => toVocabulary(tagTree ?? []), [tagTree])
   const [form, setForm] = useState<DetailForm>({ title: '', description: '', tags: [] })
   const [saved, setSaved] = useState<DetailDraft>({ title: '', description: '', tagIds: [] })
   const [saving, setSaving] = useState(false)
@@ -78,7 +80,6 @@ export function useDetailsData(id: number) {
       }
       const next = formFromDetail(loaded.detail, loaded.tree)
       setDetail(loaded.detail)
-      setVocabulary(toVocabulary(loaded.tree))
       setForm(next)
       setSaved(draftOf(next))
       setStatus('ready')
@@ -321,26 +322,12 @@ export function useDetailsData(id: number) {
         categoryId: created.data.categoryId,
         categoryLabel: request.categoryLabel
       }
-      const known = categoryId
-      setVocabulary((current) =>
-        current.some((category) => category.categoryId === known)
-          ? current.map((category) =>
-              category.categoryId === known
-                ? {
-                    ...category,
-                    tags: [...category.tags, { tagId: tag.tagId, label: tag.label, usageCount: 0 }]
-                  }
-                : category
-            )
-          : [
-              ...current,
-              {
-                categoryId: known,
-                categoryLabel: request.categoryLabel,
-                tags: [{ tagId: tag.tagId, label: tag.label, usageCount: 0 }]
-              }
-            ]
+      const { addTag, load } = useTagTreeStore.getState()
+      addTag(
+        { categoryId, categoryLabel: request.categoryLabel },
+        { tagId: tag.tagId, label: tag.label }
       )
+      void load()
       return tag
     } catch (error) {
       toast({

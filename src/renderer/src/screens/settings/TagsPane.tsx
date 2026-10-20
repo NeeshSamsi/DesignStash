@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { TagTree as TagTreeData, TagTreeNode } from '@shared/tags'
 import { FormDialog } from '../../components/FormDialog'
 import { Select } from '../../components/Select'
 import { TagTree } from '../../components/TagTree'
+import { useTagTreeStore } from '../../stores/tagTreeStore'
 import { toast, undoToast } from '../../stores/toastStore'
 import { mockupCount } from './settings-copy'
 
@@ -16,18 +17,13 @@ interface Merge {
 
 /** Settings › Tags: two tiers, no nesting. Add where the result appears; delete is instant with Undo. */
 export function TagsPane() {
-  const [tree, setTree] = useState<TagTreeData | null>(null)
+  const tree = useTagTreeStore((s) => s.tree)
+  const load = useTagTreeStore((s) => s.load)
   const [merge, setMerge] = useState<Merge | null>(null)
   const [dropping, setDropping] = useState<{ category: Category; to: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
-    const res = await window.api.invoke(IPC_CHANNELS.TAG_TREE, undefined)
-    if (res.success) setTree(res.data.tree)
-  }, [])
-
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
 

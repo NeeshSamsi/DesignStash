@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { TagTree } from '@shared/tags'
 import { mergeLingering } from '@renderer/lib/library-list'
 import type { FilterCategory } from '@renderer/lib/tag-filter'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
+import { useTagTreeStore } from '@renderer/stores/tagTreeStore'
 
 /** `loading` until the first answer; after that the page keeps showing the last list while it refetches. */
 export interface LibraryData {
@@ -56,7 +57,6 @@ export function useLibraryData(starredOnly: boolean): LibraryData {
   const kept = useLibraryStore((s) => s.cache[cacheKey] !== undefined)
   const loaded = fetched || kept
   const [failed, setFailed] = useState(false)
-  const [tagCategories, setTagCategories] = useState<FilterCategory[]>([])
   const lingering = useRef(new Set<number>())
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -121,15 +121,11 @@ export function useLibraryData(starredOnly: boolean): LibraryData {
     return () => kept.clear()
   }, [starredOnly])
 
+  // The filter lists whatever the tag store holds, so a rename in Settings shows here at once.
+  const tagTree = useTagTreeStore((s) => s.tree)
+  const tagCategories = useMemo(() => toFilterCategories(tagTree ?? []), [tagTree])
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const res = await window.api.invoke(IPC_CHANNELS.TAG_TREE, undefined)
-      if (!cancelled && res.success) setTagCategories(toFilterCategories(res.data.tree))
-    })()
-    return () => {
-      cancelled = true
-    }
+    void useTagTreeStore.getState().load()
   }, [])
 
   const keepLingering = useCallback((id: number) => void lingering.current.add(id), [])
