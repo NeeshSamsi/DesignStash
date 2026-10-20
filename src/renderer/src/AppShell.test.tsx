@@ -7,7 +7,7 @@ import { shortcuts } from './lib/shortcuts'
 import { IPC_CHANNELS } from '@shared/ipc'
 
 beforeEach(() => {
-  useUiStore.setState({ view: 'all', modal: null })
+  useUiStore.setState({ view: 'all', modal: null, settingsOpen: false })
   useLibraryStore.setState({
     query: '',
     stats: { total: 128, favourites: 12, groups: 0, trashed: 3 }
@@ -64,8 +64,7 @@ describe('AppShell navigation', () => {
   it.each([
     ['Trash', 'trash'],
     ['Starred', 'starred'],
-    ['All', 'all'],
-    ['Settings', 'settings']
+    ['All', 'all']
   ])('clicking %s sets the view to %s', (name, view) => {
     useUiStore.setState({ view: view === 'all' ? 'trash' : 'all' })
     render(
@@ -77,16 +76,20 @@ describe('AppShell navigation', () => {
     expect(useUiStore.getState().view).toBe(view)
   })
 
-  it('keeps Settings reachable and marks it', () => {
-    useUiStore.setState({ view: 'settings' })
+  it('opens Settings as a modal over the page without leaving it, and marks it', () => {
+    useUiStore.setState({ view: 'all', settingsOpen: false })
     render(
       <AppShell>
         <div />
       </AppShell>
     )
-    expect(screen.getByRole('button', { name: /Settings/ }).getAttribute('aria-current')).toBe(
-      'page'
-    )
+    fireEvent.click(screen.getByRole('button', { name: /^Settings/ }))
+    expect(useUiStore.getState().settingsOpen).toBe(true)
+    expect(useUiStore.getState().view).toBe('all')
+    expect(screen.getByRole('dialog').getAttribute('data-ds')).toBe('SettingsModal')
+    expect(
+      screen.getByRole('button', { name: /^Settings$/, hidden: true }).getAttribute('aria-current')
+    ).toBe('page')
   })
 
   it('renders children in the page area', () => {

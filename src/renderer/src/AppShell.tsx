@@ -3,6 +3,7 @@ import { useUiStore, type AppView } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { ConfirmDialog } from './components/_legacy/ConfirmDialog'
 import { DetailModal } from './screens/detail/DetailModal'
+import { SettingsModal } from './screens/settings'
 import { ReconciliationModal } from './ReconciliationModal'
 import { Toaster } from './ui/sonner'
 import { ActivityDock } from './components/ActivityDock'
@@ -89,6 +90,9 @@ export default function AppShell({
 }: AppShellProps) {
   const view = useUiStore((s) => s.view)
   const setView = useUiStore((s) => s.setView)
+  const settingsOpen = useUiStore((s) => s.settingsOpen)
+  const openSettings = useUiStore((s) => s.openSettings)
+  const closeSettings = useUiStore((s) => s.closeSettings)
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
   const stats = useLibraryStore((s) => s.stats)
@@ -192,12 +196,12 @@ export default function AppShell({
               toStash: inbox?.toStash ?? 0,
               trash: inbox?.trash ?? stats.trashed
             }}
-            settingsActive={view === 'settings'}
+            settingsActive={settingsOpen}
             onNavigate={(key) => {
               const next = NAV_VIEWS[key]
               if (next) setView(next)
             }}
-            onOpenSettings={() => setView('settings')}
+            onOpenSettings={openSettings}
             add={
               <AddMenu
                 disabled={importing}
@@ -227,6 +231,12 @@ export default function AppShell({
         className="fixed right-4 bottom-4 z-50"
         toastContent={<Toaster />}
         importContent={importCard}
+      />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={closeSettings}
+        onOpenTrash={() => setView('trash')}
+        onReview={(report) => useUiStore.getState().openModal({ kind: 'reconcile', report })}
       />
     </div>
   )

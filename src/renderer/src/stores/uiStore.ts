@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { IntegrityReport } from '@shared/integrity'
 
-/** `all` and `starred` are My Stash pages; Settings stays a page until it becomes a modal (WP4.6). */
+/** `all` and `starred` are My Stash pages. 'settings' is the old Settings page; Settings is now a modal (`settingsOpen`) and App.tsx drops the page. */
 export type AppView = 'all' | 'starred' | 'to-sort' | 'to-stash' | 'trash' | 'settings'
 
 export type Modal =
@@ -14,6 +14,10 @@ interface UiState {
   modal: Modal | null
   /** What the title-bar search field shows. The library query follows it after a 250 ms pause. */
   searchText: string
+  /** Settings is a modal over whatever page is on show. */
+  settingsOpen: boolean
+  openSettings: () => void
+  closeSettings: () => void
   setSearchText: (text: string) => void
   openModal: (modal: Modal) => void
   closeModal: () => void
@@ -24,6 +28,9 @@ export const useUiStore = create<UiState>((set) => ({
   view: 'all',
   modal: null,
   searchText: '',
+  settingsOpen: false,
+  openSettings: () => set({ settingsOpen: true }),
+  closeSettings: () => set({ settingsOpen: false }),
   setSearchText: (searchText) => set({ searchText }),
   openModal: (modal) => set({ modal }),
   closeModal: () => set({ modal: null }),
