@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { HugeiconsIcon } from '@hugeicons/react'
 import { Clock01Icon, Delete02Icon, Layers01Icon, Settings01Icon } from '@hugeicons/core-free-icons'
 import { SidebarNavItem } from '@renderer/components/SidebarNavItem'
 import { TreeBranch } from '@renderer/components/TreeBranch'
@@ -9,7 +10,9 @@ import {
   type SidebarNavVariant
 } from './SidebarNav.types'
 import {
+  sidebarNavBrandClass,
   sidebarNavListClass,
+  sidebarNavLogoClass,
   sidebarNavStemClass,
   sidebarNavTreeClass,
   sidebarNavVariants
@@ -50,7 +53,7 @@ export function sidebarNavVariant(toSort: number, toStash: number): SidebarNavVa
 const countText = (n: number | undefined) => (n === undefined ? undefined : String(n))
 
 /**
- * SidebarNav — Primary navigation: My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.
+ * SidebarNav — Primary navigation: the DesignStash brand row, My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1964
  * Every row is a slot with a default built from `selected`, `counts` and the callbacks; pass a
  * slot to replace one. Clicking My Stash goes to All.
@@ -91,6 +94,12 @@ export function SidebarNav({
       className={cn(sidebarNavVariants({ variant: props.variant }), className)}
     >
       {props.add}
+      <div data-slot="brand" className={sidebarNavBrandClass}>
+        <span aria-hidden className={sidebarNavLogoClass}>
+          <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-3.5" />
+        </span>
+        <span className="type-body-sm-medium text-foreground">DesignStash</span>
+      </div>
       <div className={sidebarNavListClass}>
         {props.library ?? (
           <SidebarNavItem

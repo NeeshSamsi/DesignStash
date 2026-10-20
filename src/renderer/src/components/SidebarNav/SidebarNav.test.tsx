@@ -54,4 +54,20 @@ describe('SidebarNav behaviour', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
   })
+
+  it('puts the DesignStash brand row above My Stash', () => {
+    const { container } = render(<SidebarNav />)
+    const brand = container.querySelector('[data-slot="brand"]')!
+    expect(brand.textContent).toBe('DesignStash')
+    expect(brand.className).toContain('pl-2.5')
+    expect(brand.className).toContain('gap-2')
+    expect(brand.className).toContain('py-1')
+    const logo = brand.querySelector('span[aria-hidden]')!
+    expect(logo.className).toContain('size-5')
+    expect(logo.className).toContain('rounded-md')
+    expect(logo.className).toContain('bg-primary')
+    expect(logo.querySelector('svg')!.getAttribute('class')).toContain('size-3.5')
+    const myStash = screen.getByText('My Stash')
+    expect(brand.compareDocumentPosition(myStash) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })
