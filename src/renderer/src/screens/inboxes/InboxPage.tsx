@@ -15,7 +15,6 @@ import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
-import { usePinnedBar } from '@renderer/hooks/use-pinned-bar'
 import {
   aiTotals,
   pluralise,
@@ -24,6 +23,7 @@ import {
   tossCopy,
   verbFor
 } from '@renderer/lib/inbox-list'
+import { HeaderActions, useHeaderStatus } from '@renderer/lib/page-header-slot'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast } from '@renderer/stores/toastStore'
 import { useInboxList } from './useInboxList'
@@ -57,7 +57,6 @@ export default function InboxPage({
   onAddFiles,
   onAddFolder
 }: InboxPageProps) {
-  const pinnedBar = usePinnedBar()
   const toSortPage = stage === 'to_sort'
   const { items, failed, refresh } = useInboxList(stage)
   const pushedTotals = useInboxStore((s) => s.aiTotals)
@@ -122,6 +121,7 @@ export default function InboxPage({
   const tossText = tossing ? tossCopy(stage, tossing) : null
 
   const line = toSortPage ? sniffingLine(aiTotals(items ?? [], pushedTotals)) : undefined
+  useHeaderStatus(state === 'populated' ? line : undefined)
   const primary = toSortPage
     ? verbFor('Sort', selected.length)
     : selected.length > 0
@@ -200,14 +200,10 @@ export default function InboxPage({
         })}
       </MockupGrid>
       {state === 'populated' && (
-        <div
-          ref={pinnedBar}
-          className="sticky bottom-0 z-10 -mx-6 -mb-6 bg-surface-1 px-6 pt-2 pb-6"
-        >
+        <HeaderActions>
           <ActionBar
             variant="page"
-            showStatus={line !== undefined}
-            {...(line ? { status: line } : {})}
+            showStatus={false}
             cancelLabel={
               selected.length > 0
                 ? `Toss ${selected.length}`
@@ -219,7 +215,7 @@ export default function InboxPage({
             primaryLabel={primary}
             onPrimary={() => (toSortPage ? onSort?.(targets) : onLookOver?.(targets))}
           />
-        </div>
+        </HeaderActions>
       )}
       <ConfirmDialog
         open={tossing !== null}

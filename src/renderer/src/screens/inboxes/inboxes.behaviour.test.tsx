@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem, TrashItem } from '@shared/inbox'
 import { doneMessage } from '@renderer/lib/inbox-list'
+import { useHeaderSlot } from '@renderer/lib/page-header-slot'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { item } from '../library/library-test-utils'
 import InboxPage from './InboxPage'
@@ -134,12 +135,12 @@ describe('To sort', () => {
     render(<InboxPage stage="to_sort" />)
     await screen.findByText('file-1.psd')
     push(IPC_CHANNELS.AI_STATUS, { updates: [], totals: { total: 38, remaining: 7 } })
-    expect(screen.getByText('Still sniffing 7 of 38')).toBeTruthy()
+    expect(useHeaderSlot.getState().status).toBe('Still sniffing 7 of 38')
     push(IPC_CHANNELS.AI_STATUS, {
       updates: [{ mockupId: 1, status: 'ready' }],
       totals: { total: 38, remaining: 0 }
     })
-    expect(screen.getByText('AI suggestions ready for all 38')).toBeTruthy()
+    expect(useHeaderSlot.getState().status).toBe('AI suggestions ready for all 38')
     expect(screen.queryByText('Sniffing…')).toBeNull()
   })
 

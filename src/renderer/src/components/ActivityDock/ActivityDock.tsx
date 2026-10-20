@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Bug01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
@@ -14,8 +14,6 @@ export interface ActivityDockProps extends ActivityDockContractProps {
   /** DEV only: the debug button's action. */
   onDebug?: () => void
   className?: string
-  /** For the one thing that is measured: where the dock sits above a pinned action bar. */
-  style?: CSSProperties
 }
 
 /**
@@ -29,7 +27,6 @@ export function ActivityDock({
   toastContent,
   importContent,
   onDebug,
-  style,
   ...rest
 }: ActivityDockProps) {
   const props = { ...ACTIVITY_DOCK_DEFAULTS, ...rest }
@@ -38,7 +35,6 @@ export function ActivityDock({
       data-ds="ActivityDock"
       data-build={props.build}
       className={cn(activityDockVariants({ build: props.build }), className)}
-      {...(style ? { style } : {})}
     >
       {props.toast && toastContent}
       {props.import && importContent}

@@ -11,8 +11,7 @@ import { GlobalSearch } from './components/GlobalSearch'
 import { PageHeader } from './components/PageHeader'
 import { SidebarNav, sidebarNavVariant, type SidebarNavKey } from './components/SidebarNav'
 import { useInboxCounts } from './hooks/use-inbox-counts'
-import { dockBottom } from './lib/dock'
-import { useDockStore } from './stores/dockStore'
+import { useHeaderSlot } from './lib/page-header-slot'
 import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
 
 interface AppShellProps {
@@ -93,8 +92,8 @@ export default function AppShell({
   const searchText = useUiStore((s) => s.searchText)
   const setSearchText = useUiStore((s) => s.setSearchText)
   const inbox = useInboxCounts()
-  // The copy widget and the toasts sit above the page's pinned action bar, never over it.
-  const barTop = useDockStore((s) => s.barTop)
+  const setActionsEl = useHeaderSlot((s) => s.setActionsEl)
+  const status = useHeaderSlot((s) => s.status)
   const query = useLibraryStore((s) => s.query)
   const setQuery = useLibraryStore((s) => s.setQuery)
 
@@ -188,8 +187,11 @@ export default function AppShell({
                   current={header.current}
                   breadcrumb={header.parent !== undefined}
                   {...(header.parent !== undefined ? { parent: header.parent } : {})}
-                  description={header.description}
-                />
+                  description={status ? `${header.description} · ${status}` : header.description}
+                >
+                  {/* Pages put their actions here with HeaderActions. */}
+                  <div ref={setActionsEl} className="contents" />
+                </PageHeader>
               )
             }
           : {})}
@@ -198,8 +200,7 @@ export default function AppShell({
         {...(dialog ? { dialog } : {})}
       />
       <ActivityDock
-        className="fixed right-4 z-50"
-        style={{ bottom: dockBottom(barTop, window.innerHeight) }}
+        className="fixed right-4 bottom-4 z-50"
         toastContent={<Toaster />}
         importContent={copyWidget}
       />

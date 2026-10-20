@@ -83,18 +83,16 @@ for (const { width, height } of SIZES) {
     expect((await app.invoke('copy:start', { paths: [desk] })).success).toBe(true)
     await window.getByRole('button', { name: /^To sort/ }).click()
     await expect(window.getByText('AI suggestions ready for all 4')).toBeVisible()
-    // The finished-copy summary shares the corner with the page's Sort button: it must sit above
-    // the pinned bar, never over it, so the button stays clickable without dismissing anything.
+    // The page's actions sit in the header, on the title row, so the copy widget in the bottom corner
+    // never covers them.
     const summary = window.locator('[data-ds="CopyWidget"]')
-    const sortBar = window.getByRole('button', { name: 'Sort', exact: true })
-    if (await summary.count()) {
-      const widget = (await summary.boundingBox())!
-      const bar = (await sortBar.boundingBox())!
-      expect(
-        widget.y + widget.height,
-        'the copy widget sits above the action bar'
-      ).toBeLessThanOrEqual(bar.y)
-    }
+    const header = window.locator('[data-ds="PageHeader"]')
+    await expect(header.getByRole('button', { name: 'Sort', exact: true })).toBeVisible()
+    await expect(header.getByRole('button', { name: 'Toss this haul' })).toBeVisible()
+    const title = (await header.getByRole('heading').boundingBox())!
+    const sort = (await header.getByRole('button', { name: 'Sort', exact: true }).boundingBox())!
+    expect(sort.y, 'Sort is on the title row').toBeLessThan(title.y + title.height)
+    expect(sort.x, 'Sort is at the right').toBeGreaterThan(width / 2)
     // And it goes by itself, like a toast.
     await expect(summary).toHaveCount(0, { timeout: 12_000 })
     await shot('to-sort')
