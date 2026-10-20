@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import type { HandlerContext } from './context'
 import { registerAppHandlers } from './app'
+import { registerAboutHandlers } from './about'
 import { registerSettingsHandlers } from './settings'
 import { registerDialogHandlers } from './dialog'
 import { registerImportHandlers } from './import'
@@ -22,6 +23,7 @@ import { registerDebugHandlers } from './debug'
 /** Register every domain's handlers. Debug handlers are dev-only. */
 export function registerAllHandlers(ctx: HandlerContext): void {
   registerAppHandlers()
+  registerAboutHandlers(ctx)
   registerSettingsHandlers(ctx)
   registerDialogHandlers()
   registerImportHandlers(ctx)

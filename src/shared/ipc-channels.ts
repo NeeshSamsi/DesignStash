@@ -1,6 +1,12 @@
 /** IPC channel names. */
 export const IPC_CHANNELS = {
   APP_INFO: 'app:info',
+  UPDATES_STATUS: 'updates:status',
+  UPDATES_CHECK: 'updates:check',
+  UPDATES_CANCEL: 'updates:cancel',
+  UPDATES_INSTALL: 'updates:install',
+  LICENCES_TEXT: 'app:licences',
+  REPORT_COPY: 'app:report-copy',
   DB_PING: 'db:ping',
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET_LIBRARY_ROOT: 'settings:set-library-root',
