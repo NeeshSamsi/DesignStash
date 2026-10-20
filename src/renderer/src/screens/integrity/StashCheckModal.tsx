@@ -23,7 +23,7 @@ export function StashCheckModal({ report, onClose, onOpenSettings }: StashCheckM
       open
       blocking
       dataDs="StashCheckModal"
-      className="w-160 max-w-full gap-0 border-0 bg-transparent p-0 sm:max-w-none"
+      className="w-160 max-w-viewport gap-0 overflow-visible border-0 bg-transparent p-0"
     >
       <DialogTitle className="sr-only">Stash check</DialogTitle>
       <DialogDescription className="sr-only">

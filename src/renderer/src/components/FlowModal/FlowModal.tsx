@@ -138,7 +138,7 @@ export function FlowModal({
       dataDs="FlowModal"
       blocking={false}
       onDismiss={onRequestClose}
-      className={cn(flowModalVariants({ step }), 'gap-0 p-0 sm:max-w-none', className)}
+      className={cn(flowModalVariants({ step }), 'gap-0 p-0', className)}
     >
       {content}
     </DialogFrame>

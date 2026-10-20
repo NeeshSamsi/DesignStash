@@ -2,7 +2,7 @@ import { cva } from 'class-variance-authority'
 
 // Figma VariantStrip 222:3432. 84px of thumbnails under the 480px cover, then a 24px status row.
 // The overflow state decides which end gets a 56px fade with its arrow on top.
-export const variantStripVariants = cva('flex w-detail-media flex-col gap-3', {
+export const variantStripVariants = cva('flex w-detail-media max-w-full flex-col gap-3', {
   variants: {
     overflow: { fits: '', start: '', scrolled: '', end: '' }
   },

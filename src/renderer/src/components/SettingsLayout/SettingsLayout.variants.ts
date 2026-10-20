@@ -2,7 +2,7 @@ import { cva } from 'class-variance-authority'
 
 // Figma SettingsLayout 223:4771: an 880×760 modal, a 208px section rail on surface-1 and a scrolling pane.
 export const settingsLayoutVariants = cva(
-  'flex h-settings-modal w-settings-modal max-w-full overflow-clip rounded-xl border border-base bg-surface-2 text-foreground',
+  'flex h-settings-modal max-h-viewport w-settings-modal max-w-full overflow-clip rounded-xl border border-base bg-surface-2 text-foreground',
   {
     variants: {
       section: { 'my-stash': '', 'ai-model': '', tags: '', privacy: '', about: '' }

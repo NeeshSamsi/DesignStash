@@ -63,7 +63,7 @@ export function SettingsModal({
     <DialogFrame
       open={open}
       dataDs="SettingsModal"
-      className="w-settings-modal max-w-full gap-0 border-0 bg-transparent p-0 sm:max-w-none"
+      className="w-settings-modal max-w-viewport gap-0 overflow-visible border-0 bg-transparent p-0"
       onDismiss={onClose}
     >
       <DialogTitle className="sr-only">Settings</DialogTitle>

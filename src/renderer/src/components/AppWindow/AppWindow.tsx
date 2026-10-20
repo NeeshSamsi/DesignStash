@@ -29,8 +29,8 @@ export function AppWindow({ className, ...rest }: AppWindowProps) {
     >
       <div className={appWindowTitleBarClass}>
         <div className="w-sidebar shrink-0" />
-        <div className="flex flex-1 justify-center">
-          <div className="app-no-drag">{props.search}</div>
+        <div className="flex min-w-0 flex-1 justify-center">
+          <div className="app-no-drag max-w-full min-w-0">{props.search}</div>
         </div>
       </div>
       <div className="flex min-h-0 flex-1">

@@ -210,83 +210,86 @@ export function ReconciliationPanel({
         <p className="type-body-sm-regular text-muted-foreground">{line}</p>
       </div>
 
-      {foundRows.length > 0 && (
-        <Group
-          title="Found in your stash folder"
-          count={plural(foundRows.length, 'file', 'files')}
-          bulkLabel="Add all"
-          onBulk={onAddAll}
-          disabled={busy}
-        >
-          {foundRows.map((item) => {
-            const working = busy && resolvingId === item.id
-            return (
-              <Row key={item.id} item={item} fallbackDetail={FOUND_DETAIL}>
-                {working ? (
-                  <Button variant="secondary" size="sm" label="Adding…" disabled />
-                ) : (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      label="Ignore"
-                      disabled={busy}
-                      onClick={() => onIgnore?.(item.id)}
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      label="Add"
-                      disabled={busy}
-                      onClick={() => onAdd?.(item.id)}
-                    />
-                  </>
-                )}
-              </Row>
-            )
-          })}
-        </Group>
-      )}
+      {/* Long lists scroll here; the heading and footer stay pinned. */}
+      <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1">
+        {foundRows.length > 0 && (
+          <Group
+            title="Found in your stash folder"
+            count={plural(foundRows.length, 'file', 'files')}
+            bulkLabel="Add all"
+            onBulk={onAddAll}
+            disabled={busy}
+          >
+            {foundRows.map((item) => {
+              const working = busy && resolvingId === item.id
+              return (
+                <Row key={item.id} item={item} fallbackDetail={FOUND_DETAIL}>
+                  {working ? (
+                    <Button variant="secondary" size="sm" label="Adding…" disabled />
+                  ) : (
+                    <>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        label="Ignore"
+                        disabled={busy}
+                        onClick={() => onIgnore?.(item.id)}
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        label="Add"
+                        disabled={busy}
+                        onClick={() => onAdd?.(item.id)}
+                      />
+                    </>
+                  )}
+                </Row>
+              )
+            })}
+          </Group>
+        )}
 
-      {goneRows.length > 0 && (
-        <Group
-          title="Gone from your stash folder"
-          count={plural(goneRows.length, 'mockup', 'mockups')}
-          bulkLabel="Remove all"
-          onBulk={onRemoveAll}
-          disabled={busy}
-        >
-          {goneRows.map((item) => {
-            const working = busy && resolvingId === item.id
-            return (
-              <Row key={item.id} item={item} missing fallbackDetail={GONE_DETAIL}>
-                {working ? (
-                  <Button variant="secondary" size="sm" label="Removing…" disabled />
-                ) : (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      label="Remove"
-                      disabled={busy}
-                      onClick={() => onRemove?.(item.id)}
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      label="Relink…"
-                      disabled={busy}
-                      onClick={() => onRelink?.(item.id)}
-                    />
-                  </>
-                )}
-              </Row>
-            )
-          })}
-        </Group>
-      )}
+        {goneRows.length > 0 && (
+          <Group
+            title="Gone from your stash folder"
+            count={plural(goneRows.length, 'mockup', 'mockups')}
+            bulkLabel="Remove all"
+            onBulk={onRemoveAll}
+            disabled={busy}
+          >
+            {goneRows.map((item) => {
+              const working = busy && resolvingId === item.id
+              return (
+                <Row key={item.id} item={item} missing fallbackDetail={GONE_DETAIL}>
+                  {working ? (
+                    <Button variant="secondary" size="sm" label="Removing…" disabled />
+                  ) : (
+                    <>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        label="Remove"
+                        disabled={busy}
+                        onClick={() => onRemove?.(item.id)}
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        label="Relink…"
+                        disabled={busy}
+                        onClick={() => onRelink?.(item.id)}
+                      />
+                    </>
+                  )}
+                </Row>
+              )
+            })}
+          </Group>
+        )}
 
-      {checking && <CheckingRows />}
+        {checking && <CheckingRows />}
+      </div>
 
       <div className="flex w-full items-center gap-2">
         {!resolved && (

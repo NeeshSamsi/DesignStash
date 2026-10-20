@@ -16,6 +16,9 @@
 @theme {
   --aspect-card: 4 / 3;
   --max-height-modal-body: 70vh;
+  /* Modals keep a 2rem margin to the window on every side (orchestrator-approved, WP-R). */
+  --max-width-viewport: calc(100vw - 4rem);
+  --max-height-viewport: calc(100vh - 4rem);
 
   /* Layout sizes the Figma screens rely on (approved D1). px in comments = Figma. */
   --width-sidebar: 11rem; /* 176 */

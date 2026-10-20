@@ -3,7 +3,7 @@ import { cva } from 'class-variance-authority'
 // Figma ReconciliationPanel 223:6619: the body of the blocking stash-check modal. A 640 wide surface-2
 // card, 24 padding, 16 between the heading, the two groups and the footer.
 export const reconciliationPanelVariants = cva(
-  'flex w-160 max-w-full flex-col gap-4 rounded-xl border border-base bg-surface-2 p-6',
+  'flex max-h-viewport w-160 max-w-full flex-col gap-4 rounded-xl border border-base bg-surface-2 p-6',
   {
     variants: {
       state: {

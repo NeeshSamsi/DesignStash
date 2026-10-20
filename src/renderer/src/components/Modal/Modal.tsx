@@ -42,7 +42,7 @@ export function Modal({
     <DialogFrame
       open={open}
       dataDs="Modal"
-      className={cn('flex max-h-full flex-col', modalVariants({ size: props.size }), className)}
+      className={cn('flex max-h-viewport flex-col', modalVariants({ size: props.size }), className)}
       onDismiss={onClose}
       blocking={blocking}
       showCloseButton={closable}
