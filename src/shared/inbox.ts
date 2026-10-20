@@ -14,7 +14,9 @@ export const InboxItemSchema = LibraryItemSchema.extend({
   stage: InboxStageSchema,
   aiStatus: AiStatusSchema,
   /** The PSD's size in the stash folder. Null when it can't be measured. */
-  sizeBytes: z.number().nullable()
+  sizeBytes: z.number().nullable(),
+  /** The import batch the mockup arrived in. The grouping review and approval stepper work per batch. */
+  batchId: z.string().nullable()
 })
 export type InboxItem = z.infer<typeof InboxItemSchema>
 

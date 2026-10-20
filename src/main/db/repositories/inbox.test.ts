@@ -115,4 +115,12 @@ describe('collectTossable', () => {
   it('is empty for no ids', () => {
     expect(repo.collectTossable([])).toEqual({ ids: [], skipped: [] })
   })
+
+  it('carries the import batch each card arrived in', () => {
+    const a = imported('a', { importContext: { batchId: 'batch-1' } })
+    const b = imported('b')
+    const rows = repo.getInboxList('to_sort')
+    expect(rows.find((r) => r.id === a.id)?.batchId).toBe('batch-1')
+    expect(rows.find((r) => r.id === b.id)?.batchId).toBeNull()
+  })
 })

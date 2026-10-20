@@ -10,6 +10,7 @@ export type InboxRow = LibraryRow & {
   stage: InboxStage
   aiStatus: Mockup['aiStatus']
   sizeBytes: number | null
+  batchId: string | null
 }
 
 /** To sort and To stash: mockups that are imported but not yet in My Stash. */
@@ -36,7 +37,8 @@ export class InboxRepository {
       ...rows[i]!,
       stage,
       aiStatus: m.aiStatus,
-      sizeBytes: m.sizeBytes
+      sizeBytes: m.sizeBytes,
+      batchId: (m.importContext as { batchId?: string } | null)?.batchId ?? null
     }))
   }
 
