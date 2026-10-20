@@ -51,6 +51,8 @@ export function sidebarNavVariant(toSort: number, toStash: number): SidebarNavVa
 }
 
 const countText = (n: number | undefined) => (n === undefined ? undefined : String(n))
+/** A zero says nothing: its badge stays out of the row. */
+const hasCount = (n: number | undefined): n is number => n !== undefined && n > 0
 
 /**
  * SidebarNav — Primary navigation: the DesignStash brand row, My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.
@@ -77,8 +79,8 @@ export function SidebarNav({
     <SidebarNavItem
       label={label}
       active={selected === key}
-      showCount={count !== undefined}
-      {...(count !== undefined ? { count: String(count) } : {})}
+      showCount={hasCount(count)}
+      {...(hasCount(count) ? { count: String(count) } : {})}
       onClick={() => onNavigate?.(key)}
       {...extra}
     />
@@ -106,7 +108,7 @@ export function SidebarNav({
         {props.library ?? (
           <SidebarNavItem
             label="My Stash"
-            showCount={counts.library !== undefined}
+            showCount={hasCount(counts.library)}
             count={countText(counts.library) ?? ''}
             onClick={() => onNavigate?.('all')}
           />

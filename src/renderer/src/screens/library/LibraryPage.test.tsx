@@ -236,7 +236,8 @@ describe('LibraryPage states', () => {
     setupApi([])
     render(<LibraryPage />)
     await ready()
-    expect(screen.getByText('0 items')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter/ })).toBeTruthy()
+    expect(screen.queryByText('0 items')).toBeNull()
   })
 
   it('a failed first load shows the error state with a retry', async () => {

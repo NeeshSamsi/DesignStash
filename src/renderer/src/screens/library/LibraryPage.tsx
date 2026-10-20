@@ -9,19 +9,10 @@ import {
   type DragOverEvent,
   type DragStartEvent
 } from '@dnd-kit/core'
-import {
-  Cancel01Icon,
-  FileAddIcon,
-  FolderAddIcon,
-  Search02Icon,
-  StarIcon
-} from '@hugeicons/core-free-icons'
+import { Cancel01Icon, Search02Icon, StarIcon } from '@hugeicons/core-free-icons'
 import { coverDisplay, type LibraryItem } from '@shared/library'
-import { AddMockupCard } from '@renderer/components/AddMockupCard'
 import { Banner } from '@renderer/components/Banner'
 import { Badge } from '@renderer/ui/badge'
-import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
-import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { LibraryToolbar } from '@renderer/components/LibraryToolbar'
@@ -47,6 +38,7 @@ import { useUiStore } from '@renderer/stores/uiStore'
 import { CardMenu, type MenuTarget } from './CardMenu'
 import { LibraryCard } from './LibraryCard'
 import { PilePage } from './PilePage'
+import { AddCardMenu } from '../gather/AddCardMenu'
 import { WaitingToSortStrip } from './WaitingToSortStrip'
 import { useLibraryActions } from './useLibraryActions'
 import { useLibraryData } from './useLibraryData'
@@ -318,28 +310,7 @@ export default function LibraryPage({
     ...(onAddFolder ? { addFolder: onAddFolder } : {})
   }
 
-  const addCard = (
-    <DropdownMenu
-      align="start"
-      trigger={<AddMockupCard />}
-      items={
-        <>
-          <DropdownMenuItem
-            label="Add files…"
-            icon={FileAddIcon}
-            shortcut="⌘O"
-            {...(onAddFiles ? { onSelect: onAddFiles } : { disabled: true })}
-          />
-          <DropdownMenuItem
-            label="Add folder…"
-            icon={FolderAddIcon}
-            shortcut="⇧⌘O"
-            {...(onAddFolder ? { onSelect: onAddFolder } : { disabled: true })}
-          />
-        </>
-      }
-    />
-  )
+  const addCard = <AddCardMenu onAddFiles={onAddFiles} onAddFolder={onAddFolder} />
 
   const copy = noResultsCopy({ query, filterCount, starred: starredOnly })
   const clearAction =
@@ -353,14 +324,8 @@ export default function LibraryPage({
         : clearFilters
 
   const total = stats.total
-  const statsText =
-    selection.count > 0
-      ? `${selection.count} of ${total} selected`
-      : searching || filtering
-        ? `${items.length} of ${total} items`
-        : `${total} ${total === 1 ? 'item' : 'items'}${
-            stats.favourites > 0 ? ` · ${stats.favourites} favourites` : ''
-          }`
+  // The header carries the count of the view and of a search or filter; the toolbar only says what is picked.
+  const statsText = selection.count > 0 ? `${selection.count} of ${total} selected` : ''
 
   // The pile page is a view inside My Stash, over the same state.
   if (pageOpen) return <PilePage key={pageOpen.id} pile={pageOpen} />

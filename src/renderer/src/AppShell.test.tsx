@@ -15,6 +15,7 @@ const css = readFileSync(
   'utf8'
 )
 import { IPC_CHANNELS } from '@shared/ipc'
+import { item } from './screens/library/library-test-utils'
 
 beforeEach(() => {
   useUiStore.setState({ view: 'all', modal: null, settingsOpen: false })
@@ -144,7 +145,28 @@ describe('AppShell header', () => {
       </AppShell>
     )
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('My StashStarred')
-    expect(screen.getByText('12 mockups')).toBeTruthy()
+    expect(screen.getByText('12 favourites')).toBeTruthy()
+  })
+
+  it('counts the result and names the search while searching', () => {
+    useLibraryStore.setState({ query: 'macbook', items: [item(1), item(2)] })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    expect(screen.getByText('2 results for “macbook”')).toBeTruthy()
+  })
+
+  it('hides a zero badge in the sidebar', () => {
+    useLibraryStore.setState({ stats: { total: 5, favourites: 0, groups: 0, trashed: 0 } })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    const starred = screen.getByRole('button', { name: /Starred/ })
+    expect(starred.textContent).toBe('Starred')
   })
 
   it('keeps the header at zero mockups', () => {
