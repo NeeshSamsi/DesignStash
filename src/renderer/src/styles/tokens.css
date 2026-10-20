@@ -135,7 +135,7 @@
   --ds-border-error: var(--ds-color-holly-500);
   --ds-border-inverse: var(--ds-color-bark-100);
 
-  /* spacing, radius, border width, icon sizes — equal to Tailwind defaults */
+  /* spacing, radius, border width, icon sizes and stroke, durations */
   --ds-border-width-0: 0px;
   --ds-border-width-1: 1px;
   --ds-border-width-2: 2px;
@@ -144,6 +144,9 @@
   --ds-icon-sizes-sm: 16px;
   --ds-icon-sizes-md: 20px;
   --ds-icon-sizes-lg: 24px;
+  --ds-icon-sizes-2xs: 12px;
+  --ds-icon-sizes-xs: 14px;
+  --ds-icon-stroke-default: 1.5;
   --ds-spacing-px: 1px;
   --ds-spacing-0: 0px;
   --ds-spacing-0-5: 2px;
@@ -189,6 +192,9 @@
   --ds-radius-3xl: 24px;
   --ds-radius-4xl: 32px;
   --ds-radius-full: 9999px;
+  --ds-duration-fast: 120ms;
+  --ds-duration-base: 200ms;
+  --ds-duration-slow: 280ms;
 
   /* font families (from the Figma text styles) */
   --ds-font-display: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;

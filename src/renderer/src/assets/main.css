@@ -51,8 +51,19 @@
 /* Card corners (B5) and motion for the card hover and the details panel (B7). Static so the
    variables exist for var() and for other agents' utilities even before a class uses them. */
 @theme static {
-  --radius-card: 1.5rem; /* 24 */
+  --radius-card: var(--ds-radius-3xl); /* 24 */
   --radius-card-cover: 0.875rem; /* 14 */
+
+  /* Motion scale. Durations come from Figma (--ds-duration-*); the curves are the Tailwind defaults, named. */
+  --duration-fast: var(--ds-duration-fast); /* 120 */
+  --duration-base: var(--ds-duration-base); /* 200 */
+  --duration-slow: var(--ds-duration-slow); /* 280 */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Elevation: raised = a menu, popover or toast; lifted = a card being dragged or a floating button. */
+  --shadow-raised: 0 4px 12px -2px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lifted: 0 16px 32px -8px rgb(0 0 0 / 0.5), 0 6px 12px -4px rgb(0 0 0 / 0.35);
 
   /* Panel: open settles out; close leaves at once, and the container widens on the same out curve. */
   --ease-panel-out: cubic-bezier(0.16, 1, 0.3, 1);
