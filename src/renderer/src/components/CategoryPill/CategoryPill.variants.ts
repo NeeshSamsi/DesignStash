@@ -1,13 +1,14 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=583-6970
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const categoryPillVariants = cva('', {
-  variants: {
-    active: { true: '', false: '' }
-  },
-  defaultVariants: { active: false }
-})
+export const categoryPillVariants = cva(
+  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 type-label-xs-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  {
+    variants: {
+      active: {
+        true: 'bg-surface-4 text-foreground',
+        false: 'bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground'
+      }
+    },
+    defaultVariants: { active: false }
+  }
+)

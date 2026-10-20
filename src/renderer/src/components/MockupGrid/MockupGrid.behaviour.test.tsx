@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MockupCard } from '@renderer/components/MockupCard'
+import { TagFilterPopover } from '@renderer/components/TagFilterPopover'
+import { matchesFilter, type FilterCategory } from '@renderer/lib/tag-filter'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
 import { MockupGrid, type MockupGridProps } from './MockupGrid'
 
@@ -181,9 +183,50 @@ describe('Library · grid, selection, loading and empty', () => {
   it.todo(
     'offers Clear search, Clear filters or Clear search and filters depending on what is active'
   )
-  it.todo('filters the tag list live in the filter popover and updates category counts')
-  it.todo('narrows the tag list to a category from its pill')
-  it.todo('matches every picked tag (AND), and a category filter includes all its tags')
+  describe('tag filter', () => {
+    const TAGS: FilterCategory[] = [
+      {
+        categoryId: 1,
+        categoryLabel: 'Device',
+        tags: [
+          { tagId: 10, label: 'iPhone', count: 24 },
+          { tagId: 11, label: 'iPad', count: 8 }
+        ]
+      },
+      { categoryId: 2, categoryLabel: 'Style', tags: [{ tagId: 20, label: 'Clay', count: 12 }] },
+      { categoryId: 3, categoryLabel: 'Colour', tags: [{ tagId: 30, label: 'Clear', count: 2 }] }
+    ]
+    const pills = () =>
+      within(screen.getByRole('group', { name: 'Narrow by category' }))
+        .getAllByRole('button')
+        .map((b) => b.textContent)
+
+    it('filters the tag list live in the filter popover and updates category counts', () => {
+      render(<TagFilterPopover categories={TAGS} />)
+      expect(pills()).toEqual(['All', 'Device2', 'Style1', 'Colour1'])
+      fireEvent.change(screen.getByLabelText('Search tags'), { target: { value: 'cl' } })
+      expect(screen.queryByText('iPhone')).toBeNull()
+      expect(screen.getByText('Clay')).not.toBeNull()
+      expect(pills()).toEqual(['All2', 'Style1', 'Colour1'])
+    })
+
+    it('narrows the tag list to a category from its pill', () => {
+      render(<TagFilterPopover categories={TAGS} />)
+      fireEvent.click(screen.getByRole('button', { name: /^Colour/ }))
+      expect(screen.getByText('Clear')).not.toBeNull()
+      expect(screen.queryByText('iPhone')).toBeNull()
+      expect(screen.queryByText('Clay')).toBeNull()
+    })
+
+    it('matches every picked tag (AND), and a category filter includes all its tags', () => {
+      const byCategory = new Map(TAGS.map((c) => [c.categoryId, c.tags.map((t) => t.tagId)]))
+      const pick = (tagIds: number[], categoryIds: number[] = []) => ({ tagIds, categoryIds })
+      expect(matchesFilter([10, 20], byCategory, pick([10, 20]))).toBe(true)
+      expect(matchesFilter([10], byCategory, pick([10, 20]))).toBe(false)
+      expect(matchesFilter([11], byCategory, pick([], [1]))).toBe(true)
+      expect(matchesFilter([20], byCategory, pick([], [1]))).toBe(false)
+    })
+  })
   it.todo('sorts by date added (newest first) by default, or by name')
   it.todo('keeps an unstarred card in Starred until the view is left, with Undo')
   it.todo('opens Detail on double-click or Enter, not on a single click')

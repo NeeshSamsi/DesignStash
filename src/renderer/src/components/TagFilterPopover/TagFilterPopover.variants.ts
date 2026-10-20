@@ -1,11 +1,7 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-2113
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const tagFilterPopoverVariants = cva('', {
+// Panel, width and padding come from the Popover adapter; this styles what sits inside it.
+export const tagFilterPopoverVariants = cva('gap-3', {
   variants: {
     state: {
       open: '',
@@ -17,3 +13,6 @@ export const tagFilterPopoverVariants = cva('', {
   },
   defaultVariants: { state: 'open' }
 })
+
+/** The tag list scrolls once it is taller than `max-h-tag-filter` (~240px). */
+export const tagFilterListClass = 'flex max-h-tag-filter flex-col gap-3 overflow-y-auto'
