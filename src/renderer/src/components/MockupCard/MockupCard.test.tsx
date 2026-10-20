@@ -36,6 +36,17 @@ describe('MockupCard', () => {
       expect(screen.queryByRole('button', { name: /zoom|preview/i })).toBeNull()
     })
 
+    it('stacks Edit details (secondary) above Open in Photoshop (primary), both text only', () => {
+      render(<MockupCard />)
+      const edit = screen.getByRole('button', { name: 'Edit details' })
+      const open = screen.getByRole('button', { name: 'Open in Photoshop' })
+      expect(edit.compareDocumentPosition(open) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(edit.className).toContain('bg-surface-3')
+      expect(open.className).toContain('bg-primary')
+      expect(edit.querySelector('svg')).toBeNull()
+      expect(open.querySelector('svg')).toBeNull()
+    })
+
     it('shows both hover buttons at the same, smaller size', () => {
       render(<MockupCard />)
       const open = screen.getByRole('button', { name: 'Open in Photoshop' })
@@ -113,6 +124,17 @@ describe('MockupCard', () => {
       expect(screen.queryByRole('button', { name: /Star|More actions/ })).toBeNull()
     })
 
+    it('stacks Delete for good (secondary) above Restore (primary), both text only', () => {
+      render(<MockupCard variant="trash" />)
+      const del = screen.getByRole('button', { name: 'Delete for good' })
+      const restore = screen.getByRole('button', { name: 'Restore' })
+      expect(del.compareDocumentPosition(restore) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(del.className).toContain('bg-surface-3')
+      expect(restore.className).toContain('bg-primary')
+      expect(del.querySelector('svg')).toBeNull()
+      expect(restore.querySelector('svg')).toBeNull()
+    })
+
     it('shows both hover buttons at the same, smaller size', () => {
       render(<MockupCard variant="trash" />)
       for (const name of ['Restore', 'Delete for good']) {
@@ -135,6 +157,7 @@ describe('MockupCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Open in Photoshop' }))
       expect(onOpenInPhotoshop).toHaveBeenCalledOnce()
       expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Edit details' })).toBeNull()
     })
   })
 

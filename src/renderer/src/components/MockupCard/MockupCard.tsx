@@ -1,11 +1,6 @@
 import type { ComponentProps, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import {
-  Layers01Icon,
-  LinkSquare02Icon,
-  MoreHorizontalIcon,
-  UndoIcon
-} from '@hugeicons/core-free-icons'
+import { Layers01Icon, LinkSquare02Icon, MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { Badge } from '@renderer/ui/badge'
 import { Skeleton } from '@renderer/ui/skeleton'
 import { Button } from '@renderer/components/Button'
@@ -70,7 +65,7 @@ const COVER_STATE: Record<MockupCardState, 'loaded' | 'loading' | 'no-preview' |
 }
 
 /**
- * MockupCard — A mockup in any grid: squircle container (radius 24, 10px padding, 14px 4:3 cover), scale and cover zoom on hover, Open in Photoshop / Edit details over the cover. A card with variants is a pile and shows two card edges below it.
+ * MockupCard — A mockup in any grid: squircle container (radius 24, 10px padding, 14px 4:3 cover), scale and cover zoom on hover, Edit details (secondary) above Open in Photoshop (primary) over the cover. A card with variants is a pile and shows two card edges below it.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1492
  * Used by My Stash, the inboxes and Trash. The body is selection (click selects; ↵ and double-click are wired by the screen);
  * the buttons fire only their own action. Hover is CSS, so Figma's hover and focus states need no props.
@@ -184,19 +179,17 @@ export function MockupCard({
           {interactive && variant === 'library' && (
             <HoverActions>
               <Button
-                size="xs"
-                label="Open in Photoshop"
-                showIconStart
-                iconStart={LinkSquare02Icon}
-                className="w-full"
-                onClick={onOpenInPhotoshop}
-              />
-              <Button
-                variant="ghost"
+                variant="secondary"
                 size="xs"
                 label="Edit details"
                 className="w-full"
                 onClick={onEditDetails}
+              />
+              <Button
+                size="xs"
+                label="Open in Photoshop"
+                className="w-full"
+                onClick={onOpenInPhotoshop}
               />
             </HoverActions>
           )}
@@ -210,20 +203,13 @@ export function MockupCard({
           {interactive && variant === 'trash' && (
             <HoverActions>
               <Button
-                size="xs"
-                label="Restore"
-                showIconStart
-                iconStart={UndoIcon}
-                className="w-full"
-                onClick={onRestore}
-              />
-              <Button
-                variant="ghost"
+                variant="secondary"
                 size="xs"
                 label="Delete for good"
                 className="w-full"
                 onClick={onDeleteForever}
               />
+              <Button size="xs" label="Restore" className="w-full" onClick={onRestore} />
             </HoverActions>
           )}
 
