@@ -31,6 +31,10 @@ const handlers = {
     })
   },
   [IPC_CHANNELS.PILE_DISBAND]: () => ok({ snapshot: { rows: [] }, freedIds: [1, 2, 3] }),
+  [IPC_CHANNELS.PILE_REMOVE]: (request: unknown) => {
+    const { mockupId } = request as { mockupId: number }
+    return ok({ pileId: mockupId === 1 ? 2 : 1, snapshot: { rows: [] }, freedIds: [mockupId] })
+  },
   [IPC_CHANNELS.PILE_SET_TOP]: () => ok({ pileId: 2, snapshot: { rows: [] } })
 }
 
@@ -177,6 +181,54 @@ describe('PilePage', () => {
     )
     expect(toasts.undoToast.mock.calls[0]![0]).toBe('V2 is on top')
     expect(useDetailsStore.getState().pile).toMatchObject({ id: 2, select: 2 })
+  })
+
+  it('Remove from pile is instant with an Undo toast; a member leaves and the pile stays', async () => {
+    const api = setupApi([], handlers)
+    useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })
+    render(<Host />)
+    await ready()
+    fireEvent.contextMenu(cards()[2]!)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove from pile' }))
+    await waitFor(() =>
+      expect(api.calls(IPC_CHANNELS.PILE_REMOVE)).toEqual([{ pileId: 1, mockupId: 3 }])
+    )
+    expect(toasts.undoToast.mock.calls[0]![0]).toBe('Removed from the pile')
+    expect(useDetailsStore.getState().pile).toMatchObject({ id: 1 })
+  })
+
+  it('removing the top carries on with the next mockup as the pile', async () => {
+    setupApi([], handlers)
+    useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })
+    render(<Host />)
+    await ready()
+    fireEvent.contextMenu(cards()[0]!)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove from pile' }))
+    await waitFor(() => expect(useDetailsStore.getState().pile).toMatchObject({ id: 2, select: 2 }))
+  })
+
+  it('a pile left with one mockup is gone: back to My Stash', async () => {
+    setupApi([], {
+      ...handlers,
+      [IPC_CHANNELS.PILE_REMOVE]: () =>
+        ok({ pileId: null, snapshot: { rows: [] }, freedIds: [1, 3] })
+    })
+    useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 2, select: 1, edit: false })
+    render(<Host />)
+    await ready()
+    fireEvent.contextMenu(cards()[2]!)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove from pile' }))
+    await waitFor(() => expect(useDetailsStore.getState().pile).toBeNull())
+  })
+
+  it('goes back when the pile no longer exists', async () => {
+    setupApi([], {
+      ...handlers,
+      [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok({ item: item(1), variants: [] })
+    })
+    useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })
+    render(<Host />)
+    await waitFor(() => expect(useDetailsStore.getState().pile).toBeNull())
   })
 
   it('double-click does nothing and Space does nothing', async () => {

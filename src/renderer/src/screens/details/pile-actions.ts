@@ -58,3 +58,36 @@ export async function putOnTop(
   })
   return next
 }
+
+/**
+ * Takes one mockup out of its pile, instantly, with an Undo toast. Removing the top promotes the next
+ * mockup; a pile left with one mockup stops being a pile. Returns the pile's id afterwards (null when it
+ * dissolved), or undefined when it failed.
+ */
+export async function removeFromPile(
+  pileId: number,
+  mockupId: number,
+  label: string
+): Promise<{ pileId: number | null } | undefined> {
+  const res = await window.api
+    .invoke(IPC_CHANNELS.PILE_REMOVE, { pileId, mockupId })
+    .catch(() => null)
+  if (!res?.success) {
+    toast({
+      variant: 'error',
+      message: 'Couldn’t remove it from the pile',
+      description: 'Nothing was changed. Try again.'
+    })
+    return undefined
+  }
+  const { pileId: next, snapshot } = res.data
+  void syncLibrary()
+  undoToast(
+    'Removed from the pile',
+    () => {
+      void window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot }).then(() => syncLibrary())
+    },
+    next === null ? `${label} and the other mockup are on their own` : `${label} is on its own`
+  )
+  return { pileId: next }
+}

@@ -12,7 +12,7 @@ import { HeaderActions } from '@renderer/lib/page-header-slot'
 import { useDetailsStore, type OpenPile } from '@renderer/stores/detailsStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { syncLibrary } from '../details/library-sync'
-import { disbandPile, putOnTop } from '../details/pile-actions'
+import { disbandPile, putOnTop, removeFromPile } from '../details/pile-actions'
 import { useGuardedSelection } from '../details/use-guarded-selection'
 import { CardMenu, type MenuTarget } from './CardMenu'
 import { usePileItems } from './usePileItems'
@@ -35,7 +35,7 @@ function cardState(item: LibraryItem, selected: boolean): MockupCardState {
  * `useDetailsEscape`). Make top and the other pile actions live in each card's ⋯ menu.
  */
 export function PilePage({ pile }: { pile: OpenPile }) {
-  const { status, items, topId, reload } = usePileItems(pile.id)
+  const { status, gone, items, topId, reload } = usePileItems(pile.id)
   const ids = useMemo(() => items.map((item) => String(item.id)), [items])
   const raw = useGridSelection(ids)
   const selection = useGuardedSelection(raw)
@@ -53,6 +53,11 @@ export function PilePage({ pile }: { pile: OpenPile }) {
     if (pile.edit) useDetailsStore.getState().requestEdit(first)
     raw.set([String(first)])
   }, [status, items, pile.select, pile.edit, raw])
+
+  // The pile is gone (undone into something else, or disbanded elsewhere): back to My Stash.
+  useEffect(() => {
+    if (gone) useDetailsStore.getState().closePile()
+  }, [gone])
 
   // The header follows the pile: its title is the top mockup's, and its count can change.
   useEffect(() => {
@@ -136,6 +141,17 @@ export function PilePage({ pile }: { pile: OpenPile }) {
     if (next === null) return
     // The pile is now the new top's row: carry on with that id.
     useDetailsStore.getState().openPile({ ...pile, id: next, select: item.id, edit: false })
+  }
+
+  const removeItem = async (item: LibraryItem) => {
+    const result = await removeFromPile(pile.id, item.id, item.title)
+    if (!result) return
+    // A pile left with one mockup is gone: back to My Stash. A new top carries on as the pile.
+    if (result.pileId === null) useDetailsStore.getState().closePile()
+    else if (result.pileId !== pile.id)
+      useDetailsStore
+        .getState()
+        .openPile({ ...pile, id: result.pileId, select: result.pileId, edit: false })
   }
 
   const disband = async () => {
@@ -232,6 +248,7 @@ export function PilePage({ pile }: { pile: OpenPile }) {
           star: (targets, favourite) =>
             targets.forEach((item) => void setFavourite(item, favourite)),
           putOnTop: (item) => void makeTop(item),
+          removeFromPile: (item) => void removeItem(item),
           trash: (targets) => targets.forEach((item) => void trash(item)),
           selectAll: selection.selectAll,
           undo: () => {}

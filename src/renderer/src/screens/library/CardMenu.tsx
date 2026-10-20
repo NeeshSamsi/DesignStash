@@ -5,6 +5,7 @@ import {
   FolderAddIcon,
   Layers01Icon,
   LinkSquare02Icon,
+  MinusSignIcon,
   StarIcon,
   UndoIcon
 } from '@hugeicons/core-free-icons'
@@ -31,6 +32,7 @@ export interface CardMenuActions {
   /** A pile's page: open the pile, and put a card on top. */
   openPile?: (item: LibraryItem) => void
   putOnTop?: (item: LibraryItem) => void
+  removeFromPile?: (item: LibraryItem) => void
   trash: (items: LibraryItem[]) => void
   selectAll: () => void
   addFiles?: () => void
@@ -67,7 +69,7 @@ export function menuRows(
     case 'card': {
       const { item, inPile } = target
       return {
-        groups: [2, 3],
+        groups: inPile ? [2, 4] : [2, 3],
         rows: [
           {
             key: 'ps',
@@ -103,6 +105,17 @@ export function menuRows(
                 disabled: true,
                 run: () => {}
               },
+          ...(inPile
+            ? [
+                {
+                  key: 'remove',
+                  label: 'Remove from pile',
+                  icon: MinusSignIcon,
+                  disabled: !actions.removeFromPile,
+                  run: () => actions.removeFromPile?.(item)
+                }
+              ]
+            : []),
           {
             key: 'trash',
             label: 'Move to Trash',
