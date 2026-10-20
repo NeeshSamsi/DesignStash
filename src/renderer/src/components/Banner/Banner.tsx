@@ -55,7 +55,13 @@ export function Banner({ className, actionLabel, onAction, onDismiss, ...rest }:
         </Button>
       )}
       {props.dismissible && (
-        <Button variant="ghost" size="icon-xs" type="button" aria-label="Dismiss" onClick={onDismiss}>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          type="button"
+          aria-label="Dismiss"
+          onClick={onDismiss}
+        >
           <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
         </Button>
       )}

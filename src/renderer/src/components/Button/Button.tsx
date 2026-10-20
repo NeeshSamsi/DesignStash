@@ -5,8 +5,7 @@ import { Button as UiButton } from '@renderer/ui/button'
 import { BUTTON_DEFAULTS, type ButtonContractProps } from './Button.types'
 
 export interface ButtonProps
-  extends ButtonContractProps,
-    Omit<ComponentProps<'button'>, keyof ButtonContractProps> {
+  extends ButtonContractProps, Omit<ComponentProps<'button'>, keyof ButtonContractProps> {
   /** Replaces `label` when the content is more than text. */
   children?: ReactNode
 }
@@ -60,7 +59,9 @@ export function Button({ children, ...rest }: ButtonProps) {
         )
       ) : (
         <>
-          {loading ? spinner : showIconStart && <HugeiconsIcon icon={iconStart} strokeWidth={1.5} />}
+          {loading
+            ? spinner
+            : showIconStart && <HugeiconsIcon icon={iconStart} strokeWidth={1.5} />}
           {children ?? label}
           {showIconEnd && <HugeiconsIcon icon={iconEnd} strokeWidth={1.5} />}
         </>

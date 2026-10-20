@@ -56,8 +56,7 @@ export function ErrorState({
     )
   }
 
-  const secondary =
-    secondaryLabel === undefined ? DEFAULT_SECONDARY[props.variant] : secondaryLabel
+  const secondary = secondaryLabel === undefined ? DEFAULT_SECONDARY[props.variant] : secondaryLabel
   const isFullWindow = props.variant === 'full-window'
   return (
     <div
@@ -69,7 +68,13 @@ export function ErrorState({
       <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-error-weak text-error">
         <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-6" />
       </div>
-      <p className={isFullWindow ? 'type-display-2xl-medium text-foreground' : 'type-title-lg-semibold text-foreground'}>
+      <p
+        className={
+          isFullWindow
+            ? 'type-display-2xl-medium text-foreground'
+            : 'type-title-lg-semibold text-foreground'
+        }
+      >
         {props.title}
       </p>
       <p className="type-body-sm-regular text-muted-foreground">{props.message}</p>

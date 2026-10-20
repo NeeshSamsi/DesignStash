@@ -2,14 +2,17 @@ import { cva } from 'class-variance-authority'
 
 // Figma CoverPanel 220:3545. The media column is 480 wide; the cover is 4:3 inside it.
 // Source changes the tag text and state the layers over the cover, so the panel's classes are shared.
-export const coverPanelVariants = cva('relative isolate flex w-detail-media max-w-full flex-col gap-2', {
-  variants: {
-    source: { embedded: '', sidecar: '', uploaded: '', none: '' },
-    // Each state changes what is drawn over the cover, not the panel's own classes.
-    state: { default: '', 'drag-over': '', replacing: '', uploading: '', error: '' }
-  },
-  defaultVariants: { source: 'embedded', state: 'default' }
-})
+export const coverPanelVariants = cva(
+  'relative isolate flex w-detail-media max-w-full flex-col gap-2',
+  {
+    variants: {
+      source: { embedded: '', sidecar: '', uploaded: '', none: '' },
+      // Each state changes what is drawn over the cover, not the panel's own classes.
+      state: { default: '', 'drag-over': '', replacing: '', uploading: '', error: '' }
+    },
+    defaultVariants: { source: 'embedded', state: 'default' }
+  }
+)
 
 /** The cover well. It is a hover group, so Replace shows on pointer hover or keyboard focus. */
 export const COVER_WELL =

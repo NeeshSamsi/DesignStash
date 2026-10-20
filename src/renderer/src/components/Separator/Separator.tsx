@@ -3,7 +3,8 @@ import { Separator as UiSeparator } from '@renderer/ui/separator'
 import { SEPARATOR_DEFAULTS, type SeparatorContractProps } from './Separator.types'
 
 export interface SeparatorProps
-  extends SeparatorContractProps,
+  extends
+    SeparatorContractProps,
     Omit<ComponentProps<typeof UiSeparator>, keyof SeparatorContractProps> {}
 
 /**

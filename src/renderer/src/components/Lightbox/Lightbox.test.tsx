@@ -21,7 +21,9 @@ describe('Lightbox', () => {
   it('shows the cover and names the dialog from the caption', () => {
     render(<Lightbox open caption="Clay iPhone 15 Pro" src="cover.webp" onClose={vi.fn()} />)
     expect(screen.getByRole('dialog', { name: 'Clay iPhone 15 Pro' })).toBeTruthy()
-    expect((screen.getByAltText('Clay iPhone 15 Pro') as HTMLImageElement).getAttribute('src')).toBe('cover.webp')
+    expect(
+      (screen.getByAltText('Clay iPhone 15 Pro') as HTMLImageElement).getAttribute('src')
+    ).toBe('cover.webp')
   })
 
   it('Esc closes it', () => {
@@ -71,7 +73,9 @@ describe('Lightbox', () => {
     const onNext = vi.fn()
     render(<Lightbox open src="a.webp" onClose={vi.fn()} onNext={onNext} />)
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft' })
-    expect((screen.getByRole('button', { name: 'Previous' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Previous' }) as HTMLButtonElement).disabled).toBe(
+      true
+    )
     expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
@@ -90,7 +94,13 @@ describe('Lightbox', () => {
     const onCheckLibrary = vi.fn()
     const onReplace = vi.fn()
     render(
-      <Lightbox open state="missing" onClose={vi.fn()} onCheckLibrary={onCheckLibrary} onReplace={onReplace} />
+      <Lightbox
+        open
+        state="missing"
+        onClose={vi.fn()}
+        onCheckLibrary={onCheckLibrary}
+        onReplace={onReplace}
+      />
     )
     fireEvent.click(screen.getByRole('button', { name: 'Check library' }))
     fireEvent.click(screen.getByRole('button', { name: 'Replace cover' }))
@@ -127,7 +137,9 @@ describe('Lightbox', () => {
     document.body.append(card)
     function Harness() {
       const [open, setOpen] = useState(true)
-      return <Lightbox open={open} src="a.webp" returnFocusTo={card} onClose={() => setOpen(false)} />
+      return (
+        <Lightbox open={open} src="a.webp" returnFocusTo={card} onClose={() => setOpen(false)} />
+      )
     }
     render(<Harness />)
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })

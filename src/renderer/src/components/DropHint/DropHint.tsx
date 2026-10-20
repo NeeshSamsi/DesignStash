@@ -17,7 +17,11 @@ export function DropHint({ className, ...rest }: DropHintProps) {
   const props = { ...DROP_HINT_DEFAULTS, ...rest }
   return (
     <div data-ds="DropHint" role="status" className={cn(dropHintVariants(), className)}>
-      <HugeiconsIcon icon={MultiplicationSignCircleIcon} strokeWidth={2} className="size-4 shrink-0" />
+      <HugeiconsIcon
+        icon={MultiplicationSignCircleIcon}
+        strokeWidth={2}
+        className="size-4 shrink-0"
+      />
       <p className="type-caption-xs-regular text-foreground">{props.label}</p>
     </div>
   )

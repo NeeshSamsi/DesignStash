@@ -7,7 +7,8 @@ import { InputGroup, InputGroupInput, Input as UiInput } from '@renderer/ui/inpu
 import { INPUT_DEFAULTS, type InputContractProps } from './Input.types'
 
 export interface InputProps
-  extends InputContractProps,
+  extends
+    InputContractProps,
     Omit<ComponentProps<'input'>, keyof InputContractProps | 'defaultValue'> {
   /** search: called by the clear button (shown while there is text). */
   onClear?: () => void

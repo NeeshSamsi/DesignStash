@@ -2,14 +2,17 @@ import { cva } from 'class-variance-authority'
 
 // Figma DetailModal layout 222:4366: a 896px panel (Modal xl) of header, two-pane body and footer.
 // The panel's own look (surface-2, border/base, radius xl, 24px padding) comes from the dialog it sits in.
-export const detailModalLayoutVariants = cva('flex max-h-viewport w-224 max-w-viewport flex-col gap-5', {
-  variants: {
-    variant: { single: '', group: '' },
-    // Each state changes the content (skeleton, error, Save), not the panel.
-    state: { loaded: '', dirty: '', saving: '', loading: '', error: '' }
-  },
-  defaultVariants: { variant: 'single', state: 'loaded' }
-})
+export const detailModalLayoutVariants = cva(
+  'flex max-h-viewport w-224 max-w-viewport flex-col gap-5',
+  {
+    variants: {
+      variant: { single: '', group: '' },
+      // Each state changes the content (skeleton, error, Save), not the panel.
+      state: { loaded: '', dirty: '', saving: '', loading: '', error: '' }
+    },
+    defaultVariants: { variant: 'single', state: 'loaded' }
+  }
+)
 
 export const DETAIL_HEADER = 'flex items-center gap-2'
 /** The body scrolls when the window is short; the header and footer stay pinned. */

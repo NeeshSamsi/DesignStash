@@ -10,8 +10,7 @@ import {
 import { FIELD_DEFAULTS, type FieldContractProps } from './Field.types'
 
 export interface FieldProps
-  extends FieldContractProps,
-    Omit<ComponentProps<'div'>, keyof FieldContractProps | 'children'> {
+  extends FieldContractProps, Omit<ComponentProps<'div'>, keyof FieldContractProps | 'children'> {
   /** The control (Figma's control slot). Defaults to an Input; give yours `id={htmlFor}`. */
   children?: ReactNode
   /** id of the control the label points at. */

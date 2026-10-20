@@ -6,7 +6,8 @@ import {
 } from './KeyboardShortcut.types'
 
 export interface KeyboardShortcutProps
-  extends KeyboardShortcutContractProps,
+  extends
+    KeyboardShortcutContractProps,
     Omit<ComponentProps<'kbd'>, keyof KeyboardShortcutContractProps> {}
 
 /**

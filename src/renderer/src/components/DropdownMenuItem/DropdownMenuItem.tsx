@@ -32,7 +32,12 @@ const UI_VARIANT = { neutral: 'default', destructive: 'destructive' } as const
  * Adapter over DropdownMenuItem / DropdownMenuSubTrigger in ui/dropdown-menu.tsx. Inside a
  * DropdownMenu with a trigger it is a live Radix row; elsewhere it renders in place.
  */
-export function DropdownMenuItem({ className, onSelect, children, ...rest }: DropdownMenuItemProps) {
+export function DropdownMenuItem({
+  className,
+  onSelect,
+  children,
+  ...rest
+}: DropdownMenuItemProps) {
   const props = { ...DROPDOWN_MENU_ITEM_DEFAULTS, ...rest }
   const mode = useContext(DropdownMenuContext)
   const content = (
@@ -49,7 +54,11 @@ export function DropdownMenuItem({ className, onSelect, children, ...rest }: Dro
     if (props.submenu) {
       return (
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger data-ds="DropdownMenuItem" disabled={props.disabled} className={className}>
+          <DropdownMenuSubTrigger
+            data-ds="DropdownMenuItem"
+            disabled={props.disabled}
+            className={className}
+          >
             {content}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>{children}</DropdownMenuSubContent>

@@ -15,7 +15,8 @@ export interface SelectOption {
 }
 
 export interface SelectProps
-  extends SelectContractProps,
+  extends
+    SelectContractProps,
     Omit<
       ComponentProps<typeof UiSelect>,
       keyof SelectContractProps | 'defaultValue' | 'defaultOpen' | 'children'

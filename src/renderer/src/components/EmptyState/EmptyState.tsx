@@ -44,7 +44,11 @@ export function EmptyState({
       <div className={emptyStateTileVariants({ variant: props.variant })}>
         <HugeiconsIcon icon={props.icon} strokeWidth={2} />
       </div>
-      <p className={isPage ? 'type-title-lg-semibold text-foreground' : 'type-body-sm-medium text-foreground'}>
+      <p
+        className={
+          isPage ? 'type-title-lg-semibold text-foreground' : 'type-body-sm-medium text-foreground'
+        }
+      >
         {props.title}
       </p>
       <p className="type-body-sm-regular text-muted-foreground">{props.description}</p>

@@ -3,7 +3,8 @@ import { Textarea as UiTextarea } from '@renderer/ui/textarea'
 import { TEXTAREA_DEFAULTS, type TextareaContractProps } from './Textarea.types'
 
 export interface TextareaProps
-  extends TextareaContractProps,
+  extends
+    TextareaContractProps,
     Omit<ComponentProps<'textarea'>, keyof TextareaContractProps | 'defaultValue'> {}
 
 /**

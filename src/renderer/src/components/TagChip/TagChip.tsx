@@ -99,7 +99,9 @@ export function TagChip({
   const pressable = variant === 'add' || (variant === 'suggested' && !thinking)
   const press = variant === 'suggested' ? onAccept : undefined
   const categoryText = showCategory && (
-    <span className={variant === 'filter' ? 'text-muted-foreground' : 'text-tertiary'}>{category}</span>
+    <span className={variant === 'filter' ? 'text-muted-foreground' : 'text-tertiary'}>
+      {category}
+    </span>
   )
   const labelClass = cn(
     'type-label-xs-medium',

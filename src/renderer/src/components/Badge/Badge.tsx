@@ -4,8 +4,7 @@ import { Badge as UiBadge } from '@renderer/ui/badge'
 import { BADGE_DEFAULTS, type BadgeContractProps } from './Badge.types'
 
 export interface BadgeProps
-  extends BadgeContractProps,
-    Omit<ComponentProps<'span'>, keyof BadgeContractProps> {
+  extends BadgeContractProps, Omit<ComponentProps<'span'>, keyof BadgeContractProps> {
   /** Replaces `label` when the content is more than text. */
   children?: ReactNode
 }

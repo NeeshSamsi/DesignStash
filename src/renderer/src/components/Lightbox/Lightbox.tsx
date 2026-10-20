@@ -107,10 +107,7 @@ export function Lightbox({
           alt={props.caption}
           onLoad={(event) => setNatural(event.currentTarget.naturalWidth)}
           style={imageStyle}
-          className={cn(
-            'rounded-xl object-contain',
-            zoom === 'fit' && 'max-h-full max-w-full'
-          )}
+          className={cn('rounded-xl object-contain', zoom === 'fit' && 'max-h-full max-w-full')}
         />
       )
     }
@@ -135,7 +132,12 @@ export function Lightbox({
         >
           <HugeiconsIcon icon={ZoomOutAreaIcon} strokeWidth={2} />
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Zoom in" onClick={() => setZoom(zoomedIn(zoom))}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Zoom in"
+          onClick={() => setZoom(zoomedIn(zoom))}
+        >
           <HugeiconsIcon icon={ZoomInAreaIcon} strokeWidth={2} />
         </Button>
         <Button
@@ -206,7 +208,8 @@ export function Lightbox({
           aria-describedby={undefined}
           onInteractOutside={guardToaster()}
           onOpenAutoFocus={() => {
-            opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+            opener.current =
+              document.activeElement instanceof HTMLElement ? document.activeElement : null
           }}
           onCloseAutoFocus={(event) => {
             const card = returnFocusTo ?? opener.current

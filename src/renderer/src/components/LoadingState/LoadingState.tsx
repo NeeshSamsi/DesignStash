@@ -61,7 +61,9 @@ export function LoadingState({ className, count, ...rest }: LoadingStateProps) {
           <div className="flex flex-col gap-1">
             <p className="type-body-sm-regular text-muted-foreground">{props.message}</p>
             {props.showSub && (
-              <p className="type-caption-xs-regular text-tertiary">This usually only takes a second.</p>
+              <p className="type-caption-xs-regular text-tertiary">
+                This usually only takes a second.
+              </p>
             )}
           </div>
           <div className="flex flex-wrap gap-6">{repeat(count ?? GRID_COUNT, 'card')}</div>

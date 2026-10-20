@@ -4,7 +4,8 @@ import { CATEGORY_PILL_DEFAULTS, type CategoryPillContractProps } from './Catego
 import { categoryPillVariants } from './CategoryPill.variants'
 
 export interface CategoryPillProps
-  extends CategoryPillContractProps,
+  extends
+    CategoryPillContractProps,
     Omit<ComponentProps<'button'>, keyof CategoryPillContractProps | 'children'> {}
 
 /**

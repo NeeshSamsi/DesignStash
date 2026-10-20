@@ -6,7 +6,8 @@ import { CHECKBOX_DEFAULTS, type CheckboxContractProps } from './Checkbox.types'
 type CheckedState = boolean | 'indeterminate'
 
 export interface CheckboxProps
-  extends CheckboxContractProps,
+  extends
+    CheckboxContractProps,
     Omit<
       ComponentProps<typeof UiCheckbox>,
       keyof CheckboxContractProps | 'checked' | 'defaultChecked'

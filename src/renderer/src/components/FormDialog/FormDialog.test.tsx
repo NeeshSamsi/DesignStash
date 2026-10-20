@@ -4,7 +4,6 @@ import { variantMatrix } from '@renderer/design-system/matrix'
 import { FormDialog, type FormDialogProps } from './FormDialog'
 import { FORM_DIALOG_CONTRACT } from './FormDialog.types'
 
-
 /** Buttons with a filled colour (primary or destructive); secondary and ghost are not filled. */
 const filled = (root: ParentNode) =>
   [...root.querySelectorAll('[data-slot="button"]')].filter((b) =>
@@ -45,7 +44,11 @@ describe('FormDialog', () => {
 
   it('submitting disables submit, swaps the label and does not resubmit', () => {
     const onSubmit = vi.fn()
-    render(<FormDialog open state="submitting" onSubmit={onSubmit}><input aria-label="Name" /></FormDialog>)
+    render(
+      <FormDialog open state="submitting" onSubmit={onSubmit}>
+        <input aria-label="Name" />
+      </FormDialog>
+    )
     const button = screen.getByRole('button', { name: 'Creating…' }) as HTMLButtonElement
     expect(button.disabled).toBe(true)
     fireEvent.submit(screen.getByLabelText('Name'))
@@ -54,7 +57,9 @@ describe('FormDialog', () => {
 
   it('server errors appear in a Banner that can retry', () => {
     const onSubmit = vi.fn()
-    render(<FormDialog open state="error" errorTitle="Couldn’t rename the tag" onSubmit={onSubmit} />)
+    render(
+      <FormDialog open state="error" errorTitle="Couldn’t rename the tag" onSubmit={onSubmit} />
+    )
     expect(screen.getByRole('alert').textContent).toContain('Couldn’t rename the tag')
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -66,7 +71,11 @@ describe('FormDialog', () => {
   })
 
   it('a live form shows its own fields, not the catalog sample', () => {
-    render(<FormDialog open><input aria-label="Mine" /></FormDialog>)
+    render(
+      <FormDialog open>
+        <input aria-label="Mine" />
+      </FormDialog>
+    )
     expect(screen.getByLabelText('Mine')).toBeTruthy()
     expect(screen.queryByText('Name')).toBeNull()
   })

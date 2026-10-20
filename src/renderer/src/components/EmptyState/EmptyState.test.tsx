@@ -50,7 +50,9 @@ describe('EmptyState', () => {
     expect(icons()).toHaveLength(1)
     rerender(<EmptyState secondaryAction secondaryLabel="Import from a folder" />)
     expect(icons()).toHaveLength(0)
-    expect(screen.getByRole('button', { name: 'Import from a folder' }).querySelector('svg')).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Import from a folder' }).querySelector('svg')
+    ).toBeNull()
     // Light to heavy: the secondary first.
     expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([
       'Import from a folder',

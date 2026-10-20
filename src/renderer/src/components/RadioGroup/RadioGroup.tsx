@@ -1,13 +1,18 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
-import { RadioGroupItem, RadioGroup as UiRadioGroup, useInRadioGroup } from '@renderer/ui/radio-group'
+import {
+  RadioGroupItem,
+  RadioGroup as UiRadioGroup,
+  useInRadioGroup
+} from '@renderer/ui/radio-group'
 import { RADIO_GROUP_DEFAULTS, type RadioGroupContractProps } from './RadioGroup.types'
 
 /** Wrap several RadioGroup items in this so they share one value. */
 export { RadioGroup as RadioGroupRoot } from '@renderer/ui/radio-group'
 
 export interface RadioGroupProps
-  extends RadioGroupContractProps,
+  extends
+    RadioGroupContractProps,
     Omit<ComponentProps<typeof RadioGroupItem>, keyof RadioGroupContractProps | 'value'> {
   /** The option's value inside a RadioGroupRoot. Defaults to `label`. */
   value?: string
@@ -38,7 +43,11 @@ export function RadioGroup({ className, children, value, ...rest }: RadioGroupPr
     <label
       data-ds="RadioGroup"
       data-variant={variant}
-      className={cn(LAYOUT[variant], 'has-disabled:cursor-not-allowed has-disabled:opacity-50', className)}
+      className={cn(
+        LAYOUT[variant],
+        'has-disabled:cursor-not-allowed has-disabled:opacity-50',
+        className
+      )}
     >
       {/* The row dims as a whole when disabled, as in Figma. */}
       <RadioGroupItem value={itemValue} className="disabled:opacity-100" {...props} />

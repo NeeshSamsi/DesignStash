@@ -4,7 +4,8 @@ import { Switch as UiSwitch } from '@renderer/ui/switch'
 import { SWITCH_DEFAULTS, type SwitchContractProps } from './Switch.types'
 
 export interface SwitchProps
-  extends SwitchContractProps,
+  extends
+    SwitchContractProps,
     Omit<ComponentProps<typeof UiSwitch>, keyof SwitchContractProps | 'defaultChecked'> {}
 
 /**

@@ -251,13 +251,7 @@ export function SettingsLayout({
   onClose,
   ...rest
 }: SettingsLayoutProps) {
-  const {
-    section,
-    modelQwen25VL3B,
-    modelQwen25VL7B,
-    tagTree,
-    ...props
-  } = {
+  const { section, modelQwen25VL3B, modelQwen25VL7B, tagTree, ...props } = {
     ...SETTINGS_LAYOUT_DEFAULTS,
     ...rest
   }
@@ -296,10 +290,7 @@ export function SettingsLayout({
         </div>
         <div className={SETTINGS_BODY}>
           {children ?? (
-            <Sample
-              section={section}
-              slots={{ modelQwen25VL3B, modelQwen25VL7B, tagTree }}
-            />
+            <Sample section={section} slots={{ modelQwen25VL3B, modelQwen25VL7B, tagTree }} />
           )}
         </div>
       </div>

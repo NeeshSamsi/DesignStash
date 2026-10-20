@@ -4,7 +4,6 @@ import { variantMatrix } from '@renderer/design-system/matrix'
 import { ProgressDialog, type ProgressDialogProps } from './ProgressDialog'
 import { PROGRESS_DIALOG_CONTRACT } from './ProgressDialog.types'
 
-
 /** Buttons with a filled colour (primary or destructive); secondary and ghost are not filled. */
 const filled = (root: ParentNode) =>
   [...root.querySelectorAll('[data-slot="button"]')].filter((b) =>
@@ -36,7 +35,9 @@ describe('ProgressDialog', () => {
 
   it('cancelling disables the button and shows why', () => {
     render(<ProgressDialog open state="cancelling" />)
-    expect((screen.getByRole('button', { name: 'Cancelling…' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(
+      (screen.getByRole('button', { name: 'Cancelling…' }) as HTMLButtonElement).disabled
+    ).toBe(true)
   })
 
   it('done offers Done as the only filled button', () => {

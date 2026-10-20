@@ -107,7 +107,11 @@ const SAMPLE_QUERY: Record<TagFilterPopoverState, string> = {
 }
 
 /** Controlled when `value` is given, otherwise it keeps its own state starting at `initial`. */
-function useControllable<T>(value: T | undefined, initial: T, onChange: ((next: T) => void) | undefined) {
+function useControllable<T>(
+  value: T | undefined,
+  initial: T,
+  onChange: ((next: T) => void) | undefined
+) {
   const [own, setOwn] = useState(initial)
   const current = value === undefined ? own : value
   const set = (next: T) => {
@@ -143,7 +147,11 @@ export function TagFilterPopover({
   const props = { ...TAG_FILTER_POPOVER_DEFAULTS, ...rest }
   const demo = categories === undefined
   const data = demo ? (props.state === 'empty' ? [] : SAMPLE) : categories
-  const [query, setQuery] = useControllable(queryProp, demo ? SAMPLE_QUERY[props.state] : '', onQueryChange)
+  const [query, setQuery] = useControllable(
+    queryProp,
+    demo ? SAMPLE_QUERY[props.state] : '',
+    onQueryChange
+  )
   const [selected, setSelected] = useControllable(
     selectedTagIds,
     demo && props.state === 'some-selected' ? [10, 11] : [],

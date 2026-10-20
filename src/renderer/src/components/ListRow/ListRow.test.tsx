@@ -55,7 +55,9 @@ describe('ListRow', () => {
   })
 
   it('error turns the subtitle and border red; selected uses the selected border', () => {
-    const { container, rerender } = render(<ListRow state="error" subtitle="Couldn’t read this file" />)
+    const { container, rerender } = render(
+      <ListRow state="error" subtitle="Couldn’t read this file" />
+    )
     expect(screen.getByText('Couldn’t read this file').className).toContain('text-error')
     expect(container.firstElementChild!.className).toContain('border-error')
     rerender(<ListRow state="selected" />)
@@ -63,7 +65,9 @@ describe('ListRow', () => {
   })
 
   it('media and thumb are separate slots; thumbContent fills the thumb', () => {
-    const { container, rerender } = render(<ListRow media={false} thumb thumbContent={<img alt="cover" />} />)
+    const { container, rerender } = render(
+      <ListRow media={false} thumb thumbContent={<img alt="cover" />} />
+    )
     expect(screen.getByAltText('cover')).toBeTruthy()
     expect(container.querySelectorAll('svg').length).toBe(0)
     rerender(<ListRow media thumb={false} />)
