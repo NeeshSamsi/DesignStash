@@ -19,7 +19,6 @@ export const item = (id: number, over: Partial<LibraryItem> = {}): LibraryItem =
   coverMissing: false,
   isGroup: false,
   favourite: false,
-  reviewStatus: 'approved',
   createdAt: `2026-10-${String(10 + id).padStart(2, '0')}`,
   variantCount: 0,
   topId: null,
