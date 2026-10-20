@@ -19,7 +19,6 @@ export default defineConfig({
         ],
         input: {
           index: resolve('src/main/index.ts'),
-          'psd-reader.worker': resolve('src/main/psd/psd-reader.worker.ts'),
         },
         output: {
           format: 'cjs',

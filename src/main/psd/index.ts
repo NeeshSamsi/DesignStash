@@ -1,6 +1,5 @@
 export type { RawImage, CoverSource, CoverResolution, ResolveCoverInput } from './types'
 export { readEmbeddedPreview } from './embedded'
-export { readEmbeddedPreviewInWorker } from './worker'
 export { generateCoverFromRaw, generateCoverFromFile } from './image'
 export { collectCandidateImages, normalizeStem, findSidecar } from './sidecar'
 export type { SidecarMatch } from './sidecar'
