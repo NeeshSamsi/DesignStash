@@ -374,6 +374,7 @@ export default function LibraryPage({
     <div className="flex min-h-full flex-col gap-4">
       {onSortWaiting && showAdd && <WaitingToSortStrip onSort={onSortWaiting} />}
       <LibraryToolbar
+        className="flex-wrap"
         stats={statsText}
         chips={chips}
         onClearFilters={clearFilters}

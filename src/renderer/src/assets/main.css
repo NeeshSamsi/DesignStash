@@ -72,7 +72,8 @@
   --gap-card-x: 1rem; /* 16 */
   --gap-card-y: 1.5rem; /* 24 */
 
-  /* The content panel never gets narrower than two cards, their gap and its padding: 2×220 + 16 + 2×28. */
+  /* What the content panel is meant to keep: two cards, their gap and its padding (2×220 + 16 + 2×28). The window
+     minimum guarantees it; below that the panel gives way to one column rather than push the sidebar off screen. */
   --size-main-min: 32rem; /* 512 */
 }
 
@@ -83,11 +84,6 @@
   column-gap: var(--gap-card-x);
   row-gap: var(--gap-card-y);
   align-items: start;
-}
-
-/* The main content panel's minimum width, so My Stash keeps two columns even beside the details sidebar. */
-@utility min-w-main {
-  min-width: var(--size-main-min);
 }
 
 /* Continuous (squircle) corners where the engine supports corner-shape; a plain radius elsewhere. */

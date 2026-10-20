@@ -9,7 +9,7 @@ import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
 import { ensureSearchIndex } from './db/search-index'
 import { createSettingsStore } from './settings'
 import { runBoot, setBootStatus } from './boot-status'
-import { MIN_WINDOW, initialWindowSize } from './window-size'
+import { MIN_WINDOW, windowSizeOptions } from './window-size'
 import { handleCoverRequests, registerCoverScheme } from './cover-protocol'
 import { registerAppHandlers } from './ipc/app'
 import { registerBootHandlers } from './ipc/boot'
@@ -33,12 +33,8 @@ function migrationsFolder(): string {
 
 function createWindow(): BrowserWindow {
   // 1440×900 clamped to the display, resizable down to a minimum, centred on first launch.
-  const { width, height } = initialWindowSize(screen.getPrimaryDisplay().workAreaSize)
   const window = new BrowserWindow({
-    width,
-    height,
-    minWidth: MIN_WINDOW.width,
-    minHeight: MIN_WINDOW.height,
+    ...windowSizeOptions(screen.getPrimaryDisplay().workAreaSize),
     center: true,
     show: false,
     autoHideMenuBar: true,
@@ -50,6 +46,9 @@ function createWindow(): BrowserWindow {
       nodeIntegration: false
     }
   })
+
+  // Whatever size the window was given, it can never be resized below the minimum.
+  window.setMinimumSize(MIN_WINDOW.width, MIN_WINDOW.height)
 
   window.on('ready-to-show', () => window.show())
 
@@ -70,7 +69,11 @@ app.whenReady().then(() => {
   app.setAppUserModelId(APP_ID)
 
   const settings = createSettingsStore(app.getPath('userData'))
-  handleCoverRequests(protocol, (fileUrl) => net.fetch(fileUrl), () => settings.getLibraryRoot())
+  handleCoverRequests(
+    protocol,
+    (fileUrl) => net.fetch(fileUrl),
+    () => settings.getLibraryRoot()
+  )
   // A stash folder chosen last time takes effect now, before the database opens.
   applyPendingStash(settings)
 

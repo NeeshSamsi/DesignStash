@@ -24,3 +24,14 @@ export function initialWindowSize(workArea: Size): Size {
     height: fit(DEFAULT_WINDOW.height, workArea.height, MIN_WINDOW.height)
   }
 }
+
+/** The size options for the main window: its first-launch size and the minimum it can be resized to. */
+export function windowSizeOptions(workArea: Size): {
+  width: number
+  height: number
+  minWidth: number
+  minHeight: number
+} {
+  const { width, height } = initialWindowSize(workArea)
+  return { width, height, minWidth: MIN_WINDOW.width, minHeight: MIN_WINDOW.height }
+}

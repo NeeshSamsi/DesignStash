@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_WINDOW, initialWindowSize } from './window-size'
+import { MIN_WINDOW, initialWindowSize, windowSizeOptions } from './window-size'
 
 describe('initialWindowSize', () => {
   it('opens at 1440×900 on a roomy display', () => {
@@ -23,5 +23,21 @@ describe('initialWindowSize', () => {
 
   it('keeps the minimum at 1088×680', () => {
     expect(MIN_WINDOW).toEqual({ width: 1088, height: 680 })
+  })
+})
+
+describe('windowSizeOptions', () => {
+  it('sets minWidth and minHeight from the minimum, whatever the display', () => {
+    for (const area of [
+      { width: 800, height: 600 },
+      { width: 1512, height: 944 },
+      { width: 3000, height: 2000 }
+    ]) {
+      const options = windowSizeOptions(area)
+      expect(options.minWidth).toBe(1088)
+      expect(options.minHeight).toBe(680)
+      expect(options.width).toBeGreaterThanOrEqual(options.minWidth)
+      expect(options.height).toBeGreaterThanOrEqual(options.minHeight)
+    }
   })
 })

@@ -273,6 +273,37 @@ test.describe('Details sidebar', () => {
     await fits('wide again, sidebar open')
   })
 
+  test('below the window minimum nothing is cut off: the sidebar stays whole and the grid drops to one column', async ({
+    app
+  }) => {
+    const { window } = app
+    await seedStash(app, ['laptop', 'phone', 'poster'])
+    await showMyStash(app)
+    // A window made before the minimum changed can be narrower than it: lift the minimum to test that.
+    await app.app.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows()[0]
+      win?.setMinimumSize(0, 0)
+      win?.setSize(990, 680)
+    })
+    await expect.poll(() => window.evaluate(() => self.innerWidth)).toBe(990)
+    await clickCard(window)
+    await expect(panel(window)).toBeVisible()
+    await window.waitForTimeout(500)
+    const box = (await panel(window).boundingBox())!
+    expect(box.x, 'sidebar left edge').toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width, 'sidebar right edge').toBeLessThanOrEqual(990 + 1)
+    expect(box.width, 'sidebar keeps its width').toBeGreaterThanOrEqual(379)
+    const buttons = (await panel(window)
+      .getByRole('button', { name: 'Open in Photoshop' })
+      .boundingBox())!
+    expect(buttons.x + buttons.width, 'its buttons are whole').toBeLessThanOrEqual(990 + 1)
+    const columns = await window.evaluate(() => {
+      const cards = [...document.querySelectorAll<HTMLElement>('[data-mockup-id]')]
+      return new Set(cards.map((el) => Math.round(el.getBoundingClientRect().left))).size
+    })
+    expect(columns, 'one column of cards').toBe(1)
+  })
+
   test('Esc closes it, and so does clicking empty space', async ({ app }) => {
     const { window } = app
     await seedStash(app, ['laptop'])
