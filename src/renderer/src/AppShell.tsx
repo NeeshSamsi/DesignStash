@@ -17,15 +17,11 @@ import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
 
 interface AppShellProps {
   children: ReactNode
-  /** The import card; it sits in the ActivityDock under the toasts. */
-  importCard?: ReactNode
-  /** An import is running: Add is disabled. */
-  importing?: boolean
   /** Hide the PageHeader (pipeline screens bring their own heading). */
   showHeader?: boolean
   onAddFiles?: () => void
   onAddFolder?: () => void
-  /** The copy widget (Gather); it sits in the ActivityDock above the legacy import card. */
+  /** The copy widget (Gather); it sits in the ActivityDock under the toasts. */
   copyWidget?: ReactNode
   /** The window-wide DropOverlay while files are dragged over a page that takes them. */
   dropOverlay?: ReactNode
@@ -77,8 +73,6 @@ const NAV_VIEWS: Partial<Record<SidebarNavKey, AppView>> = {
 
 export default function AppShell({
   children,
-  importCard,
-  importing = false,
   showHeader = true,
   onAddFiles,
   onAddFolder,
@@ -108,16 +102,12 @@ export default function AppShell({
   useShortcut({
     id: 'import.add-files',
     combo: 'mod+o',
-    handler: () => {
-      if (!importing) onAddFiles?.()
-    }
+    handler: () => onAddFiles?.()
   })
   useShortcut({
     id: 'import.add-folder',
     combo: 'mod+shift+o',
-    handler: () => {
-      if (!importing) onAddFolder?.()
-    }
+    handler: () => onAddFolder?.()
   })
 
   // The page's "Clear search" empties the library query; the field follows it.
@@ -201,7 +191,6 @@ export default function AppShell({
             onOpenSettings={() => openSettings()}
             add={
               <AddMenu
-                disabled={importing}
                 {...(onAddFiles ? { onAddFiles } : {})}
                 {...(onAddFolder ? { onAddFolder } : {})}
               />
@@ -227,12 +216,7 @@ export default function AppShell({
       <ActivityDock
         className="fixed right-4 bottom-4 z-50"
         toastContent={<Toaster />}
-        importContent={
-          <>
-            {copyWidget}
-            {importCard}
-          </>
-        }
+        importContent={copyWidget}
       />
       {dropHint}
       <SettingsModal

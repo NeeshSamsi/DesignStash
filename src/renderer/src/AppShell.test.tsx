@@ -201,25 +201,16 @@ describe('AppShell search', () => {
 })
 
 describe('AppShell import', () => {
-  it('disables Add while an import runs', () => {
+  it('keeps Add available while a copy runs: new files join the haul', () => {
     render(
-      <AppShell importing>
+      <AppShell copyWidget={<p>Copying 12 of 40</p>}>
         <div />
       </AppShell>
     )
     expect(
       (screen.getByRole('button', { name: /Add a mockup/ }) as HTMLButtonElement).disabled
-    ).toBe(true)
-    expect(screen.getByText('Import running…')).toBeTruthy()
-  })
-
-  it('puts the import card in the activity dock', () => {
-    const { baseElement } = render(
-      <AppShell importCard={<p>Copying</p>}>
-        <div />
-      </AppShell>
-    )
-    expect(baseElement.querySelector('[data-ds="ActivityDock"]')?.textContent).toContain('Copying')
+    ).toBe(false)
+    expect(screen.queryByText('Import running…')).toBeNull()
   })
 
   it('shows the drop overlay it is given over the window', () => {
@@ -267,15 +258,15 @@ describe('AppShell shortcuts', () => {
     expect(onAddFolder).toHaveBeenCalledTimes(1)
   })
 
-  it('ignores them while an import runs', () => {
+  it('still adds files with ⌘O while a copy runs', () => {
     const onAddFiles = vi.fn()
     render(
-      <AppShell importing onAddFiles={onAddFiles}>
+      <AppShell copyWidget={<p>Copying</p>} onAddFiles={onAddFiles}>
         <div />
       </AppShell>
     )
     press({ key: 'o', metaKey: true })
-    expect(onAddFiles).not.toHaveBeenCalled()
+    expect(onAddFiles).toHaveBeenCalledTimes(1)
   })
 
   it('⌘K focuses the search field', () => {

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { ImportProgress } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem } from '@shared/inbox'
 import { BootGate } from './screens/boot/BootGate'
@@ -21,7 +20,6 @@ type AddFlow = 'approval' | null
 
 /** The app window, once launch is fine and onboarding is done. */
 function AppMain() {
-  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
   const [addFlow, setAddFlow] = useState<AddFlow>(null)
   /** The import batch on the Sort board, or null when it is closed. */
   const [sortBatch, setSortBatch] = useState<string | null>(null)
@@ -40,11 +38,6 @@ function AppMain() {
   const setLibraryLoading = useLibraryStore((s) => s.setLoading)
 
   useEffect(() => {
-    const unsubscribe = window.api.onImportProgress(setImportProgress)
-    return () => unsubscribe()
-  }, [])
-
-  useEffect(() => {
     void (async () => {
       const res = await window.api.invoke(IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT, undefined)
       if (res.success) setSnapshot(res.data)
@@ -55,7 +48,9 @@ function AppMain() {
   // check modal on what was found; a check that fails points at Settings › My Stash.
   useEffect(() => {
     void (async () => {
-      const res = await window.api.invoke(IPC_CHANNELS.INTEGRITY_REPORT, undefined).catch(() => null)
+      const res = await window.api
+        .invoke(IPC_CHANNELS.INTEGRITY_REPORT, undefined)
+        .catch(() => null)
       if (!res?.success) {
         toast({
           variant: 'error',
@@ -112,28 +107,10 @@ function AppMain() {
     await refreshLibrary()
   }
 
-  const importing = importProgress !== null && importProgress.phase !== 'done'
-  const importCard = importing ? (
-    <div className="w-72 rounded-xl border border-border bg-card p-4 shadow-xl">
-      <p className="mb-1 text-sm font-medium capitalize text-foreground">{importProgress.phase}…</p>
-      <p className="mb-2 truncate text-xs text-muted-foreground">{importProgress.currentTitle}</p>
-      <div className="h-1.5 w-full rounded-full bg-muted">
-        <div
-          className="h-1.5 rounded-full bg-primary transition-all"
-          style={{
-            width: `${Math.round((importProgress.completed / importProgress.total) * 100)}%`
-          }}
-        />
-      </div>
-    </div>
-  ) : undefined
-
   return (
     <>
       <AppShell
         showHeader={addFlow === null}
-        importing={importing}
-        importCard={importCard}
         onAddFiles={() => void gather.addFiles()}
         onAddFolder={() => void gather.addFolder()}
         copyWidget={<GatherDock gather={gather} />}
