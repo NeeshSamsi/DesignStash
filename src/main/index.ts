@@ -74,7 +74,9 @@ function openWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   app.setAppUserModelId(APP_ID)
-  applyCsp(session.defaultSession, { devUrl: rendererDevUrl })
+  // Dev gets its policy as a header (it must allow Vite's HMR); the packaged build carries it as a
+  // meta tag in index.html, because headers are not reliable for file:// pages.
+  if (rendererDevUrl) applyCsp(session.defaultSession, { devUrl: rendererDevUrl })
 
   const settings = createSettingsStore(app.getPath('userData'))
   handleCoverRequests(

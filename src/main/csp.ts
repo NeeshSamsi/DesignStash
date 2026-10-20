@@ -1,5 +1,6 @@
 import type { Session } from 'electron'
-import { COVER_SCHEME } from '@shared/cover-url'
+// Relative, not '@shared': electron.vite.config.ts imports this file and has no aliases.
+import { COVER_SCHEME } from '../shared/cover-url'
 
 export interface CspOptions {
   /** The Vite dev server's address, set only when the renderer is served from it. */
@@ -31,6 +32,25 @@ export function buildCsp({ devUrl }: CspOptions = {}): string {
   return Object.entries(directives)
     .map(([name, sources]) => `${name} ${sources.join(' ')}`)
     .join('; ')
+}
+
+/**
+ * The packaged app loads the renderer from file://, where response headers are not reliable, so
+ * production carries the strict policy in a meta tag instead. This is the tag descriptor the
+ * Vite `transformIndexHtml` hook injects; development uses the header path (applyCsp).
+ */
+export function cspMetaTags(): {
+  tag: 'meta'
+  attrs: Record<string, string>
+  injectTo: 'head-prepend'
+}[] {
+  return [
+    {
+      tag: 'meta',
+      attrs: { 'http-equiv': 'Content-Security-Policy', content: buildCsp() },
+      injectTo: 'head-prepend'
+    }
+  ]
 }
 
 /** Sets the policy on every response the session receives, replacing any the response already has. */

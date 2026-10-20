@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { applyCsp, buildCsp } from './csp'
+import { applyCsp, buildCsp, cspMetaTags } from './csp'
 
 const directive = (policy: string, name: string): string[] =>
   policy
@@ -71,5 +71,19 @@ describe('applyCsp', () => {
     expect(responseHeaders['Content-Security-Policy']).toEqual([buildCsp()])
     expect(responseHeaders['content-security-policy']).toBeUndefined()
     expect(responseHeaders['X-Other']).toEqual(['1'])
+  })
+})
+
+describe('cspMetaTags (production index.html)', () => {
+  it('injects the strict policy as the first thing in the head', () => {
+    const [tag, ...rest] = cspMetaTags()
+    expect(rest).toEqual([])
+    expect(tag).toEqual({
+      tag: 'meta',
+      attrs: { 'http-equiv': 'Content-Security-Policy', content: buildCsp() },
+      injectTo: 'head-prepend'
+    })
+    expect(tag!.attrs.content).not.toContain('localhost')
+    expect(tag!.attrs.content).toContain("script-src 'self';")
   })
 })
