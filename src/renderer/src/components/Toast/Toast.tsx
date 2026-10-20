@@ -53,7 +53,12 @@ export function Toast({ className, actionLabel, onAction, onClose, ...rest }: To
         )}
       </div>
       {props.action && (
-        <Button variant="ghost" size="xs" onClick={onAction}>
+        <Button
+          variant="outline"
+          size="xs"
+          className="border-subtle bg-transparent hover:border-input hover:bg-transparent"
+          onClick={onAction}
+        >
           {actionLabel ?? (props.variant === 'error' ? 'Retry' : 'Undo')}
         </Button>
       )}

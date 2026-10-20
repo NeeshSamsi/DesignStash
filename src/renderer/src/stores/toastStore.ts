@@ -112,9 +112,10 @@ export function toast(arg: string | ToastOptions, kind: ToastKind = 'info') {
   return show(arg)
 }
 
-/** Reversible-action toast: "Moved to Trash · Undo". */
+/** Reversible-action toast: "Moved to Trash · Undo". A done action reads as done, so it wears the check. */
 export function undoToast(message: string, onUndo: () => void, description?: string) {
   return show({
+    variant: 'success',
     message,
     ...(description !== undefined ? { description } : {}),
     action: { label: 'Undo', onClick: onUndo }

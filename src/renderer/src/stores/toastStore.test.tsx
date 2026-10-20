@@ -32,6 +32,15 @@ describe('toastStore', () => {
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
   })
 
+  it('an Undo toast reads as a done action: the success check and a hairline Undo', () => {
+    undoToast('Moved to Trash', () => {})
+    mount()
+    expect(document.querySelector('[data-ds="Toast"]')?.getAttribute('data-variant')).toBe(
+      'success'
+    )
+    expect(screen.getByRole('button', { name: 'Undo' }).className).toContain('border-subtle')
+  })
+
   it('shows a description only when given one', () => {
     toast({ message: 'Moved', description: 'Just now' })
     mount()
