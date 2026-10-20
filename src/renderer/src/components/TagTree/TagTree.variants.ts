@@ -37,7 +37,7 @@ export const tagRowClass = cva(
 
 /** The Add tag and New category rows. */
 export const addRowClass =
-  'flex h-10 w-full cursor-pointer items-center gap-2 pr-3 pl-4 type-body-sm-regular text-secondary outline-none hover:bg-surface-2 hover:text-foreground focus-visible:bg-surface-2'
+  'flex h-10 w-full cursor-pointer items-center gap-2 pr-3 pl-4 type-body-sm-regular text-muted-foreground outline-none hover:bg-surface-2 hover:text-foreground focus-visible:bg-surface-2'
 
 export const newCategoryRowClass = cva(
   'flex h-11 w-full items-center gap-2 rounded-xl pr-3 pl-4 type-body-sm-regular outline-none',
@@ -46,7 +46,7 @@ export const newCategoryRowClass = cva(
       editing: {
         true: 'border-2 border-focus bg-surface-1',
         false:
-          'cursor-pointer border border-dashed border-strong text-secondary hover:border-primary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
+          'cursor-pointer border border-dashed border-strong text-muted-foreground hover:border-primary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
       }
     },
     defaultVariants: { editing: false }

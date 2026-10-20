@@ -105,7 +105,7 @@ export function ModelCard({
             {inUse && <Badge variant="success">In use</Badge>}
             {bestFit && <Badge variant="secondary">Best fit for this Mac</Badge>}
           </div>
-          <p className="type-body-sm-regular text-secondary">{description}</p>
+          <p className="type-body-sm-regular text-muted-foreground">{description}</p>
         </div>
         <div className="flex shrink-0 flex-col gap-1.5">
           <Bar label="quality" value={quality} accent={inUse} />
@@ -157,7 +157,7 @@ export function ModelCard({
               percent={percent}
               className="min-w-0 flex-1"
             />
-            <p role="status" className="type-caption-xs-regular text-secondary">
+            <p role="status" className="type-caption-xs-regular text-muted-foreground">
               {progress}
             </p>
             <Button variant="secondary" size="sm" label="Cancel" onClick={onCancel} />

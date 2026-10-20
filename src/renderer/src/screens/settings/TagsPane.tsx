@@ -172,7 +172,7 @@ export function TagsPane() {
         onCancel={() => setMerge(null)}
         onSubmit={() => void confirmMerge()}
       >
-        <p role="status" className="type-body-sm-regular text-secondary">
+        <p role="status" className="type-body-sm-regular text-muted-foreground">
           {merge?.count === null || merge === null
             ? 'Counting mockups…'
             : `${mockupCount(merge.count)} will move to “${merge.target.label}”. “${merge.source.label}” goes away.`}

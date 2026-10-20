@@ -84,7 +84,7 @@ export function SettingsRow({ title, status, value, note, controls }: SettingsRo
           <p className="type-body-sm-medium text-foreground">{title}</p>
           {status}
         </div>
-        {value && <p className="type-body-sm-regular text-secondary">{value}</p>}
+        {value && <p className="type-body-sm-regular text-muted-foreground">{value}</p>}
         {note && <p className="type-caption-xs-regular text-tertiary">{note}</p>}
       </div>
       {controls && <div className="flex shrink-0 items-center gap-2">{controls}</div>}
@@ -130,7 +130,7 @@ function Sample({ section, slots }: { section: SettingsLayoutSection; slots: Slo
             <div className="flex flex-col gap-3 px-4 pt-3.5 pb-4">
               <div className="flex flex-col gap-1">
                 <p className="type-body-sm-medium text-foreground">Stash folder</p>
-                <p className="type-body-sm-regular text-secondary">
+                <p className="type-body-sm-regular text-muted-foreground">
                   Where DesignStash keeps your copied PSDs and covers. Changing it asks whether to
                   move everything or just point DesignStash at the new folder.
                 </p>
@@ -167,7 +167,7 @@ function Sample({ section, slots }: { section: SettingsLayoutSection; slots: Slo
             <div className="flex items-center gap-4 px-4 py-3.5">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="type-body-sm-medium text-foreground">Use on-device AI</p>
-                <p className="type-body-sm-regular text-secondary">
+                <p className="type-body-sm-regular text-muted-foreground">
                   Suggests titles and tags by looking at each cover. Nothing leaves your Mac.
                 </p>
               </div>

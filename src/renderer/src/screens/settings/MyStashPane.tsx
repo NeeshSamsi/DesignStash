@@ -138,7 +138,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
         <div className="flex flex-col gap-3 px-4 pt-3.5 pb-4">
           <div className="flex flex-col gap-1">
             <p className="type-body-sm-medium text-foreground">Stash folder</p>
-            <p className="type-body-sm-regular text-secondary">
+            <p className="type-body-sm-regular text-muted-foreground">
               Where DesignStash keeps your copied PSDs and covers. Changing it asks whether to move
               everything or just point DesignStash at the new folder.
             </p>

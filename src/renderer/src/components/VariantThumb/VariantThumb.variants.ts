@@ -19,9 +19,9 @@ export const variantThumbVariants = cva(
 export const variantThumbLabelVariants = cva('min-w-0 flex-1 truncate type-label-xs-medium', {
   variants: {
     state: {
-      idle: 'text-tertiary group-hover/thumb:text-secondary',
+      idle: 'text-tertiary group-hover/thumb:text-muted-foreground',
       shown: 'text-foreground',
-      'missing-cover': 'text-tertiary group-hover/thumb:text-secondary'
+      'missing-cover': 'text-tertiary group-hover/thumb:text-muted-foreground'
     }
   },
   defaultVariants: { state: 'idle' }

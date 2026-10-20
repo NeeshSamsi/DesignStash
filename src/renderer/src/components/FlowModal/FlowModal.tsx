@@ -103,7 +103,7 @@ export function FlowModal({
                   className={cn(
                     'type-body-sm-medium whitespace-nowrap',
                     state === 'current' && 'text-foreground',
-                    state === 'done' && 'text-secondary',
+                    state === 'done' && 'text-muted-foreground',
                     state === 'todo' && 'text-tertiary'
                   )}
                 >

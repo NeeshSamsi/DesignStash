@@ -36,7 +36,7 @@ export const pileStepLabelVariants = cva('min-w-0 flex-1 truncate type-label-xs-
     status: {
       done: 'text-foreground',
       current: 'text-foreground',
-      todo: 'text-secondary',
+      todo: 'text-muted-foreground',
       skipped: 'text-tertiary'
     }
   },

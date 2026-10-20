@@ -63,7 +63,7 @@ function List({
               aria-hidden
               className={cn('mt-0.5 size-4 shrink-0', tone)}
             />
-            <span className="type-body-sm-regular text-secondary">{item}</span>
+            <span className="type-body-sm-regular text-muted-foreground">{item}</span>
           </li>
         ))}
       </ul>
@@ -126,7 +126,7 @@ export function ConsentPanel({
         <div className="flex items-center gap-4 px-4 py-3.5">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <p className="type-body-sm-medium text-foreground">{heading}</p>
-            <p className="type-body-sm-regular text-secondary">{line}</p>
+            <p className="type-body-sm-regular text-muted-foreground">{line}</p>
           </div>
           <Switch
             showLabel={false}

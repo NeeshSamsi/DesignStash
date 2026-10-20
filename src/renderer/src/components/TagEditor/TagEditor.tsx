@@ -483,7 +483,7 @@ export function TagEditor({
               onEscapeKeyDown={(event) => event.preventDefault()}
               onMouseDown={(event) => event.preventDefault()}
             >
-              {note && <p className="px-2 py-1.5 type-caption-xs-regular text-secondary">{note}</p>}
+              {note && <p className="px-2 py-1.5 type-caption-xs-regular text-muted-foreground">{note}</p>}
               {mode !== 'duplicate' && mode !== 'naming' && (
                 <Command
                   shouldFilter={false}

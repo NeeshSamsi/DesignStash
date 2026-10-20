@@ -154,7 +154,7 @@ function MoreButton({ label, always }: { label: string; always?: boolean }) {
       size="icon-xs"
       aria-label={label}
       className={cn(
-        'size-7 shrink-0 p-1.5 text-secondary [&_svg]:size-5',
+        'size-7 shrink-0 p-1.5 text-muted-foreground [&_svg]:size-5',
         !always && 'hidden group-focus-within/row:flex group-hover/row:flex data-[state=open]:flex'
       )}
     >
@@ -435,7 +435,7 @@ export function TagTree({
         </div>
         {duplicate && (
           <div className="flex items-center gap-3 py-2.5 pr-3 pl-4">
-            <p className="min-w-0 flex-1 type-caption-xs-regular text-secondary">
+            <p className="min-w-0 flex-1 type-caption-xs-regular text-muted-foreground">
               {inOther
                 ? `“${duplicate.tag.label}” is already a tag in ${duplicate.category.categoryLabel}, on ${duplicate.tag.usageCount} mockups.`
                 : `“${duplicate.tag.label}” is already a tag here, on ${duplicate.tag.usageCount} mockups.`}
@@ -551,7 +551,7 @@ export function TagTree({
       ) : (
         <>
           {tree.length === 0 && (
-            <p className="type-body-sm-regular text-secondary">
+            <p className="type-body-sm-regular text-muted-foreground">
               No tags yet. Tags you add while looking over mockups land here, grouped by category.
               Start a category to set some up ahead of time.
             </p>

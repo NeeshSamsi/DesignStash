@@ -187,7 +187,7 @@ export function AiModelPane() {
         <div className="flex items-center gap-4 px-4 py-3.5">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <p className="type-body-sm-medium text-foreground">Use on-device AI</p>
-            <p className="type-body-sm-regular text-secondary">
+            <p className="type-body-sm-regular text-muted-foreground">
               {on
                 ? 'Suggests titles and tags by looking at each cover. Nothing leaves your Mac.'
                 : 'Titles come from file names. Models you downloaded stay on your Mac.'}

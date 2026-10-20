@@ -136,7 +136,7 @@ export function MockupCard({
             <Badge variant="warning">{status}</Badge>
           )}
           {showVariants && variantCount > 0 && !loading && (
-            <Badge variant="count" className="px-2 text-secondary">
+            <Badge variant="count" className="px-2 text-muted-foreground">
               +{variantCount}
             </Badge>
           )}

@@ -35,7 +35,7 @@ function AiHint({ children }: { children: string }) {
   return (
     <div className="flex items-start gap-1.5">
       <HugeiconsIcon icon={AiMagicIcon} strokeWidth={1.5} className="size-4 shrink-0 text-brand" />
-      <p className="min-w-0 flex-1 type-caption-xs-regular text-secondary">{children}</p>
+      <p className="min-w-0 flex-1 type-caption-xs-regular text-muted-foreground">{children}</p>
     </div>
   )
 }

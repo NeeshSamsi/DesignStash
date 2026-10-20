@@ -24,7 +24,7 @@ export const groupMemberCaptionVariants = cva(
   {
     variants: {
       state: {
-        idle: 'text-secondary group-hover/thumb:text-foreground',
+        idle: 'text-muted-foreground group-hover/thumb:text-foreground',
         selected: 'bg-primary text-on-primary',
         lifted: 'text-foreground',
         'left-behind': 'opacity-0',

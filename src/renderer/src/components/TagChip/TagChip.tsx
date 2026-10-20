@@ -64,7 +64,7 @@ function RemoveButton({
         onRemove?.()
       }}
       className={cn(
-        'size-4 shrink-0 cursor-pointer items-center justify-center text-secondary outline-none hover:text-foreground group-focus-within/chip:inline-flex group-hover/chip:inline-flex',
+        'size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none hover:text-foreground group-focus-within/chip:inline-flex group-hover/chip:inline-flex',
         marked ? 'inline-flex text-error' : 'hidden'
       )}
     >
@@ -99,11 +99,11 @@ export function TagChip({
   const pressable = variant === 'add' || (variant === 'suggested' && !thinking)
   const press = variant === 'suggested' ? onAccept : undefined
   const categoryText = showCategory && (
-    <span className={variant === 'filter' ? 'text-secondary' : 'text-tertiary'}>{category}</span>
+    <span className={variant === 'filter' ? 'text-muted-foreground' : 'text-tertiary'}>{category}</span>
   )
   const labelClass = cn(
     'type-label-xs-medium',
-    marked ? 'text-error' : variant === 'suggested' ? 'text-secondary' : 'text-foreground'
+    marked ? 'text-error' : variant === 'suggested' ? 'text-muted-foreground' : 'text-foreground'
   )
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -124,9 +124,9 @@ export function TagChip({
           <HugeiconsIcon
             icon={PlusSignIcon}
             strokeWidth={1.5}
-            className="size-3 shrink-0 text-secondary"
+            className="size-3 shrink-0 text-muted-foreground"
           />
-          <span className="type-label-xs-medium text-secondary group-hover/chip:text-foreground">
+          <span className="type-label-xs-medium text-muted-foreground group-hover/chip:text-foreground">
             Add tag
           </span>
         </>
@@ -162,7 +162,7 @@ export function TagChip({
                 <HugeiconsIcon
                   icon={Tick02Icon}
                   strokeWidth={1.5}
-                  className="size-3 text-secondary"
+                  className="size-3 text-muted-foreground"
                 />
                 <span
                   aria-hidden
@@ -171,7 +171,7 @@ export function TagChip({
                     event.stopPropagation()
                     onDismiss?.()
                   }}
-                  className="inline-flex size-4 items-center justify-center text-secondary hover:text-foreground"
+                  className="inline-flex size-4 items-center justify-center text-muted-foreground hover:text-foreground"
                 >
                   <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.5} className="size-3" />
                 </span>

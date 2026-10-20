@@ -143,7 +143,7 @@ export function AboutPane() {
           title="Open-source licences"
           description="The libraries DesignStash is built on."
         />
-        <pre className="max-h-modal-body overflow-y-auto rounded-lg bg-surface-1 p-3 type-caption-xs-regular whitespace-pre-wrap text-secondary">
+        <pre className="max-h-modal-body overflow-y-auto rounded-lg bg-surface-1 p-3 type-caption-xs-regular whitespace-pre-wrap text-muted-foreground">
           {licences}
         </pre>
       </DialogFrame>

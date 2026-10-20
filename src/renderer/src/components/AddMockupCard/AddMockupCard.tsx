@@ -24,11 +24,11 @@ export function AddMockupCard({ className, ...props }: AddMockupCardProps) {
         <HugeiconsIcon
           icon={PlusSignIcon}
           strokeWidth={1.5}
-          className="size-6 text-secondary transition-colors group-hover/add:text-brand"
+          className="size-6 text-muted-foreground transition-colors group-hover/add:text-brand"
         />
       </span>
       <span className="flex flex-col gap-0.5 pl-1">
-        <span className="type-body-sm-medium text-secondary group-hover/add:text-foreground group-focus-visible/add:text-foreground">
+        <span className="type-body-sm-medium text-muted-foreground group-hover/add:text-foreground group-focus-visible/add:text-foreground">
           Add mockup
         </span>
         <span className="type-caption-xs-regular text-tertiary">PSDs or a whole folder</span>
