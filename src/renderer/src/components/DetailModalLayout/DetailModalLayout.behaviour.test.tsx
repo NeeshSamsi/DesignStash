@@ -178,7 +178,7 @@ describe('Detail & edit', () => {
       })
     )
     await waitFor(() => expect(button('Save')).toBeNull())
-    expect(toasts.toast).toHaveBeenCalledWith('Changes saved', 'success')
+    expect(toasts.toast).toHaveBeenCalledWith('Saved your changes', 'success')
     // The modal stays open after saving.
     expect(onClose).not.toHaveBeenCalled()
 
@@ -301,7 +301,7 @@ describe('Detail & edit', () => {
     expect(useDetailEffects.getState().pendingSelection).toEqual([99, 100, 101])
     expect(useDetailEffects.getState().revision).toBeGreaterThan(0)
     expect(toasts.undoToast).toHaveBeenCalledWith(
-      'Pile broken up',
+      'Pile disbanded',
       expect.any(Function),
       '3 mockups are on their own'
     )
@@ -367,5 +367,155 @@ describe('Detail & edit', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
     expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toHaveLength(1)
+  })
+})
+
+describe('Detail & edit · cover', () => {
+  const change = (over: Record<string, unknown> = {}) => ({
+    ok: true,
+    coverPath: '/lib/new.png',
+    coverSource: 'user-uploaded',
+    width: 1000,
+    height: 1000,
+    previous: { coverPath: '/lib/hero.png', coverSource: 'embedded' },
+    ...over
+  })
+  const coverImg = () => document.querySelector<HTMLImageElement>('[aria-label="Cover"] img')!
+  const choose = (name = 'new.png') => {
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!
+    fireEvent.change(input, { target: { files: [new File(['x'], name, { type: 'image/png' })] } })
+  }
+  const uploaded = { ...single, item: { ...single.item, coverSource: 'user-uploaded' } }
+
+  it('replaces the cover, shows the new image with its crop note, and offers Undo', async () => {
+    setup({ [IPC_CHANNELS.MOCKUP_SET_COVER]: () => ok(change()) })
+    await open()
+    expect(coverImg().getAttribute('src')).toBe('file:///lib/hero.png')
+    choose()
+
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_SET_COVER, {
+        mockupId: 42,
+        filePath: '/path/new.png'
+      })
+    )
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/new.png'))
+    expect(screen.getByText('Uploaded')).not.toBeNull()
+    expect(screen.getByText('Cropped to 4:3')).not.toBeNull()
+    expect(toasts.undoToast).toHaveBeenCalledWith('Cover replaced', expect.any(Function))
+    // A cover change is not a form edit: Save stays hidden.
+    expect(button('Save')).toBeNull()
+  })
+
+  it('undoes a replace back to the PSD’s preview', async () => {
+    setup({
+      [IPC_CHANNELS.MOCKUP_SET_COVER]: () => ok(change()),
+      [IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER]: () =>
+        ok(
+          change({
+            coverPath: '/lib/hero.png',
+            coverSource: 'embedded',
+            previous: { coverPath: '/lib/new.png', coverSource: 'user-uploaded' }
+          })
+        )
+    })
+    await open()
+    choose()
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
+
+    toasts.undoToast.mock.calls[0]![1]()
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: 42 })
+    )
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/hero.png'))
+    expect(screen.getByText('Embedded preview')).not.toBeNull()
+  })
+
+  it('undoes a replace back to the earlier uploaded cover', async () => {
+    setup({
+      [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(uploaded),
+      [IPC_CHANNELS.MOCKUP_SET_COVER]: (p) =>
+        ok(
+          (p as { filePath: string }).filePath === '/lib/hero.png'
+            ? change({ coverPath: '/lib/hero.png' })
+            : change({ previous: { coverPath: '/lib/hero.png', coverSource: 'user-uploaded' } })
+        )
+    })
+    await open()
+    choose()
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
+    toasts.undoToast.mock.calls[0]![1]()
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_SET_COVER, {
+        mockupId: 42,
+        filePath: '/lib/hero.png'
+      })
+    )
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/hero.png'))
+  })
+
+  it('keeps the cover and shows an error Banner when the image is refused', async () => {
+    setup({ [IPC_CHANNELS.MOCKUP_SET_COVER]: () => ok({ ok: false, reason: 'too-large' }) })
+    await open()
+    choose()
+    expect(await screen.findByText('We couldn’t use that image')).not.toBeNull()
+    expect(coverImg().getAttribute('src')).toBe('file:///lib/hero.png')
+    expect(toasts.undoToast).not.toHaveBeenCalled()
+  })
+
+  it('uses the PSD’s preview instantly, only on a cover that is not the embedded one, and offers Undo', async () => {
+    setup({
+      [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(uploaded),
+      [IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER]: () =>
+        ok(
+          change({
+            coverPath: '/lib/psd.png',
+            coverSource: 'embedded',
+            previous: { coverPath: '/lib/hero.png', coverSource: 'user-uploaded' }
+          })
+        )
+    })
+    await open()
+    fireEvent.click(button('Use the PSD’s preview')!)
+
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: 42 })
+    )
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/psd.png'))
+    expect(screen.getByText('Embedded preview')).not.toBeNull()
+    expect(button('Use the PSD’s preview')).toBeNull()
+    expect(toasts.undoToast).toHaveBeenCalledWith('Using the PSD’s preview', expect.any(Function))
+
+    // Undo puts the uploaded cover back.
+    toasts.undoToast.mock.calls[0]![1]()
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_SET_COVER, {
+        mockupId: 42,
+        filePath: '/lib/hero.png'
+      })
+    )
+  })
+
+  it('offers no Use the PSD’s preview on the embedded cover', async () => {
+    await open()
+    expect(button('Use the PSD’s preview')).toBeNull()
+    expect(button('Replace')).not.toBeNull()
+  })
+
+  it('replaces the cover of the variant that is shown, not the top', async () => {
+    setup({ [IPC_CHANNELS.MOCKUP_SET_COVER]: () => ok(change()) })
+    await open(99)
+    fireEvent.click(screen.getByRole('button', { name: /side/ }))
+    choose()
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_SET_COVER, {
+        mockupId: 100,
+        filePath: '/path/new.png'
+      })
+    )
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/new.png'))
+    // The top's own cover is unchanged: step back to it.
+    fireEvent.click(screen.getByRole('button', { name: /front/ }))
+    await waitFor(() => expect(coverImg().getAttribute('src')).toContain('file:///lib/a.png'))
   })
 })

@@ -155,7 +155,7 @@ export function DetailModal({ mockupId, onClose }: Props) {
     if (res?.success) {
       setSaved(next)
       setForm((current) => ({ ...current, title: next.title }))
-      toast('Changes saved', 'success')
+      toast('Saved your changes', 'success')
       void syncLibrary()
     } else {
       // The edits stay in the form and Save stays on: it is the retry, so the toast has none.
@@ -250,7 +250,7 @@ export function DetailModal({ mockupId, onClose }: Props) {
     if (!res?.success) {
       toast({
         variant: 'error',
-        message: 'Couldn’t break up the pile',
+        message: 'Couldn’t disband the pile',
         description: 'Nothing was changed. Try again.'
       })
       return
@@ -260,7 +260,7 @@ export function DetailModal({ mockupId, onClose }: Props) {
     onClose()
     void syncLibrary()
     undoToast(
-      'Pile broken up',
+      'Pile disbanded',
       () => {
         useDetailEffects.getState().selectAfterReload([])
         void window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot }).then(() => syncLibrary())
