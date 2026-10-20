@@ -1,4 +1,7 @@
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Page } from '@playwright/test'
+import sharp from 'sharp'
 import { test, expect } from '../fixtures/app'
 import { seedStash, showMyStash } from '../fixtures/seed'
 
@@ -63,6 +66,79 @@ test.describe('Details sidebar', () => {
         return t && p ? p.x - (t.x + t.width) : null
       })
       .toBeGreaterThanOrEqual(0)
+  })
+
+  test('the cover is replaceable in edit mode only, and a change applies at once with Undo', async ({
+    app
+  }) => {
+    const { window } = app
+    await seedStash(app, ['laptop'])
+    await showMyStash(app)
+    await clickCard(window)
+    await expect(panel(window).getByRole('button', { name: 'Replace' })).toHaveCount(0)
+
+    await panel(window).getByRole('button', { name: 'Edit', exact: true }).click()
+    await expect(panel(window).getByRole('button', { name: 'Replace' })).toBeAttached()
+
+    const dir = join(app.userData, 'covers-e2e')
+    mkdirSync(dir, { recursive: true })
+    const file = join(dir, 'cover.png')
+    await sharp({ create: { width: 900, height: 600, channels: 3, background: '#c97b4a' } })
+      .png()
+      .toFile(file)
+    await panel(window).locator('input[type="file"]').setInputFiles(file)
+
+    await expect(window.getByText('Cover replaced')).toBeVisible()
+    await expect(panel(window).getByText('Uploaded')).toBeVisible()
+    // Not a form edit: nothing to save.
+    await expect(panel(window).getByRole('button', { name: 'Save' })).toBeDisabled()
+
+    await window.getByRole('button', { name: 'Undo' }).click()
+    await expect(panel(window).getByText('Embedded preview')).toBeVisible()
+  })
+
+  test('Remove from pile takes a mockup out with Undo; a pile of two dissolves', async ({
+    app
+  }) => {
+    const { window } = app
+    await seedStash(app, ['laptop', 'phone', 'poster'])
+    await showMyStash(app)
+    const cards = window.locator('[data-mockup-id]')
+    await clickCard(window, 0)
+    await clickCard(window, 1)
+    await window.keyboard.down('Meta')
+    await clickCard(window, 2)
+    await window.keyboard.up('Meta')
+    await window.keyboard.press('Meta+a')
+    await window.keyboard.press('Meta+g')
+    await expect(window.getByText('Pile made')).toBeVisible()
+    await expect(cards).toHaveCount(1)
+
+    await cards
+      .first()
+      .getByText(/^Stub /)
+      .dblclick()
+    await expect(window.getByText('Pile · 3 mockups · Esc to go back')).toBeVisible()
+
+    await cards.nth(2).click({ button: 'right' })
+    await window.getByRole('menuitem', { name: 'Remove from pile' }).click()
+    await expect(window.getByText('Removed from the pile')).toBeVisible()
+    await expect(window.getByText('Pile · 2 mockups · Esc to go back')).toBeVisible()
+
+    await window
+      .locator('[data-sonner-toast]')
+      .filter({ hasText: 'Removed from the pile' })
+      .getByRole('button', { name: 'Undo' })
+      .click()
+    await expect(window.getByText('Pile · 3 mockups · Esc to go back')).toBeVisible()
+
+    await cards.nth(1).click({ button: 'right' })
+    await window.getByRole('menuitem', { name: 'Remove from pile' }).click()
+    await cards.nth(1).click({ button: 'right' })
+    await window.getByRole('menuitem', { name: 'Remove from pile' }).click()
+    // One left is no pile: back in My Stash with every mockup on its own.
+    await expect(window.getByText('Pile · ')).toHaveCount(0)
+    await expect(cards).toHaveCount(3)
   })
 
   test('an empty title can’t be saved and says why', async ({ app }) => {
