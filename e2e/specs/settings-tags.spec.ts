@@ -94,6 +94,28 @@ test.describe('Settings › Tags', () => {
     ).toHaveCount(0)
   })
 
+  test('pressing outside a tag menu closes only the menu, not Settings', async ({ app }) => {
+    const { window } = app
+    const dialog = await openTags(window)
+    const menu = window.getByRole('menu')
+    // An open menu hides the dialog from the accessibility tree, so it is found by its marker.
+    const box = (await window.locator('[data-ds="SettingsModal"]').boundingBox())!
+    // On the dialog's own header, then out on the dimmed window around it.
+    for (const at of [
+      { x: box.x + 300, y: box.y + 20 },
+      { x: 3, y: 3 }
+    ]) {
+      await openTagMenu(tagRow(dialog, 'Zephyr Pad'))
+      await expect(menu).toBeVisible()
+      await window.mouse.click(at.x, at.y)
+      await expect(menu).toHaveCount(0)
+      await expect(dialog).toBeVisible()
+    }
+    // With no menu open, the same press outside closes Settings.
+    await window.mouse.click(3, 3)
+    await expect(window.getByRole('dialog')).toHaveCount(0)
+  })
+
   test('renames a tag in place', async ({ app }) => {
     const { window } = app
     const dialog = await openTags(window)

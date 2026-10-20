@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
 import {
   AlertDialog,
@@ -23,6 +23,31 @@ import {
 type Kind = 'static' | 'dialog' | 'alert'
 
 const KindContext = createContext<Kind>('static')
+
+/** Menus, pickers and popovers that open over a dialog. */
+const NESTED_LAYER =
+  '[role="menu"], [role="listbox"], [data-slot="popover-content"], [data-slot="select-content"]'
+
+/**
+ * Whether a menu, picker or popover was open when the latest mouse press began. Radix closes such a
+ * layer on pointerdown, which removes it before the dialog under it judges the same press, so the
+ * dialog sees an outside press and closes as well. This reads the state before Radix does: the
+ * capture listener runs first on the document.
+ */
+function useNestedLayerPress(active: boolean) {
+  const nestedOpen = useRef(false)
+  useEffect(() => {
+    if (!active) return
+    const note = () => {
+      nestedOpen.current = document.querySelector(NESTED_LAYER) !== null
+    }
+    document.addEventListener('pointerdown', note, true)
+    return () => document.removeEventListener('pointerdown', note, true)
+  }, [active])
+  return (e: Event) =>
+    nestedOpen.current &&
+    (e as CustomEvent<{ originalEvent?: Event }>).detail?.originalEvent?.type === 'pointerdown'
+}
 
 interface DialogFrameProps {
   /** Live overlay when `open` is given; otherwise the static panel. */
@@ -49,6 +74,7 @@ export function DialogFrame({
   showCloseButton = false,
   children
 }: DialogFrameProps) {
+  const pressClosedNested = useNestedLayerPress(open === true)
   if (open === undefined) {
     return (
       <KindContext.Provider value="static">
@@ -95,7 +121,7 @@ export function DialogFrame({
           showCloseButton={showCloseButton && !blocking}
           className={className}
           onInteractOutside={(e) => {
-            if (blocking || overAsk(e)) e.preventDefault()
+            if (blocking || overAsk(e) || pressClosedNested(e)) e.preventDefault()
           }}
           {...(blocking ? { onEscapeKeyDown: (e: Event) => e.preventDefault() } : {})}
         >
