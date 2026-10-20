@@ -9,7 +9,10 @@ import { registerIpcHandler } from './register'
 export function registerGroupingHandlers(ctx: HandlerContext): void {
   const { telemetry, repo } = ctx
   registerIpcHandler(IPC_CHANNELS.GROUPING_PROPOSE, (args) => {
-    const dbMockups = repo.getMockupsByBatchId(args.batchId)
+    // Only what still waits in To sort: stashed, sorted and trashed mockups have left the board.
+    const dbMockups = repo
+      .getMockupsByBatchId(args.batchId)
+      .filter((m) => m.stage === 'to_sort' && m.deletedAt === null)
     const members: GroupMember[] = dbMockups.map((m) => {
       const ctx = m.importContext as {
         batchId?: string

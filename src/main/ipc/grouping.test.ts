@@ -104,3 +104,24 @@ describe('sort board handlers', () => {
     })
   })
 })
+
+describe('grouping propose handler', () => {
+  it('proposes only what is still waiting to be sorted (S1.E4)', async () => {
+    const [a, b, c, d] = toSort(4) as [number, number, number, number]
+    repo.setStage([c], 'to_stash')
+    repo.updateMockup(d, { deletedAt: new Date().toISOString() })
+    const res = await call<{ groups: unknown[]; singletons: { mockupId: number }[] }>(
+      IPC_CHANNELS.GROUPING_PROPOSE,
+      { batchId: 'b1' }
+    )
+    expect(res.success).toBe(true)
+    if (!res.success) return
+    const ids = [
+      ...res.data.groups.flatMap((g) => (g as { members: { mockupId: number }[] }).members),
+      ...res.data.singletons
+    ]
+      .map((m) => m.mockupId)
+      .sort()
+    expect(ids).toEqual([a, b].sort())
+  })
+})
