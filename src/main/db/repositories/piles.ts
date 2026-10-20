@@ -11,6 +11,30 @@ export interface PileRow {
   groupId: number | null
 }
 
+/** Where a row sits: a pile's top, a member under a top, or on its own. */
+export type PileRole = 'top' | 'member' | 'alone'
+
+/** The three placements a row can have. Every pile write goes through these. */
+export const PLACE_TOP = { isGroup: true, groupId: null } as const
+export const PLACE_ALONE = { isGroup: false, groupId: null } as const
+export const placeMember = (topId: number) => ({ isGroup: false, groupId: topId }) as const
+
+/** The role of a row. A row that is both a top and a member cannot be written; it reads as a top. */
+export function pileRole(row: { isGroup: boolean; groupId: number | null }): PileRole {
+  if (row.isGroup) return 'top'
+  return row.groupId === null ? 'alone' : 'member'
+}
+
+/** Lay rows out under a top: `topId` becomes the top, every other id a member of it. */
+export function layOutPile(tx: Pick<AppDatabase, 'update'>, topId: number, ids: number[]): void {
+  for (const id of ids) {
+    tx.update(mockups)
+      .set(id === topId ? PLACE_TOP : placeMember(topId))
+      .where(eq(mockups.id, id))
+      .run()
+  }
+}
+
 export interface PileChange {
   /** The pile's id after the change (its top mockup). */
   pileId: number
@@ -31,30 +55,18 @@ export class PileRepository {
       for (const group of groups) {
         const [leaderId, ...memberIds] = group.memberIds
         if (leaderId === undefined) continue
-        tx.update(mockups)
-          .set({ isGroup: true, groupId: null })
-          .where(eq(mockups.id, leaderId))
-          .run()
-        for (const memberId of memberIds) {
-          tx.update(mockups)
-            .set({ isGroup: false, groupId: leaderId })
-            .where(eq(mockups.id, memberId))
-            .run()
-        }
+        layOutPile(tx, leaderId, [leaderId, ...memberIds])
       }
       for (const singletonId of singletonIds) {
-        tx.update(mockups)
-          .set({ isGroup: false, groupId: null })
-          .where(eq(mockups.id, singletonId))
-          .run()
+        tx.update(mockups).set(PLACE_ALONE).where(eq(mockups.id, singletonId)).run()
       }
     })
   }
 
   ungroupGroup(leaderId: number): void {
     this.db.transaction((tx) => {
-      tx.update(mockups).set({ isGroup: false }).where(eq(mockups.id, leaderId)).run()
-      tx.update(mockups).set({ groupId: null }).where(eq(mockups.groupId, leaderId)).run()
+      tx.update(mockups).set(PLACE_ALONE).where(eq(mockups.id, leaderId)).run()
+      tx.update(mockups).set(PLACE_ALONE).where(eq(mockups.groupId, leaderId)).run()
     })
   }
 
@@ -97,14 +109,7 @@ export class PileRepository {
     this.assertOnTheirOwn(ids)
 
     const before = this.getPileRows(ids)
-    this.db.transaction((tx) => {
-      for (const id of ids) {
-        tx.update(mockups)
-          .set(id === topId ? { isGroup: true, groupId: null } : { isGroup: false, groupId: topId })
-          .where(eq(mockups.id, id))
-          .run()
-      }
-    })
+    this.db.transaction((tx) => layOutPile(tx, topId, ids))
     return { pileId: topId, before }
   }
 
@@ -116,11 +121,7 @@ export class PileRepository {
     this.assertOnTheirOwn(ids)
 
     const before = this.getPileRows(ids)
-    this.db.transaction((tx) => {
-      for (const id of ids) {
-        tx.update(mockups).set({ isGroup: false, groupId: pileId }).where(eq(mockups.id, id)).run()
-      }
-    })
+    this.db.transaction((tx) => layOutPile(tx, pileId, ids))
     return { pileId, before }
   }
 
@@ -137,9 +138,10 @@ export class PileRepository {
     const moving: number[] = []
     for (const id of sources) {
       const m = this.requireLive(id)
-      if (m.isGroup) {
+      const role = pileRole(m)
+      if (role === 'top') {
         moving.push(id, ...this.getMockupsByGroupId(id).map((x) => x.id))
-      } else if (m.groupId === null) {
+      } else if (role === 'alone') {
         moving.push(id)
       } else {
         throw new Error('Only piles and mockups on their own can be merged')
@@ -147,14 +149,7 @@ export class PileRepository {
     }
 
     const before = this.getPileRows(moving)
-    this.db.transaction((tx) => {
-      for (const id of moving) {
-        tx.update(mockups)
-          .set({ isGroup: false, groupId: targetId })
-          .where(eq(mockups.id, id))
-          .run()
-      }
-    })
+    this.db.transaction((tx) => layOutPile(tx, targetId, moving))
     return { pileId: targetId, before }
   }
 
@@ -170,12 +165,7 @@ export class PileRepository {
     const ids = [pileId, ...members.map((m) => m.id)]
     const before = this.getPileRows(ids)
     this.db.transaction((tx) => {
-      for (const id of ids) {
-        tx.update(mockups)
-          .set(id === topId ? { isGroup: true, groupId: null } : { isGroup: false, groupId: topId })
-          .where(eq(mockups.id, id))
-          .run()
-      }
+      layOutPile(tx, topId, ids)
       // The star belongs to the pile, so it moves with the top.
       tx.update(mockups)
         .set({ favourite: oldTop.favourite, favouritedAt: oldTop.favouritedAt })
@@ -224,18 +214,8 @@ export class PileRepository {
 
     const newTop = mockupId === pileId ? (rest[0] as number) : pileId
     this.db.transaction((tx) => {
-      tx.update(mockups)
-        .set({ isGroup: false, groupId: null })
-        .where(eq(mockups.id, mockupId))
-        .run()
-      for (const id of rest) {
-        tx.update(mockups)
-          .set(
-            id === newTop ? { isGroup: true, groupId: null } : { isGroup: false, groupId: newTop }
-          )
-          .where(eq(mockups.id, id))
-          .run()
-      }
+      tx.update(mockups).set(PLACE_ALONE).where(eq(mockups.id, mockupId)).run()
+      layOutPile(tx, newTop, rest)
     })
     return { pileId: newTop, before, freedIds: [mockupId] }
   }
@@ -248,13 +228,13 @@ export class PileRepository {
 
   private assertPile(id: number): void {
     const m = this.requireLive(id)
-    if (!m.isGroup || m.groupId !== null) throw new Error(`Mockup ${id} is not a pile`)
+    if (pileRole(m) !== 'top') throw new Error(`Mockup ${id} is not a pile`)
   }
 
   private assertOnTheirOwn(ids: number[]): void {
     for (const id of ids) {
       const m = this.requireLive(id)
-      if (m.isGroup || m.groupId !== null) throw new Error(`Mockup ${id} is already in a pile`)
+      if (pileRole(m) !== 'alone') throw new Error(`Mockup ${id} is already in a pile`)
     }
   }
 }

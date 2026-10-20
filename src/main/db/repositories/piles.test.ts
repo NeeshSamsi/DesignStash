@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3'
 import type { Repository } from '../repository'
 import { ensureSearchIndex } from '../search-index'
 import { approvedMockup, batchSample, createTestDb } from './__tests__/setup'
+import { pileRole } from './piles'
 
 let sqlite: Database.Database
 let repo: Repository
@@ -54,7 +55,30 @@ describe('ungroupGroup', () => {
   })
 })
 
+describe('pileRole', () => {
+  it('reads a top, a member and a row on its own', () => {
+    expect(pileRole({ isGroup: true, groupId: null })).toBe('top')
+    expect(pileRole({ isGroup: false, groupId: 3 })).toBe('member')
+    expect(pileRole({ isGroup: false, groupId: null })).toBe('alone')
+  })
+})
+
 describe('pile operations', () => {
+  // Whatever a test did, no row is both a top and a member, and every member points at a top.
+  afterEach(() => {
+    const rows = sqlite
+      .prepare('SELECT id, is_group AS isGroup, group_id AS groupId FROM mockups')
+      .all() as { id: number; isGroup: number; groupId: number | null }[]
+    const byId = new Map(rows.map((r) => [r.id, r]))
+    for (const r of rows) {
+      expect(r.isGroup === 1 && r.groupId !== null, `row ${r.id} is a top and a member`).toBe(false)
+      if (r.groupId !== null) {
+        const top = byId.get(r.groupId)
+        expect(top?.isGroup, `row ${r.id} points at ${r.groupId}, which is not a top`).toBe(1)
+      }
+    }
+  })
+
   const standalone = (title: string) =>
     repo.createMockup(approvedMockup({ title, libraryPath: `/lib/${title}.psd` }))
 

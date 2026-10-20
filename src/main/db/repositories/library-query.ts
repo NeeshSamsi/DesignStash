@@ -4,6 +4,7 @@ import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags, tagCategories } from '../schema'
 import type { Mockup } from '../schema'
 import type { MockupRepository } from './mockups'
+import { pileRole } from './piles'
 import type { PileRepository } from './piles'
 import type { SearchRepository } from './search'
 
@@ -117,7 +118,7 @@ export class LibraryQueryRepository {
       reviewStatus: m.reviewStatus,
       createdAt: m.createdAt,
       variantCount: this.piles.getMockupsByGroupId(m.id).length,
-      topId: m.isGroup ? m.id : null,
+      topId: pileRole(m) === 'top' ? m.id : null,
       tags: this.mockups.getTagsForMockup(m.id).map((t) => ({
         id: t.id,
         label: t.label,
@@ -139,7 +140,7 @@ export class LibraryQueryRepository {
       label: t.label,
       categoryLabel: categoryMap.get(t.categoryId) ?? ''
     }))
-    const variantList = mockup.isGroup
+    const variantList = pileRole(mockup) === 'top'
       ? this.piles.getMockupsByGroupId(id).sort((a, b) => a.id - b.id)
       : []
     return { mockup, tags: tagList, variants: variantList }
@@ -155,7 +156,7 @@ export class LibraryQueryRepository {
     isTop: boolean
   }[] {
     const top = this.mockups.getMockup(id)
-    if (!top?.isGroup) return []
+    if (!top || pileRole(top) !== 'top') return []
     const rows = [top, ...this.piles.getMockupsByGroupId(id).sort((a, b) => a.id - b.id)]
     return rows.map((m) => ({
       id: m.id,
