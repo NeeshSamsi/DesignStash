@@ -158,6 +158,42 @@ export const lookOverResume = sqliteTable('look_over_resume', {
   ...timestamps
 })
 
+/**
+ * A haul: one run of the copy queue, from the first drop until it is done or cancelled. Files dropped
+ * while it runs join it. Persisted so a restart carries on where it stopped.
+ */
+export const copyHauls = sqliteTable('copy_hauls', {
+  id: text('id').primaryKey(),
+  state: text('state', { enum: ['running', 'paused', 'done', 'cancelled', 'undone'] })
+    .notNull()
+    .default('running'),
+  /** Why it is paused. Null unless `state` is 'paused'. */
+  pauseReason: text('pause_reason', { enum: ['disk-full', 'source-gone'] }),
+  /** Images found beside the dropped PSDs, which can stand in for a missing preview. Paths, kept only while it runs. */
+  candidateImages: text('candidate_images', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
+  /** Files that were not PSDs and so were never queued. */
+  notPsdCount: integer('not_psd_count').notNull().default(0),
+  ...timestamps
+})
+
+/** One PSD in a haul. `sourcePath` is only the way back to the file while it waits; it is cleared once the file is handled. */
+export const copyJobs = sqliteTable('copy_jobs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  haulId: text('haul_id')
+    .notNull()
+    .references(() => copyHauls.id, { onDelete: 'cascade' }),
+  sourcePath: text('source_path').notNull(),
+  fileName: text('file_name').notNull(),
+  folderTrail: text('folder_trail', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
+  status: text('status', { enum: ['queued', 'copying', 'done', 'skipped'] })
+    .notNull()
+    .default('queued'),
+  skipReason: text('skip_reason', { enum: ['duplicate', 'unreadable'] }),
+  /** The mockup this became. */
+  mockupId: integer('mockup_id'),
+  ...timestamps
+})
+
 /** Semantic-search vectors — placeholder for M13 (spec §8). */
 export const embeddings = sqliteTable('embeddings', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -172,6 +208,8 @@ export const embeddings = sqliteTable('embeddings', {
 
 export type Mockup = InferSelectModel<typeof mockups>
 export type Draft = InferSelectModel<typeof drafts>
+export type CopyHaul = InferSelectModel<typeof copyHauls>
+export type CopyJob = InferSelectModel<typeof copyJobs>
 export type NewMockup = InferInsertModel<typeof mockups>
 export type Variant = InferSelectModel<typeof variants>
 export type NewVariant = InferInsertModel<typeof variants>

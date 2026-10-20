@@ -8,6 +8,7 @@ import { SearchRepository } from './repositories/search'
 import { InboxRepository } from './repositories/inbox'
 import { SortBoardRepository } from './repositories/sort-board'
 import { DraftRepository } from './repositories/drafts'
+import { CopyJobRepository } from './repositories/copy-jobs'
 
 export type { LibraryRow } from './repositories/library-query'
 
@@ -28,6 +29,7 @@ export class Repository {
   readonly inbox: InboxRepository
   readonly sortBoards: SortBoardRepository
   readonly drafts: DraftRepository
+  readonly copyJobs: CopyJobRepository
 
   constructor(db: AppDatabase) {
     this.search = new SearchRepository(db)
@@ -39,6 +41,7 @@ export class Repository {
     this.inbox = new InboxRepository(db, this.library, this.piles)
     this.sortBoards = new SortBoardRepository(db)
     this.drafts = new DraftRepository(db)
+    this.copyJobs = new CopyJobRepository(db)
   }
 
   // Mockups
