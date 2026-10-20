@@ -39,6 +39,7 @@ Device
 - **The list:** scrolls once it's taller than about 240px.
 - **Ticking a tag:** filters the grid immediately and adds a chip to the toolbar. Every picked tag must match (AND).
 - **Two tiers, no nesting:** tags sit one level under their category. Roll-up is at the category level: filtering by a category includes all its tags (`LIBRARY_LIST` `categoryIds`; categories AND together, and with picked tags).
+- **All in \<category\>** (decided 2026-10-20): the first row of each category group, with how many mockups have any of its tags. Ticking it filters by the whole category, including tags added later, and adds one “All in Device” chip to the toolbar. While it's ticked, that category's tag rows are disabled because the category already covers them, and ticking it clears any tags picked in that category. Unticking it, or × on its chip, restores the rows. The row is hidden while searching. Figma: `state=category-picked`.
 - **No match:** shows “No tags match ‘x’”.
 - **No tags yet:** the existing `empty` state, with Manage tags.
 
