@@ -19,7 +19,6 @@ const item = (id: number, over: Partial<LibraryItem> = {}): LibraryItem => ({
   coverMissing: false,
   isGroup: false,
   favourite: true,
-  reviewStatus: 'approved',
   createdAt: '2026-10-01',
   variantCount: 0,
   topId: null,
