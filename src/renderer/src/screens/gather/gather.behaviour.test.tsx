@@ -161,16 +161,24 @@ describe('the widget', () => {
     push(100, 100, null)
     expect(await screen.findByRole('progressbar', { name: 'Copying 12 of 40' })).toBeTruthy()
     expect(screen.queryByText(/left/)).toBeNull()
-    expect(screen.getByRole('progressbar', { name: 'Copying big.psd' }).getAttribute('aria-valuenow')).toBe('25')
+    expect(
+      screen.getByRole('progressbar', { name: 'Copying big.psd' }).getAttribute('aria-valuenow')
+    ).toBe('25')
 
     push(600, 300, 125)
     expect(screen.getByText('About 3 min left')).toBeTruthy()
-    expect(screen.getByRole('progressbar', { name: 'Copying 12 of 40' }).getAttribute('aria-valuenow')).toBe('60')
-    expect(screen.getByRole('progressbar', { name: 'Copying big.psd' }).getAttribute('aria-valuenow')).toBe('75')
+    expect(
+      screen.getByRole('progressbar', { name: 'Copying 12 of 40' }).getAttribute('aria-valuenow')
+    ).toBe('60')
+    expect(
+      screen.getByRole('progressbar', { name: 'Copying big.psd' }).getAttribute('aria-valuenow')
+    ).toBe('75')
 
     push(900, 400, 8)
     expect(screen.getByText('A few seconds left')).toBeTruthy()
-    expect(screen.getByRole('progressbar', { name: 'Copying 12 of 40' }).getAttribute('aria-valuenow')).toBe('90')
+    expect(
+      screen.getByRole('progressbar', { name: 'Copying 12 of 40' }).getAttribute('aria-valuenow')
+    ).toBe('90')
   })
 
   it('picks up a haul that was running before a relaunch', async () => {

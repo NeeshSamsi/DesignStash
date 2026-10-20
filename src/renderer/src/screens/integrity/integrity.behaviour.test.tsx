@@ -32,7 +32,11 @@ function open(
     ...handlers
   })
   return render(
-    <StashCheckModal report={initial ?? undefined} onClose={onClose} onOpenSettings={onOpenSettings} />
+    <StashCheckModal
+      report={initial ?? undefined}
+      onClose={onClose}
+      onOpenSettings={onOpenSettings}
+    />
   )
 }
 const button = (name: string) => screen.getByRole('button', { name }) as HTMLButtonElement

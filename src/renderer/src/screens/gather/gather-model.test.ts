@@ -46,7 +46,12 @@ describe('smooth progress', () => {
   })
 
   it('gives each file its own percent from its bytes', () => {
-    const file = (over: Partial<CopyFile>): CopyFile => ({ jobId: 1, name: 'a.psd', status: 'copying', ...over })
+    const file = (over: Partial<CopyFile>): CopyFile => ({
+      jobId: 1,
+      name: 'a.psd',
+      status: 'copying',
+      ...over
+    })
     expect(filePercent(file({ size: 200, bytesCopied: 50 }))).toBe(25)
     expect(filePercent(file({ size: 200, bytesCopied: 0 }))).toBe(0)
     expect(filePercent(file({ status: 'queued' }))).toBe(0)

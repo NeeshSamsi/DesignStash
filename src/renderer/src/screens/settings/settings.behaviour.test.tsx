@@ -24,7 +24,8 @@ vi.mock('../../components/TagTree', () => ({
       </button>
       <button
         onClick={() =>
-          fire(p.onMergeTag,
+          fire(
+            p.onMergeTag,
             { tagId: 7, label: 'iPhone', usageCount: 2 },
             { tagId: 8, label: 'iPhone 15 Pro', usageCount: 9 }
           )
@@ -416,10 +417,7 @@ describe('Settings · AI model', () => {
     expect(screen.getByText('Your models')).not.toBeNull()
     expect(screen.getByText('Available to download')).not.toBeNull()
     const cards = Array.from(document.querySelectorAll('[data-ds="ModelCard"]'))
-    expect(cards.map((c) => c.getAttribute('data-state'))).toEqual([
-      'in-use',
-      'available'
-    ])
+    expect(cards.map((c) => c.getAttribute('data-state'))).toEqual(['in-use', 'available'])
     expect(screen.getByText('In use')).not.toBeNull()
     expect(screen.getByText('Best fit for this Mac')).not.toBeNull()
   })

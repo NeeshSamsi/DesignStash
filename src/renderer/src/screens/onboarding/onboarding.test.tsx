@@ -37,8 +37,7 @@ const base = (extra: Record<string, (r: unknown) => unknown> = {}) => ({
       telemetryEnabled: true
     }),
   [IPC_CHANNELS.AI_HARDWARE_INFO]: () => ok(mac),
-  [IPC_CHANNELS.AI_LIST_MODELS]: () =>
-    ok({ models: [model('a'), model('b')], legacy: [] }),
+  [IPC_CHANNELS.AI_LIST_MODELS]: () => ok({ models: [model('a'), model('b')], legacy: [] }),
   ...extra
 })
 
