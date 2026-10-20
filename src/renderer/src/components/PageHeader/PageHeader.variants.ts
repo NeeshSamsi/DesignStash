@@ -11,7 +11,8 @@ export const pageHeaderVariants = cva('flex w-full flex-col', {
   defaultVariants: { variant: 'page' }
 })
 
-export const pageHeaderRowClass = 'flex items-center justify-between gap-4'
+// Actions drop below the title before it gets cut; they stay on the row while there is room.
+export const pageHeaderRowClass = 'flex flex-wrap items-center justify-between gap-x-4 gap-y-2'
 export const pageHeaderTitleVariants = cva('flex min-w-0 items-center gap-1 text-foreground', {
   variants: {
     variant: {

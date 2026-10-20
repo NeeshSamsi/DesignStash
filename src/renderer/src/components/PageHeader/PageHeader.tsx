@@ -43,12 +43,12 @@ export function PageHeader({ children, className, onParent, ...rest }: PageHeade
                 <button
                   type="button"
                   onClick={onParent}
-                  className="shrink-0 rounded-sm whitespace-nowrap outline-none hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-w-0 shrink-3 cursor-pointer rounded-sm outline-none hover:text-muted-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {props.parent}
+                  <TruncatedText>{props.parent}</TruncatedText>
                 </button>
               ) : (
-                <span className="shrink-0 whitespace-nowrap">{props.parent}</span>
+                <TruncatedText className="min-w-0 shrink-3">{props.parent}</TruncatedText>
               )}
               <HugeiconsIcon
                 icon={ArrowRight01Icon}
@@ -58,7 +58,7 @@ export function PageHeader({ children, className, onParent, ...rest }: PageHeade
               />
             </>
           )}
-          <TruncatedText className={cn(page && pageHeaderCurrentClass)}>
+          <TruncatedText className={cn('min-w-0', page && pageHeaderCurrentClass)}>
             {props.current}
           </TruncatedText>
         </Title>
