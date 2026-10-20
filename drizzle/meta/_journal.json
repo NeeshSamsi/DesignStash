@@ -64,6 +64,13 @@
       "when": 1792482153402,
       "tag": "0008_seed_tag_labels",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792485665541,
+      "tag": "0009_copy_job_sizes",
+      "breakpoints": true
     }
   ]
 }

@@ -102,7 +102,7 @@ describe('registration', () => {
   it('answers GET with the file, refuses other methods and anything outside the stash', async () => {
     const s = setup()
     let handler!: (req: Request) => Promise<Response>
-    const fetchFile = vi.fn(async (_fileUrl: string) => new Response('bytes', { status: 200 }))
+    const fetchFile = vi.fn<(fileUrl: string) => Promise<Response>>(async () => new Response('bytes', { status: 200 }))
     handleCoverRequests({ handle: (_scheme, fn) => void (handler = fn as typeof handler) }, fetchFile, () => s.root)
 
     const ok = await handler(new Request(coverUrl(s.cover)))

@@ -128,6 +128,7 @@ describe('copy channels', () => {
     expect(
       request.safeParse({
         haulId: 'h', state: 'paused', pauseReason: 'disk-full', total: 3, landed: 1,
+        bytesTotal: 300, bytesCopied: 100, bytesPerSecond: 0, secondsLeft: null,
         skipped: { notPsd: 0, duplicate: 1, unreadable: 0 }, file: null
       }).success
     ).toBe(true)

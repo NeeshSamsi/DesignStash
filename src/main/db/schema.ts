@@ -189,6 +189,8 @@ export const copyJobs = sqliteTable('copy_jobs', {
     .notNull()
     .default('queued'),
   skipReason: text('skip_reason', { enum: ['duplicate', 'unreadable'] }),
+  /** The PSD's size in bytes, read when the haul was queued, so progress can be counted in bytes. */
+  sizeBytes: integer('size_bytes').notNull().default(0),
   /** The mockup this became. */
   mockupId: integer('mockup_id'),
   ...timestamps

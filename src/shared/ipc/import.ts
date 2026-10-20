@@ -18,7 +18,10 @@ export const CopyFileSchema = z.object({
   status: z.enum(['queued', 'copying', 'done', 'skipped']),
   skipReason: CopySkipReasonSchema.optional(),
   /** The mockup it became, once it has landed in To sort. */
-  mockupId: z.number().optional()
+  mockupId: z.number().optional(),
+  /** The file's size, and how much of it is copied so far (the row's own progress bar). */
+  size: z.number().optional(),
+  bytesCopied: z.number().optional()
 })
 export type CopyFile = z.infer<typeof CopyFileSchema>
 
@@ -30,6 +33,13 @@ const CopyCountsSchema = z.object({
   total: z.number(),
   /** Landed in To sort. */
   landed: z.number(),
+  /** Bytes of every PSD in the haul, and how many of them are handled (copied, or left out). Overall progress counts these. */
+  bytesTotal: z.number(),
+  bytesCopied: z.number(),
+  /** The recent copy speed. 0 until it can be measured. */
+  bytesPerSecond: z.number(),
+  /** Seconds left at that speed. null until the speed is known. */
+  secondsLeft: z.number().nullable(),
   skipped: z.object({ notPsd: z.number(), duplicate: z.number(), unreadable: z.number() })
 })
 

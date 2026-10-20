@@ -1,5 +1,5 @@
-import { createHash, randomUUID } from 'node:crypto'
-import { createReadStream, promises as fs } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { promises as fs } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import type { CopyFile, CopyPauseReason, CopyProgress, CopyStatus } from '@shared/ipc/import'
 import type { Repository } from '../db/repository'
@@ -8,18 +8,24 @@ import { removeAppCopies } from '../library/app-files'
 import { resolveCover } from '../psd'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
 import { scanForPsds } from './scanner'
+import { copyWithHash } from './stream-copy'
 
 export interface CopyQueueDeps {
   resolveCover: (input: ResolveCoverInput) => Promise<CoverResolution>
   freeBytes: (path: string) => Promise<number>
-  copyFile: (src: string, dest: string) => Promise<void>
-  hashFile: (path: string) => Promise<string>
+  /** Copy a file by streaming it, telling `onBytes` how much is written, and return its SHA-256. */
+  copyHashed: (
+    src: string,
+    dest: string,
+    onBytes: (written: number) => void
+  ) => Promise<{ sha256: string; bytes: number }>
   stat: (path: string) => Promise<{ size: number }>
   rm: (path: string) => Promise<void>
   mkdir: (path: string) => Promise<void>
   /** Room kept free beyond the file itself, for its cover and thumbnail. */
   reserveBytes: number
   newId: () => string
+  now: () => number
 }
 
 const defaultDeps: CopyQueueDeps = {
@@ -28,20 +34,23 @@ const defaultDeps: CopyQueueDeps = {
     const s = await fs.statfs(p)
     return s.bavail * s.bsize
   },
-  copyFile: (src, dest) => fs.copyFile(src, dest),
-  hashFile: async (path) => {
-    const hash = createHash('sha256')
-    for await (const chunk of createReadStream(path)) hash.update(chunk as Buffer)
-    return hash.digest('hex')
-  },
+  copyHashed: copyWithHash,
   stat: (p) => fs.stat(p),
   rm: (p) => fs.rm(p, { force: true, recursive: true }),
   mkdir: async (p) => {
     await fs.mkdir(p, { recursive: true })
   },
   reserveBytes: 64 * 1024 * 1024,
-  newId: randomUUID
+  newId: randomUUID,
+  now: Date.now
 }
+
+/** Byte progress is pushed at most this often, about ten times a second. */
+const PUSH_INTERVAL_MS = 100
+/** Speed is measured over this long, so the time left settles instead of jumping. */
+const RATE_WINDOW_MS = 8000
+/** No time left is shown until at least this much has been measured. */
+const RATE_MIN_MS = 1500
 
 export interface CopyQueueOptions {
   repo: Repository
@@ -72,6 +81,10 @@ export class CopyQueue {
   private readonly root: string
   private readonly deps: CopyQueueDeps
   private pumping: Promise<void> | null = null
+  /** The file being copied and how much of it is written. */
+  private live: { jobId: number; bytes: number } | null = null
+  private lastPush = 0
+  private rate: { haulId: string; samples: { at: number; bytes: number }[] } = { haulId: '', samples: [] }
 
   constructor(private readonly opts: CopyQueueOptions) {
     this.repo = opts.repo
@@ -98,11 +111,15 @@ export class CopyQueue {
     }
     this.repo.copyJobs.addJobs(
       haulId,
-      psds.map((p) => ({
-        sourcePath: p.psdPath,
-        fileName: basename(p.psdPath),
-        folderTrail: p.importContext.folderTrail
-      }))
+      await Promise.all(
+        psds.map(async (p) => ({
+          sourcePath: p.psdPath,
+          fileName: basename(p.psdPath),
+          folderTrail: p.importContext.folderTrail,
+          // Read now so progress can be counted in bytes. A file that can't be read counts as nothing.
+          sizeBytes: await this.deps.stat(p.psdPath).then((st) => st.size, () => 0)
+        }))
+      )
     )
 
     if (this.repo.copyJobs.getJobs(haulId).length === 0) {
@@ -229,32 +246,34 @@ export class CopyQueue {
 
     if ((await this.deps.freeBytes(this.root)) < size + this.deps.reserveBytes) throw new Pause('disk-full')
 
-    let hash: string
-    try {
-      hash = await this.deps.hashFile(job.sourcePath)
-    } catch (err) {
-      if (codeOf(err) === 'ENOENT') throw new Pause('source-gone')
-      return skip('unreadable')
-    }
-    if (this.repo.mockupExistsByHash(hash)) return skip('duplicate')
-
     const destDir = join(this.root, 'mockups', this.deps.newId())
     try {
       await this.deps.mkdir(destDir)
+      const libraryPath = join(destDir, 'original.psd')
+      // One pass over the original: it is copied and hashed together, and every chunk moves the bar.
+      const { sha256 } = await this.deps.copyHashed(job.sourcePath, libraryPath, (written) => {
+        this.live = { jobId: job.id, bytes: written }
+        this.emitThrottled(haulId, job.id)
+      })
+      this.live = null
+
+      if (this.repo.mockupExistsByHash(sha256)) {
+        await this.deps.rm(destDir).catch(() => {})
+        return skip('duplicate')
+      }
+
       const cover = await this.deps.resolveCover({
         psdPath: job.sourcePath,
         candidateImagePaths,
         outDir: destDir
       })
-      const libraryPath = join(destDir, 'original.psd')
-      await this.deps.copyFile(job.sourcePath, libraryPath)
 
       const mockup = this.repo.createMockup({
         title: basename(job.fileName, extname(job.fileName)),
         libraryPath,
         coverPath: cover.source === 'none' ? '' : cover.coverPath,
         coverSource: cover.source,
-        contentHash: hash,
+        contentHash: sha256,
         importContext: { batchId: haulId, folderTrail: job.folderTrail, originalFilename: job.fileName },
         reviewStatus: 'needs_review',
         stage: 'to_sort',
@@ -264,6 +283,7 @@ export class CopyQueue {
       this.emit(haulId, job.id)
       this.opts.onLanded?.([mockup.id])
     } catch (err) {
+      this.live = null
       await this.deps.rm(destDir).catch(() => {})
       if (codeOf(err) === 'ENOSPC') throw new Pause('disk-full')
       if (codeOf(err) === 'ENOENT' && !(await this.sourceStillThere(job.sourcePath))) throw new Pause('source-gone')
@@ -281,36 +301,91 @@ export class CopyQueue {
     const haul = this.repo.copyJobs.getHaul(haulId)
     if (!haul) return null
     const jobs = this.repo.copyJobs.getJobs(haulId)
+    const live = this.live
+    const bytesTotal = jobs.reduce((sum, j) => sum + j.sizeBytes, 0)
+    const bytesCopied = jobs.reduce(
+      (sum, j) =>
+        sum +
+        (j.status === 'done' || j.status === 'skipped'
+          ? j.sizeBytes
+          : live?.jobId === j.id
+            ? Math.min(live.bytes, j.sizeBytes)
+            : 0),
+      0
+    )
+    const rate = this.rateFor(haulId, haul.state === 'running', bytesCopied, bytesTotal)
     return {
       haulId,
       state: haul.state,
       pauseReason: haul.pauseReason ?? null,
       total: jobs.length,
       landed: jobs.filter((j) => j.mockupId !== null).length,
+      bytesTotal,
+      bytesCopied,
+      bytesPerSecond: rate.bytesPerSecond,
+      secondsLeft: rate.secondsLeft,
       skipped: {
         notPsd: haul.notPsdCount,
         duplicate: jobs.filter((j) => j.skipReason === 'duplicate').length,
         unreadable: jobs.filter((j) => j.skipReason === 'unreadable').length
       },
-      files: jobs.map(toFile)
+      files: jobs.map((j) => toFile(j, live))
     }
+  }
+
+  /** Speed over the last few seconds, and the time left at that speed. Nothing until there is enough to go on. */
+  private rateFor(
+    haulId: string,
+    running: boolean,
+    bytesCopied: number,
+    bytesTotal: number
+  ): { bytesPerSecond: number; secondsLeft: number | null } {
+    if (this.rate.haulId !== haulId) this.rate = { haulId, samples: [] }
+    if (!running) {
+      this.rate.samples = []
+      return { bytesPerSecond: 0, secondsLeft: null }
+    }
+    const at = this.deps.now()
+    const last = this.rate.samples.at(-1)
+    // Several readings in the same instant add nothing; keep the latest.
+    if (last && last.at === at) last.bytes = bytesCopied
+    else this.rate.samples.push({ at, bytes: bytesCopied })
+    while (this.rate.samples.length > 2 && at - this.rate.samples[0]!.at > RATE_WINDOW_MS) {
+      this.rate.samples.shift()
+    }
+    const first = this.rate.samples[0]!
+    const elapsed = at - first.at
+    const gained = bytesCopied - first.bytes
+    if (elapsed < RATE_MIN_MS || gained <= 0) return { bytesPerSecond: 0, secondsLeft: null }
+    const bytesPerSecond = (gained / elapsed) * 1000
+    return { bytesPerSecond, secondsLeft: Math.max(0, Math.ceil((bytesTotal - bytesCopied) / bytesPerSecond)) }
   }
 
   private emit(haulId: string, changedJobId: number | null): void {
     const status = this.statusOf(haulId)
     if (!status) return
+    this.lastPush = this.deps.now()
     const { files, ...counts } = status
     const job = changedJobId === null ? undefined : files.find((f) => f.jobId === changedJobId)
     this.opts.onProgress?.({ ...counts, file: job ?? null })
   }
+
+  /** Byte progress while a file copies: pushed about ten times a second, never on every chunk. */
+  private emitThrottled(haulId: string, changedJobId: number): void {
+    if (this.deps.now() - this.lastPush < PUSH_INTERVAL_MS) return
+    this.emit(haulId, changedJobId)
+  }
 }
 
-function toFile(j: CopyJob): CopyFile {
+function toFile(j: CopyJob, live: { jobId: number; bytes: number } | null): CopyFile {
   return {
     jobId: j.id,
     name: j.fileName,
     status: j.status,
     ...(j.skipReason ? { skipReason: j.skipReason } : {}),
-    ...(j.mockupId !== null ? { mockupId: j.mockupId } : {})
+    ...(j.mockupId !== null ? { mockupId: j.mockupId } : {}),
+    size: j.sizeBytes,
+    bytesCopied:
+      j.status === 'done' ? j.sizeBytes : live?.jobId === j.id ? Math.min(live.bytes, j.sizeBytes) : 0
   }
 }

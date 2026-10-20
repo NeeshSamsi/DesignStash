@@ -1,0 +1,1 @@
+ALTER TABLE `copy_jobs` ADD `size_bytes` integer DEFAULT 0 NOT NULL;

@@ -7,6 +7,7 @@ export interface NewJob {
   sourcePath: string
   fileName: string
   folderTrail: string[]
+  sizeBytes: number
 }
 
 /** The copy queue's hauls and the per-file jobs inside them. */
@@ -51,7 +52,13 @@ export class CopyJobRepository {
     if (jobs.length === 0) return
     this.db
       .insert(copyJobs)
-      .values(jobs.map((j) => ({ haulId, sourcePath: j.sourcePath, fileName: j.fileName, folderTrail: j.folderTrail })))
+      .values(jobs.map((j) => ({
+          haulId,
+          sourcePath: j.sourcePath,
+          fileName: j.fileName,
+          folderTrail: j.folderTrail,
+          sizeBytes: j.sizeBytes
+        })))
       .run()
   }
 

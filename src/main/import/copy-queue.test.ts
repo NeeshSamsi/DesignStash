@@ -9,6 +9,7 @@ import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb } from '../db/repositories/__tests__/setup'
 import type { CoverResolution } from '../psd/types'
 import { CopyQueue, type CopyQueueDeps } from './copy-queue'
+import { copyWithHash } from './stream-copy'
 
 let base: string
 let drop: string
@@ -205,9 +206,9 @@ describe('pausing', () => {
     psd('a.psd')
     let calls = 0
     const q = queue({
-      copyFile: async (src, dest) => {
+      copyHashed: async (src, dest, onBytes) => {
         if (++calls === 1) throw Object.assign(new Error('no space'), { code: 'ENOSPC' })
-        writeFileSync(dest, readFileSync(src))
+        return copyWithHash(src, dest, onBytes)
       }
     })
     const { haulId } = await q.start([drop])
@@ -297,9 +298,10 @@ describe('cancel and undo', () => {
     psd('c.psd', 'C')
     let calls = 0
     const q: CopyQueue = queue({
-      copyFile: async (src, dest) => {
-        writeFileSync(dest, readFileSync(src))
+      copyHashed: async (src, dest, onBytes) => {
+        const res = await copyWithHash(src, dest, onBytes)
         if (++calls === 1) await q.cancel(events[0]!.haulId)
+        return res
       }
     })
     const { haulId } = await q.start([drop])
@@ -396,5 +398,148 @@ describe('resuming at launch', () => {
   it('does nothing when there is no haul', async () => {
     await expect(queue().resume()).resolves.toBeUndefined()
     expect(await queue().status()).toBeNull()
+  })
+})
+
+describe('byte progress', () => {
+  /** A copy that writes `steps` equal chunks, moving a fake clock `stepMs` for each. */
+  const steppedCopy = (clock: { t: number }, steps: number, stepMs: number): Partial<CopyQueueDeps> => ({
+    now: () => clock.t,
+    copyHashed: async (src, dest, onBytes) => {
+      const data = readFileSync(src)
+      writeFileSync(dest, data)
+      for (let i = 1; i <= steps; i++) {
+        clock.t += stepMs
+        onBytes(Math.floor((data.length * i) / steps))
+      }
+      return copyWithHash(src, join(dest, '..', 'hash-only.tmp'), () => {}).then((r) => {
+        rmSync(join(dest, '..', 'hash-only.tmp'), { force: true })
+        return r
+      })
+    }
+  })
+
+  const data = (n: number) => 'x'.repeat(n)
+
+  it('moves while a file copies, not only when it finishes', async () => {
+    const clock = { t: 1_000_000 }
+    psd('big.psd', data(1000))
+    const q = queue(steppedCopy(clock, 10, 150))
+
+    await q.start([drop])
+    await q.idle()
+
+    const while_ = events.filter((e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0)
+    expect(while_.length).toBeGreaterThanOrEqual(5)
+    const overall = while_.map((e) => e.bytesCopied)
+    expect(overall).toEqual([...overall].sort((a, b) => a - b))
+    expect(new Set(overall).size).toBeGreaterThanOrEqual(5)
+    for (const e of while_) {
+      expect(e.bytesCopied).toBeLessThanOrEqual(e.bytesTotal)
+      expect(e.file!.size).toBe(1000)
+    }
+    expect(last()).toMatchObject({ state: 'done', bytesTotal: 1000, bytesCopied: 1000 })
+  })
+
+  it('pushes about ten times a second however many chunks arrive', async () => {
+    const clock = { t: 5_000_000 }
+    psd('big.psd', data(5000))
+    // 1000 chunks in one second of fake time: one every millisecond.
+    const q = queue(steppedCopy(clock, 1000, 1))
+
+    await q.start([drop])
+    await q.idle()
+
+    const copying = events.filter((e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0)
+    expect(copying.length).toBeGreaterThanOrEqual(8)
+    expect(copying.length).toBeLessThanOrEqual(12)
+  })
+
+  it('counts every file in the haul, handled ones included, so the bar reaches the end', async () => {
+    psd('one.psd', data(400))
+    psd('two.psd', data(400)) // a duplicate of one
+    psd('three.psd', data(200))
+    const q = queue()
+
+    const started = await q.start([drop])
+    await q.idle()
+
+    expect(started.bytesTotal).toBe(1000)
+    expect(last()).toMatchObject({ state: 'done', bytesTotal: 1000, bytesCopied: 1000, landed: 2 })
+    const copied = events.map((e) => e.bytesCopied)
+    expect(copied).toEqual([...copied].sort((a, b) => a - b))
+  })
+
+  it('gives a file its own progress: the share copied, and the whole file once it lands', async () => {
+    const clock = { t: 9_000_000 }
+    psd('big.psd', data(800))
+    const q = queue(steppedCopy(clock, 4, 200))
+    await q.start([drop])
+    await q.idle()
+
+    const row = (e: (typeof events)[number]) => e.file?.bytesCopied ?? 0
+    const mid = events.filter((e) => e.file?.status === 'copying' && row(e) > 0 && row(e) < 800)
+    expect(mid.length).toBeGreaterThan(0)
+    expect(events.filter((e) => e.file?.status === 'done').at(-1)?.file).toMatchObject({ bytesCopied: 800, size: 800 })
+  })
+
+  it('says nothing about time left until it has measured for a moment, then counts it down at the speed it sees', async () => {
+    const clock = { t: 2_000_000 }
+    psd('big.psd', data(10_000))
+    // 10 chunks of 1000 bytes, 400 ms apart: 2500 bytes a second.
+    const q = queue(steppedCopy(clock, 10, 400))
+    await q.start([drop])
+    await q.idle()
+
+    const during = events.filter((e) => e.state === 'running' && e.file?.status === 'copying' && e.bytesCopied > 0)
+    expect(during[0]!.secondsLeft).toBeNull()
+    expect(during[0]!.bytesPerSecond).toBe(0)
+    const measured = during.filter((e) => e.secondsLeft !== null)
+    expect(measured.length).toBeGreaterThan(0)
+    for (const e of measured) {
+      expect(e.bytesPerSecond).toBeCloseTo(2500, -1)
+      expect(e.secondsLeft).toBe(Math.ceil((e.bytesTotal - e.bytesCopied) / e.bytesPerSecond))
+    }
+    const seconds = measured.map((e) => e.secondsLeft!)
+    expect(seconds).toEqual([...seconds].sort((a, b) => b - a))
+    expect(last()).toMatchObject({ state: 'done', secondsLeft: null, bytesPerSecond: 0 })
+  })
+
+  it('has no speed or time left while paused', async () => {
+    psd('a.psd', data(100))
+    free = 1
+    const q = queue()
+    await q.start([drop])
+    await q.idle()
+    expect(last()).toMatchObject({ state: 'paused', bytesPerSecond: 0, secondsLeft: null })
+  })
+
+  it('reads sizes once and keeps them across a restart', async () => {
+    psd('a.psd', data(300))
+    free = 1
+    const first = queue()
+    const { haulId } = await first.start([drop])
+    await first.idle()
+    expect(repo.copyJobs.getJobs(haulId).map((j) => j.sizeBytes)).toEqual([300])
+
+    free = 10_000_000
+    const restarted = queue()
+    await restarted.resume()
+    await restarted.retry(haulId)
+    await restarted.idle()
+    expect(last()).toMatchObject({ state: 'done', bytesTotal: 300, bytesCopied: 300 })
+  })
+
+  it('copies a real multi-megabyte file and reports its progress in steps', async () => {
+    const path = join(drop, 'real.psd')
+    writeFileSync(path, Buffer.alloc(6 * 1024 * 1024, 3))
+    let t = 0
+    const q = queue({ now: () => (t += 100) })
+    await q.start([drop])
+    await q.idle()
+
+    const partial = events.filter((e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0)
+    expect(partial.length).toBeGreaterThanOrEqual(3)
+    expect(last()).toMatchObject({ state: 'done', bytesCopied: 6 * 1024 * 1024 })
   })
 })
