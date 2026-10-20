@@ -186,6 +186,33 @@ for (const { width, height } of SIZES) {
         await noSidewaysScroll(window, dialog, `Settings › ${section}`)
         await shot(`settings-${section.toLowerCase().replace(' ', '-')}`)
       }
+
+      await test.step('Scrollbar', async () => {
+        await dialog.getByRole('button', { name: 'Tags', exact: true }).click()
+        const open = window.locator('.ds-scrollbar[data-axis="vertical"][data-state="open"]')
+        // Nothing is drawn while the pointer is away.
+        await window.mouse.move(2, 2)
+        await expect(open).toHaveCount(0)
+        // Pointing at the long tag list opens the gutter over it, without moving the rows.
+        const point = await window.evaluate(() => {
+          const area = [...document.querySelectorAll<HTMLElement>('[role="dialog"] *')].find(
+            (el) =>
+              getComputedStyle(el).overflowY === 'auto' && el.scrollHeight > el.clientHeight + 1
+          )
+          const r = area?.getBoundingClientRect()
+          return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null
+        })
+        expect(point, 'Settings › Tags has a scroll area').not.toBeNull()
+        await window.mouse.move(point!.x, point!.y)
+        await expect(open).toHaveCount(1)
+        const layerZ = await window.evaluate(
+          () => getComputedStyle(document.querySelector('.ds-scrollbar-layer')!).zIndex
+        )
+        expect(layerZ, 'the layer sits at the scrollbar z token').toBe('70')
+        // Moving away hides it.
+        await window.mouse.move(2, 2)
+        await expect(open).toHaveCount(0)
+      })
       await window.keyboard.press('Escape')
     })
   })
