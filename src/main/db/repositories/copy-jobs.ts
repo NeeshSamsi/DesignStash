@@ -10,6 +10,17 @@ export interface NewJob {
   sizeBytes: number
 }
 
+/** A haul's state with the one thing that belongs to it: a pause always has a reason, nothing else does. */
+export type HaulState =
+  | { state: 'running' | 'done' | 'cancelled' | 'undone' }
+  | { state: 'paused'; pauseReason: NonNullable<CopyHaul['pauseReason']> }
+
+/** A job's state with its extras: a skip always has a reason and a done job always has its mockup. */
+export type JobState =
+  | { status: 'queued' | 'copying' }
+  | { status: 'done'; mockupId: number }
+  | { status: 'skipped'; skipReason: NonNullable<CopyJob['skipReason']> }
+
 /** The copy queue's hauls and the per-file jobs inside them. */
 export class CopyJobRepository {
   constructor(private readonly db: AppDatabase) {}
@@ -40,7 +51,20 @@ export class CopyJobRepository {
     return this.db.select().from(copyHauls).orderBy(desc(copyHauls.createdAt), sql`${copyHauls}.rowid DESC`).get()
   }
 
-  updateHaul(id: string, patch: Partial<Pick<CopyHaul, 'state' | 'pauseReason' | 'candidateImages' | 'notPsdCount'>>): void {
+  /** Set the state and its pause reason as one value, so a reason can never outlive the pause. */
+  setHaulState(id: string, next: HaulState): void {
+    this.db
+      .update(copyHauls)
+      .set({
+        state: next.state,
+        pauseReason: next.state === 'paused' ? next.pauseReason : null,
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      })
+      .where(eq(copyHauls.id, id))
+      .run()
+  }
+
+  updateHaul(id: string, patch: Partial<Pick<CopyHaul, 'candidateImages' | 'notPsdCount'>>): void {
     this.db
       .update(copyHauls)
       .set({ ...patch, updatedAt: sql`CURRENT_TIMESTAMP` })
@@ -79,10 +103,26 @@ export class CopyJobRepository {
       .get()
   }
 
-  updateJob(
-    id: number,
-    patch: Partial<Pick<CopyJob, 'status' | 'skipReason' | 'mockupId' | 'sourcePath'>>
-  ): void {
+  /**
+   * Set the status with its skip reason and mockup as one value. A job that is handled, done or skipped,
+   * no longer needs the way back to its file, so that is cleared with it.
+   */
+  setJobState(id: number, next: JobState): void {
+    const handled = next.status === 'done' || next.status === 'skipped'
+    this.db
+      .update(copyJobs)
+      .set({
+        status: next.status,
+        skipReason: next.status === 'skipped' ? next.skipReason : null,
+        mockupId: next.status === 'done' ? next.mockupId : null,
+        ...(handled ? { sourcePath: '' } : {}),
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      })
+      .where(eq(copyJobs.id, id))
+      .run()
+  }
+
+  updateJob(id: number, patch: Partial<Pick<CopyJob, 'sourcePath'>>): void {
     this.db
       .update(copyJobs)
       .set({ ...patch, updatedAt: sql`CURRENT_TIMESTAMP` })

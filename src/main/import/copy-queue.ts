@@ -123,7 +123,7 @@ export class CopyQueue {
     this.repo.copyJobs.addJobs(haulId, jobs)
 
     if (this.repo.copyJobs.getJobs(haulId).length === 0) {
-      this.repo.copyJobs.updateHaul(haulId, { state: 'done' })
+      this.repo.copyJobs.setHaulState(haulId, { state: 'done' })
     }
     this.emit(haulId, null)
     // Start on the next turn, so a caller that gets the status back can still act before the first file.
@@ -142,7 +142,7 @@ export class CopyQueue {
     const haul = this.repo.copyJobs.getHaul(haulId)
     if (!haul) return { landedIds: [] }
     if (haul.state === 'running' || haul.state === 'paused') {
-      this.repo.copyJobs.updateHaul(haulId, { state: 'cancelled', pauseReason: null })
+      this.repo.copyJobs.setHaulState(haulId, { state: 'cancelled' })
       this.emit(haulId, null)
     }
     return { landedIds: this.repo.copyJobs.landedMockupIds(haulId) }
@@ -153,7 +153,7 @@ export class CopyQueue {
     const haul = this.repo.copyJobs.getHaul(haulId)
     if (!haul) throw new Error('No such haul')
     if (haul.state === 'paused') {
-      this.repo.copyJobs.updateHaul(haulId, { state: 'running', pauseReason: null })
+      this.repo.copyJobs.setHaulState(haulId, { state: 'running' })
       this.emit(haulId, null)
       this.pump()
     }
@@ -170,7 +170,7 @@ export class CopyQueue {
     const { ids } = this.repo.collectTossable(this.repo.copyJobs.landedMockupIds(haulId))
     const removed = this.repo.deleteMockupsHard(ids)
     await removeAppCopies(this.root, removed, this.deps.rm)
-    this.repo.copyJobs.updateHaul(haulId, { state: 'undone', pauseReason: null })
+    this.repo.copyJobs.setHaulState(haulId, { state: 'undone' })
     this.emit(haulId, null)
     return { tossedIds: ids }
   }
@@ -204,7 +204,7 @@ export class CopyQueue {
       if (!haul || haul.state !== 'running') return
       const job = this.repo.copyJobs.nextQueued(haul.id)
       if (!job) {
-        this.repo.copyJobs.updateHaul(haul.id, { state: 'done' })
+        this.repo.copyJobs.setHaulState(haul.id, { state: 'done' })
         this.emit(haul.id, null)
         return
       }
@@ -212,27 +212,27 @@ export class CopyQueue {
         await this.handle(haul.id, job, haul.candidateImages)
       } catch (err) {
         if (err instanceof Pause) {
-          this.repo.copyJobs.updateJob(job.id, { status: 'queued' })
+          this.repo.copyJobs.setJobState(job.id, { status: 'queued' })
           // A cancel that arrived meanwhile wins.
           if (this.repo.copyJobs.getHaul(haul.id)?.state === 'running') {
-            this.repo.copyJobs.updateHaul(haul.id, { state: 'paused', pauseReason: err.reason })
+            this.repo.copyJobs.setHaulState(haul.id, { state: 'paused', pauseReason: err.reason })
           }
           this.emit(haul.id, null)
           return
         }
         console.error('[Copy] Queue error:', err)
-        this.repo.copyJobs.updateJob(job.id, { status: 'skipped', skipReason: 'unreadable', sourcePath: '' })
+        this.repo.copyJobs.setJobState(job.id, { status: 'skipped', skipReason: 'unreadable' })
         this.emit(haul.id, job.id)
       }
     }
   }
 
   private async handle(haulId: string, job: CopyJob, candidateImagePaths: string[]): Promise<void> {
-    this.repo.copyJobs.updateJob(job.id, { status: 'copying' })
+    this.repo.copyJobs.setJobState(job.id, { status: 'copying' })
     this.emit(haulId, job.id)
 
     const skip = (reason: 'duplicate' | 'unreadable') => {
-      this.repo.copyJobs.updateJob(job.id, { status: 'skipped', skipReason: reason, sourcePath: '' })
+      this.repo.copyJobs.setJobState(job.id, { status: 'skipped', skipReason: reason })
       this.emit(haulId, job.id)
     }
 
@@ -279,7 +279,7 @@ export class CopyQueue {
         stage: 'to_sort',
         sizeBytes: size
       })
-      this.repo.copyJobs.updateJob(job.id, { status: 'done', mockupId: mockup.id, sourcePath: '' })
+      this.repo.copyJobs.setJobState(job.id, { status: 'done', mockupId: mockup.id })
       this.emit(haulId, job.id)
       this.opts.onLanded?.([mockup.id])
     } catch (err) {

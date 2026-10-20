@@ -448,8 +448,9 @@ describe('resuming at launch', () => {
     const jobs = repo.copyJobs.getJobs(haulId)
     const c = jobs.find((j) => j.fileName === 'c.psd')!
     repo.deleteMockupsHard([c.mockupId!])
-    repo.copyJobs.updateJob(c.id, { status: 'copying', mockupId: null, sourcePath: join(drop, 'c.psd') })
-    repo.copyJobs.updateHaul(haulId, { state: 'running' })
+    repo.copyJobs.setJobState(c.id, { status: 'copying' })
+    repo.copyJobs.updateJob(c.id, { sourcePath: join(drop, 'c.psd') })
+    repo.copyJobs.setHaulState(haulId, { state: 'running' })
 
     const restarted = queue()
     await restarted.resume()
