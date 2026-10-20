@@ -3,8 +3,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from './App'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { useLibraryStore } from './stores/libraryStore'
+import { useUiStore } from './stores/uiStore'
+import { useCopyStore } from './stores/copyStore'
 
 beforeEach(() => {
+  useUiStore.setState({ view: 'all', modal: null, settingsOpen: false })
+  useCopyStore.getState().reset()
   useLibraryStore.setState({
     items: [],
     query: '',
@@ -124,27 +128,22 @@ describe('App', () => {
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeTruthy()
   })
 
-  it('calls IMPORT_START on drop', async () => {
+  it('a drop on My Stash starts a copy', async () => {
     render(<App />)
     // Wait for consent state to resolve so the real app (AppShell) is mounted.
     await screen.findByRole('navigation', { name: 'Primary' })
-    const dropzone = document.querySelector('[data-slot="app-shell"]') as HTMLElement
     const file = new File([''], 'test.psd', { type: 'image/vnd.adobe.photoshop' })
-    const dataTransfer = {
-      files: [file],
-      items: [
-        {
-          kind: 'file',
-          type: file.type,
-          getAsFile: () => file
-        }
-      ],
-      types: ['Files']
+    const drop = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
+      dataTransfer: unknown
     }
-    fireEvent.drop(dropzone, { dataTransfer })
-    expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.IMPORT_START, {
-      paths: ['/path/to/test.psd']
-    })
+    drop.dataTransfer = { files: [file], items: [], types: ['Files'] }
+    window.dispatchEvent(drop)
+    await waitFor(() =>
+      expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.COPY_START, {
+        paths: ['/path/to/test.psd']
+      })
+    )
+    expect(window.api.invoke).not.toHaveBeenCalledWith(IPC_CHANNELS.IMPORT_START, expect.anything())
   })
 
   it('finishing Look it over re-fetches LIBRARY_LIST', async () => {
@@ -154,17 +153,33 @@ describe('App', () => {
           success: true,
           data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true }
         }
-      if (channel === IPC_CHANNELS.IMPORT_START)
+      if (channel === IPC_CHANNELS.INBOX_COUNTS)
+        return { success: true, data: { toSort: 1, toStash: 0, sniffing: 0, trash: 0 } }
+      if (channel === IPC_CHANNELS.INBOX_LIST)
         return {
           success: true,
           data: {
-            batchId: 'b1',
-            items: [],
-            imported: 1,
-            pendingPreview: 0,
-            duplicates: 0,
-            errors: 0,
-            skippedNonPsd: 0
+            items: [
+              {
+                id: 1,
+                title: 'test.psd',
+                description: null,
+                coverPath: '/t.png',
+                coverSource: 'embedded',
+                coverMissing: false,
+                isGroup: false,
+                favourite: false,
+                reviewStatus: 'needs_review',
+                createdAt: '2026-10-11',
+                variantCount: 0,
+                topId: null,
+                tags: [],
+                stage: 'to_sort',
+                aiStatus: 'off',
+                sizeBytes: 1,
+                batchId: 'b1'
+              }
+            ]
           }
         }
       if (channel === IPC_CHANNELS.GROUPING_PROPOSE)
@@ -229,15 +244,9 @@ describe('App', () => {
     render(<App />)
     await screen.findByRole('navigation', { name: 'Primary' })
 
-    // Drop a file to trigger import
-    const dropzone = document.querySelector('[data-slot="app-shell"]') as HTMLElement
-    const file = new File([''], 'test.psd', { type: 'image/vnd.adobe.photoshop' })
-    const dataTransfer = {
-      files: [file],
-      items: [{ kind: 'file', type: file.type, getAsFile: () => file }],
-      types: ['Files']
-    }
-    fireEvent.drop(dropzone, { dataTransfer })
+    // To sort holds what was copied in; Sort opens the board on its batch
+    fireEvent.click(await screen.findByRole('button', { name: /To sort/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sort' }))
 
     // The Sort board opens on the batch — carry on to Look it over
     const confirmBtn = await screen.findByRole('button', { name: 'Look them over' })

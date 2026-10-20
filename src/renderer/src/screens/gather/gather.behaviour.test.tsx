@@ -1,0 +1,335 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { IPC_CHANNELS } from '@shared/ipc'
+import type { CopyProgress, CopyStatus } from '@shared/ipc/import'
+import { useCopyStore } from '@renderer/stores/copyStore'
+import { useUiStore } from '@renderer/stores/uiStore'
+import { installApi, ok } from '../onboarding/test-api'
+import { GatherDock, useGather, useGatherDrops } from './index'
+
+const toasts = vi.hoisted(() => ({ toast: vi.fn(), undoToast: vi.fn() }))
+vi.mock('@renderer/stores/toastStore', () => toasts)
+
+const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
+  haulId: 'h1',
+  state: 'running',
+  pauseReason: null,
+  total: 40,
+  landed: 12,
+  skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
+  files: [{ jobId: 1, name: 'phone_front.psd', status: 'done' }],
+  ...over
+})
+const progress = (over: Partial<CopyProgress> = {}): CopyProgress => {
+  const { files, ...counts } = haul()
+  void files
+  return { ...counts, file: null, ...over }
+}
+
+function Harness() {
+  const gather = useGather()
+  const drops = useGatherDrops(gather)
+  return (
+    <div>
+      <button onClick={() => void gather.addFiles()}>add files</button>
+      <button onClick={() => void gather.addFolder()}>add folder</button>
+      <GatherDock gather={gather} />
+      {drops.overlay}
+      {drops.hint}
+    </div>
+  )
+}
+
+const base = (extra: Record<string, (r: unknown) => unknown> = {}) => ({
+  [IPC_CHANNELS.COPY_STATUS]: () => ok({ haul: null }),
+  [IPC_CHANNELS.INBOX_COUNTS]: () => ok({ toSort: 38, toStash: 0, sniffing: 0, trash: 0 }),
+  ...extra
+})
+
+beforeEach(() => {
+  useCopyStore.getState().reset()
+  useUiStore.setState({ view: 'all', modal: null, settingsOpen: false })
+  toasts.toast.mockClear()
+})
+
+const dragEvent = (type: string, items: { kind: string; type: string }[], files: File[] = []) => {
+  const event = new Event(type, { bubbles: true, cancelable: true }) as Event & {
+    dataTransfer: unknown
+  }
+  event.dataTransfer = {
+    types: ['Files'],
+    items: items.map((i) => ({ ...i })),
+    files,
+    dropEffect: 'none'
+  }
+  return event
+}
+const fire = (event: Event) => act(() => void window.dispatchEvent(event))
+
+describe('starting a copy', () => {
+  it('Add files sends the picked PSDs to the copy queue', async () => {
+    const api = installApi(
+      base({
+        [IPC_CHANNELS.DIALOG_SELECT_PSD_FILES]: () => ok({ paths: ['/a/one.psd', '/a/two.psd'] }),
+        [IPC_CHANNELS.COPY_START]: () => ok(haul())
+      })
+    )
+    render(<Harness />)
+    fireEvent.click(screen.getByText('add files'))
+    await waitFor(() =>
+      expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([{ paths: ['/a/one.psd', '/a/two.psd'] }])
+    )
+    expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+  })
+
+  it('Add folder sends the folder', async () => {
+    const api = installApi(
+      base({
+        [IPC_CHANNELS.DIALOG_SELECT_DIRECTORY]: () => ok({ path: '/Users/ada/Client mockups' }),
+        [IPC_CHANNELS.COPY_START]: () => ok(haul())
+      })
+    )
+    render(<Harness />)
+    fireEvent.click(screen.getByText('add folder'))
+    await waitFor(() =>
+      expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([{ paths: ['/Users/ada/Client mockups'] }])
+    )
+  })
+
+  it('a cancelled picker starts nothing', async () => {
+    const api = installApi(
+      base({ [IPC_CHANNELS.DIALOG_SELECT_PSD_FILES]: () => ok({ paths: [] }) })
+    )
+    render(<Harness />)
+    fireEvent.click(screen.getByText('add files'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.DIALOG_SELECT_PSD_FILES)).toHaveLength(1))
+    expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([])
+  })
+
+  it('a failed start says so and shows no widget', async () => {
+    installApi(
+      base({
+        [IPC_CHANNELS.DIALOG_SELECT_PSD_FILES]: () => ok({ paths: ['/a.psd'] }),
+        [IPC_CHANNELS.COPY_START]: () => ({ success: false, error: { code: 'X', message: 'x' } })
+      })
+    )
+    render(<Harness />)
+    fireEvent.click(screen.getByText('add files'))
+    await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
+    expect(screen.queryByText(/Copying/)).toBeNull()
+  })
+})
+
+describe('the widget', () => {
+  it('follows the copy:progress push, file by file', async () => {
+    const api = installApi(base())
+    render(<Harness />)
+    api.push(
+      IPC_CHANNELS.COPY_PROGRESS,
+      progress({ file: { jobId: 1, name: 'phone_front.psd', status: 'copying' } })
+    )
+    expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+    expect(screen.getByText('phone_front.psd')).toBeTruthy()
+    api.push(
+      IPC_CHANNELS.COPY_PROGRESS,
+      progress({ landed: 13, file: { jobId: 1, name: 'phone_front.psd', status: 'done' } })
+    )
+    expect(screen.getByText('Copying 13 of 40')).toBeTruthy()
+    expect(screen.getAllByText('phone_front.psd')).toHaveLength(1)
+  })
+
+  it('picks up a haul that was running before a relaunch', async () => {
+    installApi(base({ [IPC_CHANNELS.COPY_STATUS]: () => ok({ haul: haul() }) }))
+    render(<Harness />)
+    expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+  })
+
+  it('does not bring back an old finished haul at launch', async () => {
+    const api = installApi(
+      base({ [IPC_CHANNELS.COPY_STATUS]: () => ok({ haul: haul({ state: 'done' }) }) })
+    )
+    render(<Harness />)
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.COPY_STATUS)).toHaveLength(1))
+    expect(screen.queryByText(/copied/)).toBeNull()
+  })
+
+  it('collapses to a summary when done, and dismisses', async () => {
+    const api = installApi(base())
+    render(<Harness />)
+    api.push(
+      IPC_CHANNELS.COPY_PROGRESS,
+      progress({ state: 'done', landed: 38, skipped: { notPsd: 2, duplicate: 1, unreadable: 0 } })
+    )
+    expect(await screen.findByText('38 copied · 3 skipped')).toBeTruthy()
+    expect(document.querySelector('[data-ds="CopyWidget"]')?.getAttribute('data-view')).toBe(
+      'collapsed'
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryByText('38 copied · 3 skipped')).toBeNull()
+    // A late push for the same haul does not bring it back.
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'done', landed: 38 }))
+    expect(screen.queryByText(/copied/)).toBeNull()
+  })
+
+  it('Cancel stops the copy, then asks to keep what landed or undo it', async () => {
+    const api = installApi(base({ [IPC_CHANNELS.COPY_CANCEL]: () => ok({ landedIds: [1, 2] }) }))
+    render(<Harness />)
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress())
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.COPY_CANCEL)).toEqual([{ haulId: 'h1' }]))
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled' }))
+    expect(await screen.findByText('Copying stopped at 12 of 40')).toBeTruthy()
+    expect(screen.getByText('Keep the 12 that made it in, or undo all?')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Keep 12' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Undo all' })).toBeTruthy()
+  })
+
+  it('Keep leaves what landed and clears the widget', async () => {
+    const api = installApi(base())
+    render(<Harness />)
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep 12' }))
+    expect(screen.queryByText(/Copying stopped/)).toBeNull()
+    expect(api.sent(IPC_CHANNELS.COPY_UNDO_ALL)).toEqual([])
+  })
+
+  it('Undo all removes the haul and says so in a toast', async () => {
+    const api = installApi(
+      base({ [IPC_CHANNELS.COPY_UNDO_ALL]: () => ok({ tossedIds: [1, 2, 3] }) })
+    )
+    render(<Harness />)
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo all' }))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.COPY_UNDO_ALL)).toEqual([{ haulId: 'h1' }]))
+    await waitFor(() =>
+      expect(toasts.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'success', message: 'Copy undone' })
+      )
+    )
+    expect(screen.queryByText(/Copying stopped/)).toBeNull()
+  })
+
+  it('a paused copy says why and Retry carries on', async () => {
+    const api = installApi(base({ [IPC_CHANNELS.COPY_RETRY]: () => ok(haul()) }))
+    render(<Harness />)
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'paused', pauseReason: 'disk-full' }))
+    expect(await screen.findByText('Copying paused · your disk is full')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.COPY_RETRY)).toEqual([{ haulId: 'h1' }]))
+    expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+  })
+})
+
+describe('drops', () => {
+  const psd = new File([''], 'a.psd')
+
+  it('dragging over My Stash shows the drop overlay; leaving clears it', () => {
+    installApi(base())
+    render(<Harness />)
+    fire(dragEvent('dragenter', [{ kind: 'file', type: '' }]))
+    expect(screen.getByText('Drop PSDs to add them')).toBeTruthy()
+    fire(dragEvent('dragleave', []))
+    expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
+  })
+
+  it('nested enters and leaves do not flicker the overlay', () => {
+    installApi(base())
+    render(<Harness />)
+    fire(dragEvent('dragenter', [{ kind: 'file', type: '' }]))
+    fire(dragEvent('dragenter', [{ kind: 'file', type: '' }]))
+    fire(dragEvent('dragleave', []))
+    expect(document.querySelector('[data-ds="DropOverlay"]')).toBeTruthy()
+    fire(dragEvent('dragleave', []))
+    expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
+  })
+
+  it('To sort says the drop joins what waits there', async () => {
+    useUiStore.setState({ view: 'to-sort' })
+    installApi(base())
+    render(<Harness />)
+    fire(dragEvent('dragenter', [{ kind: 'file', type: '' }]))
+    expect(await screen.findByText('Drop to add them to To sort')).toBeTruthy()
+    expect(screen.getByText('They’ll join the 38 mockups already waiting.')).toBeTruthy()
+  })
+
+  it('non-PSDs are rejected while dragging', () => {
+    installApi(base())
+    render(<Harness />)
+    fire(dragEvent('dragenter', [{ kind: 'file', type: 'image/png' }]))
+    expect(screen.getByText('Those aren’t PSDs')).toBeTruthy()
+    expect(document.querySelector('[data-ds="DropOverlay"]')?.getAttribute('data-state')).toBe(
+      'rejected'
+    )
+  })
+
+  it('a drag during a copy is queued, naming how many join', () => {
+    const api = installApi(base())
+    render(<Harness />)
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress())
+    fire(
+      dragEvent('dragenter', [
+        { kind: 'file', type: '' },
+        { kind: 'file', type: '' }
+      ])
+    )
+    expect(screen.getByText('Add 2 more to the copy')).toBeTruthy()
+  })
+
+  it('dropping PSDs starts a copy with their paths', async () => {
+    const api = installApi(base({ [IPC_CHANNELS.COPY_START]: () => ok(haul()) }))
+    window.api.getPathForFile = vi.fn((f: File) => `/drop/${f.name}`)
+    render(<Harness />)
+    fire(dragEvent('dragenter', [{ kind: 'file', type: '' }]))
+    fire(dragEvent('drop', [{ kind: 'file', type: '' }], [psd, new File([''], 'x.png')]))
+    await waitFor(() =>
+      expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([{ paths: ['/drop/a.psd'] }])
+    )
+    expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
+  })
+
+  it('dropping only non-PSDs adds nothing and says why', async () => {
+    const api = installApi(base())
+    window.api.getPathForFile = vi.fn((f: File) => `/drop/${f.name}`)
+    render(<Harness />)
+    fire(dragEvent('drop', [{ kind: 'file', type: 'image/png' }], [new File([''], 'x.png')]))
+    await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
+    expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([])
+  })
+
+  it.each(['to-stash', 'trash'] as const)(
+    'on %s a hint follows the cursor and a drop adds nothing',
+    (view) => {
+      useUiStore.setState({ view })
+      const api = installApi(base())
+      window.api.getPathForFile = vi.fn((f: File) => `/drop/${f.name}`)
+      render(<Harness />)
+      fire(dragEvent('dragenter', [{ kind: 'file', type: '' }]))
+      expect(screen.getByText('Drop files on My Stash to add them')).toBeTruthy()
+      expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
+      const drop = dragEvent('drop', [{ kind: 'file', type: '' }], [psd])
+      fire(drop)
+      expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([])
+      expect(drop.defaultPrevented).toBe(true)
+    }
+  )
+
+  it('under Settings it shows the hint, not the overlay', () => {
+    useUiStore.setState({ view: 'all', settingsOpen: true })
+    installApi(base())
+    render(<Harness />)
+    fire(dragEvent('dragenter', [{ kind: 'file', type: '' }]))
+    expect(screen.getByText('Drop files on My Stash to add them')).toBeTruthy()
+    expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
+  })
+
+  it('ignores drags that are not files', () => {
+    installApi(base())
+    render(<Harness />)
+    const event = new Event('dragenter', { bubbles: true, cancelable: true }) as Event & {
+      dataTransfer: unknown
+    }
+    event.dataTransfer = { types: ['text/plain'], items: [], files: [] }
+    fire(event)
+    expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
+  })
+})

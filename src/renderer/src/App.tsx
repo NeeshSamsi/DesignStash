@@ -15,16 +15,19 @@ import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { toast } from './stores/toastStore'
+import { GatherDock, useGather, useGatherDrops } from './screens/gather'
 
 type AddFlow = 'approval' | null
 
 /** The app window, once launch is fine and onboarding is done. */
 function AppMain() {
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
-  const [isDropping, setIsDropping] = useState(false)
   const [addFlow, setAddFlow] = useState<AddFlow>(null)
   /** The import batch on the Sort board, or null when it is closed. */
   const [sortBatch, setSortBatch] = useState<string | null>(null)
+
+  const gather = useGather()
+  const drops = useGatherDrops(gather)
 
   const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
   const view = useUiStore((s) => s.view)
@@ -93,62 +96,6 @@ function AppMain() {
     setLibraryStats
   ])
 
-  const handleImport = useCallback(async (paths: string[]) => {
-    setImportProgress(null)
-    const result = await window.api.invoke(IPC_CHANNELS.IMPORT_START, { paths })
-    if (result.success) {
-      // Straight on to sorting what just arrived.
-      setSortBatch(result.data.batchId)
-    } else {
-      console.error(result.error)
-    }
-  }, [])
-
-  const handleFileSelect = useCallback(async () => {
-    const result = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_PSD_FILES, undefined)
-    if (result.success && result.data.paths.length > 0) {
-      void handleImport(result.data.paths)
-    }
-  }, [handleImport])
-
-  const handleFolderSelect = useCallback(async () => {
-    const result = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_DIRECTORY, undefined)
-    if (result.success && result.data.path) {
-      void handleImport([result.data.path])
-    }
-  }, [handleImport])
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLElement>) => {
-      event.preventDefault()
-      event.stopPropagation()
-      setIsDropping(false)
-      const files = Array.from(event.dataTransfer.files)
-      if (files.length > 0) {
-        const paths = files.map((file) => window.api.getPathForFile(file))
-        void handleImport(paths)
-      }
-    },
-    [handleImport]
-  )
-
-  const handleDragOver = (event: React.DragEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-  }
-
-  const handleDragEnter = (event: React.DragEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    setIsDropping(true)
-  }
-
-  const handleDragLeave = (event: React.DragEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    setIsDropping(false)
-  }
-
   // The Sort board works on an import batch; Look it over works on the whole queue main holds, piles first.
   const batchOf = (items: InboxItem[]) =>
     items.find((item) => item.batchId !== null)?.batchId ?? null
@@ -187,19 +134,17 @@ function AppMain() {
         showHeader={addFlow === null}
         importing={importing}
         importCard={importCard}
-        onAddFiles={() => void handleFileSelect()}
-        onAddFolder={() => void handleFolderSelect()}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        isDropping={isDropping}
+        onAddFiles={() => void gather.addFiles()}
+        onAddFolder={() => void gather.addFolder()}
+        copyWidget={<GatherDock gather={gather} />}
+        dropOverlay={drops.overlay}
+        dropHint={drops.hint}
       >
         {addFlow === null && (view === 'all' || view === 'starred') && (
           <LibraryPage
             starredOnly={view === 'starred'}
-            onAddFiles={() => void handleFileSelect()}
-            onAddFolder={() => void handleFolderSelect()}
+            onAddFiles={() => void gather.addFiles()}
+            onAddFolder={() => void gather.addFolder()}
           />
         )}
         {addFlow === null && view === 'to-sort' && (
@@ -207,8 +152,8 @@ function AppMain() {
             key="to_sort"
             stage="to_sort"
             onSort={openSort}
-            onAddFiles={() => void handleFileSelect()}
-            onAddFolder={() => void handleFolderSelect()}
+            onAddFiles={() => void gather.addFiles()}
+            onAddFolder={() => void gather.addFolder()}
           />
         )}
         {addFlow === null && view === 'to-stash' && (
@@ -216,8 +161,8 @@ function AppMain() {
             key="to_stash"
             stage="to_stash"
             onLookOver={openLookOver}
-            onAddFiles={() => void handleFileSelect()}
-            onAddFolder={() => void handleFolderSelect()}
+            onAddFiles={() => void gather.addFiles()}
+            onAddFolder={() => void gather.addFolder()}
           />
         )}
         {addFlow === null && view === 'trash' && <TrashPage />}

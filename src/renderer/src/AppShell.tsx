@@ -9,7 +9,6 @@ import { Toaster } from './ui/sonner'
 import { ActivityDock } from './components/ActivityDock'
 import { AddMenu } from './components/AddMenu'
 import { AppWindow } from './components/AppWindow'
-import { DropOverlay } from './components/DropOverlay'
 import { GlobalSearch } from './components/GlobalSearch'
 import { PageHeader } from './components/PageHeader'
 import { SidebarNav, sidebarNavVariant, type SidebarNavKey } from './components/SidebarNav'
@@ -26,11 +25,12 @@ interface AppShellProps {
   showHeader?: boolean
   onAddFiles?: () => void
   onAddFolder?: () => void
-  onDrop?: (e: React.DragEvent<HTMLElement>) => void
-  onDragOver?: (e: React.DragEvent<HTMLElement>) => void
-  onDragEnter?: (e: React.DragEvent<HTMLElement>) => void
-  onDragLeave?: (e: React.DragEvent<HTMLElement>) => void
-  isDropping?: boolean
+  /** The copy widget (Gather); it sits in the ActivityDock above the legacy import card. */
+  copyWidget?: ReactNode
+  /** The window-wide DropOverlay while files are dragged over a page that takes them. */
+  dropOverlay?: ReactNode
+  /** The cursor-following DropHint over a page that does not. */
+  dropHint?: ReactNode
 }
 
 const mockups = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
@@ -82,11 +82,9 @@ export default function AppShell({
   showHeader = true,
   onAddFiles,
   onAddFolder,
-  onDrop,
-  onDragOver,
-  onDragEnter,
-  onDragLeave,
-  isDropping = false
+  copyWidget,
+  dropOverlay,
+  dropHint
 }: AppShellProps) {
   const view = useUiStore((s) => s.view)
   const setView = useUiStore((s) => s.setView)
@@ -172,16 +170,9 @@ export default function AppShell({
     )
 
   return (
-    <div
-      data-slot="app-shell"
-      className="h-screen overflow-hidden"
-      onDrop={onDrop}
-      onDragOver={onDragOver}
-      onDragEnter={onDragEnter}
-      onDragLeave={onDragLeave}
-    >
+    <div data-slot="app-shell" className="h-screen overflow-hidden">
       <AppWindow
-        state={isDropping ? 'drag-over' : 'idle'}
+        state={dropOverlay ? 'drag-over' : 'idle'}
         showHeader={header !== null}
         search={
           <GlobalSearch
@@ -230,14 +221,20 @@ export default function AppShell({
             }
           : {})}
         page={<div className="h-full overflow-auto">{children}</div>}
-        drop={<DropOverlay />}
+        {...(dropOverlay ? { drop: dropOverlay } : {})}
         {...(dialog ? { dialog } : {})}
       />
       <ActivityDock
         className="fixed right-4 bottom-4 z-50"
         toastContent={<Toaster />}
-        importContent={importCard}
+        importContent={
+          <>
+            {copyWidget}
+            {importCard}
+          </>
+        }
       />
+      {dropHint}
       <SettingsModal
         open={settingsOpen}
         section={settingsSection}

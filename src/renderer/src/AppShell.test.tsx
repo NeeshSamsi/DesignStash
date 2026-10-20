@@ -222,13 +222,16 @@ describe('AppShell import', () => {
     expect(baseElement.querySelector('[data-ds="ActivityDock"]')?.textContent).toContain('Copying')
   })
 
-  it('shows the drop overlay while dragging', () => {
+  it('shows the drop overlay it is given over the window', () => {
     const { baseElement, rerender } = render(
-      <AppShell isDropping>
+      <AppShell dropOverlay={<div data-ds="DropOverlay" />}>
         <div />
       </AppShell>
     )
     expect(baseElement.querySelector('[data-ds="DropOverlay"]')).toBeTruthy()
+    expect(baseElement.querySelector('[data-ds="AppWindow"]')?.getAttribute('data-state')).toBe(
+      'drag-over'
+    )
     rerender(
       <AppShell>
         <div />
@@ -237,15 +240,14 @@ describe('AppShell import', () => {
     expect(baseElement.querySelector('[data-ds="DropOverlay"]')).toBeNull()
   })
 
-  it('passes drops on the window to the handler', () => {
-    const onDrop = vi.fn()
+  it('shows the drop hint and the copy widget it is given', () => {
     const { baseElement } = render(
-      <AppShell onDrop={onDrop}>
+      <AppShell dropHint={<p>hint</p>} copyWidget={<p>widget</p>}>
         <div />
       </AppShell>
     )
-    fireEvent.drop(baseElement.querySelector('[data-slot="app-shell"]')!)
-    expect(onDrop).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('hint')).toBeTruthy()
+    expect(baseElement.querySelector('[data-ds="ActivityDock"]')?.textContent).toContain('widget')
   })
 })
 
