@@ -19,7 +19,6 @@ describe('page header slot', () => {
       appName: 'DesignStash',
       invoke: vi.fn(async () => ({ success: true, data: {} })),
       subscribe: vi.fn(() => () => {}),
-      onAiDownloadProgress: vi.fn(() => () => {}),
       getPathForFile: vi.fn()
     } as unknown as typeof window.api
   })
