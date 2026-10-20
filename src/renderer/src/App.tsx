@@ -3,6 +3,7 @@ import type { ImportProgress } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem } from '@shared/inbox'
 import { BootGate } from './screens/boot/BootGate'
+import { stashCheckCopy } from './screens/integrity'
 import LibraryPage from './screens/library/LibraryPage'
 import InboxPage from './screens/inboxes/InboxPage'
 import TrashPage from './screens/trash/TrashPage'
@@ -47,15 +48,25 @@ function AppMain() {
     })()
   }, [setSnapshot])
 
-  // Boot integrity scan — runs once when the shell is first entered.
+  // The launch stash check, once when the shell is first entered. Changes open the blocking stash
+  // check modal on what was found; a check that fails points at Settings › My Stash.
   useEffect(() => {
     void (async () => {
-      const res = await window.api.invoke(IPC_CHANNELS.INTEGRITY_SCAN, undefined)
-      if (res.success) {
-        const report = res.data
-        if (report.orphanFiles.length > 0 || report.orphanRecords.length > 0) {
-          openModal({ kind: 'reconcile', report })
-        }
+      const res = await window.api.invoke(IPC_CHANNELS.INTEGRITY_REPORT, undefined).catch(() => null)
+      if (!res?.success) {
+        toast({
+          variant: 'error',
+          message: stashCheckCopy.couldNotCheck.message,
+          description: stashCheckCopy.couldNotCheck.description,
+          action: {
+            label: stashCheckCopy.couldNotCheck.action,
+            onClick: () => useUiStore.getState().openSettings('my-stash')
+          }
+        })
+        return
+      }
+      if (res.data.found.length > 0 || res.data.gone.length > 0) {
+        openModal({ kind: 'reconcile', report: res.data })
       }
     })()
   }, [openModal])

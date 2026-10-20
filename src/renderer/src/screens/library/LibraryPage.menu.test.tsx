@@ -418,9 +418,11 @@ describe('fullscreen preview', () => {
 
   it('a missing file offers Check library, which checks the stash', async () => {
     const api = setupApi([item(1, { coverMissing: true })], {
-      [IPC_CHANNELS.INTEGRITY_SCAN]: () => ({
+      [IPC_CHANNELS.STASH_CHECK_RUN]: () => ({
         success: true,
-        data: { orphanFiles: [], orphanRecords: [] }
+        data: {
+          lastRun: { at: '2026-10-20T02:41:00.000Z', trigger: 'manual', result: 'in-sync', toReview: 0 }
+        }
       })
     })
     page()
@@ -428,7 +430,7 @@ describe('fullscreen preview', () => {
     cards()[0]!.focus()
     fireEvent.keyDown(cards()[0]!, { key: ' ' })
     fireEvent.click(await screen.findByRole('button', { name: 'Check library' }))
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.INTEGRITY_SCAN)).toHaveLength(1))
+    await waitFor(() => expect(api.calls(IPC_CHANNELS.STASH_CHECK_RUN)).toHaveLength(1))
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith({ variant: 'success', message: 'Your stash is in sync' })
     )
@@ -436,9 +438,13 @@ describe('fullscreen preview', () => {
   })
 
   it('Check library opens the reconcile view when the check finds something', async () => {
-    const report = { orphanFiles: ['x.psd'], orphanRecords: [] }
     setupApi([item(1, { coverMissing: true })], {
-      [IPC_CHANNELS.INTEGRITY_SCAN]: () => ({ success: true, data: report })
+      [IPC_CHANNELS.STASH_CHECK_RUN]: () => ({
+        success: true,
+        data: {
+          lastRun: { at: '2026-10-20T02:41:00.000Z', trigger: 'manual', result: 'review', toReview: 1 }
+        }
+      })
     })
     page()
     await ready()

@@ -98,7 +98,6 @@ function setup(overrides: Record<string, Handler> = {}) {
     [IPC_CHANNELS.APP_RELAUNCH]: () => ok({ relaunching: true }),
     [IPC_CHANNELS.STASH_CHECK_RUN]: () =>
       ok({ lastRun: { at: NOW, trigger: 'manual', result: 'in-sync', toReview: 0 } }),
-    [IPC_CHANNELS.INTEGRITY_SCAN]: () => ok({ orphanFiles: [], orphanRecords: [] }),
     [IPC_CHANNELS.TRASH_EMPTY]: () => ok({ deletedCount: 3, bytesFreed: 412_000_000 }),
     [IPC_CHANNELS.AI_HARDWARE_INFO]: () =>
       ok({
@@ -345,17 +344,15 @@ describe('Settings · My Stash', () => {
   })
 
   it('shows what the check found as N to review, with Review…', async () => {
-    const report = { orphanFiles: ['a'], orphanRecords: [] }
     setup({
       [IPC_CHANNELS.STASH_CHECK_STATUS]: () =>
-        ok({ lastRun: { at: NOW, trigger: 'launch', result: 'review', toReview: 3 } }),
-      [IPC_CHANNELS.INTEGRITY_SCAN]: () => ok(report)
+        ok({ lastRun: { at: NOW, trigger: 'launch', result: 'review', toReview: 3 } })
     })
     const onReview = vi.fn()
     const { onClose } = open({ onReview })
     expect(await screen.findByText('3 to review')).not.toBeNull()
     fireEvent.click(btn('Review…'))
-    await waitFor(() => expect(onReview).toHaveBeenCalledWith(report))
+    await waitFor(() => expect(onReview).toHaveBeenCalledOnce())
     expect(onClose).toHaveBeenCalled()
   })
 

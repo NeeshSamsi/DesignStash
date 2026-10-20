@@ -4,7 +4,7 @@ import { useLibraryStore } from './stores/libraryStore'
 import { ConfirmDialog } from './components/_legacy/ConfirmDialog'
 import { DetailModal } from './screens/detail/DetailModal'
 import { SettingsModal } from './screens/settings'
-import { ReconciliationModal } from './ReconciliationModal'
+import { StashCheckModal } from './screens/integrity'
 import { Toaster } from './ui/sonner'
 import { ActivityDock } from './components/ActivityDock'
 import { AddMenu } from './components/AddMenu'
@@ -162,7 +162,11 @@ export default function AppShell({
         )}
         {modal.kind === 'detail' && <DetailModal mockupId={modal.mockupId} onClose={closeModal} />}
         {modal.kind === 'reconcile' && (
-          <ReconciliationModal report={modal.report} onClose={closeModal} />
+          <StashCheckModal
+            report={modal.report}
+            onClose={closeModal}
+            onOpenSettings={() => openSettings('my-stash')}
+          />
         )}
       </>
     )
@@ -240,7 +244,7 @@ export default function AppShell({
         onSectionChange={setSettingsSection}
         onClose={closeSettings}
         onOpenTrash={() => setView('trash')}
-        onReview={(report) => useUiStore.getState().openModal({ kind: 'reconcile', report })}
+        onReview={() => useUiStore.getState().openModal({ kind: 'reconcile' })}
       />
     </div>
   )

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import type { IntegrityReport } from '@shared/integrity'
 import { SettingsLayout } from '../../components/SettingsLayout'
 import type { SettingsLayoutSection } from '../../components/SettingsLayout'
 import { DialogFrame } from '../../lib/dialog-shell'
@@ -19,7 +18,7 @@ export interface SettingsModalProps {
   /** Open the Trash page. Settings closes first. */
   onOpenTrash?: () => void
   /** Open the stash check's findings. Settings closes first. */
-  onReview?: (report: IntegrityReport) => void
+  onReview?: () => void
 }
 
 /**
@@ -48,9 +47,9 @@ export function SettingsModal({
           onClose()
           onOpenTrash?.()
         }}
-        onReview={(report) => {
+        onReview={() => {
           onClose()
-          onReview?.(report)
+          onReview?.()
         }}
       />
     ),

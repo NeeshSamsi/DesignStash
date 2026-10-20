@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { StashCheckStatus, StashInfo, StashMoveProgress } from '@shared/stash'
 import type { TrashStats } from '@shared/inbox'
-import type { IntegrityReport } from '@shared/integrity'
 import { Button } from '../../components/Button'
 import { ChoiceDialog } from '../../components/ChoiceDialog'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -17,7 +16,7 @@ interface Props {
   /** Opens the Trash page and closes Settings. */
   onOpenTrash: () => void
   /** Opens the stash check's findings and closes Settings. */
-  onReview: (report: IntegrityReport) => void
+  onReview: () => void
 }
 
 type Moving = { percent: number; label: string } | null
@@ -110,16 +109,8 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
       })
   }
 
-  const review = async () => {
-    const res = await window.api.invoke(IPC_CHANNELS.INTEGRITY_SCAN, undefined).catch(() => null)
-    if (res?.success) onReview(res.data)
-    else
-      toast({
-        variant: 'error',
-        message: 'Couldn’t load what the check found',
-        description: 'Try again in a moment.'
-      })
-  }
+  // The stash check modal loads the findings itself, so Review… only has to open it.
+  const review = () => onReview()
 
   const emptyTrash = async () => {
     setEmptying(false)
@@ -170,7 +161,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
           note="Finds PSDs added to or removed from the folder outside DesignStash. Runs every time DesignStash opens."
           controls={
             <>
-              {view?.review && secondary('Review…', () => void review())}
+              {view?.review && secondary('Review…', review)}
               {secondary('Check now', () => void checkNow(), checking)}
             </>
           }

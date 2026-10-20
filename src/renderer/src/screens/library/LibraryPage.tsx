@@ -20,6 +20,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem } from '@shared/library'
 import { AddMockupCard } from '@renderer/components/AddMockupCard'
 import { Banner } from '@renderer/components/Banner'
+import { stashCheckCopy } from '../integrity'
 import { Badge } from '@renderer/ui/badge'
 import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
@@ -202,12 +203,12 @@ export default function LibraryPage({
     })
   const checkLibrary = async () => {
     setPreview(null)
-    const res = await window.api.invoke(IPC_CHANNELS.INTEGRITY_SCAN, undefined)
-    if (res.success && (res.data.orphanFiles.length > 0 || res.data.orphanRecords.length > 0)) {
-      openModal({ kind: 'reconcile', report: res.data })
-    } else {
-      toast({ variant: 'success', message: 'Your stash is in sync' })
-    }
+    // Check now: the result lands in Settings' stash check status too.
+    const res = await window.api.invoke(IPC_CHANNELS.STASH_CHECK_RUN, undefined)
+    const result = res.success ? res.data.lastRun?.result : undefined
+    if (result === 'review') openModal({ kind: 'reconcile' })
+    else if (result === 'in-sync') toast({ variant: 'success', message: stashCheckCopy.inSync })
+    else toast({ variant: 'error', message: stashCheckCopy.couldNotLoad })
   }
 
   const piles = useLibraryPiles({ refresh, offerUndo: actions.offerUndo })

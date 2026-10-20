@@ -93,8 +93,8 @@ beforeEach(() => {
       if (channel === IPC_CHANNELS.TAG_TREE) {
         return { success: true, data: { tree: [] } }
       }
-      if (channel === IPC_CHANNELS.INTEGRITY_SCAN) {
-        return { success: true, data: { orphanFiles: [], orphanRecords: [] } }
+      if (channel === IPC_CHANNELS.INTEGRITY_REPORT) {
+        return { success: true, data: { found: [], gone: [] } }
       }
       if (channel === IPC_CHANNELS.APP_INFO) {
         return { success: true, data: { name: 'DesignStash', version: '0.0.0', env: 'test' } }
@@ -221,8 +221,8 @@ describe('App', () => {
       if (channel === IPC_CHANNELS.LIBRARY_LIST) return { success: true, data: { items: [] } }
       if (channel === IPC_CHANNELS.LIBRARY_STATS)
         return { success: true, data: { total: 0, favourites: 0, groups: 0, trashed: 0 } }
-      if (channel === IPC_CHANNELS.INTEGRITY_SCAN)
-        return { success: true, data: { orphanFiles: [], orphanRecords: [] } }
+      if (channel === IPC_CHANNELS.INTEGRITY_REPORT)
+        return { success: true, data: { found: [], gone: [] } }
       return { success: true, data: {} }
     })
 
@@ -261,8 +261,13 @@ describe('App', () => {
           success: true,
           data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true }
         }
-      if (channel === IPC_CHANNELS.INTEGRITY_SCAN)
-        return { success: true, data: { orphanFiles: ['/stash/lost.psd'], orphanRecords: [] } }
+      if (channel === IPC_CHANNELS.INTEGRITY_REPORT)
+        return {
+          success: true,
+          data: { found: [{ id: 'f1', name: 'lost', sizeBytes: 2048 }], gone: [] }
+        }
+      if (channel === IPC_CHANNELS.INTEGRITY_IGNORE)
+        return { success: true, data: { ignoredIds: ['f1'] } }
       if (channel === IPC_CHANNELS.LIBRARY_LIST) return { success: true, data: { items: [] } }
       if (channel === IPC_CHANNELS.LIBRARY_STATS)
         return { success: true, data: { total: 0, favourites: 0, groups: 0, trashed: 0 } }
@@ -270,13 +275,15 @@ describe('App', () => {
     })
 
     render(<App />)
-    expect(await screen.findByText('Library out of sync')).toBeTruthy()
-    // The file is listed
-    expect(await screen.findByText('/stash/lost.psd')).toBeTruthy()
-    // Ignoring it resolves the drift and closes the modal
+    expect(await screen.findByText('Found in your stash folder')).toBeTruthy()
+    // The file is listed by name, never by path
+    expect(await screen.findByText('lost')).toBeTruthy()
+    // Ignoring it resolves the drift; the modal stays until Done
     fireEvent.click(screen.getByRole('button', { name: 'Ignore' }))
+    expect(await screen.findByText('All sorted')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     await waitFor(() => {
-      expect(screen.queryByText('Library out of sync')).toBeNull()
+      expect(screen.queryByText('All sorted')).toBeNull()
     })
   })
 
