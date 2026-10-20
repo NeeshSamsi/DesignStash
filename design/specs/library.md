@@ -76,7 +76,7 @@ Groups are called piles everywhere, with Sort's verbs (New pile, Disband pile, M
 - **Dragging a selection:** picks up a fanned stack with a count. Over a card, the target shows the pile size (“New pile from 4 mockups”).
 - **⌘G** makes a pile from the selection, with the first selected card on top.
 - **Drop onto a pile:** “Add to this pile”. **Pile onto a pile:** “Merge into this pile”. The target's top mockup stays on top.
-- **Disband pile (⇧⌘G):** instant. The variants land as separate cards, all selected, so ⌘G piles them again. Toast: “Pile broken up · 4 mockups are on their own”.
+- **Disband pile (⇧⌘G):** instant. The variants land as separate cards, all selected, so ⌘G piles them again. Toast: “Pile disbanded · 4 mockups are on their own”.
 - **Undo:** every pile action shows a toast with Undo. **Esc** or dropping on empty space cancels a drag.
 
 ## Card menu & Trash
