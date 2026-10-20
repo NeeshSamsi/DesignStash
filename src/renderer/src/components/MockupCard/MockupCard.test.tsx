@@ -113,6 +113,15 @@ describe('MockupCard', () => {
       expect(screen.queryByRole('button', { name: /Star|More actions/ })).toBeNull()
     })
 
+    it('shows both hover buttons at the same, smaller size', () => {
+      render(<MockupCard variant="trash" />)
+      for (const name of ['Restore', 'Delete for good']) {
+        const button = screen.getByRole('button', { name })
+        expect(button.className).toContain('py-1 ')
+        expect(button.className).not.toContain('py-1.5')
+      }
+    })
+
     it('says when it was trashed', () => {
       render(<MockupCard variant="trash" trashedAgo="2 days ago" />)
       expect(screen.getByText('Trashed 2 days ago')).not.toBeNull()

@@ -210,7 +210,7 @@ export function MockupCard({
           {interactive && variant === 'trash' && (
             <HoverActions>
               <Button
-                size="sm"
+                size="xs"
                 label="Restore"
                 showIconStart
                 iconStart={UndoIcon}
