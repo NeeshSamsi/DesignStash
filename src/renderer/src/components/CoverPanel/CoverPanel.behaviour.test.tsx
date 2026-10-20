@@ -290,7 +290,6 @@ describe('CoverPanel · cover image', () => {
             }
           : { success: true, data: { tree: [] } },
       subscribe: () => () => {},
-      onAiDownloadProgress: () => () => {},
       getPathForFile: () => ''
     } as unknown as typeof window.api
     const { LookOverFlow } = await import('@renderer/screens/look-over')
