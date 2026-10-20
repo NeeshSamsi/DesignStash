@@ -103,19 +103,6 @@ describe('pile handlers', () => {
   })
 })
 
-describe('GROUP_UNGROUP (old screens)', () => {
-  it('still breaks a pile up through the disband logic', async () => {
-    const [a, b] = [make('a'), make('b')]
-    await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
-
-    expect(await call(IPC_CHANNELS.GROUP_UNGROUP, { leaderId: a })).toMatchObject({
-      success: true,
-      data: { ungrouped: true }
-    })
-    expect(repo.getLibrary({ sort: 'name' })).toHaveLength(2)
-  })
-})
-
 describe('trash handlers', () => {
   it('moves and restores several mockups at once', async () => {
     const [a, b, c] = [make('a'), make('b'), make('c')]
@@ -133,16 +120,10 @@ describe('trash handlers', () => {
     expect(repo.getLibrary({ sort: 'name' })).toHaveLength(3)
   })
 
-  it('still takes the single mockupId the old screens send', async () => {
+  it('no longer takes the single mockupId form', async () => {
     const a = make('a')
-    expect(await call(IPC_CHANNELS.MOCKUP_TRASH, { mockupId: a })).toMatchObject({
-      success: true,
-      data: { count: 1 }
-    })
-    expect(await call(IPC_CHANNELS.MOCKUP_RESTORE, { mockupId: a })).toMatchObject({
-      success: true,
-      data: { count: 1 }
-    })
+    expect(await call(IPC_CHANNELS.MOCKUP_TRASH, { mockupId: a })).toMatchObject({ success: false })
+    expect(await call(IPC_CHANNELS.MOCKUP_RESTORE, { mockupId: a })).toMatchObject({ success: false })
   })
 
   it('rejects an empty id list', async () => {

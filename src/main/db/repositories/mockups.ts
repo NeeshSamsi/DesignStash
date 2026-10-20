@@ -135,35 +135,6 @@ export class MockupRepository {
     this.search.upsertSearchIndex(id)
   }
 
-  duplicateMockupRow(
-    id: number
-  ): { newId: number; sourceLibraryPath: string; sourceCoverPath: string } | null {
-    const m = this.getMockup(id)
-    if (!m) return null
-    const newRow = this.db
-      .insert(mockups)
-      .values({
-        title: m.title,
-        description: m.description ?? undefined,
-        libraryPath: m.libraryPath,
-        coverPath: m.coverPath,
-        coverSource: m.coverSource,
-        reviewStatus: m.reviewStatus,
-        contentHash: m.contentHash ?? undefined,
-        importContext: m.importContext ?? undefined,
-        isGroup: false,
-        groupId: null,
-        favourite: false,
-        favouritedAt: null,
-        deletedAt: null
-      })
-      .returning()
-      .get()
-    const srcTags = this.getTagsForMockup(id)
-    for (const t of srcTags) this.addTagToMockup(newRow.id, t.id)
-    return { newId: newRow.id, sourceLibraryPath: m.libraryPath, sourceCoverPath: m.coverPath }
-  }
-
   // Variants
   createVariant(data: NewVariant): Variant {
     return this.db.insert(variants).values(data).returning().get()

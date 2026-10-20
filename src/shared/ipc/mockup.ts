@@ -23,10 +23,6 @@ export const mockupContract = {
       z.object({ opened: z.literal(false), reason: z.enum(['no-app', 'failed']) })
     ])
   },
-  [IPC_CHANNELS.MOCKUP_DUPLICATE]: {
-    request: z.object({ mockupId: z.number() }),
-    response: z.object({ newMockupId: z.number() })
-  },
   [IPC_CHANNELS.MOCKUP_SET_COVER]: {
     request: z.object({ mockupId: z.number(), filePath: z.string().min(1) }),
     response: CoverChangeSchema
@@ -34,13 +30,5 @@ export const mockupContract = {
   [IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER]: {
     request: z.object({ mockupId: z.number() }),
     response: CoverChangeSchema
-  },
-  [IPC_CHANNELS.GROUP_UNGROUP]: {
-    request: z.object({ leaderId: z.number() }),
-    response: z.object({ ungrouped: z.boolean() })
-  },
-  [IPC_CHANNELS.GROUP_DELETE]: {
-    request: z.object({ leaderId: z.number() }),
-    response: z.object({ deleted: z.boolean() })
   }
 } as const

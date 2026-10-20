@@ -1,11 +1,9 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { CoverService } from '../library/cover-service'
-import { PileService } from '../library/pile-service'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
 export function registerMockupHandlers({ repo, library, settings }: HandlerContext): void {
-  const piles = new PileService(repo)
   const covers = new CoverService(repo, settings.getLibraryRoot())
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_DETAIL, (args) => {
@@ -44,19 +42,4 @@ export function registerMockupHandlers({ repo, library, settings }: HandlerConte
   registerIpcHandler(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, (args) =>
     covers.useEmbeddedCover(args.mockupId)
   )
-
-  registerIpcHandler(IPC_CHANNELS.MOCKUP_DUPLICATE, async (args) =>
-    library.duplicate(args.mockupId)
-  )
-
-  registerIpcHandler(IPC_CHANNELS.GROUP_UNGROUP, (args) => {
-    // Kept for the old screens; WP2.7 moves them to PILE_DISBAND and removes this channel.
-    piles.disband(args.leaderId)
-    return { ungrouped: true }
-  })
-
-  registerIpcHandler(IPC_CHANNELS.GROUP_DELETE, async (args) => {
-    const result = await library.deleteGroup(args.leaderId)
-    return { deleted: result.deleted }
-  })
 }

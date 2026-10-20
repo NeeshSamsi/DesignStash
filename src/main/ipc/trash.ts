@@ -5,20 +5,12 @@ import { enqueueInBackground, inferenceQueueFor, withPileMembers } from './ai-st
 import { pushInboxCounts } from './inbox'
 import { registerIpcHandler } from './register'
 
-function targetIds(args: { ids: number[] } | { mockupId: number }): number[] {
-  return 'ids' in args ? args.ids : [args.mockupId]
-}
-
 export function registerTrashHandlers(ctx: HandlerContext): void {
-  const { repo, library, settings } = ctx
+  const { repo, settings } = ctx
   const trash = new TrashService(repo, settings.getLibraryRoot())
 
-  registerIpcHandler(IPC_CHANNELS.LIBRARY_TRASH_LIST, () => ({
-    items: repo.getTrash()
-  }))
-
   registerIpcHandler(IPC_CHANNELS.MOCKUP_TRASH, (args) => {
-    const ids = targetIds(args)
+    const ids = args.ids
     const count = repo.moveManyToTrash(ids)
     inferenceQueueFor(ctx).cancel(withPileMembers(repo, ids))
     pushInboxCounts(ctx)
@@ -26,17 +18,11 @@ export function registerTrashHandlers(ctx: HandlerContext): void {
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_RESTORE, (args) => {
-    const ids = targetIds(args)
+    const ids = args.ids
     const count = repo.restoreMany(ids)
     enqueueInBackground(ctx, withPileMembers(repo, ids))
     pushInboxCounts(ctx)
     return { ok: true, count }
-  })
-
-  registerIpcHandler(IPC_CHANNELS.MOCKUP_DELETE_PERMANENT, async (args) => {
-    const result = await library.deletePermanently(args.mockupId)
-    pushInboxCounts(ctx)
-    return result
   })
 
   registerIpcHandler(IPC_CHANNELS.TRASH_LIST, async () => ({ items: await trash.list() }))

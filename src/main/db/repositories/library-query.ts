@@ -151,6 +151,7 @@ export class LibraryQueryRepository {
     title: string
     coverPath: string
     coverMissing: boolean
+    coverSource: Mockup['coverSource']
     isTop: boolean
   }[] {
     const top = this.mockups.getMockup(id)
@@ -161,6 +162,7 @@ export class LibraryQueryRepository {
       title: m.title,
       coverPath: m.coverPath,
       coverMissing: !this.fileExists(m.coverPath),
+      coverSource: m.coverSource,
       isTop: m.id === top.id
     }))
   }

@@ -1,13 +1,8 @@
-import { join, basename } from 'node:path'
-import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import type { Repository } from '../db/repository'
 
 export interface LibraryServiceDeps {
   openPath: (p: string) => Promise<string>
-  rm: (p: string) => Promise<void>
-  copyFile: (src: string, dest: string) => Promise<void>
-  mkdir: (p: string) => Promise<void>
   exists: (p: string) => Promise<boolean>
 }
 
@@ -24,9 +19,6 @@ export class LibraryService {
   ) {
     this.deps = {
       openPath: deps?.openPath ?? ((p) => import('electron').then((e) => e.shell.openPath(p))),
-      rm: deps?.rm ?? ((p) => fs.rm(p, { force: true })),
-      copyFile: deps?.copyFile ?? fs.copyFile,
-      mkdir: deps?.mkdir ?? ((p) => fs.mkdir(p, { recursive: true }).then(() => undefined)),
       exists: deps?.exists ?? ((p) => fs.access(p).then(() => true, () => false))
     }
   }
@@ -44,43 +36,5 @@ export class LibraryService {
     } catch {
       return { opened: false, reason: 'failed' }
     }
-  }
-
-  async deletePermanently(id: number): Promise<{ deleted: true }> {
-    const paths = this.repo.deleteMockupsHard([id])
-    for (const p of paths) {
-      await this.deps.rm(p.libraryPath)
-      await this.deps.rm(p.coverPath)
-    }
-    return { deleted: true }
-  }
-
-  async deleteGroup(leaderId: number): Promise<{ deleted: true; removed: number }> {
-    const ids = this.repo.collectGroupIds(leaderId)
-    const paths = this.repo.deleteMockupsHard(ids)
-    for (const p of paths) {
-      await this.deps.rm(p.libraryPath)
-      await this.deps.rm(p.coverPath)
-    }
-    return { deleted: true, removed: ids.length }
-  }
-
-  async duplicate(id: number): Promise<{ newMockupId: number }> {
-    const res = this.repo.duplicateMockupRow(id)
-    if (!res) throw new Error(`Mockup ${id} not found`)
-
-    const destDir = join(this.libraryRoot, 'mockups', randomUUID())
-    await this.deps.mkdir(destDir)
-
-    const newLibraryPath = join(destDir, 'original.psd')
-    const newCoverPath = join(destDir, basename(res.sourceCoverPath))
-
-    await this.deps.copyFile(res.sourceLibraryPath, newLibraryPath)
-    await this.deps.copyFile(res.sourceCoverPath, newCoverPath)
-
-    this.repo.updateMockup(res.newId, { libraryPath: newLibraryPath, coverPath: newCoverPath })
-    this.repo.upsertSearchIndex(res.newId)
-
-    return { newMockupId: res.newId }
   }
 }

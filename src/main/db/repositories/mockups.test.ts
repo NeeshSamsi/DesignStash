@@ -203,30 +203,3 @@ describe('updateMockupMeta', () => {
     expect(oldRows.map((r) => r.rowid)).not.toContain(m.id)
   })
 })
-
-describe('duplicateMockupRow', () => {
-  beforeEach(() => seedTaxonomy(db))
-
-  it('creates a copy with same title/tags but favourite=false and fresh id', () => {
-    const m = repo.createMockup(approvedMockup({ title: 'Original', libraryPath: '/lib/orig.psd' }))
-    repo.setFavourite(m.id, true)
-    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
-    repo.addTagToMockup(m.id, laptop.id)
-
-    const result = repo.duplicateMockupRow(m.id)
-
-    expect(result).not.toBeNull()
-    expect(result!.newId).not.toBe(m.id)
-    expect(result!.sourceLibraryPath).toBe('/lib/orig.psd')
-
-    const copy = repo.getMockup(result!.newId)!
-    expect(copy.title).toBe('Original')
-    expect(copy.favourite).toBe(false)
-    expect(copy.deletedAt).toBeNull()
-    expect(repo.getTagsForMockup(copy.id).map((t) => t.label)).toContain('laptop')
-  })
-
-  it('returns null for missing id', () => {
-    expect(repo.duplicateMockupRow(9999)).toBeNull()
-  })
-})

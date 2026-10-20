@@ -283,8 +283,8 @@ describe('getDetailVariants', () => {
       )
 
       expect(repo.getDetailVariants(top.id)).toEqual([
-        { id: top.id, title: 'front', coverPath, coverMissing: false, isTop: true },
-        { id: side.id, title: 'side', coverPath: '/c.png', coverMissing: true, isTop: false }
+        { id: top.id, title: 'front', coverPath, coverMissing: false, coverSource: 'embedded', isTop: true },
+        { id: side.id, title: 'side', coverPath: '/c.png', coverMissing: true, coverSource: 'embedded', isTop: false }
       ])
     } finally {
       rmSync(dir, { recursive: true, force: true })

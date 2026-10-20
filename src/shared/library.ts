@@ -55,6 +55,7 @@ export const VariantSchema = z.object({
   title: z.string(),
   coverPath: z.string(),
   coverMissing: z.boolean(),
+  coverSource: CoverSourceSchema,
   isTop: z.boolean()
 })
 export type Variant = z.infer<typeof VariantSchema>

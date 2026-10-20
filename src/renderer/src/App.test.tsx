@@ -106,9 +106,6 @@ beforeEach(() => {
           }
         }
       }
-      if (channel === IPC_CHANNELS.LIBRARY_TRASH_LIST) {
-        return { success: true, data: { items: [] } }
-      }
       if (channel === IPC_CHANNELS.TAG_TREE) {
         return { success: true, data: { tree: [] } }
       }
