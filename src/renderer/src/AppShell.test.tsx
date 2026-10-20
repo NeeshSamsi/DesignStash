@@ -6,7 +6,7 @@ import { useLibraryStore } from './stores/libraryStore'
 import { useDetailsStore } from './stores/detailsStore'
 import { shortcuts } from './lib/shortcuts'
 import { toast as sonnerToast } from 'sonner'
-import { nameSideMovers } from './lib/panel-transition'
+import { nameSideMovers, namePanelLayers } from './lib/panel-transition'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -502,12 +502,17 @@ describe('AppShell details sidebar and pile page', () => {
         <div>content</div>
       </AppShell>
     )
-    // The panel's surface is an empty named layer; the content above it is one named block.
+    // At rest the panel's layers have no names: they are named only while a transition runs.
     const named = (selector: string) =>
       document.querySelector<HTMLElement>(selector)!.style.viewTransitionName
     expect(named('main')).toBe('')
+    expect(named('[data-slot="main-panel-bg"]')).toBe('')
+    expect(named('[data-slot="main-content"]')).toBe('')
+    const undoLayers = namePanelLayers(document)
     expect(named('[data-slot="main-panel-bg"]')).toBe('main-panel-bg')
     expect(named('[data-slot="main-content"]')).toBe('main-content')
+    undoLayers()
+    expect(named('[data-slot="main-content"]')).toBe('')
     // The layer comes first in the panel, so it paints below the content.
     const children = [...document.querySelector('main')!.children]
     expect(children.indexOf(document.querySelector('[data-slot="main-panel-bg"]')!)).toBeLessThan(
@@ -572,8 +577,14 @@ describe('AppShell details sidebar and pile page', () => {
       return null
     }
     const header = document.querySelector('[data-ds="PageHeader"]')!
+    // At rest nothing is in a named group; during a transition the header and toolbar are in one block
+    // that is shown unscaled (the rules below).
+    expect(nearestName(header.querySelector('h1'))).toBeNull()
+    expect(nearestName(screen.getByText('Filter'))).toBeNull()
+    const undoLayers = namePanelLayers(document)
     expect(nearestName(header.querySelector('h1'))).toBe('main-content')
     expect(nearestName(screen.getByText('Filter'))).toBe('main-content')
+    undoLayers()
 
     // The stylesheet draws that block's new image only, unscaled and unfaded, and a card's the same way.
     const rule = (selector: string) => {
@@ -587,6 +598,9 @@ describe('AppShell details sidebar and pile page', () => {
     expect(rule('::view-transition-old(.card)')).toContain('display: none')
     expect(rule('::view-transition-new(.card)')).toContain('animation: none')
     expect(rule('::view-transition-old(root)')).toContain('display: none')
+    // The sidebar paints above the cards and the content in both directions; the dock and toasts above all.
+    expect(rule('::view-transition-group(details-panel)')).toContain('z-index: 10')
+    expect(rule('::view-transition-group(toasts)')).toContain('z-index: 20')
     // html and body keep their backgrounds: nothing is made transparent for the transition.
     expect(css).not.toMatch(/background:\s*transparent/)
 
@@ -594,12 +608,12 @@ describe('AppShell details sidebar and pile page', () => {
     const undo = nameSideMovers(document)
     expect(nearestName(screen.getByText('128 items'))).toBe('toolbar-end')
     expect(nearestName(screen.getByText('Date added'))).toBe('toolbar-end')
-    expect(nearestName(screen.getByText('Filter'))).toBe('main-content')
+    expect(nearestName(screen.getByText('Filter'))).toBeNull()
     expect(
       document.querySelector<HTMLElement>('[data-slot="page-header-actions"]')!.style
         .viewTransitionName
     ).toBe('header-actions')
     undo()
-    expect(nearestName(screen.getByText('128 items'))).toBe('main-content')
+    expect(nearestName(screen.getByText('128 items'))).toBeNull()
   })
 })

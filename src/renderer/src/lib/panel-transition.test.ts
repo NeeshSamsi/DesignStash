@@ -16,7 +16,7 @@ function card(id: string, box: Partial<DOMRect>): HTMLElement {
   return el
 }
 
-function fakeDoc(cards: HTMLElement[], withApi: boolean) {
+function fakeDoc(cards: HTMLElement[], withApi: boolean, layers: Record<string, HTMLElement> = {}) {
   const main = document.createElement('main')
   main.getBoundingClientRect = () => rect({ top: 0, left: 0, right: 800, bottom: 600 })
   let finish: () => void = () => {}
@@ -31,7 +31,13 @@ function fakeDoc(cards: HTMLElement[], withApi: boolean) {
   const doc = {
     documentElement: document.createElement('html'),
     querySelectorAll: (selector: string) =>
-      (selector === 'main' ? [main] : selector === '[data-mockup-id]' ? cards : []) as never,
+      (selector === 'main'
+        ? [main]
+        : selector === '[data-mockup-id]'
+          ? cards
+          : layers[selector]
+            ? [layers[selector]]
+            : []) as never,
     ...(withApi ? { startViewTransition: start } : {})
   } as unknown as TransitionDocument
   return { doc, start, skip, finish: () => finish() }
@@ -99,5 +105,22 @@ describe('panelTransition', () => {
     expect(second).toHaveBeenCalledOnce()
     expect(start).toHaveBeenCalledTimes(2)
     expect(doc.documentElement.dataset.panelMotion).toBe('close')
+  })
+
+  it('names the panel’s layers only while the transition runs', async () => {
+    const bg = document.createElement('div')
+    const content = document.createElement('div')
+    const { doc, finish } = fakeDoc([], true, {
+      '[data-slot="main-panel-bg"]': bg,
+      '[data-slot="main-content"]': content
+    })
+    panelTransition(vi.fn(), 'open', { doc })
+    expect(bg.style.getPropertyValue('view-transition-name')).toBe('main-panel-bg')
+    expect(content.style.getPropertyValue('view-transition-name')).toBe('main-content')
+    finish()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(bg.style.getPropertyValue('view-transition-name')).toBe('')
+    expect(content.style.getPropertyValue('view-transition-name')).toBe('')
   })
 })

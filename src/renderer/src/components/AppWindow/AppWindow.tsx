@@ -42,8 +42,8 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
         <div className="min-w-44 shrink-0">{props.sidebar}</div>
         <main className={appWindowPanelClass}>
           {/*
-            The panel's surface is an empty layer behind its content, named so it morphs width and corner
-            when the details sidebar opens. It comes first, so it paints below everything named after it.
+            The panel's surface is an empty layer behind its content, named (while the sidebar opens or closes) so it
+            morphs width and corner. It comes first, so it paints below everything named after it.
           */}
           <div
             aria-hidden
@@ -52,17 +52,12 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
               'absolute inset-0 -z-10 rounded-tl-3xl bg-surface-1',
               asideOpen ? 'rounded-tr-3xl' : 'rounded-tr-none'
             )}
-            style={{ viewTransitionName: 'main-panel-bg' }}
           />
           {/*
-            The content (header, toolbar, page) is one named block that is shown at its new size at once,
-            never scaled (styles/details-transition.css), so it paints above the surface layer.
+            The content (header, toolbar, page) is one block, named while the transition runs, shown at its new size
+            at once, never scaled (styles/details-transition.css), so it paints above the surface layer.
           */}
-          <div
-            data-slot="main-content"
-            className="flex min-h-0 flex-1 flex-col gap-6"
-            style={{ viewTransitionName: 'main-content' }}
-          >
+          <div data-slot="main-content" className="flex min-h-0 flex-1 flex-col gap-6">
             {props.showHeader && props.header}
             <div className="-m-2 min-h-0 flex-1 overflow-auto rounded-md p-2">{props.page}</div>
           </div>

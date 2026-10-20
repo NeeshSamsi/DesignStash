@@ -102,6 +102,19 @@ html[data-panel-motion]
   display: none !important;
 }
 
+/*
+ * Stacking. A group that exists in only one state (the sidebar, going out) can fall below the groups of
+ * the other state, so the order is set here: the sidebar above the cards and the content, the dock and
+ * toasts above everything.
+ */
+::view-transition-group(details-panel) {
+  z-index: 10;
+}
+::view-transition-group(activity-dock),
+::view-transition-group(toasts) {
+  z-index: 20;
+}
+
 /* The sidebar enters as one block from the right, 40ms behind the container, fading in over its first 100ms. */
 ::view-transition-group(details-panel) {
   animation: none;

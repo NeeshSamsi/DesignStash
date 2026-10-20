@@ -69,6 +69,27 @@ export const SIDE_MOVERS: ReadonlyArray<readonly [selector: string, name: string
   ['[data-slot="page-header-actions"]', 'header-actions']
 ]
 
+/**
+ * The panel's two layers: its empty surface and the content block above it. They are named only while
+ * a transition runs, so at rest no element sits inside a named group.
+ */
+export const PANEL_LAYERS: ReadonlyArray<readonly [selector: string, name: string]> = [
+  ['[data-slot="main-panel-bg"]', 'main-panel-bg'],
+  ['[data-slot="main-content"]', 'main-content']
+]
+
+/** Names the panel's layers for the length of a transition. Returns what to undo. */
+export function namePanelLayers(doc: TransitionDocument): () => void {
+  const named: HTMLElement[] = []
+  for (const [selector, name] of PANEL_LAYERS) {
+    const el = doc.querySelectorAll<HTMLElement>(selector)[0]
+    if (!el) continue
+    el.style.setProperty('view-transition-name', name)
+    named.push(el)
+  }
+  return () => named.forEach((el) => el.style.removeProperty('view-transition-name'))
+}
+
 /** Names the sideways movers for the length of a transition. Returns what to undo. */
 export function nameSideMovers(doc: TransitionDocument): () => void {
   const named: HTMLElement[] = []
@@ -109,9 +130,11 @@ export function panelTransition(
   const main = doc.querySelectorAll<HTMLElement>('main')[0]
   const forgetCards = nameVisibleCards(doc, main?.getBoundingClientRect() ?? null)
   const forgetMovers = nameSideMovers(doc)
+  const forgetLayers = namePanelLayers(doc)
   const forget = () => {
     forgetCards()
     forgetMovers()
+    forgetLayers()
   }
 
   const transition = doc.startViewTransition(() => flushSync(apply))
