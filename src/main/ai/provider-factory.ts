@@ -26,6 +26,27 @@ export const MODEL_SERVER_ARGS: Record<string, readonly string[]> = {
   moondream2: ['--no-jinja', '--chat-template', 'vicuna']
 }
 
+/** Set by the end-to-end tests, together with NODE_ENV=test, to answer with the stub below instead of a model. */
+export const STUB_AI_ENV = 'DESIGNSTASH_E2E_STUB_AI'
+
+export const stubProvider: InferenceProvider = {
+  id: 'e2e-stub',
+  name: 'Test stub',
+  async analyze(input) {
+    const stem = input.fileName.replace(/\.[^/.]+$/, '')
+    return {
+      title: `Stub ${stem}`,
+      description: `A stub description for ${stem}.`,
+      tags: [{ category: 'Device', label: 'phone' }]
+    }
+  }
+}
+
+/** The stub is only ever used in a test run, never in a build people use. */
+export function stubAiEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env[STUB_AI_ENV] === '1' && env.NODE_ENV === 'test'
+}
+
 export interface ProviderFactoryOptions {
   modelsDir: string
   /** Where `llama-server` is, or null when it isn't installed. */
@@ -97,6 +118,7 @@ export function createProviderFactory(options: ProviderFactoryOptions): Provider
 
   return {
     async forModel(id) {
+      if (stubAiEnabled()) return stubProvider
       if (current?.id === id) return current.provider
       await dispose()
       const provider = build(id)

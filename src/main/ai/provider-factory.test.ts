@@ -153,3 +153,22 @@ describe('resolveLlamaServerPath', () => {
     ).toBeNull()
   })
 })
+
+describe('the end-to-end test stub', () => {
+  it('is only on when both the stub switch and NODE_ENV=test are set', async () => {
+    const { stubAiEnabled, STUB_AI_ENV } = await import('./provider-factory')
+    expect(stubAiEnabled({ [STUB_AI_ENV]: '1', NODE_ENV: 'test' })).toBe(true)
+    expect(stubAiEnabled({ [STUB_AI_ENV]: '1', NODE_ENV: 'production' })).toBe(false)
+    expect(stubAiEnabled({ [STUB_AI_ENV]: '1' })).toBe(false)
+    expect(stubAiEnabled({ NODE_ENV: 'test' })).toBe(false)
+  })
+
+  it('answers deterministically from the file name', async () => {
+    const { stubProvider } = await import('./provider-factory')
+    expect(await stubProvider.analyze({ imagePath: '/x.webp', fileName: 'phone_front.psd', folderTrail: [] })).toEqual({
+      title: 'Stub phone_front',
+      description: 'A stub description for phone_front.',
+      tags: [{ category: 'Device', label: 'phone' }]
+    })
+  })
+})

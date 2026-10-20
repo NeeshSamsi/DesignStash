@@ -19,6 +19,7 @@
     "pretest:unit": "node scripts/rebuild-better-sqlite3.mjs node",
     "test:e2e": "playwright test",
     "pretest:e2e": "node scripts/rebuild-better-sqlite3.mjs electron",
+    "posttest:e2e": "node scripts/rebuild-better-sqlite3.mjs node",
     "predev": "node scripts/rebuild-better-sqlite3.mjs electron",
     "prestart": "node scripts/rebuild-better-sqlite3.mjs electron",
     "test:watch": "vitest",
