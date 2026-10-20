@@ -43,3 +43,18 @@ export const StashMoveProgressSchema = z.object({
   totalBytes: z.number()
 })
 export type StashMoveProgress = z.infer<typeof StashMoveProgressSchema>
+
+/** When the stash was last compared with its records. `lastRun` is null until the first check. */
+export const StashCheckStatusSchema = z.object({
+  lastRun: z
+    .object({
+      /** ISO time. */
+      at: z.string(),
+      trigger: z.enum(['launch', 'manual']),
+      result: z.enum(['in-sync', 'review', 'could-not-check']),
+      /** Files and mockups that need a look. 0 unless `result` is 'review'. */
+      toReview: z.number()
+    })
+    .nullable()
+})
+export type StashCheckStatus = z.infer<typeof StashCheckStatusSchema>

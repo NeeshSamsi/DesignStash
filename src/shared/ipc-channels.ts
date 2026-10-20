@@ -7,6 +7,8 @@ export const IPC_CHANNELS = {
   STASH_INFO: 'stash:info',
   STASH_CHANGE: 'stash:change',
   STASH_MOVE_PROGRESS: 'stash:progress',
+  STASH_CHECK_STATUS: 'stash:check-status',
+  STASH_CHECK_RUN: 'stash:check-run',
   APP_RELAUNCH: 'app:relaunch',
   DIALOG_SELECT_DIRECTORY: 'dialog:select-directory',
   DIALOG_SELECT_PSD_FILES: 'dialog:select-psd-files',
