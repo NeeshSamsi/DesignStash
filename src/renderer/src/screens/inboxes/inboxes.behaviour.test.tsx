@@ -17,7 +17,6 @@ vi.mock('@renderer/stores/toastStore', () => toasts)
 const inbox = (id: number, over: Partial<InboxItem> = {}): InboxItem => ({
   ...item(id),
   title: `file-${id}.psd`,
-  reviewStatus: 'needs_review',
   stage: 'to_sort',
   aiStatus: 'ready',
   sizeBytes: 1024,

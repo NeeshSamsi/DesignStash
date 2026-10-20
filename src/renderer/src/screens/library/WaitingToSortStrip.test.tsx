@@ -12,7 +12,6 @@ import { WaitingToSortStrip } from './WaitingToSortStrip'
 const waitingItem = (id: number, over: Partial<InboxItem> = {}): InboxItem => ({
   ...item(id),
   title: `file-${id}.psd`,
-  reviewStatus: 'needs_review',
   stage: 'to_sort',
   aiStatus: 'ready',
   sizeBytes: 1024,
