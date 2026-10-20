@@ -1,105 +1,125 @@
+import type { Page } from '@playwright/test'
 import { test, expect } from '../fixtures/app'
 import { seedStash, showMyStash } from '../fixtures/seed'
 
-/** Detail: edit the title, Save appears and saves, and closing with changes asks first. */
+/** The details sidebar: a click opens it, Edit turns it into fields, and leaving with changes asks first. */
 
-test.describe('Detail', () => {
+test.describe('Details sidebar', () => {
   test.describe.configure({ timeout: 90_000 })
 
-  test('Save appears once the title changes, saves, and goes away', async ({ app }) => {
+  // The title, not the card's middle: the hover buttons over the cover would take the click.
+  const clickCard = (window: Page, index = 0) =>
+    window
+      .locator('[data-mockup-id]')
+      .nth(index)
+      .getByText(/^Stub /)
+      .click()
+  const panel = (window: Page) => window.locator('[data-slot="details-panel"]')
+
+  test('a click opens it read-only; Edit, change the title, Save, and it reads again', async ({
+    app
+  }) => {
     const { window } = app
     const [only] = await seedStash(app, ['laptop'])
     await showMyStash(app)
-    // The title, not the card's middle: the hover buttons over the cover would take the click.
-    await window
-      .locator('[data-mockup-id]')
-      .first()
-      .getByText(/^Stub /)
-      .dblclick()
+    await clickCard(window)
 
-    const dialog = window.getByRole('dialog')
-    const title = dialog.getByRole('textbox', { name: 'Title' })
+    await expect(panel(window).getByRole('heading', { name: only!.title })).toBeVisible()
+    await expect(panel(window).getByRole('textbox')).toHaveCount(0)
+    await expect(panel(window).getByRole('button', { name: 'Open in Photoshop' })).toBeVisible()
+
+    await panel(window).getByRole('button', { name: 'Edit', exact: true }).click()
+    const title = panel(window).getByRole('textbox', { name: 'Title' })
     await expect(title).toHaveValue(only!.title)
     // Nothing has changed yet, so there is nothing to save.
-    await expect(dialog.getByRole('button', { name: 'Save' })).toHaveCount(0)
+    await expect(panel(window).getByRole('button', { name: 'Save' })).toBeDisabled()
 
     await title.fill('Laptop on a desk')
-    await expect(dialog.getByRole('button', { name: 'Save' })).toBeVisible()
-    await dialog.getByRole('button', { name: 'Save' }).click()
-
+    await panel(window).getByRole('button', { name: 'Save' }).click()
     await expect(window.getByText('Saved your changes')).toBeVisible()
-    await expect(dialog.getByRole('button', { name: 'Save' })).toHaveCount(0)
+    await expect(panel(window).getByRole('heading', { name: 'Laptop on a desk' })).toBeVisible()
+    await expect(panel(window).getByRole('textbox')).toHaveCount(0)
 
-    // The change is really stored: close and the card carries the new title.
-    await dialog.getByRole('button', { name: 'Close' }).first().click()
-    await expect(window.getByRole('dialog')).toHaveCount(0)
-    await expect(window.getByText('Laptop on a desk', { exact: true })).toBeVisible()
+    // The change is really stored: the card carries the new title.
+    await expect(
+      window.locator('[data-mockup-id]').getByText('Laptop on a desk', { exact: true })
+    ).toBeVisible()
   })
 
   test('an empty title can’t be saved and says why', async ({ app }) => {
     const { window } = app
     await seedStash(app, ['laptop'])
     await showMyStash(app)
-    // The title, not the card's middle: the hover buttons over the cover would take the click.
-    await window
-      .locator('[data-mockup-id]')
-      .first()
-      .getByText(/^Stub /)
-      .dblclick()
-
-    const dialog = window.getByRole('dialog')
-    await dialog.getByRole('textbox', { name: 'Title' }).fill('')
-    await expect(dialog.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await clickCard(window)
+    await panel(window).getByRole('button', { name: 'Edit', exact: true }).click()
+    await panel(window).getByRole('textbox', { name: 'Title' }).fill('')
+    await expect(panel(window).getByRole('button', { name: 'Save' })).toBeDisabled()
     // A disabled button can't take the pointer, so the reason sits on its wrapper: force the hover.
-    await dialog.getByRole('button', { name: 'Save' }).hover({ force: true })
+    await panel(window).getByRole('button', { name: 'Save' }).hover({ force: true })
     await expect(window.getByText('Add a title to save').first()).toBeVisible()
   })
 
-  test('closing with changes asks Keep editing or Discard', async ({ app }) => {
+  test('Esc closes it, and so does clicking empty space', async ({ app }) => {
+    const { window } = app
+    await seedStash(app, ['laptop'])
+    await showMyStash(app)
+    await clickCard(window)
+    await expect(panel(window)).toBeVisible()
+    await window.keyboard.press('Escape')
+    await expect(panel(window)).toHaveCount(0)
+
+    await clickCard(window)
+    await expect(panel(window)).toBeVisible()
+    await panel(window).getByRole('button', { name: 'Close' }).click()
+    await expect(panel(window)).toHaveCount(0)
+  })
+
+  test('leaving with changes asks Keep editing or Discard', async ({ app }) => {
     const { window } = app
     const [only] = await seedStash(app, ['laptop'])
     await showMyStash(app)
-    // The title, not the card's middle: the hover buttons over the cover would take the click.
-    await window
-      .locator('[data-mockup-id]')
-      .first()
-      .getByText(/^Stub /)
-      .dblclick()
-
-    const dialog = window.getByRole('dialog')
-    await dialog.getByRole('textbox', { name: 'Title' }).fill('Something else')
+    await clickCard(window)
+    await panel(window).getByRole('button', { name: 'Edit', exact: true }).click()
+    const title = panel(window).getByRole('textbox', { name: 'Title' })
+    await title.fill('Something else')
 
     await test.step('Keep editing leaves the edits where they were', async () => {
-      await dialog.getByRole('button', { name: 'Close' }).first().click()
+      await panel(window).getByRole('button', { name: 'Close' }).click()
       const ask = window.getByRole('alertdialog')
       await expect(ask.getByText('Discard your changes?')).toBeVisible()
       await ask.getByRole('button', { name: 'Keep editing' }).click()
       await expect(window.getByRole('alertdialog')).toHaveCount(0)
-      await expect(dialog.getByRole('textbox', { name: 'Title' })).toHaveValue('Something else')
+      await expect(title).toHaveValue('Something else')
     })
 
     await test.step('Discard closes without saving', async () => {
-      await window.keyboard.press('Escape')
+      await title.press('Escape')
       await window.getByRole('alertdialog').getByRole('button', { name: 'Discard' }).click()
-      await expect(window.getByRole('dialog')).toHaveCount(0)
-      await expect(window.getByText(only!.title, { exact: true })).toBeVisible()
+      await expect(panel(window)).toHaveCount(0)
+      await expect(window.getByText(only!.title, { exact: true }).first()).toBeVisible()
       await expect(window.getByText('Something else', { exact: true })).toHaveCount(0)
     })
   })
 
-  test('closing without changes just closes', async ({ app }) => {
+  test('Edit details on the card opens it as fields', async ({ app }) => {
     const { window } = app
     await seedStash(app, ['laptop'])
     await showMyStash(app)
-    // The title, not the card's middle: the hover buttons over the cover would take the click.
-    await window
-      .locator('[data-mockup-id]')
-      .first()
-      .getByText(/^Stub /)
-      .dblclick()
-    await expect(window.getByRole('dialog')).toBeVisible()
-    await window.keyboard.press('Escape')
+    const card = window.locator('[data-mockup-id]').first()
+    await card.hover()
+    await card.getByRole('button', { name: 'Edit details' }).click()
+    await expect(panel(window).getByRole('textbox', { name: 'Title' })).toBeVisible()
+  })
+
+  test('Space and double-click do nothing on a mockup on its own', async ({ app }) => {
+    const { window } = app
+    await seedStash(app, ['laptop'])
+    await showMyStash(app)
+    const card = window.locator('[data-mockup-id]').first()
+    await card.getByText(/^Stub /).dblclick()
+    await expect(panel(window).getByRole('textbox')).toHaveCount(0)
+    await card.focus()
+    await window.keyboard.press('Space')
     await expect(window.getByRole('dialog')).toHaveCount(0)
-    await expect(window.getByRole('alertdialog')).toHaveCount(0)
   })
 })

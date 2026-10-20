@@ -4,7 +4,7 @@ import type { Locator, Page } from '@playwright/test'
 import { test, expect, makePsds, type E2EApp } from './fixtures/app'
 
 /**
- * Layout at the smallest and the default window: My Stash, Detail, Sort, Look it over and Settings
+ * Layout at the smallest and the default window: My Stash, the details sidebar, Sort, Look it over and Settings
  * each fit the window, their footer buttons stay on screen, and nothing scrolls sideways.
  * Screenshots go to test-results/layout/ (not committed).
  */
@@ -158,22 +158,21 @@ for (const { width, height } of SIZES) {
       await shot('my-stash')
     })
 
-    await test.step('Detail', async () => {
+    await test.step('Details sidebar', async () => {
       const card = window.locator('[data-mockup-id]').filter({ hasText: 'Stub laptop' })
       await card.hover()
       await card.getByRole('button', { name: 'Edit details' }).click()
-      const dialog = window.getByRole('dialog')
-      await expect(dialog).toBeVisible()
-      await inside(window, dialog, 'the Detail modal')
-      await inside(
-        window,
-        window.getByRole('button', { name: 'Open in Photoshop' }),
-        'Open in Photoshop'
-      )
-      await noSidewaysScroll(window, dialog, 'Detail')
-      await shot('detail')
+      const panel = window.locator('[data-slot="details-panel"]')
+      await expect(panel.getByRole('textbox', { name: 'Title' })).toBeVisible()
+      // Let the slide finish so the measurement is of the settled layout.
+      await expect(panel).not.toHaveClass(/translate-x-99/)
+      await window.waitForTimeout(450)
+      await inside(window, panel, 'the details sidebar')
+      await inside(window, panel.getByRole('button', { name: 'Save' }), 'Save')
+      await noSidewaysScroll(window, null, 'My Stash with the sidebar open')
+      await shot('details-sidebar')
       await window.keyboard.press('Escape')
-      await expect(window.getByRole('dialog')).toHaveCount(0)
+      await expect(panel).toHaveCount(0)
     })
 
     await test.step('Settings', async () => {
