@@ -22,7 +22,9 @@ export type ProposedGroup = z.infer<typeof ProposedGroupSchema>
 export const GroupingProposalSchema = z.object({
   batchId: z.string(),
   groups: z.array(ProposedGroupSchema),
-  singletons: z.array(GroupMemberSchema) // mockups not in any group
+  singletons: z.array(GroupMemberSchema), // mockups not in any group
+  /** True when suggesting piles failed: every mockup stands alone and the board works as normal. */
+  suggestionFailed: z.boolean().optional()
 })
 export type GroupingProposal = z.infer<typeof GroupingProposalSchema>
 

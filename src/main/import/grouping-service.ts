@@ -51,6 +51,21 @@ export class GroupingService {
   }
 
   /**
+   * What the Sort board opens with: the suggested piles, or when suggesting fails every mockup on
+   * its own and `suggestionFailed` set, so "Couldn't suggest piles" is a toast, not a dead end.
+   */
+  static proposeOrFallback(batchId: string, members: GroupMember[]): GroupingProposal {
+    const result = this.suggest(batchId, members)
+    if (result.ok) return result.proposal
+    return {
+      batchId,
+      groups: [],
+      singletons: members.map((m) => ({ ...m, isPrimary: false })),
+      suggestionFailed: true
+    }
+  }
+
+  /**
    * Takes an array of GroupMember objects, returns a GroupingProposal.
    */
   static propose(batchId: string, members: GroupMember[]): GroupingProposal {

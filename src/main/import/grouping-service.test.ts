@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { GroupingService, extractStem } from './grouping-service'
 import { COULDNT_SUGGEST_PILES, type GroupMember } from '../../shared/grouping'
 
@@ -201,6 +201,32 @@ describe('GroupingService.propose', () => {
       expect(result).toEqual({ ok: false, message: COULDNT_SUGGEST_PILES })
       expect(COULDNT_SUGGEST_PILES).toBe('Couldn’t suggest piles. You can still sort them by hand.')
       expect(COULDNT_SUGGEST_PILES).not.toMatch(/[/\\]|ENOENT|—/)
+    })
+  })
+
+  describe('proposeOrFallback (S1.E5)', () => {
+    it('is the proposal when suggesting works', () => {
+      const proposal = GroupingService.proposeOrFallback('b', [
+        makeMember('a-1.psd', ['X']),
+        makeMember('a-2.psd', ['X'])
+      ])
+      expect(proposal.groups).toHaveLength(1)
+      expect(proposal.suggestionFailed).toBeUndefined()
+    })
+
+    it('puts every mockup on its own and says suggesting failed, so the board still works', () => {
+      const members = [makeMember('a-1.psd', ['X']), makeMember('a-2.psd', ['X'])]
+      const spy = vi.spyOn(GroupingService, 'propose').mockImplementation(() => {
+        throw new Error('timed out')
+      })
+      try {
+        const proposal = GroupingService.proposeOrFallback('b', members)
+        expect(proposal).toMatchObject({ batchId: 'b', groups: [], suggestionFailed: true })
+        expect(proposal.singletons.map((m) => m.mockupId)).toEqual(members.map((m) => m.mockupId))
+        expect(proposal.singletons.every((m) => m.isPrimary === false)).toBe(true)
+      } finally {
+        spy.mockRestore()
+      }
     })
   })
 })

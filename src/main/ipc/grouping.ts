@@ -27,10 +27,7 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
         isPrimary: false
       }
     })
-    const result = GroupingService.suggest(args.batchId, members)
-    // The IPC error carries this plain copy to the renderer's "Couldn't suggest piles" state.
-    if (!result.ok) throw new Error(result.message)
-    return result.proposal
+    return GroupingService.proposeOrFallback(args.batchId, members)
   })
 
   registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
