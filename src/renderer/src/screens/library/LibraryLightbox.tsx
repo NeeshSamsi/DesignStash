@@ -45,7 +45,12 @@ export function LibraryLightbox({
   onCheckLibrary
 }: LibraryLightboxProps) {
   const [sequence, setSequence] = useState<Entry[]>(() => items.map(fromItem))
-  const [index, setIndex] = useState(() => Math.max(0, items.findIndex((i) => i.id === startId)))
+  const [index, setIndex] = useState(() =>
+    Math.max(
+      0,
+      items.findIndex((i) => i.id === startId)
+    )
+  )
   // Which end of an opened pile to land on: the first variant going forward, the last going back.
   const arrival = useRef<'forward' | 'back'>('forward')
   const entry = sequence[index]

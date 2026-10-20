@@ -8,12 +8,16 @@ import { item, pile, resetStores, setupApi, ShortcutHost } from './library-test-
 
 vi.mock('@renderer/stores/toastStore', () => ({ toast: vi.fn(), undoToast: vi.fn() }))
 
-const cards = () => [...document.querySelectorAll<HTMLElement>('[data-ds="MockupCard"][data-mockup-id]')]
+const cards = () => [
+  ...document.querySelectorAll<HTMLElement>('[data-ds="MockupCard"][data-mockup-id]')
+]
 const rows = () => screen.getAllByRole('menuitem').map((row) => row.textContent ?? '')
 
 async function ready() {
   await waitFor(() =>
-    expect(document.querySelector('[data-ds="MockupGrid"]')?.getAttribute('data-state')).not.toBe('loading')
+    expect(document.querySelector('[data-ds="MockupGrid"]')?.getAttribute('data-state')).not.toBe(
+      'loading'
+    )
   )
 }
 
@@ -72,7 +76,9 @@ describe('card menu', () => {
       'New pile⌘G',
       'Move to Trash⌘⌫'
     ])
-    expect(screen.getByRole('menuitem', { name: /New pile/ }).getAttribute('aria-disabled')).toBe('true')
+    expect(screen.getByRole('menuitem', { name: /New pile/ }).getAttribute('aria-disabled')).toBe(
+      'true'
+    )
   })
 
   it('right-click selects the card, and outside the selection switches to that card', async () => {
@@ -126,7 +132,9 @@ describe('card menu', () => {
     fireEvent.contextMenu(document.querySelector('[data-ds="MockupGrid"]')!)
     await screen.findByRole('menu')
     expect(rows()).toEqual(['Select all⌘A', 'Add files…⌘O', 'Add folder…⇧⌘O', 'Undo⌘Z'])
-    expect(screen.getByRole('menuitem', { name: /^Undo/ }).getAttribute('aria-disabled')).toBe('true')
+    expect(screen.getByRole('menuitem', { name: /^Undo/ }).getAttribute('aria-disabled')).toBe(
+      'true'
+    )
   })
 
   it('Select all from the empty-space menu selects every mockup', async () => {
@@ -159,7 +167,9 @@ describe('card menu', () => {
     await ready()
     fireEvent.contextMenu(cards()[0]!)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Open in Photoshop' }))
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toEqual([{ mockupId: 5 }]))
+    await waitFor(() =>
+      expect(api.calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toEqual([{ mockupId: 5 }])
+    )
     fireEvent.contextMenu(cards()[0]!)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Edit details/ }))
     expect(useUiStore.getState().modal).toEqual({ kind: 'detail', mockupId: 5 })
@@ -183,7 +193,7 @@ describe('card menu', () => {
 })
 
 describe('trash', () => {
-  it('moves to Trash instantly from the menu, with Undo and no confirm', async () => {
+  it('moves to Trash instantly with Undo from the menu, Cmd+Backspace or Backspace', async () => {
     const api = setupApi([item(1), item(2)], trashOk)
     page()
     await ready()
@@ -211,7 +221,7 @@ describe('trash', () => {
     expect(api.calls(IPC_CHANNELS.LIBRARY_LIST).length).toBeGreaterThan(listsBefore)
   })
 
-  it('moves to Trash instantly with Undo from Cmd+Backspace or Backspace', async () => {
+  it('moves to Trash from Cmd+Backspace and Backspace, each with Undo', async () => {
     const api = setupApi([item(1), item(2), item(3)], trashOk)
     page()
     await ready()
@@ -419,7 +429,9 @@ describe('fullscreen preview', () => {
     fireEvent.keyDown(cards()[0]!, { key: ' ' })
     fireEvent.click(await screen.findByRole('button', { name: 'Check library' }))
     await waitFor(() => expect(api.calls(IPC_CHANNELS.INTEGRITY_SCAN)).toHaveLength(1))
-    await waitFor(() => expect(toast).toHaveBeenCalledWith({ variant: 'success', message: 'Your stash is in sync' }))
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith({ variant: 'success', message: 'Your stash is in sync' })
+    )
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 

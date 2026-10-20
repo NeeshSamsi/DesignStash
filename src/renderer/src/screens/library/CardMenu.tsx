@@ -11,10 +11,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
 import type { LibraryItem } from '@shared/library'
-import {
-  DropdownMenu,
-  DropdownMenuDivider
-} from '@renderer/components/DropdownMenu/DropdownMenu'
+import { DropdownMenu, DropdownMenuDivider } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import type { UndoEntry } from './useLibraryActions'
 
@@ -70,12 +67,48 @@ export function menuRows(
       return {
         groups: [2, 4],
         rows: [
-          { key: 'ps', label: 'Open in Photoshop', icon: LinkSquare02Icon, run: () => actions.openInPhotoshop(item) },
-          { key: 'edit', label: 'Edit details', icon: Edit02Icon, shortcut: '↵', run: () => actions.editDetails(item) },
-          { key: 'preview', label: 'Preview', icon: ViewIcon, shortcut: 'Space', run: () => actions.preview(item) },
-          { key: 'star', label: item.favourite ? 'Remove star' : 'Star', icon: StarIcon, run: () => actions.star([item], !item.favourite) },
-          { key: 'pile', label: 'New pile', icon: Layers01Icon, shortcut: '⌘G', disabled: true, run: () => {} },
-          { key: 'trash', label: 'Move to Trash', icon: Delete02Icon, shortcut: '⌘⌫', destructive: true, run: () => actions.trash([item]) }
+          {
+            key: 'ps',
+            label: 'Open in Photoshop',
+            icon: LinkSquare02Icon,
+            run: () => actions.openInPhotoshop(item)
+          },
+          {
+            key: 'edit',
+            label: 'Edit details',
+            icon: Edit02Icon,
+            shortcut: '↵',
+            run: () => actions.editDetails(item)
+          },
+          {
+            key: 'preview',
+            label: 'Preview',
+            icon: ViewIcon,
+            shortcut: 'Space',
+            run: () => actions.preview(item)
+          },
+          {
+            key: 'star',
+            label: item.favourite ? 'Remove star' : 'Star',
+            icon: StarIcon,
+            run: () => actions.star([item], !item.favourite)
+          },
+          {
+            key: 'pile',
+            label: 'New pile',
+            icon: Layers01Icon,
+            shortcut: '⌘G',
+            disabled: true,
+            run: () => {}
+          },
+          {
+            key: 'trash',
+            label: 'Move to Trash',
+            icon: Delete02Icon,
+            shortcut: '⌘⌫',
+            destructive: true,
+            run: () => actions.trash([item])
+          }
         ]
       }
     }
@@ -87,10 +120,35 @@ export function menuRows(
       return {
         groups: [1, 3],
         rows: [
-          { key: 'pile', label: `New pile from ${n} mockups`, icon: Layers01Icon, shortcut: '⌘G', disabled: !actions.newPile, run: () => actions.newPile?.(items) },
-          { key: 'star', label: allStarred ? `Remove star from ${n}` : `Star ${n}`, icon: StarIcon, run: () => actions.star(items, !allStarred) },
-          { key: 'preview', label: 'Preview', icon: ViewIcon, shortcut: 'Space', run: () => first && actions.preview(first) },
-          { key: 'trash', label: `Move ${n} to Trash`, icon: Delete02Icon, shortcut: '⌘⌫', destructive: true, run: () => actions.trash(items) }
+          {
+            key: 'pile',
+            label: `New pile from ${n} mockups`,
+            icon: Layers01Icon,
+            shortcut: '⌘G',
+            disabled: !actions.newPile,
+            run: () => actions.newPile?.(items)
+          },
+          {
+            key: 'star',
+            label: allStarred ? `Remove star from ${n}` : `Star ${n}`,
+            icon: StarIcon,
+            run: () => actions.star(items, !allStarred)
+          },
+          {
+            key: 'preview',
+            label: 'Preview',
+            icon: ViewIcon,
+            shortcut: 'Space',
+            run: () => first && actions.preview(first)
+          },
+          {
+            key: 'trash',
+            label: `Move ${n} to Trash`,
+            icon: Delete02Icon,
+            shortcut: '⌘⌫',
+            destructive: true,
+            run: () => actions.trash(items)
+          }
         ]
       }
     }
@@ -99,24 +157,77 @@ export function menuRows(
       return {
         groups: [2, 4],
         rows: [
-          { key: 'ps', label: 'Open in Photoshop', icon: LinkSquare02Icon, run: () => actions.openInPhotoshop(item) },
-          { key: 'edit', label: 'Edit details', icon: Edit02Icon, shortcut: '↵', run: () => actions.editDetails(item) },
-          { key: 'preview', label: 'Preview', icon: ViewIcon, shortcut: 'Space', run: () => actions.preview(item) },
-          { key: 'star', label: item.favourite ? 'Remove star' : 'Star', icon: StarIcon, run: () => actions.star([item], !item.favourite) },
-          { key: 'disband', label: 'Disband pile', icon: Layers01Icon, shortcut: '⇧⌘G', disabled: !actions.disband, run: () => actions.disband?.(item) },
-          { key: 'trash', label: 'Move pile to Trash', icon: Delete02Icon, destructive: true, run: () => actions.trash([item]) }
+          {
+            key: 'ps',
+            label: 'Open in Photoshop',
+            icon: LinkSquare02Icon,
+            run: () => actions.openInPhotoshop(item)
+          },
+          {
+            key: 'edit',
+            label: 'Edit details',
+            icon: Edit02Icon,
+            shortcut: '↵',
+            run: () => actions.editDetails(item)
+          },
+          {
+            key: 'preview',
+            label: 'Preview',
+            icon: ViewIcon,
+            shortcut: 'Space',
+            run: () => actions.preview(item)
+          },
+          {
+            key: 'star',
+            label: item.favourite ? 'Remove star' : 'Star',
+            icon: StarIcon,
+            run: () => actions.star([item], !item.favourite)
+          },
+          {
+            key: 'disband',
+            label: 'Disband pile',
+            icon: Layers01Icon,
+            shortcut: '⇧⌘G',
+            disabled: !actions.disband,
+            run: () => actions.disband?.(item)
+          },
+          {
+            key: 'trash',
+            label: 'Move pile to Trash',
+            icon: Delete02Icon,
+            destructive: true,
+            run: () => actions.trash([item])
+          }
         ]
       }
     }
     case 'space': {
       const rows: Row[] = [
-        { key: 'all', label: 'Select all', icon: Layers01Icon, shortcut: '⌘A', run: actions.selectAll }
+        {
+          key: 'all',
+          label: 'Select all',
+          icon: Layers01Icon,
+          shortcut: '⌘A',
+          run: actions.selectAll
+        }
       ]
       if (actions.addFiles) {
-        rows.push({ key: 'files', label: 'Add files…', icon: FileAddIcon, shortcut: '⌘O', run: actions.addFiles })
+        rows.push({
+          key: 'files',
+          label: 'Add files…',
+          icon: FileAddIcon,
+          shortcut: '⌘O',
+          run: actions.addFiles
+        })
       }
       if (actions.addFolder) {
-        rows.push({ key: 'folder', label: 'Add folder…', icon: FolderAddIcon, shortcut: '⇧⌘O', run: actions.addFolder })
+        rows.push({
+          key: 'folder',
+          label: 'Add folder…',
+          icon: FolderAddIcon,
+          shortcut: '⇧⌘O',
+          run: actions.addFolder
+        })
       }
       rows.push({
         key: 'undo',

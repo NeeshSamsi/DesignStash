@@ -1,20 +1,44 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
-import { Cancel01Icon, FileAddIcon, FolderAddIcon, Search02Icon, StarIcon } from '@hugeicons/core-free-icons'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent
+} from '@dnd-kit/core'
+import {
+  Cancel01Icon,
+  FileAddIcon,
+  FolderAddIcon,
+  Search02Icon,
+  StarIcon
+} from '@hugeicons/core-free-icons'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem } from '@shared/library'
 import { AddMockupCard } from '@renderer/components/AddMockupCard'
 import { Banner } from '@renderer/components/Banner'
+import { Badge } from '@renderer/ui/badge'
 import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { LibraryToolbar } from '@renderer/components/LibraryToolbar'
-import { MockupCard } from '@renderer/components/MockupCard'
+import { CoverImage } from '@renderer/components/CoverImage'
 import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard.types'
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
-import { noResultsCopy } from '@renderer/lib/library-list'
+import {
+  draggedItems,
+  dropHint,
+  noResultsCopy,
+  pilesIn,
+  planDrop,
+  planNewPile
+} from '@renderer/lib/library-list'
 import { filterChips, toggleCategory } from '@renderer/lib/tag-filter'
 import { useShortcut } from '@renderer/lib/shortcuts'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
@@ -22,9 +46,11 @@ import { useLibraryStore } from '@renderer/stores/libraryStore'
 import { toast } from '@renderer/stores/toastStore'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { CardMenu, type MenuTarget } from './CardMenu'
+import { LibraryCard } from './LibraryCard'
 import { LibraryLightbox } from './LibraryLightbox'
 import { useLibraryActions } from './useLibraryActions'
 import { useLibraryData } from './useLibraryData'
+import { useLibraryPiles } from './useLibraryPiles'
 
 export interface LibraryPageProps {
   /** The Starred page. Defaults to the current view in the UI store. */
@@ -97,15 +123,16 @@ export default function LibraryPage({
   const filterCount = tagFilter.length + categoryIds.length
   const filtering = filterCount > 0
 
-  const state: MockupGridState = !loaded && !failed
-    ? 'loading'
-    : failed && items.length === 0
-      ? 'error'
-      : items.length === 0
-        ? !searching && !filtering && !starredOnly
-          ? 'empty'
-          : 'no-results'
-        : 'populated'
+  const state: MockupGridState =
+    !loaded && !failed
+      ? 'loading'
+      : failed && items.length === 0
+        ? 'error'
+        : items.length === 0
+          ? !searching && !filtering && !starredOnly
+            ? 'empty'
+            : 'no-results'
+          : 'populated'
   const showAdd = !starredOnly && !searching && !filtering
 
   const clearFilters = () => {
@@ -151,7 +178,9 @@ export default function LibraryPage({
   }
 
   // ⋯ and right-click open the same menu; right-click selects the card first, like Finder.
-  const [menu, setMenu] = useState<{ target: MenuTarget; at: { x: number; y: number } } | null>(null)
+  const [menu, setMenu] = useState<{ target: MenuTarget; at: { x: number; y: number } } | null>(
+    null
+  )
   const targetFor = (item: LibraryItem): MenuTarget =>
     selection.isSelected(String(item.id)) && selection.count > 1
       ? { kind: 'selection', items: selectedItems }
@@ -190,9 +219,54 @@ export default function LibraryPage({
     }
   }
 
+  const piles = useLibraryPiles({ refresh, offerUndo: actions.offerUndo })
+  const newPile = (targets: LibraryItem[]) => {
+    const intent = planNewPile(targets)
+    if (intent) void piles.run(intent)
+  }
+  useShortcut({
+    id: 'library.new-pile',
+    combo: 'mod+g',
+    scope: 'grid',
+    handler: () => newPile(selectedItems)
+  })
+  useShortcut({
+    id: 'library.disband',
+    combo: 'mod+shift+g',
+    scope: 'grid',
+    handler: () => void piles.disband(pilesIn(selectedItems))
+  })
+
+  // Dragging: a card (or the whole selection, when the card is in it) dropped on a card.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  const [drag, setDrag] = useState<{ items: LibraryItem[]; overId: string | null } | null>(null)
+  const onDragStart = (event: DragStartEvent) =>
+    setDrag({
+      items: draggedItems(items, selection.selectedIds, Number(event.active.id)),
+      overId: null
+    })
+  const onDragOver = (event: DragOverEvent) =>
+    setDrag((current) =>
+      current ? { ...current, overId: event.over ? String(event.over.id) : null } : current
+    )
+  const onDragEnd = (event: DragEndEvent) => {
+    const dragged = drag?.items ?? []
+    setDrag(null)
+    const target = event.over ? itemById(String(event.over.id)) : undefined
+    if (!target) return
+    const intent = planDrop(dragged, target)
+    if (intent) void piles.run(intent)
+  }
+  const draggedIds = new Set((drag?.items ?? []).map((i) => String(i.id)))
+
   const trashSelection = () => void actions.trash(selectedItems)
   useShortcut({ id: 'library.trash', combo: 'backspace', scope: 'grid', handler: trashSelection })
-  useShortcut({ id: 'library.trash-cmd', combo: 'mod+backspace', scope: 'grid', handler: trashSelection })
+  useShortcut({
+    id: 'library.trash-cmd',
+    combo: 'mod+backspace',
+    scope: 'grid',
+    handler: trashSelection
+  })
 
   // Enter opens Detail and Space previews, on a focused card. Buttons inside a card keep their own keys.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -224,8 +298,11 @@ export default function LibraryPage({
     openInPhotoshop: (item: LibraryItem) => void openInPhotoshop(item),
     editDetails: (item: LibraryItem) => openDetail(item.id),
     preview: openPreview,
-    star: (targets: LibraryItem[], favourite: boolean) => void actions.setFavouriteFor(targets, favourite),
+    star: (targets: LibraryItem[], favourite: boolean) =>
+      void actions.setFavouriteFor(targets, favourite),
     trash: (targets: LibraryItem[]) => void actions.trash(targets),
+    newPile,
+    disband: (item: LibraryItem) => void piles.disband([item]),
     selectAll: selection.selectAll,
     undo: () => void actions.undoLast(),
     ...(onAddFiles ? { addFiles: onAddFiles } : {}),
@@ -304,58 +381,98 @@ export default function LibraryPage({
           dismissible={false}
         />
       )}
-      <MockupGrid
-        state={state}
-        showAdd={showAdd}
-        selection={selection}
-        addCard={addCard}
-        data-shortcut-scope="grid"
-        tabIndex={-1}
-        onDoubleClick={onDoubleClick}
-        onContextMenu={onContextMenu}
-        onKeyDown={onKeyDown}
-        onMouseUp={onMouseUp}
-        noResults={
-          <EmptyState
-            variant="page"
-            icon={starredOnly && !searching && !filtering ? StarIcon : Search02Icon}
-            title={copy.title}
-            description={copy.description}
-            primaryLabel={copy.clearLabel}
-            primaryIcon={Cancel01Icon}
-            onPrimary={clearAction}
-          />
-        }
-        error={
-          <ErrorState
-            variant="page"
-            title="Couldn’t load your stash"
-            message="Try again in a moment."
-            onRetry={() => void refresh()}
-            secondaryLabel={null}
-          />
-        }
+      <DndContext
+        sensors={sensors}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragEnd={onDragEnd}
+        onDragCancel={() => setDrag(null)}
       >
-        {items.map((item) => (
-          <MockupCard
-            key={item.id}
-            mockupId={String(item.id)}
-            title={item.title}
-            tags={cardTags(item)}
-            {...(item.coverPath ? { coverSrc: `file://${item.coverPath}` } : {})}
-            variantCount={item.variantCount}
-            favourite={item.favourite}
-            state={cardState(item, selection.isSelected(String(item.id)))}
-            onToggleFavourite={(favourite) => void actions.setFavouriteFor([item], favourite)}
-            onMore={(event) => {
-              const box = event.currentTarget.getBoundingClientRect()
-              openMenuFor(item, { x: box.left, y: box.bottom })
-            }}
-            onOpenInPhotoshop={() => void openInPhotoshop(item)}
-            onEditDetails={() => openDetail(item.id)}
-          />
-        ))}
-      </MockupGrid>
+        <MockupGrid
+          state={state}
+          showAdd={showAdd}
+          selection={selection}
+          addCard={addCard}
+          data-shortcut-scope="grid"
+          tabIndex={-1}
+          onDoubleClick={onDoubleClick}
+          onContextMenu={onContextMenu}
+          onKeyDown={onKeyDown}
+          onMouseUp={onMouseUp}
+          noResults={
+            <EmptyState
+              variant="page"
+              icon={starredOnly && !searching && !filtering ? StarIcon : Search02Icon}
+              title={copy.title}
+              description={copy.description}
+              primaryLabel={copy.clearLabel}
+              primaryIcon={Cancel01Icon}
+              onPrimary={clearAction}
+            />
+          }
+          error={
+            <ErrorState
+              variant="page"
+              title="Couldn’t load your stash"
+              message="Try again in a moment."
+              onRetry={() => void refresh()}
+              secondaryLabel={null}
+            />
+          }
+        >
+          {items.map((item) => {
+            const key = String(item.id)
+            const target = drag !== null && drag.overId === key && !draggedIds.has(key)
+            return (
+              <LibraryCard
+                key={item.id}
+                dndId={key}
+                mockupId={key}
+                title={item.title}
+                tags={cardTags(item)}
+                {...(item.coverPath ? { coverSrc: `file://${item.coverPath}` } : {})}
+                variantCount={item.variantCount}
+                favourite={item.favourite}
+                state={
+                  draggedIds.has(key)
+                    ? 'left-behind'
+                    : target
+                      ? 'group-target'
+                      : cardState(item, selection.isSelected(key))
+                }
+                {...(target ? { dropHint: dropHint(drag.items, item) } : {})}
+                onToggleFavourite={(favourite) => void actions.setFavouriteFor([item], favourite)}
+                onMore={(event) => {
+                  const box = event.currentTarget.getBoundingClientRect()
+                  openMenuFor(item, { x: box.left, y: box.bottom })
+                }}
+                onOpenInPhotoshop={() => void openInPhotoshop(item)}
+                onEditDetails={() => openDetail(item.id)}
+              />
+            )
+          })}
+        </MockupGrid>
+        <DragOverlay dropAnimation={null}>
+          {drag && drag.items[0] && (
+            <div className="relative w-card">
+              {drag.items.length > 1 && (
+                <>
+                  <div className="absolute inset-0 rotate-3 rounded-xl bg-surface-3" />
+                  <div className="absolute inset-0 -rotate-3 rounded-xl bg-surface-4" />
+                </>
+              )}
+              <CoverImage
+                size="md"
+                {...(drag.items[0].coverPath ? { src: `file://${drag.items[0].coverPath}` } : {})}
+                className="relative"
+              />
+              {drag.items.length > 1 && (
+                <Badge className="absolute top-2 right-2">{drag.items.length}</Badge>
+              )}
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
       <CardMenu
         target={menu?.target ?? null}
         at={menu?.at ?? { x: 0, y: 0 }}

@@ -40,7 +40,12 @@ export interface Api {
 export function setupApi(
   items: LibraryItem[],
   handlers: Record<string, Handler> = {},
-  stats = { total: items.length, favourites: items.filter((i) => i.favourite).length, groups: 0, trashed: 0 }
+  stats = {
+    total: items.length,
+    favourites: items.filter((i) => i.favourite).length,
+    groups: 0,
+    trashed: 0
+  }
 ): Api {
   const invoke = vi.fn(async (channel: string, request: unknown) => {
     const handler = handlers[channel]

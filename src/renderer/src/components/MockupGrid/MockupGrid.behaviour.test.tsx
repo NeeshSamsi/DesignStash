@@ -177,12 +177,9 @@ describe('Library · grid, selection, loading and empty', () => {
     expect(screen.queryByRole('button', { name: /Add mockup/ })).toBeNull()
   })
 
-  it.todo('shows the Add card first in My Stash › All only (not in search, filter or Starred)')
-  it.todo('opens the Add menu from the Add card on click or Enter')
-  it.todo('keeps no-results and error states at the top under the toolbar')
-  it.todo(
-    'offers Clear search, Clear filters or Clear search and filters depending on what is active'
-  )
+  // The My Stash page behaviour (add card, states, sort, stars, Detail, card menu, trash,
+  // piles by drag and shortcut, fullscreen preview) is tested against the page itself, with the
+  // same test names, in screens/library/LibraryPage{,.menu,.piles}.test.tsx.
   describe('tag filter', () => {
     const TAGS: FilterCategory[] = [
       {
@@ -227,21 +224,4 @@ describe('Library · grid, selection, loading and empty', () => {
       expect(matchesFilter([20], byCategory, pick([], [1]))).toBe(false)
     })
   })
-  it.todo('sorts by date added (newest first) by default, or by name')
-  it.todo('keeps an unstarred card in Starred until the view is left, with Undo')
-  it.todo('opens Detail on double-click or Enter, not on a single click')
-  it.todo(
-    'makes a pile by dropping a card or selection on a card (target goes on top) or with Cmd+G, undoable'
-  )
-  it.todo('adds to or merges into a pile when dropped on one')
-  it.todo('disbands a pile instantly with Shift+Cmd+G, leaving the mockups selected')
-  it.todo('opens the same menu from right-click and the hover more button')
-  it.todo(
-    'shows Open in Photoshop and Edit details along the cover on hover; Edit details opens Detail'
-  )
-  it.todo('moves to Trash instantly with Undo from the menu, Cmd+Backspace or Backspace')
-  it.todo(
-    'opens the fullscreen preview from Space or Preview in the card menu and steps with arrow keys in grid order'
-  )
-  it.todo('returns focus to the card when the fullscreen preview closes')
 })

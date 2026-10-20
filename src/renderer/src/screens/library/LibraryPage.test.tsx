@@ -10,12 +10,17 @@ import { item, resetStores, setupApi } from './library-test-utils'
 
 vi.mock('@renderer/stores/toastStore', () => ({ toast: vi.fn(), undoToast: vi.fn() }))
 
-const cards = (root: ParentNode = document) =>
-  [...root.querySelectorAll<HTMLElement>('[data-ds="MockupCard"][data-mockup-id]')]
+const cards = (root: ParentNode = document) => [
+  ...root.querySelectorAll<HTMLElement>('[data-ds="MockupCard"][data-mockup-id]')
+]
 const titles = () => cards().map((card) => card.getAttribute('data-mockup-id'))
 
 async function ready() {
-  await waitFor(() => expect(document.querySelector('[data-ds="MockupGrid"]')?.getAttribute('data-state')).not.toBe('loading'))
+  await waitFor(() =>
+    expect(document.querySelector('[data-ds="MockupGrid"]')?.getAttribute('data-state')).not.toBe(
+      'loading'
+    )
+  )
 }
 
 beforeEach(() => {
@@ -47,7 +52,9 @@ describe('LibraryPage grid', () => {
     setupApi([])
     render(<LibraryPage />)
     await ready()
-    expect(document.querySelector('[data-ds="MockupGrid"]')!.getAttribute('data-state')).toBe('empty')
+    expect(document.querySelector('[data-ds="MockupGrid"]')!.getAttribute('data-state')).toBe(
+      'empty'
+    )
     expect(document.querySelector('[data-ds="AddMockupCard"]')).not.toBeNull()
     expect(document.querySelector('[data-ds="EmptyState"]')).toBeNull()
   })
@@ -89,7 +96,7 @@ describe('LibraryPage grid', () => {
     expect(onAddFiles).toHaveBeenCalledTimes(1)
   })
 
-  it('opens the Add menu from the Add card on Enter', async () => {
+  it('opens the Add menu from the Add card on click or Enter', async () => {
     const onAddFolder = vi.fn()
     setupApi([item(1)])
     render(<LibraryPage onAddFiles={vi.fn()} onAddFolder={onAddFolder} />)
@@ -126,7 +133,9 @@ describe('LibraryPage requests', () => {
     await ready()
     expect(api.calls(IPC_CHANNELS.LIBRARY_LIST).at(-1)).toMatchObject({ sort: 'date' })
     act(() => useLibraryStore.getState().setSort('name'))
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.LIBRARY_LIST).at(-1)).toMatchObject({ sort: 'name' }))
+    await waitFor(() =>
+      expect(api.calls(IPC_CHANNELS.LIBRARY_LIST).at(-1)).toMatchObject({ sort: 'name' })
+    )
   })
 
   it('sorts by date added (newest first) by default, or by name', async () => {
@@ -172,7 +181,7 @@ describe('LibraryPage states', () => {
     expect(useLibraryStore.getState().query).toBe('')
   })
 
-  it('offers Clear filters, or Clear search and filters, depending on what is active', async () => {
+  it('offers Clear search, Clear filters or Clear search and filters depending on what is active', async () => {
     setupApi([])
     useLibraryStore.setState({ tagFilter: [1], categoryIds: [2] })
     const { unmount } = render(<LibraryPage />)
@@ -195,7 +204,9 @@ describe('LibraryPage states', () => {
     render(<LibraryPage starredOnly />)
     await ready()
     expect(screen.getByText('Nothing starred yet')).toBeTruthy()
-    expect(within(document.querySelector('[data-ds="EmptyState"]')!).queryByRole('button')).toBeNull()
+    expect(
+      within(document.querySelector('[data-ds="EmptyState"]')!).queryByRole('button')
+    ).toBeNull()
   })
 
   it('keeps no-results and error states at the top under the toolbar', async () => {
@@ -261,7 +272,9 @@ describe('LibraryPage stars', () => {
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: /Star Mockup 1/ }))
     await waitFor(() =>
-      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toEqual([{ mockupId: 1, favourite: true }])
+      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toEqual([
+        { mockupId: 1, favourite: true }
+      ])
     )
     expect(useLibraryStore.getState().items[0]!.favourite).toBe(true)
   })
@@ -288,9 +301,7 @@ describe('LibraryPage stars', () => {
     act(() => useLibraryStore.getState().setSort('name'))
     await ready()
     await waitFor(() => expect(titles()).toEqual(['1', '2']))
-    expect(
-      within(cards()[0]!).getByRole('button', { name: /Star Mockup 1/ })
-    ).toBeTruthy()
+    expect(within(cards()[0]!).getByRole('button', { name: /Star Mockup 1/ })).toBeTruthy()
     // Leaving Starred drops it.
     rerender(<LibraryPage starredOnly={false} />)
     await ready()
@@ -307,7 +318,10 @@ describe('LibraryPage stars', () => {
         starred.find((i) => i.id === mockupId)!.favourite = favourite
         return { success: true, data: { favourite } }
       },
-      [IPC_CHANNELS.LIBRARY_LIST]: () => ({ success: true, data: { items: starred.filter((i) => i.favourite) } })
+      [IPC_CHANNELS.LIBRARY_LIST]: () => ({
+        success: true,
+        data: { items: starred.filter((i) => i.favourite) }
+      })
     })
     render(<LibraryPage starredOnly />)
     await ready()
@@ -316,14 +330,20 @@ describe('LibraryPage stars', () => {
     const undo = vi.mocked(undoToast).mock.calls[0]![1]
     await act(async () => undo())
     await waitFor(() =>
-      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE).at(-1)).toEqual({ mockupId: 1, favourite: true })
+      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE).at(-1)).toEqual({
+        mockupId: 1,
+        favourite: true
+      })
     )
     expect(useLibraryStore.getState().items[0]!.favourite).toBe(true)
   })
 
   it('a failed star puts it back and says so', async () => {
     setupApi([item(1)], {
-      [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: () => ({ success: false, error: { code: 'X', message: 'no' } })
+      [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: () => ({
+        success: false,
+        error: { code: 'X', message: 'no' }
+      })
     })
     render(<LibraryPage />)
     await ready()
@@ -371,7 +391,9 @@ describe('LibraryPage detail', () => {
     render(<LibraryPage />)
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: 'Open in Photoshop' }))
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toEqual([{ mockupId: 4 }]))
+    await waitFor(() =>
+      expect(api.calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toEqual([{ mockupId: 4 }])
+    )
   })
 
   it('shows Open in Photoshop and Edit details along the cover on hover; Edit details opens Detail', async () => {
