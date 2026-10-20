@@ -36,6 +36,16 @@ describe('MockupCard', () => {
       expect(screen.queryByRole('button', { name: /zoom|preview/i })).toBeNull()
     })
 
+    it('shows both hover buttons at the same, smaller size', () => {
+      render(<MockupCard />)
+      const open = screen.getByRole('button', { name: 'Open in Photoshop' })
+      const edit = screen.getByRole('button', { name: 'Edit details' })
+      for (const button of [open, edit]) {
+        expect(button.className).toContain('py-1 ')
+        expect(button.className).not.toContain('py-1.5')
+      }
+    })
+
     it('is neutral by default: no +N badge and not starred', () => {
       render(<MockupCard />)
       expect(screen.queryByText(/^\+/)).toBeNull()

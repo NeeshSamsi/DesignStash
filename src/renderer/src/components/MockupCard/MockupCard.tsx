@@ -170,7 +170,7 @@ export function MockupCard({
         {interactive && variant === 'library' && (
           <HoverActions>
             <Button
-              size="sm"
+              size="xs"
               label="Open in Photoshop"
               showIconStart
               iconStart={LinkSquare02Icon}
