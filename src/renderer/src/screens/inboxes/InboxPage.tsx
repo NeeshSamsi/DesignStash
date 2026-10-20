@@ -1,13 +1,10 @@
 import { useMemo, useState } from 'react'
-import { FileAddIcon, FolderAddIcon, Layers01Icon } from '@hugeicons/core-free-icons'
+import { FileAddIcon, Layers01Icon } from '@hugeicons/core-free-icons'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem, InboxStage } from '@shared/inbox'
 import { ActionBar } from '@renderer/components/ActionBar'
-import { AddMockupCard } from '@renderer/components/AddMockupCard'
 import { Banner } from '@renderer/components/Banner'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
-import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
-import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { MockupCard } from '@renderer/components/MockupCard'
@@ -25,6 +22,7 @@ import {
 import { HeaderActions, useHeaderStatus } from '@renderer/lib/page-header-slot'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast } from '@renderer/stores/toastStore'
+import { AddCardMenu } from '../gather/AddCardMenu'
 import { useInboxList } from './useInboxList'
 import { coverUrl } from '@shared/cover-url'
 import { coverDisplay } from '@shared/library'
@@ -90,28 +88,8 @@ export default function InboxPage({
   }
 
   // Both inboxes start with the Add card, as in Figma I1.1 and I2.1.
-  const addCard = (
-    <DropdownMenu
-      align="start"
-      trigger={<AddMockupCard />}
-      items={
-        <>
-          <DropdownMenuItem
-            label="Add files…"
-            icon={FileAddIcon}
-            shortcut="⌘O"
-            {...(onAddFiles ? { onSelect: onAddFiles } : { disabled: true })}
-          />
-          <DropdownMenuItem
-            label="Add folder…"
-            icon={FolderAddIcon}
-            shortcut="⇧⌘O"
-            {...(onAddFolder ? { onSelect: onAddFolder } : { disabled: true })}
-          />
-        </>
-      }
-    />
-  )
+  const addCard = <AddCardMenu onAddFiles={onAddFiles} onAddFolder={onAddFolder} />
+
   const tossText = tossing ? tossCopy(stage, tossing) : null
 
   const line = toSortPage ? sniffingLine(aiTotals(items ?? [], pushedTotals)) : undefined
@@ -183,6 +161,7 @@ export default function InboxPage({
               mockupId={key}
               variant="pending-review"
               title={item.title}
+              titleIsFileName={toSortPage}
               {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
               variantCount={item.variantCount}
               showStatus={badge !== undefined}
