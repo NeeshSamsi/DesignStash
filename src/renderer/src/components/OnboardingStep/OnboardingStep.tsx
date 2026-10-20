@@ -17,6 +17,8 @@ export interface OnboardingStepProps
   primaryLabel?: string
   /** The primary's label while `busy`, e.g. "Checking…" or "Starting download…". */
   busyLabel?: string
+  /** Standard only. Leaves the primary out when the page's own buttons are the answer (privacy). */
+  hidePrimary?: boolean
   /** The primary stays off until the page has what it needs (a usable folder). */
   primaryDisabled?: boolean
   /** Standard only. The quiet button next to the primary. */
@@ -40,6 +42,7 @@ export function OnboardingStep({
   primaryLabel,
   busyLabel = 'Checking…',
   primaryDisabled = false,
+  hidePrimary = false,
   skipLabel = 'Skip for now',
   onBack,
   onSkip,
@@ -105,16 +108,18 @@ export function OnboardingStep({
             {!welcome && onSkip && (
               <Button variant="ghost" size="sm" label={skipLabel} onClick={onSkip} />
             )}
-            <Button
-              variant="primary"
-              size={welcome ? 'base' : 'sm'}
-              label={busy ? busyLabel : label}
-              loading={busy}
-              disabled={busy || primaryDisabled}
-              showIconEnd={welcome && !busy}
-              iconEnd={ArrowRight01Icon}
-              onClick={onPrimary}
-            />
+            {!hidePrimary && (
+              <Button
+                variant="primary"
+                size={welcome ? 'base' : 'sm'}
+                label={busy ? busyLabel : label}
+                loading={busy}
+                disabled={busy || primaryDisabled}
+                showIconEnd={welcome && !busy}
+                iconEnd={ArrowRight01Icon}
+                onClick={onPrimary}
+              />
+            )}
           </div>
         </div>
       )}

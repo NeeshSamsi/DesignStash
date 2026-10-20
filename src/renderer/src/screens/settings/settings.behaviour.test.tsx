@@ -684,7 +684,8 @@ describe('Settings · Privacy', () => {
     expect(toggle.getAttribute('aria-checked')).toBe('true')
     expect(screen.getByText('What we collect')).not.toBeNull()
     fireEvent.click(toggle)
-    expect(screen.queryByText('What we collect')).toBeNull()
+    // What is collected stays on show, switch on or off.
+    expect(screen.getByText('What we collect')).not.toBeNull()
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.TELEMETRY_SET_CONSENT, { enabled: false })
     )
@@ -695,12 +696,13 @@ describe('Settings · Privacy', () => {
     expect(screen.getByText('What we never collect')).not.toBeNull()
   })
 
-  it('shows the lists collapsed when consent is off', async () => {
+  it('shows what is collected even when consent is off', async () => {
     setup({ [IPC_CHANNELS.TELEMETRY_GET_CONSENT]: () => ok({ enabled: false }) })
     open()
     goto('Privacy')
     expect((await screen.findByRole('switch')).getAttribute('aria-checked')).toBe('false')
-    expect(screen.queryByText('What we collect')).toBeNull()
+    expect(screen.getByText('What we collect')).not.toBeNull()
+    expect(screen.getByText('What we never collect')).not.toBeNull()
   })
 })
 

@@ -367,24 +367,33 @@ describe('AI setup', () => {
 })
 
 describe('privacy and finish', () => {
-  it('shows what is and is not collected, and No thanks records the choice', async () => {
+  it('shows what is and is not collected, and Don’t share records the choice', async () => {
     const api = installApi(base())
     mount('privacy')
     expect(screen.getByText('What we never collect')).toBeTruthy()
-    fireEvent.click(btn('No thanks'))
+    fireEvent.click(btn('Don’t share'))
     await waitFor(() =>
       expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: false }])
     )
     expect(await screen.findByRole('heading', { name: 'Your stash is ready!' })).toBeTruthy()
   })
 
-  it('Keep it on records the other choice', async () => {
+  it('Share usage data records the other choice', async () => {
     const api = installApi(base())
     mount('privacy')
-    fireEvent.click(btn('Keep it on'))
+    fireEvent.click(btn('Share usage data'))
     await waitFor(() =>
       expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: true }])
     )
+  })
+
+  it('the privacy step has the standard footer with Back, and no primary of its own', () => {
+    installApi(base())
+    mount('privacy')
+    expect(btn('Back')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
+    fireEvent.click(btn('Back'))
+    expect(screen.getByRole('heading', { name: 'Set up on-device AI' })).toBeTruthy()
   })
 
   it('Open My Stash finishes onboarding', () => {
@@ -430,7 +439,7 @@ describe('privacy and finish', () => {
     fireEvent.click(btn('Continue'))
     await screen.findByRole('heading', { name: 'Set up on-device AI' })
     fireEvent.click(await screen.findByRole('button', { name: 'Skip AI' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'No thanks' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Don’t share' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Open My Stash' }))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.APP_RELAUNCH)).toHaveLength(1))
     expect(onComplete).not.toHaveBeenCalled()

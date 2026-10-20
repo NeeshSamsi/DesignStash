@@ -24,18 +24,18 @@ describe('ConsentPanel', () => {
       expect(screen.getByText('Anything that identifies you')).not.toBeNull()
     })
 
-    it('offers No thanks (secondary) and Keep it on (the one primary)', () => {
+    it('offers two neutral answers of equal weight', () => {
       const onDecline = vi.fn()
       const onAccept = vi.fn()
       render(<ConsentPanel onDecline={onDecline} onAccept={onAccept} />)
-      fireEvent.click(screen.getByRole('button', { name: 'No thanks' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Keep it on' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Don’t share' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Share usage data' }))
       expect(onDecline).toHaveBeenCalledOnce()
       expect(onAccept).toHaveBeenCalledOnce()
-      expect(screen.getByRole('button', { name: 'Keep it on' }).className).toContain('bg-primary')
-      expect(screen.getByRole('button', { name: 'No thanks' }).className).not.toContain(
-        'bg-primary'
-      )
+      const share = screen.getByRole('button', { name: 'Share usage data' })
+      const decline = screen.getByRole('button', { name: 'Don’t share' })
+      expect(share.className).not.toContain('bg-primary')
+      expect(decline.className).toBe(share.className)
     })
 
     it('says it is anonymous and can be changed', () => {
@@ -54,16 +54,18 @@ describe('ConsentPanel', () => {
       expect(toggle.getAttribute('aria-checked')).toBe('true')
       expect(ticks(container)).toHaveLength(3)
       expect(crosses(container)).toHaveLength(3)
-      expect(screen.queryByRole('button', { name: 'Keep it on' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Share usage data' })).toBeNull()
     })
 
-    it('collapses the lists when it is off', () => {
+    it('still shows what is collected when it is off', () => {
       const { container } = render(<ConsentPanel mode="accordion" enabled={false} />)
       expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('false')
-      expect(screen.queryByText('What we collect')).toBeNull()
-      expect(ticks(container)).toHaveLength(0)
+      expect(screen.getByText('What we collect')).not.toBeNull()
+      expect(screen.getByText('What we never collect')).not.toBeNull()
+      expect(ticks(container)).toHaveLength(3)
+      expect(screen.getByText(/Sharing is off, so none of this is sent/)).not.toBeNull()
       expect(container.querySelector('[data-ds="ConsentPanel"]')?.getAttribute('data-state')).toBe(
-        'closed'
+        'off'
       )
     })
 

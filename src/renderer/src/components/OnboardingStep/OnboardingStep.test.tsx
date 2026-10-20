@@ -60,3 +60,11 @@ describe('OnboardingStep primaryDisabled', () => {
     )
   })
 })
+
+describe('OnboardingStep hidePrimary', () => {
+  it('keeps the footer and Back but leaves the primary to the page', () => {
+    render(<OnboardingStep variant="standard" hidePrimary onBack={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Back' })).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
+  })
+})
