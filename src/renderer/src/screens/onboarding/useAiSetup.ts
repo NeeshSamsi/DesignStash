@@ -40,7 +40,6 @@ export function useAiSetup(): AiSetup {
   useEffect(() => {
     if (!loaded || chosen.current) return
     chosen.current = true
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedId(event?.modelId ?? defaultSelection(models, hardware))
     setPartial(event ? null : partialDownload(models))
   }, [loaded, models, hardware, event])

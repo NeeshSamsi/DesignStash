@@ -25,7 +25,6 @@ export function AiModelPane() {
   useEffect(() => {
     if (!loaded || started.current) return
     started.current = true
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOn(models.some((m) => m.active))
   }, [loaded, models])
 
