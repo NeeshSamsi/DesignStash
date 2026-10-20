@@ -69,6 +69,13 @@
   --duration-card-out: 400ms;
 }
 
+/* Continuous (squircle) corners where the engine supports corner-shape; a plain radius elsewhere. */
+@utility corner-squircle {
+  @supports (corner-shape: superellipse(2)) {
+    corner-shape: superellipse(2);
+  }
+}
+
 /* shadcn/ui token mapping (radix-rhea style). Values come from shadcn-bridge.css below. */
 @theme inline {
   --color-sidebar-ring: var(--sidebar-ring);

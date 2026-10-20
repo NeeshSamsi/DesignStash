@@ -120,12 +120,42 @@ describe('MockupCard', () => {
   })
 
   describe('compact', () => {
-    it('has icon-only Open in Photoshop and Preview', () => {
-      const onPreview = vi.fn()
-      render(<MockupCard variant="compact" onPreview={onPreview} />)
-      fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
-      expect(onPreview).toHaveBeenCalledOnce()
-      expect(screen.getByRole('button', { name: 'Open in Photoshop' })).not.toBeNull()
+    it('has an icon-only Open in Photoshop and no Preview', () => {
+      const onOpenInPhotoshop = vi.fn()
+      render(<MockupCard variant="compact" onOpenInPhotoshop={onOpenInPhotoshop} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Open in Photoshop' }))
+      expect(onOpenInPhotoshop).toHaveBeenCalledOnce()
+      expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull()
+    })
+  })
+
+  it('keeps Preview off the library hover too', () => {
+    render(<MockupCard />)
+    expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Edit details' })).not.toBeNull()
+    expect(screen.getByRole('button', { name: /More actions/ })).not.toBeNull()
+  })
+
+  describe('pile look', () => {
+    it('stacks two card edges under a card with variants', () => {
+      const { container } = render(<MockupCard variantCount={3} />)
+      expect(container.querySelectorAll('[data-pile-edge]')).toHaveLength(2)
+      expect(container.querySelector('[data-ds="MockupCard"]')!.className).toContain('mb-3')
+    })
+
+    it('leaves a single flat', () => {
+      const { container } = render(<MockupCard />)
+      expect(container.querySelectorAll('[data-pile-edge]')).toHaveLength(0)
+      expect(container.querySelector('[data-ds="MockupCard"]')!.className).not.toContain('mb-3')
+    })
+
+    it('uses the card spring, the 4:3 cover and the card radii', () => {
+      const { container } = render(<MockupCard />)
+      const html = container.innerHTML
+      expect(html).toContain('ease-card-in')
+      expect(html).toContain('ease-card-out')
+      expect(html).toContain('aspect-card')
+      expect(html).toContain('rounded-card-cover')
     })
   })
 
