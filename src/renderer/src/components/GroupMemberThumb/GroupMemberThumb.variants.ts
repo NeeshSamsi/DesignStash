@@ -9,7 +9,7 @@ export const groupMemberThumbVariants = cva(
         idle: 'border border-subtle bg-surface-3 hover:border-strong',
         selected: 'border-2 border-primary bg-surface-3',
         // In hand while dragging: primary border and a lifted shadow.
-        lifted: 'border border-primary bg-surface-3 shadow-xl',
+        lifted: 'border border-primary bg-surface-3 shadow-lifted',
         'left-behind': 'border border-dashed border-strong',
         'drop-ghost': 'h-31 border border-dashed border-primary bg-primary-weak',
         'pile-target': 'border-2 border-primary bg-surface-3'

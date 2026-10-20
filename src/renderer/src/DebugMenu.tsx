@@ -63,7 +63,7 @@ export default function DebugMenu() {
       )}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
         {open && (
-          <div className="flex w-80 flex-col gap-3 rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-xl">
+          <div className="flex w-80 flex-col gap-3 rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-raised">
             <Button
               variant="secondary"
               className="w-full"
@@ -108,7 +108,7 @@ export default function DebugMenu() {
         <Button
           variant="secondary"
           size="sm"
-          className="rounded-full shadow-lg"
+          className="rounded-full shadow-lifted"
           onClick={() => setOpen((v) => !v)}
         >
           {open ? 'Close Debug' : '🐞 Debug'}

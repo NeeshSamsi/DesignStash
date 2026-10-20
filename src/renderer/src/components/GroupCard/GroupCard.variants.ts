@@ -21,7 +21,7 @@ export const groupCardVariants = cva('relative flex w-full flex-col rounded-xl @
     {
       variant: 'group',
       state: 'lifted',
-      className: 'border border-primary bg-surface-2 shadow-xl'
+      className: 'border border-primary bg-surface-2 shadow-lifted'
     },
     {
       variant: 'group',

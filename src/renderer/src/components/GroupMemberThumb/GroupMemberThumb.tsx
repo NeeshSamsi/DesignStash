@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, MouseEvent } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { MoreHorizontalIcon } from '@hugeicons/core-free-icons'
@@ -87,7 +88,7 @@ export function GroupMemberThumb({
                     'opacity-0 group-hover/thumb:opacity-100 focus-visible:opacity-100'
                 )}
               >
-                <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={1.5} />
+                <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={ICON_STROKE} />
               </button>
             )}
           </div>

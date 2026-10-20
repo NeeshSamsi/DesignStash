@@ -55,6 +55,6 @@ describe('GroupMemberThumb', () => {
 
   it('lifts with a shadow while in hand', () => {
     const { container } = render(<GroupMemberThumb state="lifted" />)
-    expect(root(container).className).toContain('shadow-xl')
+    expect(root(container).className).toContain('shadow-lifted')
   })
 })

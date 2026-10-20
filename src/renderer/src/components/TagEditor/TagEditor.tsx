@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import {
   useCallback,
   useEffect,
@@ -477,7 +478,7 @@ export function TagEditor({
             </PopoverAnchor>
             <PopoverContent
               size="default"
-              className="w-65 gap-0 bg-surface-3 p-1 shadow-lg"
+              className="w-65 gap-0 bg-surface-3 p-1 shadow-raised"
               onOpenAutoFocus={(event) => event.preventDefault()}
               onInteractOutside={(event) => event.preventDefault()}
               onEscapeKeyDown={(event) => event.preventDefault()}
@@ -505,8 +506,8 @@ export function TagEditor({
                           >
                             <HugeiconsIcon
                               icon={PlusSignIcon}
-                              strokeWidth={1.5}
-                              className="size-3"
+                              strokeWidth={ICON_STROKE}
+                              className="size-icon-2xs"
                             />
                             {category.categoryLabel}
                           </CommandItem>
@@ -516,7 +517,11 @@ export function TagEditor({
                           onSelect={activate}
                           className="data-selected:bg-surface-4"
                         >
-                          <HugeiconsIcon icon={PlusSignIcon} strokeWidth={1.5} className="size-3" />
+                          <HugeiconsIcon
+                            icon={PlusSignIcon}
+                            strokeWidth={ICON_STROKE}
+                            className="size-icon-2xs"
+                          />
                           New category…
                         </CommandItem>
                         {pending && (
