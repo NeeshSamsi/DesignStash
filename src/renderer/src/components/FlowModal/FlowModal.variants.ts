@@ -1,16 +1,14 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=374-5650
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const flowModalVariants = cva('', {
-  variants: {
-    step: {
-      sort: '',
-      'look-over': ''
-    }
-  },
-  defaultVariants: { step: 'sort' }
-})
+// Figma FlowModal 374:5650: 1352×822 (in a 1512×982 window), radius 2xl, a header of named steps and a padded body.
+export const flowModalVariants = cva(
+  'flex h-flow-modal w-flow-modal max-h-full max-w-full flex-col overflow-clip rounded-2xl border border-base bg-surface-2 text-foreground',
+  {
+    variants: { step: { sort: '', 'look-over': '' } },
+    defaultVariants: { step: 'sort' }
+  }
+)
+
+export const FLOW_HEADER = 'flex items-center gap-4 border-b border-subtle px-6 py-3'
+export const FLOW_BODY = 'flex min-h-0 flex-1 flex-col px-8 pt-6 pb-8'
+export const FLOW_TRACK = 'relative h-1 min-w-0 flex-1 overflow-clip rounded-full bg-surface-4'

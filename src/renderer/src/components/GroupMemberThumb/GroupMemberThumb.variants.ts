@@ -1,20 +1,37 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-2979
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const groupMemberThumbVariants = cva('', {
-  variants: {
-    state: {
-      idle: '',
-      selected: '',
-      lifted: '',
-      'left-behind': '',
-      'drop-ghost': '',
-      'pile-target': ''
-    }
-  },
-  defaultVariants: { state: 'idle' }
-})
+// Figma GroupMemberThumb 220:2979: a 128px tile, cover on top (92px), filename in a caption bar. Hover is CSS.
+export const groupMemberThumbVariants = cva(
+  'group/thumb relative w-32 overflow-clip rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  {
+    variants: {
+      state: {
+        idle: 'border border-subtle bg-surface-3 hover:border-strong',
+        selected: 'border-2 border-primary bg-surface-3',
+        // In hand while dragging: primary border and a lifted shadow.
+        lifted: 'border border-primary bg-surface-3 shadow-xl',
+        'left-behind': 'border border-dashed border-strong',
+        'drop-ghost': 'h-31 border border-dashed border-primary bg-primary-weak',
+        'pile-target': 'border-2 border-primary bg-surface-3'
+      }
+    },
+    defaultVariants: { state: 'idle' }
+  }
+)
+
+export const groupMemberCaptionVariants = cva(
+  'flex min-h-8 items-center px-2 py-1.5 type-caption-xs-regular',
+  {
+    variants: {
+      state: {
+        idle: 'text-secondary group-hover/thumb:text-foreground',
+        selected: 'bg-primary text-on-primary',
+        lifted: 'text-foreground',
+        'left-behind': 'opacity-0',
+        'drop-ghost': '',
+        'pile-target': 'text-foreground'
+      }
+    },
+    defaultVariants: { state: 'idle' }
+  }
+)
