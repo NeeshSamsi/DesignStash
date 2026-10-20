@@ -46,12 +46,12 @@ describe('IPC contract structure', () => {
   })
 
   it('keeps push channels out of the invoke types', () => {
-    const invoke = (_channel: InvokeChannel) => undefined
+    const invoke = (channel: InvokeChannel) => channel
     invoke(IPC_CHANNELS.TAG_TREE)
     // @ts-expect-error a push channel cannot be invoked
     invoke(IPC_CHANNELS.AI_STATUS)
 
-    const push = (_channel: PushChannel) => undefined
+    const push = (channel: PushChannel) => channel
     push(IPC_CHANNELS.AI_STATUS)
     // @ts-expect-error an invoke channel cannot be pushed
     push(IPC_CHANNELS.TAG_TREE)
