@@ -49,10 +49,12 @@ import { useUiStore } from '@renderer/stores/uiStore'
 import { CardMenu, type MenuTarget } from './CardMenu'
 import { LibraryCard } from './LibraryCard'
 import { LibraryLightbox } from './LibraryLightbox'
+import { WaitingToSortStrip } from './WaitingToSortStrip'
 import { useLibraryActions } from './useLibraryActions'
 import { useLibraryData } from './useLibraryData'
 import { useLibraryPiles } from './useLibraryPiles'
 import { coverUrl } from '@shared/cover-url'
+import type { InboxItem } from '@shared/inbox'
 
 export interface LibraryPageProps {
   /** The Starred page. Defaults to the current view in the UI store. */
@@ -60,6 +62,8 @@ export interface LibraryPageProps {
   /** The import entry points behind the Add card and the empty-space menu. */
   onAddFiles?: () => void
   onAddFolder?: () => void
+  /** Sort now on the waiting strip: opens Sort on what is in To sort. */
+  onSortWaiting?: (items: InboxItem[]) => void
 }
 
 const cardTags = (item: LibraryItem) =>
@@ -81,7 +85,8 @@ function cardState(item: LibraryItem, selected: boolean): MockupCardState {
 export default function LibraryPage({
   starredOnly: starredProp,
   onAddFiles,
-  onAddFolder
+  onAddFolder,
+  onSortWaiting
 }: LibraryPageProps) {
   const view = useUiStore((s) => s.view)
   const openSettings = useUiStore((s) => s.openSettings)
@@ -348,6 +353,7 @@ export default function LibraryPage({
 
   return (
     <div className="flex min-h-full flex-col gap-4">
+      {onSortWaiting && showAdd && <WaitingToSortStrip onSort={onSortWaiting} />}
       <LibraryToolbar
         stats={statsText}
         chips={chips}

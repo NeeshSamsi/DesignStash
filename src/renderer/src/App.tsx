@@ -122,6 +122,7 @@ function AppMain() {
             starredOnly={view === 'starred'}
             onAddFiles={() => void gather.addFiles()}
             onAddFolder={() => void gather.addFolder()}
+            onSortWaiting={openSort}
           />
         )}
         {addFlow === null && view === 'to-sort' && (

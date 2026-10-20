@@ -98,6 +98,20 @@ for (const { width, height } of SIZES) {
     await shot('to-sort')
     await noSidewaysScroll(window, null, 'To sort')
 
+    await test.step('Waiting strip in My Stash', async () => {
+      await window.getByRole('button', { name: /^All/ }).click()
+      const waiting = window.locator('[data-ds="WaitingToSortStrip"]')
+      await expect(waiting).toBeVisible()
+      await expect(waiting.getByText('4 mockups waiting to be sorted')).toBeVisible()
+      await inside(window, waiting.getByRole('button', { name: 'Sort now' }), 'Sort now')
+      const title = (await window.locator('[data-ds="PageHeader"]').boundingBox())!
+      expect((await waiting.boundingBox())!.x, 'the strip lines up with the title').toBe(title.x)
+      await shot('my-stash-waiting')
+      await waiting.getByRole('button', { name: 'Later' }).click()
+      await expect(waiting).toHaveCount(0)
+      await window.getByRole('button', { name: /^To sort/ }).click()
+    })
+
     await test.step('Sort', async () => {
       await window.getByRole('button', { name: 'Sort', exact: true }).click()
       const dialog = window.getByRole('dialog')
