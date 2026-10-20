@@ -194,11 +194,11 @@ describe('mockup detail', () => {
     await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
 
     const res = await call<{
-      item: { id: number; topId: number | null; variantCount: number }
+      item: { id: number; pile: { memberCount: number } | null }
       variants: { id: number; isTop: boolean }[]
     }>(IPC_CHANNELS.MOCKUP_DETAIL, { mockupId: a })
 
-    expect(res.success && res.data.item).toMatchObject({ id: a, topId: a, variantCount: 1 })
+    expect(res.success && res.data.item).toMatchObject({ id: a, pile: { memberCount: 2 } })
     expect(res.success && res.data.variants.map((v) => [v.id, v.isTop])).toEqual([
       [a, true],
       [b, false]

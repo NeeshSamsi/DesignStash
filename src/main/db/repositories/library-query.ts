@@ -17,13 +17,10 @@ export interface LibraryRow {
   coverSource: Mockup['coverSource']
   /** The cover file is gone from disk (the card offers Replace cover). */
   coverMissing: boolean
-  isGroup: boolean
   favourite: boolean
   createdAt: string
-  /** Other mockups in the pile besides the top; 0 for a mockup on its own. */
-  variantCount: number
-  /** The pile's top mockup (the leader row itself); null for a mockup on its own. */
-  topId: number | null
+  /** Set when this row is a pile's top: `memberCount` counts the top too. Null for a mockup on its own. */
+  pile: { memberCount: number } | null
   tags: { id: number; label: string; categoryLabel: string }[]
 }
 
@@ -158,11 +155,10 @@ export class LibraryQueryRepository {
       coverPath: m.coverPath,
       coverSource: m.coverSource,
       coverMissing: !this.fileExists(m.coverPath),
-      isGroup: m.isGroup,
       favourite: m.favourite,
       createdAt: m.createdAt,
-      variantCount: lookups.members.get(m.id)?.length ?? 0,
-      topId: pileRole(m) === 'top' ? m.id : null,
+      pile:
+        pileRole(m) === 'top' ? { memberCount: (lookups.members.get(m.id)?.length ?? 0) + 1 } : null,
       tags: (lookups.tags.get(m.id) ?? []).map(({ id, label, categoryLabel }) => ({
         id,
         label,

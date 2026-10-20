@@ -59,7 +59,7 @@ describe('list and stats', () => {
 
     expect(items.map((i) => i.id)).toEqual([single.id, top.id])
     expect(items[0]).toMatchObject({ trashedAt: '2026-02-01T10:00:00.000Z', sizeBytes: 1000 })
-    expect(items[1]).toMatchObject({ isGroup: true, variantCount: 1, sizeBytes: 2000 })
+    expect(items[1]).toMatchObject({ pile: { memberCount: 2 }, sizeBytes: 2000 })
     expect(stat).toHaveBeenCalledWith(`${ROOT}/mockups/pile-side/original.psd`)
     expect(repo.getMockup(side.id)?.sizeBytes).toBe(1000)
   })

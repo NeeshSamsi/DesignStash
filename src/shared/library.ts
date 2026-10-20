@@ -18,13 +18,10 @@ export const LibraryItemSchema = z.object({
   coverSource: CoverSourceSchema,
   /** The cover file is gone from disk. */
   coverMissing: z.boolean(),
-  isGroup: z.boolean(),
   favourite: z.boolean(),
   createdAt: z.string(),
-  /** Other mockups in the pile besides the top; 0 for a mockup on its own. */
-  variantCount: z.number(),
-  /** The pile's top mockup; null for a mockup on its own. */
-  topId: z.number().nullable(),
+  /** Set when this row is a pile's top: `memberCount` counts the top too. Null for a mockup on its own. */
+  pile: z.object({ memberCount: z.number() }).nullable(),
   tags: z.array(LibraryTagSchema)
 })
 export type LibraryItem = z.infer<typeof LibraryItemSchema>

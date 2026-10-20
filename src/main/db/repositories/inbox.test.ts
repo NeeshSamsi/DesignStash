@@ -34,8 +34,7 @@ describe('getInboxList', () => {
       stage: 'to_sort',
       aiStatus: 'off',
       sizeBytes: null,
-      isGroup: false,
-      variantCount: 0,
+      pile: null,
       coverMissing: true
     })
   })
@@ -54,7 +53,7 @@ describe('getInboxList', () => {
     const rows = repo.getInboxList('to_stash')
 
     expect(rows.map((r) => r.id)).toEqual([d.id, a.id, c.id])
-    expect(rows[1]).toMatchObject({ isGroup: true, variantCount: 1, topId: a.id })
+    expect(rows[1]).toMatchObject({ pile: { memberCount: 2 } })
   })
 
   it('leaves out anything in Trash', () => {

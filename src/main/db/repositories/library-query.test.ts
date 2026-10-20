@@ -70,7 +70,7 @@ describe('getLibrary', () => {
     expect(repo.getLibraryStats().total).toBe(2)
   })
 
-  it('excludes group members and returns leader with correct variantCount', () => {
+  it('excludes group members and returns leader with the size of the pile', () => {
     const leader = repo.createMockup(
       approvedMockup({ title: 'Leader', libraryPath: '/lib/leader.psd', isGroup: true })
     )
@@ -84,7 +84,7 @@ describe('getLibrary', () => {
     const result = repo.getLibrary({ sort: 'date' })
     expect(result).toHaveLength(1)
     expect(result[0]!.id).toBe(leader.id)
-    expect(result[0]!.variantCount).toBe(2)
+    expect(result[0]!.pile).toEqual({ memberCount: 3 })
   })
 
   it('does not float favourites to the top (Starred has its own view)', () => {
@@ -121,7 +121,7 @@ describe('getLibrary', () => {
     expect(repo.getLibrary({ starredOnly: false, sort: 'date' })).toHaveLength(3)
   })
 
-  it('returns createdAt, coverSource, coverMissing and topId on every item', () => {
+  it('returns createdAt, coverSource, coverMissing and pile on every item', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ds-lib-'))
     const coverPath = join(dir, 'cover.webp')
     writeFileSync(coverPath, 'x')
@@ -141,12 +141,11 @@ describe('getLibrary', () => {
       expect(byId.get(present.id)).toMatchObject({
         coverSource: 'sidecar',
         coverMissing: false,
-        topId: null,
-        variantCount: 0
+        pile: null
       })
       expect(typeof byId.get(present.id)!.createdAt).toBe('string')
       expect(byId.get(missing.id)).toMatchObject({ coverSource: 'embedded', coverMissing: true })
-      expect(byId.get(leader.id)).toMatchObject({ topId: leader.id, variantCount: 1 })
+      expect(byId.get(leader.id)).toMatchObject({ pile: { memberCount: 2 } })
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

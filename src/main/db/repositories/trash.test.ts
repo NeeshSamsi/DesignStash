@@ -69,7 +69,7 @@ describe('getTrashEntries', () => {
     expect(entries.map((e) => e.row.id)).toEqual([single.id, top.id])
     expect(entries[0]).toMatchObject({ trashedAt: '2026-02-01T10:00:00.000Z', ids: [single.id] })
     expect(entries[1]).toMatchObject({ ids: [top.id, side.id] })
-    expect(entries[1]!.row).toMatchObject({ isGroup: true, variantCount: 1 })
+    expect(entries[1]!.row).toMatchObject({ pile: { memberCount: 2 } })
   })
 })
 

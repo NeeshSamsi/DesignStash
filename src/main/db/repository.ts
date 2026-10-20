@@ -37,7 +37,7 @@ export class Repository {
     this.piles = new PileRepository(db)
     this.tags = new TagRepository(db, this.mockups, this.search)
     this.library = new LibraryQueryRepository(db, this.mockups, this.piles, this.search)
-    this.trash = new TrashRepository(db, this.mockups, this.search, this.library, this.piles)
+    this.trash = new TrashRepository(db, this.mockups, this.search, this.library)
     this.inbox = new InboxRepository(db, this.library, this.piles)
     this.sortBoards = new SortBoardRepository(db)
     this.drafts = new DraftRepository(db)

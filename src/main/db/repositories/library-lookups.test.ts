@@ -49,11 +49,9 @@ function referenceRows(ids: number[]): LibraryRow[] {
       coverPath: m.coverPath,
       coverSource: m.coverSource,
       coverMissing: true,
-      isGroup: m.isGroup,
       favourite: m.favourite,
       createdAt: m.createdAt,
-      variantCount: repo.getMockupsByGroupId(m.id).length,
-      topId: m.isGroup ? m.id : null,
+      pile: m.isGroup ? { memberCount: repo.getMockupsByGroupId(m.id).length + 1 } : null,
       tags: repo.getTagsForMockup(m.id).map((t) => ({
         id: t.id,
         label: t.label,
@@ -64,7 +62,7 @@ function referenceRows(ids: number[]): LibraryRow[] {
 }
 
 describe('batched row lookups', () => {
-  it('builds the same rows as the per-row queries, tag order and variantCount included', () => {
+  it('builds the same rows as the per-row queries, tag order and pile size included', () => {
     const ids = seed()
     expect(repo.library.toRows(ids.map((id) => repo.getMockup(id)!))).toEqual(referenceRows(ids))
   })
