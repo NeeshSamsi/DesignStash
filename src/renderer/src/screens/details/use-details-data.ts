@@ -89,21 +89,6 @@ export function useDetailsData(id: number) {
     }
   }, [id, loadKey])
 
-  /** Something changed elsewhere (a star in the grid, a pile edit): show the fresh state, keep what is typed. */
-  const seen = useRef({ revision, gridItems })
-  useEffect(() => {
-    const unchanged = seen.current.revision === revision && seen.current.gridItems === gridItems
-    seen.current = { revision, gridItems }
-    if (unchanged || status !== 'ready') return
-    let live = true
-    void refreshDetail(id, { keepCoverUi: true }, () => live)
-    return () => {
-      live = false
-    }
-    // Only a change elsewhere reloads; the form is the person's until they save or cancel.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revision, gridItems])
-
   /**
    * Fetches the mockup again and shows it. The cover always asks for its file again, because a
    * reload is how a change made elsewhere (or a cancelled replace) becomes visible. The cover panel
@@ -123,6 +108,21 @@ export function useDetailsData(id: number) {
       setImageSize(undefined)
     }
   }
+
+  /** Something changed elsewhere (a star in the grid, a pile edit): show the fresh state, keep what is typed. */
+  const seen = useRef({ revision, gridItems })
+  useEffect(() => {
+    const unchanged = seen.current.revision === revision && seen.current.gridItems === gridItems
+    seen.current = { revision, gridItems }
+    if (unchanged || status !== 'ready') return
+    let live = true
+    void refreshDetail(id, { keepCoverUi: true }, () => live)
+    return () => {
+      live = false
+    }
+    // Only a change elsewhere reloads; the form is the person's until they save or cancel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revision, gridItems])
 
   const draft = draftOf(form)
   const dirty = status === 'ready' && isDirty(saved, draft)
