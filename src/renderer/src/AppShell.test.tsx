@@ -27,7 +27,6 @@ beforeEach(() => {
     appName: 'DesignStash',
     invoke: vi.fn(async () => ({ success: true, data: {} })),
     subscribe: vi.fn(() => () => {}),
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn((f) => `/path/${(f as File).name}`)
   } as unknown as typeof window.api
 })
