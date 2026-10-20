@@ -133,8 +133,17 @@ describe('resolving changes', () => {
     })
     expect(removed).toEqual({ success: true, data: { removed: 1 } })
     expect(ctx.repo.getMockup(gone.id)).toBeUndefined()
+    expect(pushed.at(-1)?.channel).toBe(IPC_CHANNELS.INBOX_COUNTS_CHANGED)
     const status = await call<StashCheckStatus>(IPC_CHANNELS.STASH_CHECK_STATUS)
     expect(status.success && status.data.lastRun).toMatchObject({ result: 'in-sync' })
+  })
+
+  it('Remove all pushes the counts too', async () => {
+    goneRow()
+    pushed.length = 0
+    const removed = await call(IPC_CHANNELS.INTEGRITY_REMOVE_ALL)
+    expect(removed).toMatchObject({ success: true, data: { removed: 1 } })
+    expect(pushed.at(-1)?.channel).toBe(IPC_CHANNELS.INBOX_COUNTS_CHANGED)
   })
 
   it('Relink opens the dialog in main and reports a cancel', async () => {

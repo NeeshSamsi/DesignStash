@@ -83,12 +83,18 @@ export function registerIntegrityHandlers(
     return recheck({ undone: true })
   })
 
+  /** Removed records change the sidebar counts. (Their queued suggestions need ids: see X2-1.) */
+  const removed = async (result: { removed: number }): Promise<{ removed: number }> => {
+    countsChanged(ctx)
+    return recheck(result)
+  }
+
   registerIpcHandler(IPC_CHANNELS.INTEGRITY_REMOVE, async (args) =>
-    recheck(await integrityService.remove(args.ids))
+    removed(await integrityService.remove(args.ids))
   )
 
   registerIpcHandler(IPC_CHANNELS.INTEGRITY_REMOVE_ALL, async () =>
-    recheck(await integrityService.removeAll())
+    removed(await integrityService.removeAll())
   )
 
   registerIpcHandler(IPC_CHANNELS.INTEGRITY_RELINK, async (args) =>
