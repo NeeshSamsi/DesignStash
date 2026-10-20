@@ -256,14 +256,20 @@ export function TagEditor({
   }
 
   const createTag = async (request: NewTagRequest, rest: string[]) => {
-    const made = onCreateTag
-      ? await onCreateTag(request)
-      : {
-          tagId: localId.current--,
-          label: request.label,
-          categoryId: request.categoryId ?? localId.current--,
-          categoryLabel: request.categoryLabel
-        }
+    let made: ApprovalTag
+    try {
+      made = onCreateTag
+        ? await onCreateTag(request)
+        : {
+            tagId: localId.current--,
+            label: request.label,
+            categoryId: request.categoryId ?? localId.current--,
+            categoryLabel: request.categoryLabel
+          }
+    } catch {
+      // The owner reports the failure (a toast). Text and popover stay so ↵ can retry.
+      return
+    }
     addTag(made)
     setPending(null)
     setNaming(null)

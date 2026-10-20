@@ -150,6 +150,29 @@ describe('TagEditor · inline add', () => {
     })
   })
 
+  it('keeps the input, the typed text and the popover when creating a tag fails', async () => {
+    const onCreateTag = vi.fn().mockRejectedValue(new Error('offline'))
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+    try {
+      render(<Harness onCreateTag={onCreateTag} />)
+      const input = openInput()
+      type(input, 'terracotta')
+      key(input, 'Enter')
+      await waitFor(() => expect(onCreateTag).toHaveBeenCalledTimes(1))
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(unhandled).not.toHaveBeenCalled()
+      expect(yourTags()).toHaveLength(3)
+      const open = screen.getByRole('textbox', { name: 'New tag' }) as HTMLInputElement
+      expect(open.value).toBe('terracotta')
+      expect(popover().getByText('No “terracotta” tag yet. Add it to…')).toBeTruthy()
+    } finally {
+      process.off('unhandledRejection', unhandled)
+    }
+  })
+
   it('marks the input invalid and highlights the existing chip for a duplicate tag', () => {
     const spy = vi.fn()
     render(<Harness onTagsSpy={spy} />)
