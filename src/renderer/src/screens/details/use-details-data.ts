@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApprovalTag } from '@shared/approval'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { MockupDetail } from '@shared/library'
 import type { TagTree } from '@shared/tags'
 import type { NewTagRequest, TagVocabularyCategory } from '@renderer/components/TagEditor'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
+import { useLibraryStore } from '@renderer/stores/libraryStore'
 import { toast } from '@renderer/stores/toastStore'
 import {
   draftOf,
@@ -56,6 +57,8 @@ export function useDetailsData(id: number) {
   const [coverVersion, setCoverVersion] = useState(0)
 
   const revision = useDetailEffects((s) => s.revision)
+  // The grid behind reloads after a pile is made or a mockup starred: show what it now holds.
+  const gridItems = useLibraryStore((s) => s.items)
 
   useEffect(() => {
     let live = true
@@ -79,8 +82,11 @@ export function useDetailsData(id: number) {
   }, [id, loadKey])
 
   /** Something changed elsewhere (a star in the grid, a pile edit): show the fresh state, keep what is typed. */
+  const seen = useRef({ revision, gridItems })
   useEffect(() => {
-    if (revision === 0 || status !== 'ready') return
+    const unchanged = seen.current.revision === revision && seen.current.gridItems === gridItems
+    seen.current = { revision, gridItems }
+    if (unchanged || status !== 'ready') return
     let live = true
     void fetchDetail(id).then((loaded) => {
       if (!live || !loaded) return
@@ -92,7 +98,7 @@ export function useDetailsData(id: number) {
     }
     // Only a change elsewhere reloads; the form is the person's until they save or cancel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revision])
+  }, [revision, gridItems])
 
   const draft = draftOf(form)
   const dirty = status === 'ready' && isDirty(saved, draft)

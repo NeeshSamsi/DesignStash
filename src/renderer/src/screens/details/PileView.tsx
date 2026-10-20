@@ -66,8 +66,8 @@ export function PileView({ data }: { data: Data }) {
             key={variant.id}
             variant="compact"
             title={variant.title}
-            tags={variant.isTop ? 'Top' : ''}
-            showTags={variant.isTop}
+            // A blank line keeps every card the same height.
+            tags={variant.isTop ? 'Top' : '\u00a0'}
             showFavourite={false}
             showVariants={false}
             state={variant.coverMissing ? 'cover-missing' : 'default'}
