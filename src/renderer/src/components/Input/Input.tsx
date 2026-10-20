@@ -65,7 +65,7 @@ export function Input({ className, onChange, onClear, shortcut = '⌘K', ...rest
           aria-label="Clear search"
           disabled={props.disabled}
           onClick={clear}
-          className="rounded-sm text-tertiary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-sm text-tertiary outline-none focus-visible:focus-ring"
         >
           <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.5} className="size-4" />
         </button>

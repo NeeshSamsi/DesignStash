@@ -60,7 +60,7 @@ function TabsList({
 }
 
 const tabsTriggerVariants = cva(
-  "group/tabs-trigger relative inline-flex items-center justify-center whitespace-nowrap type-body-sm-medium text-tertiary transition-colors outline-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 data-active:text-foreground",
+  "group/tabs-trigger relative inline-flex items-center justify-center whitespace-nowrap type-body-sm-medium text-tertiary transition-colors outline-none hover:text-foreground focus-visible:focus-ring disabled:pointer-events-none disabled:opacity-50 data-active:text-foreground",
   {
     variants: {
       variant: {

@@ -1,7 +1,7 @@
 import { cva } from 'class-variance-authority'
 
 export const categoryPillVariants = cva(
-  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 type-label-xs-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 type-label-xs-medium transition-colors outline-none focus-visible:focus-ring',
   {
     variants: {
       active: {
