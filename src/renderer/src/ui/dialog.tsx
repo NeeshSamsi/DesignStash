@@ -1,3 +1,4 @@
+import { ICON_STROKE } from "@renderer/design-system/icon"
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
@@ -45,7 +46,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-overlay duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-overlay duration-(--duration-fast) data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}
@@ -68,7 +69,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid max-h-viewport w-112 max-w-viewport -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-hidden overflow-y-auto *:min-w-0 rounded-xl border border-base bg-surface-2 p-6 text-foreground duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid max-h-viewport w-112 max-w-viewport -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-hidden overflow-y-auto *:min-w-0 rounded-xl border border-base bg-surface-2 p-6 text-foreground duration-(--duration-fast) outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -82,7 +83,7 @@ function DialogContent({
               className="absolute top-6 right-6"
               size="icon-sm"
             >
-              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
               <span className="sr-only">Close</span>
             </Button>
           </DialogPrimitive.Close>

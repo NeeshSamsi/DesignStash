@@ -1,3 +1,4 @@
+import { ICON_STROKE } from "@renderer/design-system/icon"
 import * as React from "react"
 import { Checkbox as CheckboxPrimitive } from "radix-ui"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -25,12 +26,12 @@ function Checkbox({
       >
         <HugeiconsIcon
           icon={Tick02Icon}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           className="group-data-[state=indeterminate]/checkbox:hidden"
         />
         <HugeiconsIcon
           icon={MinusSignIcon}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           className="hidden group-data-[state=indeterminate]/checkbox:block"
         />
       </CheckboxPrimitive.Indicator>
