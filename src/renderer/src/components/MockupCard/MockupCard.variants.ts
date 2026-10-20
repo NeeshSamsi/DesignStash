@@ -17,7 +17,7 @@ export const mockupCardVariants = cva('group/card relative flex min-w-0 flex-col
 })
 
 // Radius card (24) with 10px padding at the sides and top; hover scales the face with the card springs.
-// Selected and group-target use the border/primary ring; hover and focus are plain CSS in MockupCard.tsx.
+// Selected and group-target use the border/selected ring; hover and focus are plain CSS in MockupCard.tsx.
 // Rings are inset so selecting never moves the grid. Reduced motion keeps the fades and drops the scale.
 export const mockupCardFaceVariants = cva(
   'relative z-10 flex flex-col gap-2 rounded-card corner-squircle bg-surface-2 px-2.5 pt-2.5 pb-3 transition-[color,background-color,scale,translate] duration-(--duration-card-out) ease-card-out group-hover/card:scale-104 group-hover/card:duration-(--duration-card-in) group-hover/card:ease-card-in group-focus-visible/card:ring-2 group-focus-visible/card:ring-inset group-focus-visible/card:ring-ring motion-reduce:transition-colors motion-reduce:group-hover/card:scale-100',
@@ -25,13 +25,13 @@ export const mockupCardFaceVariants = cva(
     variants: {
       state: {
         default: '',
-        selected: 'ring-2 ring-inset ring-primary',
+        selected: 'ring-2 ring-inset ring-selected',
         loading: '',
         'no-preview': '',
         'cover-missing': '',
         // The dashed slot a dragged card leaves behind; the content stays but is invisible.
         'left-behind': 'border border-dashed border-strong bg-transparent',
-        'group-target': 'ring-2 ring-inset ring-primary'
+        'group-target': 'ring-2 ring-inset ring-selected'
       }
     },
     defaultVariants: { state: 'default' }

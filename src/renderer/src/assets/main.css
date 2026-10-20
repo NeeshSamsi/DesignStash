@@ -46,6 +46,8 @@
 
   /* Same value as background/overlay; a colour token so gradients can use it (to-scrim). */
   --color-scrim: var(--ds-color-black-alpha-60);
+  /* border/selected as a colour, so the selected-card ring can use ring-selected (AN-1). */
+  --color-selected: var(--ds-border-selected);
 }
 
 /* Card corners (B5) and motion for the card hover and the details panel (B7). Static so the
