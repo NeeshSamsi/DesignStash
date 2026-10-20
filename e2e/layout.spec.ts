@@ -108,7 +108,8 @@ for (const { width, height } of SIZES) {
       expect((await waiting.boundingBox())!.x, 'the strip lines up with the title').toBe(title.x)
       await shot('my-stash-waiting')
       await waiting.getByRole('button', { name: 'Later' }).click()
-      await expect(waiting).toHaveCount(0)
+      // The strip folds shut rather than leaving the page: it stays in the DOM, out of the accessibility tree.
+      await expect(window.getByRole('region', { name: 'Waiting to be sorted' })).toHaveCount(0)
       await window.getByRole('button', { name: /^To sort/ }).click()
     })
 
