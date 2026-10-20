@@ -1,3 +1,4 @@
+import { EASE_IN, EASE_OUT } from '@renderer/design-system/motion'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import { CoverPanel } from './CoverPanel'
@@ -65,8 +66,8 @@ describe('CoverPanel · deck motion', () => {
     rerender(panel(1))
     const byName = Object.fromEntries(calls.map((call) => [named(container, call), call]))
     expect(Object.keys(byName).sort()).toEqual(['cover', 'deck1', 'deck2', 'ghost'])
-    expect(byName.ghost!.options).toMatchObject({ duration: 140, easing: 'ease-in' })
-    expect(byName.cover!.options).toMatchObject({ duration: 200, delay: 40, easing: 'ease-out' })
+    expect(byName.ghost!.options).toMatchObject({ duration: 120, easing: EASE_IN })
+    expect(byName.cover!.options).toMatchObject({ duration: 200, delay: 40, easing: EASE_OUT })
     expect(byName.deck1!.options).toMatchObject({ duration: 200, delay: 40 })
     expect(byName.deck2!.options).toMatchObject({ duration: 120, delay: 100 })
   })
@@ -78,13 +79,13 @@ describe('CoverPanel · deck motion', () => {
     expect(ghost.getAttribute('src')).toBe('file:///v0.png')
   })
 
-  it('previous: the reverse in one 200ms ease-out, with no card leaving', () => {
+  it('previous: the reverse in one base-length ease-out, with no card leaving', () => {
     const { container, rerender } = render(panel(3))
     rerender(panel(2))
     const names = calls.map((call) => named(container, call)).sort()
     expect(names).toEqual(['cover', 'deck1', 'deck2'])
     for (const call of calls) {
-      expect(call.options).toMatchObject({ duration: 200, easing: 'ease-out' })
+      expect(call.options).toMatchObject({ duration: 200, easing: EASE_OUT })
       expect(call.options.delay).toBeUndefined()
     }
   })

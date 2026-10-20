@@ -42,7 +42,7 @@ export interface CoverPanelProps
   onCancelReplace?: () => void
   /**
    * Which variant of the pile is shown. When it changes the deck moves (D1.4): the old top card slides
-   * away and the cards behind rise, or the reverse going back; reduced motion is a 120ms crossfade.
+   * away and the cards behind rise, or the reverse going back; reduced motion is a short crossfade.
    */
   variantIndex?: number
 }
