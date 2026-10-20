@@ -8,7 +8,7 @@ import { runMigrations } from './db/migrate'
 import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
 import { ensureSearchIndex } from './db/search-index'
 import { createSettingsStore } from './settings'
-import { runBoot, setBootStatus } from './boot-status'
+import { isLibraryOpen, runBoot, setBootStatus } from './boot-status'
 import { MIN_WINDOW, windowSizeOptions } from './window-size'
 import { handleCoverRequests, registerCoverScheme } from './cover-protocol'
 import { logger } from './logger'
@@ -104,7 +104,7 @@ app.whenReady().then(() => {
   setBootStatus(boot)
   // A library that did not open leaves nothing for the other handlers to run on: the window
   // only gets the launch status, so it can say what happened.
-  const libraryOpen = boot.state === 'ok' || boot.state === 'settings-corrupt'
+  const libraryOpen = isLibraryOpen(boot)
   logger.info(`Launch status: ${boot.state}`)
 
   if (libraryOpen) {

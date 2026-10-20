@@ -53,7 +53,7 @@ beforeEach(() => {
 afterEach(() => {
   sqlite?.close()
   sqlite = null
-  setBootStatus({ state: 'ok', backupKept: false })
+  setBootStatus({ state: 'ok' })
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -68,7 +68,7 @@ describe('BOOT_STATUS', () => {
   it.each(['library-failed', 'folder-unavailable', 'settings-corrupt'] as const)(
     'reports %s',
     async (state) => {
-      setBootStatus({ state, backupKept: state === 'settings-corrupt' })
+      setBootStatus(state === 'settings-corrupt' ? { state, backupKept: true } : { state })
       expect(await call(IPC_CHANNELS.BOOT_STATUS)).toEqual({
         success: true,
         data: { state, backupKept: state === 'settings-corrupt' }

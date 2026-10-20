@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createSettingsStore } from './settings'
-import { checkFolder, getBootStatus, runBoot, setBootStatus } from './boot-status'
+import { checkFolder, getBootStatus, isLibraryOpen, runBoot, setBootStatus } from './boot-status'
 
 const dirs: string[] = []
 function tempDir(): string {
@@ -13,7 +13,7 @@ function tempDir(): string {
 }
 
 afterEach(() => {
-  setBootStatus({ state: 'ok', backupKept: false })
+  setBootStatus({ state: 'ok' })
   for (const dir of dirs.splice(0)) {
     try {
       chmodSync(dir, 0o700)
@@ -68,7 +68,7 @@ describe('runBoot', () => {
     const status = runBoot(settings, () => {
       initialised = true
     })
-    expect(status).toEqual({ state: 'ok', backupKept: false })
+    expect(status).toEqual({ state: 'ok' })
     expect(initialised).toBe(true)
   })
 
@@ -111,7 +111,7 @@ describe('runBoot', () => {
     const status = runBoot(settings, () => {
       throw new Error(`cannot open ${dir}/designstash.db`)
     })
-    expect(status).toEqual({ state: 'library-failed', backupKept: false })
+    expect(status).toEqual({ state: 'library-failed' })
     expect(JSON.stringify(status)).not.toContain(dir)
   })
 
@@ -139,8 +139,8 @@ describe('runBoot', () => {
 
 describe('boot status holder', () => {
   it('starts ok and holds what was set', () => {
-    expect(getBootStatus()).toEqual({ state: 'ok', backupKept: false })
-    setBootStatus({ state: 'library-failed', backupKept: false })
+    expect(getBootStatus()).toEqual({ state: 'ok' })
+    setBootStatus({ state: 'library-failed' })
     expect(getBootStatus().state).toBe('library-failed')
   })
 })
@@ -158,5 +158,14 @@ describe('runBoot logging', () => {
     )
     expect(seen).toHaveLength(1)
     expect(status.state).toBe('library-failed')
+  })
+})
+
+describe('isLibraryOpen', () => {
+  it('is true when the database opened, even if the settings were reset', () => {
+    expect(isLibraryOpen({ state: 'ok' })).toBe(true)
+    expect(isLibraryOpen({ state: 'settings-corrupt', backupKept: false })).toBe(true)
+    expect(isLibraryOpen({ state: 'library-failed' })).toBe(false)
+    expect(isLibraryOpen({ state: 'folder-unavailable' })).toBe(false)
   })
 })

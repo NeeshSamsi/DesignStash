@@ -25,7 +25,14 @@ export function registerBootHandlers({ settings, repo, ...deps }: BootHandlerDep
   const writeClipboard = deps.writeClipboard ?? ((text) => clipboard.writeText(text))
   const version = deps.version ?? (() => app.getVersion())
 
-  registerIpcHandler(IPC_CHANNELS.BOOT_STATUS, () => getBootStatus())
+  registerIpcHandler(IPC_CHANNELS.BOOT_STATUS, () => {
+    // The reply stays flat: backupKept is false outside settings-corrupt.
+    const status = getBootStatus()
+    return {
+      state: status.state,
+      backupKept: status.state === 'settings-corrupt' && status.backupKept
+    }
+  })
 
   registerIpcHandler(IPC_CHANNELS.BOOT_CHECK_FOLDER, (args) => checkFolder(args.path))
 
