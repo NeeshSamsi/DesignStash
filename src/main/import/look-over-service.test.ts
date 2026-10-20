@@ -50,8 +50,8 @@ const pile = (...names: string[]) => {
   return rows
 }
 
-const phone = () => repo.getAllTags().find((t) => t.label === 'phone')!
-const laptop = () => repo.getAllTags().find((t) => t.label === 'laptop')!
+const phone = () => repo.getAllTags().find((t) => t.label === 'Phone')!
+const laptop = () => repo.getAllTags().find((t) => t.label === 'Laptop')!
 
 describe('open', () => {
   it('walks piles first, then mockups on their own, each pile top first', async () => {
@@ -87,7 +87,7 @@ describe('open', () => {
     const m = waiting('a')
     repo.updateMockup(m.id, {
       aiStatus: 'ready',
-      aiResult: { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'phone' }] }
+      aiResult: { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'Phone' }] }
     })
     const analyze = vi.fn()
 
@@ -95,7 +95,7 @@ describe('open', () => {
 
     expect(analyze).not.toHaveBeenCalled()
     expect(item).toMatchObject({ title: 'Clay phone', description: 'On a stand', touched: false, checked: false })
-    expect(item.tags.map((t) => t.label)).toEqual(['phone'])
+    expect(item.tags.map((t) => t.label)).toEqual(['Phone'])
   })
 
   it('asks the provider when nothing is cached, and falls back to the file name without one', async () => {
@@ -128,13 +128,13 @@ describe('open', () => {
     const [top, side] = pile('phone_front', 'phone_side')
     repo.updateMockup(top!.id, {
       aiStatus: 'ready',
-      aiResult: { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'phone' }] }
+      aiResult: { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'Phone' }] }
     })
 
     const items = (await service().open()).units[0]!.items
 
     expect(items[1]).toMatchObject({ mockupId: side!.id, title: 'phone side', description: 'On a stand' })
-    expect(items[1]!.tags.map((t) => t.label)).toEqual(['phone'])
+    expect(items[1]!.tags.map((t) => t.label)).toEqual(['Phone'])
   })
 
   it('reports the cover with its size, whether it is missing, and the sidecar it came from', async () => {
@@ -178,7 +178,7 @@ describe('saveDraft', () => {
 
     const item = (await service().open()).units[0]!.items[0]!
     expect(item).toMatchObject({ title: 'Edited', description: 'New', checked: true })
-    expect(item.tags.map((t) => t.label)).toEqual(['phone'])
+    expect(item.tags.map((t) => t.label)).toEqual(['Phone'])
     expect(repo.getMockup(m.id)).toMatchObject({ title: 'a', reviewStatus: 'needs_review', stage: 'to_stash' })
     expect(repo.getTagsForMockup(m.id)).toEqual([])
   })
@@ -218,11 +218,11 @@ describe('saveDraft', () => {
     const items = (await svc.open()).units[0]!.items
     const by = (id: number) => items.find((i) => i.mockupId === id)!
     expect(by(a!.id)).toMatchObject({ description: 'Shared words', title: 'a' })
-    expect(by(a!.id).tags.map((t) => t.label)).toEqual(['phone'])
+    expect(by(a!.id).tags.map((t) => t.label)).toEqual(['Phone'])
     expect(by(c!.id).description).toBe('Shared words')
     // The one the user edited keeps its own.
     expect(by(b!.id)).toMatchObject({ title: 'b mine', description: 'b own' })
-    expect(by(b!.id).tags.map((t) => t.label)).toEqual(['laptop'])
+    expect(by(b!.id).tags.map((t) => t.label)).toEqual(['Laptop'])
     // The top's title is its own and never copied.
     expect(by(a!.id).title).not.toBe('Top retitled')
 

@@ -4,7 +4,7 @@ import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { eq } from 'drizzle-orm'
 import * as schema from './schema'
-import { seedTaxonomy, bootstrapLibrary } from './bootstrap'
+import { seedTaxonomy, bootstrapLibrary, SEED_LABEL_RENAMES } from './bootstrap'
 import { cpSync, mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -126,8 +126,9 @@ describe('migration: drop tag nesting', () => {
       .map((r) => (r as { name: string }).name)
     expect(cols).toEqual(['id', 'label', 'category_id', 'is_canonical', 'created_by'])
     expect(old.prepare('SELECT id, label, category_id FROM tags ORDER BY id').all()).toEqual([
-      { id: 1, label: 'phone', category_id: 1 },
-      { id: 2, label: 'iphone', category_id: 1 }
+      // Seeded slugs read as display labels now (migration 0008).
+      { id: 1, label: 'Phone', category_id: 1 },
+      { id: 2, label: 'iPhone', category_id: 1 }
     ])
     expect(old.prepare('SELECT count(*) AS c FROM mockup_tags').get()).toEqual({ c: 2 })
     expect(old.pragma('foreign_key_check')).toEqual([])
@@ -218,6 +219,85 @@ describe('migration: inbox stage', () => {
   })
 })
 
+describe('migration: seed tag display labels', () => {
+  /** A copy of ./drizzle whose journal stops before the display-label rename. */
+  function migrationsBeforeLabels(): string {
+    const dir = tempDir()
+    cpSync('./drizzle', dir, { recursive: true })
+    const journalPath = join(dir, 'meta', '_journal.json')
+    const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: { tag: string }[] }
+    const cut = journal.entries.findIndex((e) => e.tag.endsWith('_seed_tag_labels'))
+    expect(cut).toBeGreaterThan(0)
+    journal.entries = journal.entries.slice(0, cut)
+    writeFileSync(journalPath, JSON.stringify(journal))
+    return dir
+  }
+
+  it('renames seeded slugs, leaves user and AI tags alone, and keeps every mockup link', () => {
+    const old = new Database(':memory:')
+    old.pragma('foreign_keys = ON')
+    const oldDb = drizzle(old, { schema })
+    migrate(oldDb, { migrationsFolder: migrationsBeforeLabels() })
+
+    old.exec(`
+      INSERT INTO tag_categories (id, label) VALUES (1, 'Device'), (2, 'Apparel');
+      INSERT INTO tags (id, label, category_id, created_by) VALUES
+        (1, 'iphone', 1, 'seed'),
+        (2, 'android-phone', 1, 'seed'),
+        (3, 't-shirt', 2, 'seed'),
+        (4, 'iphone', 2, 'user'),          -- a user's own tag with the same text: not ours
+        (5, 'tote-bag', 2, 'ai'),           -- an AI tag with a seed slug: not ours either
+        (6, 'my-own-thing', 1, 'user'),     -- never a seed slug
+        (7, 'Clay', 1, 'user'),             -- already a display label
+        (8, 'ipad', 1, 'seed'),
+        (9, 'iPad', 1, 'user');             -- taken already, so the seeded one stays as it is
+      INSERT INTO mockups (id, title, library_path, cover_path, cover_source)
+        VALUES (1, 'Clay iPhone', '/lib/a.psd', '/lib/a.png', 'embedded');
+      INSERT INTO mockup_tags (mockup_id, tag_id) VALUES (1, 1), (1, 4), (1, 6);
+    `)
+
+    migrate(oldDb, { migrationsFolder: './drizzle' })
+
+    expect(old.prepare('SELECT id, label, created_by FROM tags ORDER BY id').all()).toEqual([
+      { id: 1, label: 'iPhone', created_by: 'seed' },
+      { id: 2, label: 'Android phone', created_by: 'seed' },
+      { id: 3, label: 'T-shirt', created_by: 'seed' },
+      { id: 4, label: 'iphone', created_by: 'user' },
+      { id: 5, label: 'tote-bag', created_by: 'ai' },
+      { id: 6, label: 'my-own-thing', created_by: 'user' },
+      { id: 7, label: 'Clay', created_by: 'user' },
+      { id: 8, label: 'ipad', created_by: 'seed' },
+      { id: 9, label: 'iPad', created_by: 'user' }
+    ])
+    expect(old.prepare('SELECT count(*) AS c FROM mockup_tags').get()).toEqual({ c: 3 })
+    expect(old.pragma('foreign_key_check')).toEqual([])
+    old.close()
+  })
+
+  it('renames every old seed slug, and only those', () => {
+    const old = new Database(':memory:')
+    old.pragma('foreign_keys = ON')
+    const oldDb = drizzle(old, { schema })
+    migrate(oldDb, { migrationsFolder: migrationsBeforeLabels() })
+    old.exec(`INSERT INTO tag_categories (id, label) VALUES (1, 'Device');`)
+    const insert = old.prepare("INSERT INTO tags (label, category_id, created_by) VALUES (?, 1, 'seed')")
+    for (const slug of Object.keys(SEED_LABEL_RENAMES)) insert.run(slug)
+
+    migrate(oldDb, { migrationsFolder: './drizzle' })
+
+    const after = (old.prepare('SELECT label FROM tags ORDER BY id').all() as { label: string }[]).map((r) => r.label)
+    expect(after).toEqual(Object.values(SEED_LABEL_RENAMES))
+    old.close()
+  })
+
+  it('a database that is already migrated is left as it is when the migration runs again', () => {
+    seedTaxonomy(db)
+    const before = db.select().from(schema.tags).all().map((t) => t.label)
+    migrate(db, { migrationsFolder: './drizzle' })
+    expect(db.select().from(schema.tags).all().map((t) => t.label)).toEqual(before)
+  })
+})
+
 describe('seedTaxonomy', () => {
   it('seeds all 6 categories', () => {
     seedTaxonomy(db)
@@ -237,7 +317,25 @@ describe('seedTaxonomy', () => {
       .where(eq(schema.tags.categoryId, device.id))
       .all()
       .map((t) => t.label)
-    expect(labels).toEqual(expect.arrayContaining(['laptop', 'macbook', 'phone', 'iphone']))
+    expect(labels).toEqual(expect.arrayContaining(['Laptop', 'MacBook', 'Phone', 'iPhone']))
+  })
+
+  it('seeds display labels: sentence case, with iPhone, iPad, MacBook and T-shirt keeping their own casing', () => {
+    seedTaxonomy(db)
+    const labels = db.select().from(schema.tags).all().map((t) => t.label)
+
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        'iPhone', 'iPad', 'MacBook', 'iMac', 'Apple Watch', 'Android phone', 'Windows laptop',
+        'Business card', 'T-shirt', 'Tote bag', 'Flat lay', '3D render', 'Top-down', 'TV'
+      ])
+    )
+    // No slugs left: nothing lowercase-with-hyphens that reads like an id.
+    expect(labels.filter((l) => /^[a-z0-9]+(-[a-z0-9]+)+$/.test(l))).toEqual([])
+    // Every seed label is the new label of exactly one old slug, and sentence case holds.
+    expect([...labels].sort()).toEqual(Object.values(SEED_LABEL_RENAMES).sort())
+    // Each starts with a capital or a digit, except the i-products (iPhone, iPad, iMac).
+    for (const label of labels) expect(label).toMatch(/^([A-Z0-9]|i[A-Z])/)
   })
 
   it('all seeded tags have createdBy=seed', () => {

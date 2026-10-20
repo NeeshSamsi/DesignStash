@@ -50,3 +50,15 @@ export const TagMatchSchema = z.object({
   usageCount: z.number()
 })
 export type TagMatch = z.infer<typeof TagMatchSchema>
+
+/**
+ * A tag label as it is compared: lowercase, with spaces, hyphens and underscores all counting as
+ * one space. "iPhone" and "iphone" match, and so do "Android phone" and "android-phone".
+ */
+export function normaliseTagLabel(label: string): string {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, ' ')
+    .trim()
+}

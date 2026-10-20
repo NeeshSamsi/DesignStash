@@ -46,7 +46,7 @@ const pile = (...names: string[]) => {
   repo.createPile(rows.map((r) => r.id), rows[0]!.id)
   return rows
 }
-const phone = () => repo.getAllTags().find((t) => t.label === 'phone')!
+const phone = () => repo.getAllTags().find((t) => t.label === 'Phone')!
 const search = (q: string) => repo.getLibrary({ query: q, sort: 'date' }).map((r) => r.id)
 
 describe('stash a pile', () => {
@@ -67,7 +67,7 @@ describe('stash a pile', () => {
     })
     // The variant took the top's description and tags, and kept its own name.
     expect(repo.getMockup(side!.id)).toMatchObject({ title: 'phone side', description: 'On a stand', stage: 'stashed' })
-    expect(repo.getTagsForMockup(side!.id).map((t) => t.label)).toEqual(['phone'])
+    expect(repo.getTagsForMockup(side!.id).map((t) => t.label)).toEqual(['Phone'])
     expect(repo.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([top!.id])
     expect(repo.getInboxCounts()).toMatchObject({ toStash: 0 })
   })

@@ -180,8 +180,8 @@ describe('updateMockupMeta', () => {
 
   it('updates title/description, replaces tags, and refreshes FTS', () => {
     const m = repo.createMockup(approvedMockup({ title: 'Old Title', libraryPath: '/lib/om.psd' }))
-    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
-    const phone = repo.getAllTags().find((t) => t.label === 'phone')!
+    const laptop = repo.getAllTags().find((t) => t.label === 'Laptop')!
+    const phone = repo.getAllTags().find((t) => t.label === 'Phone')!
     repo.addTagToMockup(m.id, phone.id)
     repo.upsertSearchIndex(m.id)
 
@@ -190,7 +190,7 @@ describe('updateMockupMeta', () => {
     const updated = repo.getMockup(m.id)!
     expect(updated.title).toBe('New Title')
     expect(updated.description).toBe('Updated')
-    expect(repo.getTagsForMockup(m.id).map((t) => t.label)).toEqual(['laptop'])
+    expect(repo.getTagsForMockup(m.id).map((t) => t.label)).toEqual(['Laptop'])
 
     const rows = sqlite
       .prepare(`SELECT rowid FROM mockups_fts WHERE mockups_fts MATCH ?`)

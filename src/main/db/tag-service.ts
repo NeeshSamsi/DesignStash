@@ -16,19 +16,21 @@ export class TagService {
 
     for (const aiTag of aiTags) {
       // 1. Find or create category
-      let category = this.repo.getCategoryByLabel(aiTag.category)
+      let category = this.repo.getCategoryByNormalisedLabel(aiTag.category)
       if (!category) {
         category = this.repo.createCategory({
-          label: aiTag.category,
+          label: aiTag.category.trim(),
           isCanonical: false // AI-created categories are not canonical by default
         })
       }
 
       // 2. Find or create tag
-      let tag = this.repo.getTagByLabel(category.id, aiTag.label)
+      // A suggestion snaps to the label already there ("iphone" finds "iPhone"). A new one keeps
+      // the casing the model gave, trimmed.
+      let tag = this.repo.getTagByNormalisedLabel(category.id, aiTag.label)
       if (!tag) {
         tag = this.repo.createTag({
-          label: aiTag.label,
+          label: aiTag.label.trim().replace(/\s+/g, ' '),
           categoryId: category.id,
           isCanonical: false,
           createdBy: 'ai'

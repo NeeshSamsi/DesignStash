@@ -38,7 +38,7 @@ describe('search index', () => {
       reviewStatus: 'approved'
     })
     seedTaxonomy(db)
-    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const laptop = repo.getAllTags().find((t) => t.label === 'Laptop')!
     repo.addTagToMockup(m.id, laptop.id)
 
     repo.upsertSearchIndex(m.id)

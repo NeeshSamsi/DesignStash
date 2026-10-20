@@ -148,7 +148,7 @@ describe('buildRequest', () => {
 })
 
 describe('parseResult', () => {
-  it('writes labels like the seed tags and matches categories regardless of case', () => {
+  it('keeps labels as the model wrote them, trimmed, and matches categories regardless of case', () => {
     const result = parseResult(
       JSON.stringify({
         ...VALID,
@@ -159,8 +159,8 @@ describe('parseResult', () => {
       })
     )
     expect(result.tags).toEqual([
-      { category: 'Apparel', label: 'tote-bag' },
-      { category: 'Environment', label: 'flat-lay' }
+      { category: 'Apparel', label: 'Tote Bag' },
+      { category: 'Environment', label: 'flat_lay' }
     ])
   })
 
@@ -174,7 +174,21 @@ describe('parseResult', () => {
     const result = parseResult(JSON.stringify({ ...VALID, tags }))
     expect(result.tags).toHaveLength(6)
     expect(result.tags[0]).toEqual({ category: 'Device', label: 'macbook' })
-    expect(result.tags.filter((t) => t.label === 'macbook')).toHaveLength(1)
+    expect(result.tags.filter((t) => t.label.toLowerCase() === 'macbook')).toHaveLength(1)
+  })
+
+  it('counts labels that differ only in case, spaces or hyphens as one tag', () => {
+    const result = parseResult(
+      JSON.stringify({
+        ...VALID,
+        tags: [
+          { category: 'Device', label: 'Android phone' },
+          { category: 'device', label: 'android-phone' },
+          { category: 'Device', label: 'ANDROID  PHONE' }
+        ]
+      })
+    )
+    expect(result.tags).toEqual([{ category: 'Device', label: 'Android phone' }])
   })
 
   it('keeps a category the model made up', () => {

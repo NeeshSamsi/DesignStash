@@ -3,7 +3,7 @@ import type { AppDatabase } from '../connection'
 import { tags, mockupTags, tagCategories } from '../schema'
 import type { Tag, NewTag, TagCategory } from '../schema'
 import type { ApprovalTag } from '@shared/approval'
-import type { CategorySnapshot, TagMatch, TagSnapshot } from '@shared/tags'
+import { normaliseTagLabel, type CategorySnapshot, type TagMatch, type TagSnapshot } from '@shared/tags'
 import type { MockupRepository } from './mockups'
 import type { SearchRepository } from './search'
 
@@ -217,7 +217,7 @@ export class TagRepository {
       if (!target) throw new Error(`Category ${moveTagsTo} not found`)
 
       for (const tag of tagsIn) {
-        const clash = this.getTagByLabel(moveTagsTo, tag.label)
+        const clash = this.getTagByNormalisedLabel(moveTagsTo, tag.label)
         if (clash) this.mergeTags(tag.id, clash.id)
         else this.reassignTagCategory(tag.id, moveTagsTo)
       }
@@ -242,9 +242,9 @@ export class TagRepository {
     return { categoryId: row.id }
   }
 
-  /** Tags with this name in any category, ignoring case and surrounding spaces. */
+  /** Tags with this name in any category, compared as `normaliseTagLabel` does ("iphone" finds "iPhone"). */
   findTagsByLabel(label: string): TagMatch[] {
-    const wanted = label.trim().toLowerCase()
+    const wanted = normaliseTagLabel(label)
     if (!wanted) return []
     return this.db
       .select({
@@ -255,10 +255,33 @@ export class TagRepository {
       })
       .from(tags)
       .innerJoin(tagCategories, eq(tags.categoryId, tagCategories.id))
-      .where(sql`lower(${tags.label}) = ${wanted}`)
       .orderBy(tagCategories.sortOrder, tags.id)
       .all()
+      .filter((t) => normaliseTagLabel(t.label) === wanted)
       .map((t) => ({ ...t, usageCount: this.getTagUsageCount(t.tagId) }))
+  }
+
+  /** The tag in this category that reads the same as `label`, whatever its casing or hyphens. */
+  getTagByNormalisedLabel(categoryId: number, label: string): Tag | undefined {
+    const wanted = normaliseTagLabel(label)
+    if (!wanted) return undefined
+    return this.db
+      .select()
+      .from(tags)
+      .where(eq(tags.categoryId, categoryId))
+      .orderBy(tags.id)
+      .all()
+      .find((t) => normaliseTagLabel(t.label) === wanted)
+  }
+
+  /** The category that reads the same as `label`, whatever its casing. */
+  getCategoryByNormalisedLabel(label: string): TagCategory | undefined {
+    const wanted = normaliseTagLabel(label)
+    return this.db
+      .select()
+      .from(tagCategories)
+      .all()
+      .find((c) => normaliseTagLabel(c.label) === wanted)
   }
 
   getTagByLabel(categoryId: number, label: string): Tag | undefined {

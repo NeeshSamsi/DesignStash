@@ -28,11 +28,51 @@ afterEach(() => sqlite.close())
 
 describe('TagService.snapTags', () => {
   it('snaps to an existing seeded tag without creating a duplicate', async () => {
-    const before = repo.getAllTags().filter((t) => t.label === 'laptop').length
-    const ids = await svc.snapTags([{ category: 'Device', label: 'laptop' }])
+    const before = repo.getAllTags().filter((t) => t.label === 'Laptop').length
+    const ids = await svc.snapTags([{ category: 'Device', label: 'Laptop' }])
     expect(ids).toHaveLength(1)
-    const after = repo.getAllTags().filter((t) => t.label === 'laptop').length
+    const after = repo.getAllTags().filter((t) => t.label === 'Laptop').length
     expect(after).toBe(before) // no duplicate created
+  })
+
+  it('snaps a suggestion to the seeded display label whatever its casing, spaces or hyphens', async () => {
+    const byLabel = (label: string) => repo.getAllTags().find((t) => t.label === label)!
+    const before = repo.getAllTags().length
+
+    const ids = await svc.snapTags([
+      { category: 'Device', label: 'iphone' },
+      { category: 'device', label: 'android phone' },
+      { category: 'Device', label: 'Android-Phone' },
+      { category: 'Device', label: 'IPAD' },
+      { category: 'Apparel', label: 't shirt' },
+      { category: 'Apparel', label: 'tote-bag' }
+    ])
+
+    expect(ids).toEqual([
+      byLabel('iPhone').id,
+      byLabel('Android phone').id,
+      byLabel('iPad').id,
+      byLabel('T-shirt').id,
+      byLabel('Tote bag').id
+    ])
+    // Nothing new was made: every suggestion found its tag.
+    expect(repo.getAllTags()).toHaveLength(before)
+    expect(repo.getAllCategories()).toHaveLength(6)
+  })
+
+  it('keeps the casing of a tag it invents, trimmed, and finds it again however it is written', async () => {
+    const [id] = await svc.snapTags([{ category: 'Device', label: '  Vision  Pro ' }])
+    const tag = repo.getAllTags().find((t) => t.id === id)!
+    expect(tag).toMatchObject({ label: 'Vision Pro', createdBy: 'ai', isCanonical: false })
+
+    expect(await svc.snapTags([{ category: 'Device', label: 'vision-pro' }])).toEqual([id])
+  })
+
+  it('does not match across categories', async () => {
+    const [id] = await svc.snapTags([{ category: 'Style', label: 'front' }])
+    const tag = repo.getAllTags().find((t) => t.id === id)!
+    expect(tag.label).toBe('front')
+    expect(repo.getAllCategories().find((c) => c.id === tag.categoryId)?.label).toBe('Style')
   })
 
   it('creates a new category and tag when absent, marked non-canonical + ai', async () => {
@@ -65,7 +105,7 @@ describe('TagService.snapTags', () => {
 
   it('returns the right number of ids for a mix of existing and new tags', async () => {
     const ids = await svc.snapTags([
-      { category: 'Device', label: 'laptop' },
+      { category: 'Device', label: 'Laptop' },
       { category: 'BrandNewCat', label: 'freshone' }
     ])
     expect(ids).toHaveLength(2)
@@ -86,7 +126,7 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
     })
 
   it('deleteTag and restoreTag round-trip and match their IPC contracts', () => {
-    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const laptop = repo.getAllTags().find((t) => t.label === 'Laptop')!
     const m = approved('Svc', '/lib/svc.psd')
     repo.addTagToMockup(m.id, laptop.id)
 
@@ -106,8 +146,8 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
 
   it('previewMergeTags matches its IPC contract', () => {
     const all = repo.getAllTags()
-    const macbook = all.find((t) => t.label === 'macbook')!
-    const laptop = all.find((t) => t.label === 'laptop')!
+    const macbook = all.find((t) => t.label === 'MacBook')!
+    const laptop = all.find((t) => t.label === 'Laptop')!
     const preview = svc.previewMergeTags({ sourceTagId: macbook.id, targetTagId: laptop.id })
     expect(IPC_CONTRACT[IPC_CHANNELS.TAG_MERGE_PREVIEW].response.parse(preview)).toEqual({
       affectedMockups: 0

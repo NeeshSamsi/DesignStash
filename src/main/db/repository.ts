@@ -97,6 +97,8 @@ export class Repository {
   restoreCategory(...a: Args<TagRepository['restoreCategory']>) { return this.tags.restoreCategory(...a) }
   findTagsByLabel(...a: Args<TagRepository['findTagsByLabel']>) { return this.tags.findTagsByLabel(...a) }
   getTagByLabel(...a: Args<TagRepository['getTagByLabel']>) { return this.tags.getTagByLabel(...a) }
+  getTagByNormalisedLabel(...a: Args<TagRepository['getTagByNormalisedLabel']>) { return this.tags.getTagByNormalisedLabel(...a) }
+  getCategoryByNormalisedLabel(...a: Args<TagRepository['getCategoryByNormalisedLabel']>) { return this.tags.getCategoryByNormalisedLabel(...a) }
   createTag(...a: Args<TagRepository['createTag']>) { return this.tags.createTag(...a) }
   getApprovalTagsByIds(...a: Args<TagRepository['getApprovalTagsByIds']>) { return this.tags.getApprovalTagsByIds(...a) }
 

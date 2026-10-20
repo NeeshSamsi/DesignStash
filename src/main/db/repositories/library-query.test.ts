@@ -79,8 +79,8 @@ describe('getLibrary', () => {
 
   it('starredOnly keeps only favourites and still respects the other filters', () => {
     const allTags = repo.getAllTags()
-    const laptop = allTags.find((t) => t.label === 'laptop')!
-    const phone = allTags.find((t) => t.label === 'phone')!
+    const laptop = allTags.find((t) => t.label === 'Laptop')!
+    const phone = allTags.find((t) => t.label === 'Phone')!
 
     const a = repo.createMockup(approvedMockup({ title: 'Laptop A', libraryPath: '/lib/la.psd' }))
     const b = repo.createMockup(approvedMockup({ title: 'Laptop B', libraryPath: '/lib/lb.psd' }))
@@ -133,8 +133,8 @@ describe('getLibrary', () => {
 
   it('getLibrary matches a picked tag directly, with no roll-up to other tags', () => {
     const allTags = repo.getAllTags()
-    const laptop = allTags.find((t) => t.label === 'laptop')!
-    const macbook = allTags.find((t) => t.label === 'macbook')!
+    const laptop = allTags.find((t) => t.label === 'Laptop')!
+    const macbook = allTags.find((t) => t.label === 'MacBook')!
 
     const a = repo.createMockup(approvedMockup({ title: 'MacBook', libraryPath: '/lib/mb.psd' }))
     const b = repo.createMockup(approvedMockup({ title: 'Laptop', libraryPath: '/lib/lp.psd' }))
@@ -147,8 +147,8 @@ describe('getLibrary', () => {
 
   it('getLibrary needs every picked tag to match (AND)', () => {
     const tags = repo.getAllTags()
-    const laptop = tags.find((t) => t.label === 'laptop')!
-    const minimal = tags.find((t) => t.label === 'minimal')!
+    const laptop = tags.find((t) => t.label === 'Laptop')!
+    const minimal = tags.find((t) => t.label === 'Minimal')!
 
     const both = repo.createMockup(approvedMockup({ title: 'Both', libraryPath: '/lib/both.psd' }))
     const one = repo.createMockup(approvedMockup({ title: 'One', libraryPath: '/lib/one.psd' }))
@@ -164,9 +164,9 @@ describe('getLibrary', () => {
     const tags = repo.getAllTags()
     const device = repo.getAllCategories().find((c) => c.label === 'Device')!
     const style = repo.getAllCategories().find((c) => c.label === 'Style')!
-    const laptop = tags.find((t) => t.label === 'laptop')!
-    const iphone = tags.find((t) => t.label === 'iphone')!
-    const minimal = tags.find((t) => t.label === 'minimal')!
+    const laptop = tags.find((t) => t.label === 'Laptop')!
+    const iphone = tags.find((t) => t.label === 'iPhone')!
+    const minimal = tags.find((t) => t.label === 'Minimal')!
 
     const a = repo.createMockup(approvedMockup({ title: 'Laptop', libraryPath: '/lib/c1.psd' }))
     const b = repo.createMockup(approvedMockup({ title: 'iPhone', libraryPath: '/lib/c2.psd' }))
@@ -244,7 +244,7 @@ describe('getMockupDetail', () => {
     repo.createMockup(
       approvedMockup({ title: 'V2', libraryPath: '/lib/v2.psd', groupId: leader.id })
     )
-    const laptop = repo.getAllTags().find((t) => t.label === 'laptop')!
+    const laptop = repo.getAllTags().find((t) => t.label === 'Laptop')!
     repo.addTagToMockup(leader.id, laptop.id)
 
     const detail = repo.getMockupDetail(leader.id)
@@ -252,7 +252,7 @@ describe('getMockupDetail', () => {
     expect(detail.mockup?.id).toBe(leader.id)
     expect(detail.variants).toHaveLength(2)
     expect(detail.tags).toHaveLength(1)
-    expect(detail.tags[0]!.label).toBe('laptop')
+    expect(detail.tags[0]!.label).toBe('Laptop')
     expect(detail.tags[0]!.categoryLabel).toBeTruthy()
   })
 

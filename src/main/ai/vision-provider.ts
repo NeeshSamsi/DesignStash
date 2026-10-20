@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import sharp from 'sharp'
 import type { InferenceProvider, AnalysisInput, InferenceResult } from '../../shared/inference'
 import { InferenceResultSchema } from '../../shared/inference'
+import { normaliseTagLabel } from '../../shared/tags'
 
 /**
  * The categories a tag can go in, with what each covers. They are the seed categories in
@@ -101,7 +102,7 @@ function contextText(input: AnalysisInput, hasImage: boolean): string {
     `- title: what this mockup shows, at most ${TITLE_MAX} characters. Name the object and the setting, for example "Phone held over a cafe table" or "Coffee cup, top-down".`,
     `- description: one sentence saying more than the title, at most ${DESCRIPTION_MAX} characters.`,
     `- tags: 3 to ${MAX_TAGS} tags. Each tag is one thing you can see in this mockup, put in the category it belongs to. Never tag something that isn't there.`,
-    '- Each label is a short name, lowercase, words joined by hyphens, like "iphone" or "tote-bag".',
+    '- Each label is a short name in plain words, like "iPhone", "Tote bag" or "Flat lay".',
     '',
     'Categories:',
     categories
@@ -129,14 +130,9 @@ export function buildRequest(input: AnalysisInput, imageUrl: string | null): Cha
   }
 }
 
-/** "Tote Bag" → "tote-bag", the style of the seed labels. */
+/** A label as the model wrote it, trimmed. Snapping to the seed labels ("iphone" → "iPhone") is `snapTags`' job. */
 function toLabel(raw: string): string {
-  return raw
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
+  return raw.trim().replace(/\s+/g, ' ')
 }
 
 function toCategory(raw: string): string {
@@ -149,7 +145,7 @@ function clip(text: string, max: number): string {
   return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`
 }
 
-/** Parse and tidy the reply: valid shape, trimmed text, seed-style labels, no duplicate tags. */
+/** Parse and tidy the reply: valid shape, trimmed text, no duplicate tags ("iPhone" and "iphone" are one). */
 export function parseResult(raw: string): InferenceResult {
   const match = raw.match(/\{[\s\S]*\}/)
   if (!match) throw new Error(`No JSON found in model response: ${raw.slice(0, 120)}`)
@@ -169,7 +165,7 @@ export function parseResult(raw: string): InferenceResult {
   for (const tag of validated.data.tags) {
     const category = toCategory(tag.category)
     const label = toLabel(tag.label)
-    const key = `${category.toLowerCase()}\u0000${label}`
+    const key = `${normaliseTagLabel(category)}\u0000${normaliseTagLabel(label)}`
     if (!category || !label || seen.has(key)) continue
     seen.add(key)
     tags.push({ category, label })
