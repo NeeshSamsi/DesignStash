@@ -1,6 +1,6 @@
 # Library (My Stash)
 
-**Status:** designed 2026-10-12, not built. The pending tests in `src/renderer/src/components/MockupGrid/MockupGrid.behaviour.test.tsx` (`it.todo`) track it.
+**Status:** designed 2026-10-12, built 2026-10-20. Its behaviour tests are real tests now (`src/renderer/src/components/MockupGrid/MockupGrid.behaviour.test.tsx`).
 **Figma:** components MockupGrid, AddMockupCard, MockupCard, TagFilterPopover, CategoryPill, LibraryToolbar and Lightbox. The flows are in _↳ Library_ › _C · Library_: Browse (C1), Search (C2), Filter by tags (C3), Sort (C4), Card interactions (C5), Fullscreen preview (C6), Select (C7), Piles (C8) and Card menu & Trash (C9).
 
 ## Grid

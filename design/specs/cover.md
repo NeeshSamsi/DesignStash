@@ -1,6 +1,6 @@
 # Cover image (Look it over + Detail & edit)
 
-**Status:** designed 2026-10-12, not built. The pending tests in `src/renderer/src/components/CoverPanel/CoverPanel.behaviour.test.tsx` (`it.todo`) track it.
+**Status:** designed 2026-10-12, built 2026-10-20. Its behaviour tests are real tests now (`src/renderer/src/components/CoverPanel/CoverPanel.behaviour.test.tsx`).
 **Figma:** components CoverPanel, CoverDropZone and DropOverlay. The flow is in _↳ Look it over_ › sub-flow _4 · Cover_ (L4.1–L4.6, L4.E1–E8). Detail & edit uses the same CoverPanel.
 
 ```

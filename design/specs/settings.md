@@ -1,6 +1,6 @@
 # Settings
 
-**Status:** designed 2026-10-19, not built.
+**Status:** designed 2026-10-19, built 2026-10-20.
 **Figma:** SettingsLayout (one variant per section), ModelCard, TagTree, HardwareSummary, Switch, and the shared dialogs. The flows are on _↳ Settings_ › _F · Settings_: the panes (F1), My Stash cases (F2), AI model cases (F3), editing tags (F4) and updates (F5). The exploration behind it is on the Archive page.
 
 ## The modal

@@ -1,6 +1,6 @@
 # Detail & edit
 
-**Status:** designed 2026-10-12, not built. The pending tests in `src/renderer/src/components/DetailModalLayout/DetailModalLayout.behaviour.test.tsx` (`it.todo`) track it.
+**Status:** designed 2026-10-12, built 2026-10-20. Its behaviour tests are real tests now (`src/renderer/src/components/DetailModalLayout/DetailModalLayout.behaviour.test.tsx`).
 **Figma:** DetailModal layout, CoverPanel, MockupMetaForm, VariantStrip, VariantThumb, ErrorState and Toast. The flows are in _↳ Library_ › _D · Detail & edit_: Open & view (D1), Edit & save (D2) and Actions (D3).
 
 ## Opening
@@ -35,5 +35,5 @@
 - **Move to Trash (⌘⌫):** closes Detail at once, and the toast offers Undo. There's no confirm dialog.
 - **Disband pile (⇧⌘G):** closes Detail. The mockups land in the grid as separate cards, all selected, and Undo piles them again. There's no dialog.
 - **Nothing skips Trash:** no “Delete for good” here.
-- **No Duplicate.** The current `src/renderer/src/DetailModal.tsx` still calls `MOCKUP_DUPLICATE`; drop it (and the IPC channel) when porting.
+- **No Duplicate.** The old modal's `MOCKUP_DUPLICATE` and its IPC channel are gone.
 - **Photoshop didn't open:** offers Try again or Cancel, and nothing else.

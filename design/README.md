@@ -7,7 +7,7 @@ The code side is generated from a snapshot of that file, so porting a component 
 ```
 design/figma/                      snapshot of the Figma file (committed)
   tokens.json                      variables (primitives + design-tokens) and text styles
-  components.json                  83 component-set contracts (variants, booleans, text, swaps, nested instances)
+  components.json                  84 component-set contracts (variants, booleans, text, swaps, nested instances)
   screens.json                     189 flow-page screens (journey order) → the DS components each composes
   extract.figma.js                 Plugin-API extractor used to refresh the snapshot
 scripts/ds/
@@ -19,7 +19,6 @@ src/renderer/src/
   styles/theme.css                 Tailwind colours for Figma names, type-* utils (generated, imported)
   styles/shadcn-bridge.css         shadcn variables → Figma tokens                (generated, PORT SWITCH)
   components/<Name>/               one folder per Figma component set
-  components/_legacy/              pre-design-system composites, deleted as screens are ported
   design-system/                   contract types, ScaffoldStub, matrix, DEV catalog, drift test
 ```
 
@@ -137,18 +136,24 @@ Archive                       retired and superseded screens
 
 ## Behaviour specs (`design/specs/`)
 
-Figma shows how a component looks. When it also has rules that Figma can't hold (derived text, ordering, fallbacks), they're written up in `design/specs/<topic>.md`, and the component's Figma description links to the file. Pending specs also have `it.todo` tests, so `pnpm test` lists them until they're built.
+Figma shows how a component looks. When it also has rules that Figma can't hold (derived text, ordering, fallbacks), they're written up in `design/specs/<topic>.md`, and the component's Figma description links to the file. A spec with unbuilt rules also gets `it.todo` tests, so `pnpm test` lists them until they're built. Every spec below is built (2026-10-20) and has no pending tests left.
 
-| Spec | Components | Pending tests |
+| Spec | Components | Behaviour tests |
 | --- | --- | --- |
 | [`pile-titles.md`](specs/pile-titles.md): how a pile on the Sort board is titled, and its count and reason badges | GroupCard | `src/shared/pile-title.test.ts` |
 | [`tags.md`](specs/tags.md): the inline-add tags field. The add chip comes first and becomes the input, tags append at the end, and AI suggestions sit after a divider | TagEditor, TagChip (Look it over + Detail & edit) | `src/renderer/src/components/TagEditor/TagEditor.behaviour.test.tsx` |
 | [`cover.md`](specs/cover.md): the cover panel. Tag row with Zoom; hover shows Replace and Use the PSD’s preview; drag uses the shared DropOverlay; crop or bars; 25 MB | CoverPanel, CoverDropZone, DropOverlay (Look it over + Detail & edit) | `src/renderer/src/components/CoverPanel/CoverPanel.behaviour.test.tsx` |
 | [`piles.md`](specs/piles.md): a pile is drafts until Stash pile. Includes PileRail (recessed well, right of the form), the cover deck, the header badge and the review step | PileRail, PileStep, CoverPanel (deck), MockupCard | `src/renderer/src/components/PileRail/PileRail.behaviour.test.tsx` |
 | [`library.md`](specs/library.md): the Add card first in the grid, loading and empty states, search, the tag filter, sort (date added by default), the card menu, selection, piles, Trash, and the fullscreen preview | MockupGrid, AddMockupCard, MockupCard, TagFilterPopover, CategoryPill, LibraryToolbar, DropdownMenu, Lightbox | `src/renderer/src/components/MockupGrid/MockupGrid.behaviour.test.tsx` |
-| [`settings.md`](specs/settings.md): Settings as a modal with sections, grouped rows and switch accordions; the stash folder, stash check and Trash; ModelCard and downloads; editing tags in place | SettingsLayout, ModelCard, TagTree, HardwareSummary | none yet |
-| [`inboxes.md`](specs/inboxes.md): To sort, To stash and Trash on the shared grid, the hover Look it over and Restore, the done toast, Restore all and Empty Trash | MockupGrid, MockupCard (pending-review, trash), ActionBar, Toast | none yet |
+| [`settings.md`](specs/settings.md): Settings as a modal with sections, grouped rows and switch accordions; the stash folder, stash check and Trash; ModelCard and downloads; editing tags in place | SettingsLayout, ModelCard, TagTree, HardwareSummary | `src/renderer/src/screens/settings/settings.behaviour.test.tsx` |
+| [`inboxes.md`](specs/inboxes.md): To sort, To stash and Trash on the shared grid, the hover Look it over and Restore, the done toast, Restore all and Empty Trash | MockupGrid, MockupCard (pending-review, trash), ActionBar, Toast | `src/renderer/src/screens/inboxes/inboxes.behaviour.test.tsx` |
 | [`detail.md`](specs/detail.md): opening and loading, explicit save, the unsaved-changes guard, instant Trash and Disband pile with Undo, no Duplicate, and no permanent delete | DetailModal layout, CoverPanel, MockupMetaForm, ErrorState, Toast | `src/renderer/src/components/DetailModalLayout/DetailModalLayout.behaviour.test.tsx` |
+
+## Status (2026-10-20)
+
+`pnpm ds:check` reports all 84 components as ported, with no stubs. Every flow in the Figma file is built. One component is ported but deliberately dormant: **ProGate** (decision D7: all features are unlocked in Phase 1, so no screen wraps anything in it yet). StatTile was retired (decision D5) and its stub removed.
+
+The snapshot's `code` hints name the screen or component file that uses each component. A refresh from Figma rewrites them from the Figma descriptions, so re-apply them (or update the descriptions) when you refresh.
 
 ## Porting a component (when the design is approved)
 
@@ -158,7 +163,7 @@ Figma shows how a component looks. When it also has rules that Figma can't hold 
 3. **Replace the `ScaffoldStub` body in `<Name>.tsx`** with real markup. Keep `data-ds="<Name>"` on the root (tests and the catalog use it). Compose other DS components; don't restyle them.
 4. **shadcn-backed primitives** (section 2: Button, Input, Badge, Select, Tabs, Dialog, Tooltip…): restyle the file in `ui/` in place. Keep shadcn's variant names there (`default`, `sm`…) so shadcn blocks keep working, and add any Figma-only variants alongside (e.g. Badge `success`/`warning`). `components/<Name>/<Name>.tsx` then becomes a thin adapter that maps Figma prop names onto the `ui/` component (e.g. `primary` → `default`, `base` → `default`). There is one implementation, and it has a Figma-shaped API.
 5. **Check it in the catalog** against the Figma table, then `pnpm ds:scaffold`, which flips its status to _ported_.
-6. **Screens:** once the catalog shows a flow's screens as _ready_, rebuild them from the components, in the flow order from the port checklist. Delete `_legacy/` pieces as their last user goes.
+6. **Screens:** once the catalog shows a flow's screens as _ready_, rebuild them from the components, in the flow order from the port checklist. Delete the old piece when its last user goes.
 
 ## The port switch (done)
 

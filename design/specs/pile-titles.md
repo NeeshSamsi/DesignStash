@@ -1,6 +1,6 @@
 # Pile titles (Sort into piles)
 
-**Status:** designed 2026-10-08, not built. The pending tests in `src/shared/pile-title.test.ts` (`it.todo`) track it.
+**Status:** designed 2026-10-08, built 2026-10-20. Its behaviour tests are real tests now (`src/shared/pile-title.test.ts`).
 **Figma:** GroupCard header, plus the Sort flow sub-flow _9 · Pile titles_ (S9.1, S9.E1–E4) in section _B2 · Sort into piles_.
 
 Every pile on the Sort board is titled by what its mockups share. The count is a meta badge, never the title.

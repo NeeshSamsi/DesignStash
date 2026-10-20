@@ -1,6 +1,6 @@
 # Inboxes and Trash
 
-**Status:** designed and approved 2026-10-19, not built.
+**Status:** designed and approved 2026-10-19, built 2026-10-20.
 **Figma:** MockupGrid, MockupCard (`pending-review` and `trash`), ActionBar, PageHeader, ConfirmDialog and Toast. The flows are on _↳ Inboxes & Trash_, one section each: _I1 · To sort_, _I2 · To stash_, _I3–I5 · Finish later, done & relaunch_ and _E · Trash_.
 
 All three pages use the same grid, cards, action bar and selection as My Stash: click, ⌘-click, ⇧-click, marquee, ⌘A and Esc. The action bar's buttons act on the selection when there is one (“Look over 3”, “Toss 3”, “Restore 3”).

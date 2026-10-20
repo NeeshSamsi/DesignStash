@@ -1,6 +1,6 @@
 # Tags field (inline add)
 
-**Status:** designed 2026-10-09, not built. The pending tests in `src/renderer/src/components/TagEditor/TagEditor.behaviour.test.tsx` (`it.todo`) track it.
+**Status:** designed 2026-10-09, built 2026-10-20. Its behaviour tests are real tests now (`src/renderer/src/components/TagEditor/TagEditor.behaviour.test.tsx`).
 **Figma:** components TagChip and TagEditor. The flow is in _↳ Look it over_ › sub-flow _3 · Tags_ (L3.1–L3.4, L3.E1–E5). Detail & edit uses the same field.
 
 **Used in:** Look it over (MockupMetaForm `approval`) and the Detail & edit panel (MockupMetaForm `detail`), so the two must behave the same.
