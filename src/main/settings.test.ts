@@ -114,4 +114,21 @@ describe('settings store', () => {
     const reloaded = createSettingsStore(dir)
     expect(reloaded.get().telemetryEnabled).toBe(false)
   })
+
+  it('starts with no pending stash change, no stash check and no update check', () => {
+    const store = createSettingsStore(tempDir())
+    expect(store.get()).toMatchObject({ pendingStash: null, stashCheck: null, updatesCheckedAt: null })
+  })
+
+  it('keeps a pending stash change and a stash check across a restart', () => {
+    const dir = tempDir()
+    createSettingsStore(dir).update({
+      pendingStash: { path: '/new', mode: 'move', oldRoot: '/old' },
+      stashCheck: { at: '2026-10-20T02:41:00.000Z', trigger: 'launch', result: 'in-sync', toReview: 0 }
+    })
+    expect(createSettingsStore(dir).get()).toMatchObject({
+      pendingStash: { path: '/new', mode: 'move', oldRoot: '/old' },
+      stashCheck: { trigger: 'launch', result: 'in-sync' }
+    })
+  })
 })

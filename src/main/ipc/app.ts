@@ -5,12 +5,23 @@ import { getDb } from '../db/connection'
 import { tagCategories } from '../db/schema'
 import { registerIpcHandler } from './register'
 
-export function registerAppHandlers(): void {
+/** Restart so a new stash folder takes effect. The reply goes out first. */
+function defaultRelaunch(): void {
+  app.relaunch()
+  app.exit(0)
+}
+
+export function registerAppHandlers(relaunch: () => void = defaultRelaunch): void {
   registerIpcHandler(IPC_CHANNELS.APP_INFO, () => ({
     name: 'DesignStash',
     version: app.getVersion(),
     env: process.env.NODE_ENV === 'development' ? 'development' : 'production'
   }))
+
+  registerIpcHandler(IPC_CHANNELS.APP_RELAUNCH, () => {
+    setTimeout(relaunch, 100)
+    return { relaunching: true }
+  })
 
   registerIpcHandler(IPC_CHANNELS.DB_PING, () => {
     const db = getDb()

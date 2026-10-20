@@ -4,6 +4,10 @@ export const IPC_CHANNELS = {
   DB_PING: 'db:ping',
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET_LIBRARY_ROOT: 'settings:set-library-root',
+  STASH_INFO: 'stash:info',
+  STASH_CHANGE: 'stash:change',
+  STASH_MOVE_PROGRESS: 'stash:progress',
+  APP_RELAUNCH: 'app:relaunch',
   DIALOG_SELECT_DIRECTORY: 'dialog:select-directory',
   DIALOG_SELECT_PSD_FILES: 'dialog:select-psd-files',
   IMPORT_START: 'import:start',
@@ -89,6 +93,7 @@ export const PUSH_CHANNELS = [
   IPC_CHANNELS.IMPORT_PROGRESS,
   IPC_CHANNELS.AI_DOWNLOAD_PROGRESS,
   IPC_CHANNELS.AI_STATUS,
+  IPC_CHANNELS.STASH_MOVE_PROGRESS,
   IPC_CHANNELS.INBOX_COUNTS_CHANGED
 ] as const
 

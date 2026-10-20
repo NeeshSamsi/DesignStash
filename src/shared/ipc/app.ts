@@ -11,6 +11,10 @@ export const appContract = {
       env: z.enum(['development', 'production', 'test'])
     })
   },
+  [IPC_CHANNELS.APP_RELAUNCH]: {
+    request: z.void(),
+    response: z.object({ relaunching: z.boolean() })
+  },
   [IPC_CHANNELS.DB_PING]: {
     request: z.void(),
     response: z.object({

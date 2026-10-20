@@ -15,6 +15,31 @@ export interface AppSettings {
   telemetryEnabled: boolean
   /** Pseudonymous, stable install identifier — generated once on first store init. */
   telemetryInstallId: string
+  /**
+   * A stash folder change waiting for a restart. At the next launch `libraryRoot` becomes `path`;
+   * for a move, the old folder's contents are removed once the new copy is confirmed.
+   */
+  pendingStash: PendingStash | null
+  /** The result of the last stash check (the launch scan or Check now). */
+  stashCheck: StashCheckRecord | null
+  /** When the app last looked for an update (ISO). */
+  updatesCheckedAt: string | null
+}
+
+export interface PendingStash {
+  path: string
+  mode: 'move' | 'point'
+  /** The folder the library was in when the change was made. */
+  oldRoot: string
+}
+
+export interface StashCheckRecord {
+  /** ISO time of the run. */
+  at: string
+  trigger: 'launch' | 'manual'
+  result: 'in-sync' | 'review' | 'could-not-check'
+  /** Orphan files plus orphan records found. 0 unless `result` is 'review'. */
+  toReview: number
 }
 
 export interface SettingsStore {
@@ -31,7 +56,10 @@ export function createSettingsStore(userDataDir: string): SettingsStore {
     onboarded: false,
     activeModelId: null,
     telemetryEnabled: true,
-    telemetryInstallId: '' // placeholder — a real UUID is minted on first init (see ensureInstallId)
+    telemetryInstallId: '', // placeholder — a real UUID is minted on first init (see ensureInstallId)
+    pendingStash: null,
+    stashCheck: null,
+    updatesCheckedAt: null
   }
   let cache: AppSettings | null = null
 

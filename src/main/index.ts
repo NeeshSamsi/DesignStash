@@ -11,6 +11,7 @@ import { createSettingsStore } from './settings'
 import { logger } from './logger'
 import { Repository } from './db/repository'
 import { IntegrityService } from './library/integrity-service'
+import { applyPendingStash } from './library/stash-folder-service'
 import { createTelemetry, type Telemetry } from './telemetry'
 
 const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
@@ -60,6 +61,8 @@ app.whenReady().then(() => {
   app.setAppUserModelId(APP_ID)
 
   const settings = createSettingsStore(app.getPath('userData'))
+  // A stash folder chosen last time takes effect now, before the database opens.
+  applyPendingStash(settings)
 
   try {
     logger.info('Initializing application data…')
