@@ -4,7 +4,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import Onboarding from './onboarding/Onboarding'
 import GroupingReview from './GroupingReview'
 import ApprovalStepper from './ApprovalStepper'
-import LibraryView from './LibraryView'
+import LibraryPage from './screens/library/LibraryPage'
 import LibraryTopBar from './LibraryTopBar'
 import TrashView from './TrashView'
 import SettingsPage from './SettingsPage'
@@ -76,14 +76,21 @@ export default function App() {
       window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
         tagIds: libraryTagFilter.length ? libraryTagFilter : undefined,
         query: libraryQuery || undefined,
-        sort: librarySort,
+        sort: librarySort
       }),
-      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined),
+      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
     ])
     setLibraryLoading(false)
     if (listRes.success) setLibraryItems(listRes.data.items)
     if (statsRes.success) setLibraryStats(statsRes.data)
-  }, [libraryQuery, librarySort, libraryTagFilter, setLibraryLoading, setLibraryItems, setLibraryStats])
+  }, [
+    libraryQuery,
+    librarySort,
+    libraryTagFilter,
+    setLibraryLoading,
+    setLibraryItems,
+    setLibraryStats
+  ])
 
   const handleImport = useCallback(
     async (paths: string[]) => {
@@ -95,7 +102,7 @@ export default function App() {
         setImportSummary(summary)
         groupingStore.setLoading(true)
         const proposeRes = await window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, {
-          batchId: summary.batchId,
+          batchId: summary.batchId
         })
         groupingStore.setLoading(false)
         if (proposeRes.success) {
@@ -174,7 +181,10 @@ export default function App() {
 
   const handleGroupingConfirm = async () => {
     const batchId = importSummary?.batchId
-    if (!batchId) { setAddFlow(null); return }
+    if (!batchId) {
+      setAddFlow(null)
+      return
+    }
     approvalStore.setInitializing(true)
     const res = await window.api.invoke(IPC_CHANNELS.APPROVAL_INIT, { batchId })
     approvalStore.setInitializing(false)
@@ -197,10 +207,31 @@ export default function App() {
     await refreshLibrary()
   }
 
+  const importing = importProgress !== null && importProgress.phase !== 'done'
+  const importCard = importing ? (
+    <div className="w-72 rounded-xl border border-border bg-card p-4 shadow-xl">
+      <p className="mb-1 text-sm font-medium capitalize text-foreground">{importProgress.phase}…</p>
+      <p className="mb-2 truncate text-xs text-muted-foreground">{importProgress.currentTitle}</p>
+      <div className="h-1.5 w-full rounded-full bg-muted">
+        <div
+          className="h-1.5 rounded-full bg-primary transition-all"
+          style={{
+            width: `${Math.round((importProgress.completed / importProgress.total) * 100)}%`
+          }}
+        />
+      </div>
+    </div>
+  ) : undefined
+
   return (
     <>
       <AppShell
-        topBar={view === 'library' && addFlow === null ? <LibraryTopBar /> : undefined}
+        topBar={
+          (view === 'all' || view === 'starred') && addFlow === null ? <LibraryTopBar /> : undefined
+        }
+        showHeader={addFlow === null}
+        importing={importing}
+        importCard={importCard}
         onAddFiles={() => void handleFileSelect()}
         onAddFolder={() => void handleFolderSelect()}
         onDrop={handleDrop}
@@ -221,21 +252,11 @@ export default function App() {
             onCancel={handlePipelineCancel}
           />
         )}
-        {addFlow === null && view === 'library' && <LibraryView />}
+        {addFlow === null && (view === 'all' || view === 'starred') && (
+          <LibraryPage starredOnly={view === 'starred'} />
+        )}
         {addFlow === null && view === 'trash' && <TrashView />}
         {addFlow === null && view === 'settings' && <SettingsPage />}
-        {importProgress && importProgress.phase !== 'done' && (
-          <div className="fixed bottom-6 right-6 z-40 w-72 rounded-xl border border-border bg-card p-4 shadow-xl">
-            <p className="mb-1 text-sm font-medium capitalize text-foreground">{importProgress.phase}…</p>
-            <p className="mb-2 truncate text-xs text-muted-foreground">{importProgress.currentTitle}</p>
-            <div className="h-1.5 w-full rounded-full bg-muted">
-              <div
-                className="h-1.5 rounded-full bg-primary transition-all"
-                style={{ width: `${Math.round((importProgress.completed / importProgress.total) * 100)}%` }}
-              />
-            </div>
-          </div>
-        )}
       </AppShell>
       <DebugMenu />
     </>

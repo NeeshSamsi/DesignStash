@@ -35,6 +35,8 @@ export interface SidebarNavProps extends SidebarNavContractProps {
   onNavigate?: (key: SidebarNavKey) => void
   /** Settings opens a modal; there is no route. */
   onOpenSettings?: () => void
+  /** Settings is still a page: mark its row while it is on show. */
+  settingsActive?: boolean
   className?: string
 }
 
@@ -60,6 +62,7 @@ export function SidebarNav({
   counts = {},
   onNavigate,
   onOpenSettings,
+  settingsActive = false,
   ...rest
 }: SidebarNavProps) {
   const props = { ...SIDEBAR_NAV_DEFAULTS, ...rest }
@@ -122,6 +125,7 @@ export function SidebarNav({
           label="Settings"
           icon={Settings01Icon}
           showCount={false}
+          active={settingsActive}
           onClick={onOpenSettings}
         />
       )}

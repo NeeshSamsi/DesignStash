@@ -71,6 +71,14 @@
   --color-background: var(--background);
 }
 
+/* Electron title bar: drag the window by it, and keep controls inside it clickable. */
+@utility app-drag {
+  -webkit-app-region: drag;
+}
+@utility app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
 /* Dark only until Figma adds a Light mode (D2). */
 :root {
   color-scheme: dark;

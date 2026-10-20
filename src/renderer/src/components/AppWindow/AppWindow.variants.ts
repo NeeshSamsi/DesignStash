@@ -16,6 +16,6 @@ export const appWindowVariants = cva(
   }
 )
 
-export const appWindowTitleBarClass = 'flex shrink-0 py-3'
+export const appWindowTitleBarClass = 'app-drag flex shrink-0 py-3'
 export const appWindowPanelClass =
   'flex min-w-0 flex-1 flex-col gap-6 overflow-hidden rounded-tl-3xl bg-surface-1 p-8'

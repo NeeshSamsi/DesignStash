@@ -7,12 +7,29 @@ import { useApprovalStore } from './stores/approvalStore'
 import { useLibraryStore } from './stores/libraryStore'
 
 beforeEach(() => {
-  useGroupingStore.setState({ groups: [], singletons: [], batchId: null, isLoading: false, isConfirming: false })
-  useApprovalStore.setState({ queue: [], currentIndex: 0, isSaving: false, isInitializing: false, isComplete: false })
+  useGroupingStore.setState({
+    groups: [],
+    singletons: [],
+    batchId: null,
+    isLoading: false,
+    isConfirming: false
+  })
+  useApprovalStore.setState({
+    queue: [],
+    currentIndex: 0,
+    isSaving: false,
+    isInitializing: false,
+    isComplete: false
+  })
   useLibraryStore.setState({
-    items: [], query: '', tagFilter: [], sort: 'date',
+    items: [],
+    query: '',
+    tagFilter: [],
+    sort: 'date',
     stats: { total: 0, favourites: 0, groups: 0, trashed: 0 },
-    isLoading: false, trash: [], selectedDetail: null,
+    isLoading: false,
+    trash: [],
+    selectedDetail: null
   })
 
   // Provide a stub preload bridge — jsdom has no real `window.api`.
@@ -24,7 +41,10 @@ beforeEach(() => {
       }
       if (channel === IPC_CHANNELS.SETTINGS_GET) {
         // onboarded: true so existing tests bypass the first-run disclosure.
-        return { success: true, data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true } }
+        return {
+          success: true,
+          data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true }
+        }
       }
       if (channel === IPC_CHANNELS.TELEMETRY_GET_CONSENT) {
         return { success: true, data: { enabled: true } }
@@ -36,7 +56,18 @@ beforeEach(() => {
         return { success: true, data: undefined }
       }
       if (channel === IPC_CHANNELS.IMPORT_START) {
-        return { success: true, data: { batchId: '123', items: [], imported: 1, pendingPreview: 0, duplicates: 0, errors: 0, skippedNonPsd: 0 } }
+        return {
+          success: true,
+          data: {
+            batchId: '123',
+            items: [],
+            imported: 1,
+            pendingPreview: 0,
+            duplicates: 0,
+            errors: 0,
+            skippedNonPsd: 0
+          }
+        }
       }
       if (channel === IPC_CHANNELS.GROUPING_PROPOSE) {
         return { success: true, data: { batchId: '123', groups: [], singletons: [] } }
@@ -57,9 +88,19 @@ beforeEach(() => {
         return {
           success: true,
           data: {
-            item: { id: 1, title: 'Hero', description: null, coverPath: '/p/hero.png', isGroup: false, favourite: false, reviewStatus: 'approved', variantCount: 1, tags: [] },
-            variants: [],
-          },
+            item: {
+              id: 1,
+              title: 'Hero',
+              description: null,
+              coverPath: '/p/hero.png',
+              isGroup: false,
+              favourite: false,
+              reviewStatus: 'approved',
+              variantCount: 1,
+              tags: []
+            },
+            variants: []
+          }
         }
       }
       if (channel === IPC_CHANNELS.LIBRARY_TRASH_LIST) {
@@ -75,7 +116,10 @@ beforeEach(() => {
         return { success: true, data: { name: 'DesignStash', version: '0.0.0', env: 'test' } }
       }
       if (channel === IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT) {
-        return { success: true, data: { tier: 'free', enabled: { 'search.semantic': true, 'app.core': true } } }
+        return {
+          success: true,
+          data: { tier: 'free', enabled: { 'search.semantic': true, 'app.core': true } }
+        }
       }
       if (channel === IPC_CHANNELS.DEBUG_READ_SETTINGS) {
         return { success: true, data: { path: '/stub/settings.json', json: '{}', exists: false } }
@@ -89,36 +133,42 @@ beforeEach(() => {
 })
 
 describe('App', () => {
-  it('renders the app title', async () => {
+  it('renders the window with its sidebar', async () => {
     render(<App />)
-    expect(await screen.findByText('DesignStash')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Add a mockup/ })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Primary' })).toBeTruthy()
   })
 
   it('calls IMPORT_START on drop', async () => {
     render(<App />)
     // Wait for consent state to resolve so the real app (AppShell) is mounted.
-    // AppShell renders an outer <main> (drop target) that may contain another
-    // <main> from LibraryView — grab them all and use the first (outermost).
-    const dropzones = await screen.findAllByRole('main')
-    const dropzone = dropzones[0] as HTMLElement
+    await screen.findByRole('navigation', { name: 'Primary' })
+    const dropzone = document.querySelector('[data-slot="app-shell"]') as HTMLElement
     const file = new File([''], 'test.psd', { type: 'image/vnd.adobe.photoshop' })
     const dataTransfer = {
       files: [file],
-      items: [{
-        kind: 'file',
-        type: file.type,
-        getAsFile: () => file
-      }],
+      items: [
+        {
+          kind: 'file',
+          type: file.type,
+          getAsFile: () => file
+        }
+      ],
       types: ['Files']
     }
     fireEvent.drop(dropzone, { dataTransfer })
-    expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.IMPORT_START, { paths: ['/path/to/test.psd'] })
+    expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.IMPORT_START, {
+      paths: ['/path/to/test.psd']
+    })
   })
 
   it('shows onboarding Welcome step when not onboarded', async () => {
     ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
       if (channel === IPC_CHANNELS.SETTINGS_GET) {
-        return { success: true, data: { libraryRoot: '/lib', onboarded: false, telemetryEnabled: true } }
+        return {
+          success: true,
+          data: { libraryRoot: '/lib', onboarded: false, telemetryEnabled: true }
+        }
       }
       return { success: true, data: {} }
     })
@@ -130,10 +180,21 @@ describe('App', () => {
   it('onboarding skip flow reaches privacy step and calls TELEMETRY_SET_CONSENT', async () => {
     ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
       if (channel === IPC_CHANNELS.SETTINGS_GET) {
-        return { success: true, data: { libraryRoot: '/lib', onboarded: false, telemetryEnabled: true } }
+        return {
+          success: true,
+          data: { libraryRoot: '/lib', onboarded: false, telemetryEnabled: true }
+        }
       }
       if (channel === IPC_CHANNELS.AI_HARDWARE_INFO) {
-        return { success: true, data: { chip: 'Apple M1', totalMemoryGB: 8, isAppleSilicon: true, recommendedTier: 'small' } }
+        return {
+          success: true,
+          data: {
+            chip: 'Apple M1',
+            totalMemoryGB: 8,
+            isAppleSilicon: true,
+            recommendedTier: 'small'
+          }
+        }
       }
       if (channel === IPC_CHANNELS.AI_LIST_MODELS) {
         return { success: true, data: { models: [] } }
@@ -162,21 +223,60 @@ describe('App', () => {
   it('completing approval flow re-fetches LIBRARY_LIST', async () => {
     ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
       if (channel === IPC_CHANNELS.SETTINGS_GET)
-        return { success: true, data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true } }
+        return {
+          success: true,
+          data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true }
+        }
       if (channel === IPC_CHANNELS.IMPORT_START)
-        return { success: true, data: { batchId: 'b1', items: [], imported: 1, pendingPreview: 0, duplicates: 0, errors: 0, skippedNonPsd: 0 } }
+        return {
+          success: true,
+          data: {
+            batchId: 'b1',
+            items: [],
+            imported: 1,
+            pendingPreview: 0,
+            duplicates: 0,
+            errors: 0,
+            skippedNonPsd: 0
+          }
+        }
       if (channel === IPC_CHANNELS.GROUPING_PROPOSE)
-        return { success: true, data: { batchId: 'b1', groups: [], singletons: [{ mockupId: 1, fileName: 'test.psd', coverPath: '/t.png', isPrimary: true }] } }
-      if (channel === IPC_CHANNELS.GROUPING_CONFIRM)
-        return { success: true, data: { ok: true } }
+        return {
+          success: true,
+          data: {
+            batchId: 'b1',
+            groups: [],
+            singletons: [
+              { mockupId: 1, fileName: 'test.psd', coverPath: '/t.png', isPrimary: true }
+            ]
+          }
+        }
+      if (channel === IPC_CHANNELS.GROUPING_CONFIRM) return { success: true, data: { ok: true } }
       if (channel === IPC_CHANNELS.APPROVAL_INIT)
-        return { success: true, data: { batchId: 'b1', items: [{ mockupId: 1, title: 'Test', description: '', coverPath: '/t.png', coverSource: 'embedded', tags: [], isLeader: true, leaderId: null, variantIndex: 0 }] } }
+        return {
+          success: true,
+          data: {
+            batchId: 'b1',
+            items: [
+              {
+                mockupId: 1,
+                title: 'Test',
+                description: '',
+                coverPath: '/t.png',
+                coverSource: 'embedded',
+                tags: [],
+                isLeader: true,
+                leaderId: null,
+                variantIndex: 0
+              }
+            ]
+          }
+        }
       if (channel === IPC_CHANNELS.APPROVAL_SAVE_ITEM)
         return { success: true, data: { reinferredItems: [] } }
       if (channel === IPC_CHANNELS.TAG_LIST_BY_CATEGORY)
         return { success: true, data: { categories: [] } }
-      if (channel === IPC_CHANNELS.LIBRARY_LIST)
-        return { success: true, data: { items: [] } }
+      if (channel === IPC_CHANNELS.LIBRARY_LIST) return { success: true, data: { items: [] } }
       if (channel === IPC_CHANNELS.LIBRARY_STATS)
         return { success: true, data: { total: 0, favourites: 0, groups: 0, trashed: 0 } }
       if (channel === IPC_CHANNELS.INTEGRITY_SCAN)
@@ -185,16 +285,15 @@ describe('App', () => {
     })
 
     render(<App />)
-    await screen.findByText('DesignStash')
+    await screen.findByRole('navigation', { name: 'Primary' })
 
     // Drop a file to trigger import
-    const dropzones = await screen.findAllByRole('main')
-    const dropzone = dropzones[0] as HTMLElement
+    const dropzone = document.querySelector('[data-slot="app-shell"]') as HTMLElement
     const file = new File([''], 'test.psd', { type: 'image/vnd.adobe.photoshop' })
     const dataTransfer = {
       files: [file],
       items: [{ kind: 'file', type: file.type, getAsFile: () => file }],
-      types: ['Files'],
+      types: ['Files']
     }
     fireEvent.drop(dropzone, { dataTransfer })
 
@@ -216,7 +315,10 @@ describe('App', () => {
   it('blocking reconciliation modal appears when boot scan finds drift', async () => {
     ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
       if (channel === IPC_CHANNELS.SETTINGS_GET)
-        return { success: true, data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true } }
+        return {
+          success: true,
+          data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true }
+        }
       if (channel === IPC_CHANNELS.INTEGRITY_SCAN)
         return { success: true, data: { orphanFiles: ['/stash/lost.psd'], orphanRecords: [] } }
       if (channel === IPC_CHANNELS.LIBRARY_LIST) return { success: true, data: { items: [] } }

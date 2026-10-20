@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import type { IntegrityReport } from '@shared/integrity'
 
-export type AppView = 'library' | 'trash' | 'settings'
+/** `all` and `starred` are My Stash pages; Settings stays a page until it becomes a modal (WP4.6). */
+export type AppView = 'all' | 'starred' | 'trash' | 'settings'
 
 export type Modal =
   | { kind: 'detail'; mockupId: number }
@@ -18,7 +19,7 @@ interface UiState {
 }
 
 export const useUiStore = create<UiState>((set) => ({
-  view: 'library',
+  view: 'all',
   modal: null,
   openModal: (modal) => set({ modal }),
   closeModal: () => set({ modal: null }),

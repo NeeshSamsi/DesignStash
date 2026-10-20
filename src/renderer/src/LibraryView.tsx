@@ -3,7 +3,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { useLibraryStore } from './stores/libraryStore'
 import MockupGrid from './MockupGrid'
 
-export default function LibraryView() {
+export default function LibraryView({ starredOnly = false }: { starredOnly?: boolean }) {
   const tagFilter = useLibraryStore((s) => s.tagFilter)
   const query = useLibraryStore((s) => s.query)
   const sort = useLibraryStore((s) => s.sort)
@@ -19,9 +19,9 @@ export default function LibraryView() {
       window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
         tagIds: tagFilter.length ? tagFilter : undefined,
         query: query || undefined,
-        sort,
+        sort
       }),
-      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined),
+      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
     ])
     setLoading(false)
     if (listRes.success) setItems(listRes.data.items)
@@ -36,7 +36,11 @@ export default function LibraryView() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <MockupGrid items={items} isLoading={isLoading} onRefresh={() => void fetchList()} />
+      <MockupGrid
+        items={starredOnly ? items.filter((item) => item.favourite) : items}
+        isLoading={isLoading}
+        onRefresh={() => void fetchList()}
+      />
     </div>
   )
 }

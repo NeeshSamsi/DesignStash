@@ -22,7 +22,7 @@ const baseItem: LibraryItem = {
 }
 
 beforeEach(() => {
-  useUiStore.setState({ view: 'library', modal: null })
+  useUiStore.setState({ view: 'all', modal: null })
   window.api = {
     appName: 'DesignStash',
     invoke: vi.fn(async () => ({ success: true, data: undefined })),

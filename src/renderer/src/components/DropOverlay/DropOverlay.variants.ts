@@ -2,16 +2,19 @@ import { cva } from 'class-variance-authority'
 
 // Figma DropOverlay 218:1990: the window-wide drop state. drag-over = primary dashes,
 // rejected = error dashes (no PSDs), queued = warning fill (an import is already running).
-export const dropOverlayVariants = cva('absolute inset-0 z-50 flex flex-col bg-overlay p-6', {
-  variants: {
-    state: {
-      'drag-over': '',
-      rejected: '',
-      queued: ''
-    }
-  },
-  defaultVariants: { state: 'drag-over' }
-})
+export const dropOverlayVariants = cva(
+  'pointer-events-none absolute inset-0 z-50 flex flex-col bg-overlay p-6',
+  {
+    variants: {
+      state: {
+        'drag-over': '',
+        rejected: '',
+        queued: ''
+      }
+    },
+    defaultVariants: { state: 'drag-over' }
+  }
+)
 
 export const dropOverlayZoneVariants = cva(
   'flex flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-3xl border-2 border-dashed',

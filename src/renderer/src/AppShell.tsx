@@ -1,32 +1,30 @@
-import { useUiStore } from './stores/uiStore'
+import type { ReactNode } from 'react'
+import { useUiStore, type AppView } from './stores/uiStore'
+import { useLibraryStore } from './stores/libraryStore'
 import { ConfirmDialog } from './components/_legacy/ConfirmDialog'
 import { FullscreenPreview } from './FullscreenPreview'
-import { DetailModal } from './DetailModal'
+import { DetailModal } from './screens/detail/DetailModal'
 import { ReconciliationModal } from './ReconciliationModal'
 import { Toaster } from './ui/sonner'
-import { Button } from './ui/button'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-} from './ui/sidebar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu'
-import { cn } from './lib/utils'
+import { ActivityDock } from './components/ActivityDock'
+import { AddMenu } from './components/AddMenu'
+import { AppWindow } from './components/AppWindow'
+import { DropOverlay } from './components/DropOverlay'
+import { GlobalSearch } from './components/GlobalSearch'
+import { PageHeader } from './components/PageHeader'
+import { SidebarNav, type SidebarNavKey } from './components/SidebarNav'
+import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
 
 interface AppShellProps {
-  children: React.ReactNode
-  topBar?: React.ReactNode
+  children: ReactNode
+  /** Legacy toolbar, shown above the page. */
+  topBar?: ReactNode
+  /** The import card; it sits in the ActivityDock under the toasts. */
+  importCard?: ReactNode
+  /** An import is running: Add is disabled. */
+  importing?: boolean
+  /** Hide the PageHeader (pipeline screens bring their own heading). */
+  showHeader?: boolean
   onAddFiles?: () => void
   onAddFolder?: () => void
   onDrop?: (e: React.DragEvent<HTMLElement>) => void
@@ -36,128 +34,167 @@ interface AppShellProps {
   isDropping?: boolean
 }
 
-function AddMenu({
-  onAddFiles,
-  onAddFolder,
-}: {
-  onAddFiles?: () => void
-  onAddFolder?: () => void
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button className="w-full" size="sm" aria-label="Add mockups">
-          + Add
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
-        <DropdownMenuItem onSelect={() => onAddFiles?.()}>Add files…</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onAddFolder?.()}>Add folder…</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
+const mockups = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
+
+/** Where each page sits in the header. Trash and Settings still bring their own heading. */
+function headerFor(view: AppView, total: number) {
+  if (view === 'all') {
+    return {
+      parent: 'My Stash',
+      current: 'All',
+      description: `${mockups(total)} · favourites always sort first`
+    }
+  }
+  if (view === 'starred') {
+    return { parent: 'My Stash', current: 'Starred', description: mockups(total) }
+  }
+  return null
+}
+
+const NAV_VIEWS: Partial<Record<SidebarNavKey, AppView>> = {
+  all: 'all',
+  starred: 'starred',
+  trash: 'trash'
 }
 
 export default function AppShell({
   children,
   topBar,
+  importCard,
+  importing = false,
+  showHeader = true,
   onAddFiles,
   onAddFolder,
   onDrop,
   onDragOver,
   onDragEnter,
   onDragLeave,
-  isDropping = false,
+  isDropping = false
 }: AppShellProps) {
   const view = useUiStore((s) => s.view)
   const setView = useUiStore((s) => s.setView)
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
+  const stats = useLibraryStore((s) => s.stats)
+  const query = useLibraryStore((s) => s.query)
+  const setQuery = useLibraryStore((s) => s.setQuery)
+
+  useShortcutDispatcher()
+  // ⌘K is handled by GlobalSearch (useSearchFocusShortcut); reserving it keeps anyone else off it.
+  useShortcut({ id: 'search.focus', combo: 'mod+k' })
+  useShortcut({
+    id: 'import.add-files',
+    combo: 'mod+o',
+    handler: () => {
+      if (!importing) onAddFiles?.()
+    }
+  })
+  useShortcut({
+    id: 'import.add-folder',
+    combo: 'mod+shift+o',
+    handler: () => {
+      if (!importing) onAddFolder?.()
+    }
+  })
+
+  const header = showHeader
+    ? headerFor(view, view === 'starred' ? stats.favourites : stats.total)
+    : null
+
+  const onQueryChange = (next: string) => {
+    setQuery(next)
+    // Search looks through My Stash: typing from Trash or Settings takes you there.
+    if (next !== '' && (view === 'trash' || view === 'settings')) setView('all')
+  }
+
+  const dialog =
+    modal === null ? undefined : (
+      <>
+        {modal.kind === 'confirm' && (
+          <ConfirmDialog
+            title={modal.title}
+            message={modal.message}
+            {...(modal.danger !== undefined && { danger: modal.danger })}
+            onConfirm={() => {
+              modal.onConfirm()
+              closeModal()
+            }}
+            onCancel={closeModal}
+          />
+        )}
+        {modal.kind === 'preview' && (
+          <FullscreenPreview coverPath={modal.coverPath} onClose={closeModal} />
+        )}
+        {modal.kind === 'detail' && <DetailModal mockupId={modal.mockupId} onClose={closeModal} />}
+        {modal.kind === 'reconcile' && (
+          <ReconciliationModal report={modal.report} onClose={closeModal} />
+        )}
+      </>
+    )
 
   return (
-    <SidebarProvider
-      style={{ '--sidebar-width': '14rem' } as React.CSSProperties}
+    <div
+      data-slot="app-shell"
       className="h-screen overflow-hidden"
+      onDrop={onDrop}
+      onDragOver={onDragOver}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
     >
-      <Sidebar collapsible="none">
-        <SidebarContent className="p-2 pt-4">
-          <SidebarGroup className="gap-1 p-0">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={view === 'library'}
-                  onClick={() => setView('library')}
-                >
-                  Library
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton isActive={view === 'trash'} onClick={() => setView('trash')}>
-                  Trash
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-            <div className="px-2 pt-1">
+      <AppWindow
+        state={isDropping ? 'drag-over' : 'idle'}
+        showHeader={header !== null}
+        search={<GlobalSearch defaultQuery={query} onQueryChange={onQueryChange} />}
+        sidebar={
+          <SidebarNav
+            variant="none"
+            {...(view !== 'settings' ? { selected: view as SidebarNavKey } : {})}
+            counts={{
+              library: stats.total,
+              starred: stats.favourites,
+              all: stats.total,
+              trash: stats.trashed
+            }}
+            settingsActive={view === 'settings'}
+            onNavigate={(key) => {
+              const next = NAV_VIEWS[key]
+              if (next) setView(next)
+            }}
+            onOpenSettings={() => setView('settings')}
+            add={
               <AddMenu
-                {...(onAddFiles !== undefined && { onAddFiles })}
-                {...(onAddFolder !== undefined && { onAddFolder })}
+                disabled={importing}
+                {...(onAddFiles ? { onAddFiles } : {})}
+                {...(onAddFolder ? { onAddFolder } : {})}
               />
-            </div>
-          </SidebarGroup>
-        </SidebarContent>
-
-        <SidebarFooter className="p-2 pb-4">
-          <div className="flex items-center gap-2 px-2 py-2">
-            <span className="text-xs font-bold tracking-widest text-brand">DS</span>
-            <span className="text-sm font-semibold text-sidebar-foreground">DesignStash</span>
+            }
+          />
+        }
+        {...(header
+          ? {
+              header: (
+                <PageHeader
+                  current={header.current}
+                  parent={header.parent}
+                  description={header.description}
+                />
+              )
+            }
+          : {})}
+        page={
+          <div className="flex h-full flex-col">
+            {topBar && <div className="shrink-0 border-b border-border">{topBar}</div>}
+            <div className="min-h-0 flex-1 overflow-auto">{children}</div>
           </div>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={view === 'settings'}
-                onClick={() => setView('settings')}
-              >
-                Settings
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-
-      <SidebarInset
-        className={cn('overflow-hidden transition-colors', isDropping && 'bg-primary/10')}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        onDragEnter={onDragEnter}
-        onDragLeave={onDragLeave}
-      >
-        {topBar && <div className="shrink-0 border-b border-border">{topBar}</div>}
-        <div className="flex-1 overflow-auto">{children}</div>
-      </SidebarInset>
-
-      {/* Modal layer */}
-      {modal?.kind === 'confirm' && (
-        <ConfirmDialog
-          title={modal.title}
-          message={modal.message}
-          {...(modal.danger !== undefined && { danger: modal.danger })}
-          onConfirm={() => {
-            modal.onConfirm()
-            closeModal()
-          }}
-          onCancel={closeModal}
-        />
-      )}
-      {modal?.kind === 'preview' && (
-        <FullscreenPreview coverPath={modal.coverPath} onClose={closeModal} />
-      )}
-      {modal?.kind === 'detail' && <DetailModal mockupId={modal.mockupId} onClose={closeModal} />}
-      {modal?.kind === 'reconcile' && (
-        <ReconciliationModal report={modal.report} onClose={closeModal} />
-      )}
-
-      {/* Toast layer */}
-      <Toaster />
-    </SidebarProvider>
+        }
+        drop={<DropOverlay />}
+        {...(dialog ? { dialog } : {})}
+      />
+      <ActivityDock
+        className="fixed right-4 bottom-4 z-50"
+        toastContent={<Toaster />}
+        importContent={importCard}
+      />
+    </div>
   )
 }
