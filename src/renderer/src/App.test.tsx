@@ -95,7 +95,6 @@ beforeEach(() => {
       return { success: true, data: { success: true, message: 'pong', timestamp: 0 } }
     }),
     subscribe: vi.fn(() => () => {}),
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn((file) => `/path/to/${file.name}`)
   } as unknown as typeof window.api
 })
