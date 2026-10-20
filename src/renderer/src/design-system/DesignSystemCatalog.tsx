@@ -443,7 +443,7 @@ function FlowPage({ flow, onOpen }: { flow: string; onOpen: (name: string) => vo
             <div key={s.figmaId} className="flex flex-col gap-2 p-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{s.title}</span>
-                {HAPPY_PATH.includes(s.title) && <Badge variant="secondary">happy path</Badge>}
+                {HAPPY_PATH.includes(s.figmaId) && <Badge variant="secondary">happy path</Badge>}
                 <a
                   className="ml-auto text-xs underline"
                   href={FIGMA_FLOWS_URL.replace(

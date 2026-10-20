@@ -316,6 +316,7 @@ await emit(
 
 export const FIGMA_FLOWS_URL = ${q(`https://www.figma.com/design/${screens.source.fileKey}/DesignStash?node-id=${screens.source.flowsPage.replace(':', '-')}`)}
 
+/** figmaId of each screen on the prototype's happy path, in order. */
 export const HAPPY_PATH: string[] = ${JSON.stringify(screens.prototype.happyPath)}
 
 export const SCREENS: ScreenEntry[] = ${JSON.stringify(
@@ -335,6 +336,10 @@ export const SCREENS: ScreenEntry[] = ${JSON.stringify(
 )
 
 // ---------------------------------------------------------------- drift report
+const screenIds = new Set(screens.screens.map((s) => s.figmaId))
+for (const id of [screens.prototype.start, ...screens.prototype.happyPath])
+  if (!screenIds.has(id))
+    problems.push(`dangling: prototype screen ${id} is not in design/figma/screens.json`)
 const known = new Set(names)
 for (const entry of readdirSync(COMPONENTS, { withFileTypes: true })) {
   if (entry.isDirectory() && !known.has(entry.name))

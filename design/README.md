@@ -8,7 +8,7 @@ The code side is generated from a snapshot of that file, so porting a component 
 design/figma/                      snapshot of the Figma file (committed)
   tokens.json                      variables (primitives + design-tokens) and text styles
   components.json                  84 component-set contracts (variants, booleans, text, swaps, nested instances)
-  screens.json                     189 flow-page screens (journey order) → the DS components each composes
+  screens.json                     267 flow-page screens (journey order) → the DS components each composes; prototype.start and happyPath are screen figmaIds
   extract.figma.js                 Plugin-API extractor used to refresh the snapshot
 scripts/ds/
   contract.mjs                     Figma property → React prop rules (single source)
@@ -17,7 +17,7 @@ scripts/ds/
 src/renderer/src/
   styles/tokens.css                --ds-* variables                               (generated, imported)
   styles/theme.css                 Tailwind colours for Figma names, type-* utils (generated, imported)
-  styles/shadcn-bridge.css         shadcn variables → Figma tokens                (generated, PORT SWITCH)
+  styles/shadcn-bridge.css         shadcn variables → Figma tokens                (generated, imported)
   components/<Name>/               one folder per Figma component set
   design-system/                   contract types, ScaffoldStub, matrix, DEV catalog, drift test
 ```
@@ -58,6 +58,8 @@ shadcn stays standard.
   | `border/input`       | `border-input`          |
 
   `build-tokens.mjs` refuses to emit a Figma key that would change a shadcn utility's meaning. The catalog's colour page lists the class for every token.
+
+- **Motion, shadow, icon and focus tokens.** Durations (`--duration-fast` 120, `--duration-base` 200, `--duration-slow` 280) come from Figma `duration/*`; the easings (`--ease-out`, `--ease-in`) and the two shadows (`shadow-raised`, `shadow-lifted`, Figma effect styles) live in `main.css` `@theme`. Icons use `icon-sizes/*` (12, 14, 16, 20, 24) and `ICON_STROKE` from `design-system/icon.ts` (Figma `icon-stroke/default`, 1.5). Every ui/ control composes the `focus-ring` utility (2px ring, 2px offset) instead of its own ring classes. `--radius-card` aliases `--ds-radius-3xl`.
 
 - **Type:** Figma text styles → `type-<role>-<size>-<weight>` (e.g. `type-body-sm-medium`). Fonts come from the text styles; the bridge points `--font-sans`/`--font-heading` at them. The font stack puts the bundled `'Inter Variable'` (`@fontsource-variable/inter`) before `'Inter'`.
 - **Spacing, radius, border width, icon sizes** equal Tailwind's default scale (`p-4` = spacing/4 = 16px), so there are no new utilities. The bridge sets the exact Figma radii.
@@ -151,7 +153,7 @@ Figma shows how a component looks. When it also has rules that Figma can't hold 
 
 ## Status (2026-10-20)
 
-`pnpm ds:check` reports all 84 components as ported, with no stubs. Every flow in the Figma file is built. One component is ported but deliberately dormant: **ProGate** (decision D7: all features are unlocked in Phase 1, so no screen wraps anything in it yet). StatTile was retired (decision D5) and its stub removed.
+`pnpm ds:check` passes for all 84 components, and `pnpm ds:scaffold` prints 0 stubs. It also fails on a prototype screen id that is not in `screens.json`. Every flow in the Figma file is built. One component is ported but deliberately dormant: **ProGate** (decision D7: all features are unlocked in Phase 1, so no screen wraps anything in it yet). StatTile was retired (decision D5) and its stub removed.
 
 The snapshot's `code` hints name the screen or component file that uses each component. A refresh from Figma rewrites them from the Figma descriptions, so re-apply them (or update the descriptions) when you refresh.
 
@@ -162,8 +164,8 @@ The snapshot's `code` hints name the screen or component file that uses each com
 2. **Fill `<Name>.variants.ts`** from the Figma node linked in the file: token classes only.
 3. **Replace the `ScaffoldStub` body in `<Name>.tsx`** with real markup. Keep `data-ds="<Name>"` on the root (tests and the catalog use it). Compose other DS components; don't restyle them.
 4. **shadcn-backed primitives** (section 2: Button, Input, Badge, Select, Tabs, Dialog, Tooltip…): restyle the file in `ui/` in place. Keep shadcn's variant names there (`default`, `sm`…) so shadcn blocks keep working, and add any Figma-only variants alongside (e.g. Badge `success`/`warning`). `components/<Name>/<Name>.tsx` then becomes a thin adapter that maps Figma prop names onto the `ui/` component (e.g. `primary` → `default`, `base` → `default`). There is one implementation, and it has a Figma-shaped API.
-5. **Check it in the catalog** against the Figma table, then `pnpm ds:scaffold`, which flips its status to _ported_.
-6. **Screens:** once the catalog shows a flow's screens as _ready_, rebuild them from the components, in the flow order from the port checklist. Delete the old piece when its last user goes.
+5. **Check it in the catalog** against the Figma table, then `pnpm ds:scaffold` (it prints how many stubs remain).
+6. **Screens:** once a flow's components are built, rebuild its screens from them, in the flow order from the port checklist. Delete the old piece when its last user goes.
 
 ## The port switch (done)
 

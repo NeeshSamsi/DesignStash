@@ -12,26 +12,27 @@ export interface ScreenEntry {
 export const FIGMA_FLOWS_URL =
   'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=0-1'
 
+/** figmaId of each screen on the prototype's happy path, in order. */
 export const HAPPY_PATH: string[] = [
-  'A1 Welcome',
-  'A2 Library location',
-  'A3a Choose model',
-  'A3c Downloading',
-  'A3d Verifying checksum',
-  'A3e Download complete',
-  'A4 Privacy consent',
-  'A5 All set',
-  'C3 Empty library',
-  'G1.1 Add menu',
-  'G1.2 Copying starts',
-  'G3.2 Copied · 3 skipped',
-  'I1.1 To sort',
-  'S1.1 Board with suggested piles',
-  'L1.1 Look it over',
-  'L1.2 Stashed · next loading',
-  'I4.1 All tucked away',
-  'C1 Library grid',
-  'D2 Single mockup'
+  '180:5',
+  '180:90',
+  '180:977',
+  '180:1152',
+  '180:1238',
+  '180:1324',
+  '180:181',
+  '180:272',
+  '182:358',
+  '378:22825',
+  '378:22897',
+  '378:23479',
+  '378:24064',
+  '379:25464',
+  '379:26545',
+  '379:28011',
+  '367:24683',
+  '182:5',
+  '182:1147'
 ]
 
 export const SCREENS: ScreenEntry[] = [
