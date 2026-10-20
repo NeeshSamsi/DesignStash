@@ -71,6 +71,9 @@
   --size-card-min: 13.75rem; /* 220 */
   --gap-card-x: 1rem; /* 16 */
   --gap-card-y: 1.5rem; /* 24 */
+
+  /* The content panel never gets narrower than two cards, their gap and its padding: 2×220 + 16 + 2×28. */
+  --size-main-min: 32rem; /* 512 */
 }
 
 /* Responsive card grid: columns come and go with the grid's own width; cards fill each column. */
@@ -80,6 +83,11 @@
   column-gap: var(--gap-card-x);
   row-gap: var(--gap-card-y);
   align-items: start;
+}
+
+/* The main content panel's minimum width, so My Stash keeps two columns even beside the details sidebar. */
+@utility min-w-main {
+  min-width: var(--size-main-min);
 }
 
 /* Continuous (squircle) corners where the engine supports corner-shape; a plain radius elsewhere. */
