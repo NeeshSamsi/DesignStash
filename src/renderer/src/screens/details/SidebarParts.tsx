@@ -4,13 +4,14 @@ import type { CoverSource } from '@shared/library'
 import { Button } from '@renderer/components/Button'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { CoverImage } from '@renderer/components/CoverImage'
+import { CoverPanel } from '@renderer/components/CoverPanel'
 import { Lightbox } from '@renderer/components/Lightbox'
 import { Tooltip } from '@renderer/components/Tooltip'
 import { cn } from '@renderer/lib/utils'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
-import { photoshopFailureCopy } from './detail-edits'
+import { panelSource, photoshopFailureCopy } from './detail-edits'
 import { checkLibrary } from './check-library'
-import type { PhotoshopFailure } from './use-details-data'
+import type { CoverUi, PhotoshopFailure } from './use-details-data'
 
 export interface SidebarHeaderProps {
   /** Left out while editing: the title is a field then. */
@@ -89,6 +90,66 @@ export function SidebarCover({ src, title, coverSource, missing }: SidebarCoverP
         }}
       />
     </div>
+  )
+}
+
+export interface EditableCoverProps {
+  src: string | undefined
+  coverPath: string
+  coverSource: CoverSource
+  missing: boolean
+  ui: CoverUi
+  imageSize: { width: number; height: number } | undefined
+  onCover: (file: File) => void
+  onUsePsdPreview: () => void
+  onCancelReplace: () => void
+}
+
+/**
+ * The cover in edit mode (Figma D2.3 C1): the CoverPanel, which can replace it (pick, drop or paste),
+ * go back to the PSD's preview, and zoom. A change applies at once with an Undo toast; it is not part
+ * of what Save commits.
+ */
+export function EditableCover({
+  src,
+  coverPath,
+  coverSource,
+  missing,
+  ui,
+  imageSize,
+  onCover,
+  onUsePsdPreview,
+  onCancelReplace
+}: EditableCoverProps) {
+  const [zoom, setZoom] = useState(false)
+  return (
+    <>
+      <CoverPanel
+        source={panelSource(coverPath, coverSource)}
+        state={ui}
+        coverMissing={missing}
+        sidecarAccepted
+        showDeck={false}
+        {...(src ? { coverSrc: src } : {})}
+        {...(imageSize ? { imageSize } : {})}
+        className="w-full shrink-0"
+        onCover={onCover}
+        onUsePsdPreview={onUsePsdPreview}
+        onCancelReplace={onCancelReplace}
+        onZoom={() => setZoom(true)}
+      />
+      <Lightbox
+        open={zoom}
+        mode="single"
+        state={missing ? 'missing' : 'loaded'}
+        {...(src ? { src } : {})}
+        onClose={() => setZoom(false)}
+        onCheckLibrary={() => {
+          setZoom(false)
+          void checkLibrary()
+        }}
+      />
+    </>
   )
 }
 

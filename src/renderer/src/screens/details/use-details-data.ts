@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApprovalTag } from '@shared/approval'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { MockupDetail } from '@shared/library'
+import type { CoverChange, MockupDetail } from '@shared/library'
 import type { TagTree } from '@shared/tags'
 import type { NewTagRequest, TagVocabularyCategory } from '@renderer/components/TagEditor'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
-import { toast } from '@renderer/stores/toastStore'
+import { toast, undoToast } from '@renderer/stores/toastStore'
 import {
   draftOf,
   formFromDetail,
@@ -19,6 +19,9 @@ import { syncLibrary } from './library-sync'
 import { disbandPile } from './pile-actions'
 
 type Status = 'loading' | 'ready' | 'error'
+
+/** The cover panel's state while a cover is being changed. */
+export type CoverUi = 'default' | 'replacing' | 'error'
 
 const toVocabulary = (tree: TagTree): TagVocabularyCategory[] =>
   tree.map(({ categoryId, categoryLabel, tags }) => ({ categoryId, categoryLabel, tags }))
@@ -55,6 +58,10 @@ export function useDetailsData(id: number) {
   const [photoshop, setPhotoshop] = useState<PhotoshopFailure | null>(null)
   /** Bumps when a cover changed, so the <img> asks for the new file. */
   const [coverVersion, setCoverVersion] = useState(0)
+  const [coverUi, setCoverUi] = useState<CoverUi>('default')
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | undefined>()
+  // A replace the person cancelled with Esc: its result must not touch the screen.
+  const replaceToken = useRef(0)
 
   const revision = useDetailEffects((s) => s.revision)
   // The grid behind reloads after a pile is made or a mockup starred: show what it now holds.
@@ -192,6 +199,107 @@ export function useDetailsData(id: number) {
   /** Breaks the pile up into its mockups, with an Undo toast. True once it is done. */
   const disband = async (): Promise<boolean> => (detail ? disbandPile(detail.item.id) : false)
 
+  // -- Cover ----------------------------------------------------------------------------------
+  // A cover change is not a form edit: it applies at once, with an Undo toast, and Save stays out of it.
+
+  const applyCover = (change: CoverChange) => {
+    if (!change.ok) {
+      setCoverUi('error')
+      return
+    }
+    setCoverUi('default')
+    setImageSize({ width: change.width, height: change.height })
+    setCoverVersion((version) => version + 1)
+    setDetail((current) =>
+      current
+        ? {
+            ...current,
+            item: {
+              ...current.item,
+              coverPath: change.coverPath,
+              coverSource: change.coverSource,
+              coverMissing: false
+            }
+          }
+        : current
+    )
+    void syncLibrary()
+  }
+
+  const changeCover = async (run: () => Promise<CoverChange | null>, message: string) => {
+    const item = detail?.item
+    if (!item) return
+    const token = ++replaceToken.current
+    setCoverUi('replacing')
+    const change = await run()
+    if (token !== replaceToken.current) {
+      // Cancelled with Esc: the change may still have happened, so show what is really there.
+      void fetchDetail(item.id).then((loaded) => {
+        if (loaded) {
+          setDetail(loaded.detail)
+          setCoverVersion((version) => version + 1)
+        }
+      })
+      return
+    }
+    if (!change) {
+      setCoverUi('error')
+      return
+    }
+    applyCover(change)
+    if (change.ok) {
+      undoToast(message, () => {
+        const { previous } = change
+        const revert =
+          previous.coverSource === 'embedded'
+            ? window.api.invoke(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: item.id })
+            : window.api.invoke(IPC_CHANNELS.MOCKUP_SET_COVER, {
+                mockupId: item.id,
+                filePath: previous.coverPath
+              })
+        void revert.then((res) => {
+          if (res.success) applyCover(res.data)
+        })
+      })
+    }
+  }
+
+  const replaceCover = (file: File) => {
+    const id = detail?.item.id
+    if (id === undefined) return
+    void changeCover(async () => {
+      const res = await window.api
+        .invoke(IPC_CHANNELS.MOCKUP_SET_COVER, {
+          mockupId: id,
+          filePath: window.api.getPathForFile(file)
+        })
+        .catch(() => null)
+      return res?.success ? res.data : null
+    }, 'Cover replaced')
+  }
+
+  const useEmbeddedCover = () => {
+    const id = detail?.item.id
+    if (id === undefined) return
+    void changeCover(async () => {
+      const res = await window.api
+        .invoke(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: id })
+        .catch(() => null)
+      return res?.success ? res.data : null
+    }, 'Using the PSD’s preview')
+  }
+
+  /** Esc while replacing: the old cover stays. */
+  const cancelReplace = () => {
+    replaceToken.current += 1
+    setCoverUi('default')
+    const id = detail?.item.id
+    if (id === undefined) return
+    void fetchDetail(id).then((loaded) => {
+      if (loaded) setDetail(loaded.detail)
+    })
+  }
+
   const createTag = async (request: NewTagRequest): Promise<ApprovalTag> => {
     try {
       let categoryId = request.categoryId
@@ -256,6 +364,11 @@ export function useDetailsData(id: number) {
     photoshop,
     dismissPhotoshop: () => setPhotoshop(null),
     coverVersion,
+    coverUi,
+    imageSize,
+    replaceCover,
+    useEmbeddedCover,
+    cancelReplace,
     retry: () => {
       setStatus('loading')
       setLoadKey((key) => key + 1)

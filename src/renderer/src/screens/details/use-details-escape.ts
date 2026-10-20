@@ -4,6 +4,10 @@ import { useDetailsStore } from '@renderer/stores/detailsStore'
 /** Overlays that own Esc while they are up: dialogs, menus, pickers. */
 const OVERLAY = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]'
 
+/** The cover panel while it replaces a cover; it handles its own Esc. */
+const REPLACING =
+  '[data-ds="CoverPanel"][data-state="replacing"], [data-ds="CoverPanel"][data-state="uploading"]'
+
 const isField = (el: Element | null) =>
   el instanceof HTMLInputElement ||
   el instanceof HTMLTextAreaElement ||
@@ -22,6 +26,8 @@ export function useDetailsEscape(): void {
       const { target, pile } = useDetailsStore.getState()
       if (target === null && pile === null) return
       if (document.querySelector(OVERLAY)) return
+      // A cover being replaced: Esc cancels that, and the sidebar stays.
+      if (document.querySelector(REPLACING)) return
       const focused = document.activeElement
       const inSidebar = focused?.closest('[data-slot="details-panel"]') != null
       if (isField(focused) && !inSidebar) return

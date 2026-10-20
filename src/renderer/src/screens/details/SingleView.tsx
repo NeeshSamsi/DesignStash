@@ -10,7 +10,13 @@ import { ErrorState } from '@renderer/components/ErrorState'
 import { useShortcut } from '@renderer/lib/shortcuts'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { detailsCaption, type DetailsKind } from './details-model'
-import { PhotoshopAsk, SidebarActions, SidebarCover, SidebarHeader } from './SidebarParts'
+import {
+  EditableCover,
+  PhotoshopAsk,
+  SidebarActions,
+  SidebarCover,
+  SidebarHeader
+} from './SidebarParts'
 import type { useDetailsData } from './use-details-data'
 
 type Data = ReturnType<typeof useDetailsData>
@@ -98,12 +104,26 @@ export function SingleView({ data, edit, kind }: SingleViewProps) {
       <SidebarHeader {...(edit ? {} : { title: item.title })} caption={caption}>
         {star}
       </SidebarHeader>
-      <SidebarCover
-        src={src}
-        title={item.title}
-        coverSource={item.coverSource}
-        missing={item.coverMissing}
-      />
+      {edit ? (
+        <EditableCover
+          src={src}
+          coverPath={item.coverPath}
+          coverSource={item.coverSource}
+          missing={item.coverMissing}
+          ui={data.coverUi}
+          imageSize={data.imageSize}
+          onCover={data.replaceCover}
+          onUsePsdPreview={data.useEmbeddedCover}
+          onCancelReplace={data.cancelReplace}
+        />
+      ) : (
+        <SidebarCover
+          src={src}
+          title={item.title}
+          coverSource={item.coverSource}
+          missing={item.coverMissing}
+        />
+      )}
 
       {edit ? (
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
