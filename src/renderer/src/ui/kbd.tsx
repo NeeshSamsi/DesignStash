@@ -10,7 +10,7 @@ const kbdVariants = cva(
     variants: {
       variant: {
         default: "rounded-sm border border-base bg-surface-3 px-1.5 py-0.5 text-muted-foreground",
-        plain: "text-tertiary",
+        plain: "text-muted-foreground",
       },
     },
     defaultVariants: { variant: "default" },

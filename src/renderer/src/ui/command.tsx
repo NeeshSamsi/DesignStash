@@ -150,7 +150,7 @@ function CommandGroup({
       data-slot="command-group"
       heading={
         heading !== undefined && (
-          <span className="mb-0.5 block px-2 py-1.5 type-label-xs-medium text-tertiary">
+          <span className="mb-0.5 block px-2 py-1.5 type-label-xs-medium text-muted-foreground">
             {heading}
           </span>
         )
@@ -194,7 +194,7 @@ function CommandShortcut({ className, ...props }: React.ComponentProps<"span">) 
   return (
     <span
       data-slot="command-shortcut"
-      className={cn("ml-auto type-caption-xs-regular text-tertiary", className)}
+      className={cn("ml-auto type-caption-xs-regular text-muted-foreground", className)}
       {...props}
     />
   )

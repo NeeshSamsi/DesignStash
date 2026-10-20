@@ -29,8 +29,9 @@ const dropdownMenuItemVariants = cva(
   }
 )
 
-const dropdownMenuShortcutClass = "ml-auto type-caption-xs-light text-tertiary"
-const dropdownMenuLabelClass = "px-2 py-1.5 type-caption-xs-regular text-tertiary"
+// Menu hints sit on raised and hovered rows (bark-800/700), where tertiary falls to 3.9:1; secondary holds 4.6:1.
+const dropdownMenuShortcutClass = "ml-auto type-caption-xs-light text-muted-foreground"
+const dropdownMenuLabelClass = "px-2 py-1.5 type-caption-xs-regular text-muted-foreground"
 const dropdownMenuSeparatorClass = "border-t border-subtle"
 
 function DropdownMenu({
@@ -232,7 +233,7 @@ function DropdownMenuSub({
 /** Submenu chevron (Hugeicons arrow-right-01), shared with the static rendering. */
 function DropdownMenuSubIcon() {
   return (
-    <HugeiconsIcon icon={ArrowRight01Icon} className="ml-auto size-4 text-tertiary" />
+    <HugeiconsIcon icon={ArrowRight01Icon} className="ml-auto size-4 text-muted-foreground" />
   )
 }
 
