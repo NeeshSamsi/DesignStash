@@ -32,7 +32,11 @@ beforeEach(() => {
   const test = createTestDb()
   ;({ sqlite, repo } = test)
   ensureSearchIndex(test.db)
-  const ctx = { repo, settings: { getLibraryRoot: () => '/library' } } as unknown as HandlerContext
+  const ctx = {
+    repo,
+    push: vi.fn(),
+    settings: { getLibraryRoot: () => '/library' }
+  } as unknown as HandlerContext
   registerPileHandlers(ctx)
   registerTrashHandlers(ctx)
   registerMockupHandlers(ctx)

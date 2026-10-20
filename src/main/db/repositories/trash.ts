@@ -3,6 +3,7 @@ import type { AppDatabase } from '../connection'
 import { mockups } from '../schema'
 import type { LibraryQueryRepository, LibraryRow } from './library-query'
 import type { MockupRepository } from './mockups'
+import type { PileRepository } from './piles'
 import type { SearchRepository } from './search'
 
 /** Soft delete (deletedAt), restore and permanent delete. */
@@ -11,7 +12,8 @@ export class TrashRepository {
     private readonly db: AppDatabase,
     private readonly mockups: MockupRepository,
     private readonly search: SearchRepository,
-    private readonly library: LibraryQueryRepository
+    private readonly library: LibraryQueryRepository,
+    private readonly piles: PileRepository
   ) {}
 
   getTrash(): LibraryRow[] {
@@ -22,6 +24,25 @@ export class TrashRepository {
       .orderBy(desc(mockups.deletedAt))
       .all()
     return this.library.toRows(trashed)
+  }
+
+  /**
+   * What is in Trash, newest first: each pile or single mockup once, with when it was trashed
+   * and every id it covers (a pile's members come back and go with it).
+   */
+  getTrashEntries(): { row: LibraryRow; trashedAt: string; ids: number[] }[] {
+    const trashed = this.db
+      .select()
+      .from(mockups)
+      .where(and(isNotNull(mockups.deletedAt), isNull(mockups.groupId)))
+      .orderBy(desc(mockups.deletedAt), desc(mockups.id))
+      .all()
+    const rows = this.library.toRows(trashed)
+    return trashed.map((m, i) => ({
+      row: rows[i]!,
+      trashedAt: m.deletedAt!,
+      ids: [m.id, ...this.piles.getMockupsByGroupId(m.id).map((x) => x.id)]
+    }))
   }
 
   moveToTrash(id: number): void {

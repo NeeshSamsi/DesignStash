@@ -1,25 +1,64 @@
 import { IPC_CHANNELS } from '@shared/ipc'
+import { TrashService } from '../library/trash-service'
 import type { HandlerContext } from './context'
+import { pushInboxCounts } from './inbox'
 import { registerIpcHandler } from './register'
 
 function targetIds(args: { ids: number[] } | { mockupId: number }): number[] {
   return 'ids' in args ? args.ids : [args.mockupId]
 }
 
-export function registerTrashHandlers({ repo, library }: HandlerContext): void {
+export function registerTrashHandlers(ctx: HandlerContext): void {
+  const { repo, library, settings } = ctx
+  const trash = new TrashService(repo, settings.getLibraryRoot())
+
   registerIpcHandler(IPC_CHANNELS.LIBRARY_TRASH_LIST, () => ({
     items: repo.getTrash()
   }))
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_TRASH, (args) => {
-    return { ok: true, count: repo.moveManyToTrash(targetIds(args)) }
+    const count = repo.moveManyToTrash(targetIds(args))
+    pushInboxCounts(ctx)
+    return { ok: true, count }
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_RESTORE, (args) => {
-    return { ok: true, count: repo.restoreMany(targetIds(args)) }
+    const count = repo.restoreMany(targetIds(args))
+    pushInboxCounts(ctx)
+    return { ok: true, count }
   })
 
-  registerIpcHandler(IPC_CHANNELS.MOCKUP_DELETE_PERMANENT, async (args) =>
-    library.deletePermanently(args.mockupId)
-  )
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_DELETE_PERMANENT, async (args) => {
+    const result = await library.deletePermanently(args.mockupId)
+    pushInboxCounts(ctx)
+    return result
+  })
+
+  registerIpcHandler(IPC_CHANNELS.TRASH_LIST, async () => ({ items: await trash.list() }))
+
+  registerIpcHandler(IPC_CHANNELS.TRASH_STATS, () => trash.stats())
+
+  registerIpcHandler(IPC_CHANNELS.TRASH_RESTORE, async (args) => {
+    const result = await trash.restore(args.ids)
+    pushInboxCounts(ctx)
+    return result
+  })
+
+  registerIpcHandler(IPC_CHANNELS.TRASH_RESTORE_ALL, async () => {
+    const result = await trash.restoreAll()
+    pushInboxCounts(ctx)
+    return result
+  })
+
+  registerIpcHandler(IPC_CHANNELS.TRASH_EMPTY, async () => {
+    const result = await trash.empty()
+    pushInboxCounts(ctx)
+    return result
+  })
+
+  registerIpcHandler(IPC_CHANNELS.TRASH_DELETE_ENTRY, async (args) => {
+    const result = await trash.deleteEntries(args.ids)
+    pushInboxCounts(ctx)
+    return result
+  })
 }

@@ -30,3 +30,19 @@ export const InboxCountsSchema = z.object({
   trash: z.number()
 })
 export type InboxCounts = z.infer<typeof InboxCountsSchema>
+
+/** A card in Trash: a pile or a single mockup, with when it was trashed and the space it takes. */
+export const TrashItemSchema = LibraryItemSchema.extend({
+  trashedAt: z.string(),
+  /** The PSDs in the pile or single, in bytes. 0 when they can't be measured. */
+  sizeBytes: z.number()
+})
+export type TrashItem = z.infer<typeof TrashItemSchema>
+
+export const TrashStatsSchema = z.object({
+  /** Piles and singles in Trash. */
+  count: z.number(),
+  /** The space emptying Trash frees. */
+  bytes: z.number()
+})
+export type TrashStats = z.infer<typeof TrashStatsSchema>

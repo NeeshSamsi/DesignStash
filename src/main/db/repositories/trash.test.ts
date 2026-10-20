@@ -52,6 +52,27 @@ describe('getTrash', () => {
   })
 })
 
+describe('getTrashEntries', () => {
+  it('lists each pile or single once, newest first, with the ids it covers', () => {
+    const top = repo.createMockup(
+      approvedMockup({ title: 'Top', libraryPath: '/lib/t.psd', isGroup: true })
+    )
+    const side = repo.createMockup(
+      approvedMockup({ title: 'Side', libraryPath: '/lib/s.psd', groupId: top.id })
+    )
+    const single = repo.createMockup(approvedMockup({ title: 'Single', libraryPath: '/lib/g.psd' }))
+    repo.updateMockup(top.id, { deletedAt: '2026-01-01T10:00:00.000Z' })
+    repo.updateMockup(single.id, { deletedAt: '2026-02-01T10:00:00.000Z' })
+
+    const entries = repo.getTrashEntries()
+
+    expect(entries.map((e) => e.row.id)).toEqual([single.id, top.id])
+    expect(entries[0]).toMatchObject({ trashedAt: '2026-02-01T10:00:00.000Z', ids: [single.id] })
+    expect(entries[1]).toMatchObject({ ids: [top.id, side.id] })
+    expect(entries[1]!.row).toMatchObject({ isGroup: true, variantCount: 1 })
+  })
+})
+
 describe('moveToTrash / restore', () => {
   beforeEach(() => ensureSearchIndex(db))
 

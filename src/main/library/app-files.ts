@@ -24,7 +24,13 @@ export async function removeAppCopies(
     paths.add(join(dirname(m.coverPath), 'thumb.webp'))
   }
   for (const path of paths) {
-    if (isInside(libraryRoot, path)) await rm(path)
+    if (!isInside(libraryRoot, path)) continue
+    try {
+      await rm(path)
+    } catch (err) {
+      // Already gone is fine: the goal is that the copy isn't there.
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
+    }
   }
 }
 

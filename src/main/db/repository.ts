@@ -31,7 +31,7 @@ export class Repository {
     this.piles = new PileRepository(db)
     this.tags = new TagRepository(db, this.mockups, this.search)
     this.library = new LibraryQueryRepository(db, this.mockups, this.piles, this.search)
-    this.trash = new TrashRepository(db, this.mockups, this.search, this.library)
+    this.trash = new TrashRepository(db, this.mockups, this.search, this.library, this.piles)
     this.inbox = new InboxRepository(db, this.library, this.piles)
   }
 
@@ -110,6 +110,7 @@ export class Repository {
 
   // Trash
   getTrash() { return this.trash.getTrash() }
+  getTrashEntries() { return this.trash.getTrashEntries() }
   moveToTrash(...a: Args<TrashRepository['moveToTrash']>) { return this.trash.moveToTrash(...a) }
   restore(...a: Args<TrashRepository['restore']>) { return this.trash.restore(...a) }
   moveManyToTrash(...a: Args<TrashRepository['moveManyToTrash']>) { return this.trash.moveManyToTrash(...a) }
