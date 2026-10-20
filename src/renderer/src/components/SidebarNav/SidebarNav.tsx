@@ -96,9 +96,11 @@ export function SidebarNav({
       {props.add}
       <div data-slot="brand" className={sidebarNavBrandClass}>
         <span aria-hidden className={sidebarNavLogoClass}>
-          <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-3.5" />
+          <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-4" />
         </span>
-        <span className="type-body-sm-medium text-foreground">DesignStash</span>
+        <span className="type-title-lg-semibold whitespace-nowrap text-foreground">
+          DesignStash
+        </span>
       </div>
       <div className={sidebarNavListClass}>
         {props.library ?? (
