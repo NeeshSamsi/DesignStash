@@ -1,10 +1,6 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
-import {
-  LookOverQueueSchema,
-  SaveDraftRequestSchema,
-  SaveDraftResponseSchema
-} from '../approval'
+import { LookOverQueueSchema, SaveDraftRequestSchema, SaveDraftResponseSchema } from '../approval'
 
 /** Look it over. */
 export const approvalContract = {
@@ -25,5 +21,5 @@ export const approvalContract = {
   [IPC_CHANNELS.LOOK_OVER_SET_RESUME]: {
     request: z.object({ unitId: z.number(), mockupId: z.number() }),
     response: z.object({ saved: z.boolean() })
-  },
+  }
 } as const

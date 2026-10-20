@@ -25,9 +25,7 @@ export interface StashCheck {
 }
 
 /** One value for where the check is: checking, showing rows, or working on one (`id`) or all of them. */
-type Phase =
-  | { kind: 'scanning' | 'rescanning' | 'ready' }
-  | { kind: 'resolving'; id?: string }
+type Phase = { kind: 'scanning' | 'rescanning' | 'ready' } | { kind: 'resolving'; id?: string }
 
 const cover = (path: string | undefined) => (path ? { coverSrc: coverUrl(path) } : {})
 
@@ -135,9 +133,10 @@ export function useStashCheck(opts: {
 
   const undoWith = (channel: 'add' | 'ignore', payload: unknown) =>
     void enqueue(async () => {
-      const undone = await (channel === 'add'
-        ? window.api.invoke(IPC_CHANNELS.INTEGRITY_UNDO_ADD, payload as { mockupIds: number[] })
-        : window.api.invoke(IPC_CHANNELS.INTEGRITY_UNIGNORE, payload as { ids: string[] })
+      const undone = await (
+        channel === 'add'
+          ? window.api.invoke(IPC_CHANNELS.INTEGRITY_UNDO_ADD, payload as { mockupIds: number[] })
+          : window.api.invoke(IPC_CHANNELS.INTEGRITY_UNIGNORE, payload as { ids: string[] })
       ).catch(() => null)
       if (!undone?.success) return toast({ variant: 'error', message: copy.couldNotUndo })
       if (live.current) await load()
@@ -147,9 +146,10 @@ export function useStashCheck(opts: {
     enqueue(() =>
       run(ids === 'all' ? undefined : ids[0], async () => {
         const targets = ids === 'all' ? lists.found.map((i) => i.id) : ids
-        const res = await (ids === 'all'
-          ? window.api.invoke(IPC_CHANNELS.INTEGRITY_ADD_ALL, undefined)
-          : window.api.invoke(IPC_CHANNELS.INTEGRITY_ADD, { ids })
+        const res = await (
+          ids === 'all'
+            ? window.api.invoke(IPC_CHANNELS.INTEGRITY_ADD_ALL, undefined)
+            : window.api.invoke(IPC_CHANNELS.INTEGRITY_ADD, { ids })
         ).catch(() => null)
         if (!res?.success) return toast({ variant: 'error', message: copy.couldNotAdd })
         without(targets)
@@ -162,9 +162,10 @@ export function useStashCheck(opts: {
   const ignore = (ids: string[] | 'all') =>
     enqueue(() =>
       run(undefined, async () => {
-        const res = await (ids === 'all'
-          ? window.api.invoke(IPC_CHANNELS.INTEGRITY_IGNORE_ALL, undefined)
-          : window.api.invoke(IPC_CHANNELS.INTEGRITY_IGNORE, { ids })
+        const res = await (
+          ids === 'all'
+            ? window.api.invoke(IPC_CHANNELS.INTEGRITY_IGNORE_ALL, undefined)
+            : window.api.invoke(IPC_CHANNELS.INTEGRITY_IGNORE, { ids })
         ).catch(() => null)
         if (!res?.success) return toast({ variant: 'error', message: copy.couldNotIgnore })
         const { ignoredIds } = res.data
@@ -178,9 +179,10 @@ export function useStashCheck(opts: {
     enqueue(() =>
       run(ids === 'all' ? undefined : ids[0], async () => {
         const targets = ids === 'all' ? lists.gone.map((i) => i.id) : ids
-        const res = await (ids === 'all'
-          ? window.api.invoke(IPC_CHANNELS.INTEGRITY_REMOVE_ALL, undefined)
-          : window.api.invoke(IPC_CHANNELS.INTEGRITY_REMOVE, { ids })
+        const res = await (
+          ids === 'all'
+            ? window.api.invoke(IPC_CHANNELS.INTEGRITY_REMOVE_ALL, undefined)
+            : window.api.invoke(IPC_CHANNELS.INTEGRITY_REMOVE, { ids })
         ).catch(() => null)
         if (!res?.success) return toast({ variant: 'error', message: copy.couldNotRemove })
         without(targets)
