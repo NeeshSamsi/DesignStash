@@ -5,7 +5,6 @@ import Onboarding from './onboarding/Onboarding'
 import GroupingReview from './GroupingReview'
 import ApprovalStepper from './ApprovalStepper'
 import LibraryPage from './screens/library/LibraryPage'
-import LibraryTopBar from './LibraryTopBar'
 import TrashView from './TrashView'
 import SettingsPage from './SettingsPage'
 import AppShell from './AppShell'
@@ -226,9 +225,6 @@ export default function App() {
   return (
     <>
       <AppShell
-        topBar={
-          (view === 'all' || view === 'starred') && addFlow === null ? <LibraryTopBar /> : undefined
-        }
         showHeader={addFlow === null}
         importing={importing}
         importCard={importCard}

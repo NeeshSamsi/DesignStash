@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { useUiStore, type AppView } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { ConfirmDialog } from './components/_legacy/ConfirmDialog'
-import { FullscreenPreview } from './FullscreenPreview'
 import { DetailModal } from './screens/detail/DetailModal'
 import { ReconciliationModal } from './ReconciliationModal'
 import { Toaster } from './ui/sonner'
@@ -17,8 +16,6 @@ import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
 
 interface AppShellProps {
   children: ReactNode
-  /** Legacy toolbar, shown above the page. */
-  topBar?: ReactNode
   /** The import card; it sits in the ActivityDock under the toasts. */
   importCard?: ReactNode
   /** An import is running: Add is disabled. */
@@ -59,7 +56,6 @@ const NAV_VIEWS: Partial<Record<SidebarNavKey, AppView>> = {
 
 export default function AppShell({
   children,
-  topBar,
   importCard,
   importing = false,
   showHeader = true,
@@ -122,9 +118,6 @@ export default function AppShell({
             onCancel={closeModal}
           />
         )}
-        {modal.kind === 'preview' && (
-          <FullscreenPreview coverPath={modal.coverPath} onClose={closeModal} />
-        )}
         {modal.kind === 'detail' && <DetailModal mockupId={modal.mockupId} onClose={closeModal} />}
         {modal.kind === 'reconcile' && (
           <ReconciliationModal report={modal.report} onClose={closeModal} />
@@ -181,12 +174,7 @@ export default function AppShell({
               )
             }
           : {})}
-        page={
-          <div className="flex h-full flex-col">
-            {topBar && <div className="shrink-0 border-b border-border">{topBar}</div>}
-            <div className="min-h-0 flex-1 overflow-auto">{children}</div>
-          </div>
-        }
+        page={<div className="h-full overflow-auto">{children}</div>}
         drop={<DropOverlay />}
         {...(dialog ? { dialog } : {})}
       />

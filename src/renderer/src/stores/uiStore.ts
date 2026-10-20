@@ -7,7 +7,6 @@ export type AppView = 'all' | 'starred' | 'trash' | 'settings'
 export type Modal =
   | { kind: 'detail'; mockupId: number }
   | { kind: 'confirm'; title: string; message: string; danger?: boolean; onConfirm: () => void }
-  | { kind: 'preview'; coverPath: string }
   | { kind: 'reconcile'; report: IntegrityReport }
 
 interface UiState {
