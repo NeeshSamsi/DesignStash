@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
+import { guardToaster } from "@renderer/lib/toast-layer"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -56,6 +57,7 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -70,6 +72,7 @@ function DialogContent({
           className
         )}
         {...props}
+        onInteractOutside={guardToaster(onInteractOutside)}
       >
         {children}
         {showCloseButton && (

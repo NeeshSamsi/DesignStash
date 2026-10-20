@@ -200,7 +200,7 @@ export default function AppShell({
         {...(dialog ? { dialog } : {})}
       />
       <ActivityDock
-        className="fixed right-4 bottom-4 z-50"
+        className="pointer-events-auto fixed right-4 bottom-4 z-toast"
         toastContent={<Toaster />}
         importContent={copyWidget}
       />

@@ -34,6 +34,8 @@
   --height-variant-thumb: 4rem; /* 64 */
   --spacing-deck-peek: 0.75rem; /* 12 */
   --width-toast: 22.5rem; /* 360 */
+  /* Above the dialog layer (z-50) so a toast raised inside a modal stays clickable. */
+  --z-index-toast: 60;
   --min-width-tag-input: 7.5rem; /* 120 */
   --max-width-tag-label: 9.375rem; /* 150 */
   --max-height-tag-filter: 15rem; /* 240 */

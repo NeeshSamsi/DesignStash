@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
+import { guardToaster } from "@renderer/lib/toast-layer"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -49,6 +50,7 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
@@ -65,6 +67,7 @@ function SheetContent({
           className
         )}
         {...props}
+        onInteractOutside={guardToaster(onInteractOutside)}
       >
         {children}
         {showCloseButton && (

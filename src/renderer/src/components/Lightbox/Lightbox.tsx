@@ -8,6 +8,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { CoverImage } from '@renderer/components/CoverImage'
+import { guardToaster } from '@renderer/lib/toast-layer'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/ui/button'
 import { Dialog as DialogPrimitive } from 'radix-ui'
@@ -203,6 +204,7 @@ export function Lightbox({
           data-mode={props.mode}
           data-state={props.state}
           aria-describedby={undefined}
+          onInteractOutside={guardToaster()}
           onOpenAutoFocus={() => {
             opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
           }}
