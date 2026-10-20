@@ -24,6 +24,7 @@ import { registerMockupHandlers } from './mockup'
 let sqlite: Database.Database
 let repo: Repository
 let dir: string
+let openPath: ReturnType<typeof vi.fn<(p: string) => Promise<string>>>
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -31,13 +32,14 @@ const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcRe
 beforeEach(() => {
   handlers.clear()
   dir = mkdtempSync(join(tmpdir(), 'ds-mockup-'))
+  openPath = vi.fn<(p: string) => Promise<string>>().mockResolvedValue('')
   const test = createTestDb()
   ;({ sqlite, repo } = test)
   ensureSearchIndex(test.db)
   registerMockupHandlers({
     repo,
     settings: { getLibraryRoot: () => join(dir, 'library') },
-    library: new LibraryService(repo, join(dir, 'library'))
+    library: new LibraryService(repo, join(dir, 'library'), { openPath })
   } as unknown as HandlerContext)
 })
 
@@ -97,5 +99,29 @@ describe('cover channels', () => {
     const res = await call(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: m.id })
     expect(res).toEqual({ success: true, data: { ok: false, reason: 'unreadable' } })
     expect(repo.getMockup(m.id)?.coverSource).toBe('user-uploaded')
+  })
+})
+
+describe('MOCKUP_OPEN_EXTERNAL', () => {
+  it('opens the top mockup of a pile', async () => {
+    const top = repo.createMockup(
+      approvedMockup({ title: 'Top', libraryPath: join(dir, 'top.psd'), isGroup: true })
+    )
+    writeFileSync(join(dir, 'top.psd'), 'psd')
+
+    const res = await call(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, { mockupId: top.id })
+
+    expect(res).toEqual({ success: true, data: { opened: true } })
+    expect(openPath).toHaveBeenCalledWith(join(dir, 'top.psd'))
+  })
+
+  it('gives a reason and nothing else when it cannot open', async () => {
+    const m = repo.createMockup(approvedMockup({ title: 'M', libraryPath: join(dir, 'm.psd') }))
+    writeFileSync(join(dir, 'm.psd'), 'psd')
+    openPath.mockResolvedValueOnce('Failed to open path /Users/someone/m.psd')
+
+    const res = await call(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, { mockupId: m.id })
+
+    expect(res).toEqual({ success: true, data: { opened: false, reason: 'no-app' } })
   })
 })

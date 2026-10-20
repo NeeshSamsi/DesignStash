@@ -38,7 +38,8 @@ const makeDeps = () => ({
   openPath: vi.fn<(p: string) => Promise<string>>().mockResolvedValue(''),
   rm: vi.fn<(p: string) => Promise<void>>().mockImplementation(async () => {}),
   copyFile: vi.fn<(src: string, dest: string) => Promise<void>>().mockImplementation(async () => {}),
-  mkdir: vi.fn<(p: string) => Promise<void>>().mockImplementation(async () => {})
+  mkdir: vi.fn<(p: string) => Promise<void>>().mockImplementation(async () => {}),
+  exists: vi.fn<(p: string) => Promise<boolean>>().mockResolvedValue(true)
 })
 
 describe('openExternal', () => {
@@ -53,14 +54,57 @@ describe('openExternal', () => {
     expect(deps.openPath).toHaveBeenCalledWith('/lib/open.psd')
   })
 
-  it('returns {opened:false} and does not call openPath for missing mockup', async () => {
+  it('says it failed, and does not call openPath, for a mockup that does not exist', async () => {
     const deps = makeDeps()
     const svc = new LibraryService(repo, '/library', deps)
 
     const result = await svc.openExternal(9999)
 
-    expect(result).toEqual({ opened: false })
+    expect(result).toEqual({ opened: false, reason: 'failed' })
     expect(deps.openPath).not.toHaveBeenCalled()
+  })
+
+  it('says it failed when the PSD is no longer on disk', async () => {
+    const m = repo.createMockup(approvedRow({ title: 'Gone', libraryPath: '/lib/gone.psd' }))
+    const deps = makeDeps()
+    deps.exists.mockResolvedValueOnce(false)
+    const svc = new LibraryService(repo, '/library', deps)
+
+    expect(await svc.openExternal(m.id)).toEqual({ opened: false, reason: 'failed' })
+    expect(deps.openPath).not.toHaveBeenCalled()
+  })
+
+  it('says there is no app when the system has nothing to open it with', async () => {
+    const m = repo.createMockup(approvedRow({ title: 'NoApp', libraryPath: '/lib/noapp.psd' }))
+    const deps = makeDeps()
+    deps.openPath.mockResolvedValueOnce('Failed to open path /lib/noapp.psd')
+    const svc = new LibraryService(repo, '/library', deps)
+
+    const result = await svc.openExternal(m.id)
+
+    // The system's message holds a path, so only the reason goes back.
+    expect(result).toEqual({ opened: false, reason: 'no-app' })
+  })
+
+  it('says it failed when opening throws', async () => {
+    const m = repo.createMockup(approvedRow({ title: 'Boom', libraryPath: '/lib/boom.psd' }))
+    const deps = makeDeps()
+    deps.openPath.mockRejectedValueOnce(new Error('boom'))
+    const svc = new LibraryService(repo, '/library', deps)
+
+    expect(await svc.openExternal(m.id)).toEqual({ opened: false, reason: 'failed' })
+  })
+
+  it('opens a pile through its top mockup', async () => {
+    const top = repo.createMockup(
+      approvedRow({ title: 'Top', libraryPath: '/lib/top.psd', isGroup: true })
+    )
+    repo.createMockup(approvedRow({ title: 'Side', libraryPath: '/lib/side.psd', groupId: top.id }))
+    const deps = makeDeps()
+    const svc = new LibraryService(repo, '/library', deps)
+
+    expect(await svc.openExternal(top.id)).toEqual({ opened: true })
+    expect(deps.openPath).toHaveBeenCalledWith('/lib/top.psd')
   })
 })
 

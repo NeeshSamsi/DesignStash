@@ -18,7 +18,10 @@ export const mockupContract = {
   },
   [IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL]: {
     request: z.object({ mockupId: z.number() }),
-    response: z.object({ opened: z.boolean() })
+    response: z.discriminatedUnion('opened', [
+      z.object({ opened: z.literal(true) }),
+      z.object({ opened: z.literal(false), reason: z.enum(['no-app', 'failed']) })
+    ])
   },
   [IPC_CHANNELS.MOCKUP_DUPLICATE]: {
     request: z.object({ mockupId: z.number() }),
