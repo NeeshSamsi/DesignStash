@@ -11,7 +11,10 @@ const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
 )
 vi.mock('electron', () => ({
-  ipcMain: { handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) => handlers.set(channel, fn) }
+  ipcMain: {
+    handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) =>
+      handlers.set(channel, fn)
+  }
 }))
 
 import { registerPileHandlers } from './pile'
@@ -71,7 +74,13 @@ describe('pile handlers', () => {
   })
 
   it('adds, merges, puts on top and disbands, then restores from the snapshot', async () => {
-    const [a, b, c, d, e] = ['a', 'b', 'c', 'd', 'e'].map(make) as [number, number, number, number, number]
+    const [a, b, c, d, e] = ['a', 'b', 'c', 'd', 'e'].map(make) as [
+      number,
+      number,
+      number,
+      number,
+      number
+    ]
     await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
     await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [c, d], topId: c })
 
@@ -123,7 +132,9 @@ describe('trash handlers', () => {
   it('no longer takes the single mockupId form', async () => {
     const a = make('a')
     expect(await call(IPC_CHANNELS.MOCKUP_TRASH, { mockupId: a })).toMatchObject({ success: false })
-    expect(await call(IPC_CHANNELS.MOCKUP_RESTORE, { mockupId: a })).toMatchObject({ success: false })
+    expect(await call(IPC_CHANNELS.MOCKUP_RESTORE, { mockupId: a })).toMatchObject({
+      success: false
+    })
   })
 
   it('rejects an empty id list', async () => {

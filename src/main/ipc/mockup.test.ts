@@ -16,7 +16,10 @@ const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
 )
 vi.mock('electron', () => ({
-  ipcMain: { handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) => handlers.set(channel, fn) }
+  ipcMain: {
+    handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) =>
+      handlers.set(channel, fn)
+  }
 }))
 
 import { registerMockupHandlers } from './mockup'
@@ -50,7 +53,9 @@ afterEach(() => {
 
 const png = async (name: string, width: number, height: number) => {
   const path = join(dir, name)
-  await sharp({ create: { width, height, channels: 3, background: '#c97b4a' } }).png().toFile(path)
+  await sharp({ create: { width, height, channels: 3, background: '#c97b4a' } })
+    .png()
+    .toFile(path)
   return path
 }
 
@@ -59,7 +64,10 @@ describe('cover channels', () => {
     const m = repo.createMockup(approvedMockup({ title: 'Phone', libraryPath: join(dir, 'a.psd') }))
     const file = await png('new.png', 900, 1600)
 
-    const res = await call<CoverChange>(IPC_CHANNELS.MOCKUP_SET_COVER, { mockupId: m.id, filePath: file })
+    const res = await call<CoverChange>(IPC_CHANNELS.MOCKUP_SET_COVER, {
+      mockupId: m.id,
+      filePath: file
+    })
 
     expect(res.success && res.data).toMatchObject({
       ok: true,
@@ -88,13 +96,20 @@ describe('cover channels', () => {
 
   it('reports a file that is not there as unreadable', async () => {
     const m = repo.createMockup(approvedMockup({ title: 'Phone', libraryPath: join(dir, 'a.psd') }))
-    const res = await call(IPC_CHANNELS.MOCKUP_SET_COVER, { mockupId: m.id, filePath: join(dir, 'nope.png') })
+    const res = await call(IPC_CHANNELS.MOCKUP_SET_COVER, {
+      mockupId: m.id,
+      filePath: join(dir, 'nope.png')
+    })
     expect(res).toEqual({ success: true, data: { ok: false, reason: 'unreadable' } })
   })
 
   it('reports an unreadable PSD when going back to the embedded preview', async () => {
     const m = repo.createMockup(
-      approvedMockup({ title: 'Phone', libraryPath: join(dir, 'missing.psd'), coverSource: 'user-uploaded' })
+      approvedMockup({
+        title: 'Phone',
+        libraryPath: join(dir, 'missing.psd'),
+        coverSource: 'user-uploaded'
+      })
     )
     const res = await call(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: m.id })
     expect(res).toEqual({ success: true, data: { ok: false, reason: 'unreadable' } })

@@ -10,7 +10,10 @@ const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
 )
 vi.mock('electron', () => ({
-  ipcMain: { handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) => handlers.set(channel, fn) }
+  ipcMain: {
+    handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) =>
+      handlers.set(channel, fn)
+  }
 }))
 
 import { registerInboxHandlers } from './inbox'
@@ -46,8 +49,12 @@ describe('inbox channels', () => {
     const [a, b] = [make('a'), make('b')]
     repo.setStage([b], 'to_stash')
 
-    const toSort = await call<{ items: { id: number }[] }>(IPC_CHANNELS.INBOX_LIST, { stage: 'to_sort' })
-    const toStash = await call<{ items: { id: number }[] }>(IPC_CHANNELS.INBOX_LIST, { stage: 'to_stash' })
+    const toSort = await call<{ items: { id: number }[] }>(IPC_CHANNELS.INBOX_LIST, {
+      stage: 'to_sort'
+    })
+    const toStash = await call<{ items: { id: number }[] }>(IPC_CHANNELS.INBOX_LIST, {
+      stage: 'to_stash'
+    })
 
     expect(toSort.success && toSort.data.items.map((i) => i.id)).toEqual([a])
     expect(toStash.success && toStash.data.items.map((i) => i.id)).toEqual([b])

@@ -4,7 +4,6 @@ import { variantMatrix } from '@renderer/design-system/matrix'
 import { ActionBar, type ActionBarProps } from './ActionBar'
 import { ACTION_BAR_CONTRACT } from './ActionBar.types'
 
-
 /** Buttons with a filled colour (primary or destructive); secondary and ghost are not filled. */
 const filled = (root: ParentNode) =>
   [...root.querySelectorAll('[data-slot="button"]')].filter((b) =>
@@ -70,8 +69,16 @@ describe('ActionBar', () => {
   })
 
   it('stepper offers Back, Finish later and the pile shortcut on demand', () => {
-    render(<ActionBar variant="stepper" showPileShortcut pileShortcutLabel="Stash the other 2 too" />)
-    for (const name of ['Back', 'Skip for now', 'Finish later', 'Stash the other 2 too', 'Stash & next']) {
+    render(
+      <ActionBar variant="stepper" showPileShortcut pileShortcutLabel="Stash the other 2 too" />
+    )
+    for (const name of [
+      'Back',
+      'Skip for now',
+      'Finish later',
+      'Stash the other 2 too',
+      'Stash & next'
+    ]) {
       expect(screen.getByRole('button', { name })).toBeTruthy()
     }
   })

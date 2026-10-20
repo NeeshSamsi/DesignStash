@@ -15,7 +15,10 @@ const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
 )
 vi.mock('electron', () => ({
-  ipcMain: { handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) => handlers.set(channel, fn) }
+  ipcMain: {
+    handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) =>
+      handlers.set(channel, fn)
+  }
 }))
 
 import { inferenceQueueFor, registerAiStatusHandlers } from './ai-status'
@@ -79,7 +82,12 @@ describe('ai:status push', () => {
         totals: { total: 38, remaining: 7 }
       }).success
     ).toBe(true)
-    expect(request.safeParse({ updates: [{ mockupId: 1, status: 'bogus' }], totals: { total: 1, remaining: 0 } }).success).toBe(false)
+    expect(
+      request.safeParse({
+        updates: [{ mockupId: 1, status: 'bogus' }],
+        totals: { total: 1, remaining: 0 }
+      }).success
+    ).toBe(false)
   })
 
   it('reports status changes and the new inbox counts as suggestions are made', async () => {

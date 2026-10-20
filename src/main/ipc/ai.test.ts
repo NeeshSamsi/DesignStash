@@ -11,7 +11,10 @@ const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
 )
 vi.mock('electron', () => ({
-  ipcMain: { handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) => handlers.set(channel, fn) }
+  ipcMain: {
+    handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) =>
+      handlers.set(channel, fn)
+  }
 }))
 
 import { registerAiHandlers } from './ai'
@@ -53,13 +56,20 @@ describe('AI_LIST_MODELS', () => {
     install('qwen2.5-vl-3b')
     install('qwen2.5-1.5b', ['old.gguf'])
 
-    const res = await call<{ models: { id: string; installed: boolean; bestFit: boolean }[]; legacy: { id: string }[] }>(
-      IPC_CHANNELS.AI_LIST_MODELS
-    )
+    const res = await call<{
+      models: { id: string; installed: boolean; bestFit: boolean }[]
+      legacy: { id: string }[]
+    }>(IPC_CHANNELS.AI_LIST_MODELS)
 
-    expect(res.success && res.data.models.map((m) => m.id)).toEqual(['smolvlm2-2.2b', 'qwen2.5-vl-3b', 'qwen2.5-vl-7b'])
+    expect(res.success && res.data.models.map((m) => m.id)).toEqual([
+      'smolvlm2-2.2b',
+      'qwen2.5-vl-3b',
+      'qwen2.5-vl-7b'
+    ])
     expect(res.success && res.data.models.filter((m) => m.bestFit)).toHaveLength(1)
-    expect(res.success && res.data.models.find((m) => m.id === 'qwen2.5-vl-3b')?.installed).toBe(true)
+    expect(res.success && res.data.models.find((m) => m.id === 'qwen2.5-vl-3b')?.installed).toBe(
+      true
+    )
     expect(res.success && res.data.legacy.map((l) => l.id)).toEqual(['qwen2.5-1.5b'])
   })
 })
@@ -97,7 +107,9 @@ describe('AI_DELETE_MODEL', () => {
     install('qwen2.5-vl-3b')
     settings.update({ activeModelId: 'qwen2.5-vl-3b' })
 
-    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-3b', confirmed: true })).toEqual({
+    expect(
+      await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-3b', confirmed: true })
+    ).toEqual({
       success: true,
       data: { deleted: true, inUse: true, undoable: true }
     })

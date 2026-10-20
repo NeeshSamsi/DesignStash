@@ -15,7 +15,10 @@ const handlers = vi.hoisted(
 vi.mock('electron', () => ({
   app: { getAppPath: () => '/app', getVersion: () => '9.9.9' },
   clipboard: { writeText: vi.fn() },
-  ipcMain: { handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) => handlers.set(channel, fn) }
+  ipcMain: {
+    handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) =>
+      handlers.set(channel, fn)
+  }
 }))
 
 import { registerAboutHandlers } from './about'
@@ -62,7 +65,10 @@ describe('updates', () => {
       data: { state: 'up-to-date', lastCheckedAt: '2026-10-20T03:00:00.000Z' }
     })
     expect(await call(IPC_CHANNELS.UPDATES_CANCEL)).toMatchObject({ data: { state: 'up-to-date' } })
-    expect(await call(IPC_CHANNELS.UPDATES_INSTALL)).toEqual({ success: true, data: { installing: false } })
+    expect(await call(IPC_CHANNELS.UPDATES_INSTALL)).toEqual({
+      success: true,
+      data: { installing: false }
+    })
   })
 })
 

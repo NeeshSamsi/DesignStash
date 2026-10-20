@@ -14,7 +14,10 @@ const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
 )
 vi.mock('electron', () => ({
-  ipcMain: { handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) => handlers.set(channel, fn) }
+  ipcMain: {
+    handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) =>
+      handlers.set(channel, fn)
+  }
 }))
 
 import { registerTrashHandlers } from './trash'
@@ -69,7 +72,9 @@ describe('trash channels', () => {
     const b = make('b')
     repo.moveManyToTrash([a.id, b.id])
 
-    const list = await call<{ items: { id: number; sizeBytes: number; trashedAt: string }[] }>(IPC_CHANNELS.TRASH_LIST)
+    const list = await call<{ items: { id: number; sizeBytes: number; trashedAt: string }[] }>(
+      IPC_CHANNELS.TRASH_LIST
+    )
     const stats = await call(IPC_CHANNELS.TRASH_STATS)
 
     expect(list.success && list.data.items).toHaveLength(2)
@@ -82,7 +87,9 @@ describe('trash channels', () => {
     const b = make('b')
     repo.moveManyToTrash([a.id, b.id])
 
-    const res = await call<{ restoredIds: number[]; missing: number[] }>(IPC_CHANNELS.TRASH_RESTORE_ALL)
+    const res = await call<{ restoredIds: number[]; missing: number[] }>(
+      IPC_CHANNELS.TRASH_RESTORE_ALL
+    )
 
     expect(res.success && res.data.restoredIds.sort()).toEqual([a.id, b.id].sort())
     expect(repo.getTrash()).toHaveLength(0)
@@ -140,7 +147,9 @@ describe('trash channels', () => {
 
   it('rejects empty id lists at the contract', async () => {
     expect(await call(IPC_CHANNELS.TRASH_RESTORE, { ids: [] })).toMatchObject({ success: false })
-    expect(await call(IPC_CHANNELS.TRASH_DELETE_ENTRY, { ids: [] })).toMatchObject({ success: false })
+    expect(await call(IPC_CHANNELS.TRASH_DELETE_ENTRY, { ids: [] })).toMatchObject({
+      success: false
+    })
   })
 
   it('moving to Trash and back pushes the counts', async () => {

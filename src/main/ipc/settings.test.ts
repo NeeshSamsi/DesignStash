@@ -14,7 +14,10 @@ const handlers = vi.hoisted(
 )
 vi.mock('electron', () => ({
   app: { getVersion: () => '1.2.3' },
-  ipcMain: { handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) => handlers.set(channel, fn) }
+  ipcMain: {
+    handle: (channel: string, fn: (event: unknown, args: unknown) => Promise<unknown>) =>
+      handlers.set(channel, fn)
+  }
 }))
 vi.mock('../db/connection', () => ({ getDb: vi.fn(), getSqlite: vi.fn() }))
 
@@ -62,11 +65,16 @@ describe('stash channels', () => {
       success: true,
       data: { ok: true, restartRequired: true }
     })
-    expect(await call(IPC_CHANNELS.STASH_INFO)).toMatchObject({ data: { path: other, restartRequired: true } })
+    expect(await call(IPC_CHANNELS.STASH_INFO)).toMatchObject({
+      data: { path: other, restartRequired: true }
+    })
   })
 
   it('answers a refusal with a plain reason and no path', async () => {
-    const res = await call(IPC_CHANNELS.STASH_CHANGE, { path: settings.getLibraryRoot(), mode: 'move' })
+    const res = await call(IPC_CHANNELS.STASH_CHANGE, {
+      path: settings.getLibraryRoot(),
+      mode: 'move'
+    })
     expect(res).toEqual({ success: true, data: { ok: false, reason: 'same-folder' } })
     expect(JSON.stringify(res)).not.toContain(base)
   })
@@ -84,7 +92,13 @@ describe('stash channels', () => {
     expect(PUSH_CHANNELS).toContain(IPC_CHANNELS.STASH_MOVE_PROGRESS)
     const { request } = IPC_CONTRACT[IPC_CHANNELS.STASH_MOVE_PROGRESS]
     expect(
-      request.safeParse({ phase: 'copying', copiedFiles: 1, totalFiles: 4, copiedBytes: 10, totalBytes: 40 }).success
+      request.safeParse({
+        phase: 'copying',
+        copiedFiles: 1,
+        totalFiles: 4,
+        copiedBytes: 10,
+        totalBytes: 40
+      }).success
     ).toBe(true)
     expect(request.safeParse({ phase: 'nope' }).success).toBe(false)
   })
