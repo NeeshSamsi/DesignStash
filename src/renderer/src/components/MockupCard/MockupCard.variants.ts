@@ -1,14 +1,14 @@
 import { cva } from 'class-variance-authority'
 
-// Figma MockupCard 217:1492. The root is a plain wrapper: it holds the pile stack and the 12px the stack
+// Figma MockupCard 217:1492. The root fills its grid column (compact keeps 160px). The root is a plain wrapper: it holds the pile stack and the 12px the stack
 // needs below it. The face (mockupCardFaceVariants) is the squircle container that scales on hover.
-export const mockupCardVariants = cva('group/card relative flex flex-col outline-none', {
+export const mockupCardVariants = cva('group/card relative flex min-w-0 flex-col outline-none', {
   variants: {
     variant: {
-      library: 'w-card',
-      'pending-review': 'w-card',
+      library: 'w-full',
+      'pending-review': 'w-full',
       compact: 'w-40',
-      trash: 'w-card'
+      trash: 'w-full'
     },
     // Piles leave room for their two edges (6px a step).
     pile: { true: 'mb-3', false: '' }

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { variantMatrix } from '@renderer/design-system/matrix'
 import { MockupCard, type MockupCardProps } from './MockupCard'
@@ -151,11 +151,16 @@ describe('MockupCard', () => {
   })
 
   describe('compact', () => {
-    it('has an icon-only Open in Photoshop and no Preview', () => {
+    it('has one full-width, text-only Open in Photoshop and nothing else', () => {
       const onOpenInPhotoshop = vi.fn()
       render(<MockupCard variant="compact" onOpenInPhotoshop={onOpenInPhotoshop} />)
-      fireEvent.click(screen.getByRole('button', { name: 'Open in Photoshop' }))
+      const open = screen.getByRole('button', { name: 'Open in Photoshop' })
+      fireEvent.click(open)
       expect(onOpenInPhotoshop).toHaveBeenCalledOnce()
+      expect(open.textContent).toBe('Open in Photoshop')
+      expect(open.querySelector('svg')).toBeNull()
+      expect(open.className).toContain('w-full')
+      expect(open.className).toContain('bg-primary')
       expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull()
       expect(screen.queryByRole('button', { name: 'Edit details' })).toBeNull()
     })
@@ -232,5 +237,40 @@ describe('MockupCard', () => {
     expect(card.getAttribute('tabindex')).toBeNull()
     expect(screen.queryByRole('button')).toBeNull()
     expect(screen.queryByText(MOCKUP_CARD_CONTRACT.texts.title)).toBeNull()
+  })
+
+  describe('fluid width', () => {
+    it.each(['library', 'pending-review', 'trash'] as const)(
+      '%s fills its grid column',
+      (variant) => {
+        const { container } = render(<MockupCard variant={variant} />)
+        const card = container.querySelector('[data-ds="MockupCard"]')!
+        expect(card.className).toContain('w-full')
+        expect(card.className).not.toContain('w-card')
+      }
+    )
+  })
+
+  describe('truncated title', () => {
+    const cut = (scrollWidth: number, clientWidth: number) => {
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(scrollWidth)
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(clientWidth)
+    }
+    afterEach(() => vi.restoreAllMocks())
+
+    it('shows the full title in a tooltip on keyboard focus only when it is cut off', async () => {
+      cut(300, 200)
+      render(<MockupCard title="A very long mockup title" />)
+      fireEvent.focus(screen.getByText('A very long mockup title'))
+      expect(await screen.findByRole('tooltip')).not.toBeNull()
+    })
+
+    it('shows no tooltip when the title fits', async () => {
+      cut(200, 200)
+      render(<MockupCard title="Short" />)
+      fireEvent.focus(screen.getByText('Short'))
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      expect(screen.queryByRole('tooltip')).toBeNull()
+    })
   })
 })

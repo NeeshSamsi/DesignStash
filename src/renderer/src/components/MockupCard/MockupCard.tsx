@@ -1,7 +1,9 @@
+import { useRef, useState } from 'react'
 import type { ComponentProps, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Layers01Icon, LinkSquare02Icon, MoreHorizontalIcon } from '@hugeicons/core-free-icons'
+import { Layers01Icon, MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { Badge } from '@renderer/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
 import { Skeleton } from '@renderer/ui/skeleton'
 import { Button } from '@renderer/components/Button'
 import { CoverImage } from '@renderer/components/CoverImage'
@@ -214,22 +216,14 @@ export function MockupCard({
           )}
 
           {interactive && compact && (
-            <div
-              className={cn(
-                'absolute inset-x-0 bottom-0 flex justify-end gap-1.5 p-2',
-                REVEAL_ON_HOVER
-              )}
-              {...keepToControl}
-            >
-              <button
-                type="button"
-                aria-label="Open in Photoshop"
+            <HoverActions>
+              <Button
+                size="xs"
+                label="Open in Photoshop"
+                className="w-full"
                 onClick={onOpenInPhotoshop}
-                className={OVERLAY_ICON_BUTTON}
-              >
-                <HugeiconsIcon icon={LinkSquare02Icon} strokeWidth={1.5} />
-              </button>
-            </div>
+              />
+            </HoverActions>
           )}
 
           {state === 'group-target' && (
@@ -255,7 +249,7 @@ export function MockupCard({
             </>
           ) : (
             <>
-              <p className="truncate type-body-sm-medium text-foreground">{title}</p>
+              <CardTitle title={title} />
               {showTags && (
                 <p className="truncate type-caption-xs-regular text-tertiary">{tagLine}</p>
               )}
@@ -264,6 +258,32 @@ export function MockupCard({
         </div>
       </div>
     </div>
+  )
+}
+
+/** How long a hover waits before the full title shows. */
+const TITLE_TOOLTIP_MS = 600
+
+/** The card title. When it is cut off, hovering it shows the full title after the usual delay. */
+function CardTitle({ title }: { title: string }) {
+  const ref = useRef<HTMLParagraphElement>(null)
+  const [open, setOpen] = useState(false)
+  const cut = () => ref.current !== null && ref.current.scrollWidth > ref.current.clientWidth
+  return (
+    <Tooltip
+      delayDuration={TITLE_TOOLTIP_MS}
+      open={open}
+      onOpenChange={(next) => setOpen(next && cut())}
+    >
+      <TooltipTrigger asChild>
+        <p ref={ref} className="truncate type-body-sm-medium text-foreground">
+          {title}
+        </p>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="start">
+        {title}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
