@@ -6,6 +6,8 @@ interface LibraryState {
   trash: LibraryItem[]
   stats: LibraryStats
   tagFilter: number[]
+  /** Categories picked as a whole (“All in Device”). */
+  categoryIds: number[]
   query: string
   sort: 'date' | 'name'
   selectedDetail: MockupDetail | null
@@ -15,6 +17,7 @@ interface LibraryState {
   setTrash(trash: LibraryItem[]): void
   setStats(stats: LibraryStats): void
   setTagFilter(tagFilter: number[]): void
+  setCategoryIds(categoryIds: number[]): void
   setQuery(query: string): void
   setSort(sort: 'date' | 'name'): void
   setDetail(detail: MockupDetail | null): void
@@ -29,6 +32,7 @@ export const useLibraryStore = create<LibraryState>((set) => ({
   trash: [],
   stats: emptyStats,
   tagFilter: [],
+  categoryIds: [],
   query: '',
   sort: 'date',
   selectedDetail: null,
@@ -38,9 +42,10 @@ export const useLibraryStore = create<LibraryState>((set) => ({
   setTrash: (trash) => set({ trash }),
   setStats: (stats) => set({ stats }),
   setTagFilter: (tagFilter) => set({ tagFilter }),
+  setCategoryIds: (categoryIds) => set({ categoryIds }),
   setQuery: (query) => set({ query }),
   setSort: (sort) => set({ sort }),
   setDetail: (selectedDetail) => set({ selectedDetail }),
   setLoading: (isLoading) => set({ isLoading }),
-  reset: () => set({ items: [], trash: [], stats: emptyStats, tagFilter: [], query: '', sort: 'date', selectedDetail: null, isLoading: false })
+  reset: () => set({ items: [], trash: [], stats: emptyStats, tagFilter: [], categoryIds: [], query: '', sort: 'date', selectedDetail: null, isLoading: false })
 }))

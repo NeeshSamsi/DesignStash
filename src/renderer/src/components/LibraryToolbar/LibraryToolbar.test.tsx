@@ -25,7 +25,7 @@ describe('LibraryToolbar', () => {
 
   it('has no chips or Clear while nothing is picked', () => {
     const { container } = render(<LibraryToolbar chips={[]} />)
-    expect(container.querySelectorAll('[data-slot="filter-chip"]')).toHaveLength(0)
+    expect(container.querySelectorAll('[data-ds="TagChip"]')).toHaveLength(0)
     expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull()
   })
 
@@ -43,7 +43,7 @@ describe('LibraryToolbar', () => {
     )
     expect(screen.getByLabelText('2 filters').textContent).toBe('2')
     expect(screen.getByText('Device')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Remove Device iPhone' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove iPhone' }))
     expect(onRemove).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: 'Remove Style' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }))

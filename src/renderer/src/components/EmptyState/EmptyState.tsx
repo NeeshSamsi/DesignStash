@@ -6,8 +6,8 @@ import { EMPTY_STATE_DEFAULTS, type EmptyStateContractProps } from './EmptyState
 import { emptyStateTileVariants, emptyStateVariants } from './EmptyState.variants'
 
 export interface EmptyStateProps extends EmptyStateContractProps {
-  /** The way forward. Required: an empty state never leaves the person without a next step. */
-  primaryLabel?: string
+  /** The way forward. Shown unless null: only a state that just explains itself (nothing starred yet) leaves it out. */
+  primaryLabel?: string | null
   primaryIcon?: IconSvgElement
   onPrimary?: () => void
   /** Shown when `secondaryAction` is on. Give it a real destination; there is no help site. */
@@ -51,10 +51,12 @@ export function EmptyState({
             {secondaryLabel}
           </Button>
         )}
-        <Button size="sm" onClick={onPrimary}>
-          <HugeiconsIcon icon={primaryIcon} strokeWidth={2} />
-          {primaryLabel}
-        </Button>
+        {primaryLabel !== null && (
+          <Button size="sm" onClick={onPrimary}>
+            <HugeiconsIcon icon={primaryIcon} strokeWidth={2} />
+            {primaryLabel}
+          </Button>
+        )}
       </div>
     </div>
   )

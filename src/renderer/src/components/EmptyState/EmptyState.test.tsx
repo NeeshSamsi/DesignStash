@@ -38,4 +38,9 @@ describe('EmptyState', () => {
     const cls = container.querySelector('[data-ds="EmptyState"]')!.className
     expect(cls).not.toMatch(/h-full|justify-center|my-auto/)
   })
+
+  it('leaves the button out when the state only explains itself (primaryLabel null)', () => {
+    render(<EmptyState primaryLabel={null} />)
+    expect(screen.queryByRole('button')).toBeNull()
+  })
 })

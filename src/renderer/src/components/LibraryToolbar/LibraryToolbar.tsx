@@ -1,12 +1,13 @@
-import { Cancel01Icon, FilterHorizontalIcon } from '@hugeicons/core-free-icons'
+import { FilterHorizontalIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Select } from '@renderer/components/Select'
+import { TagChip } from '@renderer/components/TagChip'
 import { TagFilterPopover, type TagFilterPopoverProps } from '@renderer/components/TagFilterPopover'
 import { cn } from '@renderer/lib/utils'
 import { Badge } from '@renderer/ui/badge'
 import { Button } from '@renderer/ui/button'
 import { LIBRARY_TOOLBAR_DEFAULTS, type LibraryToolbarContractProps } from './LibraryToolbar.types'
-import { filterChipClass, libraryToolbarVariants } from './LibraryToolbar.variants'
+import { libraryToolbarVariants } from './LibraryToolbar.variants'
 
 /** A picked filter: a tag (“Device iPhone”) or a whole category (label only). */
 export interface ToolbarChip {
@@ -77,20 +78,14 @@ export function LibraryToolbar({
           <>
             <Badge aria-label={`${picked.length} filters`}>{picked.length}</Badge>
             {picked.map((chip) => (
-              <span key={chip.key} data-slot="filter-chip" className={filterChipClass}>
-                {chip.category && (
-                  <span className="type-caption-xs-regular text-muted-foreground">{chip.category}</span>
-                )}
-                <span className="type-label-xs-medium text-foreground">{chip.label}</span>
-                <button
-                  type="button"
-                  aria-label={`Remove ${chip.category ? `${chip.category} ` : ''}${chip.label}`}
-                  onClick={chip.onRemove}
-                  className="rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-4" />
-                </button>
-              </span>
+              <TagChip
+                key={chip.key}
+                variant="filter"
+                showCategory={chip.category !== undefined}
+                category={chip.category ?? ''}
+                label={chip.label}
+                {...(chip.onRemove ? { onRemove: chip.onRemove } : {})}
+              />
             ))}
             <Button variant="link" size="xs" onClick={onClearFilters}>
               Clear
