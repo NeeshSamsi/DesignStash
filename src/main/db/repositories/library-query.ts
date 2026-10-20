@@ -5,6 +5,7 @@ import { mockups, tags, mockupTags, tagCategories } from '../schema'
 import type { Mockup } from '../schema'
 import type { MockupRepository } from './mockups'
 import { pileRole } from './piles'
+import { isStashed } from './stashed'
 import type { PileRepository } from './piles'
 import type { SearchRepository } from './search'
 
@@ -65,7 +66,7 @@ export class LibraryQueryRepository {
       .from(mockups)
       .where(
         and(
-          eq(mockups.reviewStatus, 'approved'),
+          isStashed,
           isNull(mockups.deletedAt),
           isNull(mockups.groupId),
           ...(opts.starredOnly ? [eq(mockups.favourite, true)] : [])
@@ -212,7 +213,7 @@ export class LibraryQueryRepository {
 
   getLibraryStats(): { total: number; favourites: number; groups: number; trashed: number } {
     const baseFilter = and(
-      eq(mockups.reviewStatus, 'approved'),
+      isStashed,
       isNull(mockups.deletedAt),
       isNull(mockups.groupId)
     )

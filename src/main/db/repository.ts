@@ -56,7 +56,6 @@ export class Repository {
   mockupExistsByHash(...a: Args<MockupRepository['mockupExistsByHash']>) { return this.mockups.mockupExistsByHash(...a) }
   updateMockup(...a: Args<MockupRepository['updateMockup']>) { return this.mockups.updateMockup(...a) }
   getMockupsByBatchId(...a: Args<MockupRepository['getMockupsByBatchId']>) { return this.mockups.getMockupsByBatchId(...a) }
-  approveItem(...a: Args<MockupRepository['approveItem']>) { return this.mockups.approveItem(...a) }
   setMockupCover(...a: Args<MockupRepository['setMockupCover']>) { return this.mockups.setMockupCover(...a) }
   updateMockupMeta(...a: Args<MockupRepository['updateMockupMeta']>) { return this.mockups.updateMockupMeta(...a) }
   createVariant(...a: Args<MockupRepository['createVariant']>) { return this.mockups.createVariant(...a) }

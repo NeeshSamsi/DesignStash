@@ -49,6 +49,29 @@ describe('getLibrary', () => {
     expect(result.length).toBe(1)
   })
 
+  it('shows what is stashed and nothing else, whatever reviewStatus says', () => {
+    const stashed = repo.createMockup(
+      approvedMockup({
+        title: 'Stashed',
+        libraryPath: '/lib/st.psd',
+        reviewStatus: 'needs_review',
+        stage: 'stashed'
+      })
+    )
+    const waiting = repo.createMockup(
+      approvedMockup({
+        title: 'Waiting',
+        libraryPath: '/lib/wt.psd',
+        reviewStatus: 'approved',
+        stage: 'to_stash'
+      })
+    )
+    expect(repo.getLibrary({ sort: 'date' }).map((r) => r.id)).toEqual([stashed.id])
+    expect(repo.getLibraryStats().total).toBe(1)
+    repo.setStage([waiting.id], 'stashed')
+    expect(repo.getLibraryStats().total).toBe(2)
+  })
+
   it('excludes group members and returns leader with correct variantCount', () => {
     const leader = repo.createMockup(
       approvedMockup({ title: 'Leader', libraryPath: '/lib/leader.psd', isGroup: true })

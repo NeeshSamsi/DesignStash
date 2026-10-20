@@ -145,23 +145,6 @@ describe('getMockupsByBatchId', () => {
   })
 })
 
-describe('approveItem', () => {
-  it('sets reviewStatus, title, description, and coverPath on the mockup', () => {
-    const m = repo.createMockup(sample)
-    repo.approveItem(m.id, {
-      title: 'Approved',
-      description: 'Great',
-      coverPath: '/cover.png',
-      coverSource: 'embedded',
-      reviewStatus: 'approved'
-    })
-    const updated = repo.getMockup(m.id)
-    expect(updated?.reviewStatus).toBe('approved')
-    expect(updated?.title).toBe('Approved')
-    expect(updated?.description).toBe('Great')
-  })
-})
-
 describe('setMockupCover', () => {
   it('updates coverPath and coverSource to user-uploaded', () => {
     const m = repo.createMockup(sample)

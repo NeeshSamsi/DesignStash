@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags } from '../schema'
+import { isStashed } from './stashed'
 
 /** The mockups_fts index: title, description and tag labels of approved mockups. */
 export class SearchRepository {
@@ -33,7 +34,7 @@ export class SearchRepository {
     const rows = this.db
       .select()
       .from(mockups)
-      .where(and(eq(mockups.reviewStatus, 'approved'), isNull(mockups.deletedAt)))
+      .where(and(isStashed, isNull(mockups.deletedAt)))
       .all()
     for (const m of rows) this.upsertSearchIndex(m.id)
   }

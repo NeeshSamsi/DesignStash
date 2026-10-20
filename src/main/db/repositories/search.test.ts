@@ -30,13 +30,7 @@ describe('search index', () => {
 
   it('upsertSearchIndex makes mockup findable by title and tag', () => {
     const m = repo.createMockup({ ...sample, title: 'MacBook Hero', libraryPath: '/lib/fts/a.psd' })
-    repo.approveItem(m.id, {
-      title: 'MacBook Hero',
-      description: 'great mockup',
-      coverPath: '/c.png',
-      coverSource: 'embedded',
-      reviewStatus: 'approved'
-    })
+    repo.setStage([m.id], 'stashed')
     seedTaxonomy(db)
     const laptop = repo.getAllTags().find((t) => t.label === 'Laptop')!
     repo.addTagToMockup(m.id, laptop.id)
@@ -56,19 +50,32 @@ describe('search index', () => {
     expect(matchFts('Remove')).not.toContain(m.id)
   })
 
+  it('rebuildSearchIndex indexes by stage, not reviewStatus', () => {
+    const waiting = repo.createMockup({
+      ...sample,
+      title: 'Waiting Approved',
+      libraryPath: '/lib/fts/f.psd',
+      reviewStatus: 'approved',
+      stage: 'to_stash'
+    })
+    const stashed = repo.createMockup({
+      ...sample,
+      title: 'Stashed Pending',
+      libraryPath: '/lib/fts/g.psd',
+      stage: 'stashed'
+    })
+    repo.rebuildSearchIndex()
+    expect(matchFts('Waiting')).not.toContain(waiting.id)
+    expect(matchFts('Stashed')).toContain(stashed.id)
+  })
+
   it('rebuildSearchIndex indexes only approved non-deleted mockups', () => {
     const approved = repo.createMockup({
       ...sample,
       title: 'Approved One',
       libraryPath: '/lib/fts/c.psd'
     })
-    repo.approveItem(approved.id, {
-      title: 'Approved One',
-      description: '',
-      coverPath: '/c.png',
-      coverSource: 'embedded',
-      reviewStatus: 'approved'
-    })
+    repo.setStage([approved.id], 'stashed')
 
     const pending = repo.createMockup({
       ...sample,
@@ -81,13 +88,7 @@ describe('search index', () => {
       title: 'Deleted One',
       libraryPath: '/lib/fts/e.psd'
     })
-    repo.approveItem(deleted.id, {
-      title: 'Deleted One',
-      description: '',
-      coverPath: '/c.png',
-      coverSource: 'embedded',
-      reviewStatus: 'approved'
-    })
+    repo.setStage([deleted.id], 'stashed')
     repo.updateMockup(deleted.id, { deletedAt: new Date().toISOString() })
 
     repo.rebuildSearchIndex()

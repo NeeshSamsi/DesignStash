@@ -82,7 +82,7 @@ export class TrashRepository {
   restore(id: number): void {
     this.db.update(mockups).set({ deletedAt: null }).where(eq(mockups.id, id)).run()
     const m = this.mockups.getMockup(id)
-    if (m?.reviewStatus === 'approved') this.search.upsertSearchIndex(id)
+    if (m?.stage === 'stashed') this.search.upsertSearchIndex(id)
   }
 
   deleteMockupsHard(ids: number[]): { libraryPath: string; coverPath: string }[] {

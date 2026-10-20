@@ -90,29 +90,6 @@ export class MockupRepository {
       .all()
   }
 
-  approveItem(
-    mockupId: number,
-    data: {
-      title: string
-      description: string
-      coverPath: string
-      coverSource: 'embedded' | 'sidecar' | 'user-uploaded'
-      reviewStatus: 'approved'
-    }
-  ): void {
-    this.db
-      .update(mockups)
-      .set({
-        title: data.title,
-        description: data.description,
-        coverPath: data.coverPath,
-        coverSource: data.coverSource,
-        reviewStatus: data.reviewStatus
-      })
-      .where(eq(mockups.id, mockupId))
-      .run()
-  }
-
   setMockupCover(
     mockupId: number,
     coverPath: string,
