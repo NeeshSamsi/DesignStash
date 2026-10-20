@@ -3,7 +3,7 @@ import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import type { GroupMember } from '@shared/grouping'
 import { GroupingService } from '../import/grouping-service'
 import type { HandlerContext } from './context'
-import { pushInboxCounts } from './inbox'
+import { countsChanged } from './library-effects'
 import { registerIpcHandler } from './register'
 
 export function registerGroupingHandlers(ctx: HandlerContext): void {
@@ -34,7 +34,7 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
     repo.confirmGroupings(args.groups, args.singletonIds)
     repo.sortBoards.clear(args.batchId)
     repo.setStage([...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds], 'to_stash')
-    pushInboxCounts(ctx)
+    countsChanged(ctx)
     // Telemetry: counts only — never group contents.
     telemetry.get().track(TELEMETRY_EVENTS.GROUP_CONFIRMED, {
       groups: args.groups.length,

@@ -3,7 +3,7 @@ import { LookOverService } from '../import/look-over-service'
 import { StashService } from '../import/stash-service'
 import { PileService } from '../library/pile-service'
 import type { HandlerContext } from './context'
-import { pushInboxCounts } from './inbox'
+import { countsChanged } from './library-effects'
 import { registerIpcHandler } from './register'
 
 export function registerPileHandlers(ctx: HandlerContext): void {
@@ -23,19 +23,19 @@ export function registerPileHandlers(ctx: HandlerContext): void {
 
   registerIpcHandler(IPC_CHANNELS.PILE_STASH, async (args) => {
     const result = await stash.stashPile(args.pileId)
-    if (result.ok) pushInboxCounts(ctx)
+    if (result.ok) countsChanged(ctx)
     return result
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_STASH, async (args) => {
     const result = await stash.stashSingle(args.mockupId)
-    if (result.ok) pushInboxCounts(ctx)
+    if (result.ok) countsChanged(ctx)
     return result
   })
 
   registerIpcHandler(IPC_CHANNELS.PILE_UNSTASH, async (args) => {
     const result = await stash.unstash(args.snapshot)
-    pushInboxCounts(ctx)
+    countsChanged(ctx)
     return result
   })
 }

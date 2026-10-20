@@ -4,8 +4,7 @@ import { IntegrityService, type IntegrityDeps } from '../library/integrity-servi
 import { StashCheckStatus } from '../library/stash-check-status'
 import type { Repository } from '../db/repository'
 import type { HandlerContext } from './context'
-import { enqueueInBackground, inferenceQueueFor } from './ai-status'
-import { pushInboxCounts } from './inbox'
+import { countsChanged, mockupsArrived, mockupsLeft } from './library-effects'
 import { registerIpcHandler } from './register'
 
 /** The ignore list lives in settings, so it survives a restart. */
@@ -58,8 +57,8 @@ export function registerIntegrityHandlers(
     return result
   }
   const added = async (mockupIds: number[]): Promise<{ mockupIds: number[] }> => {
-    pushInboxCounts(ctx)
-    enqueueInBackground(ctx, mockupIds)
+    mockupsArrived(ctx, mockupIds)
+    countsChanged(ctx)
     return recheck({ mockupIds })
   }
 
@@ -78,9 +77,9 @@ export function registerIntegrityHandlers(
   )
 
   registerIpcHandler(IPC_CHANNELS.INTEGRITY_UNDO_ADD, async (args) => {
-    inferenceQueueFor(ctx).cancel(args.mockupIds)
+    mockupsLeft(ctx, args.mockupIds)
     await integrityService.undoAdd(args.mockupIds)
-    pushInboxCounts(ctx)
+    countsChanged(ctx)
     return recheck({ undone: true })
   })
 

@@ -21,7 +21,8 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { inferenceQueueFor, registerAiStatusHandlers } from './ai-status'
+import { registerAiStatusHandlers } from './ai-status'
+import { inferenceQueueFor } from './library-effects'
 import { registerInboxHandlers } from './inbox'
 import { registerTrashHandlers } from './trash'
 
@@ -148,6 +149,19 @@ describe('cancelling and requeueing', () => {
 
     await call(IPC_CHANNELS.TRASH_RESTORE, { ids: [a.id] })
     await vi.waitFor(() => expect(repo.getMockup(a.id)?.aiStatus).toBe('ready'))
+    expect(analyze).toHaveBeenCalledTimes(1)
+  })
+
+  it('trashing a pile cancels its members too, and restoring queues them again', async () => {
+    const [blocker, a, b] = [make('blocker'), make('a'), make('b')]
+    const pile = repo.createPile([a.id, b.id], a.id)
+    analyze.mockImplementationOnce(() => new Promise(() => {})) // the blocker never finishes
+    await inferenceQueueFor(ctx).enqueue([blocker.id, a.id, b.id])
+    await vi.waitFor(() => expect(repo.getMockup(blocker.id)?.aiStatus).toBe('sniffing'))
+
+    await call(IPC_CHANNELS.MOCKUP_TRASH, { ids: [pile.pileId] })
+
+    // Only the blocker's own call ever ran: the pile and its members left the queue.
     expect(analyze).toHaveBeenCalledTimes(1)
   })
 })
