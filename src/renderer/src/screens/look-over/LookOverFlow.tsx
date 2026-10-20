@@ -540,7 +540,6 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
       <FlowModal
         open
         step="look-over"
-        className="h-auto"
         count={headerBadge(flow)}
         onRequestClose={() => setAsking(true)}
         body={body}
