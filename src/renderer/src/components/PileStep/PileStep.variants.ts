@@ -1,17 +1,43 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=566-15523
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const pileStepVariants = cva('', {
+// Figma PileStep 566:15523: a 16px marker, a 12px label, and a connector down to the next step.
+export const pileStepVariants = cva(
+  'relative flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  {
+    variants: {
+      status: {
+        done: 'hover:bg-surface-2-hover',
+        current: 'bg-surface-3',
+        todo: 'hover:bg-surface-2-hover',
+        skipped: 'hover:bg-surface-2-hover'
+      }
+    },
+    defaultVariants: { status: 'done' }
+  }
+)
+
+export const pileStepMarkerVariants = cva(
+  'relative flex size-4 shrink-0 items-center justify-center rounded-full',
+  {
+    variants: {
+      status: {
+        done: 'bg-surface-4 text-foreground',
+        current: 'border-2 border-primary bg-surface-1',
+        todo: 'border-2 border-base bg-surface-1',
+        skipped: 'border-2 border-dashed border-strong bg-surface-1'
+      }
+    },
+    defaultVariants: { status: 'done' }
+  }
+)
+
+export const pileStepLabelVariants = cva('min-w-0 flex-1 truncate type-label-xs-medium', {
   variants: {
     status: {
-      done: '',
-      current: '',
-      todo: '',
-      skipped: ''
+      done: 'text-foreground',
+      current: 'text-foreground',
+      todo: 'text-secondary',
+      skipped: 'text-tertiary'
     }
   },
   defaultVariants: { status: 'done' }

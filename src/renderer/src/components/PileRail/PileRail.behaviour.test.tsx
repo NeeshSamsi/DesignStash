@@ -11,7 +11,9 @@ describe('Piles · drafts until Stash pile', () => {
   it.todo('marks a mockup jumped past without opening and shows it as Not checked at review')
   it.todo('has no Skip for now inside a pile (Skip is only for mockups on their own)')
   it.todo('goes Back to the previous draft inside a pile')
-  it.todo('goes Back from a pile’s top mockup into the previous pile’s review, marked stashed and editable')
+  it.todo(
+    'goes Back from a pile’s top mockup into the previous pile’s review, marked stashed and editable'
+  )
   it.todo('goes Back from the very first mockup to Sort only while nothing is stashed')
   it.todo('shows the deck with the number of mockups not yet looked at, and none on the last one')
   it.todo('keeps the cover where it is on single-mockup screens')

@@ -16,4 +16,31 @@ describe('PileRail', () => {
       expect(screen.getAllByText(text).length).toBeGreaterThan(0)
     }
   })
+
+  it('lists the top mockup, variants and Review & stash pile as clickable steps', () => {
+    render(<PileRail />)
+    const steps = screen.getAllByRole('button').map((b) => b.textContent)
+    expect(steps).toEqual([
+      'Top · phone_front',
+      'Variant · phone_side',
+      'Variant · phone_back',
+      'Variant · phone_top',
+      'Review & stash pile'
+    ])
+    expect(
+      screen.getByRole('button', { name: 'Variant · phone_side' }).getAttribute('aria-current')
+    ).toBe('step')
+  })
+
+  it('takes the screen’s own head and steps', () => {
+    render(<PileRail pile="PILE 2 OF 3 · REVIEW" title="Mug" steps={<button>one</button>} />)
+    expect(screen.getByText('PILE 2 OF 3 · REVIEW')).not.toBeNull()
+    expect(screen.getByText('Mug')).not.toBeNull()
+    expect(screen.queryByText('Top · phone_front')).toBeNull()
+  })
+
+  it('is a recessed well, not a card', () => {
+    const { container } = render(<PileRail />)
+    expect(container.querySelector('[data-ds="PileRail"]')?.className).toContain('bg-surface-1')
+  })
 })
