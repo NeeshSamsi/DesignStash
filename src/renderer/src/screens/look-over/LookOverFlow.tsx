@@ -251,7 +251,15 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     unitId: number,
     count: number
   ) => {
-    await window.api.invoke(IPC_CHANNELS.PILE_UNSTASH, { snapshot })
+    const res = await window.api.invoke(IPC_CHANNELS.PILE_UNSTASH, { snapshot }).catch(() => null)
+    if (!res?.success) {
+      toast({
+        variant: 'error',
+        message: 'Couldn’t undo that',
+        description: 'It is still stashed. Try again from My Stash.'
+      })
+      return
+    }
     stashedCount.current -= count
     const fresh = await window.api.invoke(IPC_CHANNELS.LOOK_OVER_OPEN, undefined).catch(() => null)
     if (!fresh?.success) return

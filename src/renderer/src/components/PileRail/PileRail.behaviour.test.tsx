@@ -289,6 +289,23 @@ describe('Piles · drafts until Stash pile', () => {
     )
   })
 
+  it('keeps the pile stashed and says so when Undo fails', async () => {
+    setup({ [IPC_CHANNELS.PILE_UNSTASH]: () => ({ success: false, error: 'nope' }) })
+    await start()
+    await toReview()
+    fireEvent.click(btn('Stash pile (3)'))
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
+    expect(calls(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1)
+    toasts.undoToast.mock.calls[0]![1]()
+    await waitFor(() =>
+      expect(toasts.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'error', message: 'Couldn’t undo that' })
+      )
+    )
+    expect(calls(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1)
+    expect(document.body.textContent).toContain('Pile 2 of 2')
+  })
+
   it('keeps all drafts and parks the pile in To stash on Finish later', async () => {
     const { onClose } = await start()
     fireEvent.change(titleField(), { target: { value: 'Edited top' } })
