@@ -11,7 +11,6 @@ import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/Dropdown
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { MockupCard } from '@renderer/components/MockupCard'
-import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard.types'
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
@@ -28,6 +27,7 @@ import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast } from '@renderer/stores/toastStore'
 import { useInboxList } from './useInboxList'
 import { coverUrl } from '@shared/cover-url'
+import { coverDisplay } from '@shared/library'
 
 export interface InboxPageProps {
   stage: InboxStage
@@ -38,12 +38,6 @@ export interface InboxPageProps {
   /** The import entry points behind the Add card (and the empty page's button). */
   onAddFiles?: () => void
   onAddFolder?: () => void
-}
-
-function cardState(item: InboxItem, selected: boolean): MockupCardState {
-  if (item.coverMissing) return 'cover-missing'
-  if (item.coverSource === 'none') return 'no-preview'
-  return selected ? 'selected' : 'default'
 }
 
 /**
@@ -193,7 +187,7 @@ export default function InboxPage({
               variantCount={item.variantCount}
               showStatus={badge !== undefined}
               {...(badge ? { status: badge } : {})}
-              state={cardState(item, selection.isSelected(key))}
+              state={coverDisplay(item, selection.isSelected(key))}
               {...(!toSortPage && onLookOver ? { onLookItOver: () => onLookOver([item]) } : {})}
             />
           )
