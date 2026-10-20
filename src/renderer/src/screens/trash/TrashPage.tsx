@@ -223,15 +223,17 @@ export default function TrashPage() {
         })}
       </MockupGrid>
       {(state === 'populated' || loading) && (
-        <ActionBar
-          variant="page"
-          cancelLabel="Empty Trash"
-          cancelDisabled={loading}
-          onCancel={() => void askEmpty()}
-          primaryLabel={selected.length > 0 ? `Restore ${selected.length}` : 'Restore all'}
-          primaryDisabled={loading}
-          onPrimary={() => void restore(selected.length > 0 ? selected : 'all')}
-        />
+        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 bg-surface-1 px-6 pt-2 pb-6">
+          <ActionBar
+            variant="page"
+            cancelLabel="Empty Trash"
+            cancelDisabled={loading}
+            onCancel={() => void askEmpty()}
+            primaryLabel={selected.length > 0 ? `Restore ${selected.length}` : 'Restore all'}
+            primaryDisabled={loading}
+            onPrimary={() => void restore(selected.length > 0 ? selected : 'all')}
+          />
+        </div>
       )}
 
       <DropdownMenu

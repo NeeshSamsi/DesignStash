@@ -197,21 +197,23 @@ export default function InboxPage({
         })}
       </MockupGrid>
       {state === 'populated' && (
-        <ActionBar
-          variant="page"
-          showStatus={line !== undefined}
-          {...(line ? { status: line } : {})}
-          cancelLabel={
-            selected.length > 0
-              ? `Toss ${selected.length}`
-              : toSortPage
-                ? 'Toss this haul'
-                : 'Toss these'
-          }
-          onCancel={() => setTossing(targets)}
-          primaryLabel={primary}
-          onPrimary={() => (toSortPage ? onSort?.(targets) : onLookOver?.(targets))}
-        />
+        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 bg-surface-1 px-6 pt-2 pb-6">
+          <ActionBar
+            variant="page"
+            showStatus={line !== undefined}
+            {...(line ? { status: line } : {})}
+            cancelLabel={
+              selected.length > 0
+                ? `Toss ${selected.length}`
+                : toSortPage
+                  ? 'Toss this haul'
+                  : 'Toss these'
+            }
+            onCancel={() => setTossing(targets)}
+            primaryLabel={primary}
+            onPrimary={() => (toSortPage ? onSort?.(targets) : onLookOver?.(targets))}
+          />
+        </div>
       )}
       <ConfirmDialog
         open={tossing !== null}
