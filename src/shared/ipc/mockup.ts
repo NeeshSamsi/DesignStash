@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
-import { MockupDetailSchema } from '../library'
+import { CoverChangeSchema, MockupDetailSchema } from '../library'
 
 /** A single mockup or pile. */
 export const mockupContract = {
@@ -23,6 +23,14 @@ export const mockupContract = {
   [IPC_CHANNELS.MOCKUP_DUPLICATE]: {
     request: z.object({ mockupId: z.number() }),
     response: z.object({ newMockupId: z.number() })
+  },
+  [IPC_CHANNELS.MOCKUP_SET_COVER]: {
+    request: z.object({ mockupId: z.number(), filePath: z.string().min(1) }),
+    response: CoverChangeSchema
+  },
+  [IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER]: {
+    request: z.object({ mockupId: z.number() }),
+    response: CoverChangeSchema
   },
   [IPC_CHANNELS.GROUP_UNGROUP]: {
     request: z.object({ leaderId: z.number() }),

@@ -89,7 +89,11 @@ export class MockupRepository {
       .run()
   }
 
-  setMockupCover(mockupId: number, coverPath: string, coverSource: 'user-uploaded'): void {
+  setMockupCover(
+    mockupId: number,
+    coverPath: string,
+    coverSource: 'embedded' | 'user-uploaded'
+  ): void {
     this.db.update(mockups).set({ coverPath, coverSource }).where(eq(mockups.id, mockupId)).run()
   }
 

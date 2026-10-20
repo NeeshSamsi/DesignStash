@@ -7,12 +7,15 @@ export const LibraryTagSchema = z.object({
 })
 export type LibraryTag = z.infer<typeof LibraryTagSchema>
 
+export const CoverSourceSchema = z.enum(['embedded', 'sidecar', 'user-uploaded', 'default', 'none'])
+export type CoverSource = z.infer<typeof CoverSourceSchema>
+
 export const LibraryItemSchema = z.object({
   id: z.number(),
   title: z.string(),
   description: z.string().nullable(),
   coverPath: z.string(),
-  coverSource: z.enum(['embedded', 'sidecar', 'user-uploaded', 'default', 'none']),
+  coverSource: CoverSourceSchema,
   /** The cover file is gone from disk. */
   coverMissing: z.boolean(),
   isGroup: z.boolean(),
@@ -61,3 +64,27 @@ export const MockupDetailSchema = z.object({
   variants: z.array(VariantSchema)
 })
 export type MockupDetail = z.infer<typeof MockupDetailSchema>
+
+/** Largest cover image we take. */
+export const COVER_MAX_BYTES = 25 * 1024 * 1024
+
+/**
+ * The outcome of changing a cover. A refused image is a normal result, not an error,
+ * so the screen can show its own message. `previous` is what Undo puts back.
+ */
+export const CoverChangeSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    coverPath: z.string(),
+    coverSource: CoverSourceSchema,
+    /** The image's own size, for the crop or bars note. */
+    width: z.number(),
+    height: z.number(),
+    previous: z.object({ coverPath: z.string(), coverSource: CoverSourceSchema })
+  }),
+  z.object({
+    ok: z.literal(false),
+    reason: z.enum(['not-image', 'too-large', 'unreadable', 'no-embedded'])
+  })
+])
+export type CoverChange = z.infer<typeof CoverChangeSchema>

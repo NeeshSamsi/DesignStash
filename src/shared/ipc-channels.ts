@@ -46,6 +46,8 @@ export const IPC_CHANNELS = {
   MOCKUP_RESTORE: 'mockup:restore',
   MOCKUP_DELETE_PERMANENT: 'mockup:delete-permanent',
   MOCKUP_DUPLICATE: 'mockup:duplicate',
+  MOCKUP_SET_COVER: 'mockup:set-cover',
+  MOCKUP_USE_EMBEDDED_COVER: 'mockup:use-embedded-cover',
   PILE_CREATE: 'pile:create',
   PILE_ADD: 'pile:add',
   PILE_MERGE: 'pile:merge',

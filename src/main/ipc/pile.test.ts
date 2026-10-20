@@ -32,7 +32,7 @@ beforeEach(() => {
   const test = createTestDb()
   ;({ sqlite, repo } = test)
   ensureSearchIndex(test.db)
-  const ctx = { repo } as unknown as HandlerContext
+  const ctx = { repo, settings: { getLibraryRoot: () => '/library' } } as unknown as HandlerContext
   registerPileHandlers(ctx)
   registerTrashHandlers(ctx)
   registerMockupHandlers(ctx)

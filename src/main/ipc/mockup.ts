@@ -1,10 +1,12 @@
 import { IPC_CHANNELS } from '@shared/ipc'
+import { CoverService } from '../library/cover-service'
 import { PileService } from '../library/pile-service'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
-export function registerMockupHandlers({ repo, library }: HandlerContext): void {
+export function registerMockupHandlers({ repo, library, settings }: HandlerContext): void {
   const piles = new PileService(repo)
+  const covers = new CoverService(repo, settings.getLibraryRoot())
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_DETAIL, (args) => {
     const detail = repo.getMockupDetail(args.mockupId)
@@ -33,6 +35,14 @@ export function registerMockupHandlers({ repo, library }: HandlerContext): void 
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, async (args) =>
     library.openExternal(args.mockupId)
+  )
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_SET_COVER, (args) =>
+    covers.setCover(args.mockupId, args.filePath)
+  )
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, (args) =>
+    covers.useEmbeddedCover(args.mockupId)
   )
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_DUPLICATE, async (args) =>
