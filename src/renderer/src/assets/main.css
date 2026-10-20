@@ -48,6 +48,27 @@
   --color-scrim: var(--ds-color-black-alpha-60);
 }
 
+/* Card corners (B5) and motion for the card hover and the details panel (B7). Static so the
+   variables exist for var() and for other agents' utilities even before a class uses them. */
+@theme static {
+  --radius-card: 1.5rem; /* 24 */
+  --radius-card-cover: 0.875rem; /* 14 */
+
+  /* Panel: open settles out, close accelerates in, the container moves in and out. */
+  --ease-panel-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-panel-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-panel-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-panel-open: 280ms;
+  --duration-panel-close: 180ms; /* the panel */
+  --duration-panel-container-close: 220ms; /* the container */
+
+  /* Card hover springs. In overshoots slightly (bounce ~0.45, ~450ms); out settles (bounce ~0.15, ~400ms). */
+  --ease-card-in: linear(0, 0.025, 0.092, 0.188, 0.302, 0.423, 0.545, 0.662, 0.768, 0.861, 0.94, 1.003, 1.052, 1.088, 1.11, 1.123, 1.126, 1.123, 1.114, 1.102, 1.088, 1.072, 1.057, 1.042, 1);
+  --ease-card-out: linear(0, 0.024, 0.085, 0.167, 0.26, 0.356, 0.45, 0.538, 0.618, 0.689, 0.75, 0.803, 0.847, 0.884, 0.914, 0.938, 0.956, 0.971, 0.982, 0.99, 0.996, 1.001, 1.003, 1.005, 1);
+  --duration-card-in: 450ms;
+  --duration-card-out: 400ms;
+}
+
 /* shadcn/ui token mapping (radix-rhea style). Values come from shadcn-bridge.css below. */
 @theme inline {
   --color-sidebar-ring: var(--sidebar-ring);
