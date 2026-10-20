@@ -1,10 +1,15 @@
 import { IPC_CHANNELS } from '@shared/ipc'
+import { LookOverService } from '../import/look-over-service'
+import { StashService } from '../import/stash-service'
 import { PileService } from '../library/pile-service'
 import type { HandlerContext } from './context'
+import { pushInboxCounts } from './inbox'
 import { registerIpcHandler } from './register'
 
-export function registerPileHandlers({ repo }: HandlerContext): void {
+export function registerPileHandlers(ctx: HandlerContext): void {
+  const { repo, ai } = ctx
   const piles = new PileService(repo)
+  const stash = new StashService(repo, new LookOverService(repo, () => ai.activeProvider()))
 
   registerIpcHandler(IPC_CHANNELS.PILE_CREATE, (args) => piles.create(args.memberIds, args.topId))
   registerIpcHandler(IPC_CHANNELS.PILE_ADD, (args) => piles.add(args.pileId, args.memberIds))
@@ -12,4 +17,22 @@ export function registerPileHandlers({ repo }: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.PILE_SET_TOP, (args) => piles.setTop(args.pileId, args.topId))
   registerIpcHandler(IPC_CHANNELS.PILE_DISBAND, (args) => piles.disband(args.pileId))
   registerIpcHandler(IPC_CHANNELS.PILE_RESTORE, (args) => piles.restore(args.snapshot))
+
+  registerIpcHandler(IPC_CHANNELS.PILE_STASH, async (args) => {
+    const result = await stash.stashPile(args.pileId)
+    if (result.ok) pushInboxCounts(ctx)
+    return result
+  })
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_STASH, async (args) => {
+    const result = await stash.stashSingle(args.mockupId)
+    if (result.ok) pushInboxCounts(ctx)
+    return result
+  })
+
+  registerIpcHandler(IPC_CHANNELS.PILE_UNSTASH, async (args) => {
+    const result = await stash.unstash(args.snapshot)
+    pushInboxCounts(ctx)
+    return result
+  })
 }

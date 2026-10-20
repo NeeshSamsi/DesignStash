@@ -140,3 +140,50 @@ export const LookOverProgressSchema = z.object({
   phase: z.enum(['running', 'done'])
 })
 export type LookOverProgress = z.infer<typeof LookOverProgressSchema>
+
+// ---- Stash pile (commit the whole pile at once) ----
+
+/** What a stash replaced, so Undo can put every mockup back exactly as it was. */
+export const StashSnapshotSchema = z.object({
+  mockups: z.array(
+    z.object({
+      id: z.number(),
+      title: z.string(),
+      description: z.string().nullable(),
+      tagIds: z.array(z.number()),
+      reviewStatus: z.enum(['needs_review', 'approved']),
+      stage: z.enum(['to_sort', 'to_stash', 'stashed']),
+      sortedAt: z.string().nullable()
+    })
+  ),
+  drafts: z.array(
+    z.object({
+      mockupId: z.number(),
+      title: z.string(),
+      description: z.string(),
+      tagIds: z.array(z.number()),
+      touched: z.boolean(),
+      checked: z.boolean(),
+      skippedAt: z.string().nullable()
+    })
+  ),
+  resume: z.object({ unitId: z.number(), mockupId: z.number() }).nullable()
+})
+export type StashSnapshot = z.infer<typeof StashSnapshotSchema>
+
+/** Stashing is all or nothing. A refusal changes nothing and says why, with the mockups that are the reason. */
+export const StashResultSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    /** Everything now in My Stash: the top and its variants, or the one mockup. */
+    stashedIds: z.array(z.number()),
+    /** Pass to PILE_UNSTASH to undo. */
+    snapshot: StashSnapshotSchema
+  }),
+  z.object({
+    ok: z.literal(false),
+    reason: z.enum(['not-ready', 'no-cover']),
+    mockupIds: z.array(z.number())
+  })
+])
+export type StashResult = z.infer<typeof StashResultSchema>

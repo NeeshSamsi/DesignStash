@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { StashResultSchema, StashSnapshotSchema } from '../approval'
 import { IPC_CHANNELS } from '../ipc-channels'
 
 /** One mockup's place in a pile. A snapshot of these brings a pile back (Undo). */
@@ -48,6 +49,20 @@ export const pileContract = {
   },
   [IPC_CHANNELS.PILE_RESTORE]: {
     request: z.object({ snapshot: PileSnapshotSchema }),
+    response: z.object({ restoredIds: z.array(z.number()) })
+  },
+  /** Look it over: commit a whole pile from its drafts, all or nothing. */
+  [IPC_CHANNELS.PILE_STASH]: {
+    request: z.object({ pileId: z.number() }),
+    response: StashResultSchema
+  },
+  /** Look it over: stash a mockup that stands on its own. */
+  [IPC_CHANNELS.MOCKUP_STASH]: {
+    request: z.object({ mockupId: z.number() }),
+    response: StashResultSchema
+  },
+  [IPC_CHANNELS.PILE_UNSTASH]: {
+    request: z.object({ snapshot: StashSnapshotSchema }),
     response: z.object({ restoredIds: z.array(z.number()) })
   }
 } as const

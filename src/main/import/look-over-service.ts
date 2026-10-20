@@ -99,6 +99,20 @@ export class LookOverService {
     return { propagatedIds: await this.carryToVariants(m, req) }
   }
 
+  /** The drafts of a pile (top first) or of a mockup on its own, made if they were not yet. */
+  async draftsFor(unitId: number): Promise<{ mockup: Mockup; draft: Draft }[]> {
+    const root = this.requireWaiting(unitId)
+    const provider = await this.getProvider()
+    const top = await this.draftFor(root, provider, null)
+    const out = [{ mockup: root, draft: top }]
+    if (root.isGroup) {
+      for (const member of this.members(root.id)) {
+        out.push({ mockup: member, draft: await this.draftFor(member, provider, top) })
+      }
+    }
+    return out
+  }
+
   /** Skip for now: a mockup on its own goes to the end of the queue. Piles and their members stay put. */
   async skip(mockupId: number): Promise<{ skipped: boolean }> {
     const m = this.repo.getMockup(mockupId)
