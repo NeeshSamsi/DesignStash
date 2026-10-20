@@ -47,7 +47,6 @@ export function useLibraryData(starredOnly: boolean): LibraryData {
   const sort = useLibraryStore((s) => s.sort)
   const setItems = useLibraryStore((s) => s.setItems)
   const setStats = useLibraryStore((s) => s.setStats)
-  const setLoading = useLibraryStore((s) => s.setLoading)
   // Detail bumps this when it saved, starred, trashed or changed a pile: fetch again.
   const detailRevision = useDetailEffects((s) => s.revision)
 
@@ -71,7 +70,6 @@ export function useLibraryData(starredOnly: boolean): LibraryData {
   useEffect(() => {
     let current = true
     void (async () => {
-      setLoading(true)
       try {
         const [listRes, statsRes] = await Promise.all([
           window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
@@ -97,8 +95,6 @@ export function useLibraryData(starredOnly: boolean): LibraryData {
         if (statsRes.success) setStats(statsRes.data)
       } catch {
         if (current) setFailed(true)
-      } finally {
-        if (current) setLoading(false)
       }
     })()
     return () => {
@@ -114,8 +110,7 @@ export function useLibraryData(starredOnly: boolean): LibraryData {
     reloadKey,
     detailRevision,
     setItems,
-    setStats,
-    setLoading
+    setStats
   ])
 
   const refresh = useCallback(async () => setReloadKey((key) => key + 1), [])

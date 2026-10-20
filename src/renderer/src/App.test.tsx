@@ -14,10 +14,7 @@ beforeEach(() => {
     query: '',
     tagFilter: [],
     sort: 'date',
-    stats: { total: 0, favourites: 0, groups: 0, trashed: 0 },
-    isLoading: false,
-    trash: [],
-    selectedDetail: null
+    stats: { total: 0, favourites: 0, groups: 0, trashed: 0 }
   })
 
   // Provide a stub preload bridge — jsdom has no real `window.api`.
