@@ -4,6 +4,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem, InboxStage } from '@shared/inbox'
 import { ActionBar } from '@renderer/components/ActionBar'
 import { AddMockupCard } from '@renderer/components/AddMockupCard'
+import { Banner } from '@renderer/components/Banner'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
@@ -137,6 +138,17 @@ export default function InboxPage({
 
   return (
     <div className="flex min-h-full flex-col gap-4 p-6">
+      {failed && items !== null && (
+        <Banner
+          tone="error"
+          title="Couldn’t refresh this page"
+          message="Showing what was here a moment ago."
+          action
+          actionLabel="Try again"
+          onAction={() => void refresh()}
+          dismissible={false}
+        />
+      )}
       <MockupGrid
         state={state}
         showAdd
