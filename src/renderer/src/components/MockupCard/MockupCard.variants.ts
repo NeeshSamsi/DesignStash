@@ -51,7 +51,7 @@ export const PILE_EDGE_BACK =
 
 /** The cover well: 4:3 (220×165 in a 240 card), clipped to the cover radius. */
 export const mockupCardCoverVariants = cva(
-  'relative aspect-card w-full shrink-0 overflow-clip rounded-card-cover corner-squircle',
+  'relative aspect-card w-full shrink-0 overflow-clip rounded-card-cover',
   {
     variants: { hidden: { true: 'opacity-0', false: '' } },
     defaultVariants: { hidden: false }

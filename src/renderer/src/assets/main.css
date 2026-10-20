@@ -71,8 +71,8 @@
 
 /* Continuous (squircle) corners where the engine supports corner-shape; a plain radius elsewhere. */
 @utility corner-squircle {
-  @supports (corner-shape: superellipse(2)) {
-    corner-shape: superellipse(2);
+  @supports (corner-shape: superellipse(1.5)) {
+    corner-shape: superellipse(1.5);
   }
 }
 
