@@ -54,6 +54,18 @@ describe('PanelSurface', () => {
 })
 
 describe('usePanelGrid', () => {
+  beforeEach(() => {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: false,
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn()
+        }) as unknown as MediaQueryList
+    )
+  })
+
   function useHarness(open: boolean) {
     const ref = useRef<HTMLDivElement>(document.createElement('div'))
     Object.defineProperty(ref.current, 'offsetWidth', { value: 1000, configurable: true })
@@ -75,20 +87,35 @@ describe('usePanelGrid', () => {
     })
     rerender({ open: true })
     rerender({ open: false })
+    // Still held at the narrow width while the container widens.
     expect(result.current).toBe(1000 - PANEL_SHARE)
     act(() => vi.advanceTimersByTime(230))
     expect(result.current).toBeNull()
   })
 
-  it('stays narrow when the sidebar is asked for again mid-close', () => {
+  it('lets go once the container has opened, so a resize re-flows the page', () => {
     const { result, rerender } = renderHook(({ open }) => useHarness(open), {
       initialProps: { open: false }
     })
     rerender({ open: true })
+    expect(result.current).toBe(1000 - PANEL_SHARE)
+    act(() => vi.advanceTimersByTime(400))
+    expect(result.current).toBeNull()
+  })
+
+  it('keeps its hold when asked for again mid-close, then lets go', () => {
+    const { result, rerender } = renderHook(({ open }) => useHarness(open), {
+      initialProps: { open: false }
+    })
+    rerender({ open: true })
+    act(() => vi.advanceTimersByTime(400))
     rerender({ open: false })
+    // Held while closing, at the width the page had.
+    expect(result.current).toBe(1000)
     act(() => vi.advanceTimersByTime(100))
     rerender({ open: true })
+    expect(result.current).toBe(1000)
     act(() => vi.advanceTimersByTime(500))
-    expect(result.current).toBe(1000 - PANEL_SHARE)
+    expect(result.current).toBeNull()
   })
 })

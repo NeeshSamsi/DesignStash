@@ -226,7 +226,7 @@ export default function AppShell({
           <div
             ref={pageRef}
             className="flex min-h-full flex-col *:flex-1"
-            {...(heldWidth !== null ? { style: { width: heldWidth } } : {})}
+            {...(heldWidth !== null ? { style: { width: heldWidth, maxWidth: '100%' } } : {})}
           >
             {children}
           </div>

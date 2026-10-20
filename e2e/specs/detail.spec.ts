@@ -122,16 +122,19 @@ test.describe('Details sidebar', () => {
 
     // Nothing scrolls sideways on the pile page, with the sidebar open or shut.
     const sideways = () =>
-      window.evaluate(
-        () =>
-          [...document.querySelectorAll<HTMLElement>('main *')].filter(
+      window.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('main *')]
+          .filter(
             (el) =>
               el.scrollWidth > el.clientWidth + 1 &&
-              getComputedStyle(el).overflowX !== 'visible' &&
-              getComputedStyle(el).overflowX !== 'hidden'
-          ).length
+              !['visible', 'hidden', 'clip'].includes(getComputedStyle(el).overflowX)
+          )
+          .map(
+            (el) =>
+              `${el.tagName}.${String(el.className).slice(0, 80)} ${el.scrollWidth}>${el.clientWidth}`
+          )
       )
-    await expect.poll(sideways).toBe(0)
+    await expect.poll(sideways).toEqual([])
 
     await cards.nth(2).click({ button: 'right' })
     await window.getByRole('menuitem', { name: 'Remove from pile' }).click()
@@ -183,6 +186,91 @@ test.describe('Details sidebar', () => {
     await expect(window.locator('[data-mockup-id][data-state="selected"]')).toHaveCount(0)
     // The outline is for the keyboard: a mouse click leaves the grid without one.
     expect(await grid.evaluate((el) => el.matches(':focus-visible'))).toBe(false)
+  })
+
+  test('resizing the window re-flows the grid, with the sidebar open or closed', async ({
+    app
+  }) => {
+    const { window } = app
+    await seedStash(app, ['laptop', 'phone', 'poster'])
+    await showMyStash(app)
+    const resize = async (width: number, height: number) => {
+      await app.app.evaluate(
+        ({ BrowserWindow }, [w, h]) => {
+          const win = BrowserWindow.getAllWindows()[0]
+          win?.setSize(w as number, h as number)
+          win?.center()
+        },
+        [width, height] as const
+      )
+      await expect
+        .poll(() => window.evaluate(() => [self.innerWidth, self.innerHeight]))
+        .toEqual([width, height])
+    }
+    // Everything fits the content panel: the toolbar and its sort control are whole, nothing scrolls sideways.
+    const fits = async (what: string) => {
+      // The grid fills the content panel's padding box (28px each side, a little slack for a scrollbar).
+      await expect
+        .poll(
+          async () => {
+            const m = (await window.locator('main').boundingBox())!
+            const g = (await window.locator('[data-ds="MockupGrid"]').boundingBox())!
+            return m.x + m.width - (g.x + g.width)
+          },
+          { message: `${what}: the grid fills the panel` }
+        )
+        .toBeLessThanOrEqual(40)
+      await window.waitForTimeout(500)
+      const main = (await window.locator('main').boundingBox())!
+      const toolbar = (await window.locator('[data-ds="LibraryToolbar"]').boundingBox())!
+      const sort = (await window
+        .locator('[data-ds="LibraryToolbar"]')
+        .getByText('Date added')
+        .boundingBox())!
+      for (const [name, box] of [
+        ['toolbar', toolbar],
+        ['sort control', sort]
+      ] as const) {
+        expect(box.x, `${what}: ${name} left edge`).toBeGreaterThanOrEqual(main.x)
+        expect(box.x + box.width, `${what}: ${name} right edge`).toBeLessThanOrEqual(
+          main.x + main.width + 1
+        )
+      }
+      const overflowing = await window.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('main *')]
+          .filter(
+            (el) =>
+              el.scrollWidth > el.clientWidth + 1 &&
+              !['visible', 'hidden', 'clip'].includes(getComputedStyle(el).overflowX)
+          )
+          .map(
+            (el) =>
+              `${el.tagName}.${String(el.className).slice(0, 80)} ${el.scrollWidth}>${el.clientWidth}`
+          )
+      )
+      expect(overflowing, `${what}: nothing scrolls sideways`).toEqual([])
+      const grid = (await window.locator('[data-ds="MockupGrid"]').boundingBox())!
+      expect(grid.x + grid.width, `${what}: grid right edge`).toBeLessThanOrEqual(
+        main.x + main.width + 1
+      )
+    }
+
+    await resize(1440, 900)
+    await clickCard(window)
+    await expect(panel(window)).toBeVisible()
+    await fits('wide, sidebar open')
+    // Shrink with the sidebar open: the grid follows the container, it does not keep its old width.
+    await resize(1024, 680)
+    await fits('1024×680, sidebar open')
+    await panel(window).getByRole('button', { name: 'Close' }).click()
+    await expect(panel(window)).toHaveCount(0)
+    await fits('1024×680, sidebar closed')
+    await clickCard(window)
+    await expect(panel(window)).toBeVisible()
+    await fits('1024×680, sidebar opened again')
+    // And back wider with it open: the grid grows into the room instead of keeping its old width.
+    await resize(1440, 900)
+    await fits('wide again, sidebar open')
   })
 
   test('Esc closes it, and so does clicking empty space', async ({ app }) => {

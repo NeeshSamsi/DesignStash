@@ -170,6 +170,26 @@ for (const { width, height } of SIZES) {
       await inside(window, panel, 'the details sidebar')
       await inside(window, panel.getByRole('button', { name: 'Save' }), 'Save')
       await noSidewaysScroll(window, null, 'My Stash with the sidebar open')
+      // The toolbar stays whole beside the sidebar: inside the content panel, nothing cut off or scrolling sideways.
+      const toolbar = (await window.locator('[data-ds="LibraryToolbar"]').boundingBox())!
+      const main = (await window.locator('main').boundingBox())!
+      expect(toolbar.x, 'toolbar left edge').toBeGreaterThanOrEqual(main.x)
+      expect(toolbar.x + toolbar.width, 'toolbar right edge').toBeLessThanOrEqual(
+        main.x + main.width + 1
+      )
+      const overflowing = await window.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('main *')]
+          .filter(
+            (el) =>
+              el.scrollWidth > el.clientWidth + 1 &&
+              !['visible', 'hidden', 'clip'].includes(getComputedStyle(el).overflowX)
+          )
+          .map(
+            (el) =>
+              `${el.tagName}.${String(el.className).slice(0, 80)} ${el.scrollWidth}>${el.clientWidth}`
+          )
+      )
+      expect(overflowing, 'nothing scrolls sideways with the sidebar open').toEqual([])
       await shot('details-sidebar')
       await window.keyboard.press('Escape')
       await expect(panel).toHaveCount(0)
