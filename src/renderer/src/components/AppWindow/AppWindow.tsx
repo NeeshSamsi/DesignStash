@@ -32,13 +32,6 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
       data-state={props.state}
       className={cn(appWindowVariants({ state: props.state }), className)}
     >
-      {/* The window's surface is its own layer, so the page's content can sit above the layers that morph. */}
-      <div
-        aria-hidden
-        data-slot="window-bg"
-        className="absolute inset-0 -z-20 bg-surface-2"
-        style={{ viewTransitionName: 'window-bg' }}
-      />
       <div className={appWindowTitleBarClass}>
         <div className="w-sidebar shrink-0" />
         <div className="flex min-w-0 flex-1 justify-center">
@@ -47,17 +40,7 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="min-w-44 shrink-0">{props.sidebar}</div>
-        <main className={appWindowPanelClass}>
-          {/* The panel's surface: an empty layer, so the sidebar opening morphs only a rounded rectangle and never scales the header or toolbar. */}
-          <div
-            aria-hidden
-            data-slot="main-panel-bg"
-            className={cn(
-              'absolute inset-0 -z-10 rounded-tl-3xl bg-surface-1',
-              asideOpen ? 'rounded-tr-3xl' : 'rounded-tr-none'
-            )}
-            style={{ viewTransitionName: 'main-panel-bg' }}
-          />
+        <main className={cn(appWindowPanelClass, asideOpen ? 'rounded-tr-3xl' : 'rounded-tr-none')}>
           {props.showHeader && props.header}
           <div className="-m-2 min-h-0 flex-1 overflow-auto rounded-md p-2">{props.page}</div>
         </main>

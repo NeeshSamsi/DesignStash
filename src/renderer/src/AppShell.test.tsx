@@ -461,14 +461,10 @@ describe('AppShell details sidebar and pile page', () => {
     )
     const aside = () => document.querySelector('[data-slot="aside"]')!
     expect(aside().getAttribute('data-open')).toBe('false')
-    expect(document.querySelector('[data-slot="main-panel-bg"]')!.className).toContain(
-      'rounded-tr-none'
-    )
+    expect(document.querySelector('main')!.className).toContain('rounded-tr-none')
     act(() => useDetailsStore.getState().syncTarget(5))
     expect(aside().getAttribute('data-open')).toBe('true')
-    expect(document.querySelector('[data-slot="main-panel-bg"]')!.className).toContain(
-      'rounded-tr-3xl'
-    )
+    expect(document.querySelector('main')!.className).toContain('rounded-tr-3xl')
     act(() => useDetailsStore.getState().syncTarget(null))
     expect(aside().getAttribute('data-open')).toBe('false')
   })
@@ -495,14 +491,15 @@ describe('AppShell details sidebar and pile page', () => {
         <div>content</div>
       </AppShell>
     )
-    // The panel's content is never named: only its empty surface layer morphs.
+    // The panel's own surface is never named: it is always painted and can never be a hole.
     expect(document.querySelector<HTMLElement>('main')!.style.viewTransitionName).toBe('')
     expect(
-      document.querySelector<HTMLElement>('[data-slot="main-panel-bg"]')!.style.viewTransitionName
-    ).toBe('main-panel-bg')
-    expect(
-      document.querySelector<HTMLElement>('[data-slot="window-bg"]')!.style.viewTransitionName
-    ).toBe('window-bg')
+      document.querySelector('[data-slot="main-panel-bg"], [data-slot="window-bg"]')
+    ).toBeNull()
+    expect(document.querySelector<HTMLElement>('main')!.className).toContain('bg-surface-1')
+    expect(document.querySelector<HTMLElement>('[data-ds="AppWindow"]')!.className).toContain(
+      'bg-surface-2'
+    )
     expect(
       document.querySelector<HTMLElement>('[data-ds="ActivityDock"]')!.style.viewTransitionName
     ).toBe('activity-dock')
