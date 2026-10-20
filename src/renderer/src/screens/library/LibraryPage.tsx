@@ -184,7 +184,7 @@ export default function LibraryPage({
   const targetFor = (item: LibraryItem): MenuTarget =>
     selection.isSelected(String(item.id)) && selection.count > 1
       ? { kind: 'selection', items: selectedItems }
-      : item.isGroup
+      : item.pile
         ? { kind: 'pile', item }
         : { kind: 'card', item }
   const openMenuFor = (item: LibraryItem, at: { x: number; y: number }) => {
@@ -208,13 +208,13 @@ export default function LibraryPage({
       useDetailsStore.getState().openPile({
         id: item.id,
         title: item.title,
-        count: item.variantCount + 1,
-        select: item.topId ?? item.id,
+        count: item.pile?.memberCount ?? 1,
+        select: item.id,
         edit
       })
     )
   const editDetails = (item: LibraryItem) => {
-    if (item.isGroup) return openPileFor(item, true)
+    if (item.pile) return openPileFor(item, true)
     useDetailsStore.getState().guard(() => {
       useDetailsStore.getState().requestEdit(item.id)
       rawSelection.set([String(item.id)])
@@ -279,7 +279,7 @@ export default function LibraryPage({
     if (!item) return
     if (event.key === 'Enter') {
       event.preventDefault()
-      if (item.isGroup) openPileFor(item)
+      if (item.pile) openPileFor(item)
       else selection.select(String(item.id))
     }
   }
@@ -287,7 +287,7 @@ export default function LibraryPage({
   // Double-click opens a pile's page. On a mockup on its own it does nothing more than selecting it.
   const onDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
     const item = itemOf(event.target)
-    if (item?.isGroup) openPileFor(item)
+    if (item?.pile) openPileFor(item)
   }
   // A marquee press keeps focus where it was; pull it into the grid so its shortcuts apply.
   const onMouseUp = (event: MouseEvent<HTMLDivElement>) => {
@@ -416,7 +416,7 @@ export default function LibraryPage({
                 title={item.title}
                 tags={cardTags(item)}
                 {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
-                variantCount={item.variantCount}
+                pile={item.pile}
                 favourite={item.favourite}
                 state={
                   draggedIds.has(key)
