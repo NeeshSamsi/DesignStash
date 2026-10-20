@@ -37,6 +37,8 @@ export const IPC_CHANNELS = {
   GROUPING_CONFIRM: 'grouping:confirm',
   APPROVAL_INIT: 'approval:init',
   APPROVAL_SAVE_ITEM: 'approval:save-item',
+  SORT_BOARD_SAVE: 'sort-board:save',
+  SORT_BOARD_LOAD: 'sort-board:load',
   APPROVAL_SET_COVER: 'approval:set-cover',
   LOOK_OVER_OPEN: 'look-over:open',
   LOOK_OVER_SAVE_DRAFT: 'look-over:save-draft',

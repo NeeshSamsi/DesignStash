@@ -47,5 +47,9 @@ export const COULDNT_SUGGEST_PILES = 'Couldn’t suggest piles. You can still so
  * The Sort board as the user left it (Finish later from Sort). Same shape as a confirmed board:
  * each pile lists its mockups with the top first, and the rest stand alone.
  */
-export const SortBoardSchema = GroupingConfirmRequestSchema
-export type SortBoard = GroupingConfirmRequest
+export const SortBoardSchema = z.object({
+  batchId: z.string(),
+  groups: z.array(z.object({ id: z.string(), memberIds: z.array(z.number()).min(2) })),
+  singletonIds: z.array(z.number())
+})
+export type SortBoard = z.infer<typeof SortBoardSchema>

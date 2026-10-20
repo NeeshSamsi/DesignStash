@@ -32,6 +32,7 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
 
   registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
     repo.confirmGroupings(args.groups, args.singletonIds)
+    repo.sortBoards.clear(args.batchId)
     repo.setStage([...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds], 'to_stash')
     pushInboxCounts(ctx)
     // Telemetry: counts only — never group contents.
@@ -41,4 +42,13 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
     })
     return { confirmed: true }
   })
+
+  registerIpcHandler(IPC_CHANNELS.SORT_BOARD_SAVE, (board) => {
+    repo.sortBoards.save(board)
+    return { saved: true }
+  })
+
+  registerIpcHandler(IPC_CHANNELS.SORT_BOARD_LOAD, (args) => ({
+    board: repo.sortBoards.load(args.batchId)
+  }))
 }
