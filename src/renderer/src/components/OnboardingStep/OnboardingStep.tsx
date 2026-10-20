@@ -17,6 +17,8 @@ export interface OnboardingStepProps
   primaryLabel?: string
   /** The primary's label while `busy`, e.g. "Checking…" or "Starting download…". */
   busyLabel?: string
+  /** The primary stays off until the page has what it needs (a usable folder). */
+  primaryDisabled?: boolean
   /** Standard only. The quiet button next to the primary. */
   skipLabel?: string
   /** Standard only. Hidden when there is no handler. */
@@ -37,6 +39,7 @@ export function OnboardingStep({
   step,
   primaryLabel,
   busyLabel = 'Checking…',
+  primaryDisabled = false,
   skipLabel = 'Skip for now',
   onBack,
   onSkip,
@@ -107,7 +110,7 @@ export function OnboardingStep({
               size={welcome ? 'base' : 'sm'}
               label={busy ? busyLabel : label}
               loading={busy}
-              disabled={busy}
+              disabled={busy || primaryDisabled}
               showIconEnd={welcome && !busy}
               iconEnd={ArrowRight01Icon}
               onClick={onPrimary}

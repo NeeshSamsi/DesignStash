@@ -103,4 +103,14 @@ describe('tossCopy', () => {
   it('leaves the size row out when a size is unknown', () => {
     expect(tossCopy('to_sort', items(2, null)).detailTitle).toBeUndefined()
   })
+
+  it('reads right for a single mockup', () => {
+    expect(tossCopy('to_stash', items(1)).description).toBe(
+      'This deletes the sorted mockup and its PSD from your stash folder. Your original stays right where it is.'
+    )
+    expect(tossCopy('to_stash', items(1)).confirmLabel).toBe('Discard 1 mockup')
+    expect(tossCopy('to_sort', items(1)).description).toBe(
+      'This deletes the copied PSD and its cover from your stash folder. Your original stays right where it is.'
+    )
+  })
 })

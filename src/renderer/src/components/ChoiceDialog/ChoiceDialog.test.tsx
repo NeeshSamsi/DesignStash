@@ -4,7 +4,6 @@ import { variantMatrix } from '@renderer/design-system/matrix'
 import { ChoiceDialog, type ChoiceDialogProps } from './ChoiceDialog'
 import { CHOICE_DIALOG_CONTRACT } from './ChoiceDialog.types'
 
-
 /** Buttons with a filled colour (primary or destructive); secondary and ghost are not filled. */
 const filled = (root: ParentNode) =>
   [...root.querySelectorAll('[data-slot="button"]')].filter((b) =>
@@ -61,10 +60,30 @@ describe('ChoiceDialog', () => {
 
   it('a destructive primary is the red one (Resume · Later · Discard)', () => {
     const { container } = render(
-      <ChoiceDialog tertiaryLabel="Resume" secondaryLabel="Later" primaryLabel="Discard" destructive />
+      <ChoiceDialog
+        tertiaryLabel="Resume"
+        secondaryLabel="Later"
+        primaryLabel="Discard"
+        destructive
+      />
     )
     const [button] = filled(container)
     expect(button!.getAttribute('data-variant')).toBe('destructive')
     expect(button!.textContent).toBe('Discard')
+  })
+})
+
+describe('ChoiceDialog without a middle choice', () => {
+  it('leaves the secondary button out when its label is null', () => {
+    render(
+      <ChoiceDialog
+        secondaryLabel={null}
+        tertiaryLabel="Choose another"
+        primaryLabel="Use this stash"
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Choose another' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Use this stash' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Point only' })).toBeNull()
   })
 })

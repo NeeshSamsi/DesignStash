@@ -51,3 +51,12 @@ describe('OnboardingStep behaviour', () => {
     expect(screen.queryByText('models')).toBeNull()
   })
 })
+
+describe('OnboardingStep primaryDisabled', () => {
+  it('keeps the primary off until the page is ready', () => {
+    render(<OnboardingStep variant="standard" primaryDisabled onPrimary={() => {}} />)
+    expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(
+      true
+    )
+  })
+})

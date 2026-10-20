@@ -11,8 +11,8 @@ export interface ChoiceDialogProps extends ChoiceDialogContractProps {
   /** Left, ghost: the way out (Cancel, Resume, Later). Esc and outside press call it. Focused first. */
   tertiaryLabel?: string
   onTertiary?: () => void
-  /** Middle, secondary: “Point only”. */
-  secondaryLabel?: string
+  /** Middle, secondary: “Point only”. `null` leaves it out, for a plain two-way choice. */
+  secondaryLabel?: string | null
   onSecondary?: () => void
   /** Right, the one filled button: “Move files”. Red when `destructive` (e.g. Discard). */
   primaryLabel?: string
@@ -64,9 +64,11 @@ export function ChoiceDialog({
       <div className="flex items-center justify-between">
         {tertiary}
         <div className="flex items-start gap-2">
-          <Button variant="secondary" size="sm" onClick={onSecondary}>
-            {secondaryLabel}
-          </Button>
+          {secondaryLabel !== null && (
+            <Button variant="secondary" size="sm" onClick={onSecondary}>
+              {secondaryLabel}
+            </Button>
+          )}
           <Button variant={destructive ? 'destructive' : 'default'} size="sm" onClick={onPrimary}>
             {primaryLabel}
           </Button>

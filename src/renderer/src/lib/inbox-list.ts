@@ -110,7 +110,10 @@ export function tossCopy(stage: 'to_sort' | 'to_stash', items: readonly InboxIte
   if (stage === 'to_stash') {
     return {
       title: 'Toss these?',
-      description: `This deletes the ${n} sorted mockups and their PSDs from your stash folder. Your originals stay right where they are.`,
+      description:
+        n === 1
+          ? 'This deletes the sorted mockup and its PSD from your stash folder. Your original stays right where it is.'
+          : `This deletes the ${n} sorted mockups and their PSDs from your stash folder. Your originals stay right where they are.`,
       confirmLabel: discard
     }
   }
@@ -118,7 +121,10 @@ export function tossCopy(stage: 'to_sort' | 'to_stash', items: readonly InboxIte
   const measured = sizes.every((size): size is number => size !== null)
   return {
     title: 'Toss this haul?',
-    description: `This deletes the ${n} copied PSDs and their covers from your stash folder. Your originals stay right where they are.`,
+    description:
+      n === 1
+        ? 'This deletes the copied PSD and its cover from your stash folder. Your original stays right where it is.'
+        : `This deletes the ${n} copied PSDs and their covers from your stash folder. Your originals stay right where they are.`,
     confirmLabel: discard,
     ...(measured
       ? {
