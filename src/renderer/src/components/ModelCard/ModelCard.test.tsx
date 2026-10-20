@@ -88,4 +88,12 @@ describe('ModelCard', () => {
     expect(card.getAttribute('role')).toBeNull()
     expect(card.getAttribute('tabindex')).toBeNull()
   })
+
+  it('Delete has no icon, so it matches Use this model beside it', () => {
+    for (const state of ['in-use', 'downloaded'] as const) {
+      const { unmount } = render(<ModelCard state={state} />)
+      expect(screen.getByRole('button', { name: 'Delete' }).querySelector('svg')).toBeNull()
+      unmount()
+    }
+  })
 })

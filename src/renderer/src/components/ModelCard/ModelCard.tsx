@@ -1,12 +1,6 @@
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import {
-  Alert02Icon,
-  Delete02Icon,
-  Download04Icon,
-  Globe02Icon,
-  HardDriveIcon
-} from '@hugeicons/core-free-icons'
+import { Alert02Icon, Download04Icon, Globe02Icon, HardDriveIcon } from '@hugeicons/core-free-icons'
 import { Button } from '@renderer/components/Button'
 import { Progress } from '@renderer/components/Progress'
 import { cn } from '@renderer/lib/utils'
@@ -135,14 +129,7 @@ export function ModelCard({
         )}
 
         {(inUse || state === 'downloaded') && (
-          <Button
-            variant="secondary"
-            size="sm"
-            label="Delete"
-            showIconStart
-            iconStart={Delete02Icon}
-            onClick={onDelete}
-          />
+          <Button variant="secondary" size="sm" label="Delete" onClick={onDelete} />
         )}
         {state === 'downloaded' && (
           <Button variant="secondary" size="sm" label="Use this model" onClick={onUse} />

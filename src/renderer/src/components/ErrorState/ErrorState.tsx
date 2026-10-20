@@ -7,10 +7,10 @@ import { ERROR_STATE_DEFAULTS, type ErrorStateContractProps } from './ErrorState
 import { errorStateVariants } from './ErrorState.variants'
 
 export interface ErrorStateProps extends ErrorStateContractProps {
-  /** Primary action. Defaults to Retry (Reload on `full-window`). */
+  /** Primary action, on the right. Defaults to Retry (Reload on `full-window`). */
   retryLabel?: string
   onRetry?: () => void
-  /** Second action on `page` / `full-window`, e.g. “Check your stash” or “Quit”. Pass null to hide it. */
+  /** Second action on `page` / `full-window`, shown first (left of the primary), e.g. “Check your stash” or “Quit”. Pass null to hide it. */
   secondaryLabel?: string | null
   onSecondary?: () => void
   /** With `showDetails`: copies a technical report. The report never appears on screen. */
@@ -74,14 +74,14 @@ export function ErrorState({
       </p>
       <p className="type-body-sm-regular text-muted-foreground">{props.message}</p>
       <div className="flex items-start gap-2">
-        <Button size="sm" onClick={onRetry}>
-          {retry}
-        </Button>
         {secondary && (
           <Button variant="secondary" size="sm" onClick={onSecondary}>
             {secondary}
           </Button>
         )}
+        <Button size="sm" onClick={onRetry}>
+          {retry}
+        </Button>
       </div>
       {props.showDetails && (
         <div className="flex w-full items-center gap-2 rounded-md bg-surface-2 px-3 py-2">

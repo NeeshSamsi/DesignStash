@@ -8,6 +8,7 @@ import { emptyStateTileVariants, emptyStateVariants } from './EmptyState.variant
 export interface EmptyStateProps extends EmptyStateContractProps {
   /** The way forward. Shown unless null: only a state that just explains itself (nothing starred yet) leaves it out. */
   primaryLabel?: string | null
+  /** Shown on the primary when it stands alone. Dropped when a secondary sits beside it. */
   primaryIcon?: IconSvgElement
   onPrimary?: () => void
   /** Shown when `secondaryAction` is on. Give it a real destination; there is no help site. */
@@ -32,6 +33,8 @@ export function EmptyState({
 }: EmptyStateProps) {
   const props = { ...EMPTY_STATE_DEFAULTS, ...rest }
   const isPage = props.variant === 'page'
+  // Icons on every button in a group or on none: beside a secondary, the primary drops its icon.
+  const withSecondary = props.secondaryAction && Boolean(secondaryLabel)
   return (
     <div
       data-ds="EmptyState"
@@ -46,14 +49,14 @@ export function EmptyState({
       </p>
       <p className="type-body-sm-regular text-muted-foreground">{props.description}</p>
       <div className="flex items-start gap-2">
-        {props.secondaryAction && secondaryLabel && (
+        {withSecondary && (
           <Button variant="secondary" size="sm" onClick={onSecondary}>
             {secondaryLabel}
           </Button>
         )}
         {primaryLabel !== null && (
           <Button size="sm" onClick={onPrimary}>
-            <HugeiconsIcon icon={primaryIcon} strokeWidth={2} />
+            {!withSecondary && <HugeiconsIcon icon={primaryIcon} strokeWidth={2} />}
             {primaryLabel}
           </Button>
         )}

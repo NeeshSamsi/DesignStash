@@ -49,4 +49,22 @@ describe('ErrorState', () => {
       unmount()
     }
   })
+
+  it('runs the actions light to heavy: the secondary first, the primary on the right', () => {
+    const labels = {
+      page: ['Check your stash', 'Retry'],
+      'full-window': ['Quit', 'Reload']
+    } as const
+    for (const variant of ['page', 'full-window'] as const) {
+      const { unmount } = render(<ErrorState variant={variant} />)
+      const names = screen.getAllByRole('button').map((b) => b.textContent)
+      expect(names).toEqual(labels[variant])
+      unmount()
+    }
+  })
+
+  it('leaves the primary alone on the right when there is no secondary', () => {
+    render(<ErrorState variant="page" secondaryLabel={null} />)
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Retry'])
+  })
 })
