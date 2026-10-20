@@ -194,9 +194,10 @@ describe('remove', () => {
     t.repo.upsertSearchIndex(gone.id)
     const s = service(disk.deps)
 
-    const { removed } = await s.remove([`m${gone.id}`])
+    const { removed, mockupIds } = await s.remove([`m${gone.id}`])
 
     expect(removed).toBe(1)
+    expect(mockupIds).toEqual([gone.id])
     expect(t.repo.getMockup(gone.id)).toBeUndefined()
     expect(
       t.sqlite.prepare('SELECT rowid FROM mockups_fts WHERE rowid = ?').all(gone.id)
@@ -210,8 +211,9 @@ describe('remove', () => {
     const kept = t.repo.createMockup(approvedMockup({ libraryPath: present }))
     const s = service(disk.deps)
     const [found] = (await s.report()).found
-    const { removed } = await s.remove([found!.id, `m${kept.id}`])
+    const { removed, mockupIds } = await s.remove([found!.id, `m${kept.id}`])
     expect(removed).toBe(0)
+    expect(mockupIds).toEqual([])
     expect(t.repo.getMockup(kept.id)).toBeDefined()
     expect(disk.removed).toEqual([])
   })
@@ -348,7 +350,10 @@ describe('ignore', () => {
     await s.ignore([found[0]!.id, `m${dropped.id}`])
 
     const report = await s.report()
-    expect(await s.scan()).toEqual({ orphanFiles: report.found.length, orphanRecords: report.gone.length })
+    expect(await s.scan()).toEqual({
+      orphanFiles: report.found.length,
+      orphanRecords: report.gone.length
+    })
     expect(report.found.map((f) => f.id)).toEqual([found[1]!.id])
     expect(report.gone.map((g) => g.id)).toEqual([`m${keep.id}`])
   })

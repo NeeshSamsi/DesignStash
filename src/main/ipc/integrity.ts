@@ -83,10 +83,14 @@ export function registerIntegrityHandlers(
     return recheck({ undone: true })
   })
 
-  /** Removed records change the sidebar counts. (Their queued suggestions need ids: see X2-1.) */
-  const removed = async (result: { removed: number }): Promise<{ removed: number }> => {
+  /** Removed records leave the AI queue and change the sidebar counts. */
+  const removed = async (result: {
+    removed: number
+    mockupIds: number[]
+  }): Promise<{ removed: number }> => {
+    mockupsLeft(ctx, result.mockupIds)
     countsChanged(ctx)
-    return recheck(result)
+    return recheck({ removed: result.removed })
   }
 
   registerIpcHandler(IPC_CHANNELS.INTEGRITY_REMOVE, async (args) =>

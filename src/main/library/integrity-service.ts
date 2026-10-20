@@ -221,18 +221,20 @@ export class IntegrityService {
   }
 
   /** Remove the records of mockups whose PSD is gone. Anything else in `ids` is skipped. */
-  async remove(ids: string[]): Promise<{ removed: number }> {
+  async remove(ids: string[]): Promise<{ removed: number; mockupIds: number[] }> {
     const { gone } = await this.drift()
     const mockupIds = [...new Set(ids)].flatMap((id) => {
       const row = gone.get(id)
       return row ? [row.mockupId] : []
     })
-    const rows = this.repo.deleteMockupsHard(mockupIds)
+    // Hard delete reports only the paths it freed, so the ids that really go are read first.
+    const existing = mockupIds.filter((id) => this.repo.getMockup(id) !== undefined)
+    const rows = this.repo.deleteMockupsHard(existing)
     await this.removeCovers(rows)
-    return { removed: rows.length }
+    return { removed: rows.length, mockupIds: existing }
   }
 
-  async removeAll(): Promise<{ removed: number }> {
+  async removeAll(): Promise<{ removed: number; mockupIds: number[] }> {
     const { gone } = this.visible(await this.drift())
     return this.remove([...gone.keys()])
   }

@@ -9,6 +9,7 @@ import { createSettingsStore } from '../settings'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, approvedMockup } from '../db/repositories/__tests__/setup'
 import type { HandlerContext } from './context'
+import { inferenceQueueFor } from './library-effects'
 
 const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
@@ -136,6 +137,18 @@ describe('resolving changes', () => {
     expect(pushed.at(-1)?.channel).toBe(IPC_CHANNELS.INBOX_COUNTS_CHANGED)
     const status = await call<StashCheckStatus>(IPC_CHANNELS.STASH_CHECK_STATUS)
     expect(status.success && status.data.lastRun).toMatchObject({ result: 'in-sync' })
+  })
+
+  it('Remove and Remove all take the removed mockups out of the AI queue', async () => {
+    const first = goneRow()
+    const cancel = vi.spyOn(inferenceQueueFor(ctx), 'cancel')
+
+    await call(IPC_CHANNELS.INTEGRITY_REMOVE, { ids: [`m${first.id}`] })
+    expect(cancel).toHaveBeenLastCalledWith([first.id])
+
+    const second = goneRow()
+    await call(IPC_CHANNELS.INTEGRITY_REMOVE_ALL)
+    expect(cancel).toHaveBeenLastCalledWith([second.id])
   })
 
   it('Remove all pushes the counts too', async () => {
