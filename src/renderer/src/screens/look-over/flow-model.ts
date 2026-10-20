@@ -1,0 +1,300 @@
+import type { LookOverItem, LookOverQueue, LookOverUnit } from '@shared/approval'
+
+/**
+ * The pure model of Look it over (design/specs/piles.md): where you are, what Back and Next do,
+ * the header badge, the deck, the rail's step statuses, the review step and Skip.
+ * Everything in a pile is a draft until Stash pile, so nothing here talks to main: the screen
+ * saves drafts and stashes, then tells the model what happened.
+ */
+
+/** Where you are. `step` is an item index in the unit; for a pile, `step === items.length` is its review. */
+export interface Position {
+  unit: number
+  step: number
+}
+
+export interface FlowState {
+  /** Piles first, then mockups on their own. Skip reorders the singles. */
+  units: readonly LookOverUnit[]
+  position: Position
+  /** Mockups the person has looked at: opened or saved. Seeded from the drafts. */
+  checked: ReadonlySet<number>
+  /** Mockups jumped past (via the rail or Review pile) without opening. */
+  skipped: ReadonlySet<number>
+  /** Units stashed in this session. Back reopens them editable. */
+  stashed: ReadonlySet<number>
+}
+
+export const isPile = (unit: LookOverUnit) => unit.kind === 'pile'
+
+/** Steps in a unit: every item, then a pile's review. */
+export const stepCount = (unit: LookOverUnit) => unit.items.length + (isPile(unit) ? 1 : 0)
+export const isReview = (unit: LookOverUnit, step: number) =>
+  isPile(unit) && step === unit.items.length
+
+/** A fresh flow from the queue main sent, resuming where Finish later left off. */
+export function createFlow(queue: LookOverQueue): FlowState {
+  const units = queue.units
+  let position: Position = { unit: 0, step: 0 }
+  if (queue.resume) {
+    const unit = units.findIndex((u) => u.unitId === queue.resume!.unitId)
+    const step =
+      unit === -1 ? -1 : units[unit]!.items.findIndex((i) => i.mockupId === queue.resume!.mockupId)
+    if (unit !== -1 && step !== -1) position = { unit, step }
+  }
+  const checked = new Set(
+    units.flatMap((u) => u.items.filter((i) => i.checked).map((i) => i.mockupId))
+  )
+  return { units, position, checked, skipped: new Set(), stashed: new Set() }
+}
+
+export const currentUnit = (s: FlowState) => s.units[s.position.unit]!
+export const currentItem = (s: FlowState): LookOverItem | null => {
+  const unit = currentUnit(s)
+  return unit.items[s.position.step] ?? null
+}
+export const onReview = (s: FlowState) => isReview(currentUnit(s), s.position.step)
+
+const withChecked = (s: FlowState, mockupId: number | undefined): ReadonlySet<number> =>
+  mockupId === undefined || s.checked.has(mockupId) ? s.checked : new Set([...s.checked, mockupId])
+
+/** Opening or leaving a mockup counts as having looked at it. */
+function leave(s: FlowState): FlowState {
+  const item = currentItem(s)
+  if (!item) return s
+  const skipped = new Set(s.skipped)
+  skipped.delete(item.mockupId)
+  return { ...s, checked: withChecked(s, item.mockupId), skipped }
+}
+
+/** Open a step. Opening it marks it looked at, and un-skips it. */
+function open(s: FlowState, position: Position): FlowState {
+  const unit = s.units[position.unit]!
+  const item = unit.items[position.step]
+  const skipped = new Set(s.skipped)
+  if (item) skipped.delete(item.mockupId)
+  return { ...s, position, checked: withChecked(s, item?.mockupId), skipped }
+}
+
+// -- Next, jump, stash ----------------------------------------------------------------------
+
+/** Next goes on in order: top, variants, then Review & stash pile. A single has no next within itself. */
+export function next(s: FlowState): FlowState {
+  const unit = currentUnit(s)
+  const { step } = s.position
+  if (step >= stepCount(unit) - 1) return s
+  return open(leave(s), { unit: s.position.unit, step: step + 1 })
+}
+
+/**
+ * Any step in the rail jumps there. Mockups jumped past without being opened become "skipped",
+ * and Review pile (the last step) is the same jump.
+ */
+export function jumpTo(s: FlowState, step: number): FlowState {
+  const unit = currentUnit(s)
+  if (step < 0 || step >= stepCount(unit) || step === s.position.step) return s
+  const from = leave(s)
+  const skipped = new Set(from.skipped)
+  if (step > s.position.step) {
+    for (const item of unit.items.slice(s.position.step + 1, step)) {
+      if (!from.checked.has(item.mockupId)) skipped.add(item.mockupId)
+    }
+  }
+  return open({ ...from, skipped }, { unit: s.position.unit, step })
+}
+
+/** After Stash pile (or Stash on a single): the next unit starts on its first mockup. */
+export function afterStash(s: FlowState): FlowState {
+  const unit = currentUnit(s)
+  const stashed = new Set([...s.stashed, unit.unitId])
+  const checked = new Set([...s.checked, ...unit.items.map((i) => i.mockupId)])
+  const base = { ...s, stashed, checked }
+  const following = s.position.unit + 1
+  if (following >= s.units.length) return base
+  return open(base, { unit: following, step: 0 })
+}
+
+/** True once every unit is stashed: Tucked away. */
+export const finished = (s: FlowState) => s.units.every((u) => s.stashed.has(u.unitId))
+
+// -- Back -----------------------------------------------------------------------------------
+
+export type BackTarget =
+  | { kind: 'position'; position: Position; /** "Pile 1 of 3 · stashed". */ stashed: boolean }
+  | { kind: 'sort' }
+
+const lastStep = (unit: LookOverUnit): number => stepCount(unit) - 1
+
+/**
+ * Back always means "the previous thing" (piles.md). Null hides the button: the very first mockup,
+ * once anything is stashed.
+ */
+export function backTarget(s: FlowState): BackTarget | null {
+  const { unit: u, step } = s.position
+  const unit = currentUnit(s)
+  // A draft inside a pile (or its review): the previous draft, the same as the step above in the rail.
+  if (isPile(unit) && step > 0) {
+    return { kind: 'position', position: { unit: u, step: step - 1 }, stashed: false }
+  }
+  if (u > 0) {
+    const previous = s.units[u - 1]!
+    // A pile's top mockup: the previous pile's review. A single: the previous single, or the last pile's review.
+    const position = isPile(previous)
+      ? { unit: u - 1, step: previous.items.length }
+      : { unit: u - 1, step: 0 }
+    return { kind: 'position', position, stashed: s.stashed.has(previous.unitId) }
+  }
+  // The very first mockup: the Sort board, only while nothing is stashed.
+  return s.stashed.size === 0 ? { kind: 'sort' } : null
+}
+
+export function back(s: FlowState): FlowState {
+  const target = backTarget(s)
+  if (!target || target.kind === 'sort') return s
+  return open(leave(s), target.position)
+}
+
+// -- Header, deck, rail, primary ------------------------------------------------------------
+
+const piles = (s: FlowState) => s.units.filter(isPile)
+const mockupTotal = (s: FlowState) => s.units.reduce((n, u) => n + u.items.length, 0)
+
+/**
+ * The header badge: "Pile n of m" in piles, "Pile n of m · review" on the review step, "Pile n of m · stashed"
+ * when Back reopened a stashed pile, and the plain haul count ("11 of 12") on mockups on their own.
+ */
+export function headerBadge(s: FlowState): string {
+  const unit = currentUnit(s)
+  if (isPile(unit)) {
+    const n = piles(s).findIndex((p) => p.unitId === unit.unitId) + 1
+    const base = `Pile ${n} of ${piles(s).length}`
+    if (s.stashed.has(unit.unitId)) return `${base} · stashed`
+    return onReview(s) ? `${base} · review` : base
+  }
+  const before = s.units.slice(0, s.position.unit).reduce((n, u) => n + u.items.length, 0)
+  return `${before + 1} of ${mockupTotal(s)}`
+}
+
+export interface Deck {
+  /** Mockups not looked at yet, after this one. */
+  remaining: number
+  /** One card peeks when any are left. */
+  showDeck: boolean
+  /** A second card peeks when two or more are. */
+  deckMore: boolean
+  label: string
+}
+
+/** The deck thins as you go, counts only what you haven't looked at, and is gone on the last one. */
+export function deck(s: FlowState): Deck {
+  const unit = currentUnit(s)
+  const remaining = onReview(s)
+    ? 0
+    : unit.items.slice(s.position.step + 1).filter((i) => !s.checked.has(i.mockupId)).length
+  return {
+    remaining,
+    showDeck: remaining >= 1,
+    deckMore: remaining >= 2,
+    label: `${remaining} left in this pile`
+  }
+}
+
+export type StepStatus = 'done' | 'current' | 'todo' | 'skipped'
+
+export interface RailStep {
+  key: string
+  /** Null for the review step. */
+  mockupId: number | null
+  label: string
+  status: StepStatus
+  showConnector: boolean
+  /** The step index to jump to. */
+  step: number
+}
+
+export interface Rail {
+  /** "PILE 1 OF 3". */
+  pile: string
+  title: string
+  steps: RailStep[]
+}
+
+/** The rail for the current pile: the top mockup, the variants, then Review & stash pile. Null for a single. */
+export function rail(s: FlowState): Rail | null {
+  const unit = currentUnit(s)
+  if (!isPile(unit)) return null
+  const n = piles(s).findIndex((p) => p.unitId === unit.unitId) + 1
+  const statusOf = (mockupId: number, step: number): StepStatus =>
+    step === s.position.step
+      ? 'current'
+      : s.checked.has(mockupId)
+        ? 'done'
+        : s.skipped.has(mockupId)
+          ? 'skipped'
+          : 'todo'
+  const steps: RailStep[] = unit.items.map((item, step) => ({
+    key: String(item.mockupId),
+    mockupId: item.mockupId,
+    label: `${item.role === 'top' ? 'Top' : 'Variant'} · ${item.title}`,
+    status: statusOf(item.mockupId, step),
+    showConnector: true,
+    step
+  }))
+  steps.push({
+    key: 'review',
+    mockupId: null,
+    label: 'Review & stash pile',
+    status: onReview(s) ? 'current' : 'todo',
+    showConnector: false,
+    step: unit.items.length
+  })
+  return { pile: `PILE ${n} OF ${piles(s).length}`, title: unit.items[0]!.title, steps }
+}
+
+export interface ReviewCard {
+  mockupId: number
+  /** "Not checked · pre-filled from the top mockup". They are still stashable. */
+  note: string | null
+}
+
+export const NOT_CHECKED = 'Not checked · pre-filled from the top mockup'
+
+/** The pile's drafts as library cards. Clicking one goes back to that draft. */
+export function reviewCards(s: FlowState): ReviewCard[] {
+  return currentUnit(s).items.map((item) => ({
+    mockupId: item.mockupId,
+    note: s.checked.has(item.mockupId) ? null : NOT_CHECKED
+  }))
+}
+
+export type PrimaryKind = 'next' | 'stash-pile' | 'stash' | 'save-next'
+
+/** The one primary button: Next in a pile, Stash pile (N) on review, Stash & next on a single, Save & next once stashed. */
+export function primary(s: FlowState): { kind: PrimaryKind; label: string } {
+  const unit = currentUnit(s)
+  if (isPile(unit)) {
+    return onReview(s)
+      ? { kind: 'stash-pile', label: `Stash pile (${unit.items.length})` }
+      : { kind: 'next', label: 'Next' }
+  }
+  const last = s.position.unit === s.units.length - 1
+  if (s.stashed.has(unit.unitId)) return { kind: 'save-next', label: last ? 'Save' : 'Save & next' }
+  return { kind: 'stash', label: last ? 'Stash' : 'Stash & next' }
+}
+
+// -- Skip -----------------------------------------------------------------------------------
+
+/** Skip for now exists only for mockups on their own, and needs another one waiting after it. */
+export function canSkip(s: FlowState): boolean {
+  const unit = currentUnit(s)
+  if (isPile(unit)) return false
+  return s.units.slice(s.position.unit + 1).some((u) => !isPile(u) && !s.stashed.has(u.unitId))
+}
+
+/** Sends the mockup to the end of the queue; the next one takes its place. */
+export function skip(s: FlowState): FlowState {
+  if (!canSkip(s)) return s
+  const unit = currentUnit(s)
+  const units = [...s.units.slice(0, s.position.unit), ...s.units.slice(s.position.unit + 1), unit]
+  return open({ ...s, units }, { unit: s.position.unit, step: 0 })
+}
