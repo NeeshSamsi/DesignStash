@@ -3,6 +3,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Folder01Icon } from '@hugeicons/core-free-icons'
 import { Button } from '@renderer/components/Button'
 import { cn } from '@renderer/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
 import { PATH_FIELD_DEFAULTS, type PathFieldContractProps } from './PathField.types'
 import { pathFieldBoxVariants, pathFieldVariants } from './PathField.variants'
 
@@ -10,6 +11,8 @@ export interface PathFieldProps
   extends PathFieldContractProps, Omit<ComponentProps<'div'>, keyof PathFieldContractProps> {
   /** The folder, as a friendly path. Figma's sample until given. */
   path?: string
+  /** The whole path, shown as a tooltip when `path` is cut short. */
+  fullPath?: string
   /** Where it lives, in words: "Macintosh HD › Users › you › Pictures". */
   location?: string
   /** The line under the box. Figma's sample for the state until given. */
@@ -40,6 +43,7 @@ const HINT_TONE = {
 export function PathField({
   className,
   path = '~/Pictures/DesignStash',
+  fullPath,
   location = 'Macintosh HD › Users › you › Pictures',
   hint,
   onChoose,
@@ -47,6 +51,7 @@ export function PathField({
 }: PathFieldProps) {
   const { state, ...props } = { ...PATH_FIELD_DEFAULTS, ...rest }
   const busy = state === 'busy'
+  const pathText = <p className="truncate type-body-sm-medium text-foreground">{path}</p>
   return (
     <div
       data-ds="PathField"
@@ -68,7 +73,16 @@ export function PathField({
           )}
         />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 whitespace-nowrap">
-          <p className="truncate type-body-sm-medium text-foreground">{path}</p>
+          {fullPath && fullPath !== path ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{pathText}</TooltipTrigger>
+              <TooltipContent side="top" align="start">
+                {fullPath}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            pathText
+          )}
           <p className="truncate type-caption-xs-regular text-tertiary">{location}</p>
         </div>
         <Button

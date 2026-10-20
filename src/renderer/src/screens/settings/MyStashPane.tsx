@@ -10,6 +10,7 @@ import { SettingsGroup, SettingsPathField, SettingsRow } from '../../components/
 import { subscribePush } from '../../lib/subscribe'
 import { toast } from '../../stores/toastStore'
 import { Badge } from '../../ui/badge'
+import { friendlyPath, shortPath } from '../onboarding/onboarding-copy'
 import { formatBytes, mockupCount, stashCheckView, stashFailureCopy } from './settings-copy'
 
 interface Props {
@@ -144,7 +145,8 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
             </p>
           </div>
           <SettingsPathField
-            path={info?.path ?? '…'}
+            path={info ? shortPath(friendlyPath(info.path)) : '…'}
+            {...(info ? { fullPath: friendlyPath(info.path) } : {})}
             meta={info ? `${mockupCount(info.count)} · ${formatBytes(info.bytes)}` : ''}
             onChange={() => void change()}
           />

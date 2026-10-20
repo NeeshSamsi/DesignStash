@@ -7,7 +7,8 @@ import {
   WELCOME,
   folderHint,
   friendlyPath,
-  locationTrail
+  locationTrail,
+  shortPath
 } from './onboarding-copy'
 
 describe('friendlyPath', () => {
@@ -16,8 +17,32 @@ describe('friendlyPath', () => {
     expect(friendlyPath('/Users/ada')).toBe('~')
   })
 
+  it('names an external volume by its drive', () => {
+    expect(friendlyPath('/Volumes/Studio SSD/DesignStash')).toBe('Studio SSD/DesignStash')
+  })
+
+  it('drops the /private macOS puts in front of /var, /tmp and /etc', () => {
+    expect(friendlyPath('/private/var/folders/ab/DesignStash')).toBe('/var/folders/ab/DesignStash')
+    expect(friendlyPath('/private/tmp/stash')).toBe('/tmp/stash')
+  })
+
   it('leaves other places alone', () => {
-    expect(friendlyPath('/Volumes/Studio SSD/DesignStash')).toBe('/Volumes/Studio SSD/DesignStash')
+    expect(friendlyPath('/Applications/DesignStash')).toBe('/Applications/DesignStash')
+    expect(friendlyPath('/private/other/place')).toBe('/private/other/place')
+  })
+})
+
+describe('shortPath', () => {
+  it('keeps short paths whole', () => {
+    expect(shortPath('~/Pictures/DesignStash')).toBe('~/Pictures/DesignStash')
+  })
+
+  it('cuts the middle and keeps the last two folders', () => {
+    expect(shortPath('~/Pictures/Work/Clients/DesignStash')).toBe('~/…/Clients/DesignStash')
+    expect(shortPath('Studio SSD/Work/Deep/Deeper/DesignStash')).toBe(
+      'Studio SSD/…/Deeper/DesignStash'
+    )
+    expect(shortPath('/var/folders/ab/cd/DesignStash')).toBe('/var/…/cd/DesignStash')
   })
 })
 

@@ -4,7 +4,7 @@ import { ChoiceDialog } from '@renderer/components/ChoiceDialog'
 import { OnboardingStep } from '@renderer/components/OnboardingStep'
 import { PathField } from '@renderer/components/PathField'
 import type { PathFieldState } from '@renderer/components/PathField/PathField.types'
-import { folderHint, friendlyPath, locationTrail, STASH_STEP } from './onboarding-copy'
+import { folderHint, friendlyPath, locationTrail, shortPath, STASH_STEP } from './onboarding-copy'
 
 export interface StashStepProps {
   onBack: () => void
@@ -12,7 +12,23 @@ export interface StashStepProps {
   onNext: (moved: boolean) => void
 }
 
-type Found = { path: string; state: PathFieldState }
+/**
+ * The folder choice as one value. A folder that already holds a stash stays `unconfirmed` until the
+ * person says to use it; picking again and cancelling puts back what was chosen before.
+ */
+type Choice =
+  | { kind: 'current' }
+  | { kind: 'checking'; before: Choice }
+  | { kind: 'ready'; path: string }
+  | { kind: 'unconfirmed'; path: string; before: Choice }
+  | { kind: 'blocked'; path: string; hint: string }
+
+const pathOf = (choice: Choice, current: string | null): string | null =>
+  choice.kind === 'current'
+    ? current
+    : choice.kind === 'checking'
+      ? pathOf(choice.before, current)
+      : choice.path
 
 /**
  * A2 · Where the stash lives. Choosing checks the folder first: unwritable and missing folders
@@ -20,10 +36,7 @@ type Found = { path: string; state: PathFieldState }
  */
 export function StashStep({ onBack, onNext }: StashStepProps) {
   const [current, setCurrent] = useState<string | null>(null)
-  const [chosen, setChosen] = useState<Found | null>(null)
-  const [hint, setHint] = useState<string | undefined>(undefined)
-  const [checking, setChecking] = useState(false)
-  const [asking, setAsking] = useState(false)
+  const [choice, setChoice] = useState<Choice>({ kind: 'current' })
 
   useEffect(() => {
     void window.api.invoke(IPC_CHANNELS.SETTINGS_GET, undefined).then((res) => {
@@ -35,35 +48,39 @@ export function StashStep({ onBack, onNext }: StashStepProps) {
     const picked = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_DIRECTORY, undefined)
     if (!picked.success || !picked.data.path) return
     const path = picked.data.path
-    setChecking(true)
+    setChoice((before) => ({ kind: 'checking', before }))
     const check = await window.api.invoke(IPC_CHANNELS.BOOT_CHECK_FOLDER, { path })
-    setChecking(false)
     if (!check.success) {
-      setChosen({ path, state: 'not-writable' })
-      setHint(folderHint('not-writable'))
-      return
-    }
-    if (check.data.state !== 'ok') {
-      setChosen({ path, state: 'not-writable' })
-      setHint(folderHint(check.data.state))
+      setChoice({ kind: 'blocked', path, hint: folderHint('not-writable') })
+    } else if (check.data.state !== 'ok') {
+      setChoice({ kind: 'blocked', path, hint: folderHint(check.data.state) })
     } else if (check.data.hasLibrary) {
-      setChosen({ path, state: 'existing-library' })
-      setHint(undefined)
-      setAsking(true)
+      setChoice((before) => ({
+        kind: 'unconfirmed',
+        path,
+        before: before.kind === 'checking' ? before.before : before
+      }))
     } else {
-      setChosen({ path, state: 'default' })
-      setHint(undefined)
+      setChoice({ kind: 'ready', path })
     }
   }, [])
 
-  const shown = chosen?.path ?? current
-  const state: PathFieldState = checking ? 'busy' : (chosen?.state ?? 'default')
-  const blocked = shown === null || state === 'not-writable'
+  const shown = pathOf(choice, current)
+  const state: PathFieldState =
+    choice.kind === 'checking'
+      ? 'busy'
+      : choice.kind === 'blocked'
+        ? 'not-writable'
+        : choice.kind === 'unconfirmed'
+          ? 'existing-library'
+          : 'default'
+  const hint = choice.kind === 'blocked' ? choice.hint : undefined
+  const blocked = shown === null || choice.kind === 'blocked' || choice.kind === 'unconfirmed'
 
   const proceed = async () => {
-    if (chosen && chosen.state !== 'not-writable') {
+    if (choice.kind === 'ready') {
       const res = await window.api.invoke(IPC_CHANNELS.SETTINGS_SET_LIBRARY_ROOT, {
-        path: chosen.path
+        path: choice.path
       })
       if (res.success) return onNext(res.data.libraryRoot !== current)
     }
@@ -81,7 +98,8 @@ export function StashStep({ onBack, onNext }: StashStepProps) {
           shown !== null && (
             <PathField
               state={state}
-              path={friendlyPath(shown)}
+              path={shortPath(friendlyPath(shown))}
+              fullPath={friendlyPath(shown)}
               location={locationTrail(shown)}
               {...(hint ? { hint } : {})}
               onChoose={() => void choose()}
@@ -90,24 +108,24 @@ export function StashStep({ onBack, onNext }: StashStepProps) {
         }
         onBack={onBack}
         onPrimary={() => void proceed()}
-        busy={checking}
+        busy={choice.kind === 'checking'}
         busyLabel="Checking…"
         primaryDisabled={blocked}
       />
       <ChoiceDialog
-        open={asking}
+        open={choice.kind === 'unconfirmed'}
         title="Looks like there’s already a stash here"
         description="It already has mockups in it. Want to use it, or pick somewhere else?"
         tertiaryLabel="Choose another"
         onTertiary={() => {
-          setAsking(false)
+          // Back to what was chosen before, so cancelling the picker cannot leave this one standing.
+          if (choice.kind === 'unconfirmed') setChoice(choice.before)
           void choose()
         }}
         secondaryLabel={null}
         primaryLabel="Use this stash"
         onPrimary={() => {
-          setAsking(false)
-          setChosen((found) => (found ? { ...found, state: 'default' } : found))
+          if (choice.kind === 'unconfirmed') setChoice({ kind: 'ready', path: choice.path })
         }}
       />
     </>
