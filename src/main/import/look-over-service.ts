@@ -13,7 +13,7 @@ import type {
   LookOverUnit,
   SaveDraftRequest
 } from '@shared/approval'
-import { analysisInputFor } from '../ai/inference-service'
+import { analysisInputFor } from '../ai/inference-queue'
 import type { Repository } from '../db/repository'
 import type { Draft, Mockup } from '../db/schema'
 import { TagService } from '../db/tag-service'

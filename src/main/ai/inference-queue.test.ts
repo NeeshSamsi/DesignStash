@@ -5,7 +5,7 @@ import type { AnalysisInput, InferenceProvider, InferenceResult } from '@shared/
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb, sample } from '../db/repositories/__tests__/setup'
-import { InferenceQueue } from './inference-queue'
+import { InferenceQueue, analysisInputFor } from './inference-queue'
 
 const result = (title: string): InferenceResult => ({
   title,
@@ -326,5 +326,21 @@ describe('InferenceQueue', () => {
 
     expect(status(a.id)).toBe('failed')
     expect(status(b.id)).toBe('ready')
+  })
+})
+
+describe('analysisInputFor', () => {
+  it('shows the cover, the name the file came in as, and its folders', () => {
+    const m = imported('front')
+    expect(analysisInputFor(m)).toEqual({
+      imagePath: '/lib/front.webp',
+      fileName: 'front.psd',
+      folderTrail: ['Phones']
+    })
+  })
+
+  it('falls back to the title and no folders when nothing is known about where it came from', () => {
+    const m = imported('side', { importContext: null })
+    expect(analysisInputFor(m)).toEqual({ imagePath: '/lib/side.webp', fileName: 'side', folderTrail: [] })
   })
 })
