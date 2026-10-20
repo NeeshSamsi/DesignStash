@@ -1,6 +1,7 @@
 import type { z } from 'zod'
 import { IPC_CHANNELS, PUSH_CHANNELS, isPushChannel, type IpcChannel, type PushChannel } from './ipc-channels'
 import { appContract } from './ipc/app'
+import { bootContract } from './ipc/boot'
 import { settingsContract } from './ipc/settings'
 import { dialogContract } from './ipc/dialog'
 import { importContract } from './ipc/import'
@@ -41,6 +42,7 @@ export {
  */
 export const IPC_DOMAIN_CONTRACTS = {
   app: appContract,
+  boot: bootContract,
   settings: settingsContract,
   dialog: dialogContract,
   import: importContract,
@@ -63,6 +65,7 @@ export const IPC_DOMAIN_CONTRACTS = {
 /** Every channel's request/response schemas. */
 export const IPC_CONTRACT = {
   ...appContract,
+  ...bootContract,
   ...settingsContract,
   ...dialogContract,
   ...importContract,

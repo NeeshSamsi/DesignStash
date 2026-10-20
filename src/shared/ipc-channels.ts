@@ -16,6 +16,8 @@ export const IPC_CHANNELS = {
   STASH_CHECK_STATUS: 'stash:check-status',
   STASH_CHECK_RUN: 'stash:check-run',
   APP_RELAUNCH: 'app:relaunch',
+  BOOT_STATUS: 'boot:status',
+  BOOT_CHECK_FOLDER: 'boot:check-folder',
   DIALOG_SELECT_DIRECTORY: 'dialog:select-directory',
   DIALOG_SELECT_PSD_FILES: 'dialog:select-psd-files',
   IMPORT_START: 'import:start',

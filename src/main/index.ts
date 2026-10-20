@@ -8,6 +8,9 @@ import { runMigrations } from './db/migrate'
 import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
 import { ensureSearchIndex } from './db/search-index'
 import { createSettingsStore } from './settings'
+import { runBoot, setBootStatus } from './boot-status'
+import { registerAppHandlers } from './ipc/app'
+import { registerBootHandlers } from './ipc/boot'
 import { logger } from './logger'
 import { Repository } from './db/repository'
 import { IntegrityService } from './library/integrity-service'
@@ -21,9 +24,7 @@ const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
 let telemetryRef: TelemetryRef | null = null
 
 function migrationsFolder(): string {
-  return app.isPackaged
-    ? join(process.resourcesPath, 'drizzle')
-    : join(app.getAppPath(), 'drizzle')
+  return app.isPackaged ? join(process.resourcesPath, 'drizzle') : join(app.getAppPath(), 'drizzle')
 }
 
 function createWindow(): BrowserWindow {
@@ -65,19 +66,32 @@ app.whenReady().then(() => {
   // A stash folder chosen last time takes effect now, before the database opens.
   applyPendingStash(settings)
 
-  try {
-    logger.info('Initializing application data…')
-    const libraryRoot = settings.getLibraryRoot()
-    bootstrapLibrary(libraryRoot)
-    const db = initDb(join(libraryRoot, 'designstash.db'))
-    runMigrations(db, migrationsFolder())
-    ensureSearchIndex(db)
-    seedTaxonomy(db)
-    try {
-      new Repository(db).rebuildSearchIndex()
-    } catch (err) {
-      logger.error('Search index rebuild failed:', err)
-    }
+  const libraryRoot = settings.getLibraryRoot()
+  logger.info('Initializing application data…')
+  const boot = runBoot(
+    settings,
+    () => {
+      bootstrapLibrary(libraryRoot)
+      const db = initDb(join(libraryRoot, 'designstash.db'))
+      runMigrations(db, migrationsFolder())
+      ensureSearchIndex(db)
+      seedTaxonomy(db)
+      try {
+        new Repository(db).rebuildSearchIndex()
+      } catch (err) {
+        logger.error('Search index rebuild failed:', err)
+      }
+    },
+    (err) => logger.error('Failed to initialize database/library:', err)
+  )
+  setBootStatus(boot)
+  // A library that did not open leaves nothing for the other handlers to run on: the window
+  // only gets the launch status, so it can say what happened.
+  const libraryOpen = boot.state === 'ok' || boot.state === 'settings-corrupt'
+  logger.info(`Launch status: ${boot.state}`)
+
+  if (libraryOpen) {
+    const db = getDb()
     // Detection-only launch scan — never auto-resolves, never blocks startup.
     void (async () => {
       try {
@@ -89,8 +103,6 @@ app.whenReady().then(() => {
       }
     })()
     logger.info(`Database and library initialized at ${libraryRoot}`)
-  } catch (err) {
-    logger.error('Failed to initialize database/library:', err)
   }
 
   // Telemetry: NO-OP in dev/test and when consent is off or no key is set.
@@ -121,9 +133,19 @@ app.whenReady().then(() => {
   process.on('unhandledRejection', (reason) => telemetry.captureError(reason))
 
   const window = createWindow()
-  registerAllHandlers(
-    createHandlerContext({ settings, telemetry: telemetryRef, repo: new Repository(getDb()), window })
-  )
+  if (libraryOpen) {
+    registerAllHandlers(
+      createHandlerContext({
+        settings,
+        telemetry: telemetryRef,
+        repo: new Repository(getDb()),
+        window
+      })
+    )
+  } else {
+    registerAppHandlers()
+    registerBootHandlers()
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
