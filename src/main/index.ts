@@ -1,4 +1,4 @@
-import { app, shell, screen, protocol, net, BrowserWindow } from 'electron'
+import { app, session, shell, screen, protocol, net, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { APP_ID } from '@shared/constants'
 import { createHandlerContext, type TelemetryRef } from './ipc/context'
@@ -10,6 +10,7 @@ import { ensureSearchIndex } from './db/search-index'
 import { createSettingsStore } from './settings'
 import { isLibraryOpen, runBoot, setBootStatus } from './boot-status'
 import { MIN_WINDOW, windowSizeOptions } from './window-size'
+import { applyCsp } from './csp'
 import { handleCoverRequests, registerCoverScheme } from './cover-protocol'
 import { logger } from './logger'
 import { Repository } from './db/repository'
@@ -73,6 +74,7 @@ function openWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   app.setAppUserModelId(APP_ID)
+  applyCsp(session.defaultSession, { devUrl: rendererDevUrl })
 
   const settings = createSettingsStore(app.getPath('userData'))
   handleCoverRequests(
