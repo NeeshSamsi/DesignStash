@@ -248,6 +248,45 @@ describe('CoverPanel · cover image', () => {
     expect(screen.getByText('2 left in this pile')).not.toBeNull()
   })
 
-  // Flow-level (WP6.4): needs the Look it over screen.
-  it.todo('requires a cover (Stash & next disabled) when there is no embedded preview or sidecar')
+  it('requires a cover (Stash & next disabled) when there is no embedded preview or sidecar', async () => {
+    const single = (id: number) => ({
+      mockupId: id,
+      pileId: null,
+      role: 'single',
+      title: `T${id}`,
+      description: '',
+      tags: [],
+      touched: false,
+      checked: false,
+      cover: { path: '', source: 'none', missing: false, width: null, height: null },
+      sidecarFileName: null
+    })
+    window.api = {
+      appName: 'x',
+      invoke: async (channel: string) =>
+        channel === 'look-over:open'
+          ? {
+              success: true,
+              data: {
+                units: [
+                  { unitId: 1, kind: 'single', items: [single(1)] },
+                  { unitId: 2, kind: 'single', items: [single(2)] }
+                ],
+                resume: null
+              }
+            }
+          : { success: true, data: { tree: [] } },
+      subscribe: () => () => {},
+      onImportProgress: () => () => {},
+      onAiDownloadProgress: () => () => {},
+      getPathForFile: () => ''
+    } as unknown as typeof window.api
+    const { LookOverFlow } = await import('@renderer/screens/look-over')
+    render(<LookOverFlow open onClose={() => {}} />)
+    await screen.findByRole('textbox', { name: /Title/ })
+    expect(document.querySelector('[data-ds="CoverDropZone"]')).not.toBeNull()
+    expect(
+      (screen.getByRole('button', { name: 'Stash & next' }) as HTMLButtonElement).disabled
+    ).toBe(true)
+  })
 })
