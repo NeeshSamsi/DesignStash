@@ -31,9 +31,9 @@ export interface MockupCardProps
   mockupId?: string
   /** The cover file. Without it the cover shows a placeholder. */
   coverSrc?: string
-  /** Variants in the pile, shown as "+N" (Figma default 3). Pass 0 for a single mockup. */
+  /** Variants in the pile, shown as "+N". 0 (the default) shows no badge. */
   variantCount?: number
-  /** Starred. Shows the filled star at rest (Figma default on); unstarred cards show an outline star on hover. */
+  /** Starred. Shows the filled star at rest; unstarred cards show an outline star on hover. Default off. */
   favourite?: boolean
   /** Quiet status badge on pending-review cards when `showStatus` is on, e.g. "Sniffing…". Nothing shows without it. */
   status?: string
@@ -78,8 +78,8 @@ export function MockupCard({
   className,
   mockupId,
   coverSrc,
-  variantCount = 3,
-  favourite = true,
+  variantCount = 0,
+  favourite = false,
   status,
   trashedAgo,
   onToggleFavourite,
@@ -127,7 +127,7 @@ export function MockupCard({
           size="md"
           state={COVER_STATE[state]}
           {...(coverSrc ? { src: coverSrc } : {})}
-          imageClassName="group-hover/card:scale-106"
+          imageClassName="group-hover/card:scale-105"
           className="size-full"
         />
 

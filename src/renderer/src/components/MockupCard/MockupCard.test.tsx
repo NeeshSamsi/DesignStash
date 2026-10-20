@@ -36,6 +36,14 @@ describe('MockupCard', () => {
       expect(screen.queryByRole('button', { name: /zoom|preview/i })).toBeNull()
     })
 
+    it('is neutral by default: no +N badge and not starred', () => {
+      render(<MockupCard />)
+      expect(screen.queryByText(/^\+/)).toBeNull()
+      expect(screen.getByRole('button', { name: /^Star / }).getAttribute('aria-pressed')).toBe(
+        'false'
+      )
+    })
+
     it('shows +N for a pile and nothing for a single', () => {
       const { rerender } = render(<MockupCard variantCount={3} />)
       expect(screen.getByText('+3')).not.toBeNull()
@@ -122,7 +130,7 @@ describe('MockupCard', () => {
       expect(onClick).toHaveBeenCalledTimes(1)
       fireEvent.click(screen.getByRole('button', { name: 'Open in Photoshop' }))
       fireEvent.click(screen.getByRole('button', { name: 'Edit details' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Remove star from Clay iPhone 15 Pro' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Star Clay iPhone 15 Pro' }))
       expect(onClick).toHaveBeenCalledTimes(1)
     })
 
