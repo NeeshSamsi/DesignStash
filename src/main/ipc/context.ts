@@ -6,7 +6,7 @@ import type { SettingsStore } from '../settings'
 import type { Telemetry } from '../telemetry'
 import type { Repository } from '../db/repository'
 import { ModelDownloader } from '../ai/download'
-import { LocalInferenceProvider } from '../ai/local-provider'
+import { createProviderFactory, resolveLlamaServerPath } from '../ai/provider-factory'
 import { LibraryService } from '../library/library-service'
 
 /**
@@ -44,13 +44,7 @@ export function createAiRuntime(settings: SettingsStore): AiRuntime {
   const modelsDir = join(settings.getLibraryRoot(), '..', 'models')
   const downloader = new ModelDownloader(modelsDir)
 
-  let cachedProvider: { path: string; provider: LocalInferenceProvider } | null = null
-  function getLocalProvider(modelPath: string): LocalInferenceProvider {
-    if (cachedProvider?.path !== modelPath) {
-      cachedProvider = { path: modelPath, provider: new LocalInferenceProvider(modelPath) }
-    }
-    return cachedProvider.provider
-  }
+  const providers = createProviderFactory({ modelsDir, llamaServerPath: () => resolveLlamaServerPath() })
 
   return {
     modelsDir,
@@ -61,7 +55,7 @@ export function createAiRuntime(settings: SettingsStore): AiRuntime {
       if (!activeModelId) return null
       const installed = await downloader.isInstalled(activeModelId)
       if (!installed) return null
-      return getLocalProvider(join(modelsDir, activeModelId, 'model.gguf'))
+      return providers.forModel(activeModelId)
     }
   }
 }
