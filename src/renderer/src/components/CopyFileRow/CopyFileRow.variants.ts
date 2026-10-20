@@ -1,11 +1,8 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=372-5420
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const copyFileRowVariants = cva('', {
+// Figma CopyFileRow 372:5420: 48 tall row, 12 gutters, 32 tile · name + line · status. The state only
+// changes the second line's colour (unreadable is red); the rest is content.
+export const copyFileRowVariants = cva('flex h-12 w-full items-center gap-3 px-3 py-2', {
   variants: {
     state: {
       queued: '',
@@ -14,6 +11,20 @@ export const copyFileRowVariants = cva('', {
       duplicate: '',
       unreadable: '',
       'not-psd': ''
+    }
+  },
+  defaultVariants: { state: 'queued' }
+})
+
+export const copyFileRowDetailVariants = cva('w-full truncate type-caption-xs-regular', {
+  variants: {
+    state: {
+      queued: 'text-tertiary',
+      copying: 'text-tertiary',
+      done: 'text-tertiary',
+      duplicate: 'text-tertiary',
+      unreadable: 'text-error',
+      'not-psd': 'text-tertiary'
     }
   },
   defaultVariants: { state: 'queued' }

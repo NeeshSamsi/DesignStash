@@ -17,3 +17,16 @@ describe('CopyFileRow', () => {
     }
   })
 })
+
+describe('CopyFileRow copy', () => {
+  it('says what happened in plain words, with no path or code', () => {
+    render(<CopyFileRow state="unreadable" name="poster_old.psd" />)
+    expect(screen.getByText('Couldn’t read it. The file might be damaged.')).not.toBeNull()
+  })
+
+  it('shows a progress bar and percentage while copying', () => {
+    render(<CopyFileRow state="copying" percent={41} />)
+    expect(screen.getByText('41%')).not.toBeNull()
+    expect(screen.getByRole('progressbar')).not.toBeNull()
+  })
+})
