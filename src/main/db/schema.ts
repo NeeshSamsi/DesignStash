@@ -116,6 +116,16 @@ export const mockupTags = sqliteTable(
   (table) => [primaryKey({ columns: [table.mockupId, table.tagId] })]
 )
 
+/**
+ * The Sort board as the user left it (Finish later from Sort): which mockups of a batch sit in
+ * which pile, and which are standing alone. One row per import batch; `board` is JSON.
+ */
+export const sortBoards = sqliteTable('sort_boards', {
+  batchId: text('batch_id').primaryKey(),
+  board: text('board', { mode: 'json' }).notNull(),
+  ...timestamps
+})
+
 /** Semantic-search vectors — placeholder for M13 (spec §8). */
 export const embeddings = sqliteTable('embeddings', {
   id: integer('id').primaryKey({ autoIncrement: true }),

@@ -42,3 +42,10 @@ export type GroupingConfirmRequest = z.infer<typeof GroupingConfirmRequestSchema
 
 /** Shown when the board can't be built. Plain words: no paths, no error codes. */
 export const COULDNT_SUGGEST_PILES = 'Couldn’t suggest piles. You can still sort them by hand.'
+
+/**
+ * The Sort board as the user left it (Finish later from Sort). Same shape as a confirmed board:
+ * each pile lists its mockups with the top first, and the rest stand alone.
+ */
+export const SortBoardSchema = GroupingConfirmRequestSchema
+export type SortBoard = GroupingConfirmRequest
