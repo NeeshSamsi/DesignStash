@@ -106,7 +106,7 @@ beforeEach(() => {
 describe('App', () => {
   it('renders the window with its sidebar', async () => {
     render(<App />)
-    expect(await screen.findByRole('button', { name: /Add a mockup/ })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /My Stash/ })).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeTruthy()
   })
 

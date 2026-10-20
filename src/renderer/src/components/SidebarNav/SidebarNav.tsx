@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { Clock01Icon, Delete02Icon, Layers01Icon, Settings01Icon } from '@hugeicons/core-free-icons'
-import { AddMenu } from '@renderer/components/AddMenu'
 import { SidebarNavItem } from '@renderer/components/SidebarNavItem'
 import { TreeBranch } from '@renderer/components/TreeBranch'
 import { cn } from '@renderer/lib/utils'
@@ -51,7 +50,7 @@ export function sidebarNavVariant(toSort: number, toStash: number): SidebarNavVa
 const countText = (n: number | undefined) => (n === undefined ? undefined : String(n))
 
 /**
- * SidebarNav — Primary navigation: AddMenu, My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.
+ * SidebarNav — Primary navigation: My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1964
  * Every row is a slot with a default built from `selected`, `counts` and the callbacks; pass a
  * slot to replace one. Clicking My Stash goes to All.
@@ -91,7 +90,7 @@ export function SidebarNav({
       aria-label="Primary"
       className={cn(sidebarNavVariants({ variant: props.variant }), className)}
     >
-      {props.add ?? <AddMenu />}
+      {props.add}
       <div className={sidebarNavListClass}>
         {props.library ?? (
           <SidebarNavItem

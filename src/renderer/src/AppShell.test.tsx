@@ -32,7 +32,7 @@ describe('AppShell navigation', () => {
         <div>content</div>
       </AppShell>
     )
-    for (const name of [/Add a mockup/, /My Stash/, /Starred/, /All/, /Trash/, /Settings/]) {
+    for (const name of [/My Stash/, /Starred/, /All/, /Trash/, /Settings/]) {
       expect(screen.getByRole('button', { name })).toBeTruthy()
     }
   })
@@ -201,16 +201,14 @@ describe('AppShell search', () => {
 })
 
 describe('AppShell import', () => {
-  it('keeps Add available while a copy runs: new files join the haul', () => {
+  it('has no Add button in the sidebar: adding lives in the Add card', () => {
     render(
       <AppShell copyWidget={<p>Copying 12 of 40</p>}>
         <div />
       </AppShell>
     )
-    expect(
-      (screen.getByRole('button', { name: /Add a mockup/ }) as HTMLButtonElement).disabled
-    ).toBe(false)
-    expect(screen.queryByText('Import running…')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Add a mockup/ })).toBeNull()
+    expect(screen.getByText('Copying 12 of 40')).toBeTruthy()
   })
 
   it('shows the drop overlay it is given over the window', () => {

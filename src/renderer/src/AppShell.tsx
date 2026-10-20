@@ -6,7 +6,6 @@ import { SettingsModal } from './screens/settings'
 import { StashCheckModal } from './screens/integrity'
 import { Toaster } from './ui/sonner'
 import { ActivityDock } from './components/ActivityDock'
-import { AddMenu } from './components/AddMenu'
 import { AppWindow } from './components/AppWindow'
 import { GlobalSearch } from './components/GlobalSearch'
 import { PageHeader } from './components/PageHeader'
@@ -180,12 +179,6 @@ export default function AppShell({
               if (next) setView(next)
             }}
             onOpenSettings={() => openSettings()}
-            add={
-              <AddMenu
-                {...(onAddFiles ? { onAddFiles } : {})}
-                {...(onAddFolder ? { onAddFolder } : {})}
-              />
-            }
           />
         }
         {...(header
