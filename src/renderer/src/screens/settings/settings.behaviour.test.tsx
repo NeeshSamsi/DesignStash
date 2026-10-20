@@ -196,7 +196,6 @@ function setup(overrides: Record<string, Handler> = {}) {
       pushes[channel] = cb
       return () => {}
     }),
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn()
   } as unknown as typeof window.api
 }
