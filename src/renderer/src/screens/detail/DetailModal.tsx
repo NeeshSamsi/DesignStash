@@ -133,6 +133,9 @@ export function DetailModal({ mockupId, onClose }: Props) {
   // -- Closing --------------------------------------------------------------------------------
 
   const requestClose = () => {
+    // The ask sits outside Detail's own layer, so pressing or focusing it reads as an outside
+    // dismiss. Ignore that while it is up, or Keep editing would raise it again.
+    if (confirmDiscard) return
     if (dirty) setConfirmDiscard(true)
     else onClose()
   }

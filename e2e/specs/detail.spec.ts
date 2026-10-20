@@ -52,7 +52,7 @@ test.describe('Detail', () => {
     await expect(dialog.getByRole('button', { name: 'Save' })).toBeDisabled()
     // A disabled button can't take the pointer, so the reason sits on its wrapper: force the hover.
     await dialog.getByRole('button', { name: 'Save' }).hover({ force: true })
-    await expect(window.getByText('Add a title to save')).toBeVisible()
+    await expect(window.getByText('Add a title to save').first()).toBeVisible()
   })
 
   test('closing with changes asks Keep editing or Discard', async ({ app }) => {

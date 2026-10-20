@@ -62,6 +62,12 @@ export function DialogFrame({
   const onOpenChange = (next: boolean) => {
     if (!next && !blocking) onDismiss?.()
   }
+  // An ask raised over a dialog sits outside its layer. Pressing it (Keep editing, Cancel) must not
+  // read as an outside press on the dialog beneath, or the ask is raised again.
+  const overAsk = (e: Event) => {
+    const target = (e as CustomEvent<{ originalEvent?: Event }>).detail?.originalEvent?.target
+    return target instanceof Element && target.closest('[role="alertdialog"]') !== null
+  }
   const guard = blocking
     ? {
         onEscapeKeyDown: (e: Event) => e.preventDefault(),
@@ -88,7 +94,10 @@ export function DialogFrame({
           data-ds={dataDs}
           showCloseButton={showCloseButton && !blocking}
           className={className}
-          {...guard}
+          onInteractOutside={(e) => {
+            if (blocking || overAsk(e)) e.preventDefault()
+          }}
+          {...(blocking ? { onEscapeKeyDown: (e: Event) => e.preventDefault() } : {})}
         >
           {children}
         </DialogContent>
