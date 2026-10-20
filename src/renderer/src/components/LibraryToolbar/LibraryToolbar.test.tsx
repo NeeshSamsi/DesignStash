@@ -53,7 +53,11 @@ describe('LibraryToolbar', () => {
   it('the Filter button opens the tag filter popover', () => {
     render(
       <LibraryToolbar
-        tagFilter={{ categories: [{ categoryId: 1, categoryLabel: 'Device', tags: [{ tagId: 1, label: 'iPhone' }] }] }}
+        tagFilter={{
+          categories: [
+            { categoryId: 1, categoryLabel: 'Device', tags: [{ tagId: 1, label: 'iPhone' }] }
+          ]
+        }}
       />
     )
     expect(screen.queryByLabelText('Search tags')).toBeNull()
@@ -65,6 +69,18 @@ describe('LibraryToolbar', () => {
     render(<LibraryToolbar />)
     const trigger = screen.getByRole('combobox', { name: 'Sort order' })
     expect(trigger.textContent).toContain('Date added')
+  })
+
+  it('draws Filter and the sort as hairline controls with smaller text', () => {
+    render(<LibraryToolbar />)
+    const filter = screen.getByRole('button', { name: /Filter/ })
+    expect(filter.className).toContain('border-subtle')
+    expect(filter.className).toContain('bg-transparent')
+    expect(filter.className).toContain('type-label-xs-medium')
+    const sort = screen.getByRole('combobox', { name: 'Sort order' })
+    expect(sort.className).toContain('border-subtle')
+    expect(sort.className).toContain('bg-transparent')
+    expect(sort.className).toContain('type-caption-xs-regular')
   })
 
   it('has one filled colour at most outside the active count', () => {

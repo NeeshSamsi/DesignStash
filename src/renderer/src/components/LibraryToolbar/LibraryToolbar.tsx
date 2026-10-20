@@ -40,6 +40,12 @@ const SAMPLE_CHIPS: ToolbarChip[] = [
   { key: 'style', category: 'Style', label: 'Clay' }
 ]
 
+/** Hairline controls: no fill, a subtle edge at rest, the input edge on hover. Padding keeps the 34px height. */
+const HAIRLINE_BUTTON =
+  'border-subtle bg-transparent py-2 type-label-xs-medium hover:border-input hover:bg-transparent'
+const HAIRLINE_SORT =
+  'border-subtle bg-transparent type-caption-xs-regular hover:border-input data-[size=sm]:py-2'
+
 /**
  * LibraryToolbar — Filter (+count) → TagFilterPopover, active chips + Clear, stats, sort Select.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-2228
@@ -60,7 +66,7 @@ export function LibraryToolbar({
   const active = picked.length > 0
 
   const filterButton = (
-    <Button variant="outline" size="sm">
+    <Button variant="outline" size="sm" className={HAIRLINE_BUTTON}>
       <HugeiconsIcon icon={FilterHorizontalIcon} strokeWidth={2} />
       Filter
     </Button>
@@ -100,6 +106,7 @@ export function LibraryToolbar({
           value={sort}
           options={SORT_OPTIONS}
           aria-label="Sort order"
+          className={HAIRLINE_SORT}
           onValueChange={(value) => onSortChange?.(value as LibrarySort)}
         />
       </div>

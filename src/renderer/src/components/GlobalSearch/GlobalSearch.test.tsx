@@ -84,4 +84,14 @@ describe('GlobalSearch', () => {
       expect(input.value).toBe('')
     })
   })
+
+  it('is a hairline field: no fill, a subtle edge, body/sm/regular text', () => {
+    render(<GlobalSearch />)
+    const group = screen.getByRole('textbox', { name: 'Search' }).parentElement!
+    expect(group.className).toContain('bg-transparent')
+    expect(group.className).not.toContain('bg-surface-2')
+    expect(group.className).toContain('border-subtle')
+    expect(group.className).toContain('hover:border-input')
+    expect(group.className).toContain('type-body-sm-regular')
+  })
 })
