@@ -11,8 +11,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme="dark"
       position="bottom-right"
       className="toaster group"
-      style={{ "--width": "var(--width-toast)" } as React.CSSProperties}
       {...props}
+      style={{ "--width": "var(--width-toast)", ...props.style } as React.CSSProperties}
     />
   )
 }

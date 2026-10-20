@@ -1,6 +1,7 @@
 import { DropOverlay } from '@renderer/components/DropOverlay'
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
+import { containerTransition } from '@renderer/lib/panel-motion'
 import { usePrefersReducedMotion } from '@renderer/lib/use-reduced-motion'
 import { APP_WINDOW_DEFAULTS, type AppWindowContractProps } from './AppWindow.types'
 import {
@@ -16,29 +17,6 @@ export interface AppWindowProps extends AppWindowContractProps {
   /** Whether the sidebar is asked for. The panel's width and top-right corner follow it. */
   asideOpen?: boolean
 }
-
-/** The container opens with the panel (280 ms, settling out) and closes a little slower than the panel leaves. */
-const asideMotion = (open: boolean, still: boolean): CSSProperties =>
-  still
-    ? {}
-    : {
-        transitionProperty: 'width',
-        transitionDuration: open
-          ? 'var(--duration-panel-open)'
-          : 'var(--duration-panel-container-close)',
-        transitionTimingFunction: open ? 'var(--ease-panel-out)' : 'var(--ease-panel-inout)'
-      }
-
-const cornerMotion = (open: boolean, still: boolean): CSSProperties =>
-  still
-    ? {}
-    : {
-        transitionProperty: 'border-top-right-radius',
-        transitionDuration: open
-          ? 'var(--duration-panel-open)'
-          : 'var(--duration-panel-container-close)',
-        transitionTimingFunction: open ? 'var(--ease-panel-out)' : 'var(--ease-panel-inout)'
-      }
 
 /**
  * AppWindow — The window: centred GlobalSearch, SidebarNav, content panel with PageHeader + page slot.
@@ -67,7 +45,7 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
         <div className="shrink-0">{props.sidebar}</div>
         <main
           className={cn(appWindowPanelClass, asideOpen ? 'rounded-tr-3xl' : 'rounded-tr-none')}
-          style={cornerMotion(asideOpen, still)}
+          style={containerTransition('border-top-right-radius', asideOpen, still)}
         >
           {props.showHeader && props.header}
           <div className="-m-2 min-h-0 flex-1 overflow-auto rounded-md p-2">{props.page}</div>
@@ -78,7 +56,7 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
             data-open={asideOpen}
             inert={!asideOpen || undefined}
             className={cn('h-full shrink-0 overflow-hidden', asideOpen ? 'w-99' : 'w-0')}
-            style={asideMotion(asideOpen, still)}
+            style={containerTransition('width', asideOpen, still)}
           >
             <div className="h-full w-99 py-0 pr-2 pl-2">{aside}</div>
           </div>

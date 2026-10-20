@@ -46,6 +46,25 @@ test.describe('Details sidebar', () => {
     ).toBeVisible()
   })
 
+  test('toasts sit left of the sidebar and never cover its buttons', async ({ app }) => {
+    const { window } = app
+    await seedStash(app, ['laptop'])
+    await showMyStash(app)
+    await clickCard(window)
+    await panel(window).getByRole('button', { name: 'Edit', exact: true }).click()
+    await panel(window).getByRole('textbox', { name: 'Title' }).fill('Laptop on a desk')
+    await panel(window).getByRole('button', { name: 'Save' }).click()
+    const toast = window.getByText('Saved your changes')
+    await expect(toast).toBeVisible()
+    await expect
+      .poll(async () => {
+        const t = await toast.boundingBox()
+        const p = await panel(window).boundingBox()
+        return t && p ? p.x - (t.x + t.width) : null
+      })
+      .toBeGreaterThanOrEqual(0)
+  })
+
   test('an empty title can’t be saved and says why', async ({ app }) => {
     const { window } = app
     await seedStash(app, ['laptop'])

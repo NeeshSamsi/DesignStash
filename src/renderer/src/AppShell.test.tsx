@@ -5,6 +5,7 @@ import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { useDetailsStore } from './stores/detailsStore'
 import { shortcuts } from './lib/shortcuts'
+import { toast as sonnerToast } from 'sonner'
 import { IPC_CHANNELS } from '@shared/ipc'
 
 beforeEach(() => {
@@ -481,5 +482,31 @@ describe('AppShell details sidebar and pile page', () => {
     expect(header.textContent).toContain('Pile · 4 mockups · Esc to go back')
     fireEvent.click(screen.getByRole('button', { name: 'My Stash', hidden: false }))
     expect(useDetailsStore.getState().pile).toBeNull()
+  })
+
+  it('keeps the dock and toasts left of the sidebar while it is open, and back in the corner after', async () => {
+    render(
+      <AppShell>
+        <div>content</div>
+      </AppShell>
+    )
+    const dock = () => document.querySelector<HTMLElement>('[data-ds="ActivityDock"]')!
+    expect(dock().style.right).toBe('16px')
+    act(() => void sonnerToast('Pile made'))
+    const toaster = () => document.querySelector<HTMLElement>('[data-sonner-toaster]')!
+    await screen.findByText('Pile made')
+    expect(toaster().style.getPropertyValue('--offset-right')).toBe('16px')
+
+    act(() => useDetailsStore.getState().syncTarget(5))
+    // 396 for the panel's share of the window, and the same 16px inset from the container's edge.
+    expect(dock().style.right).toBe('412px')
+    expect(toaster().style.getPropertyValue('--offset-right')).toBe('412px')
+    expect(dock().style.transitionProperty).toBe('right')
+    expect(dock().style.transitionDuration).toBe('var(--duration-panel-open)')
+
+    act(() => useDetailsStore.getState().syncTarget(null))
+    expect(dock().style.right).toBe('16px')
+    expect(dock().style.transitionDuration).toBe('var(--duration-panel-container-close)')
+    expect(toaster().style.getPropertyValue('--offset-right')).toBe('16px')
   })
 })
