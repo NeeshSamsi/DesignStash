@@ -291,6 +291,86 @@ describe('joining a running haul', () => {
   })
 })
 
+describe('a drop that is still being read', () => {
+  /** A stat that waits until the test lets one path through, so a drop can be held mid-read. */
+  const gated = (gatedPath: string) => {
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    const stat: CopyQueueDeps['stat'] = async (p) => {
+      if (p === gatedPath) await gate
+      return { size: 1 }
+    }
+    return { stat, release }
+  }
+
+  it('starts a new haul when the haul it would have joined finishes during the read', async () => {
+    const a = psd('a.psd', 'A')
+    const b = psd('b.psd', 'B')
+    const { stat, release } = gated(b)
+    const q = queue({ stat })
+    const first = await q.start([a])
+
+    const second = q.start([b])
+    await q.idle()
+    expect(last()).toMatchObject({ haulId: first.haulId, state: 'done' })
+    release()
+    const status = await second
+    await q.idle()
+
+    expect(status.haulId).not.toBe(first.haulId)
+    expect(last()).toMatchObject({ haulId: status.haulId, state: 'done', landed: 1 })
+    expect(repo.getInboxList('to_sort')).toHaveLength(2)
+  })
+
+  it('starts a new haul when the haul it would have joined is cancelled during the read', async () => {
+    const a = psd('a.psd', 'A')
+    const b = psd('b.psd', 'B')
+    free = 1 // hold the first haul open
+    const { stat, release } = gated(b)
+    const q = queue({ stat })
+    const first = await q.start([a])
+    await q.idle()
+    expect(last().state).toBe('paused')
+
+    const second = q.start([b])
+    await q.cancel(first.haulId)
+    free = 10_000_000
+    release()
+    const status = await second
+    await q.idle()
+
+    expect(status.haulId).not.toBe(first.haulId)
+    expect(last()).toMatchObject({ haulId: status.haulId, state: 'done', landed: 1 })
+    expect((await q.status())!.haulId).toBe(status.haulId)
+  })
+
+  it('keeps the not-PSD counts of two drops read at the same time', async () => {
+    const a = psd('a.psd', 'A')
+    free = 1 // hold the first haul open
+    const q = queue()
+    const first = await q.start([a])
+    await q.idle()
+    const dropB = join(base, 'dropB')
+    const dropC = join(base, 'dropC')
+    mkdirSync(dropB)
+    mkdirSync(dropC)
+    writeFileSync(join(dropB, 'x.txt'), 'x')
+    writeFileSync(join(dropB, 'b.psd'), 'B')
+    writeFileSync(join(dropC, 'y.txt'), 'y')
+    writeFileSync(join(dropC, 'z.txt'), 'z')
+    writeFileSync(join(dropC, 'c.psd'), 'C')
+
+    const [one, two] = await Promise.all([q.start([dropB]), q.start([dropC])])
+    await q.idle()
+
+    expect(one.haulId).toBe(first.haulId)
+    expect(two.haulId).toBe(first.haulId)
+    const status = (await q.status())!
+    expect(status.total).toBe(3)
+    expect(status.skipped.notPsd).toBe(3)
+  })
+})
+
 describe('cancel and undo', () => {
   it('stops and gives back what had landed, which stays until Undo all', async () => {
     psd('a.psd', 'A')

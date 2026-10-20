@@ -97,6 +97,17 @@ export class CopyQueue {
     const scan = scanForPsds(paths)
     const psds = [...scan.psds].sort((a, b) => a.psdPath.localeCompare(b.psdPath))
 
+    // Read every size first. Nothing below awaits, so the haul that gets joined is still going when the jobs land in it.
+    const jobs = await Promise.all(
+      psds.map(async (p) => ({
+        sourcePath: p.psdPath,
+        fileName: basename(p.psdPath),
+        folderTrail: p.importContext.folderTrail,
+        // Read now so progress can be counted in bytes. A file that can't be read counts as nothing.
+        sizeBytes: await this.deps.stat(p.psdPath).then((st) => st.size, () => 0)
+      }))
+    )
+
     const active = this.repo.copyJobs.getActiveHaul()
     let haulId: string
     if (active) {
@@ -109,18 +120,7 @@ export class CopyQueue {
       haulId = this.deps.newId()
       this.repo.copyJobs.createHaul(haulId, scan.candidateImagePaths, scan.skippedCount)
     }
-    this.repo.copyJobs.addJobs(
-      haulId,
-      await Promise.all(
-        psds.map(async (p) => ({
-          sourcePath: p.psdPath,
-          fileName: basename(p.psdPath),
-          folderTrail: p.importContext.folderTrail,
-          // Read now so progress can be counted in bytes. A file that can't be read counts as nothing.
-          sizeBytes: await this.deps.stat(p.psdPath).then((st) => st.size, () => 0)
-        }))
-      )
-    )
+    this.repo.copyJobs.addJobs(haulId, jobs)
 
     if (this.repo.copyJobs.getJobs(haulId).length === 0) {
       this.repo.copyJobs.updateHaul(haulId, { state: 'done' })
