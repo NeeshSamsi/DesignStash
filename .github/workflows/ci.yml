@@ -28,6 +28,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Design system in sync with the Figma snapshot
+        run: pnpm ds:check
+
       - name: Unit tests
         run: pnpm test:unit
 
