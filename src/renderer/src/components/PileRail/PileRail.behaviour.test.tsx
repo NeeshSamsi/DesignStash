@@ -361,6 +361,15 @@ describe('Look it over · mockups on their own and the ends', () => {
     await waitFor(() => expect(titleField().value).toBe('Title 31'))
   })
 
+  it('says where Skip sends it, and keeps only Back and the primary filled', async () => {
+    setup({}, singles())
+    await start()
+    fireEvent.focus(btn('Skip for now'))
+    expect((await screen.findAllByText('It stays in To stash')).length).toBeGreaterThan(0)
+    expect(btn('Finish later').getAttribute('data-variant')).toBe('ghost')
+    expect(btn('Skip for now').getAttribute('data-variant')).toBe('ghost')
+  })
+
   it('stashes a single with Stash & next, and says all tucked away at the end', async () => {
     setup({}, singles())
     const { onClose } = await start()

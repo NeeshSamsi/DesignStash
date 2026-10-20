@@ -37,7 +37,13 @@ import {
   skip,
   type FlowState
 } from './flow-model'
-import { NO_COVER_REASON, NO_TITLE_REASON, doneMessage, stashRefusal } from './look-over-copy'
+import {
+  NO_COVER_REASON,
+  NO_TITLE_REASON,
+  SKIP_NOTE,
+  doneMessage,
+  stashRefusal
+} from './look-over-copy'
 import { coverUrl } from '@shared/cover-url'
 
 export interface LookOverFlowProps {
@@ -432,10 +438,14 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     <div className="flex items-center gap-2 border-t border-subtle pt-4">
       {target && <Button variant="secondary" label="Back" onClick={() => void doBack()} />}
       {canSkip(flow) && (
-        <Button variant="ghost" label="Skip for now" onClick={() => void doSkip()} />
+        <Tooltip label={SKIP_NOTE} arrow="bottom-left">
+          <span className="inline-flex">
+            <Button variant="ghost" label="Skip for now" onClick={() => void doSkip()} />
+          </span>
+        </Tooltip>
       )}
       <div className="flex-1" />
-      <Button variant="secondary" label="Finish later" onClick={() => setAsking(true)} />
+      <Button variant="ghost" label="Finish later" onClick={() => setAsking(true)} />
       {footerPrimary}
     </div>
   )
