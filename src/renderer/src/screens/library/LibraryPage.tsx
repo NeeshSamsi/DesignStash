@@ -72,15 +72,6 @@ function cardState(item: LibraryItem, selected: boolean): MockupCardState {
   return selected ? 'selected' : 'default'
 }
 
-/** The title-bar search field keeps its own text, so clear it through its own × to keep them in step. */
-function clearTitleBarSearch(fallback: () => void) {
-  const clear = document.querySelector<HTMLButtonElement>(
-    '[data-ds="GlobalSearch"] button[aria-label="Clear search"]'
-  )
-  if (clear) clear.click()
-  else fallback()
-}
-
 /**
  * My Stash (All and Starred): toolbar, grid, search results and the states between.
  * Figma: ↳ Library › C · Library. Rules: design/specs/library.md.
@@ -336,11 +327,11 @@ export default function LibraryPage({
   const clearAction =
     searching && filtering
       ? () => {
-          clearTitleBarSearch(() => setQuery(''))
+          setQuery('')
           clearFilters()
         }
       : searching
-        ? () => clearTitleBarSearch(() => setQuery(''))
+        ? () => setQuery('')
         : clearFilters
 
   const total = stats.total

@@ -11,6 +11,7 @@ export interface ActionBarProps extends ActionBarContractProps {
   /** `modal` / `page`: the secondary button. Defaults to Cancel; null hides it. */
   cancelLabel?: string | null
   onCancel?: () => void
+  cancelDisabled?: boolean
   /** The one filled button. Say what it acts on (“Restore 3”). Null hides it. */
   primaryLabel?: string | null
   onPrimary?: () => void
@@ -42,6 +43,7 @@ export function ActionBar({
   onStart,
   cancelLabel = 'Cancel',
   onCancel,
+  cancelDisabled = false,
   primaryLabel,
   onPrimary,
   primaryDisabled = false,
@@ -110,7 +112,7 @@ export function ActionBar({
           </>
         ) : (
           cancelLabel && (
-            <Button variant="secondary" size="sm" onClick={onCancel}>
+            <Button variant="secondary" size="sm" disabled={cancelDisabled} onClick={onCancel}>
               {cancelLabel}
             </Button>
           )

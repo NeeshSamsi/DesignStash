@@ -131,7 +131,7 @@ describe('AppShell header', () => {
     expect(screen.getByText(/^0 mockups/)).toBeTruthy()
   })
 
-  it.each(['trash', 'settings'] as const)('leaves the heading to the %s page', (view) => {
+  it.each(['settings'] as const)('leaves the heading to the %s page', (view) => {
     useUiStore.setState({ view })
     render(
       <AppShell>
@@ -380,16 +380,33 @@ describe('AppShell inbox counts', () => {
     expect(screen.getByRole('button', { name: /Trash/ }).textContent).toContain('7')
   })
 
-  it('reports an inbox click', async () => {
-    withInbox({ toSort: 2, toStash: 0, sniffing: 0, trash: 0 })
-    const onOpenInbox = vi.fn()
+  it('opens the inbox pages', async () => {
+    withInbox({ toSort: 2, toStash: 4, sniffing: 0, trash: 0 })
     render(
-      <AppShell onOpenInbox={onOpenInbox}>
+      <AppShell>
         <div />
       </AppShell>
     )
     fireEvent.click(await screen.findByRole('button', { name: /To sort/ }))
-    expect(onOpenInbox).toHaveBeenCalledWith('to-sort')
+    expect(useUiStore.getState().view).toBe('to-sort')
+    fireEvent.click(screen.getByRole('button', { name: /To stash/ }))
+    expect(useUiStore.getState().view).toBe('to-stash')
+  })
+
+  it.each([
+    ['to-sort', 'To sort', '2 mockups waiting to be sorted'],
+    ['to-stash', 'To stash', '4 piles and mockups waiting'],
+    ['trash', 'Trash', '3 items']
+  ] as const)('titles the %s page', async (view, title, description) => {
+    withInbox({ toSort: 2, toStash: 4, sniffing: 0, trash: 3 })
+    useUiStore.setState({ view })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    expect(await screen.findByText(description)).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(title)
   })
 })
 

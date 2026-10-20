@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ImportProgress, ImportSummary } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
+import type { InboxItem } from '@shared/inbox'
 import Onboarding from './onboarding/Onboarding'
 import GroupingReview from './GroupingReview'
 import ApprovalStepper from './ApprovalStepper'
 import LibraryPage from './screens/library/LibraryPage'
-import TrashView from './TrashView'
+import InboxPage from './screens/inboxes/InboxPage'
+import TrashPage from './screens/trash/TrashPage'
 import SettingsPage from './SettingsPage'
 import AppShell from './AppShell'
 import DebugMenu from './DebugMenu'
@@ -15,6 +17,7 @@ import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { toast } from './stores/toastStore'
+import { doneMessage } from './lib/inbox-list'
 
 type AddFlow = 'grouping' | 'approval' | null
 
@@ -180,7 +183,7 @@ export default function App() {
   }
 
   const handleGroupingConfirm = async () => {
-    const batchId = importSummary?.batchId
+    const batchId = importSummary?.batchId ?? groupingStore.batchId
     if (!batchId) {
       setAddFlow(null)
       return
@@ -195,11 +198,31 @@ export default function App() {
     }
   }
 
-  // To sort and To stash get their own pages in WP3.3; until then the rows resume the legacy flow.
-  const handleOpenInbox = (stage: 'to-sort' | 'to-stash') => {
-    if (stage === 'to-stash' && approvalStore.queue.length > 0) setAddFlow('approval')
-    else if (groupingStore.batchId !== null) setAddFlow('grouping')
-    else toast('Nothing to open here yet', 'info')
+  // Until the Sort board and Look it over land, the inbox pages hand their cards to the legacy
+  // flows, which work per import batch. They open the batch of the first card that has one.
+  const batchOf = (items: InboxItem[]) =>
+    items.find((item) => item.batchId !== null)?.batchId ?? null
+  const openSort = async (items: InboxItem[]) => {
+    const batchId = batchOf(items)
+    if (batchId === null)
+      return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
+    groupingStore.setLoading(true)
+    const res = await window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, { batchId })
+    groupingStore.setLoading(false)
+    if (!res.success) return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
+    groupingStore.setProposal(res.data)
+    setAddFlow('grouping')
+  }
+  const openLookOver = async (items: InboxItem[]) => {
+    const batchId = batchOf(items)
+    if (batchId === null)
+      return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
+    approvalStore.setInitializing(true)
+    const res = await window.api.invoke(IPC_CHANNELS.APPROVAL_INIT, { batchId })
+    approvalStore.setInitializing(false)
+    if (!res.success) return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
+    approvalStore.setQueue(res.data)
+    setAddFlow('approval')
   }
 
   const handlePipelineCancel = () => {
@@ -209,6 +232,8 @@ export default function App() {
   }
 
   const handleApprovalComplete = async () => {
+    // The legacy stepper saves every card it shows, so nothing is skipped.
+    toast({ variant: 'success', ...doneMessage(approvalStore.queue.length, 0) })
     setAddFlow(null)
     approvalStore.reset()
     await refreshLibrary()
@@ -238,7 +263,6 @@ export default function App() {
         importCard={importCard}
         onAddFiles={() => void handleFileSelect()}
         onAddFolder={() => void handleFolderSelect()}
-        onOpenInbox={handleOpenInbox}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragEnter={handleDragEnter}
@@ -264,7 +288,18 @@ export default function App() {
             onAddFolder={() => void handleFolderSelect()}
           />
         )}
-        {addFlow === null && view === 'trash' && <TrashView />}
+        {addFlow === null && view === 'to-sort' && (
+          <InboxPage
+            key="to_sort"
+            stage="to_sort"
+            onSort={openSort}
+            onAddFiles={() => void handleFileSelect()}
+          />
+        )}
+        {addFlow === null && view === 'to-stash' && (
+          <InboxPage key="to_stash" stage="to_stash" onLookOver={openLookOver} />
+        )}
+        {addFlow === null && view === 'trash' && <TrashPage />}
         {addFlow === null && view === 'settings' && <SettingsPage />}
       </AppShell>
       <DebugMenu />

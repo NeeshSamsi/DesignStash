@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { IntegrityReport } from '@shared/integrity'
 
 /** `all` and `starred` are My Stash pages; Settings stays a page until it becomes a modal (WP4.6). */
-export type AppView = 'all' | 'starred' | 'trash' | 'settings'
+export type AppView = 'all' | 'starred' | 'to-sort' | 'to-stash' | 'trash' | 'settings'
 
 export type Modal =
   | { kind: 'detail'; mockupId: number }

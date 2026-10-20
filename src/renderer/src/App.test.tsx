@@ -341,4 +341,51 @@ describe('App', () => {
       expect(screen.queryByText('Library out of sync')).toBeNull()
     })
   })
+
+  it('Sort on To sort opens the grouping review for the cards’ import batch', async () => {
+    const base = window.api.invoke as ReturnType<typeof vi.fn>
+    const previous = base.getMockImplementation() as (c: string, r: unknown) => unknown
+    base.mockImplementation(async (channel: string, request: unknown) => {
+      if (channel === IPC_CHANNELS.INBOX_LIST) {
+        return {
+          success: true,
+          data: {
+            items: [
+              {
+                id: 7,
+                title: 'a.psd',
+                description: null,
+                coverPath: '/c/a.webp',
+                coverSource: 'embedded',
+                coverMissing: false,
+                isGroup: false,
+                favourite: false,
+                reviewStatus: 'pending',
+                createdAt: '2026-10-11',
+                variantCount: 0,
+                topId: null,
+                tags: [],
+                stage: 'to_sort',
+                aiStatus: 'ready',
+                sizeBytes: 1,
+                batchId: 'batch-7'
+              }
+            ]
+          }
+        }
+      }
+      if (channel === IPC_CHANNELS.INBOX_COUNTS) {
+        return { success: true, data: { toSort: 1, toStash: 0, sniffing: 0, trash: 0 } }
+      }
+      return previous(channel, request)
+    })
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: /To sort/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sort' }))
+    await waitFor(() =>
+      expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.GROUPING_PROPOSE, {
+        batchId: 'batch-7'
+      })
+    )
+  })
 })

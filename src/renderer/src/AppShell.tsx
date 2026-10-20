@@ -25,8 +25,6 @@ interface AppShellProps {
   showHeader?: boolean
   onAddFiles?: () => void
   onAddFolder?: () => void
-  /** To sort / To stash clicked. Their pages arrive with WP3.3; until then App routes to the legacy flows. */
-  onOpenInbox?: (stage: 'to-sort' | 'to-stash') => void
   onDrop?: (e: React.DragEvent<HTMLElement>) => void
   onDragOver?: (e: React.DragEvent<HTMLElement>) => void
   onDragEnter?: (e: React.DragEvent<HTMLElement>) => void
@@ -36,24 +34,43 @@ interface AppShellProps {
 
 const mockups = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
 
-/** Where each page sits in the header. Trash and Settings still bring their own heading. */
-function headerFor(view: AppView, total: number) {
-  if (view === 'all') {
-    return {
-      parent: 'My Stash',
-      current: 'All',
-      description: mockups(total)
-    }
+interface HeaderCounts {
+  total: number
+  favourites: number
+  toSort: number
+  toStash: number
+  trash: number
+}
+
+/** Where each page sits in the header. Settings still brings its own heading. */
+function headerFor(view: AppView, counts: HeaderCounts) {
+  switch (view) {
+    case 'all':
+      return { parent: 'My Stash', current: 'All', description: mockups(counts.total) }
+    case 'starred':
+      return { parent: 'My Stash', current: 'Starred', description: mockups(counts.favourites) }
+    case 'to-sort':
+      return { current: 'To sort', description: `${mockups(counts.toSort)} waiting to be sorted` }
+    case 'to-stash':
+      return {
+        current: 'To stash',
+        description: `${counts.toStash} ${counts.toStash === 1 ? 'pile or mockup' : 'piles and mockups'} waiting`
+      }
+    case 'trash':
+      return {
+        current: 'Trash',
+        description: `${counts.trash} ${counts.trash === 1 ? 'item' : 'items'}`
+      }
+    default:
+      return null
   }
-  if (view === 'starred') {
-    return { parent: 'My Stash', current: 'Starred', description: mockups(total) }
-  }
-  return null
 }
 
 const NAV_VIEWS: Partial<Record<SidebarNavKey, AppView>> = {
   all: 'all',
   starred: 'starred',
+  'to-sort': 'to-sort',
+  'to-stash': 'to-stash',
   trash: 'trash'
 }
 
@@ -64,7 +81,6 @@ export default function AppShell({
   showHeader = true,
   onAddFiles,
   onAddFolder,
-  onOpenInbox,
   onDrop,
   onDragOver,
   onDragEnter,
@@ -108,13 +124,19 @@ export default function AppShell({
   }, [query])
 
   const header = showHeader
-    ? headerFor(view, view === 'starred' ? stats.favourites : stats.total)
+    ? headerFor(view, {
+        total: stats.total,
+        favourites: stats.favourites,
+        toSort: inbox?.toSort ?? 0,
+        toStash: inbox?.toStash ?? 0,
+        trash: inbox?.trash ?? stats.trashed
+      })
     : null
 
   const onQueryChange = (next: string) => {
     setQuery(next)
-    // Search looks through My Stash: typing from Trash or Settings takes you there.
-    if (next !== '' && (view === 'trash' || view === 'settings')) setView('all')
+    // Search looks through My Stash: typing from any other page takes you there.
+    if (next !== '' && view !== 'all' && view !== 'starred') setView('all')
   }
 
   const dialog =
@@ -172,7 +194,6 @@ export default function AppShell({
             }}
             settingsActive={view === 'settings'}
             onNavigate={(key) => {
-              if (key === 'to-sort' || key === 'to-stash') return onOpenInbox?.(key)
               const next = NAV_VIEWS[key]
               if (next) setView(next)
             }}
@@ -191,7 +212,8 @@ export default function AppShell({
               header: (
                 <PageHeader
                   current={header.current}
-                  parent={header.parent}
+                  breadcrumb={header.parent !== undefined}
+                  {...(header.parent !== undefined ? { parent: header.parent } : {})}
                   description={header.description}
                 />
               )
