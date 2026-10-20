@@ -8,6 +8,7 @@ import { Skeleton } from '@renderer/ui/skeleton'
 import { Button } from '@renderer/components/Button'
 import { CoverImage } from '@renderer/components/CoverImage'
 import { FavouriteToggle } from '@renderer/components/FavouriteToggle'
+import { MiddleTruncatedText } from '@renderer/lib/middle-truncated-text'
 import { cn } from '@renderer/lib/utils'
 import {
   MOCKUP_CARD_DEFAULTS,
@@ -33,6 +34,8 @@ export interface MockupCardProps
   coverSrc?: string
   /** Variants in the pile, shown as "+N". 0 (the default) shows no badge. */
   variantCount?: number
+  /** The title is a file name: a long one keeps its end (the date, the number) and loses its middle. */
+  titleIsFileName?: boolean
   /** Starred. Shows the filled star at rest; unstarred cards show an outline star on hover. Default off. */
   favourite?: boolean
   /** Quiet status badge on pending-review cards when `showStatus` is on, e.g. "Sniffing…". Nothing shows without it. */
@@ -77,6 +80,7 @@ export function MockupCard({
   mockupId,
   coverSrc,
   variantCount = 0,
+  titleIsFileName = false,
   favourite = false,
   status,
   trashedAgo,
@@ -249,7 +253,7 @@ export function MockupCard({
             </>
           ) : (
             <>
-              <CardTitle title={title} />
+              <CardTitle title={title} fileName={titleIsFileName} />
               {showTags && (
                 <p className="truncate type-caption-xs-regular text-tertiary">{tagLine}</p>
               )}
@@ -265,10 +269,17 @@ export function MockupCard({
 const TITLE_TOOLTIP_MS = 600
 
 /** The card title. When it is cut off, hovering it shows the full title after the usual delay. */
-function CardTitle({ title }: { title: string }) {
+function CardTitle({ title, fileName }: { title: string; fileName: boolean }) {
   const ref = useRef<HTMLParagraphElement>(null)
   const [open, setOpen] = useState(false)
   const cut = () => ref.current !== null && ref.current.scrollWidth > ref.current.clientWidth
+  if (fileName) {
+    return (
+      <MiddleTruncatedText as="p" className="type-body-sm-medium text-foreground">
+        {title}
+      </MiddleTruncatedText>
+    )
+  }
   return (
     <Tooltip
       delayDuration={TITLE_TOOLTIP_MS}

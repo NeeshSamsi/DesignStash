@@ -8,6 +8,7 @@ import {
   Tick02Icon
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { MiddleTruncatedText } from '@renderer/lib/middle-truncated-text'
 import { cn } from '@renderer/lib/utils'
 import { Progress as UiProgress } from '@renderer/ui/progress'
 import {
@@ -67,7 +68,9 @@ export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFi
         />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="w-full truncate type-body-sm-medium text-foreground">{name}</p>
+        <MiddleTruncatedText as="p" className="w-full type-body-sm-medium text-foreground">
+          {name}
+        </MiddleTruncatedText>
         {copying ? (
           <UiProgress size="sm" value={percent} aria-label={`Copying ${name}`} />
         ) : (
