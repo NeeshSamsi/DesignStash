@@ -187,7 +187,7 @@ export default function AppShell({
         sidebar={
           <SidebarNav
             variant={sidebarNavVariant(inbox?.toSort ?? 0, inbox?.toStash ?? 0)}
-            {...(view !== 'settings' ? { selected: view as SidebarNavKey } : {})}
+            selected={view as SidebarNavKey}
             counts={{
               library: stats.total,
               starred: stats.favourites,

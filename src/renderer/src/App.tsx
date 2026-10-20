@@ -8,7 +8,6 @@ import ApprovalStepper from './ApprovalStepper'
 import LibraryPage from './screens/library/LibraryPage'
 import InboxPage from './screens/inboxes/InboxPage'
 import TrashPage from './screens/trash/TrashPage'
-import SettingsPage from './SettingsPage'
 import AppShell from './AppShell'
 import DebugMenu from './DebugMenu'
 import { useGroupingStore } from './stores/groupingStore'
@@ -307,7 +306,6 @@ export default function App() {
           />
         )}
         {addFlow === null && view === 'trash' && <TrashPage />}
-        {addFlow === null && view === 'settings' && <SettingsPage />}
       </AppShell>
       <DebugMenu />
     </>

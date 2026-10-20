@@ -82,7 +82,7 @@ export default function LibraryPage({
   onAddFolder
 }: LibraryPageProps) {
   const view = useUiStore((s) => s.view)
-  const setView = useUiStore((s) => s.setView)
+  const openSettings = useUiStore((s) => s.openSettings)
   const openModal = useUiStore((s) => s.openModal)
   const starredOnly = starredProp ?? view === 'starred'
 
@@ -358,7 +358,7 @@ export default function LibraryPage({
           onSelectedTagIdsChange: setTagFilter,
           pickedCategoryIds: categoryIds,
           onToggleCategory,
-          onManageTags: () => setView('settings')
+          onManageTags: () => openSettings()
         }}
       />
       {failed && items.length > 0 && (

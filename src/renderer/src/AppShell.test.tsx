@@ -134,16 +134,6 @@ describe('AppShell header', () => {
     expect(screen.getByText(/^0 mockups/)).toBeTruthy()
   })
 
-  it.each(['settings'] as const)('leaves the heading to the %s page', (view) => {
-    useUiStore.setState({ view })
-    render(
-      <AppShell>
-        <div />
-      </AppShell>
-    )
-    expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
-  })
-
   it('can hide the header for pipeline screens', () => {
     render(
       <AppShell showHeader={false}>

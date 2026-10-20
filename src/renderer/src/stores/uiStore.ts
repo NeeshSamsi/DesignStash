@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import type { IntegrityReport } from '@shared/integrity'
 
-/** `all` and `starred` are My Stash pages. 'settings' is the old Settings page; Settings is now a modal (`settingsOpen`) and App.tsx drops the page. */
-export type AppView = 'all' | 'starred' | 'to-sort' | 'to-stash' | 'trash' | 'settings'
+/** `all` and `starred` are My Stash pages. Settings is a modal (`settingsOpen`), not a page. */
+export type AppView = 'all' | 'starred' | 'to-sort' | 'to-stash' | 'trash'
 
 export type Modal =
   | { kind: 'detail'; mockupId: number }
