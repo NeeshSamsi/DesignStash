@@ -123,7 +123,7 @@ describe('details sidebar · one mockup, read-only', () => {
     expect(screen.getByText('Mockup · added 12 Oct')).not.toBeNull()
     expect(screen.getByText('The main hero mockup')).not.toBeNull()
     expect(screen.getByText('Clay')).not.toBeNull()
-    expect(button('Full screen')).not.toBeNull()
+    expect(button('Zoom')).not.toBeNull()
     expect(screen.queryByRole('textbox')).toBeNull()
     const names = buttons()
     expect(names.indexOf('Edit')).toBeGreaterThan(-1)
@@ -165,7 +165,7 @@ describe('details sidebar · one mockup, read-only', () => {
   it('opens the full-screen viewer from the cover', async () => {
     await show()
     await screen.findByText('Hero Screen')
-    fireEvent.click(button('Full screen')!)
+    fireEvent.click(button('Zoom')!)
     expect(await screen.findByRole('dialog')).not.toBeNull()
   })
 

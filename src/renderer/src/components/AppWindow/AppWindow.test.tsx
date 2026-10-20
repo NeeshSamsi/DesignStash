@@ -28,6 +28,13 @@ describe('AppWindow behaviour', () => {
     expect(screen.getByText('search')).not.toBeNull()
   })
 
+  it('pads the page scroller on the right so the hover scrollbar stays off the last column', () => {
+    render(<AppWindow page={<div>page</div>} />)
+    const scroller = screen.getByText('page').parentElement!
+    expect(scroller.className).toContain('pr-3')
+    expect(scroller.className).toContain('-mr-3')
+  })
+
   it('hides the header when showHeader is off', () => {
     render(<AppWindow showHeader={false} header={<div>header</div>} />)
     expect(screen.queryByText('header')).toBeNull()
