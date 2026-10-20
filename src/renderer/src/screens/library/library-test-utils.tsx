@@ -63,7 +63,6 @@ export function setupApi(
   window.api = {
     appName: 'DesignStash',
     invoke,
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn()
   } as unknown as typeof window.api
   return {
