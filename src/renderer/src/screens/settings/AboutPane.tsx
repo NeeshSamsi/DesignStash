@@ -95,8 +95,13 @@ export function AboutPane() {
   let line = ' '
   let control: React.ReactNode = secondary('Check for updates', () => void check(), checking)
   if (update?.state === 'up-to-date') {
-    tag = <Badge variant="success">Up to date</Badge>
-    line = update.lastCheckedAt ? `Checked ${formatWhen(update.lastCheckedAt)}` : 'Not checked yet'
+    // "Up to date" is only true once a check has run; before that there is no tag.
+    if (update.lastCheckedAt) {
+      tag = <Badge variant="success">Up to date</Badge>
+      line = `Checked ${formatWhen(update.lastCheckedAt)}`
+    } else {
+      line = 'Not checked yet'
+    }
   } else if (update?.state === 'available') {
     tag = <Badge variant="info">{update.version}</Badge>
     line = 'Starting the download…'

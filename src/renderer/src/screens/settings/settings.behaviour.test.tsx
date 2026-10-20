@@ -678,6 +678,14 @@ describe('Settings · About', () => {
     await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1))
   })
 
+  it('claims nothing before the first check: no Up to date tag, just Not checked yet', async () => {
+    setup({ [IPC_CHANNELS.UPDATES_STATUS]: () => ok({ state: 'up-to-date', lastCheckedAt: null }) })
+    open()
+    goto('About')
+    expect(await screen.findByText('Not checked yet')).not.toBeNull()
+    expect(screen.queryByText('Up to date')).toBeNull()
+  })
+
   it('shows update progress with Cancel, and Restart now when it is ready', async () => {
     setup({
       [IPC_CHANNELS.UPDATES_STATUS]: () =>
