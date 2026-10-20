@@ -122,6 +122,16 @@ describe('Piles · drafts until Stash pile', () => {
     ).toBe('About 10')
   })
 
+  it('hugs its content, with a normal description box and no resize handle', async () => {
+    await start()
+    const modal = document.querySelector('[data-ds="FlowModal"]')!
+    expect(modal.className).toContain('h-auto')
+    expect(modal.className).not.toContain('h-flow-modal')
+    const box = screen.getByRole('textbox', { name: 'Description' })
+    expect(box.className).toContain('resize-none')
+    expect(box.className).not.toContain('flex-1')
+  })
+
   it('lists the pile in PileRail: top mockup, variants, then Review & stash pile', async () => {
     await start()
     expect(screen.getByText('PILE 1 OF 2')).not.toBeNull()

@@ -497,11 +497,10 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
             onUsePsdPreview={useEmbedded}
           />
         )}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="min-w-0 flex-1">
           {form && (
             <MockupMetaForm
               variant="approval"
-              className="min-h-0 flex-1"
               state={blocked ? 'invalid' : 'pristine'}
               showHint={false}
               title={form.title}
@@ -541,6 +540,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
       <FlowModal
         open
         step="look-over"
+        className="h-auto"
         count={headerBadge(flow)}
         onRequestClose={() => setAsking(true)}
         body={body}

@@ -130,12 +130,10 @@ export function MockupMetaForm({
             required={false}
             showDescription={false}
             htmlFor={`${id}-description`}
-            // In Look it over the description takes the height the form is given, so no half of the column sits empty.
-            className={approval ? 'min-h-0 flex-1' : undefined}
           >
             <Textarea
               id={`${id}-description`}
-              className={cn('resize-none', approval && 'flex-1')}
+              className={cn('resize-none', approval && 'max-h-40 min-h-28 overflow-y-auto')}
               readOnly={saving}
               {...(onDescriptionChange
                 ? {
