@@ -14,6 +14,8 @@ export interface FilterCategory {
   categoryId: number
   categoryLabel: string
   tags: FilterTag[]
+  /** Mockups with any of the category's tags: the count on its “All in …” row. */
+  mockupCount?: number
 }
 
 /** What the person has picked: individual tags, and whole categories (`LIBRARY_LIST` `categoryIds`). */
@@ -65,6 +67,65 @@ export function narrowToCategory(
 
 export function toggleTagId(selected: readonly number[], tagId: number): number[] {
   return selected.includes(tagId) ? selected.filter((id) => id !== tagId) : [...selected, tagId]
+}
+
+/**
+ * Ticks or unticks “All in <category>”. Ticking drops the category's own picked tags, because the
+ * category already covers them; unticking leaves the tags as they are (none, by then).
+ */
+export function toggleCategory(
+  selection: TagFilterSelection,
+  categoryId: number,
+  categoryTagIds: readonly number[]
+): TagFilterSelection {
+  if (selection.categoryIds.includes(categoryId)) {
+    return { ...selection, categoryIds: selection.categoryIds.filter((id) => id !== categoryId) }
+  }
+  const covered = new Set(categoryTagIds)
+  return {
+    tagIds: selection.tagIds.filter((id) => !covered.has(id)),
+    categoryIds: [...selection.categoryIds, categoryId]
+  }
+}
+
+export interface FilterChip {
+  key: string
+  /** The category beside a tag's label; absent on an “All in …” chip. */
+  category?: string
+  label: string
+  onRemove: () => void
+}
+
+/** One chip per picked category (“All in Device”), then one per picked tag. */
+export function filterChips(
+  categories: readonly FilterCategory[],
+  selection: TagFilterSelection,
+  handlers: { onRemoveTag: (tagId: number) => void; onRemoveCategory: (categoryId: number) => void }
+): FilterChip[] {
+  const chips: FilterChip[] = []
+  for (const categoryId of selection.categoryIds) {
+    const category = categories.find((c) => c.categoryId === categoryId)
+    if (!category) continue
+    chips.push({
+      key: `category-${categoryId}`,
+      label: `All in ${category.categoryLabel}`,
+      onRemove: () => handlers.onRemoveCategory(categoryId)
+    })
+  }
+  for (const tagId of selection.tagIds) {
+    for (const category of categories) {
+      const tag = category.tags.find((t) => t.tagId === tagId)
+      if (!tag) continue
+      chips.push({
+        key: `tag-${tagId}`,
+        category: category.categoryLabel,
+        label: tag.label,
+        onRemove: () => handlers.onRemoveTag(tagId)
+      })
+      break
+    }
+  }
+  return chips
 }
 
 /** The `LIBRARY_LIST` filter fields; empty lists are left out. */

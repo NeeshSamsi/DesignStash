@@ -8,7 +8,8 @@ export const tagFilterPopoverVariants = cva('gap-3', {
       'some-selected': '',
       searching: '',
       'no-match': '',
-      empty: ''
+      empty: '',
+      'category-picked': ''
     }
   },
   defaultVariants: { state: 'open' }

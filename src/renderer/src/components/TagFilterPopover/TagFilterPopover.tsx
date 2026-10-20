@@ -9,6 +9,7 @@ import {
   categoryCounts,
   filterTags,
   narrowToCategory,
+  toggleCategory,
   toggleTagId,
   totalTagCount,
   type FilterCategory
@@ -29,6 +30,10 @@ export interface TagFilterPopoverProps extends TagFilterPopoverContractProps {
   /** Picked tag ids. Pass with `onSelectedTagIdsChange` to control it. */
   selectedTagIds?: number[]
   onSelectedTagIdsChange?: (tagIds: number[]) => void
+  /** Categories picked as a whole (“All in Device”). Pass with `onToggleCategory` to control it. */
+  pickedCategoryIds?: number[]
+  /** Called with the category id when its “All in …” row is ticked or unticked. */
+  onToggleCategory?: (categoryId: number) => void
   /** Search text. Pass with `onQueryChange` to control it. */
   query?: string
   onQueryChange?: (query: string) => void
@@ -49,6 +54,7 @@ const SAMPLE: FilterCategory[] = [
   {
     categoryId: 1,
     categoryLabel: 'Device',
+    mockupCount: 41,
     tags: [
       { tagId: 10, label: 'iPhone', count: 24 },
       { tagId: 11, label: 'iPhone 15 Pro', count: 12 },
@@ -60,6 +66,7 @@ const SAMPLE: FilterCategory[] = [
   {
     categoryId: 2,
     categoryLabel: 'Style',
+    mockupCount: 30,
     tags: [
       { tagId: 20, label: 'Clay', count: 12 },
       { tagId: 21, label: 'Glass', count: 7 },
@@ -70,6 +77,7 @@ const SAMPLE: FilterCategory[] = [
   {
     categoryId: 3,
     categoryLabel: 'Scene',
+    mockupCount: 22,
     tags: [
       { tagId: 30, label: 'Studio', count: 18 },
       { tagId: 31, label: 'Desk', count: 9 },
@@ -80,6 +88,7 @@ const SAMPLE: FilterCategory[] = [
   {
     categoryId: 4,
     categoryLabel: 'Colour',
+    mockupCount: 15,
     tags: [
       { tagId: 40, label: 'Beige', count: 6 },
       { tagId: 41, label: 'Black', count: 11 },
@@ -93,7 +102,8 @@ const SAMPLE_QUERY: Record<TagFilterPopoverState, string> = {
   'some-selected': '',
   searching: 'cl',
   'no-match': 'xyz',
-  empty: ''
+  empty: '',
+  'category-picked': ''
 }
 
 /** Controlled when `value` is given, otherwise it keeps its own state starting at `initial`. */
@@ -117,6 +127,8 @@ export function TagFilterPopover({
   categories,
   selectedTagIds,
   onSelectedTagIdsChange,
+  pickedCategoryIds,
+  onToggleCategory,
   query: queryProp,
   onQueryChange,
   categoryId: categoryProp,
@@ -137,6 +149,11 @@ export function TagFilterPopover({
     demo && props.state === 'some-selected' ? [10, 11] : [],
     onSelectedTagIdsChange
   )
+  const [pickedCategories, setPickedCategories] = useControllable(
+    pickedCategoryIds,
+    demo && props.state === 'category-picked' ? [1] : [],
+    undefined
+  )
   const [categoryChoice, setCategoryChoice] = useControllable<number | null>(
     categoryProp,
     null,
@@ -152,12 +169,28 @@ export function TagFilterPopover({
       : null
   const searching = query.trim() !== ''
   const noTags = data.every((category) => category.tags.length === 0)
+  // Ticking “All in <category>” covers its tags, so it also drops the ones already picked there.
+  const toggleWholeCategory = (category: FilterCategory) => {
+    const next = toggleCategory(
+      { tagIds: selected, categoryIds: pickedCategories },
+      category.categoryId,
+      category.tags.map((tag) => tag.tagId)
+    )
+    if (next.tagIds.length !== selected.length) setSelected(next.tagIds)
+    setPickedCategories(next.categoryIds)
+    onToggleCategory?.(category.categoryId)
+  }
+  const clearEverything = () => {
+    setSelected([])
+    setPickedCategories([])
+    for (const categoryId of pickedCategories) onToggleCategory?.(categoryId)
+  }
   const clearAll = (
     <Button
       variant="link"
       size="xs"
-      disabled={selected.length === 0}
-      onClick={() => setSelected([])}
+      disabled={selected.length === 0 && pickedCategories.length === 0}
+      onClick={clearEverything}
     >
       Clear all
     </Button>
@@ -231,10 +264,20 @@ export function TagFilterPopover({
               className="flex flex-col gap-1"
             >
               <h4 className="type-label-xs-medium text-tertiary">{category.categoryLabel}</h4>
+              {!searching && (
+                <Checkbox
+                  label={`All in ${category.categoryLabel}`}
+                  showCount={category.mockupCount !== undefined}
+                  count={String(category.mockupCount ?? '')}
+                  state={pickedCategories.includes(category.categoryId) ? 'checked' : 'unchecked'}
+                  onCheckedChange={() => toggleWholeCategory(category)}
+                />
+              )}
               {category.tags.map((tag) => (
                 <Checkbox
                   key={tag.tagId}
                   label={tag.label}
+                  disabled={pickedCategories.includes(category.categoryId)}
                   showCount={tag.count !== undefined}
                   count={String(tag.count ?? '')}
                   state={selected.includes(tag.tagId) ? 'checked' : 'unchecked'}

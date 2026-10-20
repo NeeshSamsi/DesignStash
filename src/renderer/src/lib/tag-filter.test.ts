@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   categoryCounts,
+  filterChips,
   filterTags,
   matchesFilter,
   narrowToCategory,
   toLibraryFilter,
+  toggleCategory,
   toggleTagId,
   totalTagCount,
   type FilterCategory
@@ -141,4 +143,78 @@ describe('matchesFilter', () => {
   it('a category with no known tags matches nothing', () => {
     expect(matchesFilter([10], byCategory, pick([], [9]))).toBe(false)
   })
+
+describe('toggleCategory', () => {
+  const deviceTags = [10, 11, 12]
+
+  it('ticking adds the category and drops that category’s picked tags only', () => {
+    expect(toggleCategory({ tagIds: [10, 20], categoryIds: [] }, 1, deviceTags)).toEqual({
+      tagIds: [20],
+      categoryIds: [1]
+    })
+  })
+
+  it('unticking removes the category and leaves the tags alone', () => {
+    expect(toggleCategory({ tagIds: [20], categoryIds: [1, 2] }, 1, deviceTags)).toEqual({
+      tagIds: [20],
+      categoryIds: [2]
+    })
+  })
+
+  it('does not mutate its input', () => {
+    const selection = { tagIds: [10], categoryIds: [] as number[] }
+    toggleCategory(selection, 1, deviceTags)
+    expect(selection).toEqual({ tagIds: [10], categoryIds: [] })
+  })
+})
+
+describe('filterChips', () => {
+  const handlers = { onRemoveTag: vi.fn(), onRemoveCategory: vi.fn() }
+
+  it('gives one “All in …” chip per picked category, then one per picked tag', () => {
+    const chips = filterChips(CATEGORIES, { tagIds: [20], categoryIds: [1] }, handlers)
+    expect(chips.map((c) => [c.key, c.category, c.label])).toEqual([
+      ['category-1', undefined, 'All in Device'],
+      ['tag-20', 'Style', 'Clay']
+    ])
+  })
+
+  it('removing a chip reports the right id', () => {
+    const [category, tag] = filterChips(CATEGORIES, { tagIds: [20], categoryIds: [1] }, handlers)
+    category!.onRemove()
+    tag!.onRemove()
+    expect(handlers.onRemoveCategory).toHaveBeenCalledWith(1)
+    expect(handlers.onRemoveTag).toHaveBeenCalledWith(20)
+  })
+
+  it('skips ids it no longer knows', () => {
+    expect(filterChips(CATEGORIES, { tagIds: [999], categoryIds: [999] }, handlers)).toEqual([])
+  })
+})
+
+describe('matchesFilter with whole categories', () => {
+  const byCategory = new Map<number, number[]>([
+    [1, [10, 11, 12]],
+    [2, [20, 21]]
+  ])
+
+  it('a category means any of its tags, including ones added later', () => {
+    const later = new Map(byCategory).set(1, [10, 11, 12, 13])
+    expect(matchesFilter([13], later, { tagIds: [], categoryIds: [1] })).toBe(true)
+    expect(matchesFilter([13], byCategory, { tagIds: [], categoryIds: [1] })).toBe(false)
+  })
+
+  it('categories AND together, and with tags', () => {
+    const both = { tagIds: [], categoryIds: [1, 2] }
+    expect(matchesFilter([12, 21], byCategory, both)).toBe(true)
+    expect(matchesFilter([12], byCategory, both)).toBe(false)
+    expect(matchesFilter([12, 20], byCategory, { tagIds: [20], categoryIds: [1] })).toBe(true)
+    expect(matchesFilter([12], byCategory, { tagIds: [20], categoryIds: [1] })).toBe(false)
+  })
+
+  it('after ticking a category the dropped tags no longer constrain the result', () => {
+    const next = toggleCategory({ tagIds: [10], categoryIds: [] }, 1, [10, 11, 12])
+    expect(matchesFilter([11], byCategory, next)).toBe(true)
+  })
+})
 })

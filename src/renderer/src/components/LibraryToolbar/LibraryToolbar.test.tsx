@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { variantMatrix } from '@renderer/design-system/matrix'
+import { filterChips } from '@renderer/lib/tag-filter'
 import { LibraryToolbar, type LibraryToolbarProps } from './LibraryToolbar'
 import { LIBRARY_TOOLBAR_CONTRACT } from './LibraryToolbar.types'
 
@@ -72,5 +73,19 @@ describe('LibraryToolbar', () => {
       ['default', 'destructive'].includes(b.getAttribute('data-variant') ?? '')
     )
     expect(filled).toHaveLength(0)
+  })
+
+  it('a picked category is one “All in Device” chip, and × removes the category', () => {
+    const onRemoveCategory = vi.fn()
+    const chips = filterChips(
+      [{ categoryId: 1, categoryLabel: 'Device', tags: [{ tagId: 10, label: 'iPhone' }] }],
+      { tagIds: [], categoryIds: [1] },
+      { onRemoveTag: vi.fn(), onRemoveCategory }
+    )
+    render(<LibraryToolbar chips={chips} />)
+    expect(screen.getByLabelText('1 filters').textContent).toBe('1')
+    expect(screen.getByText('All in Device')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove All in Device' }))
+    expect(onRemoveCategory).toHaveBeenCalledWith(1)
   })
 })
