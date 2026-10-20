@@ -82,7 +82,7 @@ export const SaveDraftResponseSchema = z.object({
   propagatedIds: z.array(z.number())
 })
 
-/** Pushed while an edit to a top mockup carries over to the variants that were not touched. */
+/** Reported by the Look it over service while an edit to a top mockup carries over to the variants that were not touched. */
 export const LookOverProgressSchema = z.object({
   pileId: z.number(),
   completed: z.number(),

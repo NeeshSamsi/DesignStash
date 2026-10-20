@@ -208,6 +208,8 @@ describe('App', () => {
             resume: null
           }
         }
+      if (channel === IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT)
+        return { success: true, data: { propagatedIds: [] } }
       if (channel === IPC_CHANNELS.MOCKUP_STASH)
         return {
           success: true,
@@ -258,6 +260,7 @@ describe('App', () => {
         }
       if (channel === IPC_CHANNELS.INTEGRITY_IGNORE)
         return { success: true, data: { ignoredIds: ['f1'] } }
+      if (channel === IPC_CHANNELS.TAG_TREE) return { success: true, data: { tree: [] } }
       if (channel === IPC_CHANNELS.LIBRARY_LIST) return { success: true, data: { items: [] } }
       if (channel === IPC_CHANNELS.LIBRARY_STATS)
         return { success: true, data: { total: 0, favourites: 0, groups: 0, trashed: 0 } }
