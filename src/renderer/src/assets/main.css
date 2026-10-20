@@ -109,6 +109,108 @@
   }
 }
 
+/*
+ * One scrollbar for the whole app (B3). Native bars are hidden here and drawn over the content by
+ * lib/overlay-scrollbars.ts, so they never take width. Wheel, trackpad and keyboard scrolling stay native.
+ * Colours are the design tokens: gutter surface-3, thumb text-tertiary (Figma D3).
+ */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+.ds-scrollbar-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 70; /* above dialogs (50) and toasts (60) */
+  pointer-events: none;
+}
+.ds-scrollbar {
+  --ds-scrollbar-size: 12px;
+  position: fixed;
+  user-select: none;
+  touch-action: none;
+}
+.ds-scrollbar[data-axis='vertical'] {
+  width: var(--ds-scrollbar-size);
+}
+.ds-scrollbar[data-axis='horizontal'] {
+  height: var(--ds-scrollbar-size);
+}
+.ds-scrollbar-track {
+  position: absolute;
+  inset: 0;
+  background: var(--ds-background-surface-3);
+  opacity: 0;
+  /* Out is faster than in. */
+  transition:
+    transform 100ms ease-in,
+    opacity 100ms ease-in;
+}
+.ds-scrollbar[data-axis='vertical'] .ds-scrollbar-track {
+  transform: translateX(100%);
+}
+.ds-scrollbar[data-axis='horizontal'] .ds-scrollbar-track {
+  transform: translateY(100%);
+}
+.ds-scrollbar[data-state='open'] .ds-scrollbar-track {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition:
+    transform 150ms ease-out,
+    opacity 150ms ease-out;
+}
+.ds-scrollbar-thumb {
+  position: absolute;
+  border-radius: 99px;
+  background: var(--ds-text-tertiary);
+  opacity: 0;
+  /* The thin thumb fades 200ms after it has been idle for 800ms. */
+  transition:
+    opacity 200ms ease-out,
+    width 100ms ease-out,
+    height 100ms ease-out;
+}
+.ds-scrollbar[data-axis='vertical'] .ds-scrollbar-thumb {
+  left: 50%;
+  top: 0;
+  width: 6px;
+}
+.ds-scrollbar[data-axis='horizontal'] .ds-scrollbar-thumb {
+  top: 50%;
+  left: 0;
+  height: 6px;
+}
+.ds-scrollbar:not([data-state='hidden']) .ds-scrollbar-thumb {
+  opacity: 0.5;
+  pointer-events: auto;
+}
+.ds-scrollbar[data-state='open'] .ds-scrollbar-thumb {
+  opacity: 0.7;
+}
+.ds-scrollbar .ds-scrollbar-thumb[data-state='hover'],
+.ds-scrollbar .ds-scrollbar-thumb[data-state='dragging'] {
+  opacity: 0.9;
+}
+.ds-scrollbar .ds-scrollbar-thumb[data-state='dragging'] {
+  opacity: 1;
+}
+.ds-scrollbar[data-axis='vertical'] .ds-scrollbar-thumb:is([data-state='hover'], [data-state='dragging']) {
+  width: 8px;
+}
+.ds-scrollbar[data-axis='horizontal'] .ds-scrollbar-thumb:is([data-state='hover'], [data-state='dragging']) {
+  height: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-scrollbar-track,
+  .ds-scrollbar-thumb {
+    transition: none;
+  }
+}
+
 html,
 body,
 #root {
