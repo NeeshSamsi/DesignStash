@@ -15,11 +15,7 @@ export default defineConfig({
           'electron',
           'better-sqlite3',
           'sharp',
-          'node:crypto',
-          // node-llama-cpp is loaded at runtime via dynamic import(); never bundle it
-          // (it uses top-level await + ships native platform binaries).
-          'node-llama-cpp',
-          /^@node-llama-cpp\//
+          'node:crypto'
         ],
         input: {
           index: resolve('src/main/index.ts'),

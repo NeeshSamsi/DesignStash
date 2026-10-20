@@ -4,12 +4,13 @@
  *
  * Rules:
  * 1. MockInferenceProvider is the default provider for tests.
- * 2. node-llama-cpp IS installed, but its native binary must never load at test time
- *    (LocalInferenceProvider uses dynamic import + injected promptFn).
+ * 2. The vision provider never starts a real llama-server or loads a model at test time: it takes
+ *    its server through an injected seam (see provider-factory.ts).
  * 3. OllamaInferenceProvider (ollama-provider.ts) must not exist — we use local GGUF, not Ollama.
+ * 4. The old text runtime (node-llama-cpp and local-provider.ts) is gone.
  */
-import { describe, it, expect } from 'vitest'
-import { existsSync } from 'node:fs'
+import { describe, it, expect, vi } from 'vitest'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { MockInferenceProvider } from '../../../src/shared/mock-inference'
 import type { InferenceProvider } from '../../../src/shared/inference'
@@ -36,19 +37,29 @@ describe('CI guard — MockInferenceProvider is the test default', () => {
 })
 
 describe('CI guard — runtime boundaries', () => {
-  it('node-llama-cpp package.json is present (expected dependency)', () => {
-    const llamaCppPkg = join(
-      import.meta.dirname ?? __dirname,
-      '../../../node_modules/node-llama-cpp/package.json'
-    )
-    expect(existsSync(llamaCppPkg)).toBe(true)
+  it('the vision provider factory builds nothing until asked, so no server starts at import time', async () => {
+    const { createProviderFactory } = await import('./provider-factory')
+    const createVision = vi.fn()
+    createProviderFactory({
+      modelsDir: '/models',
+      llamaServerPath: () => '/bin/llama-server',
+      exists: () => true,
+      createVision
+    })
+    expect(createVision).not.toHaveBeenCalled()
   })
 
-  it('LocalInferenceProvider exists and is importable without loading the native binary', async () => {
-    // Dynamic import must not throw — the native binary is guarded behind loadLlamaFn()
-    const { LocalInferenceProvider } = await import('./local-provider')
-    const provider = new LocalInferenceProvider('/models/test.gguf', async () => '{}')
-    expect(provider.id).toBe('local')
+  it('without a llama-server binary there is no provider, and nothing is started', async () => {
+    const { createProviderFactory } = await import('./provider-factory')
+    const createVision = vi.fn()
+    const factory = createProviderFactory({
+      modelsDir: '/models',
+      llamaServerPath: () => null,
+      exists: () => true,
+      createVision
+    })
+    expect(await factory.forModel('qwen2.5-vl-3b')).toBeNull()
+    expect(createVision).not.toHaveBeenCalled()
   })
 
   it('OllamaInferenceProvider does not exist — we use local GGUF, not Ollama', () => {
@@ -57,5 +68,14 @@ describe('CI guard — runtime boundaries', () => {
       'ollama-provider.ts'
     )
     expect(existsSync(ollamaProvider)).toBe(false)
+  })
+
+  it('the old text runtime is gone: no local-provider.ts and no node-llama-cpp dependency', () => {
+    const root = join(import.meta.dirname ?? __dirname, '../../..')
+    expect(existsSync(join(root, 'src/main/ai/local-provider.ts'))).toBe(false)
+    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+    }
+    expect(pkg.dependencies?.['node-llama-cpp']).toBeUndefined()
   })
 })
