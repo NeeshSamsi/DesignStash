@@ -46,7 +46,7 @@ function MockupTile({ member, groupId }: { member: GroupMember; groupId: string 
   )
 }
 
-function GroupCard({ group }: { group: { id: string; members: GroupMember[]; confidence: 'high' | 'medium'; reason: 'folder' | 'stem' } }) {
+function GroupCard({ group }: { group: { id: string; members: GroupMember[]; reason: 'folder' | 'stem' } }) {
   const disbandGroup = useGroupingStore((s) => s.disbandGroup)
   const { setNodeRef, isOver } = useDroppable({ id: group.id })
 
@@ -54,9 +54,6 @@ function GroupCard({ group }: { group: { id: string; members: GroupMember[]; con
     <div className={`flex w-64 shrink-0 flex-col gap-2 rounded-xl bg-card p-3 ${isOver ? 'ring-2 ring-ring' : ''}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <Badge variant={group.confidence === 'high' ? 'default' : 'secondary'}>
-            {group.confidence}
-          </Badge>
           <Badge variant="outline">{group.reason}</Badge>
           <span className="text-xs text-muted-foreground">{group.members.length} items</span>
         </div>

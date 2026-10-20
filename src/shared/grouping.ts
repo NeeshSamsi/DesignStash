@@ -10,11 +10,10 @@ export const GroupMemberSchema = z.object({
 })
 export type GroupMember = z.infer<typeof GroupMemberSchema>
 
-// A proposed group (before user confirmation)
+// A proposed group (before user confirmation). No confidence: we only suggest piles we're confident about.
 export const ProposedGroupSchema = z.object({
   id: z.string(), // temporary UUID — NOT a DB id
   members: z.array(GroupMemberSchema),
-  confidence: z.enum(['high', 'medium']),
   reason: z.enum(['folder', 'stem']) // folder = all same folder trail; stem = same filename stem
 })
 export type ProposedGroup = z.infer<typeof ProposedGroupSchema>
@@ -30,7 +29,7 @@ export type GroupingProposal = z.infer<typeof GroupingProposalSchema>
 // What the renderer sends back to confirm (may differ from original proposal after user edits)
 export const ConfirmedGroupSchema = z.object({
   id: z.string(), // same temp UUID from proposal (for change-tracking)
-  memberIds: z.array(z.number()), // ordered: index 0 becomes the group leader (isGroup=true)
+  memberIds: z.array(z.number()) // ordered: index 0 becomes the group leader (isGroup=true)
 })
 export type ConfirmedGroup = z.infer<typeof ConfirmedGroupSchema>
 
@@ -40,3 +39,6 @@ export const GroupingConfirmRequestSchema = z.object({
   singletonIds: z.array(z.number()) // mockupIds confirmed as standalone
 })
 export type GroupingConfirmRequest = z.infer<typeof GroupingConfirmRequestSchema>
+
+/** Shown when the board can't be built. Plain words: no paths, no error codes. */
+export const COULDNT_SUGGEST_PILES = 'Couldn’t suggest piles. You can still sort them by hand.'

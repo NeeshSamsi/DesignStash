@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { GroupingService, extractStem } from './grouping-service'
-import { type GroupMember } from '../../shared/grouping'
+import { COULDNT_SUGGEST_PILES, type GroupMember } from '../../shared/grouping'
 
 describe('extractStem', () => {
   it('strips file extension and normalizes', () => {
@@ -22,7 +22,11 @@ describe('extractStem', () => {
 
 describe('GroupingService.propose', () => {
   let idCounter = 1
-  function makeMember(fileName: string, folderTrail: string[] = [], mockupId = idCounter++): GroupMember {
+  function makeMember(
+    fileName: string,
+    folderTrail: string[] = [],
+    mockupId = idCounter++
+  ): GroupMember {
     return {
       mockupId,
       fileName,
@@ -42,7 +46,7 @@ describe('GroupingService.propose', () => {
 
     expect(proposal.groups).toHaveLength(1)
     expect(proposal.groups[0]!.members).toHaveLength(3)
-    expect(proposal.groups[0]!.confidence).toBe('high')
+    expect(proposal.groups[0]!).not.toHaveProperty('confidence')
     expect(proposal.groups[0]!.reason).toBe('folder')
     expect(proposal.singletons).toHaveLength(0)
 
@@ -68,15 +72,12 @@ describe('GroupingService.propose', () => {
   })
 
   it('handles stem grouping (matching stems in different folders)', () => {
-    const members = [
-      makeMember('landing-A.psd', ['Web']),
-      makeMember('landing-B.psd', ['Mobile'])
-    ]
+    const members = [makeMember('landing-A.psd', ['Web']), makeMember('landing-B.psd', ['Mobile'])]
     const proposal = GroupingService.propose('batch-1', members)
 
     expect(proposal.groups).toHaveLength(1)
     expect(proposal.groups[0]!.members).toHaveLength(2)
-    expect(proposal.groups[0]!.confidence).toBe('medium')
+    expect(proposal.groups[0]!).not.toHaveProperty('confidence')
     expect(proposal.groups[0]!.reason).toBe('stem')
     expect(proposal.singletons).toHaveLength(0)
   })
@@ -121,5 +122,85 @@ describe('GroupingService.propose', () => {
     const proposal = GroupingService.propose('batch-1', [])
     expect(proposal.groups).toHaveLength(0)
     expect(proposal.singletons).toHaveLength(0)
+  })
+
+  describe('generic folders (S9.E1)', () => {
+    it.each(['Desktop', 'Downloads', 'DOCUMENTS', 'mockups', 'New Folder', 'Untitled Folder'])(
+      'does not make a pile from files that only share %s',
+      (folder) => {
+        const members = [
+          makeMember('alpha.psd', ['Users', 'me', folder]),
+          makeMember('bravo.psd', ['Users', 'me', folder]),
+          makeMember('charlie.psd', ['Users', 'me', folder])
+        ]
+        const proposal = GroupingService.propose('batch-1', members)
+        expect(proposal.groups).toHaveLength(0)
+        expect(proposal.singletons).toHaveLength(3)
+      }
+    )
+
+    it('still groups a real folder inside a generic one', () => {
+      const members = [
+        makeMember('a.psd', ['Downloads', 'iPhone 15 Clay']),
+        makeMember('b.psd', ['Downloads', 'iPhone 15 Clay'])
+      ]
+      const proposal = GroupingService.propose('batch-1', members)
+      expect(proposal.groups).toHaveLength(1)
+      expect(proposal.groups[0]!.reason).toBe('folder')
+    })
+
+    it('lets files from a generic folder still group by name', () => {
+      const members = [
+        makeMember('poster-A.psd', ['Desktop']),
+        makeMember('poster-B.psd', ['Desktop'])
+      ]
+      const proposal = GroupingService.propose('batch-1', members)
+      expect(proposal.groups).toHaveLength(1)
+      expect(proposal.groups[0]!.reason).toBe('stem')
+    })
+  })
+
+  describe('generic stems (S9.E2)', () => {
+    it.each(['IMG_2041.psd', 'DSC_0001.psd', 'Untitled-1.psd', 'Screenshot 3.psd', 'Final_1.psd'])(
+      'does not group camera dumps and defaults such as %s',
+      (name) => {
+        const second = name.replace(/\d/, (d) => String(Number(d) + 1))
+        const members = [makeMember(name, ['A']), makeMember(second, ['B'])]
+        const proposal = GroupingService.propose('batch-1', members)
+        expect(proposal.groups).toHaveLength(0)
+        expect(proposal.singletons).toHaveLength(2)
+      }
+    )
+  })
+
+  describe('no confidence', () => {
+    it('proposes groups without a confidence field', () => {
+      const members = [makeMember('hero-A.psd', ['X']), makeMember('hero-B.psd', ['X'])]
+      const [group] = GroupingService.propose('batch-1', members).groups
+      expect(Object.keys(group!).sort()).toEqual(['id', 'members', 'reason'])
+    })
+  })
+
+  describe('suggest · Couldn’t suggest piles (S9.E4)', () => {
+    it('returns the proposal when it works', () => {
+      const result = GroupingService.suggest('batch-1', [
+        makeMember('a-1.psd', ['X']),
+        makeMember('a-2.psd', ['X'])
+      ])
+      expect(result.ok).toBe(true)
+      if (result.ok) expect(result.proposal.groups).toHaveLength(1)
+    })
+
+    it('returns plain copy instead of throwing when grouping fails', () => {
+      const broken = {
+        get folderTrail(): string[] {
+          throw new Error('ENOENT /Users/x/secret.psd')
+        }
+      } as unknown as GroupMember
+      const result = GroupingService.suggest('batch-1', [broken])
+      expect(result).toEqual({ ok: false, message: COULDNT_SUGGEST_PILES })
+      expect(COULDNT_SUGGEST_PILES).toBe('Couldn’t suggest piles. You can still sort them by hand.')
+      expect(COULDNT_SUGGEST_PILES).not.toMatch(/[/\\]|ENOENT|—/)
+    })
   })
 })

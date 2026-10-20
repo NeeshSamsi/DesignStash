@@ -4,7 +4,6 @@ import type { GroupingProposal, ProposedGroup, GroupMember } from '@shared/group
 interface EditableGroup {
   id: string
   members: GroupMember[]
-  confidence: ProposedGroup['confidence']
   reason: ProposedGroup['reason']
 }
 
@@ -85,7 +84,6 @@ export const useGroupingStore = create<GroupingState>((set) => ({
         recalculatePrimaries({
           id: g.id,
           members: g.members,
-          confidence: g.confidence,
           reason: g.reason
         })
       ),
@@ -156,7 +154,6 @@ export const useGroupingStore = create<GroupingState>((set) => ({
       const newGroup: EditableGroup = recalculatePrimaries({
         id: newGroupId(),
         members: picked,
-        confidence: 'medium',
         reason: 'stem'
       })
       return { groups: [...state.groups, newGroup], singletons: remaining }

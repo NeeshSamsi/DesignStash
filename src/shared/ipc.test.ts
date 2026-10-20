@@ -227,7 +227,6 @@ describe('IPC Contract', () => {
         groups: [{
           id: 'g1',
           members: [{ mockupId: 1, isPrimary: true, coverPath: '/covers/1.png', fileName: 'hero-A.psd', folderTrail: ['iPhone'] }],
-          confidence: 'high',
           reason: 'folder'
         }],
         singletons: []

@@ -11,7 +11,11 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.GROUPING_PROPOSE, (args) => {
     const dbMockups = repo.getMockupsByBatchId(args.batchId)
     const members: GroupMember[] = dbMockups.map((m) => {
-      const ctx = m.importContext as { batchId?: string; folderTrail?: string[]; originalFilename?: string } | null
+      const ctx = m.importContext as {
+        batchId?: string
+        folderTrail?: string[]
+        originalFilename?: string
+      } | null
       return {
         mockupId: m.id,
         fileName: ctx?.originalFilename ?? m.title,
@@ -20,7 +24,10 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
         isPrimary: false
       }
     })
-    return GroupingService.propose(args.batchId, members)
+    const result = GroupingService.suggest(args.batchId, members)
+    // The IPC error carries this plain copy to the renderer's "Couldn't suggest piles" state.
+    if (!result.ok) throw new Error(result.message)
+    return result.proposal
   })
 
   registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
