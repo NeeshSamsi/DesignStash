@@ -67,6 +67,20 @@
   --ease-card-out: linear(0, 0.024, 0.085, 0.167, 0.26, 0.356, 0.45, 0.538, 0.618, 0.689, 0.75, 0.803, 0.847, 0.884, 0.914, 0.938, 0.956, 0.971, 0.982, 0.99, 0.996, 1.001, 1.003, 1.005, 1);
   --duration-card-in: 450ms;
   --duration-card-out: 400ms;
+
+  /* Fluid card grids: a column is never narrower than this, and cards stretch to fill the row. */
+  --size-card-min: 13.75rem; /* 220 */
+  --gap-card-x: 1rem; /* 16 */
+  --gap-card-y: 1.5rem; /* 24 */
+}
+
+/* Responsive card grid: columns come and go with the grid's own width; cards fill each column. */
+@utility grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--size-card-min), 1fr));
+  column-gap: var(--gap-card-x);
+  row-gap: var(--gap-card-y);
+  align-items: start;
 }
 
 /* Continuous (squircle) corners where the engine supports corner-shape; a plain radius elsewhere. */
