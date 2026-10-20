@@ -19,7 +19,8 @@ function mount(toSort: number) {
   window.api.subscribe = vi.fn(() => () => {}) as unknown as typeof window.api.subscribe
 }
 
-const strip = () => document.querySelector('[data-ds="WaitingToSortStrip"]')
+// The strip folds away rather than leaving the tree: it counts as there only while open.
+const strip = () => document.querySelector('[data-open="true"] [data-ds="WaitingToSortStrip"]')
 
 beforeEach(() => {
   resetStores()

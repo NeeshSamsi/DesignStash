@@ -69,7 +69,8 @@ const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
   ...over
 })
 
-const strip = () => document.querySelector('[data-ds="WaitingToSortStrip"]')
+// The strip folds away rather than leaving the tree: it counts as there only while open.
+const strip = () => document.querySelector('[data-open="true"] [data-ds="WaitingToSortStrip"]')
 const covers = () => strip()?.querySelectorAll('[data-ds="CoverImage"]') ?? []
 
 beforeEach(() => {
@@ -160,6 +161,17 @@ describe('WaitingToSortStrip', () => {
       expect.objectContaining({ id: 1 }),
       expect.objectContaining({ id: 2 })
     ])
+  })
+
+  it('folds away inert and out of the accessibility tree, so it never takes space or focus', async () => {
+    setup([waitingItem(1)])
+    render(<WaitingToSortStrip onSort={vi.fn()} />)
+    await screen.findByText('1 mockup waiting to be sorted')
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }))
+    const fold = document.querySelector('[data-open="false"]') as HTMLElement
+    expect(fold.getAttribute('aria-hidden')).toBe('true')
+    expect(fold.hasAttribute('inert')).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Sort now' })).toBeNull()
   })
 
   it('Later hides it until the next copy lands', async () => {

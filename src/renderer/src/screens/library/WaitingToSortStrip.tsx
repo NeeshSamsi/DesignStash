@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import type { InboxItem } from '@shared/inbox'
 import { coverUrl } from '@shared/cover-url'
 import { CoverImage } from '@renderer/components/CoverImage'
@@ -32,7 +32,7 @@ export function WaitingToSortStrip({ onSort }: WaitingToSortStripProps) {
 
   const waiting = counts?.toSort ?? 0
   useEffect(() => lower(waiting), [waiting, lower])
-  if (waiting === 0 || (hiddenAt !== null && waiting <= hiddenAt)) return null
+  const shown = waiting > 0 && !(hiddenAt !== null && waiting <= hiddenAt)
 
   const copying = haul !== null && (haul.state === 'running' || haul.state === 'paused')
   const title = copying
@@ -46,7 +46,7 @@ export function WaitingToSortStrip({ onSort }: WaitingToSortStripProps) {
   const newest = [...(items ?? [])].sort((a, b) => b.id - a.id).slice(0, COVERS)
   const slots = Array.from({ length: Math.min(COVERS, waiting) }, (_, i) => newest[i])
 
-  return (
+  const strip = (
     <section
       aria-label="Waiting to be sorted"
       data-ds="WaitingToSortStrip"
@@ -76,5 +76,25 @@ export function WaitingToSortStrip({ onSort }: WaitingToSortStripProps) {
         </Button>
       </div>
     </section>
+  )
+
+  // The last strip stays in the tree while it folds away, so it leaves with its own words.
+  const last = useRef<ReactNode>(null)
+  if (shown) last.current = strip
+
+  // The strip slides open and shut instead of pushing the page: a row that grows from nothing,
+  // with the page gap folded into it so a hidden strip takes no space at all.
+  return (
+    <div
+      data-open={shown}
+      aria-hidden={!shown}
+      inert={!shown}
+      style={{ gridTemplateRows: shown ? '1fr' : '0fr' }}
+      className={`grid transition-[grid-template-rows,margin,opacity] duration-(--duration-panel-open) ease-panel-out motion-reduce:transition-none ${
+        shown ? 'mb-0 opacity-100' : '-mb-4 opacity-0'
+      }`}
+    >
+      <div className="min-h-0 overflow-hidden">{last.current}</div>
+    </div>
   )
 }
