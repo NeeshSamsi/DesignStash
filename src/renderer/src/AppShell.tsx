@@ -3,12 +3,11 @@ import { useUiStore, type AppView } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { DetailsSidebar, DiscardAsk } from './screens/details/DetailsSidebar'
 import { mockupsLabel } from './screens/details/details-model'
-import { usePanelGrid } from './screens/details/use-panel-grid'
+import { usePanelLayout } from './screens/details/use-panel-layout'
 import { useDetailsEscape } from './screens/details/use-details-escape'
 import { useDetailsStore } from './stores/detailsStore'
-import { containerTransition } from './lib/panel-motion'
-import { usePrefersReducedMotion } from './lib/use-reduced-motion'
-import { PANEL_SHARE } from './screens/details/use-panel-grid'
+import { PANEL_SHARE } from './screens/details/panel-share'
+import './styles/details-transition.css'
 import { SettingsModal } from './screens/settings'
 import { StashCheckModal } from './screens/integrity'
 import { Toaster } from './ui/sonner'
@@ -131,13 +130,11 @@ export default function AppShell({
   const pile = useDetailsStore((s) => s.pile)
   const sidebarOpen = useDetailsStore((s) => s.target !== null)
   useDetailsEscape()
-  const pageRef = useRef<HTMLDivElement>(null)
-  const heldWidth = usePanelGrid(sidebarOpen, pageRef)
+  // The layout follows the selection inside a view transition, so the grid morphs instead of snapping.
+  const panelOpen = usePanelLayout(sidebarOpen)
   // Toasts and the dock sit 16px inside the container's bottom-right corner: left of the sidebar while
-  // it is open, moving with the panel so they never cover its buttons.
-  const still = usePrefersReducedMotion()
-  const dockRight = DOCK_INSET + (sidebarOpen ? PANEL_SHARE : 0)
-  const dockMotion = containerTransition('right', sidebarOpen, still)
+  // it is open, moving with the panel (they have transition names) so they never cover its buttons.
+  const dockRight = DOCK_INSET + (panelOpen ? PANEL_SHARE : 0)
 
   const header = showHeader
     ? pile
@@ -222,26 +219,21 @@ export default function AppShell({
               )
             }
           : {})}
-        page={
-          <div
-            ref={pageRef}
-            className="flex min-h-full flex-col *:flex-1"
-            {...(heldWidth !== null ? { style: { width: heldWidth, maxWidth: '100%' } } : {})}
-          >
-            {children}
-          </div>
-        }
-        aside={<DetailsSidebar />}
-        asideOpen={sidebarOpen}
+        page={<div className="flex min-h-full flex-col *:flex-1">{children}</div>}
+        aside={<DetailsSidebar open={panelOpen} />}
+        asideOpen={panelOpen}
         {...(dropOverlay ? { drop: dropOverlay } : {})}
         {...(dialog ? { dialog } : {})}
       />
       <DiscardAsk />
       <ActivityDock
         className="pointer-events-auto fixed bottom-4 z-toast"
-        style={{ right: dockRight, ...dockMotion }}
+        style={{ right: dockRight, viewTransitionName: 'activity-dock' }}
         toastContent={
-          <Toaster offset={{ right: dockRight, bottom: DOCK_INSET }} style={dockMotion} />
+          <Toaster
+            offset={{ right: dockRight, bottom: DOCK_INSET }}
+            style={{ viewTransitionName: 'toasts' }}
+          />
         }
         importContent={copyWidget}
       />

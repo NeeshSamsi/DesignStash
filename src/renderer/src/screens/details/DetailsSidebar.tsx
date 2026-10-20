@@ -19,7 +19,7 @@ function Content({ target, onPile }: { target: DetailsTarget; onPile: boolean })
  * page. It follows the page's selection. On the pile page every mockup, the top one too, shows as
  * one mockup. Rules: the build spec "Sidebar editing"; Figma D2.3 B1, B2, B3 and C2.
  */
-export function DetailsSidebar() {
+export function DetailsSidebar({ open }: { open?: boolean } = {}) {
   const target = useDetailsStore((s) => s.target)
   const onPile = useDetailsStore((s) => s.pile !== null)
   // The content stays up while the panel leaves.
@@ -27,7 +27,7 @@ export function DetailsSidebar() {
   if (target && target !== shown) setShown(target)
   const current = target ?? shown
   return (
-    <PanelSurface open={target !== null}>
+    <PanelSurface open={open ?? target !== null}>
       {current && <Content key={`${current.id}-${onPile}`} target={current} onPile={onPile} />}
     </PanelSurface>
   )

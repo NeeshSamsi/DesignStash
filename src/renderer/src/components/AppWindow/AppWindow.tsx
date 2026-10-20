@@ -1,8 +1,6 @@
 import { DropOverlay } from '@renderer/components/DropOverlay'
 import type { ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
-import { containerTransition } from '@renderer/lib/panel-motion'
-import { usePrefersReducedMotion } from '@renderer/lib/use-reduced-motion'
 import { APP_WINDOW_DEFAULTS, type AppWindowContractProps } from './AppWindow.types'
 import {
   appWindowPanelClass,
@@ -26,7 +24,6 @@ export interface AppWindowProps extends AppWindowContractProps {
  * `page`. `state="drag-over"` shows `drop` (a DropOverlay unless you pass one).
  */
 export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppWindowProps) {
-  const still = usePrefersReducedMotion()
   const props = { ...APP_WINDOW_DEFAULTS, ...rest }
   const modal = props.state === 'modal-open' || props.dialog !== undefined
   return (
@@ -45,7 +42,7 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
         <div className="min-w-44 shrink-0">{props.sidebar}</div>
         <main
           className={cn(appWindowPanelClass, asideOpen ? 'rounded-tr-3xl' : 'rounded-tr-none')}
-          style={containerTransition('border-top-right-radius', asideOpen, still)}
+          style={{ viewTransitionName: 'main-panel' }}
         >
           {props.showHeader && props.header}
           <div className="-m-2 min-h-0 flex-1 overflow-auto rounded-md p-2">{props.page}</div>
@@ -56,7 +53,6 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
             data-open={asideOpen}
             inert={!asideOpen || undefined}
             className={cn('h-full shrink-0 overflow-hidden', asideOpen ? 'w-99' : 'w-0')}
-            style={containerTransition('width', asideOpen, still)}
           >
             <div className="h-full w-99 py-0 pr-2 pl-2">{aside}</div>
           </div>

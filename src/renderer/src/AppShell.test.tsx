@@ -484,6 +484,23 @@ describe('AppShell details sidebar and pile page', () => {
     expect(useDetailsStore.getState().pile).toBeNull()
   })
 
+  it('gives what moves with the sidebar a view-transition name: the panel, the dock and the toasts', async () => {
+    render(
+      <AppShell>
+        <div>content</div>
+      </AppShell>
+    )
+    expect(document.querySelector<HTMLElement>('main')!.style.viewTransitionName).toBe('main-panel')
+    expect(
+      document.querySelector<HTMLElement>('[data-ds="ActivityDock"]')!.style.viewTransitionName
+    ).toBe('activity-dock')
+    act(() => void sonnerToast('Hello'))
+    await screen.findByText('Hello')
+    expect(
+      document.querySelector<HTMLElement>('[data-sonner-toaster]')!.style.viewTransitionName
+    ).toBe('toasts')
+  })
+
   it('keeps the dock and toasts left of the sidebar while it is open, and back in the corner after', async () => {
     render(
       <AppShell>
@@ -501,12 +518,9 @@ describe('AppShell details sidebar and pile page', () => {
     // 396 for the panel's share of the window, and the same 16px inset from the container's edge.
     expect(dock().style.right).toBe('412px')
     expect(toaster().style.getPropertyValue('--offset-right')).toBe('412px')
-    expect(dock().style.transitionProperty).toBe('right')
-    expect(dock().style.transitionDuration).toBe('var(--duration-panel-open)')
 
     act(() => useDetailsStore.getState().syncTarget(null))
     expect(dock().style.right).toBe('16px')
-    expect(dock().style.transitionDuration).toBe('var(--duration-panel-container-close)')
     expect(toaster().style.getPropertyValue('--offset-right')).toBe('16px')
   })
 })
