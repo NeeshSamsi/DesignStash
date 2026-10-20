@@ -1,4 +1,4 @@
-import { useEffect, type ComponentProps } from 'react'
+import { useEffect, useMemo, useRef, type ComponentProps } from 'react'
 import { Image01Icon, Refresh01Icon, ZoomInAreaIcon } from '@hugeicons/core-free-icons'
 import { coverFit } from '@shared/cover-fit'
 import { Badge } from '@renderer/ui/badge'
@@ -11,6 +11,7 @@ import { Progress } from '@renderer/components/Progress'
 import { useCoverIntake } from '@renderer/hooks/use-cover-intake'
 import { cn } from '@renderer/lib/utils'
 import { COVER_PANEL_DEFAULTS, type CoverPanelContractProps } from './CoverPanel.types'
+import { useDeckMotion } from './use-deck-motion'
 import { COVER_HOVER, COVER_WELL, DECK_CARD, coverPanelVariants } from './CoverPanel.variants'
 
 export interface CoverPanelProps
@@ -39,6 +40,11 @@ export interface CoverPanelProps
   onUseSidecar?: () => void
   /** Esc while replacing. The old cover stays. */
   onCancelReplace?: () => void
+  /**
+   * Which variant of the pile is shown. When it changes the deck moves (D1.4): the old top card slides
+   * away and the cards behind rise, or the reverse going back; reduced motion is a 120ms crossfade.
+   */
+  variantIndex?: number
 }
 
 const SOURCE_TAG = {
@@ -72,6 +78,7 @@ export function CoverPanel({
   onUsePsdPreview,
   onUseSidecar,
   onCancelReplace,
+  variantIndex,
   ...rest
 }: CoverPanelProps) {
   const {
@@ -85,6 +92,16 @@ export function CoverPanel({
     deckLabel,
     ...props
   } = { ...COVER_PANEL_DEFAULTS, ...rest }
+
+  const coverRef = useRef<HTMLDivElement>(null)
+  const ghostRef = useRef<HTMLImageElement>(null)
+  const deck1Ref = useRef<HTMLDivElement>(null)
+  const deck2Ref = useRef<HTMLDivElement>(null)
+  const targets = useMemo(
+    () => ({ cover: coverRef, ghost: ghostRef, deck1: deck1Ref, deck2: deck2Ref }),
+    []
+  )
+  useDeckMotion(variantIndex, coverSrc, targets)
 
   const intake = useCoverIntake({ onCover, paste: source !== 'none' })
   const fit = imageSize ? coverFit(imageSize.width, imageSize.height) : null
@@ -140,6 +157,7 @@ export function CoverPanel({
 
       {showDeck && (
         <div
+          ref={deck1Ref}
           aria-hidden
           data-deck="1"
           className={cn(DECK_CARD, 'top-1.5 left-1.5 h-87 opacity-80')}
@@ -147,6 +165,7 @@ export function CoverPanel({
       )}
       {showDeck && deckMore && (
         <div
+          ref={deck2Ref}
           aria-hidden
           data-deck="2"
           className={cn(DECK_CARD, 'top-deck-peek left-deck-peek h-84 opacity-55')}
@@ -154,6 +173,7 @@ export function CoverPanel({
       )}
 
       <div
+        ref={coverRef}
         role="group"
         aria-label="Cover"
         tabIndex={0}
@@ -186,6 +206,16 @@ export function CoverPanel({
             className={cn('size-full', replacing && 'opacity-40')}
           />
         )}
+
+        <img
+          ref={ghostRef}
+          alt=""
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-0 size-full opacity-0',
+            bars ? 'object-contain' : 'object-cover'
+          )}
+        />
 
         {showDeck && (
           <Badge variant="secondary" className="absolute top-3 left-3">
