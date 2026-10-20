@@ -91,8 +91,9 @@ test.describe('My Stash', () => {
     await clickUndo(window)
 
     await expect(cards).toHaveCount(4)
-    await expect(window.getByText(laptop!.title, { exact: true })).toBeVisible()
-    await expect(window.getByText(front!.title, { exact: true })).toBeVisible()
+    // The toast names the mockup too, so look at the page itself.
+    await expect(window.getByRole('main').getByText(laptop!.title, { exact: true })).toBeVisible()
+    await expect(window.getByRole('main').getByText(front!.title, { exact: true })).toBeVisible()
   })
 
   test('filters by a tag, and by "All in <category>"', async ({ app }) => {
