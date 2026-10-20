@@ -379,7 +379,7 @@ export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps
         <GroupCard
           ref={(node: HTMLDivElement | null) => tray.setNodeRef(node)}
           data-tray=""
-          className="@container/pile"
+          className="flex-1 @container/pile"
           variant="standalone"
           state={
             state.standalone.length === 0

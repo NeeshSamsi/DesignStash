@@ -9,6 +9,7 @@ import { ErrorState } from '@renderer/components/ErrorState'
 import { FlowModal } from '@renderer/components/FlowModal'
 import { useShortcut } from '@renderer/lib/shortcuts'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { Button } from '@renderer/ui/button'
 import { Skeleton } from '@renderer/ui/skeleton'
 import {
   boardFromProposal,
@@ -35,6 +36,8 @@ export interface SortFlowProps {
   /** The piles are confirmed: carry on to Look it over for this batch. */
   onLookThemOver: (batchId: string) => void
 }
+
+const SORT_GUIDANCE = 'Drag mockups together to make a pile. Leave the rest on their own.'
 
 type Loaded =
   | { status: 'loading' }
@@ -181,6 +184,20 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
               dismissible={false}
             />
           )}
+          <div className="flex min-h-8 items-center justify-between gap-4">
+            <p className="type-body-sm-regular text-muted-foreground">{SORT_GUIDANCE}</p>
+            {state.selectedTiles.length >= 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-subtle hover:border-input"
+                disabled={!canNewPile(state)}
+                onClick={() => send({ type: 'new-pile' })}
+              >
+                Make pile
+              </Button>
+            )}
+          </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-0.5">
             <SortBoard
               state={state}
