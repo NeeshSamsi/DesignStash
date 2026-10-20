@@ -152,10 +152,12 @@ export default function LibraryPage({
     onRemoveTag: (tagId) => setTagFilter(tagFilter.filter((id) => id !== tagId)),
     onRemoveCategory: (categoryId) => setCategoryIds(categoryIds.filter((id) => id !== categoryId))
   })
+  // Read the store, not this render's values: a popover action can fire several toggles in a row.
   const onToggleCategory = (categoryId: number) => {
     const category = tagCategories.find((c) => c.categoryId === categoryId)
+    const current = useLibraryStore.getState()
     const next = toggleCategory(
-      selectionState,
+      { tagIds: current.tagFilter, categoryIds: current.categoryIds },
       categoryId,
       category?.tags.map((tag) => tag.tagId) ?? []
     )
@@ -379,6 +381,7 @@ export default function LibraryPage({
           onSelectedTagIdsChange: setTagFilter,
           pickedCategoryIds: categoryIds,
           onToggleCategory,
+          onClearAll: clearFilters,
           onManageTags: () => openSettings('tags')
         }}
       />

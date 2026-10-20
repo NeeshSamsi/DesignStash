@@ -40,6 +40,14 @@ export function filterTags(categories: readonly FilterCategory[], query: string)
     .filter((category) => category.tags.length > 0)
 }
 
+/** A tag no mockup carries. Unknown counts are treated as used. */
+export const isUnused = (tag: FilterTag) => tag.count === 0
+
+/** Used tags first, then unused ones; each keeps its order. */
+export function usedFirst(tags: readonly FilterTag[]): FilterTag[] {
+  return [...tags.filter((tag) => !isUnused(tag)), ...tags.filter(isUnused)]
+}
+
 /** Tag count per category, for the pills. Pass the already-filtered list so counts follow the search. */
 export function categoryCounts(
   filtered: readonly FilterCategory[]

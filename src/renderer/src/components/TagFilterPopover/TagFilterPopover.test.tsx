@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { FilterCategory } from '@renderer/lib/tag-filter'
 import { variantMatrix } from '@renderer/design-system/matrix'
 import { TagFilterPopover, type TagFilterPopoverProps } from './TagFilterPopover'
+import { toggleCategory } from '@renderer/lib/tag-filter'
 import { TAG_FILTER_POPOVER_CONTRACT } from './TagFilterPopover.types'
 
 describe('TagFilterPopover', () => {
@@ -240,6 +242,82 @@ describe('TagFilterPopover', () => {
       expect(
         (screen.getByRole('checkbox', { name: /Apple Watch/ }) as HTMLButtonElement).disabled
       ).toBe(true)
+    })
+  })
+
+  // The page keeps the picks in a store and the popover reports each change; this wrapper does the same.
+  function Stateful({ categories }: { categories: FilterCategory[] }) {
+    const [tagIds, setTagIds] = useState<number[]>([])
+    const [categoryIds, setCategoryIds] = useState<number[]>([])
+    return (
+      <>
+        <p data-testid="picked">{JSON.stringify({ tagIds, categoryIds })}</p>
+        <TagFilterPopover
+          categories={categories}
+          selectedTagIds={tagIds}
+          onSelectedTagIdsChange={setTagIds}
+          pickedCategoryIds={categoryIds}
+          onToggleCategory={(id) => {
+            const category = categories.find((c) => c.categoryId === id)
+            const next = toggleCategory(
+              { tagIds, categoryIds },
+              id,
+              category?.tags.map((tag) => tag.tagId) ?? []
+            )
+            setTagIds(next.tagIds)
+            setCategoryIds(next.categoryIds)
+          }}
+          onClearAll={() => {
+            setTagIds([])
+            setCategoryIds([])
+          }}
+        />
+      </>
+    )
+  }
+
+  it('Clear all leaves nothing picked, with two categories and a tag ticked', () => {
+    render(<Stateful categories={CATEGORIES} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /All in Device/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /All in Style/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Clear/ }))
+    expect(screen.getByTestId('picked').textContent).toBe('{"tagIds":[30],"categoryIds":[1,2]}')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all' }))
+    expect(screen.getByTestId('picked').textContent).toBe('{"tagIds":[],"categoryIds":[]}')
+  })
+
+  describe('tags no mockup carries', () => {
+    const WITH_UNUSED: FilterCategory[] = [
+      {
+        categoryId: 1,
+        categoryLabel: 'Device',
+        tags: [
+          { tagId: 10, label: 'Zero', count: 0 },
+          { tagId: 11, label: 'Used', count: 4 }
+        ]
+      }
+    ]
+
+    it('keeps them visible, disabled, below the used ones and without a 0', () => {
+      render(<TagFilterPopover categories={WITH_UNUSED} />)
+      const group = screen.getByRole('group', { name: 'Device' })
+      const labels = within(group)
+        .getAllByRole('checkbox')
+        .map((box) => box.closest('label')!.textContent)
+      expect(labels.slice(1)).toEqual(['Used4', 'Zero'])
+      expect((screen.getByRole('checkbox', { name: /Zero/ }) as HTMLButtonElement).disabled).toBe(
+        true
+      )
+      expect((screen.getByRole('checkbox', { name: /Used/ }) as HTMLButtonElement).disabled).toBe(
+        false
+      )
+    })
+
+    it('lets an already picked one be unticked', () => {
+      render(<TagFilterPopover categories={WITH_UNUSED} selectedTagIds={[10]} />)
+      expect((screen.getByRole('checkbox', { name: /Zero/ }) as HTMLButtonElement).disabled).toBe(
+        false
+      )
     })
   })
 })

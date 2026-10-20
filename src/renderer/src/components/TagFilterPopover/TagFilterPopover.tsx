@@ -1,17 +1,20 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Cancel01Icon, Settings01Icon, Tag01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { CategoryPill } from '@renderer/components/CategoryPill'
 import { Checkbox } from '@renderer/components/Checkbox'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { Popover } from '@renderer/components/Popover'
+import { Tooltip } from '@renderer/components/Tooltip'
 import {
   categoryCounts,
   filterTags,
+  isUnused,
   narrowToCategory,
   toggleCategory,
   toggleTagId,
   totalTagCount,
+  usedFirst,
   type FilterCategory
 } from '@renderer/lib/tag-filter'
 import { cn } from '@renderer/lib/utils'
@@ -34,6 +37,8 @@ export interface TagFilterPopoverProps extends TagFilterPopoverContractProps {
   pickedCategoryIds?: number[]
   /** Called with the category id when its “All in …” row is ticked or unticked. */
   onToggleCategory?: (categoryId: number) => void
+  /** Called once by “Clear all”, after the popover has cleared its own state. */
+  onClearAll?: () => void
   /** Search text. Pass with `onQueryChange` to control it. */
   query?: string
   onQueryChange?: (query: string) => void
@@ -133,6 +138,7 @@ export function TagFilterPopover({
   onSelectedTagIdsChange,
   pickedCategoryIds,
   onToggleCategory,
+  onClearAll,
   query: queryProp,
   onQueryChange,
   categoryId: categoryProp,
@@ -191,7 +197,8 @@ export function TagFilterPopover({
   const clearEverything = () => {
     setSelected([])
     setPickedCategories([])
-    for (const categoryId of pickedCategories) onToggleCategory?.(categoryId)
+    if (onClearAll) onClearAll()
+    else for (const categoryId of pickedCategories) onToggleCategory?.(categoryId)
   }
   const clearAll = (
     <Button
@@ -281,17 +288,29 @@ export function TagFilterPopover({
                   onCheckedChange={() => toggleWholeCategory(category)}
                 />
               )}
-              {category.tags.map((tag) => (
-                <Checkbox
-                  key={tag.tagId}
-                  label={tag.label}
-                  disabled={pickedCategories.includes(category.categoryId)}
-                  showCount={tag.count !== undefined}
-                  count={String(tag.count ?? '')}
-                  state={selected.includes(tag.tagId) ? 'checked' : 'unchecked'}
-                  onCheckedChange={() => setSelected(toggleTagId(selected, tag.tagId))}
-                />
-              ))}
+              {usedFirst(category.tags).map((tag) => {
+                const isPicked = selected.includes(tag.tagId)
+                // A tag nothing carries stays visible but cannot be picked; one already picked
+                // can still be unticked.
+                const unused = isUnused(tag) && !isPicked
+                const row = (
+                  <Checkbox
+                    label={tag.label}
+                    disabled={pickedCategories.includes(category.categoryId) || unused}
+                    showCount={tag.count !== undefined && !isUnused(tag)}
+                    count={String(tag.count ?? '')}
+                    state={isPicked ? 'checked' : 'unchecked'}
+                    onCheckedChange={() => setSelected(toggleTagId(selected, tag.tagId))}
+                  />
+                )
+                return unused ? (
+                  <Tooltip key={tag.tagId} label="No mockups have this yet" arrow="none">
+                    <span className="w-fit">{row}</span>
+                  </Tooltip>
+                ) : (
+                  <Fragment key={tag.tagId}>{row}</Fragment>
+                )
+              })}
             </div>
           ))}
         </div>
