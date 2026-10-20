@@ -3,9 +3,11 @@ import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import type { GroupMember } from '@shared/grouping'
 import { GroupingService } from '../import/grouping-service'
 import type { HandlerContext } from './context'
+import { pushInboxCounts } from './inbox'
 import { registerIpcHandler } from './register'
 
-export function registerGroupingHandlers({ telemetry, repo }: HandlerContext): void {
+export function registerGroupingHandlers(ctx: HandlerContext): void {
+  const { telemetry, repo } = ctx
   registerIpcHandler(IPC_CHANNELS.GROUPING_PROPOSE, (args) => {
     const dbMockups = repo.getMockupsByBatchId(args.batchId)
     const members: GroupMember[] = dbMockups.map((m) => {
@@ -24,6 +26,7 @@ export function registerGroupingHandlers({ telemetry, repo }: HandlerContext): v
   registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
     repo.confirmGroupings(args.groups, args.singletonIds)
     repo.setStage([...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds], 'to_stash')
+    pushInboxCounts(ctx)
     // Telemetry: counts only — never group contents.
     telemetry.get().track(TELEMETRY_EVENTS.GROUP_CONFIRMED, {
       groups: args.groups.length,

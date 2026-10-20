@@ -5,6 +5,7 @@ import { TagRepository } from './repositories/tags'
 import { LibraryQueryRepository } from './repositories/library-query'
 import { TrashRepository } from './repositories/trash'
 import { SearchRepository } from './repositories/search'
+import { InboxRepository } from './repositories/inbox'
 
 export type { LibraryRow } from './repositories/library-query'
 
@@ -22,6 +23,7 @@ export class Repository {
   readonly tags: TagRepository
   readonly library: LibraryQueryRepository
   readonly trash: TrashRepository
+  readonly inbox: InboxRepository
 
   constructor(db: AppDatabase) {
     this.search = new SearchRepository(db)
@@ -30,6 +32,7 @@ export class Repository {
     this.tags = new TagRepository(db, this.mockups, this.search)
     this.library = new LibraryQueryRepository(db, this.mockups, this.piles, this.search)
     this.trash = new TrashRepository(db, this.mockups, this.search, this.library)
+    this.inbox = new InboxRepository(db, this.library, this.piles)
   }
 
   // Mockups
@@ -99,6 +102,11 @@ export class Repository {
   getMockupDetail(...a: Args<LibraryQueryRepository['getMockupDetail']>) { return this.library.getMockupDetail(...a) }
   getDetailVariants(...a: Args<LibraryQueryRepository['getDetailVariants']>) { return this.library.getDetailVariants(...a) }
   getLibraryStats() { return this.library.getLibraryStats() }
+
+  // Inboxes
+  getInboxList(...a: Args<InboxRepository['list']>) { return this.inbox.list(...a) }
+  getInboxCounts() { return this.inbox.getCounts() }
+  collectTossable(...a: Args<InboxRepository['collectTossable']>) { return this.inbox.collectTossable(...a) }
 
   // Trash
   getTrash() { return this.trash.getTrash() }

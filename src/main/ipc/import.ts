@@ -3,9 +3,11 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { ImportService } from '../import/import-service'
 import type { HandlerContext } from './context'
+import { pushInboxCounts } from './inbox'
 import { registerIpcHandler } from './register'
 
-export function registerImportHandlers({ settings, telemetry, repo, push }: HandlerContext): void {
+export function registerImportHandlers(ctx: HandlerContext): void {
+  const { settings, telemetry, repo, push } = ctx
   const importService = new ImportService(repo, settings.getLibraryRoot())
   const activeImports = new Map<string, AbortController>()
 
@@ -33,6 +35,7 @@ export function registerImportHandlers({ settings, telemetry, repo, push }: Hand
         errors: summary.errors,
         durationMs: Date.now() - startedAt
       })
+      pushInboxCounts(ctx)
       return summary
     } finally {
       activeImports.delete(batchId)

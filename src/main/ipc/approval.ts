@@ -5,9 +5,11 @@ import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { ApprovalService } from '../import/approval-service'
 import { TagService } from '../db/tag-service'
 import type { HandlerContext } from './context'
+import { pushInboxCounts } from './inbox'
 import { registerIpcHandler } from './register'
 
-export function registerApprovalHandlers({ settings, telemetry, repo, ai }: HandlerContext): void {
+export function registerApprovalHandlers(ctx: HandlerContext): void {
+  const { settings, telemetry, repo, ai } = ctx
   registerIpcHandler(IPC_CHANNELS.APPROVAL_INIT, async (args) => {
     const service = new ApprovalService(repo, await ai.activeProvider(), new TagService(repo))
     return service.initQueue(args.batchId)
@@ -22,6 +24,7 @@ export function registerApprovalHandlers({ settings, telemetry, repo, ai }: Hand
       reviewStatus: 'approved'
     })
     repo.setStage([args.mockupId], 'stashed')
+    pushInboxCounts(ctx)
     repo.clearTagsForMockup(args.mockupId)
     for (const tagId of args.tagIds) {
       repo.addTagToMockup(args.mockupId, tagId)

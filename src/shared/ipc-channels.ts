@@ -56,6 +56,10 @@ export const IPC_CHANNELS = {
   PILE_RESTORE: 'pile:restore',
   GROUP_UNGROUP: 'group:ungroup',
   GROUP_DELETE: 'group:delete',
+  INBOX_LIST: 'inbox:list',
+  INBOX_COUNTS: 'inbox:get-counts',
+  INBOX_TOSS: 'inbox:toss',
+  INBOX_COUNTS_CHANGED: 'inbox:counts',
   INTEGRITY_SCAN: 'integrity:scan',
   INTEGRITY_ADD_ORPHAN: 'integrity:add-orphan',
   INTEGRITY_DELETE_RECORD: 'integrity:delete-record',
@@ -74,7 +78,11 @@ export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
  * renderer validates each payload against the channel's `request` schema in IPC_CONTRACT.
  * No invoke handler is registered for them.
  */
-export const PUSH_CHANNELS = [IPC_CHANNELS.IMPORT_PROGRESS, IPC_CHANNELS.AI_DOWNLOAD_PROGRESS] as const
+export const PUSH_CHANNELS = [
+  IPC_CHANNELS.IMPORT_PROGRESS,
+  IPC_CHANNELS.AI_DOWNLOAD_PROGRESS,
+  IPC_CHANNELS.INBOX_COUNTS_CHANGED
+] as const
 
 export type PushChannel = (typeof PUSH_CHANNELS)[number]
 

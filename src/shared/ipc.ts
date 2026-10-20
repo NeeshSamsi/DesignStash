@@ -12,6 +12,7 @@ import { libraryContract } from './ipc/library'
 import { trashContract } from './ipc/trash'
 import { mockupContract } from './ipc/mockup'
 import { pileContract } from './ipc/pile'
+import { inboxContract } from './ipc/inbox'
 import { integrityContract } from './ipc/integrity'
 import { telemetryContract } from './ipc/telemetry'
 import { entitlementsContract } from './ipc/entitlements'
@@ -50,6 +51,7 @@ export const IPC_DOMAIN_CONTRACTS = {
   trash: trashContract,
   mockup: mockupContract,
   pile: pileContract,
+  inbox: inboxContract,
   integrity: integrityContract,
   telemetry: telemetryContract,
   entitlements: entitlementsContract,
@@ -70,6 +72,7 @@ export const IPC_CONTRACT = {
   ...trashContract,
   ...mockupContract,
   ...pileContract,
+  ...inboxContract,
   ...integrityContract,
   ...telemetryContract,
   ...entitlementsContract,

@@ -18,6 +18,7 @@ import { registerGroupingHandlers } from './grouping'
 
 let sqlite: Database.Database
 let repo: Repository
+let push: ReturnType<typeof vi.fn>
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -27,8 +28,10 @@ beforeEach(() => {
   const test = createTestDb()
   ;({ sqlite, repo } = test)
   ensureSearchIndex(test.db)
+  push = vi.fn()
   const ctx = {
     repo,
+    push,
     telemetry: { get: () => ({ track: vi.fn() }) },
     settings: { getLibraryRoot: () => '/library' }
   } as unknown as HandlerContext
@@ -55,6 +58,12 @@ describe('stage changes from the older channels', () => {
     expect(res).toMatchObject({ success: true })
     for (const id of [a, b, c, d]) expect(repo.getMockup(id)?.stage).toBe('to_stash')
     expect(repo.getMockup(a)?.sortedAt).toEqual(expect.any(String))
+    expect(push).toHaveBeenCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, {
+      toSort: 0,
+      toStash: 2,
+      sniffing: 0,
+      trash: 0
+    })
   })
 
   it('APPROVAL_SAVE_ITEM moves the mockup to My Stash', async () => {
@@ -77,5 +86,9 @@ describe('stage changes from the older channels', () => {
     expect(res).toMatchObject({ success: true })
     expect(repo.getMockup(a)).toMatchObject({ stage: 'stashed', reviewStatus: 'approved' })
     expect(repo.getMockup(other)?.stage).toBe('to_stash')
+    expect(push).toHaveBeenCalledWith(
+      IPC_CHANNELS.INBOX_COUNTS_CHANGED,
+      expect.objectContaining({ toStash: 1 })
+    )
   })
 })
