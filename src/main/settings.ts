@@ -24,6 +24,8 @@ export interface AppSettings {
   stashCheck: StashCheckRecord | null
   /** When the app last looked for an update (ISO). */
   updatesCheckedAt: string | null
+  /** Stash check items the user chose to ignore (opaque ids, no paths). */
+  ignoredDrift: string[]
 }
 
 export interface PendingStash {
@@ -76,7 +78,8 @@ export function createSettingsStore(
     telemetryInstallId: '', // placeholder — a real UUID is minted on first init (see ensureInstallId)
     pendingStash: null,
     stashCheck: null,
-    updatesCheckedAt: null
+    updatesCheckedAt: null,
+    ignoredDrift: []
   }
   const now = options.now ?? (() => new Date())
   const copyFile = options.copyFile ?? copyFileSync

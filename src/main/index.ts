@@ -13,8 +13,7 @@ import { registerAppHandlers } from './ipc/app'
 import { registerBootHandlers } from './ipc/boot'
 import { logger } from './logger'
 import { Repository } from './db/repository'
-import { IntegrityService } from './library/integrity-service'
-import { createStashCheck } from './ipc/integrity'
+import { createIntegrityService, createStashCheck } from './ipc/integrity'
 import { applyPendingStash } from './library/stash-folder-service'
 import { createTelemetry, type Telemetry } from './telemetry'
 
@@ -95,7 +94,7 @@ app.whenReady().then(() => {
     // Detection-only launch scan — never auto-resolves, never blocks startup.
     void (async () => {
       try {
-        const integrity = new IntegrityService(new Repository(db), libraryRoot)
+        const integrity = createIntegrityService(new Repository(db), settings)
         const { lastRun } = await createStashCheck(settings, integrity).run('launch')
         logger.info(`integrity: launch check ${lastRun?.result}, ${lastRun?.toReview} to review`)
       } catch (err) {
