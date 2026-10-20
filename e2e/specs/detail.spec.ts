@@ -304,6 +304,36 @@ test.describe('Details sidebar', () => {
     expect(columns, 'one column of cards').toBe(1)
   })
 
+  test('opening and closing morph the page in a view transition, and leave no names behind', async ({
+    app
+  }) => {
+    const { window } = app
+    await seedStash(app, ['laptop', 'phone'])
+    await showMyStash(app)
+    const settled = async () => {
+      await expect(window.locator('html')).not.toHaveAttribute('data-panel-motion', /.+/)
+      const left = await window.evaluate(
+        () =>
+          [...document.querySelectorAll<HTMLElement>('[data-mockup-id]')].filter(
+            (el) => el.style.viewTransitionName !== ''
+          ).length
+      )
+      expect(left, 'no card keeps a transition name once it has finished').toBe(0)
+    }
+    await clickCard(window)
+    await expect(panel(window)).toBeVisible()
+    await settled()
+    // Clicks keep working while it morphs: a second card can be picked at once.
+    await window.keyboard.press('Escape')
+    await expect(panel(window)).toHaveCount(0)
+    await settled()
+    // Opening and closing back to back ends in the closed layout.
+    await clickCard(window)
+    await window.keyboard.press('Escape')
+    await expect(panel(window)).toHaveCount(0)
+    await settled()
+  })
+
   test('Esc closes it, and so does clicking empty space', async ({ app }) => {
     const { window } = app
     await seedStash(app, ['laptop'])

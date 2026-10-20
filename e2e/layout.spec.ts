@@ -164,9 +164,8 @@ for (const { width, height } of SIZES) {
       await card.getByRole('button', { name: 'Edit details' }).click()
       const panel = window.locator('[data-slot="details-panel"]')
       await expect(panel.getByRole('textbox', { name: 'Title' })).toBeVisible()
-      // Let the slide finish so the measurement is of the settled layout.
-      await expect(panel).not.toHaveClass(/translate-x-99/)
-      await window.waitForTimeout(450)
+      // Let the view transition finish so the measurement is of the settled layout.
+      await expect(window.locator('html')).not.toHaveAttribute('data-panel-motion', /.+/)
       await inside(window, panel, 'the details sidebar')
       await inside(window, panel.getByRole('button', { name: 'Save' }), 'Save')
       await noSidewaysScroll(window, null, 'My Stash with the sidebar open')
