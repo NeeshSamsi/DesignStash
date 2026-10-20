@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { InferenceProvider } from '../../shared/inference'
+import { LlamaPidFile } from './llama-pid'
 import { LlamaServer } from './llama-server'
 import { MODEL_FILE_NAMES, getModel } from './registry'
 import { VisionInferenceProvider, readCoverAsDataUrl } from './vision-provider'
@@ -49,6 +50,8 @@ export interface ProviderFactoryOptions {
   exists?: (path: string) => boolean
   /** Builds the provider for a vision model. Tests replace it so no child process starts. */
   createVision?: (files: VisionModelFiles) => ManagedProvider
+  /** Where the running llama-server's pid is kept, so the next launch can stop one left behind. */
+  pidFile?: LlamaPidFile
 }
 
 export interface ProviderFactory {
@@ -58,12 +61,13 @@ export interface ProviderFactory {
   dispose(): Promise<void>
 }
 
-function createVisionProvider(files: VisionModelFiles): ManagedProvider {
+function createVisionProvider(files: VisionModelFiles, pidFile?: LlamaPidFile): ManagedProvider {
   const server = new LlamaServer({
     binaryPath: files.binaryPath,
     modelPath: files.modelPath,
     mmprojPath: files.mmprojPath,
-    extraArgs: files.extraArgs
+    extraArgs: files.extraArgs,
+    ...(pidFile && { tracker: pidFile })
   })
   return new VisionInferenceProvider(files.name, {
     complete: (request) => server.chat(request),
@@ -79,7 +83,7 @@ function createVisionProvider(files: VisionModelFiles): ManagedProvider {
  */
 export function createProviderFactory(options: ProviderFactoryOptions): ProviderFactory {
   const exists = options.exists ?? existsSync
-  const createVision = options.createVision ?? createVisionProvider
+  const createVision = options.createVision ?? ((files) => createVisionProvider(files, options.pidFile))
   let current: { id: string; provider: ManagedProvider } | null = null
   let warnedNoServer = false
 

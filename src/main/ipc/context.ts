@@ -1,11 +1,12 @@
 import { join } from 'node:path'
-import { shell, type BrowserWindow } from 'electron'
+import { app, shell, type BrowserWindow } from 'electron'
 import type { PushChannel, PushPayload } from '@shared/ipc'
 import type { InferenceProvider } from '@shared/inference'
 import type { SettingsStore } from '../settings'
 import type { Telemetry } from '../telemetry'
 import type { Repository } from '../db/repository'
 import { ModelDownloader } from '../ai/download'
+import { LlamaPidFile } from '../ai/llama-pid'
 import { createProviderFactory, resolveLlamaServerPath } from '../ai/provider-factory'
 import { LibraryService } from '../library/library-service'
 
@@ -44,7 +45,17 @@ export function createAiRuntime(settings: SettingsStore): AiRuntime {
   const modelsDir = join(settings.getLibraryRoot(), '..', 'models')
   const downloader = new ModelDownloader(modelsDir)
 
-  const providers = createProviderFactory({ modelsDir, llamaServerPath: () => resolveLlamaServerPath() })
+  // A llama-server left running by a crashed or killed app is stopped now, and this run's is
+  // remembered so the next launch can do the same.
+  const pidFile = new LlamaPidFile(join(modelsDir, '..', 'llama-server.pid'))
+  void pidFile.reapStale().catch(() => {})
+  const providers = createProviderFactory({
+    modelsDir,
+    llamaServerPath: () => resolveLlamaServerPath(),
+    pidFile
+  })
+  // A normal quit stops it too, rather than leaving that to the process exit hook.
+  app.on('will-quit', () => void providers.dispose().catch(() => {}))
 
   return {
     modelsDir,

@@ -3,6 +3,7 @@ import { createServer } from 'node:net'
 
 /** The parts of a child process the server uses, so tests can hand in a fake. */
 export interface ServerProcess {
+  readonly pid?: number | undefined
   readonly exitCode: number | null
   kill(signal?: NodeJS.Signals): boolean
   once(event: 'exit', listener: (code: number | null) => void): unknown
@@ -23,6 +24,8 @@ export interface LlamaServerConfig {
   ctxSize?: number
   /** Flags a model needs on top of the defaults, like a chat template override. */
   extraArgs?: readonly string[]
+  /** Told the pid when the server starts and when it ends, so a crashed app can't leave it behind. */
+  tracker?: { record(pid: number): void | Promise<void>; clear(): void | Promise<void> }
 }
 
 export interface LlamaServerDeps {
@@ -162,11 +165,13 @@ export class LlamaServer {
     const child = this.deps.spawn(binaryPath, args)
     this.child = child
     let exitCode: number | null | undefined
+    if (child.pid !== undefined) void this.config.tracker?.record(child.pid)
     const unregister = this.deps.onParentExit(() => child.kill('SIGKILL'))
     child.stderr?.on('data', (chunk) => this.recordStderr(String(chunk)))
     child.once('exit', (code) => {
       exitCode = code
       unregister()
+      void this.config.tracker?.clear()
       // Crashed or stopped: the next request starts a fresh one.
       if (this.child === child) {
         this.child = null

@@ -4,6 +4,7 @@ import { LlamaServer, type LlamaServerDeps, type ServerProcess } from './llama-s
 
 /** A child process that does nothing until the test makes it exit. */
 class FakeProcess extends EventEmitter implements ServerProcess {
+  pid: number | undefined = 777
   exitCode: number | null = null
   readonly signals: string[] = []
   readonly stderr = new EventEmitter()
@@ -45,6 +46,7 @@ function harness(
     idleMs?: number
     startTimeoutMs?: number
     extraArgs?: string[]
+    tracker?: { record: (pid: number) => void; clear: () => void }
   } = {}
 ): Harness {
   const processes: FakeProcess[] = []
@@ -81,7 +83,8 @@ function harness(
       mmprojPath: '/models/m/mmproj.gguf',
       idleMs: opts.idleMs ?? 1000,
       ...(opts.startTimeoutMs !== undefined && { startTimeoutMs: opts.startTimeoutMs }),
-      ...(opts.extraArgs && { extraArgs: opts.extraArgs })
+      ...(opts.extraArgs && { extraArgs: opts.extraArgs }),
+      ...(opts.tracker && { tracker: opts.tracker })
     },
     deps
   )
@@ -243,6 +246,23 @@ describe('LlamaServer', () => {
     for (const listener of h.parentExit.listeners) listener()
     expect(h.processes[0]!.signals).toEqual(['SIGKILL'])
     expect(h.parentExit.listeners.size).toBe(0)
+  })
+
+  it('tells the tracker the pid when it starts and clears it when it ends, whether it stops or crashes', async () => {
+    const tracker = { record: vi.fn(), clear: vi.fn() }
+    const { server, processes } = harness({ tracker })
+
+    await server.chat({ messages: [] })
+    expect(tracker.record).toHaveBeenCalledWith(777)
+    expect(tracker.clear).not.toHaveBeenCalled()
+
+    await server.stop()
+    expect(tracker.clear).toHaveBeenCalledTimes(1)
+
+    await server.chat({ messages: [] })
+    processes[1]!.exit(1) // a crash
+    expect(tracker.record).toHaveBeenCalledTimes(2)
+    expect(tracker.clear).toHaveBeenCalledTimes(2)
   })
 
   it('stop() with nothing running does nothing', async () => {

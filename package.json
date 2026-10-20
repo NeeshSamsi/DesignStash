@@ -17,6 +17,7 @@
     "format": "prettier --write .",
     "test:unit": "vitest run",
     "pretest:unit": "node scripts/rebuild-better-sqlite3.mjs node",
+    "package:stage": "node scripts/fetch-llama-server.mjs && node scripts/stage-llama-server.mjs",
     "test:e2e": "playwright test",
     "pretest:e2e": "node scripts/rebuild-better-sqlite3.mjs electron",
     "posttest:e2e": "node scripts/rebuild-better-sqlite3.mjs node",
