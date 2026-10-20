@@ -47,6 +47,16 @@ export const pileContract = {
       freedIds: z.array(z.number())
     })
   },
+  [IPC_CHANNELS.PILE_REMOVE]: {
+    request: z.object({ pileId: z.number(), mockupId: z.number() }),
+    response: z.object({
+      /** The pile's id afterwards (the next mockup when the top left); null when it is no longer a pile. */
+      pileId: z.number().nullable(),
+      snapshot: PileSnapshotSchema,
+      /** The mockups that are now on their own: the one removed, and the last one when the pile dissolved. */
+      freedIds: z.array(z.number())
+    })
+  },
   [IPC_CHANNELS.PILE_RESTORE]: {
     request: z.object({ snapshot: PileSnapshotSchema }),
     response: z.object({ restoredIds: z.array(z.number()) })

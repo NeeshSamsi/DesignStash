@@ -37,6 +37,14 @@ export class PileService {
     return { snapshot: { rows: before }, freedIds }
   }
 
+  removeFromPile(
+    pileId: number,
+    mockupId: number
+  ): { pileId: number | null; snapshot: PileSnapshot; freedIds: number[] } {
+    const { before, ...rest } = this.repo.removeFromPile(pileId, mockupId)
+    return { ...rest, snapshot: { rows: before } }
+  }
+
   /** Undo: put every mockup in the snapshot back as it was. Mockups deleted since are skipped. */
   restore(snapshot: PileSnapshot): { restoredIds: number[] } {
     const existing = new Set(this.repo.getPileRows(snapshot.rows.map((r) => r.id)).map((r) => r.id))

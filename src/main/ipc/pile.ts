@@ -16,6 +16,9 @@ export function registerPileHandlers(ctx: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.PILE_MERGE, (args) => piles.merge(args.sourceIds, args.targetId))
   registerIpcHandler(IPC_CHANNELS.PILE_SET_TOP, (args) => piles.setTop(args.pileId, args.topId))
   registerIpcHandler(IPC_CHANNELS.PILE_DISBAND, (args) => piles.disband(args.pileId))
+  registerIpcHandler(IPC_CHANNELS.PILE_REMOVE, (args) =>
+    piles.removeFromPile(args.pileId, args.mockupId)
+  )
   registerIpcHandler(IPC_CHANNELS.PILE_RESTORE, (args) => piles.restore(args.snapshot))
 
   registerIpcHandler(IPC_CHANNELS.PILE_STASH, async (args) => {

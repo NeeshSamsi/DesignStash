@@ -72,6 +72,7 @@ export const IPC_CHANNELS = {
   PILE_MERGE: 'pile:merge',
   PILE_SET_TOP: 'pile:set-top',
   PILE_DISBAND: 'pile:disband',
+  PILE_REMOVE: 'pile:remove',
   PILE_RESTORE: 'pile:restore',
   PILE_STASH: 'pile:stash',
   PILE_UNSTASH: 'pile:unstash',

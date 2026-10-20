@@ -149,7 +149,10 @@ export class PileRepository {
     const before = this.getPileRows(moving)
     this.db.transaction((tx) => {
       for (const id of moving) {
-        tx.update(mockups).set({ isGroup: false, groupId: targetId }).where(eq(mockups.id, id)).run()
+        tx.update(mockups)
+          .set({ isGroup: false, groupId: targetId })
+          .where(eq(mockups.id, id))
+          .run()
       }
     })
     return { pileId: targetId, before }
@@ -193,6 +196,48 @@ export class PileRepository {
     const before = this.getPileRows(freedIds)
     this.ungroupGroup(pileId)
     return { pileId, before, freedIds }
+  }
+
+  /**
+   * Take one mockup out of a pile; it lands on its own. Removing the top promotes the next mockup (the
+   * lowest id, the order the pile lists them). A pile left with one mockup stops being a pile. Each
+   * mockup keeps its own star. `pileId` is the pile's id afterwards, or null when it no longer exists.
+   */
+  removeFromPile(
+    pileId: number,
+    mockupId: number
+  ): { pileId: number | null; before: PileRow[]; freedIds: number[] } {
+    this.assertPile(pileId)
+    const members = this.getMockupsByGroupId(pileId).sort((a, b) => a.id - b.id)
+    const inPile = mockupId === pileId || members.some((m) => m.id === mockupId)
+    if (!inPile) throw new Error('That mockup is not in the pile')
+
+    const all = [pileId, ...members.map((m) => m.id)]
+    const before = this.getPileRows(all)
+    const rest = all.filter((id) => id !== mockupId)
+
+    // One left: no pile any more, both are on their own.
+    if (rest.length < 2) {
+      this.ungroupGroup(pileId)
+      return { pileId: null, before, freedIds: all }
+    }
+
+    const newTop = mockupId === pileId ? (rest[0] as number) : pileId
+    this.db.transaction((tx) => {
+      tx.update(mockups)
+        .set({ isGroup: false, groupId: null })
+        .where(eq(mockups.id, mockupId))
+        .run()
+      for (const id of rest) {
+        tx.update(mockups)
+          .set(
+            id === newTop ? { isGroup: true, groupId: null } : { isGroup: false, groupId: newTop }
+          )
+          .where(eq(mockups.id, id))
+          .run()
+      }
+    })
+    return { pileId: newTop, before, freedIds: [mockupId] }
   }
 
   private requireLive(id: number): Mockup {

@@ -78,6 +78,7 @@ export class Repository {
   mergePiles(...a: Args<PileRepository['mergePiles']>) { return this.piles.mergePiles(...a) }
   setPileTop(...a: Args<PileRepository['setPileTop']>) { return this.piles.setPileTop(...a) }
   disbandPile(...a: Args<PileRepository['disbandPile']>) { return this.piles.disbandPile(...a) }
+  removeFromPile(...a: Args<PileRepository['removeFromPile']>) { return this.piles.removeFromPile(...a) }
 
   // Tags and categories
   getCategoryByLabel(...a: Args<TagRepository['getCategoryByLabel']>) { return this.tags.getCategoryByLabel(...a) }

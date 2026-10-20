@@ -110,6 +110,49 @@ describe('pile handlers', () => {
     expect(restored.success && restored.data.restoredIds.sort()).toEqual([a, b, c, d, e].sort())
     expect(repo.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([d])
   })
+
+  it('removes a mockup from a pile, validates the request, and restores from the snapshot', async () => {
+    const [a, b, c] = [make('a'), make('b'), make('c')] as [number, number, number]
+    await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b, c], topId: a })
+
+    expect(await call(IPC_CHANNELS.PILE_REMOVE, { pileId: a })).toMatchObject({
+      success: false,
+      error: { code: 'INVALID_REQUEST' }
+    })
+
+    // The top leaves: the next mockup takes over.
+    const removed = await call<{ pileId: number | null; snapshot: unknown; freedIds: number[] }>(
+      IPC_CHANNELS.PILE_REMOVE,
+      { pileId: a, mockupId: a }
+    )
+    expect(removed).toMatchObject({ success: true, data: { pileId: b, freedIds: [a] } })
+    expect(repo.getMockup(b)).toMatchObject({ isGroup: true })
+    expect(repo.getMockup(c)).toMatchObject({ groupId: b })
+
+    const restored = await call<{ restoredIds: number[] }>(IPC_CHANNELS.PILE_RESTORE, {
+      snapshot: removed.success && removed.data.snapshot
+    })
+    expect(restored.success && restored.data.restoredIds.sort()).toEqual([a, b, c].sort())
+    expect(repo.getMockup(a)).toMatchObject({ isGroup: true, groupId: null })
+    expect(repo.getMockup(c)).toMatchObject({ groupId: a })
+
+    // A pile of two dissolves.
+    await call(IPC_CHANNELS.PILE_DISBAND, { pileId: a })
+    await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
+    expect(await call(IPC_CHANNELS.PILE_REMOVE, { pileId: a, mockupId: b })).toMatchObject({
+      success: true,
+      data: { pileId: null }
+    })
+    expect(repo.getMockup(a)).toMatchObject({ isGroup: false, groupId: null })
+  })
+
+  it('reports a mockup that is not in the pile as an error result', async () => {
+    const [a, b, c] = [make('a'), make('b'), make('c')] as [number, number, number]
+    await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
+    expect(await call(IPC_CHANNELS.PILE_REMOVE, { pileId: a, mockupId: c })).toMatchObject({
+      success: false
+    })
+  })
 })
 
 describe('trash handlers', () => {
