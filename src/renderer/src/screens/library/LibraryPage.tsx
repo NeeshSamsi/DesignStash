@@ -16,11 +16,9 @@ import {
   Search02Icon,
   StarIcon
 } from '@hugeicons/core-free-icons'
-import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem } from '@shared/library'
 import { AddMockupCard } from '@renderer/components/AddMockupCard'
 import { Banner } from '@renderer/components/Banner'
-import { stashCheckCopy } from '../integrity'
 import { Badge } from '@renderer/ui/badge'
 import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
@@ -32,6 +30,7 @@ import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
+import { useGuardedSelection } from '../details/use-guarded-selection'
 import {
   draggedItems,
   dropHint,
@@ -43,12 +42,12 @@ import {
 import { filterChips, toggleCategory } from '@renderer/lib/tag-filter'
 import { useShortcut } from '@renderer/lib/shortcuts'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
+import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
-import { toast } from '@renderer/stores/toastStore'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { CardMenu, type MenuTarget } from './CardMenu'
 import { LibraryCard } from './LibraryCard'
-import { LibraryLightbox } from './LibraryLightbox'
+import { PilePage } from './PilePage'
 import { WaitingToSortStrip } from './WaitingToSortStrip'
 import { useLibraryActions } from './useLibraryActions'
 import { useLibraryData } from './useLibraryData'
@@ -90,7 +89,7 @@ export default function LibraryPage({
 }: LibraryPageProps) {
   const view = useUiStore((s) => s.view)
   const openSettings = useUiStore((s) => s.openSettings)
-  const openModal = useUiStore((s) => s.openModal)
+  const pageOpen = useDetailsStore((s) => s.pile)
   const starredOnly = starredProp ?? view === 'starred'
 
   const items = useLibraryStore((s) => s.items)
@@ -108,10 +107,26 @@ export default function LibraryPage({
     useLibraryData(starredOnly)
 
   const ids = useMemo(() => items.map((item) => String(item.id)), [items])
-  const selection = useGridSelection(ids)
+  const rawSelection = useGridSelection(ids)
+  // Every way of changing the selection asks first when the sidebar holds unsaved edits.
+  const selection = useGuardedSelection(rawSelection)
 
-  // Detail can ask for mockups to be selected once the grid has reloaded (Disband pile).
-  const selectIds = selection.set
+  // The sidebar follows the selection: one mockup shows in it, none (or several) closes it. While the
+  // pile page is up it follows that page's selection instead.
+  const sidebarId = rawSelection.count === 1 ? Number(rawSelection.selectedIds[0]) : null
+  useEffect(() => {
+    if (pageOpen) return
+    useDetailsStore.getState().syncTarget(sidebarId)
+  }, [sidebarId, pageOpen])
+  const clearRaw = rawSelection.clear
+  useEffect(() => {
+    if (pageOpen) return
+    useDetailsStore.getState().setClearSelection(clearRaw)
+    return () => useDetailsStore.getState().setClearSelection(null)
+  }, [clearRaw, pageOpen])
+
+  // The sidebar can ask for mockups to be selected once the grid has reloaded (Disband pile).
+  const selectIds = rawSelection.set
   useEffect(() => {
     const pending = useDetailEffects.getState().takePendingSelection()
     if (pending.length > 0) selectIds(pending.map(String))
@@ -160,9 +175,9 @@ export default function LibraryPage({
     refresh,
     keepLingering,
     releaseLingering,
-    clearSelection: selection.clear
+    clearSelection: rawSelection.clear
   })
-  const { openDetail, openInPhotoshop } = actions
+  const { openInPhotoshop } = actions
 
   const itemById = (id: string) => items.find((item) => String(item.id) === id)
   const selectedItems = selection.selectedIds
@@ -200,21 +215,23 @@ export default function LibraryPage({
     }
   }
 
-  // The fullscreen preview steps in grid order and gives focus back to the card it opened from.
-  const [preview, setPreview] = useState<{ id: number; returnTo: HTMLElement | null } | null>(null)
-  const openPreview = (item: LibraryItem) =>
-    setPreview({
-      id: item.id,
-      returnTo: document.querySelector<HTMLElement>(`[data-mockup-id="${item.id}"]`)
+  // The details sidebar: a pile opens its page, a mockup opens in the sidebar (as fields for Edit details).
+  const openPileFor = (item: LibraryItem, edit = false) =>
+    useDetailsStore.getState().guard(() =>
+      useDetailsStore.getState().openPile({
+        id: item.id,
+        title: item.title,
+        count: item.variantCount + 1,
+        select: item.topId ?? item.id,
+        edit
+      })
+    )
+  const editDetails = (item: LibraryItem) => {
+    if (item.isGroup) return openPileFor(item, true)
+    useDetailsStore.getState().guard(() => {
+      useDetailsStore.getState().requestEdit(item.id)
+      rawSelection.set([String(item.id)])
     })
-  const checkLibrary = async () => {
-    setPreview(null)
-    // Check now: the result lands in Settings' stash check status too.
-    const res = await window.api.invoke(IPC_CHANNELS.STASH_CHECK_RUN, undefined)
-    const result = res.success ? res.data.lastRun?.result : undefined
-    if (result === 'review') openModal({ kind: 'reconcile' })
-    else if (result === 'in-sync') toast({ variant: 'success', message: stashCheckCopy.inSync })
-    else toast({ variant: 'error', message: stashCheckCopy.couldNotLoad })
   }
 
   const piles = useLibraryPiles({ refresh, offerUndo: actions.offerUndo })
@@ -266,7 +283,7 @@ export default function LibraryPage({
     handler: trashSelection
   })
 
-  // Enter opens Detail and Space previews, on a focused card. Buttons inside a card keep their own keys.
+  // Enter on a focused card: a pile opens its page, a mockup opens in the sidebar. Buttons inside a card keep their own keys.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
     const card = cardOf(event.target)
@@ -275,16 +292,15 @@ export default function LibraryPage({
     if (!item) return
     if (event.key === 'Enter') {
       event.preventDefault()
-      openDetail(item.id)
-    } else if (event.key === ' ') {
-      event.preventDefault()
-      openPreview(item)
+      if (item.isGroup) openPileFor(item)
+      else selection.select(String(item.id))
     }
   }
 
+  // Double-click opens a pile's page. On a mockup on its own it does nothing more than selecting it.
   const onDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
     const item = itemOf(event.target)
-    if (item) openDetail(item.id)
+    if (item?.isGroup) openPileFor(item)
   }
   // A marquee press keeps focus where it was; pull it into the grid so its shortcuts apply.
   const onMouseUp = (event: MouseEvent<HTMLDivElement>) => {
@@ -294,8 +310,8 @@ export default function LibraryPage({
 
   const menuActions = {
     openInPhotoshop: (item: LibraryItem) => void openInPhotoshop(item),
-    editDetails: (item: LibraryItem) => openDetail(item.id),
-    preview: openPreview,
+    editDetails,
+    openPile: (item: LibraryItem) => openPileFor(item),
     star: (targets: LibraryItem[], favourite: boolean) =>
       void actions.setFavouriteFor(targets, favourite),
     trash: (targets: LibraryItem[]) => void actions.trash(targets),
@@ -350,6 +366,9 @@ export default function LibraryPage({
         : `${total} ${total === 1 ? 'item' : 'items'}${
             stats.favourites > 0 ? ` · ${stats.favourites} favourites` : ''
           }`
+
+  // The pile page is a view inside My Stash, over the same state.
+  if (pageOpen) return <PilePage key={pageOpen.id} pile={pageOpen} />
 
   return (
     <div className="flex min-h-full flex-col gap-4">
@@ -446,7 +465,7 @@ export default function LibraryPage({
                   openMenuFor(item, { x: box.left, y: box.bottom })
                 }}
                 onOpenInPhotoshop={() => void openInPhotoshop(item)}
-                onEditDetails={() => openDetail(item.id)}
+                onEditDetails={() => editDetails(item)}
               />
             )
           })}
@@ -479,15 +498,6 @@ export default function LibraryPage({
         actions={menuActions}
         lastUndo={actions.lastUndo}
       />
-      {preview && (
-        <LibraryLightbox
-          items={items}
-          startId={preview.id}
-          returnFocusTo={preview.returnTo}
-          onClose={() => setPreview(null)}
-          onCheckLibrary={() => void checkLibrary()}
-        />
-      )}
     </div>
   )
 }

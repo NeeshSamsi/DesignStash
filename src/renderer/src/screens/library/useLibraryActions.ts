@@ -3,7 +3,6 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem } from '@shared/library'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
-import { useUiStore } from '@renderer/stores/uiStore'
 
 /** The last change that can still be undone, for “Undo …” in the empty-space menu. */
 export interface UndoEntry {
@@ -28,7 +27,6 @@ export function useLibraryActions({
   releaseLingering,
   clearSelection
 }: LibraryActionsInput) {
-  const openModal = useUiStore((s) => s.openModal)
   const [lastUndo, setLastUndo] = useState<UndoEntry | null>(null)
   const latest = useRef<UndoEntry | null>(null)
 
@@ -146,18 +144,12 @@ export function useLibraryActions({
     }
   }, [])
 
-  const openDetail = useCallback(
-    (id: number) => openModal({ kind: 'detail', mockupId: id }),
-    [openModal]
-  )
-
   return {
     lastUndo,
     undoLast,
     offerUndo,
     setFavouriteFor,
     trash,
-    openInPhotoshop,
-    openDetail
+    openInPhotoshop
   }
 }

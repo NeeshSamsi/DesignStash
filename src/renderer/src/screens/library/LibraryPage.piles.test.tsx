@@ -153,7 +153,7 @@ describe('piles by shortcut', () => {
     await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_DISBAND)).toEqual([{ pileId: 1 }]))
     await waitFor(() => expect(screen.getByText('2 of 2 selected')).toBeTruthy())
     expect(undoToast).toHaveBeenCalledWith(
-      'Pile broken up',
+      'Pile disbanded',
       expect.any(Function),
       '2 mockups are on their own'
     )

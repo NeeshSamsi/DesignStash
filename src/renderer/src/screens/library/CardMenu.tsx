@@ -6,8 +6,7 @@ import {
   Layers01Icon,
   LinkSquare02Icon,
   StarIcon,
-  UndoIcon,
-  ViewIcon
+  UndoIcon
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
 import type { LibraryItem } from '@shared/library'
@@ -17,7 +16,8 @@ import type { UndoEntry } from './useLibraryActions'
 
 /** What the menu is for: one card, a selection, a pile, or empty space. */
 export type MenuTarget =
-  | { kind: 'card'; item: LibraryItem }
+  /** `inPile` is set on the pile page, where a card can also be put on top. */
+  | { kind: 'card'; item: LibraryItem; inPile?: { isTop: boolean } }
   | { kind: 'selection'; items: LibraryItem[] }
   | { kind: 'pile'; item: LibraryItem }
   | { kind: 'space' }
@@ -25,10 +25,12 @@ export type MenuTarget =
 export interface CardMenuActions {
   openInPhotoshop: (item: LibraryItem) => void
   editDetails: (item: LibraryItem) => void
-  preview: (item: LibraryItem) => void
   star: (items: LibraryItem[], favourite: boolean) => void
   newPile?: (items: LibraryItem[]) => void
   disband?: (item: LibraryItem) => void
+  /** A pile's page: open the pile, and put a card on top. */
+  openPile?: (item: LibraryItem) => void
+  putOnTop?: (item: LibraryItem) => void
   trash: (items: LibraryItem[]) => void
   selectAll: () => void
   addFiles?: () => void
@@ -63,9 +65,9 @@ export function menuRows(
 ): { rows: Row[]; groups: number[] } {
   switch (target.kind) {
     case 'card': {
-      const { item } = target
+      const { item, inPile } = target
       return {
-        groups: [2, 4],
+        groups: [2, 3],
         rows: [
           {
             key: 'ps',
@@ -77,15 +79,7 @@ export function menuRows(
             key: 'edit',
             label: 'Edit details',
             icon: Edit02Icon,
-            shortcut: '↵',
             run: () => actions.editDetails(item)
-          },
-          {
-            key: 'preview',
-            label: 'Preview',
-            icon: ViewIcon,
-            shortcut: 'Space',
-            run: () => actions.preview(item)
           },
           {
             key: 'star',
@@ -93,14 +87,22 @@ export function menuRows(
             icon: StarIcon,
             run: () => actions.star([item], !item.favourite)
           },
-          {
-            key: 'pile',
-            label: 'New pile',
-            icon: Layers01Icon,
-            shortcut: '⌘G',
-            disabled: true,
-            run: () => {}
-          },
+          inPile
+            ? {
+                key: 'top',
+                label: 'Put on top',
+                icon: Layers01Icon,
+                disabled: inPile.isTop || !actions.putOnTop,
+                run: () => actions.putOnTop?.(item)
+              }
+            : {
+                key: 'pile',
+                label: 'New pile',
+                icon: Layers01Icon,
+                shortcut: '⌘G',
+                disabled: true,
+                run: () => {}
+              },
           {
             key: 'trash',
             label: 'Move to Trash',
@@ -116,9 +118,8 @@ export function menuRows(
       const { items } = target
       const n = items.length
       const allStarred = items.every((item) => item.favourite)
-      const [first] = items
       return {
-        groups: [1, 3],
+        groups: [1, 2],
         rows: [
           {
             key: 'pile',
@@ -135,13 +136,6 @@ export function menuRows(
             run: () => actions.star(items, !allStarred)
           },
           {
-            key: 'preview',
-            label: 'Preview',
-            icon: ViewIcon,
-            shortcut: 'Space',
-            run: () => first && actions.preview(first)
-          },
-          {
             key: 'trash',
             label: `Move ${n} to Trash`,
             icon: Delete02Icon,
@@ -155,8 +149,16 @@ export function menuRows(
     case 'pile': {
       const { item } = target
       return {
-        groups: [2, 4],
+        groups: [3, 3],
         rows: [
+          {
+            key: 'open',
+            label: 'Open pile page',
+            icon: Layers01Icon,
+            shortcut: '↵',
+            disabled: !actions.openPile,
+            run: () => actions.openPile?.(item)
+          },
           {
             key: 'ps',
             label: 'Open in Photoshop',
@@ -167,15 +169,7 @@ export function menuRows(
             key: 'edit',
             label: 'Edit details',
             icon: Edit02Icon,
-            shortcut: '↵',
             run: () => actions.editDetails(item)
-          },
-          {
-            key: 'preview',
-            label: 'Preview',
-            icon: ViewIcon,
-            shortcut: 'Space',
-            run: () => actions.preview(item)
           },
           {
             key: 'star',

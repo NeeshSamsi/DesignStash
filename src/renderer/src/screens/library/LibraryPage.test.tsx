@@ -4,9 +4,10 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useUiStore } from '@renderer/stores/uiStore'
+import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import LibraryPage from './LibraryPage'
-import { item, resetStores, setupApi } from './library-test-utils'
+import { item, pile, resetStores, setupApi } from './library-test-utils'
 
 vi.mock('@renderer/stores/toastStore', () => ({ toast: vi.fn(), undoToast: vi.fn() }))
 
@@ -362,23 +363,61 @@ describe('LibraryPage stars', () => {
   })
 })
 
-describe('LibraryPage detail', () => {
-  it('opens Detail on double-click, not on a single click', async () => {
+describe('LibraryPage details sidebar', () => {
+  it('a click selects the card and opens the sidebar; clearing the selection closes it', async () => {
     setupApi([item(4)])
     render(<LibraryPage />)
     await ready()
+    expect(useDetailsStore.getState().target).toBeNull()
     fireEvent.click(cards()[0]!)
-    expect(useUiStore.getState().modal).toBeNull()
-    fireEvent.doubleClick(cards()[0]!)
-    expect(useUiStore.getState().modal).toEqual({ kind: 'detail', mockupId: 4 })
+    expect(useDetailsStore.getState().target).toEqual({ id: 4, edit: false })
+    fireEvent.keyDown(cards()[0]!, { key: 'Escape' })
+    expect(useDetailsStore.getState().target).toBeNull()
   })
 
-  it('Edit details on the card opens Detail', async () => {
+  it('shows nothing for several selected mockups, and the sidebar closes', async () => {
+    setupApi([item(1), item(2)])
+    render(<LibraryPage />)
+    await ready()
+    fireEvent.click(cards()[0]!)
+    fireEvent.click(cards()[1]!, { metaKey: true })
+    expect(useDetailsStore.getState().target).toBeNull()
+  })
+
+  it('asks before another card replaces unsaved edits, and stays put on Keep editing', async () => {
+    setupApi([item(1), item(2)])
+    render(<LibraryPage />)
+    await ready()
+    fireEvent.click(cards()[0]!)
+    act(() => {
+      useDetailsStore.getState().setEditing(true)
+      useDetailsStore.getState().setDirty(true)
+    })
+    fireEvent.click(cards()[1]!)
+    expect(useDetailsStore.getState().ask).not.toBeNull()
+    expect(useDetailsStore.getState().target?.id).toBe(1)
+    act(() => useDetailsStore.getState().keepEditing())
+    expect(cards()[0]!.getAttribute('data-state')).toBe('selected')
+    fireEvent.click(cards()[1]!)
+    act(() => useDetailsStore.getState().confirmDiscard())
+    expect(useDetailsStore.getState().target?.id).toBe(2)
+  })
+
+  it('Edit details on the card selects it and opens the sidebar as fields', async () => {
     setupApi([item(4)])
     render(<LibraryPage />)
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: 'Edit details' }))
-    expect(useUiStore.getState().modal).toEqual({ kind: 'detail', mockupId: 4 })
+    expect(useDetailsStore.getState().target).toEqual({ id: 4, edit: true })
+    expect(cards()[0]!.getAttribute('data-state')).toBe('selected')
+  })
+
+  it('Edit details on a pile opens its page with the top mockup as fields', async () => {
+    setupApi([pile(4)])
+    render(<LibraryPage />)
+    await ready()
+    fireEvent.click(within(cards()[0]!).getByRole('button', { name: 'Edit details' }))
+    expect(useDetailsStore.getState().pile).toMatchObject({ id: 4, select: 4, edit: true })
   })
 
   it('Open in Photoshop on the card asks the main process, and explains a failure', async () => {
@@ -396,14 +435,14 @@ describe('LibraryPage detail', () => {
     )
   })
 
-  it('shows Open in Photoshop and Edit details along the cover on hover; Edit details opens Detail', async () => {
+  it('shows Open in Photoshop and Edit details along the cover on hover', async () => {
     setupApi([item(9)])
     render(<LibraryPage />)
     await ready()
     const card = cards()[0]!
     expect(within(card).getByRole('button', { name: 'Open in Photoshop' })).toBeTruthy()
-    fireEvent.click(within(card).getByRole('button', { name: 'Edit details' }))
-    expect(useUiStore.getState().modal).toEqual({ kind: 'detail', mockupId: 9 })
+    expect(within(card).getByRole('button', { name: 'Edit details' })).toBeTruthy()
+    expect(within(card).queryByRole('button', { name: /preview|zoom/i })).toBeNull()
   })
 })
 

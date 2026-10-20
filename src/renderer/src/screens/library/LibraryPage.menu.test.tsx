@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { IPC_CHANNELS } from '@shared/ipc'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { useUiStore } from '@renderer/stores/uiStore'
+import { useDetailsStore } from '@renderer/stores/detailsStore'
 import LibraryPage from './LibraryPage'
 import { item, pile, resetStores, setupApi, ShortcutHost } from './library-test-utils'
 
@@ -62,7 +63,7 @@ describe('card menu', () => {
     expect(fromMore).toEqual(fromRightClick)
   })
 
-  it('one card: Open in Photoshop, Edit details, Preview, Star, New pile (off), Move to Trash', async () => {
+  it('one card: Open in Photoshop, Edit details, Star, New pile (off), Move to Trash', async () => {
     setupApi([item(1), item(2)])
     page()
     await ready()
@@ -70,8 +71,7 @@ describe('card menu', () => {
     await screen.findByRole('menu')
     expect(rows()).toEqual([
       'Open in Photoshop',
-      'Edit details↵',
-      'PreviewSpace',
+      'Edit details',
       'Star',
       'New pile⌘G',
       'Move to Trash⌘⌫'
@@ -93,7 +93,7 @@ describe('card menu', () => {
     expect(cards()[2]!.getAttribute('data-state')).toBe('selected')
   })
 
-  it('a selection: New pile from N, Star N, Preview, Move N to Trash', async () => {
+  it('a selection: New pile from N, Star N, Move N to Trash', async () => {
     setupApi([item(1), item(2), item(3)])
     page()
     await ready()
@@ -101,24 +101,19 @@ describe('card menu', () => {
     fireEvent.click(cards()[1]!, { metaKey: true })
     fireEvent.contextMenu(cards()[1]!)
     await screen.findByRole('menu')
-    expect(rows()).toEqual([
-      'New pile from 2 mockups⌘G',
-      'Star 2',
-      'PreviewSpace',
-      'Move 2 to Trash⌘⌫'
-    ])
+    expect(rows()).toEqual(['New pile from 2 mockups⌘G', 'Star 2', 'Move 2 to Trash⌘⌫'])
   })
 
-  it('a pile: Disband pile and Move pile to Trash', async () => {
+  it('a pile: Open pile page, Disband pile and Move pile to Trash', async () => {
     setupApi([pile(1), item(2)])
     page()
     await ready()
     fireEvent.contextMenu(cards()[0]!)
     await screen.findByRole('menu')
     expect(rows()).toEqual([
+      'Open pile page↵',
       'Open in Photoshop',
-      'Edit details↵',
-      'PreviewSpace',
+      'Edit details',
       'Star',
       'Disband pile⇧⌘G',
       'Move pile to Trash'
@@ -155,7 +150,7 @@ describe('card menu', () => {
       await screen.findByRole('menu')
       const labels = rows().join(' | ')
       expect(labels).not.toMatch(/duplicate|reveal|finder/i)
-      expect(rows().some((label) => /^Open(?! in Photoshop)/.test(label))).toBe(false)
+      expect(rows().some((label) => /^Open(?! in Photoshop| pile page)/.test(label))).toBe(false)
       fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
       await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
     }
@@ -172,7 +167,7 @@ describe('card menu', () => {
     )
     fireEvent.contextMenu(cards()[0]!)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Edit details/ }))
-    expect(useUiStore.getState().modal).toEqual({ kind: 'detail', mockupId: 5 })
+    expect(useDetailsStore.getState().target).toEqual({ id: 5, edit: true })
   })
 
   it('Star from the menu stars every selected mockup', async () => {
@@ -284,18 +279,41 @@ describe('trash', () => {
 })
 
 describe('keyboard', () => {
-  it('opens Detail on double-click or Enter, not on a single click', async () => {
-    setupApi([item(4)])
+  it('a click opens the sidebar on that mockup; Enter does too; double-click adds nothing', async () => {
+    setupApi([item(4), item(5)])
     page()
     await ready()
     fireEvent.click(cards()[0]!)
-    expect(useUiStore.getState().modal).toBeNull()
+    expect(useDetailsStore.getState().target).toEqual({ id: 4, edit: false })
+    fireEvent.click(cards()[1]!)
     cards()[0]!.focus()
     fireEvent.keyDown(cards()[0]!, { key: 'Enter' })
-    expect(useUiStore.getState().modal).toEqual({ kind: 'detail', mockupId: 4 })
-    useUiStore.setState({ modal: null })
-    fireEvent.doubleClick(cards()[0]!)
-    expect(useUiStore.getState().modal).toEqual({ kind: 'detail', mockupId: 4 })
+    expect(useDetailsStore.getState().target).toEqual({ id: 4, edit: false })
+    fireEvent.doubleClick(cards()[1]!)
+    expect(useDetailsStore.getState().pile).toBeNull()
+  })
+
+  it('Enter or a double-click on a pile opens its page', async () => {
+    setupApi([pile(1), pile(2)])
+    page()
+    await ready()
+    cards()[0]!.focus()
+    fireEvent.keyDown(cards()[0]!, { key: 'Enter' })
+    expect(useDetailsStore.getState().pile).toMatchObject({ id: 1, select: 1, edit: false })
+    act(() => useDetailsStore.getState().closePile())
+    await waitFor(() => expect(cards()).toHaveLength(2))
+    fireEvent.doubleClick(cards()[1]!)
+    expect(useDetailsStore.getState().pile).toMatchObject({ id: 2, select: 2 })
+  })
+
+  it('Space does nothing', async () => {
+    setupApi([item(4)])
+    page()
+    await ready()
+    cards()[0]!.focus()
+    fireEvent.keyDown(cards()[0]!, { key: ' ' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(useDetailsStore.getState().target).toBeNull()
   })
 
   it('Enter on a button inside a card keeps that button’s own action', async () => {
@@ -304,7 +322,7 @@ describe('keyboard', () => {
     await ready()
     const edit = within(cards()[0]!).getByRole('button', { name: 'Edit details' })
     fireEvent.keyDown(edit, { key: 'Enter' })
-    expect(useUiStore.getState().modal).toBeNull()
+    expect(useDetailsStore.getState().target).toBeNull()
   })
 
   it('arrow keys move through the cards and Escape clears', async () => {
@@ -326,140 +344,5 @@ describe('keyboard', () => {
     cards()[0]!.focus()
     fireEvent.keyDown(cards()[0]!, { key: 'a', metaKey: true })
     expect(screen.getByText('3 of 3 selected')).toBeTruthy()
-  })
-})
-
-describe('fullscreen preview', () => {
-  const lightbox = (name?: string | RegExp) => screen.findByRole('dialog', name ? { name } : {})
-
-  it('opens from Space and steps with arrow keys in grid order', async () => {
-    setupApi([item(1), item(2), item(3)])
-    page()
-    await ready()
-    cards()[0]!.focus()
-    fireEvent.keyDown(cards()[0]!, { key: ' ' })
-    const dialog = await lightbox('Mockup 1')
-    fireEvent.keyDown(dialog, { key: 'ArrowRight' })
-    expect(await lightbox('Mockup 2')).toBeTruthy()
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight' })
-    expect(await lightbox('Mockup 3')).toBeTruthy()
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight' })
-    expect(screen.getByRole('dialog', { name: 'Mockup 3' })).toBeTruthy()
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft' })
-    expect(await lightbox('Mockup 2')).toBeTruthy()
-  })
-
-  it('opens from Preview in the card menu', async () => {
-    setupApi([item(1), item(2)])
-    page()
-    await ready()
-    fireEvent.contextMenu(cards()[1]!)
-    fireEvent.click(await screen.findByRole('menuitem', { name: /Preview/ }))
-    expect(await lightbox('Mockup 2')).toBeTruthy()
-  })
-
-  it('returns focus to the card when the fullscreen preview closes', async () => {
-    setupApi([item(1), item(2)])
-    page()
-    await ready()
-    cards()[1]!.focus()
-    fireEvent.keyDown(cards()[1]!, { key: ' ' })
-    fireEvent.keyDown(await lightbox('Mockup 2'), { key: 'Escape' })
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    await waitFor(() => expect(document.activeElement).toBe(cards()[1]!))
-  })
-
-  it('returns focus to the card when opened from the menu too', async () => {
-    setupApi([item(1), item(2)])
-    page()
-    await ready()
-    fireEvent.contextMenu(cards()[0]!)
-    fireEvent.click(await screen.findByRole('menuitem', { name: /Preview/ }))
-    fireEvent.keyDown(await lightbox('Mockup 1'), { key: 'Escape' })
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    await waitFor(() => expect(document.activeElement).toBe(cards()[0]!))
-  })
-
-  it('opens the fullscreen preview from Space or Preview in the card menu and steps with arrow keys in grid order', async () => {
-    setupApi([item(1), item(2)])
-    page()
-    await ready()
-    cards()[0]!.focus()
-    fireEvent.keyDown(cards()[0]!, { key: ' ' })
-    fireEvent.keyDown(await lightbox('Mockup 1'), { key: 'ArrowRight' })
-    expect(await lightbox('Mockup 2')).toBeTruthy()
-  })
-
-  it('steps through a pile’s variants, then on to the next card', async () => {
-    setupApi([pile(1), item(2)], {
-      [IPC_CHANNELS.MOCKUP_DETAIL]: () => ({
-        success: true,
-        data: {
-          item: pile(1),
-          variants: [
-            { id: 1, title: 'Variant A', coverPath: '/a.webp', coverMissing: false, isTop: true },
-            { id: 11, title: 'Variant B', coverPath: '/b.webp', coverMissing: false, isTop: false }
-          ]
-        }
-      })
-    })
-    page()
-    await ready()
-    cards()[0]!.focus()
-    fireEvent.keyDown(cards()[0]!, { key: ' ' })
-    expect(await lightbox('Variant A')).toBeTruthy()
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight' })
-    expect(await lightbox('Variant B')).toBeTruthy()
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight' })
-    expect(await lightbox('Mockup 2')).toBeTruthy()
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft' })
-    expect(await lightbox('Variant B')).toBeTruthy()
-  })
-
-  it('a missing file offers Check library, which checks the stash', async () => {
-    const api = setupApi([item(1, { coverMissing: true })], {
-      [IPC_CHANNELS.STASH_CHECK_RUN]: () => ({
-        success: true,
-        data: {
-          lastRun: { at: '2026-10-20T02:41:00.000Z', trigger: 'manual', result: 'in-sync', toReview: 0 }
-        }
-      })
-    })
-    page()
-    await ready()
-    cards()[0]!.focus()
-    fireEvent.keyDown(cards()[0]!, { key: ' ' })
-    fireEvent.click(await screen.findByRole('button', { name: 'Check library' }))
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.STASH_CHECK_RUN)).toHaveLength(1))
-    await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith({ variant: 'success', message: 'Your stash is in sync' })
-    )
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-  })
-
-  it('Check library opens the reconcile view when the check finds something', async () => {
-    setupApi([item(1, { coverMissing: true })], {
-      [IPC_CHANNELS.STASH_CHECK_RUN]: () => ({
-        success: true,
-        data: {
-          lastRun: { at: '2026-10-20T02:41:00.000Z', trigger: 'manual', result: 'review', toReview: 1 }
-        }
-      })
-    })
-    page()
-    await ready()
-    cards()[0]!.focus()
-    fireEvent.keyDown(cards()[0]!, { key: ' ' })
-    fireEvent.click(await screen.findByRole('button', { name: 'Check library' }))
-    await waitFor(() => expect(useUiStore.getState().modal).toMatchObject({ kind: 'reconcile' }))
-  })
-
-  it('does not open from Space while a button inside the card has focus', async () => {
-    setupApi([item(1)])
-    page()
-    await ready()
-    const edit = within(cards()[0]!).getByRole('button', { name: 'Edit details' })
-    fireEvent.keyDown(edit, { key: ' ' })
-    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

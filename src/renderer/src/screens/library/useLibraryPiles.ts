@@ -95,7 +95,7 @@ export function useLibraryPiles({ refresh, offerUndo }: LibraryPilesInput) {
       await refresh()
       offerUndo(
         'disband pile',
-        snapshots.length === 1 ? 'Pile broken up' : 'Piles broken up',
+        snapshots.length === 1 ? 'Pile disbanded' : 'Piles disbanded',
         () => restore(snapshots),
         `${mockups(freed.length)} ${freed.length === 1 ? 'is' : 'are'} on ${freed.length === 1 ? 'its' : 'their'} own`
       )

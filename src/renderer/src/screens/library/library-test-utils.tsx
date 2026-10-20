@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem, LibraryQuery } from '@shared/library'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
+import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { useShortcutDispatcher } from '@renderer/lib/shortcuts'
 import type { ReactNode } from 'react'
@@ -74,6 +75,10 @@ export function setupApi(
 export function resetStores() {
   useLibraryStore.getState().reset()
   useUiStore.setState({ view: 'all', modal: null })
+  useDetailsStore.getState().closePile()
+  useDetailsStore.getState().syncTarget(null)
+  useDetailsStore.getState().keepEditing()
+  useDetailsStore.getState().setDirty(false)
 }
 
 /** Mounts the shortcut dispatcher the way AppShell does, so ⌘G, ⌫ and friends reach the registry. */
