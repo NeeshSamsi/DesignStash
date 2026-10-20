@@ -36,7 +36,7 @@ test('gather, sort, look over, and find the mockups in My Stash', async ({ app }
     await expect(window.getByText('1 of 4')).toBeVisible()
     // The title is the suggestion for the first file in the queue.
     await expect(window.getByRole('textbox', { name: /title/i }).first()).toHaveValue(/^Stub /)
-    await expect(window.getByText('Embedded preview')).toBeVisible()
+    await expect(window.getByRole('group', { name: 'Cover' })).toBeVisible()
 
     for (let step = 1; step <= 4; step++) {
       await window.getByRole('button', { name: /^Stash( & next)?$/ }).click()

@@ -47,12 +47,16 @@ export interface CoverPanelProps
   variantIndex?: number
 }
 
+/** The source tag. The PSD's own preview is the normal case and says nothing; a chosen cover says so. */
 const SOURCE_TAG = {
-  embedded: 'Embedded preview',
-  sidecar: 'Embedded preview',
+  embedded: '',
+  sidecar: '',
   uploaded: 'Uploaded',
   none: ''
 } as const
+
+/** An embedded preview whose longer side is under this looks soft at cover size, so it is flagged. */
+const LOW_RES_PX = 800
 
 const ERROR_TITLE = 'We couldn’t use that image'
 const ERROR_MESSAGE = 'Your cover hasn’t changed. Try another file (PNG, JPG or WebP, up to 25 MB).'
@@ -114,7 +118,11 @@ export function CoverPanel({
   const failed = state === 'error' || intake.problem !== null
   const hoverable = state === 'default' && !coverMissing
   const sidecarOffered = source === 'sidecar' && !sidecarAccepted
-  const tag = source === 'sidecar' && sidecarAccepted ? 'Sidecar image' : SOURCE_TAG[source]
+  const lowRes = imageSize !== undefined && Math.max(imageSize.width, imageSize.height) < LOW_RES_PX
+  const tag =
+    source === 'sidecar' && sidecarAccepted
+      ? 'Sidecar image'
+      : SOURCE_TAG[source] || (lowRes ? 'Low-res preview' : '')
   const overlay = intake.drag ?? (given === 'drag-over' ? 'image' : null)
 
   // Esc cancels a replace and keeps the old cover.
@@ -283,7 +291,7 @@ export function CoverPanel({
       </div>
 
       <div className="flex items-center gap-2">
-        <Badge variant="secondary">{tag}</Badge>
+        {tag && <Badge variant="secondary">{tag}</Badge>}
         <div
           className="min-w-0 flex-1 truncate type-caption-xs-regular text-tertiary"
           role="status"

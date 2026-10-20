@@ -463,7 +463,7 @@ describe('details sidebar · cover', () => {
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: 42 })
     )
     await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png')))
-    expect(screen.getByText('Embedded preview')).not.toBeNull()
+    expect(screen.queryByText('Uploaded')).toBeNull()
   })
 
   it('undoes a replace back to the earlier uploaded cover', async () => {

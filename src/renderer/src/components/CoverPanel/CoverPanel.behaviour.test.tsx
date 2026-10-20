@@ -34,9 +34,22 @@ afterEach(() => {
 })
 
 describe('CoverPanel · cover image', () => {
+  it('says nothing about the PSD’s own preview unless it is low-res', () => {
+    const { rerender } = renderPanel({ imageSize: { width: 1600, height: 1200 } })
+    expect(screen.queryByText('Low-res preview')).toBeNull()
+    rerender(
+      <CoverPanel
+        source="embedded"
+        coverSrc="file:///old.png"
+        imageSize={{ width: 640, height: 480 }}
+      />
+    )
+    expect(screen.getByText('Low-res preview')).not.toBeNull()
+  })
+
   it('shows the cover with a tag row: source tag, optional note, and an always-visible Zoom', () => {
     const { container, rerender } = renderPanel({ showNote: true, note: 'Cropped to 4:3' })
-    expect(screen.getByText('Embedded preview')).not.toBeNull()
+    expect(screen.queryByText('Embedded preview')).toBeNull()
     expect(screen.getByText('Cropped to 4:3')).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Zoom' })).not.toBeNull()
     expect(coverImg(container)?.getAttribute('src')).toBe('file:///old.png')
@@ -210,7 +223,7 @@ describe('CoverPanel · cover image', () => {
     })
     expect(container.querySelector('[data-ds="Banner"]')?.getAttribute('data-tone')).toBe('info')
     expect(screen.getByText('Found “phone_front.png” next to the PSD')).not.toBeNull()
-    expect(screen.getByText('Embedded preview')).not.toBeNull()
+    expect(screen.queryByText('Embedded preview')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Use this cover' }))
     expect(onUseSidecar).toHaveBeenCalledOnce()
 

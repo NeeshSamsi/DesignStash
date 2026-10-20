@@ -94,7 +94,7 @@ test.describe('Details sidebar', () => {
     await expect(panel(window).getByRole('button', { name: 'Save' })).toBeDisabled()
 
     await window.getByRole('button', { name: 'Undo' }).click()
-    await expect(panel(window).getByText('Embedded preview')).toBeVisible()
+    await expect(panel(window).getByText('Uploaded')).toBeHidden()
   })
 
   test('Remove from pile takes a mockup out with Undo; a pile of two dissolves', async ({

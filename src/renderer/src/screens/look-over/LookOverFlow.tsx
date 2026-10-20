@@ -498,10 +498,11 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
             onUsePsdPreview={useEmbedded}
           />
         )}
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
           {form && (
             <MockupMetaForm
               variant="approval"
+              className="min-h-0 flex-1"
               state={blocked ? 'invalid' : 'pristine'}
               showHint={false}
               title={form.title}
