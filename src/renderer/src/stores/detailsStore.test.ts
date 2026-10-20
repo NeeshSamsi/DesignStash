@@ -84,7 +84,7 @@ describe('detailsStore', () => {
   })
 
   it('closing the pile page drops the sidebar with it', () => {
-    store().openPile({ id: 3, title: 'Clay', count: 4 })
+    store().openPile({ id: 3, title: 'Clay', count: 4, select: 3, edit: false })
     store().syncTarget(3)
     store().closePile()
     expect(store().pile).toBeNull()
@@ -92,8 +92,8 @@ describe('detailsStore', () => {
   })
 
   it('keeps the pile page title in step with edits', () => {
-    store().openPile({ id: 3, title: 'Clay', count: 4 })
+    store().openPile({ id: 3, title: 'Clay', count: 4, select: 3, edit: false })
     store().updatePile({ title: 'Clay phone' })
-    expect(store().pile).toEqual({ id: 3, title: 'Clay phone', count: 4 })
+    expect(store().pile).toEqual({ id: 3, title: 'Clay phone', count: 4, select: 3, edit: false })
   })
 })

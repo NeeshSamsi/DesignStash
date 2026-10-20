@@ -3,6 +3,7 @@ import { act, render, screen, fireEvent } from '@testing-library/react'
 import AppShell from './AppShell'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
+import { useDetailsStore } from './stores/detailsStore'
 import { shortcuts } from './lib/shortcuts'
 import { IPC_CHANNELS } from '@shared/ipc'
 
@@ -441,5 +442,44 @@ describe('AppShell controlled search', () => {
     )
     act(() => useLibraryStore.getState().setQuery(''))
     expect((screen.getByRole('textbox', { name: 'Search' }) as HTMLInputElement).value).toBe('')
+  })
+})
+
+describe('AppShell details sidebar and pile page', () => {
+  beforeEach(() => {
+    useDetailsStore.getState().closePile()
+    useDetailsStore.getState().syncTarget(null)
+  })
+
+  it('opens the sidebar surface when a mockup is shown, and widens the container when it closes', () => {
+    render(
+      <AppShell>
+        <div>content</div>
+      </AppShell>
+    )
+    const aside = () => document.querySelector('[data-slot="aside"]')!
+    expect(aside().getAttribute('data-open')).toBe('false')
+    expect(document.querySelector('main')!.className).toContain('rounded-tr-none')
+    act(() => useDetailsStore.getState().syncTarget(5))
+    expect(aside().getAttribute('data-open')).toBe('true')
+    expect(document.querySelector('main')!.className).toContain('rounded-tr-3xl')
+    act(() => useDetailsStore.getState().syncTarget(null))
+    expect(aside().getAttribute('data-open')).toBe('false')
+  })
+
+  it('shows the pile page header: breadcrumb back to My Stash, count and the Esc hint', () => {
+    useDetailsStore
+      .getState()
+      .openPile({ id: 1, title: 'Clay iPhone', count: 4, select: 1, edit: false })
+    render(
+      <AppShell>
+        <div>content</div>
+      </AppShell>
+    )
+    const header = document.querySelector('[data-ds="PageHeader"]')!
+    expect(header.textContent).toContain('Clay iPhone')
+    expect(header.textContent).toContain('Pile · 4 mockups · Esc to go back')
+    fireEvent.click(screen.getByRole('button', { name: 'My Stash', hidden: false }))
+    expect(useDetailsStore.getState().pile).toBeNull()
   })
 })

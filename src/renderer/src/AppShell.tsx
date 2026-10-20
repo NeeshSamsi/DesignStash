@@ -1,7 +1,11 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useUiStore, type AppView } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
-import { DetailModal } from './screens/detail/DetailModal'
+import { DetailsSidebar, DiscardAsk } from './screens/details/DetailsSidebar'
+import { mockupsLabel } from './screens/details/details-model'
+import { usePanelGrid } from './screens/details/use-panel-grid'
+import { useDetailsEscape } from './screens/details/use-details-escape'
+import { useDetailsStore } from './stores/detailsStore'
 import { SettingsModal } from './screens/settings'
 import { StashCheckModal } from './screens/integrity'
 import { Toaster } from './ui/sonner'
@@ -118,14 +122,26 @@ export default function AppShell({
     lastQuery.current = query
   }, [query])
 
+  const pile = useDetailsStore((s) => s.pile)
+  const sidebarOpen = useDetailsStore((s) => s.target !== null)
+  useDetailsEscape()
+  const pageRef = useRef<HTMLDivElement>(null)
+  const heldWidth = usePanelGrid(sidebarOpen, pageRef)
+
   const header = showHeader
-    ? headerFor(view, {
-        total: stats.total,
-        favourites: stats.favourites,
-        toSort: inbox?.toSort ?? 0,
-        toStash: inbox?.toStash ?? 0,
-        trash: inbox?.trash ?? stats.trashed
-      })
+    ? pile
+      ? {
+          parent: 'My Stash',
+          current: pile.title,
+          description: `Pile · ${mockupsLabel(pile.count)} · Esc to go back`
+        }
+      : headerFor(view, {
+          total: stats.total,
+          favourites: stats.favourites,
+          toSort: inbox?.toSort ?? 0,
+          toStash: inbox?.toStash ?? 0,
+          trash: inbox?.trash ?? stats.trashed
+        })
     : null
 
   const onQueryChange = (next: string) => {
@@ -137,7 +153,6 @@ export default function AppShell({
   const dialog =
     modal === null ? undefined : (
       <>
-        {modal.kind === 'detail' && <DetailModal mockupId={modal.mockupId} onClose={closeModal} />}
         {modal.kind === 'reconcile' && (
           <StashCheckModal
             report={modal.report}
@@ -186,6 +201,7 @@ export default function AppShell({
                 <PageHeader
                   current={header.current}
                   breadcrumb={header.parent !== undefined}
+                  {...(pile ? { onParent: () => useDetailsStore.getState().closePile() } : {})}
                   {...(header.parent !== undefined ? { parent: header.parent } : {})}
                   description={status ? `${header.description} · ${status}` : header.description}
                 >
@@ -195,10 +211,21 @@ export default function AppShell({
               )
             }
           : {})}
-        page={children}
+        page={
+          <div
+            ref={pageRef}
+            className="flex min-h-full flex-col *:flex-1"
+            {...(heldWidth !== null ? { style: { width: heldWidth } } : {})}
+          >
+            {children}
+          </div>
+        }
+        aside={<DetailsSidebar />}
+        asideOpen={sidebarOpen}
         {...(dropOverlay ? { drop: dropOverlay } : {})}
         {...(dialog ? { dialog } : {})}
       />
+      <DiscardAsk />
       <ActivityDock
         className="pointer-events-auto fixed right-4 bottom-4 z-toast"
         toastContent={<Toaster />}

@@ -11,6 +11,10 @@ export interface OpenPile {
   id: number
   title: string
   count: number
+  /** The mockup selected on arrival: the top one, or the one that was clicked. */
+  select: number
+  /** Arrive with the sidebar showing that mockup as fields. */
+  edit: boolean
 }
 
 interface DetailsState {
