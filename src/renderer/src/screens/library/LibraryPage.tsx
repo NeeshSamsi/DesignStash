@@ -358,7 +358,7 @@ export default function LibraryPage({
           onSelectedTagIdsChange: setTagFilter,
           pickedCategoryIds: categoryIds,
           onToggleCategory,
-          onManageTags: () => openSettings()
+          onManageTags: () => openSettings('tags')
         }}
       />
       {failed && items.length > 0 && (

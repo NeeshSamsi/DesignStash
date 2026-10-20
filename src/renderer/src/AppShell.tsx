@@ -92,6 +92,8 @@ export default function AppShell({
   const setView = useUiStore((s) => s.setView)
   const settingsOpen = useUiStore((s) => s.settingsOpen)
   const openSettings = useUiStore((s) => s.openSettings)
+  const settingsSection = useUiStore((s) => s.settingsSection)
+  const setSettingsSection = useUiStore((s) => s.setSettingsSection)
   const closeSettings = useUiStore((s) => s.closeSettings)
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
@@ -201,7 +203,7 @@ export default function AppShell({
               const next = NAV_VIEWS[key]
               if (next) setView(next)
             }}
-            onOpenSettings={openSettings}
+            onOpenSettings={() => openSettings()}
             add={
               <AddMenu
                 disabled={importing}
@@ -234,6 +236,8 @@ export default function AppShell({
       />
       <SettingsModal
         open={settingsOpen}
+        section={settingsSection}
+        onSectionChange={setSettingsSection}
         onClose={closeSettings}
         onOpenTrash={() => setView('trash')}
         onReview={(report) => useUiStore.getState().openModal({ kind: 'reconcile', report })}

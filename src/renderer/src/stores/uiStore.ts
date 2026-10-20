@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { IntegrityReport } from '@shared/integrity'
+import type { SettingsLayoutSection } from '../components/SettingsLayout'
 
 /** `all` and `starred` are My Stash pages. Settings is a modal (`settingsOpen`), not a page. */
 export type AppView = 'all' | 'starred' | 'to-sort' | 'to-stash' | 'trash'
@@ -16,7 +17,11 @@ interface UiState {
   searchText: string
   /** Settings is a modal over whatever page is on show. */
   settingsOpen: boolean
-  openSettings: () => void
+  /** The pane Settings shows. */
+  settingsSection: SettingsLayoutSection
+  setSettingsSection: (section: SettingsLayoutSection) => void
+  /** Opens Settings on a pane; without one it opens on My Stash. */
+  openSettings: (section?: SettingsLayoutSection) => void
   closeSettings: () => void
   setSearchText: (text: string) => void
   openModal: (modal: Modal) => void
@@ -29,7 +34,9 @@ export const useUiStore = create<UiState>((set) => ({
   modal: null,
   searchText: '',
   settingsOpen: false,
-  openSettings: () => set({ settingsOpen: true }),
+  settingsSection: 'my-stash',
+  setSettingsSection: (settingsSection) => set({ settingsSection }),
+  openSettings: (section = 'my-stash') => set({ settingsOpen: true, settingsSection: section }),
   closeSettings: () => set({ settingsOpen: false }),
   setSearchText: (searchText) => set({ searchText }),
   openModal: (modal) => set({ modal }),

@@ -85,10 +85,24 @@ describe('AppShell navigation', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /^Settings/ }))
     expect(useUiStore.getState().settingsOpen).toBe(true)
+    expect(useUiStore.getState().settingsSection).toBe('my-stash')
     expect(useUiStore.getState().view).toBe('all')
     expect(screen.getByRole('dialog').getAttribute('data-ds')).toBe('SettingsModal')
     expect(
       screen.getByRole('button', { name: /^Settings$/, hidden: true }).getAttribute('aria-current')
+    ).toBe('page')
+  })
+
+  it('opens Settings on the pane that was asked for', () => {
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    act(() => useUiStore.getState().openSettings('tags'))
+    expect(screen.getByRole('heading', { name: 'Tags' })).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Tags', hidden: true }).getAttribute('aria-current')
     ).toBe('page')
   })
 
