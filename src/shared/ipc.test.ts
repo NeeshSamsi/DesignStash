@@ -147,7 +147,7 @@ describe('IPC Contract', () => {
     it('validates a list response', () => {
       const valid = {
         models: [
-          { id: 'qwen2.5-1.5b', name: 'Qwen 2.5 1.5B', tier: 'small', sizeBytes: 1040000000, installed: false, active: false }
+          { id: 'smolvlm2-2.2b', name: 'SmolVLM2 2.2B', tier: 'small', sizeBytes: 1705125856, description: 'Fast.', languages: ['English'], quality: 3, speed: 5, minMemoryGB: 8, bestFit: false, installed: false, active: false }
         ]
       }
       expect(response.parse(valid)).toEqual(valid)
@@ -200,12 +200,12 @@ describe('IPC Contract', () => {
   describe('AiModelInfoSchema', () => {
     it('rejects an invalid tier', () => {
       expect(() =>
-        AiModelInfoSchema.parse({ id: 'x', name: 'X', tier: 'xl', sizeBytes: 0, installed: false, active: false })
+        AiModelInfoSchema.parse({ id: 'x', name: 'X', tier: 'xl', sizeBytes: 0, description: '', languages: [], quality: 3, speed: 3, minMemoryGB: 8, bestFit: false, installed: false, active: false })
       ).toThrow()
     })
 
     it('validates a well-formed model entry', () => {
-      const valid = { id: 'phi-3.5-mini', name: 'Phi 3.5 Mini', tier: 'medium', sizeBytes: 2400000000, installed: true, active: true }
+      const valid = { id: 'qwen2.5-vl-3b', name: 'Qwen 2.5 VL 3B', tier: 'medium', sizeBytes: 2774658784, description: 'Balanced.', languages: ['English'], quality: 4, speed: 4, minMemoryGB: 12, bestFit: true, installed: true, active: true }
       expect(AiModelInfoSchema.parse(valid)).toEqual(valid)
     })
   })

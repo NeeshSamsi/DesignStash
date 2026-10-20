@@ -1,7 +1,7 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { detectHardware, recommendTier } from '../ai/hardware'
-import { MODEL_REGISTRY } from '../ai/registry'
+import { MODEL_REGISTRY, availableModels, bestFitModelId } from '../ai/registry'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
@@ -15,12 +15,19 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
 
   registerIpcHandler(IPC_CHANNELS.AI_LIST_MODELS, async () => {
     const activeModelId = settings.get().activeModelId
+    const bestFit = bestFitModelId(detectHardware())
     const models = await Promise.all(
-      MODEL_REGISTRY.map(async (entry) => ({
+      availableModels().map(async (entry) => ({
         id: entry.id,
         name: entry.name,
         tier: entry.tier,
         sizeBytes: entry.sizeBytes,
+        description: entry.description,
+        languages: entry.languages,
+        quality: entry.quality,
+        speed: entry.speed,
+        minMemoryGB: entry.minMemoryGB,
+        bestFit: entry.id === bestFit,
         installed: await downloader.isInstalled(entry.id),
         active: entry.id === activeModelId
       }))

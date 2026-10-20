@@ -8,23 +8,27 @@ import { ModelDownloader } from './download'
 import * as registry from './registry'
 import type { ModelTier } from './hardware'
 
-// Mock registry
-const mockModel = {
-  id: 'test-model',
-  name: 'Test Model',
+// Mock registry: two 60 and 40 byte files, so a model is 100 bytes.
+const A = Buffer.from(''.padStart(60, 'a'))
+const B = Buffer.from(''.padStart(40, 'b'))
+const sha = (b: Buffer) => createHash('sha256').update(b).digest('hex')
+const makeModel = (id: string, sums: boolean) => ({
+  id,
+  name: id,
   tier: 'small' as ModelTier,
+  description: '',
+  languages: ['English'],
+  quality: 3,
+  speed: 3,
+  minMemoryGB: 8,
   sizeBytes: 100,
-  url: 'http://test.com/model.gguf',
-  sha256: createHash('sha256').update(Buffer.from(''.padStart(100, 'a'))).digest('hex')
-}
-const mockModelNoSha = {
-  id: 'test-model-nohash',
-  name: 'Test Model No Hash',
-  tier: 'small' as ModelTier,
-  sizeBytes: 100,
-  url: 'http://test.com/model-nohash.gguf',
-  sha256: null
-}
+  files: {
+    model: { url: `http://test.com/${id}/big.gguf`, sizeBytes: 60, sha256: sums ? sha(A) : null },
+    mmproj: { url: `http://test.com/${id}/proj.gguf`, sizeBytes: 40, sha256: sums ? sha(B) : null }
+  }
+})
+const mockModel = makeModel('test-model', true)
+const mockModelNoSha = makeModel('test-model-nohash', false)
 
 vi.spyOn(registry, 'getModel').mockImplementation((id) => {
   if (id === 'test-model') return mockModel
@@ -42,129 +46,125 @@ afterEach(async () => {
   await fs.rm(tempModelsDir, { recursive: true, force: true })
 })
 
-function createMockFetch(data: Buffer, options: { chunkSize?: number; headers?: Record<string, string> } = {}) {
-  const { chunkSize = 10, headers = {} } = options
-  
+/** Serves A for the model url and B for the mmproj url, with Range support. */
+function createMockFetch(files: { big: Buffer; proj: Buffer } = { big: A, proj: B }, chunkSize = 10) {
   return vi.fn().mockImplementation(async (url: string, opts: RequestInit = {}) => {
-    let streamData = data
-    if (opts.headers) {
-      const h = new Headers(opts.headers)
-      if (h.has('Range')) {
-        const range = h.get('Range')!
-        const [start] = range.replace('bytes=', '').split('-').map(Number)
-        streamData = data.slice(start)
-      }
-    }
+    let data = String(url).endsWith('proj.gguf') ? files.proj : files.big
+    const range = opts.headers ? new Headers(opts.headers).get('Range') : null
+    if (range) data = data.subarray(Number(range.replace('bytes=', '').split('-')[0]))
 
     const stream = new Readable({
       read() {
-        for (let i = 0; i < streamData.length; i += chunkSize) {
-          this.push(streamData.slice(i, i + chunkSize))
-        }
+        for (let i = 0; i < data.length; i += chunkSize) this.push(data.subarray(i, i + chunkSize))
         this.push(null)
       }
     })
-
-    const isRangeRequest = opts.headers && new Headers(opts.headers).has('Range')
-    return Promise.resolve(new Response(stream as unknown as ReadableStream, {
-      status: isRangeRequest ? 206 : 200,
-      headers: { 'content-length': String(streamData.length), ...headers },
-    }))
+    return new Response(stream as unknown as ReadableStream, {
+      status: range ? 206 : 200,
+      headers: { 'content-length': String(data.length) }
+    })
   })
 }
 
-
 describe('ModelDownloader', () => {
-  it('should download a model successfully and emit progress events', async () => {
-    const modelData = Buffer.from(''.padStart(100, 'a'))
-    const fetchImpl = createMockFetch(modelData)
+  it('downloads both files to model.gguf and mmproj.gguf and reports one combined progress figure', async () => {
+    const fetchImpl = createMockFetch()
     const downloader = new ModelDownloader(tempModelsDir, { fetchImpl })
     const onProgress = vi.fn()
 
     await downloader.download('test-model', { onProgress })
 
-    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ phase: 'downloading' }))
-    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ phase: 'verifying' }))
-    expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ phase: 'done', receivedBytes: 100, totalBytes: 100 }))
+    const dir = join(tempModelsDir, 'test-model')
+    expect((await fs.readFile(join(dir, 'model.gguf'))).equals(A)).toBe(true)
+    expect((await fs.readFile(join(dir, 'mmproj.gguf'))).equals(B)).toBe(true)
+    expect(await fs.readdir(dir)).not.toContain('model.gguf.part')
 
-    const installed = await downloader.isInstalled('test-model')
-    expect(installed).toBe(true)
+    const calls = onProgress.mock.calls.map(([p]) => p)
+    expect(calls.every((p) => p.totalBytes === 100)).toBe(true)
+    const downloading = calls.filter((p) => p.phase === 'downloading').map((p) => p.receivedBytes)
+    expect(downloading).toEqual([...downloading].sort((a, b) => a - b))
+    // The second file carries on from where the first ended.
+    expect(downloading.some((n) => n > 60)).toBe(true)
+    expect(calls.at(-1)).toMatchObject({ phase: 'done', receivedBytes: 100, totalBytes: 100 })
+    expect(calls.some((p) => p.phase === 'verifying')).toBe(true)
+    expect(await downloader.isInstalled('test-model')).toBe(true)
   })
 
-  it('should fail if checksum is incorrect', async () => {
-    const modelData = Buffer.from(''.padStart(100, 'x')) // wrong data
-    const fetchImpl = createMockFetch(modelData)
-    const downloader = new ModelDownloader(tempModelsDir, { fetchImpl })
+  it('is not installed until both files are there', async () => {
+    const downloader = new ModelDownloader(tempModelsDir)
+    const dir = join(tempModelsDir, 'test-model')
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(join(dir, 'model.gguf'), 'x')
+    expect(await downloader.isInstalled('test-model')).toBe(false)
+    await fs.writeFile(join(dir, 'mmproj.gguf'), 'y')
+    expect(await downloader.isInstalled('test-model')).toBe(true)
+  })
+
+  it('fails and cleans up when a checksum is wrong', async () => {
+    const downloader = new ModelDownloader(tempModelsDir, {
+      fetchImpl: createMockFetch({ big: Buffer.from(''.padStart(60, 'x')), proj: B })
+    })
 
     await expect(downloader.download('test-model')).rejects.toThrow('Checksum failed')
 
-    const partPath = join(tempModelsDir, 'test-model', 'model.gguf.part')
-    await expect(fs.stat(partPath)).rejects.toThrow() // check cleanup
+    const dir = join(tempModelsDir, 'test-model')
+    expect(await fs.readdir(dir)).toEqual([])
+    expect(await downloader.isInstalled('test-model')).toBe(false)
   })
 
-  it('should be able to cancel a download', async () => {
-    const modelData = Buffer.from(''.padStart(100, 'a'))
-    const fetchImpl = createMockFetch(modelData)
-    const downloader = new ModelDownloader(tempModelsDir, { fetchImpl })
+  it('can be cancelled', async () => {
+    const downloader = new ModelDownloader(tempModelsDir, { fetchImpl: createMockFetch() })
     const controller = new AbortController()
 
-    const downloadPromise = downloader.download('test-model', { signal: controller.signal })
+    const promise = downloader.download('test-model', { signal: controller.signal })
     controller.abort()
 
-    await expect(downloadPromise).rejects.toHaveProperty('name', 'AbortError')
+    await expect(promise).rejects.toHaveProperty('name', 'AbortError')
   })
 
-  it('should resume a partial download', async () => {
-    const modelData = Buffer.from(''.padStart(100, 'a'))
-    const partialData = modelData.slice(0, 50)
-    
-    await fs.mkdir(join(tempModelsDir, 'test-model'))
-    await fs.writeFile(join(tempModelsDir, 'test-model', 'model.gguf.part'), partialData)
+  it('resumes a partly downloaded file with a Range request', async () => {
+    const dir = join(tempModelsDir, 'test-model')
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(join(dir, 'model.gguf.part'), A.subarray(0, 25))
+    const fetchImpl = createMockFetch()
 
-    const fetchImpl = createMockFetch(modelData)
-    const downloader = new ModelDownloader(tempModelsDir, { fetchImpl })
-    
-    await downloader.download('test-model')
-    
-    expect(fetchImpl).toHaveBeenCalled()
-    const firstCall = fetchImpl.mock.calls[0]
-    expect(firstCall).toBeDefined()
-    if (!firstCall || !firstCall[1]) throw new Error('Fetch not called correctly')
-    const callHeaders = new Headers(firstCall[1].headers)
-    expect(callHeaders.get('Range')).toBe('bytes=50-')
+    await new ModelDownloader(tempModelsDir, { fetchImpl }).download('test-model')
+
+    const first = fetchImpl.mock.calls[0]!
+    expect(new Headers(first[1].headers).get('Range')).toBe('bytes=25-')
+    expect((await fs.readFile(join(dir, 'model.gguf'))).equals(A)).toBe(true)
   })
 
-  it('should correctly list, check for, and delete installed models', async () => {
+  it('keeps a finished first file when the second one has to be retried', async () => {
+    const dir = join(tempModelsDir, 'test-model')
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(join(dir, 'model.gguf'), A)
+    const fetchImpl = createMockFetch()
+
+    await new ModelDownloader(tempModelsDir, { fetchImpl }).download('test-model')
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(String(fetchImpl.mock.calls[0]![0])).toContain('proj.gguf')
+  })
+
+  it('lists, checks for and deletes installed models', async () => {
     const downloader = new ModelDownloader(tempModelsDir)
-
-    // Initially nothing is installed
-    expect(await downloader.isInstalled('test-model')).toBe(false)
     expect(await downloader.listInstalled()).toEqual([])
 
-    // "Install" a model
-    const modelDir = join(tempModelsDir, 'test-model')
-    await fs.mkdir(modelDir, { recursive: true })
-    await fs.writeFile(join(modelDir, 'model.gguf'), '')
-    
-    expect(await downloader.isInstalled('test-model')).toBe(true)
+    const dir = join(tempModelsDir, 'test-model')
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(join(dir, 'model.gguf'), '')
+    await fs.writeFile(join(dir, 'mmproj.gguf'), '')
     expect(await downloader.listInstalled()).toEqual(['test-model'])
 
-    // Delete it
     await downloader.deleteModel('test-model')
     expect(await downloader.isInstalled('test-model')).toBe(false)
-    expect(await downloader.listInstalled()).toEqual([])
-    await expect(fs.stat(modelDir)).rejects.toThrow()
+    await expect(fs.stat(dir)).rejects.toThrow()
   })
 
-  it('should skip integrity check and still succeed when sha256 is null', async () => {
-    const modelData = Buffer.from(''.padStart(100, 'a'))
-    const fetchImpl = createMockFetch(modelData)
-    const downloader = new ModelDownloader(tempModelsDir, { fetchImpl })
-
+  it('skips the integrity check when there is no sha256', async () => {
+    const downloader = new ModelDownloader(tempModelsDir, { fetchImpl: createMockFetch() })
     await downloader.download('test-model-nohash')
-
     expect(await downloader.isInstalled('test-model-nohash')).toBe(true)
-    const modelPath = join(tempModelsDir, 'test-model-nohash', 'model-nohash.gguf')
-    expect((await fs.stat(modelPath)).size).toBe(100)
   })
 })

@@ -1,7 +1,7 @@
 import { createWriteStream, promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
-import { getModel } from './registry'
+import { getModel, MODEL_FILE_NAMES } from './registry'
 
 export interface DownloadProgress {
   modelId: string
@@ -88,12 +88,12 @@ export class ModelDownloader {
     }
   }
 
+  /** Installed means both files are there: the model and its image projector. */
   async isInstalled(id: string): Promise<boolean> {
-    const model = getModel(id)
-    if (!model) return false
-
+    if (!getModel(id)) return false
     try {
-      await fs.stat(join(this.modelPath(id), model.url.split('/').pop()!))
+      await fs.stat(join(this.modelPath(id), MODEL_FILE_NAMES.model))
+      await fs.stat(join(this.modelPath(id), MODEL_FILE_NAMES.mmproj))
       return true
     } catch {
       return false
@@ -125,69 +125,49 @@ export class ModelDownloader {
   ): Promise<void> {
     const model = getModel(id)
     if (!model) throw new Error(`Model not found: ${id}`)
-    if (!model.url) {
-      throw new Error(`Model "${id}" has no download URL configured`)
-    }
 
     const modelDir = this.modelPath(id)
     await fs.mkdir(modelDir, { recursive: true })
 
-    const filesToDownload: { url: string; sha256: string | null; size: number }[] = []
-    filesToDownload.push({ url: model.url, sha256: model.sha256, size: model.sizeBytes })
+    const files = (['model', 'mmproj'] as const).map((kind) => ({
+      ...model.files[kind],
+      fileName: MODEL_FILE_NAMES[kind]
+    }))
+    const total = files.reduce((sum, f) => sum + f.sizeBytes, 0)
+    let doneBytes = 0
 
-    let totalReceived = 0
-    // Seeded from registry; updated to the server's actual Content-Length on first progress tick.
-    let knownTotal = model.sizeBytes
+    const report = (received: number, phase: DownloadProgress['phase']) =>
+      opts.onProgress?.({ modelId: id, receivedBytes: received, totalBytes: total, phase })
 
-    const onProgress = (received: number, total: number) => {
-      totalReceived = received
-      knownTotal = total
-      opts.onProgress?.({
-        modelId: id,
-        receivedBytes: totalReceived,
-        totalBytes: knownTotal,
-        phase: 'downloading'
-      })
-    }
+    for (const file of files) {
+      const partPath = join(modelDir, `${file.fileName}.part`)
+      const finalPath = join(modelDir, file.fileName)
 
-    for (const file of filesToDownload) {
-      const fileName = file.url.split('/').pop()!
-      const partPath = join(modelDir, `${fileName}.part`)
-      const finalPath = join(modelDir, fileName)
+      // A finished file from an earlier try is kept.
+      if (await fs.stat(finalPath).then(() => true, () => false)) {
+        doneBytes += file.sizeBytes
+        continue
+      }
 
       const downloadOpts: Parameters<typeof this.downloadFile>[3] = {
-        onProgress
+        onProgress: (received) => report(doneBytes + received, 'downloading')
       }
-      if (opts.signal) {
-        downloadOpts.signal = opts.signal
-      }
+      if (opts.signal) downloadOpts.signal = opts.signal
 
-      await this.downloadFile(file.url, partPath, file.size, downloadOpts)
+      await this.downloadFile(file.url, partPath, file.sizeBytes, downloadOpts)
 
       if (file.sha256) {
-        opts.onProgress?.({
-          modelId: id,
-          receivedBytes: totalReceived,
-          totalBytes: knownTotal,
-          phase: 'verifying'
-        })
-        const checksumOk = await this.verifyChecksum(partPath, file.sha256)
-        if (!checksumOk) {
+        report(doneBytes + file.sizeBytes, 'verifying')
+        if (!(await this.verifyChecksum(partPath, file.sha256))) {
           await fs.unlink(partPath)
-          throw new Error(`Checksum failed for ${fileName}`)
+          throw new Error(`Checksum failed for ${file.fileName}`)
         }
-      } else {
-        console.warn(`[ModelDownloader] Skipping integrity check for "${fileName}" — no sha256 in registry`)
       }
 
       await fs.rename(partPath, finalPath)
+      doneBytes += file.sizeBytes
     }
 
-    opts.onProgress?.({
-      modelId: id,
-      receivedBytes: knownTotal,
-      totalBytes: knownTotal,
-      phase: 'done'
-    })
+    report(total, 'done')
   }
 }

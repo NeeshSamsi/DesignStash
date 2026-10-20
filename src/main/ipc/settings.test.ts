@@ -25,7 +25,7 @@ let sqlite: Database.Database
 let repo: Repository
 let base: string
 let settings: SettingsStore
-let relaunch: ReturnType<typeof vi.fn>
+let relaunch: ReturnType<typeof vi.fn<() => void>>
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -36,7 +36,7 @@ beforeEach(() => {
   settings = createSettingsStore(base)
   mkdirSync(settings.getLibraryRoot(), { recursive: true })
   ;({ sqlite, repo } = createTestDb())
-  relaunch = vi.fn()
+  relaunch = vi.fn<() => void>()
   registerSettingsHandlers({ settings, repo, push: vi.fn() } as unknown as HandlerContext)
   registerAppHandlers(relaunch)
 })

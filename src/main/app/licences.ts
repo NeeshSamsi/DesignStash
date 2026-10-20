@@ -3,13 +3,13 @@ import { join } from 'node:path'
 
 export interface PackageSource {
   /** package.json of the app: name, license and dependencies. */
-  readApp(): { license?: string; dependencies?: Record<string, string> }
+  readApp(): { license?: string | undefined; dependencies?: Record<string, string> | undefined }
   /** package.json of one dependency, or null when it can't be read. */
-  readDependency(name: string): { version?: string; license?: string | { type?: string } } | null
+  readDependency(name: string): { version?: string; license?: string | { type?: string | undefined } | undefined } | null
 }
 
 export function nodePackageSource(root: string): PackageSource {
-  const read = (path: string) => {
+  const read = (path: string): ReturnType<PackageSource['readDependency']> => {
     try {
       return JSON.parse(readFileSync(path, 'utf8')) as ReturnType<PackageSource['readDependency']>
     } catch {
@@ -17,7 +17,7 @@ export function nodePackageSource(root: string): PackageSource {
     }
   }
   return {
-    readApp: () => read(join(root, 'package.json')) ?? {},
+    readApp: () => (read(join(root, 'package.json')) ?? {}) as ReturnType<PackageSource['readApp']>,
     readDependency: (name) => read(join(root, 'node_modules', name, 'package.json'))
   }
 }

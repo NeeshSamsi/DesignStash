@@ -8,7 +8,16 @@ export const AiModelInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   tier: AiModelTierSchema,
+  /** Both files together. */
   sizeBytes: z.number(),
+  description: z.string(),
+  languages: z.array(z.string()),
+  /** 1 to 5. */
+  quality: z.number().min(1).max(5),
+  speed: z.number().min(1).max(5),
+  minMemoryGB: z.number(),
+  /** The model shown as "Best fit for this Mac". */
+  bestFit: z.boolean(),
   installed: z.boolean(),
   active: z.boolean()
 })
