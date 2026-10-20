@@ -1,0 +1,81 @@
+/*
+ * The details sidebar opening and closing, as a view transition (lib/panel-transition.ts).
+ * The browser morphs what has a `view-transition-name`: each visible card (named at the time), the
+ * main panel, the dock and toasts, and the sidebar. Timing comes from the panel tokens in main.css.
+ * Under reduced motion, or without the API, the layout simply changes and none of this runs.
+ */
+
+:root {
+  /* The sidebar's share of the window (380 + 8 gap + 8 margin): how far it travels in and out. */
+  --details-panel-share: 24.75rem;
+}
+
+/* The page stays clickable and hoverable while it morphs. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* Cards, the main panel and the dock move together: 280ms settling out when opening, 180ms on the same curve closing. */
+::view-transition-group(*) {
+  animation-duration: var(--duration-panel-open);
+  animation-timing-function: var(--ease-panel-out);
+}
+html[data-panel-motion='close']::view-transition-group(*) {
+  animation-duration: var(--duration-panel-container-close);
+  animation-timing-function: var(--ease-panel-out);
+}
+
+/* What did not change shape (the nav, the header's text) only needs to stay put: no cross-fade flicker. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-panel-open);
+}
+html[data-panel-motion='close']::view-transition-old(root),
+html[data-panel-motion='close']::view-transition-new(root) {
+  animation-duration: var(--duration-panel-container-close);
+}
+
+/* The sidebar enters as one block from the right, 40ms behind the container, fading in over its first 100ms. */
+::view-transition-group(details-panel) {
+  animation: none;
+}
+::view-transition-new(details-panel) {
+  animation:
+    details-panel-slide-in 260ms var(--ease-panel-out) 40ms both,
+    details-panel-fade-in 100ms linear 40ms both;
+}
+/* ...and leaves in 150ms on the quick curve. */
+::view-transition-old(details-panel) {
+  animation:
+    details-panel-slide-out var(--duration-panel-close) var(--ease-panel-in) both,
+    details-panel-fade-out var(--duration-panel-close) var(--ease-panel-in) both;
+}
+
+@keyframes details-panel-slide-in {
+  from {
+    transform: translateX(var(--details-panel-share));
+  }
+}
+@keyframes details-panel-slide-out {
+  to {
+    transform: translateX(var(--details-panel-share));
+  }
+}
+@keyframes details-panel-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes details-panel-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}
