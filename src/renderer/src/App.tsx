@@ -3,19 +3,17 @@ import type { ImportProgress } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem } from '@shared/inbox'
 import { BootGate } from './screens/boot/BootGate'
-import ApprovalStepper from './ApprovalStepper'
 import LibraryPage from './screens/library/LibraryPage'
 import InboxPage from './screens/inboxes/InboxPage'
 import TrashPage from './screens/trash/TrashPage'
 import { SortFlow } from './screens/sort'
+import { LookOverFlow } from './screens/look-over'
 import AppShell from './AppShell'
 import DebugMenu from './DebugMenu'
-import { useApprovalStore } from './stores/approvalStore'
 import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { toast } from './stores/toastStore'
-import { doneMessage } from './lib/inbox-list'
 
 type AddFlow = 'approval' | null
 
@@ -27,7 +25,6 @@ function AppMain() {
   /** The import batch on the Sort board, or null when it is closed. */
   const [sortBatch, setSortBatch] = useState<string | null>(null)
 
-  const approvalStore = useApprovalStore()
   const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
   const view = useUiStore((s) => s.view)
   const openModal = useUiStore((s) => s.openModal)
@@ -141,8 +138,7 @@ function AppMain() {
     setIsDropping(false)
   }
 
-  // Until Look it over lands, the inbox pages hand their cards to the legacy approval stepper,
-  // which works per import batch. They open the batch of the first card that has one.
+  // The Sort board works on an import batch; Look it over works on the whole queue main holds, piles first.
   const batchOf = (items: InboxItem[]) =>
     items.find((item) => item.batchId !== null)?.batchId ?? null
   const openSort = (items: InboxItem[]) => {
@@ -151,31 +147,10 @@ function AppMain() {
       return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
     setSortBatch(batchId)
   }
-  const openApproval = async (batchId: string) => {
-    approvalStore.setInitializing(true)
-    const res = await window.api.invoke(IPC_CHANNELS.APPROVAL_INIT, { batchId })
-    approvalStore.setInitializing(false)
-    if (!res.success) return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
-    approvalStore.setQueue(res.data)
-    setAddFlow('approval')
-  }
-  const openLookOver = async (items: InboxItem[]) => {
-    const batchId = batchOf(items)
-    if (batchId === null)
-      return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
-    await openApproval(batchId)
-  }
+  const openLookOver = () => setAddFlow('approval')
 
-  const handlePipelineCancel = () => {
+  const handleLookOverClosed = async () => {
     setAddFlow(null)
-    approvalStore.reset()
-  }
-
-  const handleApprovalComplete = async () => {
-    // The legacy stepper saves every card it shows, so nothing is skipped.
-    toast({ variant: 'success', ...doneMessage(approvalStore.queue.length, 0) })
-    setAddFlow(null)
-    approvalStore.reset()
     await refreshLibrary()
   }
 
@@ -209,12 +184,6 @@ function AppMain() {
         onDragLeave={handleDragLeave}
         isDropping={isDropping}
       >
-        {addFlow === 'approval' && (
-          <ApprovalStepper
-            onComplete={() => void handleApprovalComplete()}
-            onCancel={handlePipelineCancel}
-          />
-        )}
         {addFlow === null && (view === 'all' || view === 'starred') && (
           <LibraryPage
             starredOnly={view === 'starred'}
@@ -246,7 +215,12 @@ function AppMain() {
         open={sortBatch !== null}
         batchId={sortBatch}
         onClose={() => setSortBatch(null)}
-        onLookThemOver={(batchId) => void openApproval(batchId)}
+        onLookThemOver={openLookOver}
+      />
+      <LookOverFlow
+        open={addFlow === 'approval'}
+        onClose={() => void handleLookOverClosed()}
+        onBackToSort={() => setAddFlow(null)}
       />
     </>
   )

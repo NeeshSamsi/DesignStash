@@ -2,17 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from './App'
 import { IPC_CHANNELS } from '@shared/ipc'
-import { useApprovalStore } from './stores/approvalStore'
 import { useLibraryStore } from './stores/libraryStore'
 
 beforeEach(() => {
-  useApprovalStore.setState({
-    queue: [],
-    currentIndex: 0,
-    isSaving: false,
-    isInitializing: false,
-    isComplete: false
-  })
   useLibraryStore.setState({
     items: [],
     query: '',
@@ -155,7 +147,7 @@ describe('App', () => {
     })
   })
 
-  it('completing approval flow re-fetches LIBRARY_LIST', async () => {
+  it('finishing Look it over re-fetches LIBRARY_LIST', async () => {
     ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
       if (channel === IPC_CHANNELS.SETTINGS_GET)
         return {
@@ -187,30 +179,45 @@ describe('App', () => {
           }
         }
       if (channel === IPC_CHANNELS.GROUPING_CONFIRM) return { success: true, data: { ok: true } }
-      if (channel === IPC_CHANNELS.APPROVAL_INIT)
+      if (channel === IPC_CHANNELS.LOOK_OVER_OPEN)
         return {
           success: true,
           data: {
-            batchId: 'b1',
-            items: [
+            units: [
               {
-                mockupId: 1,
-                title: 'Test',
-                description: '',
-                coverPath: '/t.png',
-                coverSource: 'embedded',
-                tags: [],
-                isLeader: true,
-                leaderId: null,
-                variantIndex: 0
+                unitId: 1,
+                kind: 'single',
+                items: [
+                  {
+                    mockupId: 1,
+                    pileId: null,
+                    role: 'single',
+                    title: 'Test',
+                    description: '',
+                    tags: [],
+                    touched: false,
+                    checked: false,
+                    sidecarFileName: null,
+                    cover: {
+                      path: '/t.png',
+                      source: 'embedded',
+                      missing: false,
+                      width: 4,
+                      height: 3
+                    }
+                  }
+                ]
               }
-            ]
+            ],
+            resume: null
           }
         }
-      if (channel === IPC_CHANNELS.APPROVAL_SAVE_ITEM)
-        return { success: true, data: { reinferredItems: [] } }
-      if (channel === IPC_CHANNELS.TAG_LIST_BY_CATEGORY)
-        return { success: true, data: { categories: [] } }
+      if (channel === IPC_CHANNELS.MOCKUP_STASH)
+        return {
+          success: true,
+          data: { ok: true, stashedIds: [1], snapshot: { mockups: [], drafts: [], resume: null } }
+        }
+      if (channel === IPC_CHANNELS.TAG_TREE) return { success: true, data: { tree: [] } }
       if (channel === IPC_CHANNELS.LIBRARY_LIST) return { success: true, data: { items: [] } }
       if (channel === IPC_CHANNELS.LIBRARY_STATS)
         return { success: true, data: { total: 0, favourites: 0, groups: 0, trashed: 0 } }
@@ -236,9 +243,9 @@ describe('App', () => {
     const confirmBtn = await screen.findByRole('button', { name: 'Look them over' })
     fireEvent.click(confirmBtn)
 
-    // ApprovalStepper appears — approve the single item
-    const approveBtn = await screen.findByRole('button', { name: 'Approve & Finish' })
-    fireEvent.click(approveBtn)
+    // Look it over opens — stash the single mockup
+    const stashBtn = await screen.findByRole('button', { name: 'Stash' })
+    fireEvent.click(stashBtn)
 
     // After completion, LIBRARY_LIST should be re-fetched
     await waitFor(() => {
