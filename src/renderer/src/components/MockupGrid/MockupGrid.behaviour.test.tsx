@@ -225,3 +225,18 @@ describe('Library · grid, selection, loading and empty', () => {
     })
   })
 })
+
+describe('MockupGrid layout', () => {
+  it('is a responsive card grid that never scrolls sideways, and fills the page so empty space deselects', () => {
+    render(
+      <MockupGrid state="populated">
+        <div>card</div>
+      </MockupGrid>
+    )
+    const grid = document.querySelector('[data-ds="MockupGrid"]')!
+    expect(grid.className).toContain('flex-1')
+    const cards = grid.firstElementChild!
+    expect(cards.className).toContain('grid-cards')
+    expect(cards.className).toContain('min-w-0')
+  })
+})

@@ -1,4 +1,4 @@
-import { ArrowExpandIcon } from '@hugeicons/core-free-icons'
+import { ArrowDiagonalIcon } from '@hugeicons/core-free-icons'
 import { coverUrl } from '@shared/cover-url'
 import { Button } from '@renderer/components/Button'
 import { ErrorState } from '@renderer/components/ErrorState'
@@ -50,7 +50,7 @@ export function PileView({ data }: { data: Data }) {
             variant="ghost"
             size="icon"
             aria-label="Open pile page"
-            iconStart={ArrowExpandIcon}
+            iconStart={ArrowDiagonalIcon}
             showIconStart
             onClick={() => open(item.id)}
           />

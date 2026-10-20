@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
+import { TruncatedText } from '@renderer/lib/truncated-text'
 import { PAGE_HEADER_DEFAULTS, type PageHeaderContractProps } from './PageHeader.types'
 import {
   pageHeaderCurrentClass,
@@ -42,12 +43,12 @@ export function PageHeader({ children, className, onParent, ...rest }: PageHeade
                 <button
                   type="button"
                   onClick={onParent}
-                  className="truncate rounded-sm outline-none hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  className="shrink-0 rounded-sm whitespace-nowrap outline-none hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {props.parent}
                 </button>
               ) : (
-                <span className="truncate">{props.parent}</span>
+                <span className="shrink-0 whitespace-nowrap">{props.parent}</span>
               )}
               <HugeiconsIcon
                 icon={ArrowRight01Icon}
@@ -57,7 +58,9 @@ export function PageHeader({ children, className, onParent, ...rest }: PageHeade
               />
             </>
           )}
-          <span className={cn('truncate', page && pageHeaderCurrentClass)}>{props.current}</span>
+          <TruncatedText className={cn(page && pageHeaderCurrentClass)}>
+            {props.current}
+          </TruncatedText>
         </Title>
         {children !== undefined && children !== null && (
           <div className="flex shrink-0 items-start gap-2">{children}</div>

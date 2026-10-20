@@ -186,7 +186,7 @@ export function PilePage({ pile }: { pile: OpenPile }) {
   }
   const onMouseUp = (event: MouseEvent<HTMLDivElement>) => {
     const grid = event.currentTarget
-    if (!grid.contains(document.activeElement)) grid.focus()
+    if (!grid.contains(document.activeElement)) grid.focus({ focusVisible: false })
   }
 
   return (

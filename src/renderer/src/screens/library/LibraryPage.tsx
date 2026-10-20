@@ -305,7 +305,7 @@ export default function LibraryPage({
   // A marquee press keeps focus where it was; pull it into the grid so its shortcuts apply.
   const onMouseUp = (event: MouseEvent<HTMLDivElement>) => {
     const grid = event.currentTarget
-    if (!grid.contains(document.activeElement)) grid.focus()
+    if (!grid.contains(document.activeElement)) grid.focus({ focusVisible: false })
   }
 
   const menuActions = {

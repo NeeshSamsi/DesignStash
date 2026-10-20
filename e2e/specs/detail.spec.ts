@@ -120,6 +120,19 @@ test.describe('Details sidebar', () => {
       .dblclick()
     await expect(window.getByText('Pile · 3 mockups · Esc to go back')).toBeVisible()
 
+    // Nothing scrolls sideways on the pile page, with the sidebar open or shut.
+    const sideways = () =>
+      window.evaluate(
+        () =>
+          [...document.querySelectorAll<HTMLElement>('main *')].filter(
+            (el) =>
+              el.scrollWidth > el.clientWidth + 1 &&
+              getComputedStyle(el).overflowX !== 'visible' &&
+              getComputedStyle(el).overflowX !== 'hidden'
+          ).length
+      )
+    await expect.poll(sideways).toBe(0)
+
     await cards.nth(2).click({ button: 'right' })
     await window.getByRole('menuitem', { name: 'Remove from pile' }).click()
     await expect(window.getByText('Removed from the pile')).toBeVisible()
@@ -152,6 +165,24 @@ test.describe('Details sidebar', () => {
     // A disabled button can't take the pointer, so the reason sits on its wrapper: force the hover.
     await panel(window).getByRole('button', { name: 'Save' }).hover({ force: true })
     await expect(window.getByText('Add a title to save').first()).toBeVisible()
+  })
+
+  test('clicking empty space in the grid, below the cards, deselects and closes it', async ({
+    app
+  }) => {
+    const { window } = app
+    await seedStash(app, ['laptop'])
+    await showMyStash(app)
+    await clickCard(window)
+    await expect(panel(window)).toBeVisible()
+    const grid = window.locator('[data-ds="MockupGrid"]')
+    const box = (await grid.boundingBox())!
+    // Well below the one card row.
+    await window.mouse.click(box.x + box.width / 2, box.y + box.height - 20)
+    await expect(panel(window)).toHaveCount(0)
+    await expect(window.locator('[data-mockup-id][data-state="selected"]')).toHaveCount(0)
+    // The outline is for the keyboard: a mouse click leaves the grid without one.
+    expect(await grid.evaluate((el) => el.matches(':focus-visible'))).toBe(false)
   })
 
   test('Esc closes it, and so does clicking empty space', async ({ app }) => {

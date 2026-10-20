@@ -8,6 +8,7 @@ import { CoverPanel } from '@renderer/components/CoverPanel'
 import { Lightbox } from '@renderer/components/Lightbox'
 import { Tooltip } from '@renderer/components/Tooltip'
 import { cn } from '@renderer/lib/utils'
+import { TruncatedText } from '@renderer/lib/truncated-text'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { panelSource, photoshopFailureCopy } from './detail-edits'
 import { checkLibrary } from './check-library'
@@ -30,7 +31,9 @@ export function SidebarHeader({ title, caption, children }: SidebarHeaderProps) 
     <div className="flex shrink-0 items-center gap-1">
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {title !== undefined && (
-          <h2 className="truncate type-title-lg-semibold text-foreground">{title}</h2>
+          <TruncatedText as="h2" className="type-title-lg-semibold text-foreground">
+            {title}
+          </TruncatedText>
         )}
         <p className="truncate type-caption-xs-regular text-tertiary">{caption}</p>
       </div>
