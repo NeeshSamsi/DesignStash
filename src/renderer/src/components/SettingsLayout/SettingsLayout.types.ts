@@ -10,7 +10,7 @@ export const SETTINGS_LAYOUT_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4771',
   section: '10 · Settings & tags',
   description:
-    'Settings as a modal over the app (880×760): section list on the left (same selected style as the sidebar), pane title + close, grouped rows (title, real value, control on the right, all inline buttons secondary). Switches that unlock more are accordions. Sections: my-stash · ai-model · tags · privacy · about. Rules: design/specs/settings.md.',
+    'Settings as a modal over the app (880×760): section list on the left (same selected style as the sidebar), pane title + close, grouped rows (title, real value, control on the right, all inline buttons secondary). Switches that unlock more are accordions. Sections: my-stash · ai-model · tags · privacy · about. Rules: design/specs/settings.md.\nSync 2026-10: destructive inline actions in rows (Empty Trash…, Delete) use error-toned label text.',
   code: 'screens/settings/SettingsModal.tsx',
   axes: {
     section: ['my-stash', 'ai-model', 'tags', 'privacy', 'about']

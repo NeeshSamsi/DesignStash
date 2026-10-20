@@ -8,7 +8,8 @@ export const ACTION_BAR_CONTRACT = {
   figmaId: '214:951',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-951',
   section: '8 · Approval & editing',
-  description: 'Footer row: secondary actions left, primary right, optional status text.',
+  description:
+    'Footer row: secondary actions left, primary right, optional status text.\nSync 2026-10: in the stepper bar only Back and the primary are filled; Finish later is ghost. Skip for now carries the tooltip &quot;It stays in To stash&quot; (hover in the app).',
   code: null,
   axes: {
     variant: ['modal', 'stepper', 'page']

@@ -13,13 +13,13 @@ import {
   pageHeaderVariants
 } from './PageHeader.variants'
 
-export interface PageHeaderProps extends PageHeaderContractProps {
+export interface PageHeaderProps extends Omit<PageHeaderContractProps, 'descriptionAction'> {
   /** The trailing actions (buttons). Figma's `actions` boolean only says whether the area exists. */
   children?: ReactNode
   className?: string
   /** Makes the parent crumb a button that goes back (the pile page's “My Stash”). */
   onParent?: () => void
-  /** Sits right after the description, e.g. a Clear link while a search is on. */
+  /** Sits right after the description, e.g. a Clear link while a search is on. Figma's `description-action` boolean only says whether the area exists. */
   descriptionAction?: ReactNode
 }
 

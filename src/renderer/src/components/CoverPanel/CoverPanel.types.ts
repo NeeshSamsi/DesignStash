@@ -9,7 +9,7 @@ export const COVER_PANEL_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-3545',
   section: '8 · Approval & editing',
   description:
-    'Cover in Look it over and Detail: the image plus a tag row (source tag · optional note · Zoom). Hover reveals Replace (and Use the PSD’s preview on your own cover); drag-over is the shared DropOverlay; replacing keeps the old cover dimmed; errors and the sidecar prompt are Banners. Crop-or-bars rule and limits: design/specs/cover.md. Deck (piles only): show-deck/deck-more peek the mockups still to come behind the cover, deck-label counts them; not clickable.',
+    'Cover in Look it over and Detail: the image plus a tag row (source tag · optional note · Zoom). Hover reveals Replace (and Use the PSD’s preview on your own cover); drag-over is the shared DropOverlay; replacing keeps the old cover dimmed; errors and the sidecar prompt are Banners. Crop-or-bars rule and limits: design/specs/cover.md. Deck (piles only): show-deck/deck-more peek the mockups still to come behind the cover, deck-label counts them; not clickable.\nSync 2026-10: the source chip only shows when it says something: &quot;Uploaded&quot;, &quot;Sidecar image&quot; once accepted, or &quot;Low-res preview&quot; for a small embedded preview. A normal embedded preview shows no chip.',
   code: 'screens/detail/DetailModal.tsx',
   axes: {
     source: ['embedded', 'sidecar', 'uploaded', 'none'],

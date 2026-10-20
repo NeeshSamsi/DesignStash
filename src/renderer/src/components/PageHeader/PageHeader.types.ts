@@ -8,7 +8,8 @@ export const PAGE_HEADER_CONTRACT = {
   figmaId: '216:1656',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=216-1656',
   section: '3 · Layout & navigation',
-  description: 'Breadcrumb title + description + trailing actions.',
+  description:
+    'Breadcrumb title + description + trailing actions.\nSync 2026-10: optional description-action (the Clear link while searching) sits right after the description. The title row wraps, so the actions drop under the title at narrow widths.',
   code: null,
   axes: {
     variant: ['page', 'section']
@@ -22,7 +23,8 @@ export const PAGE_HEADER_CONTRACT = {
   booleans: {
     breadcrumb: true,
     showDescription: true,
-    actions: false
+    actions: false,
+    descriptionAction: false
   },
   texts: {
     current: 'Starred',
@@ -44,6 +46,8 @@ export interface PageHeaderContractProps {
   showDescription?: boolean
   /** Figma boolean. Default `false`. */
   actions?: boolean
+  /** Figma boolean. Default `false`. */
+  descriptionAction?: boolean
   /** Figma text. Default "Starred". */
   current?: string
   /** Figma text. Default "My Stash". */
@@ -58,6 +62,7 @@ export const PAGE_HEADER_DEFAULTS = {
   breadcrumb: true,
   showDescription: true,
   actions: false,
+  descriptionAction: false,
   current: 'Starred',
   parent: 'My Stash',
   description: '12 mockups · favourites always sort first'

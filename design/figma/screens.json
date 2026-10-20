@@ -3934,6 +3934,33 @@
       "page": "↳ Settings"
     },
     {
+      "title": "F1.1b My Stash · Trash empty",
+      "figmaId": "917:156203",
+      "flow": "F · Settings",
+      "components": [
+        "AddMockupCard",
+        "AppWindow",
+        "Badge",
+        "Button",
+        "CoverImage",
+        "FavouriteToggle",
+        "GlobalSearch",
+        "Input",
+        "KeyboardShortcut",
+        "LibraryToolbar",
+        "MockupCard",
+        "MockupGrid",
+        "ModalLayer",
+        "PageHeader",
+        "Select",
+        "SettingsLayout",
+        "SidebarNav",
+        "SidebarNav Item",
+        "TreeBranch"
+      ],
+      "page": "↳ Settings"
+    },
+    {
       "title": "F2.1 The stash check found something",
       "figmaId": "797:122055",
       "flow": "F · Settings",

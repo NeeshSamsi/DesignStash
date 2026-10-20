@@ -27,7 +27,7 @@ export const EMPTY_STATE_CONTRACT = {
   },
   texts: {
     title: 'Your stash is looking a little bare',
-    description: 'Add some PSD mockups and we’ll tuck them away, tagged and grouped.'
+    description: 'Add some PSD mockups and we’ll tuck them away, tagged and sorted into piles.'
   },
   icons: {
     icon: 'folder-library'
@@ -44,7 +44,7 @@ export interface EmptyStateContractProps {
   secondaryAction?: boolean
   /** Figma text. Default "Your stash is looking a little bare". */
   title?: string
-  /** Figma text. Default "Add some PSD mockups and we’ll tuck them away, tagged and grouped.". */
+  /** Figma text. Default "Add some PSD mockups and we’ll tuck them away, tagged and sorted into piles.". */
   description?: string
   /** Figma icon swap. Default `folder-library`. */
   icon?: IconSvgElement
@@ -55,6 +55,6 @@ export const EMPTY_STATE_DEFAULTS = {
   variant: 'page',
   secondaryAction: false,
   title: 'Your stash is looking a little bare',
-  description: 'Add some PSD mockups and we’ll tuck them away, tagged and grouped.',
+  description: 'Add some PSD mockups and we’ll tuck them away, tagged and sorted into piles.',
   icon: FolderLibraryIcon
 } satisfies EmptyStateContractProps

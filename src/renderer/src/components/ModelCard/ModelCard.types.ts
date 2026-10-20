@@ -9,7 +9,7 @@ export const MODEL_CARD_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=795-9758',
   section: '9 · Onboarding & AI models',
   description:
-    "One on-device model in Settings › AI model, after Handy's model card: name, In use / Best fit tags and one plain line, quality and speed as five-step bars; a divider; languages, size and the actions. States: in-use (orange border, Delete) · downloaded (Delete · Use this model) · downloading (progress, Cancel) · available (Download) · failed (reason, Try again).",
+    "One on-device model in Settings › AI model, after Handy's model card: name, In use / Best fit tags and one plain line, quality and speed as five-step bars; a divider; languages, size and the actions. States: in-use (orange border, Delete) · downloaded (Delete · Use this model) · downloading (progress, Cancel) · available (Download) · failed (reason, Try again).\nSync 2026-10: quality and speed steps fill with background/primary on every card. Runtime-only variations of the states (verifying under downloading, Resume under available, Use disabled with the tooltip &quot;Turn on AI to use a model.&quot;) are shown on the Settings and Onboarding screens.",
   code: 'screens/settings/AiModelPane.tsx',
   axes: {
     state: ['in-use', 'downloaded', 'downloading', 'available', 'failed']

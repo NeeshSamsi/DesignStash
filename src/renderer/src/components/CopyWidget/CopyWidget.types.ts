@@ -10,7 +10,7 @@ export const COPY_WIDGET_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=373-5804',
   section: '7 · Import & grouping',
   description:
-    'Bottom-right copy panel (transport only): per-file and overall progress, failures inline, Cancel asks keep or undo, done collapses to a summary.',
+    'Bottom-right copy panel (transport only): per-file and overall progress, failures inline, Cancel asks keep or undo, done collapses to a summary.\nSync 2026-10: while copying the title reads &quot;12 of 40 copied&quot; (files that landed, matching the rows marked Copied); counts use thousands separators (&quot;1,204 copied&quot;). The strip carries the headline and this widget the per-file detail. A done card with nothing failed dismisses itself after about 6 seconds and never shows over a flow modal.',
   code: null,
   axes: {
     view: ['expanded', 'collapsed'],

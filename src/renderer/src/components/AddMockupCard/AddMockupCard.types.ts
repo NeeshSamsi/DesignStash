@@ -9,7 +9,7 @@ export const ADD_MOCKUP_CARD_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=583-6960',
   section: '6 · Library',
   description:
-    'The add affordance in the library grid: always the first card in My Stash › All (hidden in search, filter and Starred); on an empty library it is the only card. Recessed well with a faint dashed cover, same footprint as MockupCard. Click / ↵ opens the Add menu; dragging PSDs over the window shows DropOverlay. Rules: design/specs/library.md.',
+    'The add affordance in the library grid: always the first card in My Stash › All (hidden in search, filter and Starred); on an empty library it is the only card. Recessed well with a faint dashed cover, same footprint as MockupCard. Click / ↵ opens the Add menu; dragging PSDs over the window shows DropOverlay. Rules: design/specs/library.md.\nSync 2026-10: the focus state is keyboard only. A mouse click leaves no ring (focus-visible).',
   code: null,
   axes: {},
   axisDefaults: {},

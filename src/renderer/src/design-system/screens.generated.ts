@@ -3811,6 +3811,32 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'F1.1b My Stash · Trash empty',
+    figmaId: '917:156203',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
+  },
+  {
     title: 'F2.1 The stash check found something',
     figmaId: '797:122055',
     flow: 'F · Settings',
