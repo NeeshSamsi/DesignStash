@@ -37,7 +37,7 @@ export function AppWindow({ className, ...rest }: AppWindowProps) {
         <div className="shrink-0">{props.sidebar}</div>
         <main className={appWindowPanelClass}>
           {props.showHeader && props.header}
-          <div className="min-h-0 flex-1 overflow-auto rounded-md">{props.page}</div>
+          <div className="-m-2 min-h-0 flex-1 overflow-auto rounded-md p-2">{props.page}</div>
         </main>
       </div>
       {modal && (

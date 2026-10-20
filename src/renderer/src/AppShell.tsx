@@ -195,7 +195,7 @@ export default function AppShell({
               )
             }
           : {})}
-        page={<div className="h-full overflow-auto">{children}</div>}
+        page={children}
         {...(dropOverlay ? { drop: dropOverlay } : {})}
         {...(dialog ? { dialog } : {})}
       />

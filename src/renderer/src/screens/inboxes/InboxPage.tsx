@@ -140,7 +140,7 @@ export default function InboxPage({
       }
 
   return (
-    <div className="flex min-h-full flex-col gap-4 p-6">
+    <div className="flex min-h-full flex-col gap-4">
       {failed && items !== null && (
         <Banner
           tone="error"

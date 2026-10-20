@@ -133,6 +133,14 @@ for (const { width, height } of SIZES) {
       await window.getByRole('button', { name: /^All/ }).click()
       await expect(window.getByText('2 mockups', { exact: true })).toBeVisible()
       await noSidewaysScroll(window, null, 'My Stash')
+      //F4MARK
+      const left = async (selector: string) =>
+        (await window.locator(selector).first().boundingBox())!.x
+      const titleLeft = await left('[data-ds="PageHeader"]')
+      expect(await left('[data-ds="LibraryToolbar"]'), 'toolbar lines up with the title').toBe(
+        titleLeft
+      )
+      expect(await left('[data-ds="MockupGrid"]'), 'grid lines up with the title').toBe(titleLeft)
       await shot('my-stash')
     })
 
