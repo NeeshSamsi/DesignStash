@@ -315,7 +315,7 @@ describe('ignore', () => {
 
     expect(ignoredIds).toHaveLength(2)
     expect(await s.report()).toEqual({ found: [], gone: [] })
-    expect(await s.scan()).toEqual({ orphanFiles: [], orphanRecords: [] })
+    expect(await s.scan()).toEqual({ orphanFiles: 0, orphanRecords: 0 })
 
     await s.unignore(ignoredIds)
     expect((await s.report()).found).toHaveLength(1)
@@ -334,6 +334,42 @@ describe('ignore', () => {
     expect(ignoredIds).toHaveLength(2)
     expect(ignoredIds).not.toContain(first!.id)
     expect(await s.report()).toEqual({ found: [], gone: [] })
+  })
+
+  it('lets the scan and the report agree on what is left once some ids are ignored', async () => {
+    const disk = fakeDisk({ [`${mockups}/x1/a.psd`]: 1, [`${mockups}/x2/b.psd`]: 1 })
+    const keep = goneRow('Kept')
+    const dropped = t.repo.createMockup(
+      approvedMockup({ title: 'Dropped', libraryPath: `${mockups}/g2/original.psd`, coverPath: '' })
+    )
+    const s = service(disk.deps)
+    const { found } = await s.report()
+    expect(await s.scan()).toEqual({ orphanFiles: 2, orphanRecords: 2 })
+
+    await s.ignore([found[0]!.id, `m${dropped.id}`])
+
+    const report = await s.report()
+    expect(await s.scan()).toEqual({ orphanFiles: report.found.length, orphanRecords: report.gone.length })
+    expect(report.found.map((f) => f.id)).toEqual([found[1]!.id])
+    expect(report.gone.map((g) => g.id)).toEqual([`m${keep.id}`])
+  })
+
+  it('does not look for an ignored record on disk when it only needs what is visible', async () => {
+    const disk = fakeDisk({})
+    const ignoredRow = goneRow()
+    const looked: string[] = []
+    const s = service({
+      ...disk.deps,
+      exists: async (p) => {
+        looked.push(p)
+        return false
+      }
+    })
+    await s.ignore([`m${ignoredRow.id}`])
+    looked.length = 0
+
+    expect(await s.scan()).toEqual({ orphanFiles: 0, orphanRecords: 0 })
+    expect(looked).toEqual([])
   })
 
   it('keeps the ignore list in the store it is given, so it survives a restart', async () => {

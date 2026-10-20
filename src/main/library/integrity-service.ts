@@ -26,11 +26,18 @@ export interface IntegrityDeps {
   ignored: { get: () => string[]; set: (ids: string[]) => void }
 }
 
+/** How much the scan found that the user has not ignored. The items themselves come from `report()`. */
 export interface IntegrityReport {
   /** Files on disk under Library/mockups with no matching DB row. */
-  orphanFiles: string[]
+  orphanFiles: number
   /** DB rows whose stored file is missing on disk. */
-  orphanRecords: { mockupId: number; libraryPath: string }[]
+  orphanRecords: number
+}
+
+/** Every difference between the records and the disk, keyed by the opaque ids the renderer sees. */
+interface Drift {
+  found: Map<string, string>
+  gone: Map<string, { mockupId: number; libraryPath: string }>
 }
 
 /** Generated derivatives (covers/thumbnails) live alongside the stored asset and are NOT tracked as assets. */
@@ -104,42 +111,38 @@ export class IntegrityService {
   }
 
   async scan(): Promise<IntegrityReport> {
-    const dbPaths = this.repo.getAllLibraryPaths()
-    const known = new Set(dbPaths.map((p) => p.libraryPath))
-
-    // Disk asset files = everything under mockups/ except generated cover/thumb derivatives.
-    const diskFiles = (await this.deps.listFiles(this.mockupsDir())).filter(
-      (f) => !GENERATED_FILE.test(basename(f))
-    )
-
-    const ignored = new Set(this.deps.ignored.get())
-    const orphanFiles = diskFiles.filter((f) => !known.has(f) && !ignored.has(foundId(f)))
-
-    const orphanRecords: { mockupId: number; libraryPath: string }[] = []
-    for (const row of dbPaths) {
-      if (ignored.has(goneId(row.mockupId))) continue
-      if (!(await this.deps.exists(row.libraryPath))) orphanRecords.push(row)
-    }
-
-    return { orphanFiles, orphanRecords }
+    const { found, gone } = this.visible(await this.drift(true))
+    return { orphanFiles: found.size, orphanRecords: gone.size }
   }
 
-  /** Everything the scan sees, ignored or not, so an id can be resolved whatever its state. */
-  private async everything(): Promise<{
-    found: Map<string, string>
-    gone: Map<string, { mockupId: number; libraryPath: string }>
-  }> {
-    const known = new Set(this.repo.getAllLibraryPaths().map((p) => p.libraryPath))
+  /**
+   * Everything that differs between the records and the disk, ignored or not, so an id can be resolved
+   * whatever its state. Files are everything under mockups/ except generated cover and thumb
+   * derivatives. `skipIgnoredStat` leaves out missing records that are ignored without checking the
+   * disk for them, for callers that only want what is visible.
+   */
+  private async drift(skipIgnoredStat = false): Promise<Drift> {
+    const rows = this.repo.getAllLibraryPaths()
+    const known = new Set(rows.map((p) => p.libraryPath))
     const found = new Map<string, string>()
     for (const f of await this.deps.listFiles(this.mockupsDir())) {
       if (GENERATED_FILE.test(basename(f)) || known.has(f)) continue
       found.set(foundId(f), f)
     }
+    const ignored = new Set(this.deps.ignored.get())
     const gone = new Map<string, { mockupId: number; libraryPath: string }>()
-    for (const row of this.repo.getAllLibraryPaths()) {
+    for (const row of rows) {
+      if (skipIgnoredStat && ignored.has(goneId(row.mockupId))) continue
       if (!(await this.deps.exists(row.libraryPath))) gone.set(goneId(row.mockupId), row)
     }
     return { found, gone }
+  }
+
+  /** Only what the user has not chosen to ignore. */
+  private visible({ found, gone }: Drift): Drift {
+    const ignored = new Set(this.deps.ignored.get())
+    const keep = <V>(m: Map<string, V>) => new Map([...m].filter(([id]) => !ignored.has(id)))
+    return { found: keep(found), gone: keep(gone) }
   }
 
   /**
@@ -147,12 +150,10 @@ export class IntegrityService {
    * A PSD's path and the stash folder never leave the main process. Ignored items are left out.
    */
   async report(): Promise<DriftReport> {
-    const { found, gone } = await this.everything()
-    const ignored = new Set(this.deps.ignored.get())
+    const { found, gone } = this.visible(await this.drift(true))
 
     const foundItems: FoundFile[] = []
     for (const [id, path] of found) {
-      if (ignored.has(id)) continue
       let sizeBytes: number | null = null
       try {
         sizeBytes = (await this.deps.stat(path)).size
@@ -180,7 +181,6 @@ export class IntegrityService {
 
     const goneItems: GoneRecord[] = []
     for (const [id, row] of gone) {
-      if (ignored.has(id)) continue
       const mockup = this.repo.getMockup(row.mockupId)
       if (!mockup) continue
       const hasCover = mockup.coverPath !== '' && (await this.deps.exists(mockup.coverPath))
@@ -195,7 +195,7 @@ export class IntegrityService {
 
   /** Put found files in To sort. The caller queues them for suggestions. Returns the new mockup ids. */
   async add(ids: string[]): Promise<{ mockupIds: number[] }> {
-    const { found } = await this.everything()
+    const { found } = await this.drift()
     const mockupIds: number[] = []
     for (const id of new Set(ids)) {
       const path = found.get(id)
@@ -206,9 +206,8 @@ export class IntegrityService {
   }
 
   async addAll(): Promise<{ mockupIds: number[] }> {
-    const { found } = await this.everything()
-    const ignored = new Set(this.deps.ignored.get())
-    return this.add([...found.keys()].filter((id) => !ignored.has(id)))
+    const { found } = this.visible(await this.drift())
+    return this.add([...found.keys()])
   }
 
   /** Undo an add: the records and their covers go. The PSD stays where it was. */
@@ -223,7 +222,7 @@ export class IntegrityService {
 
   /** Remove the records of mockups whose PSD is gone. Anything else in `ids` is skipped. */
   async remove(ids: string[]): Promise<{ removed: number }> {
-    const { gone } = await this.everything()
+    const { gone } = await this.drift()
     const mockupIds = [...new Set(ids)].flatMap((id) => {
       const row = gone.get(id)
       return row ? [row.mockupId] : []
@@ -234,9 +233,8 @@ export class IntegrityService {
   }
 
   async removeAll(): Promise<{ removed: number }> {
-    const { gone } = await this.everything()
-    const ignored = new Set(this.deps.ignored.get())
-    return this.remove([...gone.keys()].filter((id) => !ignored.has(id)))
+    const { gone } = this.visible(await this.drift())
+    return this.remove([...gone.keys()])
   }
 
   /**
@@ -244,7 +242,7 @@ export class IntegrityService {
    * folder is used where it is; one from outside is copied in, so the stash keeps its own copies.
    */
   async relink(id: string): Promise<{ outcome: RelinkOutcome }> {
-    const { gone } = await this.everything()
+    const { gone } = await this.drift()
     const row = gone.get(id)
     if (!row) return { outcome: 'failed' }
 
@@ -271,7 +269,7 @@ export class IntegrityService {
 
   /** Hide items from the stash check. Returns only what was newly ignored, so Undo puts back exactly that. */
   async ignore(ids: string[]): Promise<{ ignoredIds: string[] }> {
-    const { found, gone } = await this.everything()
+    const { found, gone } = await this.drift()
     const current = new Set(this.deps.ignored.get())
     const ignoredIds = [...new Set(ids)].filter(
       (id) => (found.has(id) || gone.has(id)) && !current.has(id)
@@ -281,7 +279,7 @@ export class IntegrityService {
   }
 
   async ignoreAll(): Promise<{ ignoredIds: string[] }> {
-    const { found, gone } = await this.everything()
+    const { found, gone } = await this.drift()
     return this.ignore([...found.keys(), ...gone.keys()])
   }
 

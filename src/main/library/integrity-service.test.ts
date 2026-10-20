@@ -39,7 +39,7 @@ const makeService = (deps: Partial<IntegrityDeps>) => new IntegrityService(repo,
 
 describe('IntegrityService.scan', () => {
   it('detects an orphan record (DB row whose file is missing)', async () => {
-    const m = repo.createMockup(row({ libraryPath: `${mockupsDir}/a/original.psd` }))
+    repo.createMockup(row({ libraryPath: `${mockupsDir}/a/original.psd` }))
     const service = makeService({
       listFiles: async () => [],
       exists: async () => false
@@ -47,8 +47,7 @@ describe('IntegrityService.scan', () => {
 
     const report = await service.scan()
 
-    expect(report.orphanRecords).toEqual([{ mockupId: m.id, libraryPath: `${mockupsDir}/a/original.psd` }])
-    expect(report.orphanFiles).toEqual([])
+    expect(report).toEqual({ orphanFiles: 0, orphanRecords: 1 })
   })
 
   it('detects an orphan file (on disk, no DB row)', async () => {
@@ -63,8 +62,7 @@ describe('IntegrityService.scan', () => {
 
     const report = await service.scan()
 
-    expect(report.orphanFiles).toEqual([stray])
-    expect(report.orphanRecords).toEqual([])
+    expect(report).toEqual({ orphanFiles: 1, orphanRecords: 0 })
   })
 
   it('ignores generated cover/thumb files in the disk listing', async () => {
@@ -83,8 +81,7 @@ describe('IntegrityService.scan', () => {
 
     const report = await service.scan()
 
-    expect(report.orphanFiles).toEqual([])
-    expect(report.orphanRecords).toEqual([])
+    expect(report).toEqual({ orphanFiles: 0, orphanRecords: 0 })
   })
 
   it('reports nothing for a clean library', async () => {
@@ -100,8 +97,7 @@ describe('IntegrityService.scan', () => {
 
     const report = await service.scan()
 
-    expect(report.orphanFiles).toEqual([])
-    expect(report.orphanRecords).toEqual([])
+    expect(report).toEqual({ orphanFiles: 0, orphanRecords: 0 })
   })
 
   it('deleteOrphanRecord removes the row and its FTS entry', async () => {
@@ -111,7 +107,7 @@ describe('IntegrityService.scan', () => {
     const service = makeService({ listFiles: async () => [], exists: async () => false })
 
     // present before
-    expect((await service.scan()).orphanRecords).toHaveLength(1)
+    expect((await service.scan()).orphanRecords).toBe(1)
 
     service.deleteOrphanRecord(m.id)
 
@@ -119,7 +115,7 @@ describe('IntegrityService.scan', () => {
     const fts = sqlite.prepare(`SELECT rowid FROM mockups_fts WHERE rowid = ?`).all(m.id)
     expect(fts).toHaveLength(0)
     // no longer reported as an orphan record
-    expect((await service.scan()).orphanRecords).toEqual([])
+    expect((await service.scan()).orphanRecords).toBe(0)
   })
 
   it('addOrphanFile registers an in-place needs_review mockup without re-copying', async () => {
@@ -135,7 +131,7 @@ describe('IntegrityService.scan', () => {
     })
 
     // before registration the file is an orphan
-    expect((await service.scan()).orphanFiles).toEqual([orphan])
+    expect((await service.scan()).orphanFiles).toBe(1)
 
     const { mockupId } = await service.addOrphanFile(orphan)
 
@@ -148,7 +144,7 @@ describe('IntegrityService.scan', () => {
     expect(ctx.originalFilename).toBe('original.psd')
 
     // follow-up scan no longer reports it as an orphan file
-    expect((await service.scan()).orphanFiles).toEqual([])
+    expect((await service.scan()).orphanFiles).toBe(0)
   })
 
   it('addOrphanFile stores coverSource: none when no cover is resolved', async () => {
@@ -181,7 +177,6 @@ describe('IntegrityService.scan', () => {
     const report = await service.scan()
 
     // trashed record's missing file is not flagged (it's excluded from getAllLibraryPaths)
-    expect(report.orphanRecords).toEqual([])
-    expect(report.orphanFiles).toEqual([])
+    expect(report).toEqual({ orphanFiles: 0, orphanRecords: 0 })
   })
 })
