@@ -13,6 +13,9 @@ mac:
     - target: dmg
       arch: arm64
 # The migrations and llama-server are read at run time from <resources>, next to the app.
+# The Swift helper (native/designstash-helper) is not shipped yet: `pnpm helper:build --stage`
+# puts it in build/helper, and the main process already looks in <resources>/helper/. Adding it
+# here waits on signing and the packaging decision (design/specs/ai.md, "Open").
 extraResources:
   - from: drizzle
     to: drizzle
