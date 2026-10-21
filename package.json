@@ -30,6 +30,7 @@
     "dev:ingest": "tsx --tsconfig tsconfig.node.json scripts/dev-ingest.ts",
     "predev:ingest": "node scripts/rebuild-better-sqlite3.mjs node",
     "dev:reset": "node scripts/dev-reset.mjs",
+    "ai-eval:covers": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/covers.ts",
     "ds:tokens": "node scripts/ds/build-tokens.mjs",
     "ds:scaffold": "node scripts/ds/scaffold-components.mjs",
     "ds:check": "node scripts/ds/scaffold-components.mjs --check",
