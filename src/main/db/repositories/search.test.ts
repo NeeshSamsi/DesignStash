@@ -6,6 +6,7 @@ import type { Repository } from '../repository'
 import { seedTaxonomy } from '../bootstrap'
 import { ensureSearchIndex } from '../search-index'
 import { createTestDb, sample } from './__tests__/setup'
+import { ftsMatchQuery } from './search'
 
 let sqlite: Database.Database
 let db: BetterSQLite3Database<typeof schema>
@@ -95,5 +96,36 @@ describe('search index', () => {
     expect(matchFts('Approved')).toContain(approved.id)
     expect(matchFts('Pending')).not.toContain(pending.id)
     expect(matchFts('Deleted')).not.toContain(deleted.id)
+  })
+})
+
+describe('ftsMatchQuery', () => {
+  it('prefix-matches every word', () => {
+    expect(ftsMatchQuery('tote bag')).toBe('tote* bag*')
+  })
+
+  it('keeps letters, digits, hyphens and underscores, and drops the rest', () => {
+    expect(ftsMatchQuery('  café  "poster"! t-shirt 3D_render ')).toBe(
+      'caf* poster* t-shirt* 3D_render*'
+    )
+  })
+
+  it('is null when nothing searchable is left', () => {
+    expect(ftsMatchQuery('')).toBeNull()
+    expect(ftsMatchQuery('  ! ? ')).toBeNull()
+  })
+
+  it('is what rankMatches searches with', () => {
+    ensureSearchIndex(db)
+    const m = repo.mockups.createMockup({
+      ...sample,
+      title: 'Tote Bag Hero',
+      libraryPath: '/lib/fts/q.psd'
+    })
+    repo.mockups.setStage([m.id], 'stashed')
+    repo.search.upsertSearchIndex(m.id)
+
+    expect([...(repo.search.rankMatches('tote ba') ?? new Map()).keys()]).toEqual([m.id])
+    expect(repo.search.rankMatches('!!')).toBeNull()
   })
 })

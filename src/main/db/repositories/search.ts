@@ -3,6 +3,20 @@ import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags } from '../schema'
 import { isStashed } from './stashed'
 
+/**
+ * The FTS5 MATCH expression for a free-text query: each word prefix-matched, with everything but
+ * letters, digits, hyphens and underscores dropped. Null when no word is left.
+ */
+export function ftsMatchQuery(query: string): string | null {
+  const terms = query
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((t) => t.replace(/[^a-zA-Z0-9\-_]/g, '') + '*')
+    .filter((t) => t.length > 1)
+    .join(' ')
+  return terms || null
+}
+
 /** The mockups_fts index: title, description and tag labels of approved mockups. */
 export class SearchRepository {
   constructor(private readonly db: AppDatabase) {}
@@ -44,12 +58,7 @@ export class SearchRepository {
    * has no searchable terms (so the caller skips the filter).
    */
   rankMatches(query: string): Map<number, number> | null {
-    const ftsTerms = query
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((t) => t.replace(/[^a-zA-Z0-9\-_]/g, '') + '*')
-      .filter((t) => t.length > 1)
-      .join(' ')
+    const ftsTerms = ftsMatchQuery(query)
     if (!ftsTerms) return null
     const ftsRows = this.db.all<{ rowid: number; rank: number }>(
       sql`SELECT rowid, rank FROM mockups_fts WHERE mockups_fts MATCH ${ftsTerms}`

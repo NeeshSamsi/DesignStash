@@ -40,7 +40,8 @@ interface Fields {
 const sameIds = (a: number[], b: number[]) =>
   a.length === b.length && [...a].sort((x, y) => x - y).every((id, i) => id === [...b].sort((x, y) => x - y)[i])
 
-const stemOf = (fileName: string) => fileName.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim()
+/** The title a mockup gets when there is no suggestion: its file name without the extension. */
+export const stemOf = (fileName: string) => fileName.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim()
 
 /**
  * Look it over, on the main side. Everything the user does in a pile is a draft until Stash pile
