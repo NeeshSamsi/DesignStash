@@ -5,11 +5,14 @@ import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
 
 /**
- * The categories a suggested tag can go in, with what each covers. They are the seed categories in
- * `db/bootstrap.ts` minus Angle: `snapTags` matches the category exactly, so the schema limits the
- * model to these. Angle is left to people: both models got the camera angle wrong about half the
- * time, and no search uses it (see design/specs/ai.md). Labels are left to the model: listing the
- * seed labels made the small models copy the list instead of looking at the image.
+ * The categories the model tags in, with what each covers: the seed categories in `db/bootstrap.ts`
+ * (`snapTags` matches the category exactly, so the schema limits the model to these). Each line has a
+ * few example labels, not the seed list, which the small models copied in order.
+ *
+ * The model is still asked for an Angle, but `parseResult` drops it, so it is never suggested: both
+ * models got the camera angle wrong about half the time, and no search uses it. Taking the Angle
+ * line out of the prompt changed the 7B's whole answer for the worse (70% to 63% of searches found,
+ * three passes each), so the request stays as tuned (see design/specs/ai.md).
  */
 export const VISION_CATEGORIES: Record<string, string> = {
   Device: 'screen devices: laptop, MacBook, phone, iPhone, tablet, monitor, smartwatch, TV',
@@ -17,8 +20,13 @@ export const VISION_CATEGORIES: Record<string, string> = {
     'printed things and packaging: business card, poster, billboard, sign, box, packaging, label, book, stationery, envelope',
   Apparel: 'clothing and merchandise: t-shirt, hoodie, cap, tote bag, mug, sticker',
   Environment: 'the setting: indoor, outdoor, street, desk, floor, wall, water, floating',
-  Style: 'the look: minimal, realistic, 3D render, clay, dark, colorful'
+  Style: 'the look: minimal, realistic, 3D render, clay, dark, colorful',
+  Angle:
+    'front (camera level with the object), side (profile), angle (three-quarter view from above), top-down (looking straight down)'
 }
+
+/** Tags in this category are asked for but never suggested; see `VISION_CATEGORIES`. */
+const UNSUGGESTED_CATEGORY = 'Angle'
 
 const CATEGORIES = Object.keys(VISION_CATEGORIES)
 const MIN_TAGS = 3
@@ -29,12 +37,12 @@ const DESCRIPTION_MAX = 200
 export const VISION_IMAGE_MAX_EDGE = 1024
 
 /**
- * A string the grammar keeps to printable ASCII without `"`, `\\`, `<` or `>`. The 3B leaked Chinese
+ * A string the grammar keeps to printable ASCII without `"` or `\\`. The 3B leaked Chinese
  * characters into English descriptions; this rules them out at the source. The limit is looser than
  * the saved length, because a hard cut ends a sentence mid-word; `parseResult` trims at a word.
  */
 const plainText = (max: number) =>
-  ({ type: 'string', pattern: `^[ !#-;=?-\\[\\]-~]{1,${max}}$` }) as const
+  ({ type: 'string', pattern: `^[ !#-\\[\\]-~]{1,${max}}$` }) as const
 
 /** JSON schema the runtime constrains the reply to: `{title, description, tags:[{category,label}]}`. */
 export const RESULT_JSON_SCHEMA = {
@@ -50,7 +58,7 @@ export const RESULT_JSON_SCHEMA = {
         type: 'object',
         properties: {
           category: { type: 'string', enum: CATEGORIES },
-          label: plainText(30)
+          label: { type: 'string' }
         },
         required: ['category', 'label']
       }
@@ -145,7 +153,7 @@ export function buildRequest(input: AnalysisInput, imageUrl: string | null): Cha
     },
     temperature: 0.2,
     repeat_penalty: 1.05,
-    max_tokens: 400
+    max_tokens: 450
   }
 }
 
@@ -259,7 +267,7 @@ export function parseResult(raw: string): InferenceResult {
     const category = toCategory(tag.category)
     const label = toLabel(tag.label)
     const key = `${normaliseTagLabel(category)}\u0000${normaliseTagLabel(label)}`
-    if (!category || !label || seen.has(key)) continue
+    if (!category || !label || category === UNSUGGESTED_CATEGORY || seen.has(key)) continue
     seen.add(key)
     tags.push({ category, label })
   }

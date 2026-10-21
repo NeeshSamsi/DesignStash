@@ -21,7 +21,7 @@ const VALID = {
   tags: [
     { category: 'Device', label: 'macbook' },
     { category: 'Style', label: 'minimal' },
-    { category: 'Angle', label: 'angle' }
+    { category: 'Environment', label: 'stairs' }
   ]
 }
 
@@ -117,7 +117,7 @@ describe('VisionInferenceProvider.analyze', () => {
 })
 
 describe('buildRequest', () => {
-  it('constrains the reply with the JSON schema: 3 to 6 tags, in the taxonomy minus Angle', () => {
+  it('constrains the reply with the JSON schema: 3 to 6 tags in the seed categories', () => {
     const req = buildRequest(INPUT, IMAGE)
     expect(req.response_format).toEqual({
       type: 'json_schema',
@@ -129,17 +129,18 @@ describe('buildRequest', () => {
       'Print & Branding',
       'Apparel',
       'Environment',
-      'Style'
+      'Style',
+      'Angle'
     ])
     expect([tags.minItems, tags.maxItems]).toEqual([3, 6])
   })
 
-  it('says what each category covers with a few examples, never the seed list, and no Angle', () => {
+  it('says what each category covers with a few examples, never the seed list', () => {
     const text = userText(buildRequest(INPUT, IMAGE))
     expect(text).toContain('- Device: screen devices: laptop, MacBook, phone')
     expect(text).toContain('- Apparel: clothing and merchandise: t-shirt, hoodie, cap, tote bag')
+    expect(text).toContain('- Angle: front (camera level with the object)')
     expect(text).not.toContain('Windows laptop')
-    expect(text).not.toContain('Angle')
   })
 
   it('treats printed words as template filler and takes product names from the names', () => {
@@ -158,20 +159,19 @@ describe('buildRequest', () => {
     expect(userText(buildRequest(INPUT, null))).toContain("can't see the setting, so leave it out")
   })
 
-  it('keeps the title, description and labels to plain characters, so no other script leaks in', () => {
-    const { title, description, tags } = RESULT_JSON_SCHEMA.properties
-    for (const field of [title, description, tags.items.properties.label]) {
+  it('keeps the title and description to plain characters, so no other script leaks in', () => {
+    const { title, description } = RESULT_JSON_SCHEMA.properties
+    for (const field of [title, description]) {
       const plain = new RegExp(field.pattern)
-      expect(plain.test("Road bike, a cyclist's 3D")).toBe(true)
+      expect(plain.test("Road bike, a cyclist's 3D render")).toBe(true)
       expect(plain.test('A white brick 墙')).toBe(false)
       expect(plain.test('Text "quoted"')).toBe(false)
-      expect(plain.test('<object>')).toBe(false)
     }
   })
 
   it('sends Qwen its own repeat penalty and caps the reply', () => {
     const req = buildRequest(INPUT, IMAGE)
-    expect([req.temperature, req.repeat_penalty, req.max_tokens]).toEqual([0.2, 1.05, 400])
+    expect([req.temperature, req.repeat_penalty, req.max_tokens]).toEqual([0.2, 1.05, 450])
   })
 
   it('leaves the folder line out when there are no folders', () => {
@@ -242,6 +242,19 @@ describe('parseResult', () => {
     expect(result.title.length).toBeLessThanOrEqual(60)
     expect(result.title.endsWith('…')).toBe(true)
     expect(result.description.length).toBeLessThanOrEqual(200)
+  })
+
+  it('never suggests an Angle tag, although the model is asked for one', () => {
+    const result = parseResult(
+      JSON.stringify({
+        ...VALID,
+        tags: [
+          { category: 'Device', label: 'MacBook' },
+          { category: 'angle', label: 'Side' }
+        ]
+      })
+    )
+    expect(result.tags).toEqual([{ category: 'Device', label: 'MacBook' }])
   })
 
   it('takes free, mockup, PSD and stock-site names out of the title and tags, dropping a tag left empty', () => {
