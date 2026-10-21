@@ -47,13 +47,16 @@ beforeEach(() => {
   })
 })
 
-afterEach(() => {
+afterEach(async () => {
+  // A queue can still have a pump scheduled; let every one settle before the database closes.
+  for (const q of queues.splice(0)) await q.idle()
   sqlite.close()
   rmSync(base, { recursive: true, force: true })
 })
 
-const queue = (over: Partial<CopyQueueDeps> = {}) =>
-  new CopyQueue({
+const queues: CopyQueue[] = []
+const queue = (over: Partial<CopyQueueDeps> = {}) => {
+  const q = new CopyQueue({
     repo,
     libraryRoot: root,
     onProgress: (e) => events.push(e),
@@ -69,6 +72,9 @@ const queue = (over: Partial<CopyQueueDeps> = {}) =>
       ...over
     }
   })
+  queues.push(q)
+  return q
+}
 
 const last = () => events.at(-1)!
 
@@ -775,6 +781,7 @@ describe('zips', () => {
     const z = await zip('Fonts.zip', [{ name: 'a.otf', data: 'x' }])
     const q = queue()
     const started = await q.start([z])
+    await q.idle()
     expect(started).toMatchObject({ state: 'done', total: 1, landed: 0 })
   })
 
