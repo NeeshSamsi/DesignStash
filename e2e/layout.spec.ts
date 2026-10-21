@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { join } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
+// Synthetic PSDs (makePsds): this spec is about layout, not importing, and they are fast.
 import { test, expect, makePsds, type E2EApp } from './fixtures/app'
 
 /**

@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import type { Page } from '@playwright/test'
 import sharp from 'sharp'
 import { test, expect } from '../fixtures/app'
+// Synthetic mockups (seedStash): this spec is not about importing, and they are fast.
 import { seedStash, showMyStash } from '../fixtures/seed'
 
 /** The details sidebar: a click opens it, Edit turns it into fields, and leaving with changes asks first. */

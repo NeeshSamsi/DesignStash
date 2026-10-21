@@ -1,5 +1,6 @@
 import type { Locator } from '@playwright/test'
 import { test, expect } from '../fixtures/app'
+// Synthetic mockups (seedStash): this spec is not about importing, and they are fast.
 import { makeTag, seedStash, showMyStash, tagMockup } from '../fixtures/seed'
 import { clickUndo } from '../fixtures/toast'
 
