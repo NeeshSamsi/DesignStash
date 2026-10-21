@@ -8,7 +8,7 @@ import { isStashed } from './stashed'
  * "stationery"). The index has no stemming, and the prefix match already lets "bag" find "bags", so
  * this is what lets "bags" find "bag". Words under four letters and -ss words are left alone.
  */
-function singular(word: string): string {
+export function singular(word: string): string {
   if (word.length < 4 || /ss$/i.test(word)) return word
   if (/ies$/i.test(word)) return word.slice(0, -3) + 'y'
   if (/(x|z|ch|sh|ss)es$/i.test(word)) return word.slice(0, -2)

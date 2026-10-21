@@ -14,6 +14,8 @@ export interface Gold {
       description: string
       tags: { category: string; label: string }[]
       notes?: string
+      /** Case-insensitive regex fragments that must not appear in this cover's answer. */
+      absent?: string[]
     }
   >
   queries: GoldQuery[]
@@ -105,7 +107,8 @@ export const GENERIC_WORDS = [
   'free'
 ]
 
-const FILLER = new Set(['a', 'an', 'the', 'of', 'on', 'in', 'with', 'and', 'for', 'at', 'by', 'to'])
+/** Short words that name nothing. */
+export const FILLER = new Set(['a', 'an', 'the', 'of', 'on', 'in', 'with', 'and', 'for', 'at', 'by', 'to'])
 
 /** Download sites whose names turn up in file names. */
 const SITE_NAMES = [

@@ -2,6 +2,8 @@
  * ai-eval:score. Scores a run against `scripts/ai-eval/gold.json`: each gold query is searched with
  * the app's own search over the run's titles, descriptions and saved tags, and each result is
  * checked for file-name habits. The gold data itself is searched the same way, as the ceiling.
+ * Each answer is also checked for words its gold entry's `absent` list rules out, and each saved
+ * tag for support in the gold text.
  *
  *   pnpm ai-eval:score --model qwen2.5-vl-3b --prompt v0
  *
@@ -13,6 +15,13 @@ import { join } from 'node:path'
 import { cleanArchiveName } from '../../src/main/import/archive-name'
 import { stemOf } from '../../src/main/import/look-over-service'
 import { argValue, readItems, runDir, writeJson, type EvalItem } from './eval-files'
+import {
+  checkAnswer,
+  compileAbsent,
+  summarise,
+  type AnswerCheck,
+  type HallucinationSummary
+} from './hallucination'
 import type { ItemResult } from './run'
 import {
   checkFormat,
@@ -28,6 +37,29 @@ import { SearchSim, type IndexedItem } from './search-sim'
 import { createTagSnapper } from './searchable-tags'
 
 const GOLD_PATH = join(import.meta.dirname, 'gold.json')
+
+/** Every answer in one pass that has a gold entry, checked against it. A failed answer is left out. */
+function checkPass(
+  gold: Gold,
+  items: EvalItem[],
+  byId: Map<string, ItemResult>,
+  repeat: number
+): AnswerCheck[] {
+  return items.flatMap((item) => {
+    const entry = gold.items[item.id]
+    const result = byId.get(item.id)
+    if (!entry || !result?.parsed) return []
+    const { title, description, keywords } = result.parsed
+    const answer = { id: item.id, repeat, title, description, ...(keywords && { keywords }) }
+    return [
+      checkAnswer(
+        answer,
+        result.searchTags.map((t) => t.label),
+        entry
+      )
+    ]
+  })
+}
 
 function searchAll(gold: Gold, indexed: IndexedItem[]): QueryScore[] {
   const sim = new SearchSim(indexed)
@@ -88,6 +120,13 @@ async function main(): Promise<void> {
   )
   if (strays.length > 0)
     throw new Error(`gold.json names ids not in items.json: ${[...new Set(strays)].join(', ')}`)
+  for (const [id, entry] of Object.entries(gold.items)) {
+    try {
+      compileAbsent(entry.absent ?? [])
+    } catch (err) {
+      throw new Error(`gold.json ${id}: ${(err as Error).message}`, { cause: err })
+    }
+  }
 
   const repeats = [...new Set(results.map((r) => r.repeat))].sort((a, b) => a - b)
   const passes = repeats.map((repeat) => {
@@ -97,9 +136,35 @@ async function main(): Promise<void> {
       gold,
       items.map((i) => indexedFor(i, byId.get(i.id)))
     )
-    return { repeat, byId, missing, scores, headline: headline(scores) }
+    const checks = checkPass(gold, items, byId, repeat)
+    return {
+      repeat,
+      byId,
+      missing,
+      scores,
+      headline: headline(scores),
+      checks,
+      hallucination: summarise(checks)
+    }
   })
   const first = passes[0]!
+  const allChecks = passes.flatMap((p) => p.checks)
+  const firstChecks = new Map(first.checks.map((c) => [c.id, c]))
+
+  // A gold entry that matches its own absent list would count a right answer as made up.
+  const goldAbsentConflicts = Object.entries(gold.items).flatMap(([id, entry]) => {
+    const { absentWords } = checkAnswer(
+      { id, repeat: 0, title: entry.title, description: entry.description },
+      entry.tags.map((t) => t.label),
+      entry
+    )
+    return absentWords.length > 0 ? [{ id, words: absentWords }] : []
+  })
+
+  const unsupportedCounts = new Map<string, number>()
+  for (const check of allChecks)
+    for (const label of check.unsupported)
+      unsupportedCounts.set(label, (unsupportedCounts.get(label) ?? 0) + 1)
 
   // The ceiling: the gold titles, descriptions and tags, saved and searched the same way.
   const snap = createTagSnapper()
@@ -154,8 +219,20 @@ async function main(): Promise<void> {
     scoredAt: new Date().toISOString(),
     repeats: repeats.length,
     headline: meanHeadline(passes.map((p) => p.headline)),
-    perRepeat: passes.map((p) => ({ repeat: p.repeat, ...p.headline })),
+    perRepeat: passes.map((p) => ({
+      repeat: p.repeat,
+      ...p.headline,
+      hallucination: p.hallucination
+    })),
     ceiling,
+    hallucination: summarise(allChecks),
+    absentFound: allChecks
+      .filter((c) => c.absentWords.length > 0)
+      .map((c) => ({ id: c.id, repeat: c.repeat, words: c.absentWords })),
+    goldAbsentConflicts,
+    unsupportedTags: [...unsupportedCounts]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([label, count]) => ({ label, count })),
     failures: failures.map((r) => ({ id: r.id, repeat: r.repeat, error: r.error })),
     missing: first.missing,
     searchErrors: first.scores.filter((s) => s.error).map((s) => ({ q: s.q, error: s.error })),
@@ -168,6 +245,8 @@ async function main(): Promise<void> {
         title: parsed?.title ?? null,
         tags: first.byId.get(item.id)?.searchTags.map((t) => t.label) ?? [],
         keywords: parsed?.keywords ?? [],
+        absentWords: firstChecks.get(item.id)?.absentWords ?? [],
+        unsupportedTags: firstChecks.get(item.id)?.unsupported ?? [],
         find: rates[item.id] ?? null,
         format: formats.get(item.id) ?? null
       }
@@ -188,6 +267,15 @@ async function main(): Promise<void> {
     `failures ${failures.length}, missing ${first.missing.length}, search errors ${score.searchErrors.length}, ` +
       `junk ${formatSummary.junk}/${formatSummary.checked}, code-style titles ${formatSummary.titleCodeStyle}`
   )
+  const h = score.hallucination
+  console.log(
+    `hallucinated ${pct(h.hallucinated)} of ${h.answers} answers, ${h.absentPerAnswer.toFixed(2)} absent words per answer, ` +
+      `tag support ${pct(h.tagSupport)} of ${h.labels} labels`
+  )
+  if (goldAbsentConflicts.length > 0)
+    console.log(
+      `gold entries matching their own absent list: ${goldAbsentConflicts.map((c) => `${c.id} (${c.words.join(', ')})`).join('; ')}`
+    )
   console.log(`Wrote ${join(dir, 'score.json')} and score.md`)
 }
 
@@ -197,6 +285,11 @@ function markdown(s: {
   repeats: number
   headline: Headline
   ceiling: Headline
+  perRepeat: { repeat: number; hallucination: HallucinationSummary }[]
+  hallucination: HallucinationSummary
+  absentFound: { id: string; repeat: number; words: string[] }[]
+  goldAbsentConflicts: { id: string; words: string[] }[]
+  unsupportedTags: { label: string; count: number }[]
   failures: { id: string }[]
   missing: string[]
   searchErrors: { q: string; error?: string | undefined }[]
@@ -220,6 +313,37 @@ function markdown(s: {
     `| Gold ceiling | ${pct(s.ceiling.recall)} | ${pct(s.ceiling.precision)} | ${pct(s.ceiling.allInTop)} |`,
     '',
     `Failures: ${s.failures.length}. Missing from the run: ${s.missing.length}. Search errors: ${s.searchErrors.map((e) => `"${e.q}" (${e.error})`).join(', ') || 'none'}.`,
+    '',
+    '## Hallucination',
+    '',
+    `${s.hallucination.answers} answers checked against an absent list (items × passes; failed answers left out). Tag support is the share of saved tag labels whose words are all in the gold title, description or tags.`,
+    '',
+    '| | Hallucinated | Absent words per answer | Tag support |',
+    '|---|---|---|---|',
+    hallucinationRow('All passes', s.hallucination),
+    ...(s.perRepeat.length > 1
+      ? s.perRepeat.map((p) => hallucinationRow(`Pass ${p.repeat}`, p.hallucination))
+      : []),
+    '',
+    '### Absent words found',
+    '',
+    ...(s.absentFound.length > 0
+      ? s.absentFound.map((a) => `- ${a.id} (pass ${a.repeat}): ${a.words.join(', ')}`)
+      : ['None.']),
+    ...(s.goldAbsentConflicts.length > 0
+      ? [
+          '',
+          '### Gold entries matching their own absent list',
+          '',
+          ...s.goldAbsentConflicts.map((c) => `- ${c.id}: ${c.words.join(', ')}`)
+        ]
+      : []),
+    '',
+    '### Most common unsupported tags',
+    '',
+    ...(s.unsupportedTags.length > 0
+      ? s.unsupportedTags.slice(0, 25).map((t) => `- ${t.label} (${t.count})`)
+      : ['None.']),
     '',
     '## Format',
     '',
@@ -247,6 +371,10 @@ function markdown(s: {
     )
   if (junky.length === 0) lines.push('None.')
   return `${lines.join('\n')}\n`
+}
+
+function hallucinationRow(name: string, h: HallucinationSummary): string {
+  return `| ${name} | ${pct(h.hallucinated)} | ${h.absentPerAnswer.toFixed(2)} | ${pct(h.tagSupport)} |`
 }
 
 main().catch((err) => {
