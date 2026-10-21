@@ -813,6 +813,14 @@ describe('zips', () => {
     expect(readdirSync(join(root, 'mockups'))).toHaveLength(0)
   })
 
+  it('trims the spaces some zips leave around a file name from the title', async () => {
+    const z = await zip('Tape.zip', [{ name: ' Hanging Duct Tape Mockup.psd', data: 'TAPE' }])
+    const q = queue()
+    await q.start([z])
+    await q.idle()
+    expect(repo.inbox.list('to_sort').map((r) => r.title)).toEqual(['Hanging Duct Tape Mockup'])
+  })
+
   it('knows a PSD inside a zip that is already in the stash', async () => {
     psd('Cap.psd', 'SAME')
     const first = queue()

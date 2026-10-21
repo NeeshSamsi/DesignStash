@@ -344,7 +344,8 @@ export class CopyQueue {
       })
 
       const mockup = this.repo.mockups.createMockup({
-        title: basename(job.fileName, extname(job.fileName)),
+        // Names inside zips sometimes start with a space.
+        title: basename(job.fileName, extname(job.fileName)).trim(),
         libraryPath,
         coverPath: cover.source === 'none' ? '' : cover.coverPath,
         coverSource: cover.source,
