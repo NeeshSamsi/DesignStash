@@ -1,1 +1,1 @@
-export { LookOverFlow, type LookOverFlowProps } from './LookOverFlow'
+export { LookOverFlow } from './LookOverFlow'

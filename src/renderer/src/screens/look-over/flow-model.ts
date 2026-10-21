@@ -8,7 +8,7 @@ import type { LookOverItem, LookOverQueue, LookOverUnit } from '@shared/approval
  */
 
 /** Where you are. `step` is an item index in the unit; for a pile, `step === items.length` is its review. */
-export interface Position {
+interface Position {
   unit: number
   step: number
 }
@@ -28,8 +28,8 @@ export interface FlowState {
 export const isPile = (unit: LookOverUnit) => unit.kind === 'pile'
 
 /** Steps in a unit: every item, then a pile's review. */
-export const stepCount = (unit: LookOverUnit) => unit.items.length + (isPile(unit) ? 1 : 0)
-export const isReview = (unit: LookOverUnit, step: number) =>
+const stepCount = (unit: LookOverUnit) => unit.items.length + (isPile(unit) ? 1 : 0)
+const isReview = (unit: LookOverUnit, step: number) =>
   isPile(unit) && step === unit.items.length
 
 /** A fresh flow from the queue main sent, resuming where Finish later left off. */
@@ -197,9 +197,9 @@ export function deck(s: FlowState): Deck {
   }
 }
 
-export type StepStatus = 'done' | 'current' | 'todo' | 'skipped'
+type StepStatus = 'done' | 'current' | 'todo' | 'skipped'
 
-export interface RailStep {
+interface RailStep {
   key: string
   /** Null for the review step. */
   mockupId: number | null
