@@ -1,25 +1,31 @@
 import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
-import { basename, extname, join } from 'node:path'
+import { basename, extname, join, sep } from 'node:path'
+import type { Readable } from 'node:stream'
 import type { CopyFile, CopyPauseReason, CopyProgress, CopyStatus } from '@shared/ipc/import'
 import type { Repository } from '../db/repository'
 import type { CopyJob } from '../db/schema'
 import { removeAppCopies } from '../library/app-files'
 import { resolveCover } from '../psd'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
+import { openArchiveEntry } from './archive'
 import { scanForPsds } from './scanner'
-import { copyWithHash } from './stream-copy'
+import { copyWithHash, type CopySource } from './stream-copy'
 
 export interface CopyQueueDeps {
   resolveCover: (input: ResolveCoverInput) => Promise<CoverResolution>
   freeBytes: (path: string) => Promise<number>
-  /** Copy a file by streaming it, telling `onBytes` how much is written, and return its SHA-256. */
+  /** Copy a file (or a stream of one) by streaming it, telling `onBytes` how much is written, and return its SHA-256. */
   copyHashed: (
-    src: string,
+    src: CopySource,
     dest: string,
     onBytes: (written: number) => void
   ) => Promise<{ sha256: string; bytes: number }>
+  /** Stream one PSD out of a zip. */
+  openArchiveEntry: (zipPath: string, entryName: string) => Promise<Readable>
   stat: (path: string) => Promise<{ size: number }>
+  /** The names in a folder; empty when it is not there. */
+  readdir: (path: string) => Promise<string[]>
   rm: (path: string) => Promise<void>
   mkdir: (path: string) => Promise<void>
   /** Room kept free beyond the file itself, for its cover and thumbnail. */
@@ -35,7 +41,9 @@ const defaultDeps: CopyQueueDeps = {
     return s.bavail * s.bsize
   },
   copyHashed: copyWithHash,
+  openArchiveEntry,
   stat: (p) => fs.stat(p),
+  readdir: (p) => fs.readdir(p).catch(() => []),
   rm: (p) => fs.rm(p, { force: true, recursive: true }),
   mkdir: async (p) => {
     await fs.mkdir(p, { recursive: true })
@@ -86,6 +94,8 @@ export class CopyQueue {
   /** The file being handled and the haul it belongs to. */
   private inFlight: { haulId: string; settled: Promise<boolean> } | null = null
   private lastPush = 0
+  /** Staging folders of drops still being read, which cleanup must leave alone. */
+  private readonly scanning = new Set<string>()
   private rate: { haulId: string; samples: { at: number; bytes: number }[] } = {
     haulId: '',
     samples: []
@@ -99,27 +109,48 @@ export class CopyQueue {
 
   /** Queue the PSDs under these paths. Joins the haul that is running or paused, else starts a new one. */
   async start(paths: string[]): Promise<CopyStatus> {
-    const scan = await scanForPsds(paths, {
-      stagingDir: join(this.root, '.staging', this.deps.newId())
-    })
-    // PSDs inside zips are queued from step 5 of the zip import (scratchpad 63).
-    const psds = scan.psds
-      .filter((p) => !p.archive)
-      .sort((a, b) => a.psdPath.localeCompare(b.psdPath))
+    // A zip inside a dropped zip is copied out here to be read. Cleared once no haul needs it.
+    const stagingDir = join(this.stagingRoot(), this.deps.newId())
+    this.scanning.add(stagingDir)
+    try {
+      return await this.queue(paths, stagingDir)
+    } finally {
+      this.scanning.delete(stagingDir)
+    }
+  }
+
+  private async queue(paths: string[], stagingDir: string): Promise<CopyStatus> {
+    const scan = await scanForPsds(paths, { stagingDir })
+    const psds = [...scan.psds].sort((a, b) => a.psdPath.localeCompare(b.psdPath))
 
     // Read every size first. Nothing below awaits, so the haul that gets joined is still going when the jobs land in it.
     const jobs = await Promise.all(
-      psds.map(async (p) => ({
-        sourcePath: p.psdPath,
-        fileName: basename(p.psdPath),
-        folderTrail: p.importContext.folderTrail,
-        // Read now so progress can be counted in bytes. A file that can't be read counts as nothing.
-        sizeBytes: await this.deps.stat(p.psdPath).then(
-          (st) => st.size,
-          () => 0
-        )
-      }))
+      psds.map(async (p) =>
+        p.archive
+          ? {
+              sourcePath: p.archive.path,
+              archiveEntry: p.archive.entry,
+              archiveName: p.archive.name,
+              fileName: p.importContext.originalFileName,
+              folderTrail: p.importContext.folderTrail,
+              // Uncompressed, so the disk check and progress count what is written.
+              sizeBytes: p.archive.size
+            }
+          : {
+              sourcePath: p.psdPath,
+              fileName: basename(p.psdPath),
+              folderTrail: p.importContext.folderTrail,
+              // Read now so progress can be counted in bytes. A file that can't be read counts as nothing.
+              sizeBytes: await this.deps.stat(p.psdPath).then(
+                (st) => st.size,
+                () => 0
+              )
+            }
+      )
     )
+    const skippedArchives = [...scan.skippedArchives]
+      .sort((a, b) => a.path.localeCompare(b.path))
+      .map((a) => ({ fileName: a.name, skipReason: a.reason }))
 
     const active = this.repo.copyJobs.getActiveHaul()
     let haulId: string
@@ -134,9 +165,11 @@ export class CopyQueue {
       this.repo.copyJobs.createHaul(haulId, scan.candidateImagePaths, scan.skippedCount)
     }
     this.repo.copyJobs.addJobs(haulId, jobs)
+    this.repo.copyJobs.addSkippedJobs(haulId, skippedArchives)
 
-    if (this.repo.copyJobs.getJobs(haulId).length === 0) {
+    if (!active && !this.repo.copyJobs.nextQueued(haulId)) {
       this.repo.copyJobs.setHaulState(haulId, { state: 'done' })
+      void this.cleanStaging()
     }
     this.emit(haulId, null)
     // Start on the next turn, so a caller that gets the status back can still act before the first file.
@@ -158,6 +191,10 @@ export class CopyQueue {
       this.repo.copyJobs.setHaulState(haulId, { state: 'cancelled' })
       this.repo.copyJobs.forgetPendingSources(haulId)
       this.emit(haulId, null)
+      // A file in flight may still be reading from staging; clear it once that is done.
+      if (this.inFlight?.haulId === haulId)
+        void this.inFlight.settled.then(() => this.cleanStaging())
+      else await this.cleanStaging()
     }
     return { landedIds: this.repo.copyJobs.landedMockupIds(haulId) }
   }
@@ -193,6 +230,7 @@ export class CopyQueue {
 
   /** At launch: carry on a haul that was running. A paused one waits for Retry. */
   async resume(): Promise<void> {
+    await this.cleanStaging()
     const haul = this.repo.copyJobs.getActiveHaul()
     if (!haul) return
     this.repo.copyJobs.resetCopying(haul.id)
@@ -222,6 +260,7 @@ export class CopyQueue {
       if (!job) {
         this.repo.copyJobs.setHaulState(haul.id, { state: 'done' })
         this.emit(haul.id, null)
+        await this.cleanStaging()
         return
       }
       const attempt = this.attempt(haul.id, job, haul.candidateImages)
@@ -264,9 +303,12 @@ export class CopyQueue {
       this.emit(haulId, job.id)
     }
 
+    // A PSD inside a zip: the zip has to be there, and the size is the PSD's own, read from the zip.
+    const entry = job.archiveEntry
     let size: number
     try {
-      size = (await this.deps.stat(job.sourcePath)).size
+      const st = await this.deps.stat(job.sourcePath)
+      size = entry === null ? st.size : job.sizeBytes
     } catch (err) {
       if (codeOf(err) === 'ENOENT' || codeOf(err) === 'ENOTDIR') throw new Pause('source-gone')
       return skip('unreadable')
@@ -280,7 +322,9 @@ export class CopyQueue {
       await this.deps.mkdir(destDir)
       const libraryPath = join(destDir, 'original.psd')
       // One pass over the original: it is copied and hashed together, and every chunk moves the bar.
-      const { sha256 } = await this.deps.copyHashed(job.sourcePath, libraryPath, (written) => {
+      const source: CopySource =
+        entry === null ? job.sourcePath : () => this.deps.openArchiveEntry(job.sourcePath, entry)
+      const { sha256 } = await this.deps.copyHashed(source, libraryPath, (written) => {
         this.live = { jobId: job.id, bytes: written }
         this.emitThrottled(haulId, job.id)
       })
@@ -291,8 +335,10 @@ export class CopyQueue {
         return skip('duplicate')
       }
 
+      // The preview is read from the stash's copy; sidecars are matched against where the PSD came from.
       const cover = await this.deps.resolveCover({
-        psdPath: job.sourcePath,
+        psdPath: libraryPath,
+        sidecarFor: entry === null ? job.sourcePath : join(job.sourcePath, entry),
         candidateImagePaths,
         outDir: destDir
       })
@@ -329,6 +375,29 @@ export class CopyQueue {
       () => true,
       () => false
     )
+  }
+
+  // ---- staging ----
+
+  private stagingRoot(): string {
+    return join(this.root, '.staging')
+  }
+
+  /**
+   * Remove staged zips no haul still needs: anything not waiting in the running or paused haul and
+   * not part of a drop still being read. Runs when a haul finishes and at launch.
+   */
+  async cleanStaging(): Promise<void> {
+    const stagingRoot = this.stagingRoot()
+    const keep = [...this.repo.copyJobs.pendingSourcePaths(), ...this.scanning]
+    const names = await this.deps.readdir(stagingRoot)
+    let left = 0
+    for (const name of names) {
+      const dir = join(stagingRoot, name)
+      if (keep.some((p) => p === dir || p.startsWith(dir + sep))) left++
+      else await this.deps.rm(dir).catch(() => left++)
+    }
+    if (left === 0) await this.deps.rm(stagingRoot).catch(() => {})
   }
 
   // ---- reporting ----
@@ -424,6 +493,7 @@ function toFile(j: CopyJob, live: { jobId: number; bytes: number } | null): Copy
   return {
     jobId: j.id,
     name: j.fileName,
+    ...(j.archiveName !== null ? { archiveName: j.archiveName } : {}),
     status: j.status,
     ...(j.skipReason ? { skipReason: j.skipReason } : {}),
     ...(j.mockupId !== null ? { mockupId: j.mockupId } : {}),

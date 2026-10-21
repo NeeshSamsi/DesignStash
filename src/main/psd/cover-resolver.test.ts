@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { mkdtempSync, rmSync, existsSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { resolveCover } from './cover-resolver'
@@ -72,6 +72,23 @@ describe('resolveCover — sidecar branch', () => {
       expect(result.candidateName).toBe('Artboard A.jpg')
       expect(result.confidence).toBe(1.0)
     }
+  })
+  it('reads the copy for its preview and matches sidecars against where the PSD came from', async () => {
+    const dir = tempDir()
+    const { psdPaths, jpgPaths } = await buildDroppedTree(dir)
+    const copyDir = join(dir, 'library', 'mockups', 'x')
+    mkdirSync(copyDir, { recursive: true })
+    const copy = join(copyDir, 'original.psd')
+    copyFileSync(psdPaths[0]!, copy)
+
+    const result = await resolveCover({
+      psdPath: copy,
+      sidecarFor: psdPaths[0]!,
+      candidateImagePaths: jpgPaths,
+      outDir: join(dir, 'out'),
+    })
+
+    expect(result).toMatchObject({ source: 'sidecar', candidateName: 'Artboard A.jpg' })
   })
 })
 

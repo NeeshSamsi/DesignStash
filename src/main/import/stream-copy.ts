@@ -1,10 +1,14 @@
 import { createHash } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
 import { Transform } from 'node:stream'
+import type { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
 /** One read at a time of this size, so progress moves in small steps even on a big PSD. */
 const CHUNK_BYTES = 1024 * 1024
+
+/** A file on disk, or a way to open a stream of it (an entry inside a zip). */
+export type CopySource = string | (() => Promise<Readable>)
 
 /**
  * Copy a file by streaming it, so the caller hears about every chunk, and work out its SHA-256 in
@@ -12,7 +16,7 @@ const CHUNK_BYTES = 1024 * 1024
  * fails part way, what was written is removed by the caller along with its folder.
  */
 export async function copyWithHash(
-  src: string,
+  src: CopySource,
   dest: string,
   onBytes: (written: number) => void = () => {}
 ): Promise<{ sha256: string; bytes: number }> {
@@ -26,6 +30,8 @@ export async function copyWithHash(
       callback(null, chunk)
     }
   })
-  await pipeline(createReadStream(src, { highWaterMark: CHUNK_BYTES }), tap, createWriteStream(dest))
+  const input =
+    typeof src === 'string' ? createReadStream(src, { highWaterMark: CHUNK_BYTES }) : await src()
+  await pipeline(input, tap, createWriteStream(dest))
   return { sha256: hash.digest('hex'), bytes }
 }

@@ -4,7 +4,7 @@ import { findSidecar } from './sidecar'
 import type { ResolveCoverInput, CoverResolution } from './types'
 
 export async function resolveCover(input: ResolveCoverInput): Promise<CoverResolution> {
-  const { psdPath, candidateImagePaths, outDir } = input
+  const { psdPath, sidecarFor = psdPath, candidateImagePaths, outDir } = input
 
   const raw = await readEmbeddedPreview(psdPath)
   if (raw) {
@@ -12,7 +12,7 @@ export async function resolveCover(input: ResolveCoverInput): Promise<CoverResol
     return { source: 'embedded', coverPath, thumbPath }
   }
 
-  const match = findSidecar(psdPath, candidateImagePaths)
+  const match = findSidecar(sidecarFor, candidateImagePaths)
   if (match) {
     const { coverPath, thumbPath } = await generateCoverFromFile(match.path, outDir)
     return {

@@ -10,6 +10,7 @@ import { createTestDb } from '../db/repositories/__tests__/setup'
 import type { CoverResolution } from '../psd/types'
 import { CopyQueue, type CopyQueueDeps } from './copy-queue'
 import { copyWithHash } from './stream-copy'
+import { makeZip, zipBytes } from './__tests__/zips'
 
 let base: string
 let drop: string
@@ -462,8 +463,8 @@ describe('cancel and undo', () => {
     const gates = { [a]: gate(a), [b]: gate(b) }
     const q = queue({
       copyHashed: async (src, dest, onBytes) => {
-        gates[src]!.begin()
-        await gates[src]!.wait
+        gates[src as string]!.begin()
+        await gates[src as string]!.wait
         return copyWithHash(src, dest, onBytes)
       }
     })
@@ -558,7 +559,7 @@ describe('byte progress', () => {
   const steppedCopy = (clock: { t: number }, steps: number, stepMs: number): Partial<CopyQueueDeps> => ({
     now: () => clock.t,
     copyHashed: async (src, dest, onBytes) => {
-      const data = readFileSync(src)
+      const data = readFileSync(src as string)
       writeFileSync(dest, data)
       for (let i = 1; i <= steps; i++) {
         clock.t += stepMs
@@ -693,5 +694,246 @@ describe('byte progress', () => {
     const partial = events.filter((e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0)
     expect(partial.length).toBeGreaterThanOrEqual(3)
     expect(last()).toMatchObject({ state: 'done', bytesCopied: 6 * 1024 * 1024 })
+  })
+})
+
+describe('zips', () => {
+  const zip = (rel: string, entries: Parameters<typeof makeZip>[1]) => {
+    const path = join(drop, rel)
+    mkdirSync(join(path, '..'), { recursive: true })
+    return makeZip(path, entries)
+  }
+
+  it('lands each PSD inside a dropped zip and leaves the zip as it was', async () => {
+    const z = await zip('Free_Cap_Mockup.zip', [
+      { name: 'Free_Cap_Mockup/Files/Free_Cap_Mockup.psd', data: 'CAP-FRONT' },
+      { name: 'Free_Cap_Mockup/Files/Back.psd', data: 'CAP-BACK!!', compress: false },
+      { name: '__MACOSX/Free_Cap_Mockup/Files/._Back.psd', data: 'apple' },
+      { name: 'Get 50% off.url', data: 'x' }
+    ])
+    const before = readFileSync(z)
+    const q = queue()
+
+    const started = await q.start([z])
+    await q.idle()
+
+    expect(started).toMatchObject({ total: 2, bytesTotal: 19, skipped: { notPsd: 0 } })
+    expect(started.files.map((f) => [f.name, f.archiveName, f.size])).toEqual([
+      ['Back.psd', 'Free_Cap_Mockup.zip', 10],
+      ['Free_Cap_Mockup.psd', 'Free_Cap_Mockup.zip', 9]
+    ])
+    const rows = repo.inbox.list('to_sort')
+    expect(rows.map((r) => r.title).sort()).toEqual(['Back', 'Free_Cap_Mockup'])
+    expect(rows.map((r) => r.sizeBytes).sort()).toEqual([10, 9])
+    const contents = rows.map((r) => readFileSync(repo.mockups.getMockup(r.id)!.libraryPath, 'utf8'))
+    expect(contents.sort()).toEqual(['CAP-BACK!!', 'CAP-FRONT'])
+    expect(repo.mockups.getMockup(rows[0]!.id)!.importContext).toMatchObject({
+      folderTrail: ['Free Cap Mockup']
+    })
+    expect(readFileSync(z).equals(before)).toBe(true)
+    expect(last()).toMatchObject({ state: 'done', landed: 2, bytesCopied: 19 })
+    expect(JSON.stringify(events)).not.toContain(base)
+  })
+
+  it('reads the cover from the copy in the stash, for zips and loose PSDs alike', async () => {
+    const z = await zip('Cap.zip', [{ name: 'Files/Cap.psd', data: 'CAP' }])
+    const loose = psd('Loose.psd', 'LOOSE')
+    const q = queue()
+    await q.start([z, loose])
+    await q.idle()
+
+    const inputs = resolveCover.mock.calls.map(([input]) => input)
+    expect(inputs).toHaveLength(2)
+    for (const input of inputs) {
+      expect(input.psdPath).toBe(join(input.outDir, 'original.psd'))
+      expect(existsSync(input.psdPath)).toBe(true)
+    }
+    expect(inputs.map((i) => i.sidecarFor).sort()).toEqual([loose, join(z, 'Files/Cap.psd')].sort())
+  })
+
+  it('lists archives that gave no PSD as skipped rows, each once', async () => {
+    writeFileSync(join(drop, 'Pack.rar'), 'rar')
+    await zip('Fonts.zip', [{ name: 'a.otf', data: 'x' }])
+    psd('a.psd')
+    const q = queue()
+    const started = await q.start([drop])
+    await q.idle()
+
+    expect(started.files.filter((f) => f.status === 'skipped')).toEqual([
+      expect.objectContaining({ name: 'Fonts.zip', skipReason: 'no-psd-in-archive', size: 0 }),
+      expect.objectContaining({ name: 'Pack.rar', skipReason: 'archive-unsupported', size: 0 })
+    ])
+    expect(last()).toMatchObject({
+      state: 'done',
+      total: 3,
+      landed: 1,
+      skipped: { notPsd: 0, archiveUnsupported: 1, noPsdInArchive: 1 }
+    })
+  })
+
+  it('finishes at once when a drop has only zips with no PSD inside', async () => {
+    const z = await zip('Fonts.zip', [{ name: 'a.otf', data: 'x' }])
+    const q = queue()
+    const started = await q.start([z])
+    expect(started).toMatchObject({ state: 'done', total: 1, landed: 0 })
+  })
+
+  it('checks the disk against the uncompressed size', async () => {
+    const z = await zip('Big.zip', [{ name: 'Big.psd', data: 'x'.repeat(5000) }])
+    // The zip itself is far smaller than 5000 bytes, but the PSD inside is not.
+    free = 5000
+    const q = queue()
+    await q.start([z])
+    await q.idle()
+    expect(last()).toMatchObject({ state: 'paused', pauseReason: 'disk-full' })
+  })
+
+  it('pauses with source-gone when the zip goes away, and carries on when it is back', async () => {
+    const z = await zip('Cap.zip', [{ name: 'Cap.psd', data: 'CAP' }])
+    const bytes = readFileSync(z)
+    const q = queue()
+    const { haulId } = await q.start([z])
+    rmSync(z)
+    await q.idle()
+    expect(last()).toMatchObject({ state: 'paused', pauseReason: 'source-gone' })
+
+    writeFileSync(z, bytes)
+    await q.retry(haulId)
+    await q.idle()
+    expect(last()).toMatchObject({ state: 'done', landed: 1 })
+  })
+
+  it('skips the PSD as unreadable when the zip no longer holds it', async () => {
+    const z = await zip('Cap.zip', [{ name: 'Cap.psd', data: 'CAP' }])
+    const q = queue()
+    await q.start([z])
+    await makeZip(z, [{ name: 'Other.psd', data: 'OTHER' }])
+    await q.idle()
+    expect(last()).toMatchObject({ state: 'done', landed: 0, skipped: { unreadable: 1 } })
+    expect(readdirSync(join(root, 'mockups'))).toHaveLength(0)
+  })
+
+  it('knows a PSD inside a zip that is already in the stash', async () => {
+    psd('Cap.psd', 'SAME')
+    const first = queue()
+    await first.start([join(drop, 'Cap.psd')])
+    await first.idle()
+    const z = await zip('Cap.zip', [{ name: 'Cap.psd', data: 'SAME' }])
+    const again = queue()
+    await again.start([z])
+    await again.idle()
+    expect(last()).toMatchObject({ landed: 0, skipped: { duplicate: 1 } })
+  })
+
+  it('forgets the zip and the entry once a PSD is handled, and keeps the zip name for its row', async () => {
+    const z = await zip('Cap.zip', [{ name: 'Cap.psd', data: 'CAP' }])
+    const q = queue()
+    const { haulId } = await q.start([z])
+    await q.idle()
+    expect(repo.copyJobs.getJobs(haulId)).toEqual([
+      expect.objectContaining({ sourcePath: '', archiveEntry: null, archiveName: 'Cap.zip' })
+    ])
+    expect((await q.status())!.files[0]).toMatchObject({ archiveName: 'Cap.zip' })
+  })
+
+  it('streams the entry again from the start after a restart', async () => {
+    const z = await zip('Cap.zip', [
+      { name: 'A.psd', data: 'AAA' },
+      { name: 'B.psd', data: 'BBB' }
+    ])
+    const first = queue()
+    const { haulId } = await first.start([z])
+    await first.idle()
+    // Simulate a crash while B was copying.
+    const b = repo.copyJobs.getJobs(haulId).find((j) => j.fileName === 'B.psd')!
+    repo.trash.deleteMockupsHard([b.mockupId!])
+    repo.copyJobs.setJobState(b.id, { status: 'copying' })
+    sqlite
+      .prepare('UPDATE copy_jobs SET source_path = ?, archive_entry = ? WHERE id = ?')
+      .run(z, 'B.psd', b.id)
+    repo.copyJobs.setHaulState(haulId, { state: 'running' })
+
+    const restarted = queue()
+    await restarted.resume()
+    await restarted.idle()
+
+    const rows = repo.inbox.list('to_sort')
+    expect(rows).toHaveLength(2)
+    const contents = rows.map((r) => readFileSync(repo.mockups.getMockup(r.id)!.libraryPath, 'utf8'))
+    expect(contents.sort()).toEqual(['AAA', 'BBB'])
+  })
+
+  describe('a zip inside a zip', () => {
+    const nested = async () => {
+      const inner = await zipBytes(join(base, 'inner-src.zip'), [{ name: 'Cards/Notebook.psd', data: 'NOTE' }])
+      return zip('Free_3_Cards_Mockup.zip', [
+        { name: 'Free_3_Cards_Mockup/File/Free_3_Cards_Mockup.psd.zip', data: inner }
+      ])
+    }
+
+    it('lands the PSDs inside it, named after the zip that was dropped', async () => {
+      const z = await nested()
+      const q = queue()
+      const started = await q.start([z])
+      await q.idle()
+
+      expect(started.files).toEqual([
+        expect.objectContaining({ name: 'Notebook.psd', archiveName: 'Free_3_Cards_Mockup.zip' })
+      ])
+      const [row] = repo.inbox.list('to_sort')
+      expect(readFileSync(repo.mockups.getMockup(row!.id)!.libraryPath, 'utf8')).toBe('NOTE')
+      expect(repo.mockups.getMockup(row!.id)!.importContext).toMatchObject({
+        folderTrail: ['Free 3 Cards Mockup', 'Cards']
+      })
+    })
+
+    it('stages the inner zip in the stash and clears it when the haul finishes', async () => {
+      const z = await nested()
+      free = 1 // hold the haul open
+      const q = queue()
+      const { haulId } = await q.start([z])
+      await q.idle()
+      expect(readdirSync(join(root, '.staging'))).toHaveLength(1)
+
+      free = 10_000_000
+      await q.retry(haulId)
+      await q.idle()
+      expect(last()).toMatchObject({ state: 'done', landed: 1 })
+      expect(existsSync(join(root, '.staging'))).toBe(false)
+    })
+
+    it('clears staging when the haul is cancelled', async () => {
+      const z = await nested()
+      free = 1
+      const q = queue()
+      const { haulId } = await q.start([z])
+      await q.idle()
+      await q.cancel(haulId)
+      await q.idle()
+      expect(existsSync(join(root, '.staging'))).toBe(false)
+    })
+
+    it('keeps the staging a paused haul still needs across a restart, and clears orphans', async () => {
+      const z = await nested()
+      free = 1
+      const first = queue()
+      await first.start([z])
+      await first.idle()
+      mkdirSync(join(root, '.staging', 'orphan'), { recursive: true })
+      writeFileSync(join(root, '.staging', 'orphan', '0.zip'), 'left behind')
+
+      const restarted = queue()
+      await restarted.resume()
+      await restarted.idle()
+
+      expect(readdirSync(join(root, '.staging'))).toHaveLength(1)
+      expect(existsSync(join(root, '.staging', 'orphan'))).toBe(false)
+    })
+
+    it('clears all staging at launch when no haul needs it', async () => {
+      mkdirSync(join(root, '.staging', 'orphan'), { recursive: true })
+      await queue().resume()
+      expect(existsSync(join(root, '.staging'))).toBe(false)
+    })
   })
 })

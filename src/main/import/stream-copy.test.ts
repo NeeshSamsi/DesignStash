@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { Readable } from 'node:stream'
 import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { copyWithHash } from './stream-copy'
 
@@ -19,7 +20,10 @@ describe('copyWithHash', () => {
     const res = await copyWithHash(join(dir, 'a.psd'), join(dir, 'b.psd'))
 
     expect(readFileSync(join(dir, 'b.psd')).equals(data)).toBe(true)
-    expect(res).toEqual({ sha256: createHash('sha256').update(data).digest('hex'), bytes: data.length })
+    expect(res).toEqual({
+      sha256: createHash('sha256').update(data).digest('hex'),
+      bytes: data.length
+    })
   })
 
   it('reports growing byte counts in several steps, ending at the file size', async () => {
@@ -36,17 +40,49 @@ describe('copyWithHash', () => {
 
   it('copies an empty file', async () => {
     writeFileSync(join(dir, 'empty.psd'), '')
-    expect(await copyWithHash(join(dir, 'empty.psd'), join(dir, 'copy.psd'))).toMatchObject({ bytes: 0 })
+    expect(await copyWithHash(join(dir, 'empty.psd'), join(dir, 'copy.psd'))).toMatchObject({
+      bytes: 0
+    })
     expect(existsSync(join(dir, 'copy.psd'))).toBe(true)
   })
 
   it('fails with ENOENT when the source is gone and leaves the original alone', async () => {
-    await expect(copyWithHash(join(dir, 'missing.psd'), join(dir, 'b.psd'))).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(copyWithHash(join(dir, 'missing.psd'), join(dir, 'b.psd'))).rejects.toMatchObject({
+      code: 'ENOENT'
+    })
   })
 
   it('never changes the original', async () => {
     writeFileSync(join(dir, 'a.psd'), 'keep me')
     await copyWithHash(join(dir, 'a.psd'), join(dir, 'b.psd'))
     expect(readFileSync(join(dir, 'a.psd'), 'utf8')).toBe('keep me')
+  })
+
+  it('copies from a stream it is handed, such as an entry inside a zip', async () => {
+    const data = Buffer.alloc(2 * 1024 * 1024 + 5, 3)
+    const seen: number[] = []
+
+    const res = await copyWithHash(
+      async () => Readable.from([data.subarray(0, 100), data.subarray(100)]),
+      join(dir, 'b.psd'),
+      (n) => seen.push(n)
+    )
+
+    expect(readFileSync(join(dir, 'b.psd')).equals(data)).toBe(true)
+    expect(res).toEqual({
+      sha256: createHash('sha256').update(data).digest('hex'),
+      bytes: data.length
+    })
+    expect(seen.at(-1)).toBe(data.length)
+  })
+
+  it('fails when the stream fails part way', async () => {
+    const broken = async () =>
+      new Readable({
+        read() {
+          this.destroy(new Error('invalid distance too far back'))
+        }
+      })
+    await expect(copyWithHash(broken, join(dir, 'b.psd'))).rejects.toThrow('invalid distance')
   })
 })
