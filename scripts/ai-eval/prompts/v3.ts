@@ -35,7 +35,28 @@ const CATEGORIES: [string, string][] = [
 const SEEN_LINE =
   '- seen: first, two or three plain sentences on what is in the picture: the main object and what it is made of, what it stands on or hangs from, the background, the colours, and where the camera is. Write the other fields from this.'
 
-function userText(input: AnalysisInput, hasImage: boolean, seen: boolean): string {
+/** What a version built on v3 changes. v3 and v3b use the defaults, so their runs stay reproducible. */
+export interface V3Options {
+  seen: boolean
+  /** The line after the names, when there is an image. */
+  productLine?: string
+  /** The line after the names, when there is no usable image. */
+  noImageLine?: string
+  /** The tags line. */
+  tagLine?: string
+  /** Strip free, mockup and the rest from the description too (v3 did; it left holes). */
+  stripDescription?: boolean
+  /** Fewest tags the grammar allows. */
+  minTags?: number
+}
+
+const V3_PRODUCT_LINE =
+  'The image shows what the mockup is. The names can add a product name or model, like "iPhone 16".'
+const V3_TAG_LINE =
+  '- tags: 3 to 6, each one thing that is really in the picture, in its category. Leave a category out when nothing in the picture fits it.'
+
+function userText(input: AnalysisInput, hasImage: boolean, options: V3Options): string {
+  const { seen } = options
   const lines = [
     hasImage ? 'The image above is the mockup preview.' : 'There is no usable preview image, so go by the names below.',
     `File name: ${input.fileName}`
@@ -43,8 +64,8 @@ function userText(input: AnalysisInput, hasImage: boolean, seen: boolean): strin
   if (input.folderTrail.length > 0) lines.push(`Folders: ${input.folderTrail.join(' / ')}`)
   lines.push(
     hasImage
-      ? 'The image shows what the mockup is. The names can add a product name or model, like "iPhone 16".'
-      : 'Describe the object the names point to, in your own words.',
+      ? (options.productLine ?? V3_PRODUCT_LINE)
+      : (options.noImageLine ?? 'Describe the object the names point to, in your own words.'),
     '',
     'Words printed on the object (a brand, a slogan, "mockup", a website on a screen) are template filler a designer replaces. Leave them out of every field and describe the object itself.',
     '',
@@ -52,7 +73,7 @@ function userText(input: AnalysisInput, hasImage: boolean, seen: boolean): strin
     ...(seen ? [SEEN_LINE] : []),
     '- title: your own short name for the scene, at most 60 characters: the main object, its product name if known, and one detail of the setting. For a photo of a bike it would be "Red road bike against a garage door".',
     '- description: one natural sentence, at most 200 characters. Name the main object and, in the same sentence, one or two other words people use for it, then the setting and the main colours. For the bike: "A red road bike, also called a racing bicycle, leaning on a white garage door in afternoon sun."',
-    '- tags: 3 to 6, each one thing that is really in the picture, in its category. Leave a category out when nothing in the picture fits it.',
+    options.tagLine ?? V3_TAG_LINE,
     '- labels are one or two plain words.',
     '',
     'Categories:',
@@ -64,14 +85,15 @@ function userText(input: AnalysisInput, hasImage: boolean, seen: boolean): strin
 /** Printable ASCII without `"` or `\`. Loose limits; the saved text is trimmed after. */
 const plain = (max: number) => ({ type: 'string', pattern: `^[ !#-\\[\\]-~]{1,${max}}$` })
 
-function schema(seen: boolean): object {
+function schema(seen: boolean, minTags: number): object {
   return {
     ...RESULT_JSON_SCHEMA,
     properties: {
       ...(seen ? { seen: plain(600) } : {}),
       ...RESULT_JSON_SCHEMA.properties,
       title: plain(90),
-      description: plain(300)
+      description: plain(300),
+      tags: { ...RESULT_JSON_SCHEMA.properties.tags, minItems: minTags }
     },
     required: [...(seen ? ['seen'] : []), ...RESULT_JSON_SCHEMA.required]
   }
@@ -100,7 +122,7 @@ export function stripJunk(text: string): string {
     .replace(/\s+([,.;:])/g, '$1')
     .replace(/\(\s*\)/g, '')
     .replace(/\s{2,}/g, ' ')
-    .replace(/^[\s,.;:\-]+|[\s,;:\-]+$/g, '')
+    .replace(/^[\s,.;:-]+|[\s,;:-]+$/g, '')
     .trim()
     .replace(/^\w/, (c) => c.toUpperCase())
 }
@@ -111,32 +133,34 @@ function clipWords(text: string, max: number): string {
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 1)).replace(/[\s,;:]+$/, '')}…`
 }
 
-function tidy(result: EvalResult): EvalResult {
+function tidy(result: EvalResult, stripDescription: boolean): EvalResult {
   const title = stripJunk(result.title) || result.title
-  const description = clipWords(stripJunk(result.description) || result.description, 200)
+  const text = stripDescription ? stripJunk(result.description) || result.description : result.description
+  const description = clipWords(text.trim(), 200)
   const tags = result.tags
     .map((t) => ({ ...t, label: stripJunk(t.label) }))
     .filter((t) => t.label.length > 0)
   return { ...result, title: clipWords(title, 60), description, tags }
 }
 
-export function makeV3(id: string, seen: boolean): PromptVersion {
+export function makeV3(id: string, seen: boolean, overrides: Omit<V3Options, 'seen'> & { notes?: string } = {}): PromptVersion {
+  const options: V3Options = { seen, ...overrides }
   return {
     id,
-    notes: seen
+    notes: overrides.notes ?? (seen
       ? 'Copying fixed (bicycle examples, printed words as filler, names for product names only), one natural sentence, ASCII grammar, repeat_penalty 1.05, placeholder covers sent as no image, junk words stripped. With the seen field.'
-      : 'v3 without the seen field, to measure what that field adds.',
+      : 'v3 without the seen field, to measure what that field adds.'),
     readImage: readUsableCover,
     buildRequest(input, imageUrl) {
       const content: ChatContentPart[] = []
       if (imageUrl) content.push({ type: 'image_url', image_url: { url: imageUrl } })
-      content.push({ type: 'text', text: userText(input, imageUrl !== null, seen) })
+      content.push({ type: 'text', text: userText(input, imageUrl !== null, options) })
       return {
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content }
         ],
-        response_format: { type: 'json_schema', json_schema: { name: 'mockup', schema: schema(seen) } },
+        response_format: { type: 'json_schema', json_schema: { name: 'mockup', schema: schema(seen, options.minTags ?? 1) } },
         temperature: 0.2,
         repeat_penalty: 1.05,
         max_tokens: seen ? 700 : 450
@@ -144,7 +168,7 @@ export function makeV3(id: string, seen: boolean): PromptVersion {
     },
     parseResult(raw) {
       const parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)![0]) as { seen?: string }
-      const result = tidy(parseResult(raw))
+      const result = tidy(parseResult(raw), options.stripDescription ?? true)
       return seen ? { ...result, extra: { seen: parsed.seen } } : result
     }
   }
