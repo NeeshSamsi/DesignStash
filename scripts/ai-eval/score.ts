@@ -48,7 +48,8 @@ function indexedFor(item: EvalItem, result: ItemResult | undefined): IndexedItem
       id: item.id,
       title: result.parsed.title,
       description: result.parsed.description,
-      tags: result.searchTags
+      tags: result.searchTags,
+      ...(result.parsed.keywords && { keywords: result.parsed.keywords })
     }
   }
   return { id: item.id, title: stemOf(item.fileName), description: '', tags: [] }
@@ -166,6 +167,7 @@ async function main(): Promise<void> {
         id: item.id,
         title: parsed?.title ?? null,
         tags: first.byId.get(item.id)?.searchTags.map((t) => t.label) ?? [],
+        keywords: parsed?.keywords ?? [],
         find: rates[item.id] ?? null,
         format: formats.get(item.id) ?? null
       }

@@ -9,6 +9,8 @@ export interface EvalResult {
   title: string
   description: string
   tags: { category: string; label: string }[]
+  /** Words a version wants searchable but not shown. Indexed with the tags, as a keywords column merged into `mockups_fts.tags` would be. */
+  keywords?: string[]
   extra?: Record<string, unknown>
 }
 

@@ -7,11 +7,18 @@ export interface IndexedItem {
   title: string
   description: string
   tags: TagPair[]
+  /** Searchable but not shown: appended to the tags column text. */
+  keywords?: string[]
+}
+
+/** The tags column of a row: the tag labels, then any keywords, joined by spaces. */
+export function tagsColumnText(item: Pick<IndexedItem, 'tags' | 'keywords'>): string {
+  return [tagsColumn(item.tags), ...(item.keywords ?? [])].filter((t) => t.trim()).join(' ')
 }
 
 /**
  * The app's search over a set of items: the same `mockups_fts` layout as `search-index.ts`, rows
- * written as `SearchRepository.upsertSearchIndex` writes them, the MATCH built by `ftsMatchQuery`
+ * written as `SearchRepository.upsertSearchIndex` writes them (plus a version's keywords), the MATCH built by `ftsMatchQuery`
  * and results in FTS rank order, as the library sorts them. In memory with `node:sqlite`, so no
  * native module has to be rebuilt.
  */
@@ -26,7 +33,7 @@ export class SearchSim {
     )
     items.forEach((item, i) => {
       this.ids.push(item.id)
-      insert.run(i + 1, item.title, item.description, tagsColumn(item.tags))
+      insert.run(i + 1, item.title, item.description, tagsColumnText(item))
     })
   }
 

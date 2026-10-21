@@ -30,6 +30,16 @@ describe('SearchSim', () => {
     sim.close()
   })
 
+  it('finds an item by a word that is only in its keywords', () => {
+    const sim = new SearchSim([
+      ...items.slice(0, 2),
+      { ...items[2]!, keywords: ['apparel', 'garment'] }
+    ])
+    expect(sim.search('garment').ids).toEqual(['shirt'])
+    expect(sim.search('tote').ids).toEqual(['tote', 'shirt'])
+    sim.close()
+  })
+
   it('returns nothing for a query with no searchable words', () => {
     const sim = new SearchSim(items)
     expect(sim.search('!!')).toEqual({ ids: [] })
