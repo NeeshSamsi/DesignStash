@@ -106,6 +106,7 @@ export function SingleView({ data, edit, kind }: SingleViewProps) {
       </SidebarHeader>
       {edit ? (
         <EditableCover
+          title={form.title.trim() || item.title}
           src={src}
           coverPath={item.coverPath}
           coverSource={item.coverSource}

@@ -166,6 +166,27 @@ describe('details sidebar · one mockup, read-only', () => {
     expect(await screen.findByRole('dialog')).not.toBeNull()
   })
 
+  it('captions the full-screen viewer with the mockup’s title, not the sample', async () => {
+    await show()
+    await screen.findByText('Hero Screen')
+    fireEvent.click(button('Zoom')!)
+    const viewer = await screen.findByRole('dialog')
+    expect(within(viewer).getAllByText('Hero Screen').length).toBeGreaterThan(0)
+    expect(within(viewer).queryByText('Clay iPhone 15 Pro')).toBeNull()
+  })
+
+  it('captions the viewer opened from the edit form with the title being edited', async () => {
+    await show()
+    await screen.findByText('Hero Screen')
+    fireEvent.click(button('Edit')!)
+    const title = (await screen.findByLabelText('Title')) as HTMLInputElement
+    fireEvent.change(title, { target: { value: 'Renamed hero' } })
+    fireEvent.click(button('Zoom')!)
+    const viewer = await screen.findByRole('dialog')
+    expect(within(viewer).getAllByText('Renamed hero').length).toBeGreaterThan(0)
+    expect(within(viewer).queryByText('Clay iPhone 15 Pro')).toBeNull()
+  })
+
   it('closes with ✕ and clears the page selection', async () => {
     const clear = vi.fn()
     useDetailsStore.getState().setClearSelection(clear)

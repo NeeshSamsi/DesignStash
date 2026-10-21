@@ -82,6 +82,7 @@ export function SidebarCover({ src, title, coverSource, missing }: SidebarCoverP
       <Lightbox
         open={zoom}
         mode="single"
+        caption={title}
         state={missing ? 'missing' : 'loaded'}
         {...(src ? { src } : {})}
         onClose={() => setZoom(false)}
@@ -95,6 +96,8 @@ export function SidebarCover({ src, title, coverSource, missing }: SidebarCoverP
 }
 
 export interface EditableCoverProps {
+  /** Names the full-screen viewer: the title as it stands in the form. */
+  title: string
   src: string | undefined
   coverPath: string
   coverSource: CoverSource
@@ -112,6 +115,7 @@ export interface EditableCoverProps {
  * of what Save commits.
  */
 export function EditableCover({
+  title,
   src,
   coverPath,
   coverSource,
@@ -141,6 +145,7 @@ export function EditableCover({
       <Lightbox
         open={zoom}
         mode="single"
+        caption={title}
         state={missing ? 'missing' : 'loaded'}
         {...(src ? { src } : {})}
         onClose={() => setZoom(false)}
