@@ -12,12 +12,17 @@ export const MODEL_ROW_CONTRACT = {
     'One on-device model in the onboarding picker (a radio list): download, pause/resume, verify, installed, failed. Settings › AI model uses ModelCard.',
   code: 'screens/onboarding/AiStep.tsx',
   axes: {
-    state: ['not-installed', 'downloading', 'paused', 'verifying', 'failed', 'installed']
+    state: ['not-installed', 'downloading', 'paused', 'verifying', 'installed', 'failed']
   },
   axisDefaults: {
     state: 'not-installed'
   },
-  flags: {},
+  flags: {
+    selected: {
+      on: 'true',
+      off: 'false'
+    }
+  },
   interactionStates: [],
   disabled: false,
   booleans: {},
@@ -31,15 +36,18 @@ export type ModelRowState =
   | 'downloading'
   | 'paused'
   | 'verifying'
-  | 'failed'
   | 'installed'
+  | 'failed'
 
 export interface ModelRowContractProps {
   /** Figma `state` (6 options). Default `not-installed`. */
   state?: ModelRowState
+  /** Figma `state=true` (false = `state=false`). */
+  selected?: boolean
 }
 
 /** Figma defaults. Slots have none. */
 export const MODEL_ROW_DEFAULTS = {
-  state: 'not-installed'
+  state: 'not-installed',
+  selected: false
 } satisfies ModelRowContractProps

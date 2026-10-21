@@ -50,7 +50,7 @@ export function OnboardingStep({
   onPrimary,
   ...rest
 }: OnboardingStepProps) {
-  const { variant, busy, footer, showContent, title, body, content, ...props } = {
+  const { variant, busy, footer, showContent, showSkip, title, body, content, ...props } = {
     ...ONBOARDING_STEP_DEFAULTS,
     ...rest
   }
@@ -106,7 +106,7 @@ export function OnboardingStep({
             </div>
           )}
           <div className="flex items-center gap-2">
-            {!welcome && onSkip && (
+            {!welcome && showSkip && onSkip && (
               <Button variant="ghost" size="sm" label={skipLabel} onClick={onSkip} />
             )}
             {!hidePrimary && (

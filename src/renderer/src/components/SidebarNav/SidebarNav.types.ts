@@ -13,7 +13,7 @@ export const SIDEBAR_NAV_CONTRACT = {
     'Primary navigation: AddMenu, My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.',
   code: 'AppShell.tsx',
   axes: {
-    variant: ['none', 'to-sort', 'to-stash', 'both']
+    variant: ['none', 'to-stash', 'to-sort', 'both']
   },
   axisDefaults: {
     variant: 'none'
@@ -36,7 +36,7 @@ export const SIDEBAR_NAV_CONTRACT = {
   }
 } as const satisfies ComponentContract
 
-export type SidebarNavVariant = 'none' | 'to-sort' | 'to-stash' | 'both'
+export type SidebarNavVariant = 'none' | 'to-stash' | 'to-sort' | 'both'
 
 export interface SidebarNavContractProps {
   /** Figma `variant` (4 options). Default `none`. */

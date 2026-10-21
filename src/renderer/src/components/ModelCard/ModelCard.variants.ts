@@ -10,7 +10,9 @@ export const modelCardVariants = cva('flex w-full flex-col gap-3 rounded-xl bord
       downloaded: 'border-subtle',
       downloading: 'border-subtle',
       available: 'border-subtle',
-      failed: 'border-subtle'
+      failed: 'border-subtle',
+      verifying: 'border-subtle',
+      paused: 'border-subtle'
     }
   },
   defaultVariants: { state: 'in-use' }

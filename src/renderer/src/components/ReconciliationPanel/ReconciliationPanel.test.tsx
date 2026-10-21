@@ -94,4 +94,11 @@ describe('ReconciliationPanel behaviour', () => {
     const { container } = render(<ReconciliationPanel state="drift" />)
     expect(container.textContent).not.toMatch(/\/Users|\\|ENOENT|0x/)
   })
+
+  it('removing is busy like resolving', () => {
+    const { container } = render(<ReconciliationPanel state="removing" />)
+    expect(
+      container.querySelector('[data-ds="ReconciliationPanel"]')?.getAttribute('aria-busy')
+    ).toBe('true')
+  })
 })

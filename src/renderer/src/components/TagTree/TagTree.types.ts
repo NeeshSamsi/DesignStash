@@ -14,13 +14,13 @@ export const TAG_TREE_CONTRACT = {
   axes: {
     state: [
       'default',
+      'renaming',
+      'empty',
+      'loading',
       'adding',
       'added',
       'duplicate',
-      'renaming',
-      'new-category',
-      'empty',
-      'loading'
+      'new-category'
     ]
   },
   axisDefaults: {
@@ -37,13 +37,13 @@ export const TAG_TREE_CONTRACT = {
 
 export type TagTreeState =
   | 'default'
+  | 'renaming'
+  | 'empty'
+  | 'loading'
   | 'adding'
   | 'added'
   | 'duplicate'
-  | 'renaming'
   | 'new-category'
-  | 'empty'
-  | 'loading'
 
 export interface TagTreeContractProps {
   /** Figma `state` (8 options). Default `default`. */

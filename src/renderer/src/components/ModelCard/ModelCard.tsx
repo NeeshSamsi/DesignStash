@@ -87,10 +87,25 @@ export function ModelCard({
   onDelete,
   ...rest
 }: ModelCardProps) {
-  const { state, bestFit, name, description, languages, size, ...props } = {
+  const {
+    state: figmaState,
+    bestFit,
+    name,
+    description,
+    languages,
+    size,
+    resumeNote: figmaResumeNote,
+    ...props
+  } = {
     ...MODEL_CARD_DEFAULTS,
     ...rest
   }
+  // Figma draws verifying and paused as states of their own; in code they are a downloading card
+  // that is being checked, and an available card that has a partial download to resume.
+  const state =
+    figmaState === 'verifying' ? 'downloading' : figmaState === 'paused' ? 'available' : figmaState
+  const isVerifying = verifying || figmaState === 'verifying'
+  const note = resumeNote ?? (figmaState === 'paused' ? figmaResumeNote : undefined)
   const inUse = state === 'in-use'
   const info = state === 'in-use' || state === 'downloaded' || state === 'available'
   const progress = [`Downloading ${Math.round(percent)}%`, rate, remaining]
@@ -130,7 +145,7 @@ export function ModelCard({
                 strokeWidth={ICON_STROKE}
                 className="size-icon-xs"
               />
-              {resumeNote ?? languages}
+              {note ?? languages}
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-1.5 type-caption-xs-regular text-tertiary">
@@ -168,15 +183,15 @@ export function ModelCard({
             <Progress
               size="sm"
               showLabel={false}
-              label={verifying ? `Checking ${name}` : `Downloading ${name}`}
+              label={isVerifying ? `Checking ${name}` : `Downloading ${name}`}
               percent={percent}
-              {...(verifying ? { state: 'indeterminate' as const } : {})}
+              {...(isVerifying ? { state: 'indeterminate' as const } : {})}
               className="min-w-0 flex-1"
             />
             <p role="status" className="type-caption-xs-regular text-muted-foreground">
-              {verifying ? 'Checking the download…' : progress}
+              {isVerifying ? 'Checking the download…' : progress}
             </p>
-            {!verifying && (
+            {!isVerifying && (
               <Button variant="secondary" size="sm" label="Cancel" onClick={onCancel} />
             )}
           </>
@@ -186,7 +201,7 @@ export function ModelCard({
           <Button
             variant="secondary"
             size="sm"
-            label={resumeNote ? 'Resume' : 'Download'}
+            label={note ? 'Resume' : 'Download'}
             showIconStart
             iconStart={Download04Icon}
             disabled={downloadDisabled}

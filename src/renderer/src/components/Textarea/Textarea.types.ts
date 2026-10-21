@@ -10,8 +10,12 @@ export const TEXTAREA_CONTRACT = {
   section: '2 · Primitives (shadcn)',
   description: 'Multi-line description field (auto-grow is behaviour).',
   code: 'ui/textarea.tsx',
-  axes: {},
-  axisDefaults: {},
+  axes: {
+    rowRange: ['3', '4-6']
+  },
+  axisDefaults: {
+    rowRange: '3'
+  },
   flags: {},
   interactionStates: ['focus'],
   disabled: true,
@@ -23,7 +27,11 @@ export const TEXTAREA_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
+export type TextareaRowRange = '3' | '4-6'
+
 export interface TextareaContractProps {
+  /** Figma `rowRange` (2 options). Default `3`. */
+  rowRange?: TextareaRowRange
   /** Figma `state=disabled`. */
   disabled?: boolean
   /** Figma text. Default "Short description…". */
@@ -32,6 +40,7 @@ export interface TextareaContractProps {
 
 /** Figma defaults. Slots have none. */
 export const TEXTAREA_DEFAULTS = {
+  rowRange: '3',
   disabled: false,
   value: 'Short description…'
 } satisfies TextareaContractProps

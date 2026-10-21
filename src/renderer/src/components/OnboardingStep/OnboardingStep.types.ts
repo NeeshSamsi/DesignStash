@@ -27,7 +27,8 @@ export const ONBOARDING_STEP_CONTRACT = {
   disabled: false,
   booleans: {
     footer: true,
-    showContent: true
+    showContent: true,
+    showSkip: true
   },
   texts: {
     title: 'Set up on-device AI',
@@ -50,6 +51,8 @@ export interface OnboardingStepContractProps {
   footer?: boolean
   /** Figma boolean. Default `true`. */
   showContent?: boolean
+  /** Figma boolean. Default `true`. */
+  showSkip?: boolean
   /** Figma text. Default "Set up on-device AI". */
   title?: string
   /** Figma text. Default "A small model writes titles and tags for new mockups. Nothing leaves your Mac.". */
@@ -64,6 +67,7 @@ export const ONBOARDING_STEP_DEFAULTS = {
   busy: false,
   footer: true,
   showContent: true,
+  showSkip: true,
   title: 'Set up on-device AI',
   body: 'A small model writes titles and tags for new mockups. Nothing leaves your Mac.'
 } satisfies OnboardingStepContractProps

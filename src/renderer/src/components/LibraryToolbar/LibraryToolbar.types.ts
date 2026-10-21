@@ -17,10 +17,17 @@ export const LIBRARY_TOOLBAR_CONTRACT = {
   axisDefaults: {
     filters: 'none'
   },
-  flags: {},
+  flags: {
+    disabled: {
+      on: 'true',
+      off: 'false'
+    }
+  },
   interactionStates: [],
   disabled: false,
-  booleans: {},
+  booleans: {
+    showStats: true
+  },
   texts: {
     stats: '3 of 12 selected'
   },
@@ -33,6 +40,10 @@ export type LibraryToolbarFilters = 'none' | 'active'
 export interface LibraryToolbarContractProps {
   /** Figma `filters` (2 options). Default `none`. */
   filters?: LibraryToolbarFilters
+  /** Figma `state=true` (false = `state=false`). */
+  disabled?: boolean
+  /** Figma boolean. Default `true`. */
+  showStats?: boolean
   /** Figma text. Default "3 of 12 selected". */
   stats?: string
 }
@@ -40,5 +51,7 @@ export interface LibraryToolbarContractProps {
 /** Figma defaults. Slots have none. */
 export const LIBRARY_TOOLBAR_DEFAULTS = {
   filters: 'none',
+  disabled: false,
+  showStats: true,
   stats: '3 of 12 selected'
 } satisfies LibraryToolbarContractProps

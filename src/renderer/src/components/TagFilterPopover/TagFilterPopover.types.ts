@@ -12,7 +12,7 @@ export const TAG_FILTER_POPOVER_CONTRACT = {
     'Tag filter: search on top, CategoryPills with live counts, tags grouped by category (scrolls past ~240px). Rules: design/specs/library.md. Tags are two tiers (category, then tag), so the list is flat. Each group starts with an "All in <category>" row: ticking it filters by the whole category and disables that category\'s tag rows (state=category-picked); hidden while searching.',
   code: 'screens/library/LibraryPage.tsx',
   axes: {
-    state: ['open', 'some-selected', 'searching', 'no-match', 'empty', 'category-picked']
+    state: ['open', 'some-selected', 'empty', 'searching', 'no-match', 'category-picked']
   },
   axisDefaults: {
     state: 'open'
@@ -29,9 +29,9 @@ export const TAG_FILTER_POPOVER_CONTRACT = {
 export type TagFilterPopoverState =
   | 'open'
   | 'some-selected'
+  | 'empty'
   | 'searching'
   | 'no-match'
-  | 'empty'
   | 'category-picked'
 
 export interface TagFilterPopoverContractProps {

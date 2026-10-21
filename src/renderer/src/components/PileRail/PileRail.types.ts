@@ -6,11 +6,11 @@ import type { ComponentContract } from '@renderer/design-system/contract'
 export const PILE_RAIL_CONTRACT = {
   name: 'PileRail',
   figmaName: 'PileRail',
-  figmaId: '566:15524',
-  figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=566-15524',
+  figmaId: '926:164024',
+  figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=926-164024',
   section: '8 · Approval & editing',
   description:
-    'The pile you’re working through in Look it over: a recessed well right of the form, full body height. pile = “PILE n OF m”, title = the pile’s title, steps = PileStep rows. Everything in a pile is a draft until Stash pile, so steps are clickable. Rules: design/specs/piles.md.',
+    'The pile you’re working through in Look it over: a recessed well docked to the right of the form, full body height. Head: “PILE n OF m” + the pile’s title; steps slot holds PileStep rows (top mockup, variants, then Review &amp; stash pile). Everything in a pile is a draft until Stash pile, so every step is clickable. Rules: design/specs/piles.md.',
   code: null,
   axes: {},
   axisDefaults: {},

@@ -10,7 +10,7 @@ export const FLOW_MODAL_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=374-5650',
   section: '5 · Overlays & dialogs',
   description:
-    'Large captured modal for Sort + Look it over. Named steps with counts; Finish later always available and always confirms. Slot: body (the step’s content).',
+    'Large captured modal for Sort + Look it over (1352×822 in a 1512×982 window). Named steps with counts; Finish later always available and always confirms. Screens lay the step body over the empty body area.\n\nSlot: body — the step’s content (sort board, or cover + form + ActionBar) goes inside the modal; padding is built in.\nProgress (Look it over): the second track fills to a quarter of the haul. Turn on progress-50, progress-75 or progress-100 (the widest one that is on shows); with all four off it is empty. Code: FlowModal `progress` is 0 to 1. For an exact fraction, drag the `progress-25` rectangle in track-2 on the instance (the plugin API cannot resize it from here).',
   code: 'ui/dialog.tsx (replaces StepperHeader)',
   axes: {
     step: ['sort', 'look-over']

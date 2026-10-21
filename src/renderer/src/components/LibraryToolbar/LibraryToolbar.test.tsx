@@ -104,4 +104,14 @@ describe('LibraryToolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove All in Device' }))
     expect(onRemoveCategory).toHaveBeenCalledWith(1)
   })
+
+  it('showStats off hides the stats; disabled disables Filter and Sort', () => {
+    const { rerender } = render(<LibraryToolbar stats="3 items" />)
+    expect(screen.getByText('3 items')).not.toBeNull()
+    rerender(<LibraryToolbar stats="3 items" showStats={false} disabled />)
+    expect(screen.queryByText('3 items')).toBeNull()
+    expect((screen.getByRole('button', { name: /Filter/ }) as HTMLButtonElement).disabled).toBe(
+      true
+    )
+  })
 })

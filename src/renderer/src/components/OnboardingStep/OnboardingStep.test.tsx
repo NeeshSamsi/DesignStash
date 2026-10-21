@@ -67,4 +67,11 @@ describe('OnboardingStep hidePrimary', () => {
     expect(screen.getByRole('button', { name: 'Back' })).not.toBeNull()
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
   })
+
+  it('showSkip off hides Skip even with a handler', () => {
+    const { rerender } = render(<OnboardingStep variant="standard" onSkip={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Skip for now' })).not.toBeNull()
+    rerender(<OnboardingStep variant="standard" showSkip={false} onSkip={() => {}} />)
+    expect(screen.queryByRole('button', { name: 'Skip for now' })).toBeNull()
+  })
 })

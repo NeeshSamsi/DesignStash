@@ -15,12 +15,12 @@ export const TAG_EDITOR_CONTRACT = {
     variant: ['editable', 'read-only'],
     state: [
       'idle',
-      'adding',
       'suggestions',
       'no-match',
-      'added',
+      'adding',
       'duplicate',
       'marked',
+      'added',
       'empty',
       'thinking'
     ]
@@ -41,12 +41,12 @@ export const TAG_EDITOR_CONTRACT = {
 export type TagEditorVariant = 'editable' | 'read-only'
 export type TagEditorState =
   | 'idle'
-  | 'adding'
   | 'suggestions'
   | 'no-match'
-  | 'added'
+  | 'adding'
   | 'duplicate'
   | 'marked'
+  | 'added'
   | 'empty'
   | 'thinking'
 

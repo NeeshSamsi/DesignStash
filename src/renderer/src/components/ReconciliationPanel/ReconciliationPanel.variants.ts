@@ -10,6 +10,7 @@ export const reconciliationPanelVariants = cva(
         scanning: '',
         drift: '',
         resolving: '',
+        removing: '',
         rescanning: '',
         'all-resolved': ''
       }

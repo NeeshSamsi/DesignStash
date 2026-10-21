@@ -14,9 +14,24 @@ describe('ModelCard', () => {
 
   it('renders the Figma default text', () => {
     render(<ModelCard />)
-    for (const text of Object.values<string>(MODEL_CARD_CONTRACT.texts)) {
+    // The resume note only shows on the paused card.
+    const { resumeNote, ...texts } = MODEL_CARD_CONTRACT.texts
+    for (const text of Object.values<string>(texts)) {
       expect(screen.getAllByText(text).length).toBeGreaterThan(0)
     }
+    expect(screen.queryByText(resumeNote)).toBeNull()
+  })
+
+  it('paused: an available card that offers Resume with the note', () => {
+    render(<ModelCard state="paused" />)
+    expect(screen.getByText(MODEL_CARD_CONTRACT.texts.resumeNote)).not.toBeNull()
+    expect(names()).toEqual(['Resume'])
+  })
+
+  it('verifying: a checking card with nothing to cancel', () => {
+    render(<ModelCard state="verifying" />)
+    expect(screen.getByText('Checking the download…')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
   })
 
   it('in use: orange border, In use tag and Delete only', () => {

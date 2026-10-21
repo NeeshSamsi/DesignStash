@@ -97,4 +97,10 @@ describe('ChoiceDialog without a middle choice', () => {
     const named = screen.getAllByText(new RegExp(long))[0]!
     expect(named.className).toMatch(/truncate|wrap-anywhere/)
   })
+
+  it('showSecondary off drops the secondary button', () => {
+    const { container } = render(<ChoiceDialog showSecondary={false} />)
+    const labels = [...container.querySelectorAll('[data-slot="button"]')].map((b) => b.textContent)
+    expect(labels).toEqual(['Cancel', 'Move files'])
+  })
 })

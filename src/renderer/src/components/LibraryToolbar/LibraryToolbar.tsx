@@ -104,7 +104,7 @@ export function LibraryToolbar({
         )}
       </div>
       <div className="flex items-center gap-4">
-        {props.stats !== '' && (
+        {props.showStats && props.stats !== '' && (
           <p className="type-caption-xs-regular text-tertiary">{props.stats}</p>
         )}
         <Select

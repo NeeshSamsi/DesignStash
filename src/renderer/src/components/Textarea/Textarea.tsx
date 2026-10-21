@@ -1,6 +1,8 @@
 import { useState, type ChangeEvent, type ComponentProps } from 'react'
+import { cn } from '@renderer/lib/utils'
 import { Textarea as UiTextarea } from '@renderer/ui/textarea'
 import { TEXTAREA_DEFAULTS, type TextareaContractProps } from './Textarea.types'
+import { textareaVariants } from './Textarea.variants'
 
 export interface TextareaProps
   extends
@@ -14,11 +16,12 @@ export interface TextareaProps
  * the starting text.
  */
 export function Textarea({ onChange, ...rest }: TextareaProps) {
-  const { value, ...props } = { ...TEXTAREA_DEFAULTS, ...rest }
+  const { value, rowRange, className, ...props } = { ...TEXTAREA_DEFAULTS, ...rest }
   const [draft, setDraft] = useState(value)
   return (
     <UiTextarea
       data-ds="Textarea"
+      className={cn(textareaVariants({ rowRange }), className)}
       value={onChange ? value : draft}
       onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
         onChange ? onChange(event) : setDraft(event.target.value)
