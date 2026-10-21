@@ -17,7 +17,14 @@ import { entryPath, openArchiveEntry } from '../../src/main/import/archive'
 import { scanForPsds } from '../../src/main/import/scanner'
 import { copyWithHash } from '../../src/main/import/stream-copy'
 import { resolveCover } from '../../src/main/psd'
-import { EVAL_DIR, ITEMS_PATH, TEST_SET, realItemPaths, writeJson, type EvalItem } from './eval-files'
+import {
+  EVAL_DIR,
+  ITEMS_PATH,
+  TEST_SET,
+  realItemPaths,
+  writeJson,
+  type EvalItem
+} from './eval-files'
 import { itemIds } from './item-id'
 
 const PREVIEW_EDGE = 768

@@ -21,9 +21,7 @@ describe('slugify', () => {
 
 describe('itemIds', () => {
   it('comes from the cleaned file name, without the stock ID prefix', () => {
-    expect(itemIds([{ fileName: 'y1PjyY3rTTWYuCfHXkQo_Tape-Mockup.psd' }])).toEqual([
-      'tape-mockup'
-    ])
+    expect(itemIds([{ fileName: 'y1PjyY3rTTWYuCfHXkQo_Tape-Mockup.psd' }])).toEqual(['tape-mockup'])
   })
 
   it('falls back to the zip name when the file name says nothing', () => {
