@@ -215,6 +215,20 @@ describe('Back', () => {
     expect(primary(reopened)).toEqual({ kind: 'save-next', label: 'Save & next' })
   })
 
+  it('labels the review of a pile that is already stashed Save & next, or Save on the last unit', () => {
+    const s = afterStash(jumpTo(start(), 3))
+    const reopened = back(s)
+    expect(onReview(reopened)).toBe(true)
+    expect(primary(reopened)).toEqual({ kind: 'stash-pile', label: 'Save & next' })
+    const only = createFlow({ units: [pile(1, [10, 11])], resume: null })
+    const lastReview = jumpTo(only, 2)
+    expect(primary(lastReview).label).toBe('Stash pile (2)')
+    expect(primary({ ...lastReview, stashed: new Set([1]) })).toEqual({
+      kind: 'stash-pile',
+      label: 'Save'
+    })
+  })
+
   it('goes from the very first mockup to Sort only while nothing is stashed', () => {
     const s = start()
     expect(backTarget(s)).toEqual({ kind: 'sort' })

@@ -273,16 +273,22 @@ export function reviewCards(s: FlowState): ReviewCard[] {
 
 export type PrimaryKind = 'next' | 'stash-pile' | 'stash' | 'save-next'
 
-/** The one primary button: Next in a pile, Stash pile (N) on review, Stash & next on a single, Save & next once stashed. */
+/**
+ * The one primary button: Next in a pile, Stash pile (N) on its review, Stash & next on a single.
+ * Once a pile or single is stashed (Back reopened it) the label is Save & next, or Save on the last unit.
+ */
 export function primary(s: FlowState): { kind: PrimaryKind; label: string } {
   const unit = currentUnit(s)
-  if (isPile(unit)) {
-    return onReview(s)
-      ? { kind: 'stash-pile', label: `Stash pile (${unit.items.length})` }
-      : { kind: 'next', label: 'Next' }
-  }
   const last = s.position.unit === s.units.length - 1
-  if (s.stashed.has(unit.unitId)) return { kind: 'save-next', label: last ? 'Save' : 'Save & next' }
+  const saved = s.stashed.has(unit.unitId)
+  if (isPile(unit)) {
+    if (!onReview(s)) return { kind: 'next', label: 'Next' }
+    return {
+      kind: 'stash-pile',
+      label: saved ? (last ? 'Save' : 'Save & next') : `Stash pile (${unit.items.length})`
+    }
+  }
+  if (saved) return { kind: 'save-next', label: last ? 'Save' : 'Save & next' }
   return { kind: 'stash', label: last ? 'Stash' : 'Stash & next' }
 }
 
