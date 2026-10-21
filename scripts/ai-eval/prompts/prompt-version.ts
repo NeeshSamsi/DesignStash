@@ -21,6 +21,8 @@ export interface PromptVersion {
   id: string
   /** What this version changes and why, for the run log. */
   notes: string
+  /** Reads the cover for the model. Defaults to the app's `readCoverAsDataUrl`; null sends the names only. */
+  readImage?(path: string): Promise<string | null>
   buildRequest(input: AnalysisInput, imageUrl: string | null): object
   /** Throws when the reply can't be used; the item is recorded as failed and the run goes on. */
   parseResult(raw: string): EvalResult

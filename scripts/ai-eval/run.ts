@@ -128,7 +128,7 @@ async function main(): Promise<void> {
           fileName: item.fileName,
           folderTrail: item.folderTrail
         }
-        const imageUrl = await readCoverAsDataUrl(input.imagePath)
+        const imageUrl = await (prompt.readImage ?? readCoverAsDataUrl)(input.imagePath)
         const result: ItemResult = {
           id: item.id,
           repeat,
