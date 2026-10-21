@@ -262,5 +262,5 @@ export function overlayFor(input: {
           : 'They’ll wait here until you sort them.'
     }
   }
-  return { state: 'drag-over' }
+  return { state: 'drag-over', title: 'Drop PSDs or zips to add them' }
 }

@@ -48,7 +48,9 @@ export function AddCardMenu({ onAddFiles, onAddFolder }: AddCardMenuProps) {
           />
           <DropdownMenuDivider />
           <DropdownMenuHint>
-            {copying ? 'Copying now. What you add joins the copy.' : 'or drop PSDs anywhere'}
+            {copying
+              ? 'Copying now. What you add joins the copy.'
+              : 'or drop PSDs and zips anywhere'}
           </DropdownMenuHint>
         </>
       }

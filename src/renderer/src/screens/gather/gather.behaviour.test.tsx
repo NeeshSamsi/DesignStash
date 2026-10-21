@@ -406,7 +406,7 @@ describe('drops', () => {
     installApi(base())
     render(<Harness />)
     fire(dragEvent('dragenter', [{ kind: 'file', type: '' }]))
-    expect(screen.getByText('Drop PSDs to add them')).toBeTruthy()
+    expect(screen.getByText('Drop PSDs or zips to add them')).toBeTruthy()
     fire(dragEvent('dragleave', []))
     expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
   })

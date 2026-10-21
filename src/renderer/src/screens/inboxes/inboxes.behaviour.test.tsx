@@ -234,7 +234,7 @@ describe('Add card', () => {
     await screen.findByText('file-1.psd')
     const grid = document.querySelector('[data-ds="MockupGrid"]')!
     expect(grid.textContent).toContain('Add mockup')
-    expect(grid.textContent).toContain('PSDs or a whole folder')
+    expect(grid.textContent).toContain('PSDs, zips or a folder')
     const first = grid.querySelector('[data-ds="AddMockupCard"], [data-ds="MockupCard"]')
     expect(first?.getAttribute('data-ds')).toBe('AddMockupCard')
   })

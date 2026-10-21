@@ -7,7 +7,7 @@ describe('AddMockupCard', () => {
     const { baseElement } = render(<AddMockupCard />)
     expect(baseElement.querySelector('[data-ds="AddMockupCard"]')).not.toBeNull()
     expect(screen.getByText('Add mockup')).not.toBeNull()
-    expect(screen.getByText('PSDs or a whole folder')).not.toBeNull()
+    expect(screen.getByText('PSDs, zips or a folder')).not.toBeNull()
   })
 
   it('is a button that fires on click, so Enter works too', () => {

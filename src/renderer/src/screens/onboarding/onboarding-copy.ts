@@ -55,7 +55,7 @@ export const PRIVACY_STEP = {
 
 export const DONE_STEP = {
   title: 'Your stash is ready!',
-  body: 'Use the Add card in My Stash to bring in files or a folder, or just drop PSDs anywhere in the window.'
+  body: 'Use the Add card in My Stash to bring in files or a folder, or just drop PSDs or zips anywhere in the window.'
 } as const
 
 export const AI_STEP = {

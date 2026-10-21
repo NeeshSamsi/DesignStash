@@ -29,7 +29,7 @@ describe('AddCardMenu', () => {
   it('tells you that you can drop PSDs anywhere', async () => {
     render(<AddCardMenu onAddFiles={vi.fn()} onAddFolder={vi.fn()} />)
     open()
-    expect(await screen.findByText('or drop PSDs anywhere')).toBeTruthy()
+    expect(await screen.findByText('or drop PSDs and zips anywhere')).toBeTruthy()
   })
 
   it('says what is added joins the copy while one is running', async () => {
@@ -37,7 +37,7 @@ describe('AddCardMenu', () => {
     act(() => useCopyStore.getState().setHaul(running()))
     open()
     expect(await screen.findByText('Copying now. What you add joins the copy.')).toBeTruthy()
-    expect(screen.queryByText('or drop PSDs anywhere')).toBeNull()
+    expect(screen.queryByText('or drop PSDs and zips anywhere')).toBeNull()
   })
 
   it('keeps the focus ring for the keyboard: a mouse press switches it off, a key brings it back', () => {

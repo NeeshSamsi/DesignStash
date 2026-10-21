@@ -65,7 +65,7 @@ export function AddMenu({
               {...(onAddFolder ? { onSelect: onAddFolder } : {})}
             />
             <DropdownMenuDivider />
-            <DropdownMenuHint>or drop PSDs anywhere</DropdownMenuHint>
+            <DropdownMenuHint>or drop PSDs and zips anywhere</DropdownMenuHint>
           </>
         }
       />

@@ -314,8 +314,8 @@ describe('overlay copy', () => {
     expect(overlayFor({ ...base, target: 'none' })).toBeNull()
   })
 
-  it('My Stash uses the component’s own words', () => {
-    expect(overlayFor(base)).toEqual({ state: 'drag-over' })
+  it('My Stash says PSDs or zips', () => {
+    expect(overlayFor(base)).toEqual({ state: 'drag-over', title: 'Drop PSDs or zips to add them' })
   })
 
   it('To sort says the drop joins what is waiting', () => {

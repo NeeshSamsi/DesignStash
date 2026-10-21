@@ -32,7 +32,7 @@ export function AddMockupCard({ className, ...props }: AddMockupCardProps) {
         <span className="type-body-sm-medium text-muted-foreground group-hover/add:text-foreground group-focus-visible/add:text-foreground">
           Add mockup
         </span>
-        <span className="type-caption-xs-regular text-tertiary">PSDs or a whole folder</span>
+        <span className="type-caption-xs-regular text-tertiary">PSDs, zips or a folder</span>
       </span>
     </button>
   )

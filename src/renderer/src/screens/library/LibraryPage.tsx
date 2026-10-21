@@ -447,7 +447,7 @@ export default function LibraryPage({
         </MockupGrid>
         {state === 'empty' && (
           <p className="type-body-sm-regular text-muted-foreground">
-            Add PSDs with the card, or drop them anywhere in this window.
+            Add PSDs or zips with the card, or drop them anywhere in this window.
           </p>
         )}
         <DragOverlay dropAnimation={null}>
