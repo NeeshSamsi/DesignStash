@@ -4,6 +4,8 @@ import type { LibraryItem, LibraryStats } from '@shared/library'
 interface LibraryState {
   items: LibraryItem[]
   stats: LibraryStats
+  /** False until the first stats answer, so the header shows no count before it is real. */
+  statsLoaded: boolean
   tagFilter: number[]
   /** Categories picked as a whole (“All in Device”). */
   categoryIds: number[]
@@ -27,6 +29,7 @@ const emptyStats: LibraryStats = { total: 0, favourites: 0, groups: 0, trashed: 
 export const useLibraryStore = create<LibraryState>((set) => ({
   items: [],
   stats: emptyStats,
+  statsLoaded: false,
   tagFilter: [],
   categoryIds: [],
   query: '',
@@ -34,7 +37,7 @@ export const useLibraryStore = create<LibraryState>((set) => ({
   cache: {},
 
   setItems: (items) => set({ items }),
-  setStats: (stats) => set({ stats }),
+  setStats: (stats) => set({ stats, statsLoaded: true }),
   setTagFilter: (tagFilter) => set({ tagFilter }),
   setCategoryIds: (categoryIds) => set({ categoryIds }),
   setQuery: (query) => set({ query }),
@@ -44,6 +47,7 @@ export const useLibraryStore = create<LibraryState>((set) => ({
     set({
       items: [],
       stats: emptyStats,
+      statsLoaded: false,
       tagFilter: [],
       categoryIds: [],
       query: '',

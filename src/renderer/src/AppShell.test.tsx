@@ -21,6 +21,7 @@ beforeEach(() => {
   useUiStore.setState({ view: 'all', modal: null, settingsOpen: false })
   useLibraryStore.setState({
     query: '',
+    statsLoaded: true,
     stats: { total: 128, favourites: 12, groups: 0, trashed: 3 }
   })
   window.api = {
@@ -181,7 +182,10 @@ describe('AppShell header', () => {
   })
 
   it('hides a zero badge in the sidebar', () => {
-    useLibraryStore.setState({ stats: { total: 5, favourites: 0, groups: 0, trashed: 0 } })
+    useLibraryStore.setState({
+      statsLoaded: true,
+      stats: { total: 5, favourites: 0, groups: 0, trashed: 0 }
+    })
     render(
       <AppShell>
         <div />
@@ -192,13 +196,32 @@ describe('AppShell header', () => {
   })
 
   it('keeps the header at zero mockups', () => {
-    useLibraryStore.setState({ stats: { total: 0, favourites: 0, groups: 0, trashed: 0 } })
+    useLibraryStore.setState({
+      statsLoaded: true,
+      stats: { total: 0, favourites: 0, groups: 0, trashed: 0 }
+    })
     render(
       <AppShell>
         <div />
       </AppShell>
     )
     expect(screen.getByText(/^0 mockups/)).toBeTruthy()
+  })
+
+  it('shows no count until the first stats answer, and keeps the line so nothing jumps', () => {
+    useLibraryStore.setState({ statsLoaded: false })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    const header = document.querySelector('[data-ds="PageHeader"]') as HTMLElement
+    expect(header.textContent).not.toMatch(/mockups/)
+    expect(header.querySelector('p')?.textContent).toBe('\u00a0')
+    act(() =>
+      useLibraryStore.getState().setStats({ total: 7, favourites: 0, groups: 0, trashed: 0 })
+    )
+    expect(screen.getByText('7 mockups')).toBeTruthy()
   })
 
   it('can hide the header for pipeline screens', () => {

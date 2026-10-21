@@ -103,6 +103,7 @@ export default function AppShell({
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
   const stats = useLibraryStore((s) => s.stats)
+  const statsLoaded = useLibraryStore((s) => s.statsLoaded)
   const searchText = useUiStore((s) => s.searchText)
   const setSearchText = useUiStore((s) => s.setSearchText)
   const inbox = useInboxCounts()
@@ -162,22 +163,25 @@ export default function AppShell({
             toStash: inbox?.toStash ?? 0,
             trash: inbox?.trash ?? stats.trashed
           },
-          libraryDescription({
-            view: view === 'starred' ? 'starred' : 'all',
-            shown,
-            total: stats.total,
-            starred: stats.favourites,
-            query,
-            chips: filterChips(
-              (tagTree ?? []).map((c) => ({
-                categoryId: c.categoryId,
-                categoryLabel: c.categoryLabel,
-                tags: c.tags.map((t) => ({ tagId: t.tagId, label: t.label }))
-              })),
-              { tagIds: tagFilter, categoryIds },
-              { onRemoveTag: () => {}, onRemoveCategory: () => {} }
-            )
-          })
+          // No count until the first stats answer; the blank keeps the line's height.
+          !statsLoaded
+            ? '\u00a0'
+            : libraryDescription({
+                view: view === 'starred' ? 'starred' : 'all',
+                shown,
+                total: stats.total,
+                starred: stats.favourites,
+                query,
+                chips: filterChips(
+                  (tagTree ?? []).map((c) => ({
+                    categoryId: c.categoryId,
+                    categoryLabel: c.categoryLabel,
+                    tags: c.tags.map((t) => ({ tagId: t.tagId, label: t.label }))
+                  })),
+                  { tagIds: tagFilter, categoryIds },
+                  { onRemoveTag: () => {}, onRemoveCategory: () => {} }
+                )
+              })
         )
     : null
 
