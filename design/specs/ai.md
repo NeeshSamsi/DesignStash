@@ -112,9 +112,30 @@ The last two have a large MockupFree.co watermark over a dimmed product, which i
 - **Qwen 2.5 VL 7B** is the best and is 1.5 to 1.7 times slower than 3B. Suggested ratings: quality 5, speed 3. Its memory use fits the 16 GB+ rule.
 - **Sizes for the UI:** the Total column above, model and mmproj together.
 
+## Apple on-device helper
+
+**Status:** built 2026-10-22, not wired in. The AI bake-off decides whether Apple's model ships as a provider and how Vision feeds the pipeline (OCR filter, evidence, similarity).
+**Code:** `native/designstash-helper/` (Swift, protocol in its README), `src/main/native/helper.ts` and `helper-schemas.ts`, `src/main/ai/apple-provider.ts`; `scripts/build-helper.mjs`, `scripts/helper-try.ts`. The research is `design/research/native-vs-electron.md` and `vlm-pipeline-helpers.md`.
+
+- **One Swift command-line tool, `designstash-helper`,** runs as a child of the main process like llama-server: one JSON request per stdin line, one JSON reply per stdout line, matched by `id`, logs on stderr. arm64, macOS 26 and later; Foundation Models only on macOS 27. It builds with the Command Line Tools (`pnpm helper:build`), because guided generation uses `DynamicGenerationSchema` and no `@Generable` macro.
+- **Commands:**
+  - `info`: OS, Vision request revisions, Foundation Models availability (or why not: `notMacOS27`, `appleIntelligenceNotEnabled`, `deviceNotEligible`, `modelNotReady`).
+  - `ocr`: `accurate` with language correction on the 2048 px cover by default.
+  - `people`: people and hands above 0.3 confidence, with boxes.
+  - `featureprint`: base64 Float32 plus its revision; prints are compared only within a revision.
+  - `classify`: Vision's fixed 1,303-label taxonomy.
+  - `describe`: Foundation Models with the image attached, greedy; with a schema the reply is JSON in that shape.
+- **Boxes are top-left origin,** fractions of the image. The eval's `vision.json` (from `scripts/ai-eval/apple/vision.swift`) kept Vision's bottom-left origin.
+- **The client** (`NativeHelper`) finds the binary at `DESIGNSTASH_HELPER`, then `<resources>/helper/designstash-helper`, then `~/Library/Application Support/DesignStash-dev/helper/designstash-helper`. With none, calls fail as `unavailable` and nothing crashes. It starts the helper on first use, stops it after 5 minutes idle, starts a fresh one after a crash, sends one call at a time and kills a call that hangs: 60 s for Vision (the very first OCR on this Mac took 35 s while the system loaded its text models; after that 0.1 to 0.4 s), 2 minutes for `describe`.
+- **`AppleInferenceProvider`** sends the vision provider's own system prompt, user text, schema and reply cap through `describe`, attaches the cover file (the framework scales it), sends a placeholder cover as names only, and parses with `parseResult`. It is not in the catalogue or the factory.
+- **Regex guides don't work.** On macOS 27.2 the on-device model rejects every `pattern` in a dynamic schema (`UnsupportedGuide`, even for `[A-Za-z ]+`); enums and array counts work. The provider sends the schema without its ASCII patterns, which only kept the 3B from leaking Chinese characters.
+- **Measured once by hand** (M3 Max, the duct tape cover): OCR 0.37 s, people 0.2 s, classify 0.1 s, feature print 0.09 s (768 floats), `describe` with the full prompt 4.8 s including the model's first load, a short plain-text answer 0.8 s.
+- **Tests:** unit tests run the client and provider against a fake helper script (`src/main/native/__fixtures__/fake-helper.mjs`). `helper.integration.test.ts` runs the real binary's Vision commands when `DESIGNSTASH_HELPER_IT=1` and the helper is built; it never calls Foundation Models. Swift-side unit tests need Xcode (Swift Testing and XCTest aren't in the Command Line Tools).
+
 ## Open
 
 - **Packaging:** the repo has no packager yet, so shipping `llama-server` (and its dylibs) with the app is unsolved. The factory already looks in `<resourcesPath>/llama-server/`.
+- **Packaging the helper:** `pnpm helper:build --stage` puts `designstash-helper` in `build/helper/`, and the client already looks in `<resourcesPath>/helper/`, but `electron-builder.yml` doesn't ship it yet. It needs signing with the app's identity and the hardened runtime, and the inherited-sandbox entitlements for a Mac App Store build.
 - **Hard crash:** if Electron is killed outright, the `exit` hook doesn't run and llama-server keeps running until it's killed. The next launch starts its own on a new port.
 - **Renamed categories:** the schema limits categories to the seed six, so if someone renames "Device", suggestions recreate it. A follow-up could pass the live category list into the prompt.
 - **Titles:** they sometimes come back hyphenated ("scroll-macbook-mockup"), with the label style bleeding into the title. This is minor; the user edits titles in Look it over.
