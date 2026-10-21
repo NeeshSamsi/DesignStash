@@ -149,7 +149,7 @@ Figma shows how a component looks. When it also has rules that Figma can't hold 
 | [`library.md`](specs/library.md): the Add card first in the grid, loading and empty states, search, the tag filter, sort (date added by default), the card menu, selection, piles, Trash, and the fullscreen preview | MockupGrid, AddMockupCard, MockupCard, TagFilterPopover, CategoryPill, LibraryToolbar, DropdownMenu, Lightbox | `src/renderer/src/components/MockupGrid/MockupGrid.behaviour.test.tsx` |
 | [`settings.md`](specs/settings.md): Settings as a modal with sections, grouped rows and switch accordions; the stash folder, stash check and Trash; ModelCard and downloads; editing tags in place | SettingsLayout, ModelCard, TagTree, HardwareSummary | `src/renderer/src/screens/settings/settings.behaviour.test.tsx` |
 | [`inboxes.md`](specs/inboxes.md): To sort, To stash and Trash on the shared grid, the hover Look it over and Restore, the done toast, Restore all and Empty Trash | MockupGrid, MockupCard (pending-review, trash), ActionBar, Toast | `src/renderer/src/screens/inboxes/inboxes.behaviour.test.tsx` |
-| [`detail.md`](specs/detail.md): opening and loading, explicit save, the unsaved-changes guard, instant Trash and Disband pile with Undo, no Duplicate, and no permanent delete | DetailModal layout, CoverPanel, MockupMetaForm, ErrorState, Toast | `src/renderer/src/components/DetailModalLayout/DetailModalLayout.behaviour.test.tsx` |
+| [`detail.md`](specs/detail.md): opening and loading, explicit save, the unsaved-changes guard, instant Trash and Disband pile with Undo, no Duplicate, and no permanent delete | CoverPanel, MockupMetaForm, ErrorState, Toast (the details sidebar replaced the detail modal) | `src/renderer/src/screens/details/` |
 
 ## Status (2026-10-20)
 

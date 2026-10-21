@@ -72,10 +72,6 @@ import { MockupMetaForm, MOCKUP_META_FORM_CONTRACT } from '@renderer/components/
 import { TagEditor, TAG_EDITOR_CONTRACT } from '@renderer/components/TagEditor'
 import { TagChip, TAG_CHIP_CONTRACT } from '@renderer/components/TagChip'
 import { ActionBar, ACTION_BAR_CONTRACT } from '@renderer/components/ActionBar'
-import {
-  DetailModalLayout,
-  DETAIL_MODAL_LAYOUT_CONTRACT
-} from '@renderer/components/DetailModalLayout'
 import { VariantStrip, VARIANT_STRIP_CONTRACT } from '@renderer/components/VariantStrip'
 import { VariantThumb, VARIANT_THUMB_CONTRACT } from '@renderer/components/VariantThumb'
 import { OnboardingStep, ONBOARDING_STEP_CONTRACT } from '@renderer/components/OnboardingStep'
@@ -174,7 +170,6 @@ export const CATALOG: CatalogEntry[] = [
   entry(TAG_EDITOR_CONTRACT, TagEditor),
   entry(TAG_CHIP_CONTRACT, TagChip),
   entry(ACTION_BAR_CONTRACT, ActionBar),
-  entry(DETAIL_MODAL_LAYOUT_CONTRACT, DetailModalLayout),
   entry(VARIANT_STRIP_CONTRACT, VariantStrip),
   entry(VARIANT_THUMB_CONTRACT, VariantThumb),
   entry(ONBOARDING_STEP_CONTRACT, OnboardingStep),
