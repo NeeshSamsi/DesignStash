@@ -28,11 +28,25 @@ function start(): Promise<(request: object) => Promise<{ text?: string; error?: 
   const lines = createInterface({ input: child.stdout })
   const waiting: ((line: string) => void)[] = []
   lines.on('line', (line) => waiting.shift()?.(line))
-  // Let the harness exit when the run ends; the bridge dies with its stdin.
-  child.unref()
-  ;(child.stdout as unknown as { unref?: () => void }).unref?.()
-  ;(child.stdin as unknown as { unref?: () => void }).unref?.()
-  const next = () => new Promise<string>((resolve) => waiting.push(resolve))
+  // The open pipes would keep the harness running after the last answer, so the bridge stops itself
+  // after a few idle seconds; the next request starts a new one.
+  let idle: NodeJS.Timeout | undefined
+  const stopLater = () => {
+    clearTimeout(idle)
+    idle = setTimeout(() => {
+      bridge = null
+      child.stdin.end()
+      child.kill()
+    }, 3000)
+  }
+  const next = () =>
+    new Promise<string>((resolve) => {
+      clearTimeout(idle)
+      waiting.push((line) => {
+        stopLater()
+        resolve(line)
+      })
+    })
   return next().then((first) => {
     const ready = JSON.parse(first) as { ready?: boolean; error?: string }
     if (!ready.ready) throw new Error(`Foundation Models unavailable: ${ready.error ?? first}`)
