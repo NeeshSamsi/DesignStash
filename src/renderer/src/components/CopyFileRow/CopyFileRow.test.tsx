@@ -29,4 +29,11 @@ describe('CopyFileRow copy', () => {
     expect(screen.getByText('41%')).not.toBeNull()
     expect(screen.getByRole('progressbar')).not.toBeNull()
   })
+
+  it('shows its detail in place of the bar while unpacking a zip', () => {
+    render(<CopyFileRow state="copying" percent={41} detail="Unpacking… · From Cap.zip" />)
+    expect(screen.getByText('Unpacking… · From Cap.zip')).not.toBeNull()
+    expect(screen.queryByRole('progressbar')).toBeNull()
+    expect(screen.getByText('41%')).not.toBeNull()
+  })
 })

@@ -90,8 +90,33 @@ describe('widget', () => {
 
   it('counts landed plus duplicates and unreadable files, never non-PSDs', () => {
     expect(
-      processed(haul({ landed: 10, skipped: { notPsd: 5, duplicate: 1, unreadable: 1, archiveUnsupported: 0, noPsdInArchive: 0 } }))
+      processed(
+        haul({
+          landed: 10,
+          skipped: {
+            notPsd: 5,
+            duplicate: 1,
+            unreadable: 1,
+            archiveUnsupported: 0,
+            noPsdInArchive: 0
+          }
+        })
+      )
     ).toBe(12)
+  })
+
+  it('counts an archive left whole as looked at, and as skipped in the title', () => {
+    const skipped = {
+      notPsd: 0,
+      duplicate: 0,
+      unreadable: 0,
+      archiveUnsupported: 1,
+      noPsdInArchive: 2
+    }
+    expect(processed(haul({ landed: 10, skipped }))).toBe(13)
+    expect(widgetCopy(haul({ state: 'done', total: 13, landed: 10, skipped })).title).toBe(
+      '10 copied · 3 skipped'
+    )
   })
 
   it('says how far along a copy is', () => {
@@ -105,7 +130,13 @@ describe('widget', () => {
         haul({
           state: 'done',
           landed: 1200,
-          skipped: { notPsd: 1000, duplicate: 4, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 }
+          skipped: {
+            notPsd: 1000,
+            duplicate: 4,
+            unreadable: 0,
+            archiveUnsupported: 0,
+            noPsdInArchive: 0
+          }
         })
       ).title
     ).toBe('1,200 copied · 1,004 skipped')
@@ -177,6 +208,49 @@ describe('widget', () => {
       '12 mockups removed from To sort. Your originals weren’t touched.'
     )
     expect(undoneMessage(1).description).toContain('1 mockup removed')
+  })
+})
+
+describe('files out of a zip', () => {
+  const zipped = { archiveName: 'Free_Cap_Mockup.zip' }
+  const file = (over: Partial<CopyFile>): CopyFile => ({
+    jobId: 1,
+    name: 'a.psd',
+    status: 'done',
+    ...over
+  })
+  it('says which zip a PSD comes from, and that it is unpacking', () => {
+    expect(rowDetail(file({ ...zipped, status: 'queued' }), haul())).toBe(
+      'From Free_Cap_Mockup.zip'
+    )
+    expect(rowDetail(file({ ...zipped, status: 'copying' }), haul())).toBe(
+      'Unpacking… · From Free_Cap_Mockup.zip'
+    )
+    expect(rowDetail(file({ ...zipped, status: 'done', size: 312_000_000 }), haul())).toBe(
+      'Copied · 312 MB · From Free_Cap_Mockup.zip'
+    )
+  })
+
+  it('words the two archive skips and keeps them out of the not-PSD sentence', () => {
+    const rar = file({ status: 'skipped', skipReason: 'archive-unsupported' })
+    const empty = file({ status: 'skipped', skipReason: 'no-psd-in-archive' })
+    expect(rowDetail(rar, haul())).toBe('Unzip this one first')
+    expect(rowDetail(empty, haul())).toBe('No PSD inside')
+    expect(rowState(rar)).toBe('not-psd')
+    expect(rowDetail(file({ status: 'skipped', skipReason: 'not-psd' }), haul())).toBeNull()
+  })
+
+  it('lets zips and other archives through a drag and a drop', () => {
+    expect(dragVerdict([{ kind: 'file', type: 'application/zip' }])).toBe('ok')
+    expect(dragVerdict([{ kind: 'file', type: 'application/x-zip-compressed' }])).toBe('ok')
+    expect(dragVerdict([{ kind: 'file', type: 'application/x-7z-compressed' }])).toBe('ok')
+    const files = [
+      { name: 'Cap.ZIP', type: 'application/zip' },
+      { name: 'old.rar', type: '' },
+      { name: 'b.7z', type: '' },
+      { name: 'b.png', type: 'image/png' }
+    ]
+    expect(keepDropped(files)).toEqual([0, 1, 2])
   })
 })
 
@@ -255,7 +329,7 @@ describe('overlay copy', () => {
   it('rejects non-PSDs', () => {
     expect(overlayFor({ ...base, verdict: 'rejected' })).toMatchObject({
       state: 'rejected',
-      title: 'Those aren’t PSDs'
+      title: 'Those aren’t PSDs or zips'
     })
   })
 

@@ -25,8 +25,8 @@ export function useGatherDrops(gather: ReturnType<typeof useGather>) {
     onRejected: () =>
       toast({
         variant: 'error',
-        message: 'Those aren’t PSDs',
-        description: 'DesignStash only takes .psd files, so there’s nothing to add.'
+        message: 'Those aren’t PSDs or zips',
+        description: 'DesignStash only takes .psd and .zip files, so there’s nothing to add.'
       })
   })
 

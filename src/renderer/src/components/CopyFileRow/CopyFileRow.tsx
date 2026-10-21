@@ -50,6 +50,7 @@ const STATUS = {
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=372-5420
  * Copy stays plain: the line says what happened to the file, never a path or a code. Callers pass
  * `detail` for the specifics ("Copied · 312 MB", "Already in your stash as “Clay iPhone 15 Pro”").
+ * A copying row given a `detail`, like "Unpacking… · From Cap.zip", shows it in place of the bar.
  */
 export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFileRowProps) {
   const { state, name, ...props } = { ...COPY_FILE_ROW_DEFAULTS, ...rest }
@@ -72,10 +73,12 @@ export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFi
         <MiddleTruncatedText as="p" className="w-full type-body-sm-medium text-foreground">
           {name}
         </MiddleTruncatedText>
-        {copying ? (
+        {copying && detail === undefined ? (
           <UiProgress size="sm" value={percent} aria-label={`Copying ${name}`} />
         ) : (
-          <p className={copyFileRowDetailVariants({ state })}>{detail ?? DETAIL[state]}</p>
+          <p className={copyFileRowDetailVariants({ state })}>
+            {detail ?? (copying ? '' : DETAIL[state])}
+          </p>
         )}
       </div>
       {copying ? (

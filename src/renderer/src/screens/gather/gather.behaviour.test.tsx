@@ -202,7 +202,17 @@ describe('the widget', () => {
     render(<Harness />)
     api.push(
       IPC_CHANNELS.COPY_PROGRESS,
-      progress({ state: 'done', landed: 38, skipped: { notPsd: 2, duplicate: 1, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 } })
+      progress({
+        state: 'done',
+        landed: 38,
+        skipped: {
+          notPsd: 2,
+          duplicate: 1,
+          unreadable: 0,
+          archiveUnsupported: 0,
+          noPsdInArchive: 0
+        }
+      })
     )
     expect(await screen.findByText('38 copied · 3 skipped')).toBeTruthy()
     expect(document.querySelector('[data-ds="CopyWidget"]')?.getAttribute('data-view')).toBe(
@@ -293,7 +303,17 @@ describe('a finished copy', () => {
       await act(async () => {})
       api.push(
         IPC_CHANNELS.COPY_PROGRESS,
-        progress({ state: 'done', landed: 4, skipped: { notPsd: 0, duplicate: 0, unreadable: 1, archiveUnsupported: 0, noPsdInArchive: 0 } })
+        progress({
+          state: 'done',
+          landed: 4,
+          skipped: {
+            notPsd: 0,
+            duplicate: 0,
+            unreadable: 1,
+            archiveUnsupported: 0,
+            noPsdInArchive: 0
+          }
+        })
       )
       expect(await screen.findByText('4 copied · 1 skipped')).toBeTruthy()
       act(() => void vi.advanceTimersByTime(SUMMARY_MS * 3))
@@ -310,7 +330,17 @@ describe('a finished copy', () => {
     act(() => useCopyStore.getState().setFlowOpen(true))
     api.push(
       IPC_CHANNELS.COPY_PROGRESS,
-      progress({ state: 'done', landed: 4, skipped: { notPsd: 0, duplicate: 0, unreadable: 1, archiveUnsupported: 0, noPsdInArchive: 0 } })
+      progress({
+        state: 'done',
+        landed: 4,
+        skipped: {
+          notPsd: 0,
+          duplicate: 0,
+          unreadable: 1,
+          archiveUnsupported: 0,
+          noPsdInArchive: 0
+        }
+      })
     )
     await act(async () => {})
     expect(screen.queryByText('4 copied · 1 skipped')).toBeNull()
@@ -405,7 +435,7 @@ describe('drops', () => {
     installApi(base())
     render(<Harness />)
     fire(dragEvent('dragenter', [{ kind: 'file', type: 'image/png' }]))
-    expect(screen.getByText('Those aren’t PSDs')).toBeTruthy()
+    expect(screen.getByText('Those aren’t PSDs or zips')).toBeTruthy()
     expect(document.querySelector('[data-ds="DropOverlay"]')?.getAttribute('data-state')).toBe(
       'rejected'
     )

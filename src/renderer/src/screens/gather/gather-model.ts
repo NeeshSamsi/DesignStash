@@ -11,9 +11,18 @@ export const formatCount = (n: number) => n.toLocaleString('en-US')
 
 const plural = (n: number, one: string, many: string) => `${formatCount(n)} ${n === 1 ? one : many}`
 
-/** Files that were looked at: landed, or left out as a duplicate or unreadable (not-PSDs never count). */
+/**
+ * Files that were looked at: landed, or left out as a duplicate or unreadable. Not-PSDs never count,
+ * and neither do archives left whole: they are in `total` as rows of their own, so they count here.
+ */
 export function processed(haul: CopyStatus): number {
-  return haul.landed + haul.skipped.duplicate + haul.skipped.unreadable
+  return (
+    haul.landed +
+    haul.skipped.duplicate +
+    haul.skipped.unreadable +
+    haul.skipped.archiveUnsupported +
+    haul.skipped.noPsdInArchive
+  )
 }
 
 export function widgetState(haul: CopyStatus): CopyWidgetState | null {
@@ -32,7 +41,13 @@ export function widgetState(haul: CopyStatus): CopyWidgetState | null {
 }
 
 export function skippedTotal(haul: CopyStatus): number {
-  return haul.skipped.notPsd + haul.skipped.duplicate + haul.skipped.unreadable
+  return (
+    haul.skipped.notPsd +
+    haul.skipped.duplicate +
+    haul.skipped.unreadable +
+    haul.skipped.archiveUnsupported +
+    haul.skipped.noPsdInArchive
+  )
 }
 
 /** How far along, 0 to 100. Counted in bytes, so one big PSD moves the bar as it copies; by files only when sizes are unknown. */
@@ -112,15 +127,29 @@ export function widgetCopy(haul: CopyStatus): WidgetCopy {
  * copy was stopped never made it. Null leaves the row's plain sentence for the state.
  */
 export function rowDetail(file: CopyFile, haul: CopyStatus): string | null {
-  if (file.status === 'done') return file.size ? `Copied · ${formatBytes(file.size)}` : 'Copied'
+  if (file.status === 'skipped') return SKIP_DETAIL[file.skipReason ?? 'unreadable'] ?? null
+  // A PSD out of a zip keeps saying which zip it came from.
+  const from = file.archiveName ? `From ${file.archiveName}` : null
+  if (file.status === 'done') {
+    const done = file.size ? `Copied · ${formatBytes(file.size)}` : 'Copied'
+    return from ? `${done} · ${from}` : done
+  }
   if (file.status === 'queued' && haul.state === 'cancelled') return 'Not copied'
+  if (file.status === 'copying' && from) return `Unpacking… · ${from}`
+  if (file.status === 'queued' && from) return from
   return null
+}
+
+/** The two archive reasons have their own sentence; the rest use the row's plain one. */
+const SKIP_DETAIL: Partial<Record<NonNullable<CopyFile['skipReason']>, string>> = {
+  'archive-unsupported': 'Unzip this one first',
+  'no-psd-in-archive': 'No PSD inside'
 }
 
 /** One file's row: a skipped file shows why, a landed one shows done. */
 export function rowState(file: CopyFile): CopyFileRowState {
   if (file.status === 'skipped') {
-    // Stand-in until the row has its own archive states (ui-intake, scratchpad 63).
+    // An archive left out shows as a not-PSD row; rowDetail words it.
     if (file.skipReason === 'archive-unsupported' || file.skipReason === 'no-psd-in-archive')
       return 'not-psd'
     return file.skipReason ?? 'unreadable'
@@ -138,10 +167,17 @@ export function undoneMessage(removed: number): { message: string; description: 
 
 /* ---- drops ---- */
 
+/** Photoshop files and the archives main can open or explain (a .rar or .7z gets "Unzip this one first"). */
 const PSD_TYPES = new Set([
   'image/vnd.adobe.photoshop',
   'application/x-photoshop',
-  'image/x-photoshop'
+  'image/x-photoshop',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/x-zip',
+  'application/vnd.rar',
+  'application/x-rar-compressed',
+  'application/x-7z-compressed'
 ])
 
 export interface DragItem {
@@ -153,7 +189,7 @@ export type DragVerdict = 'ok' | 'rejected'
 
 /**
  * While dragging only the item types are readable, not the names. A file with a known type that is
- * not Photoshop is certainly not a PSD; an unknown type (macOS often gives none for .psd, and a
+ * not Photoshop or an archive is certainly not a PSD; an unknown type (macOS often gives none for .psd, and a
  * folder has none) might be. The drag is rejected only when every file is certainly not a PSD.
  */
 export function dragVerdict(items: readonly DragItem[]): DragVerdict {
@@ -162,9 +198,9 @@ export function dragVerdict(items: readonly DragItem[]): DragVerdict {
   return files.every((item) => item.type !== '' && !PSD_TYPES.has(item.type)) ? 'rejected' : 'ok'
 }
 
-const PSD_NAME = /\.(psd|psb)$/i
+const PSD_NAME = /\.(psd|psb|zip|rar|7z)$/i
 
-/** On drop the names are known. Folders have no extension and are kept: main scans them. */
+/** On drop the names are known. PSDs and archives are kept. Folders have no extension and are kept: main scans them. */
 export function keepDropped(files: readonly { name: string; type: string }[]): number[] {
   const kept: number[] = []
   files.forEach((file, index) => {
@@ -205,8 +241,8 @@ export function overlayFor(input: {
   if (input.verdict === 'rejected') {
     return {
       state: 'rejected',
-      title: 'Those aren’t PSDs',
-      description: 'DesignStash only takes .psd files, so there’s nothing to add.'
+      title: 'Those aren’t PSDs or zips',
+      description: 'DesignStash only takes .psd and .zip files, so there’s nothing to add.'
     }
   }
   if (input.copying) {
