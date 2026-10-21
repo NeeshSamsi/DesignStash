@@ -3,8 +3,17 @@ import { IPC_CHANNELS } from '../ipc-channels'
 
 // ---- The copy queue (Gather) ----
 
-/** Why a file was left out. Plain codes: the screen turns them into words and never shows a path. */
-export const CopySkipReasonSchema = z.enum(['not-psd', 'duplicate', 'unreadable'])
+/**
+ * Why a file was left out. Plain codes: the screen turns them into words and never shows a path.
+ * `archive-unsupported` is a .rar, .7z or encrypted zip; `no-psd-in-archive` is a zip with no PSD inside.
+ */
+export const CopySkipReasonSchema = z.enum([
+  'not-psd',
+  'duplicate',
+  'unreadable',
+  'archive-unsupported',
+  'no-psd-in-archive'
+])
 export type CopySkipReason = z.infer<typeof CopySkipReasonSchema>
 
 /** Why a haul stopped by itself. Retry carries on from the same file. */
@@ -15,6 +24,8 @@ export const CopyFileSchema = z.object({
   jobId: z.number(),
   /** The file's own name, never its folder. */
   name: z.string(),
+  /** The zip it comes out of, by its file name as dropped. Absent for a PSD dropped as itself. */
+  archiveName: z.string().optional(),
   status: z.enum(['queued', 'copying', 'done', 'skipped']),
   skipReason: CopySkipReasonSchema.optional(),
   /** The mockup it became, once it has landed in To sort. */
@@ -38,7 +49,15 @@ const copyCountsShape = {
   bytesPerSecond: z.number(),
   /** Seconds left at that speed. null until the speed is known. */
   secondsLeft: z.number().nullable(),
-  skipped: z.object({ notPsd: z.number(), duplicate: z.number(), unreadable: z.number() })
+  skipped: z.object({
+    notPsd: z.number(),
+    duplicate: z.number(),
+    unreadable: z.number(),
+    /** Archives left whole: .rar, .7z or encrypted zips. Each counts once. */
+    archiveUnsupported: z.number(),
+    /** Zips with no PSD inside. Each counts once. */
+    noPsdInArchive: z.number()
+  })
 }
 
 /**

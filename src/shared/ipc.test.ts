@@ -75,7 +75,7 @@ describe('copy status wire shape', () => {
     bytesCopied: 100,
     bytesPerSecond: 0,
     secondsLeft: null,
-    skipped: { notPsd: 0, duplicate: 0, unreadable: 0 }
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 }
   }
   const { payload } = PUSH_CONTRACT[IPC_CHANNELS.COPY_PROGRESS]
   const { response } = IPC_CONTRACT[IPC_CHANNELS.COPY_RETRY]

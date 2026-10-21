@@ -13,7 +13,7 @@ const running = (): CopyStatus => ({
   bytesCopied: 0,
   bytesPerSecond: 0,
   secondsLeft: null,
-  skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
+  skipped: { notPsd: 0, duplicate: 0, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 },
   files: []
 })
 

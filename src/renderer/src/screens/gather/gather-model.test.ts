@@ -27,7 +27,7 @@ const haul = (over: Partial<CopyStatus> = {}): CopyStatus =>
     bytesCopied: 0,
     bytesPerSecond: 0,
     secondsLeft: null,
-    skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 },
     files: [],
     ...over
   }) as CopyStatus
@@ -90,7 +90,7 @@ describe('widget', () => {
 
   it('counts landed plus duplicates and unreadable files, never non-PSDs', () => {
     expect(
-      processed(haul({ landed: 10, skipped: { notPsd: 5, duplicate: 1, unreadable: 1 } }))
+      processed(haul({ landed: 10, skipped: { notPsd: 5, duplicate: 1, unreadable: 1, archiveUnsupported: 0, noPsdInArchive: 0 } }))
     ).toBe(12)
   })
 
@@ -105,7 +105,7 @@ describe('widget', () => {
         haul({
           state: 'done',
           landed: 1200,
-          skipped: { notPsd: 1000, duplicate: 4, unreadable: 0 }
+          skipped: { notPsd: 1000, duplicate: 4, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 }
         })
       ).title
     ).toBe('1,200 copied · 1,004 skipped')
@@ -128,7 +128,7 @@ describe('widget', () => {
     const done = haul({
       state: 'done',
       landed: 38,
-      skipped: { notPsd: 2, duplicate: 1, unreadable: 0 }
+      skipped: { notPsd: 2, duplicate: 1, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 }
     })
     expect(widgetCopy(done).title).toBe('38 copied · 3 skipped')
     expect(widgetCopy(haul({ state: 'done', landed: 5 })).title).toBe('5 copied')

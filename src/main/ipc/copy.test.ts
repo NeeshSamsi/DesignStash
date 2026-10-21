@@ -154,7 +154,7 @@ describe('copy channels', () => {
         bytesCopied: 100,
         bytesPerSecond: 0,
         secondsLeft: null,
-        skipped: { notPsd: 0, duplicate: 1, unreadable: 0 },
+        skipped: { notPsd: 0, duplicate: 1, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 },
         file: null
       }).success
     ).toBe(true)

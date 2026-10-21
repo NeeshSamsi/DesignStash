@@ -119,7 +119,12 @@ export function rowDetail(file: CopyFile, haul: CopyStatus): string | null {
 
 /** One file's row: a skipped file shows why, a landed one shows done. */
 export function rowState(file: CopyFile): CopyFileRowState {
-  if (file.status === 'skipped') return file.skipReason ?? 'unreadable'
+  if (file.status === 'skipped') {
+    // Stand-in until the row has its own archive states (ui-intake, scratchpad 63).
+    if (file.skipReason === 'archive-unsupported' || file.skipReason === 'no-psd-in-archive')
+      return 'not-psd'
+    return file.skipReason ?? 'unreadable'
+  }
   return file.status
 }
 

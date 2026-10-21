@@ -134,7 +134,13 @@ describe('skipping', () => {
     await q.idle()
 
     expect(status.total).toBe(1)
-    expect((await q.status())!.skipped).toEqual({ notPsd: 2, duplicate: 0, unreadable: 0 })
+    expect((await q.status())!.skipped).toEqual({
+      notPsd: 2,
+      duplicate: 0,
+      unreadable: 0,
+      archiveUnsupported: 0,
+      noPsdInArchive: 0
+    })
   })
 
   it('skips a PSD whose content is already in the stash, including one earlier in the same haul', async () => {

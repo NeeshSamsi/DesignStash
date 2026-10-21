@@ -360,7 +360,9 @@ export class CopyQueue {
       skipped: {
         notPsd: haul.notPsdCount,
         duplicate: jobs.filter((j) => j.skipReason === 'duplicate').length,
-        unreadable: jobs.filter((j) => j.skipReason === 'unreadable').length
+        unreadable: jobs.filter((j) => j.skipReason === 'unreadable').length,
+        archiveUnsupported: jobs.filter((j) => j.skipReason === 'archive-unsupported').length,
+        noPsdInArchive: jobs.filter((j) => j.skipReason === 'no-psd-in-archive').length
       },
       files: jobs.map((j) => toFile(j, live))
     }

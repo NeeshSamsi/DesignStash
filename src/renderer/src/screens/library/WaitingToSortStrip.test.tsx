@@ -64,7 +64,7 @@ const haul = (over: Partial<CopyStatus> = {}): CopyStatus =>
     bytesCopied: 30,
     bytesPerSecond: 10,
     secondsLeft: 7,
-    skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 },
     files: [],
     ...over
   }) as CopyStatus

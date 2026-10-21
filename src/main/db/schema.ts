@@ -202,7 +202,9 @@ export const copyJobs = sqliteTable('copy_jobs', {
   status: text('status', { enum: ['queued', 'copying', 'done', 'skipped'] })
     .notNull()
     .default('queued'),
-  skipReason: text('skip_reason', { enum: ['duplicate', 'unreadable'] }),
+  skipReason: text('skip_reason', {
+    enum: ['duplicate', 'unreadable', 'archive-unsupported', 'no-psd-in-archive']
+  }),
   /** The PSD's size in bytes, read when the haul was queued, so progress can be counted in bytes. */
   sizeBytes: integer('size_bytes').notNull().default(0),
   /** The mockup this became. */
