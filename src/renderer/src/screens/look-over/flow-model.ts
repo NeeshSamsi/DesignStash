@@ -282,17 +282,40 @@ export function primary(s: FlowState): { kind: PrimaryKind; label: string } {
 
 // -- Skip -----------------------------------------------------------------------------------
 
-/** Skip for now exists only for mockups on their own, and needs another one waiting after it. */
+/**
+ * Skip for now exists only for a mockup on its own that is not stashed yet (Back can reopen a
+ * stashed one), and needs another one waiting after it.
+ */
 export function canSkip(s: FlowState): boolean {
   const unit = currentUnit(s)
-  if (isPile(unit)) return false
+  if (isPile(unit) || s.stashed.has(unit.unitId)) return false
   return s.units.slice(s.position.unit + 1).some((u) => !isPile(u) && !s.stashed.has(u.unitId))
 }
 
-/** Sends the mockup to the end of the queue; the next one takes its place. */
+/** Sends the mockup to the end of the queue; the next one takes its place. It counts as looked at. */
 export function skip(s: FlowState): FlowState {
   if (!canSkip(s)) return s
   const unit = currentUnit(s)
+  const left = leave(s)
   const units = [...s.units.slice(0, s.position.unit), ...s.units.slice(s.position.unit + 1), unit]
-  return open({ ...s, units }, { unit: s.position.unit, step: 0 })
+  return open({ ...left, units }, { unit: s.position.unit, step: 0 })
+}
+
+// -- Progress -------------------------------------------------------------------------------
+
+/**
+ * How far through the haul, 0 to 1, for the FlowModal's last track. Counts the mockups looked at
+ * (opened, left or skipped past), everything in a stashed pile, and the one on screen, so it moves
+ * on Next, Stash and Skip and never goes back.
+ */
+export function progress(s: FlowState): number {
+  const total = mockupTotal(s)
+  if (total === 0) return 0
+  const seen = new Set(s.checked)
+  for (const unit of s.units) {
+    if (s.stashed.has(unit.unitId)) for (const item of unit.items) seen.add(item.mockupId)
+  }
+  const here = currentItem(s)
+  if (here) seen.add(here.mockupId)
+  return Math.min(1, seen.size / total)
 }

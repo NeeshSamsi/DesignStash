@@ -6,6 +6,7 @@ import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { CoverPanel } from '@renderer/components/CoverPanel'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { FlowModal } from '@renderer/components/FlowModal'
+import { Lightbox } from '@renderer/components/Lightbox'
 import { MockupCard } from '@renderer/components/MockupCard'
 import { MockupMetaForm } from '@renderer/components/MockupMetaForm'
 import { PileRail } from '@renderer/components/PileRail'
@@ -16,6 +17,7 @@ import { useFlowOpen } from '@renderer/stores/copyStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { Skeleton } from '@renderer/ui/skeleton'
+import { checkLibrary } from '../details/check-library'
 import {
   afterStash,
   back,
@@ -32,6 +34,7 @@ import {
   next,
   onReview,
   primary,
+  progress,
   rail,
   reviewCards,
   skip,
@@ -176,6 +179,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const [busy, setBusy] = useState(false)
   const [asking, setAsking] = useState(false)
   const [coverState, setCoverState] = useState<'default' | 'replacing' | 'error'>('default')
+  const [zooming, setZooming] = useState(false)
   const { vocabulary, createTag } = useTagVocabulary()
 
   const unit = currentUnit(flow)
@@ -495,6 +499,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
               : {})}
             onCover={replaceCover}
             onUsePsdPreview={useEmbedded}
+            onZoom={() => setZooming(true)}
           />
         )}
         <div className="min-w-0 flex-1">
@@ -541,8 +546,20 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
         open
         step="look-over"
         count={headerBadge(flow)}
+        progress={progress(flow)}
         onRequestClose={() => setAsking(true)}
         body={body}
+      />
+      <Lightbox
+        open={zooming && cover !== undefined}
+        mode="single"
+        state={cover?.missing ? 'missing' : 'loaded'}
+        {...(cover?.path ? { src: coverUrl(cover.path) } : {})}
+        onClose={() => setZooming(false)}
+        onCheckLibrary={() => {
+          setZooming(false)
+          void checkLibrary()
+        }}
       />
       <ConfirmDialog
         open={asking}

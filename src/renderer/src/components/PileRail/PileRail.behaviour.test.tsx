@@ -110,6 +110,60 @@ beforeEach(() => {
   toasts.undoToast.mockClear()
 })
 
+const trackFill = () =>
+  parseFloat(
+    (document.querySelector('[data-ds="FlowModal"] ol > li:nth-child(3) span[style]') as HTMLElement)
+      .style.width
+  )
+
+describe('Look it over · header, zoom and progress', () => {
+  it('shows no empty badge while loading or when it could not open', async () => {
+    setup({ [IPC_CHANNELS.LOOK_OVER_OPEN]: () => ({ success: false, error: 'x' }) })
+    render(<LookOverFlow open onClose={vi.fn()} />)
+    await screen.findByText('We couldn’t open Look it over')
+    expect(badge()).toBe('2Look it over')
+  })
+
+  it('opens the cover in the Lightbox from Zoom and closes it again', async () => {
+    await start()
+    fireEvent.click(btn('Zoom'))
+    const zoomIn = await screen.findByRole('button', { name: 'Zoom in' })
+    fireEvent.keyDown(zoomIn, { key: 'Escape' })
+    await waitFor(() => expect(maybe('Zoom in')).toBeNull())
+  })
+
+  it('moves the progress track as they go: Next, stash, skip', async () => {
+    await start()
+    // 6 mockups: the one you are on counts.
+    expect(trackFill()).toBeCloseTo(100 / 6)
+    fireEvent.click(btn('Next'))
+    await waitFor(() => expect(trackFill()).toBeCloseTo(200 / 6))
+    await toReview()
+    fireEvent.click(btn(/Stash pile \(3\)/))
+    // Pile 1 is stashed (3), pile 2's top is open (1).
+    await waitFor(() => expect(trackFill()).toBeCloseTo(400 / 6))
+  })
+
+  it('does not offer Skip on a single that is already stashed', async () => {
+    setup(
+      {},
+      queueOf({
+        units: [
+          { unitId: 30, kind: 'single', items: [item(30, 'single', null)] },
+          { unitId: 31, kind: 'single', items: [item(31, 'single', null)] }
+        ]
+      })
+    )
+    await start()
+    expect(maybe('Skip for now')).not.toBeNull()
+    fireEvent.click(btn('Stash & next'))
+    await waitFor(() => expect(titleField().value).toBe('Title 31'))
+    fireEvent.click(btn('Back'))
+    await waitFor(() => expect(titleField().value).toBe('Title 30'))
+    expect(maybe('Skip for now')).toBeNull()
+  })
+})
+
 describe('Piles · drafts until Stash pile', () => {
   it('starts a pile on its top mockup and pre-fills variants from it', async () => {
     await start()

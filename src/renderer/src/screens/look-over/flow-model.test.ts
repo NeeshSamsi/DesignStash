@@ -15,6 +15,7 @@ import {
   next,
   onReview,
   primary,
+  progress,
   rail,
   reviewCards,
   skip,
@@ -356,9 +357,46 @@ describe('Skip', () => {
     expect(canSkip(rest)).toBe(false)
   })
 
+  it('is not offered on a single that is already stashed, even with another waiting', () => {
+    const reopened = { ...singles(), stashed: new Set([1]) }
+    expect(canSkip(reopened)).toBe(false)
+    expect(skip(reopened)).toEqual(reopened)
+  })
+
   it('skips a single reached after the piles without touching the piles', () => {
     const s = createFlow(queue({ resume: { unitId: 30, mockupId: 30 } }))
     const skipped = skip(s)
     expect(skipped.units.map((u) => u.unitId)).toEqual([1, 2, 31, 30])
+  })
+})
+
+describe('Progress', () => {
+  // The queue has 7 mockups; the one you are on counts as looked at.
+  it('starts with the first mockup and moves with Next', () => {
+    expect(progress(start())).toBeCloseTo(1 / 7)
+    expect(progress(next(start()))).toBeCloseTo(2 / 7)
+  })
+
+  it('never goes back when you go back or jump around', () => {
+    const s = next(next(start()))
+    expect(progress(back(s))).toBeCloseTo(progress(s))
+    expect(progress(jumpTo(s, 0))).toBeCloseTo(progress(s))
+  })
+
+  it('counts a whole pile once it is stashed, and the first mockup of the next', () => {
+    expect(progress(afterStash(start()))).toBeCloseTo(4 / 7)
+  })
+
+  it('moves when a single is skipped, since the next one is opened', () => {
+    const s = createFlow({ units: [single(1), single(2), single(3)], resume: null })
+    expect(progress(s)).toBeCloseTo(1 / 3)
+    expect(progress(skip(s))).toBeCloseTo(2 / 3)
+  })
+
+  it('is 1 once everything is stashed, and 0 for an empty queue', () => {
+    let s = createFlow({ units: [single(1), single(2)], resume: null })
+    s = afterStash(afterStash(s))
+    expect(progress(s)).toBe(1)
+    expect(progress(createFlow({ units: [], resume: null }))).toBe(0)
   })
 })
