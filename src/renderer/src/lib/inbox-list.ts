@@ -88,11 +88,6 @@ export function newestFirst<T extends { trashedAt: string }>(items: readonly T[]
   return [...items].sort((a, b) => Date.parse(b.trashedAt) - Date.parse(a.trashedAt))
 }
 
-export function trashDescription(count: number, bytes: number | null): string {
-  const size = bytes === null ? '' : ` · ${formatBytes(bytes)}`
-  return `${plural(count, 'item', 'items')}${size}`
-}
-
 export const pluralise = plural
 
 export interface TossCopy {

@@ -1,6 +1,5 @@
 // Reverse-DNS of the app domain designstash.app
 export const APP_ID = 'app.designstash'
-export const APP_NAME = 'DesignStash'
 
 // Image processing constants (spec §7).
 // Both cover and thumb are optimized WebP — they are previews only (the real
