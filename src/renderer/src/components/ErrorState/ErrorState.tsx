@@ -90,7 +90,7 @@ export function ErrorState({
         </Button>
       </div>
       {props.showDetails && (
-        <div className="flex w-full items-center gap-2 rounded-md bg-surface-2 px-3 py-2">
+        <div className="flex w-full items-center gap-2 rounded-lg bg-surface-2 px-3 py-2">
           <p className="type-caption-xs-regular min-w-0 flex-1 text-left text-tertiary">
             A report is ready to copy if you need to ask for help.
           </p>

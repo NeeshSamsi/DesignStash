@@ -55,7 +55,7 @@ export const newCategoryRowClass = cva(
 
 /** The inline input that renaming and adding share (Figma "input": 28 high, focus ring 2px). */
 export const rowInputClass = cva(
-  'h-7 min-w-0 flex-1 rounded-md bg-surface-2 px-2 type-body-sm-regular text-foreground outline-none',
+  'h-7 min-w-0 flex-1 rounded-lg bg-surface-2 px-2 type-body-sm-regular text-foreground outline-none',
   {
     variants: {
       invalid: { true: 'border border-error', false: 'border-2 border-focus' }

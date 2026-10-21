@@ -61,7 +61,7 @@ export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFi
       className={cn(copyFileRowVariants({ state }), className)}
       {...props}
     >
-      <div className="flex size-8 shrink-0 items-center justify-center overflow-clip rounded-md bg-surface-3">
+      <div className="flex size-8 shrink-0 items-center justify-center overflow-clip rounded-lg bg-surface-3">
         <HugeiconsIcon
           icon={Image01Icon}
           strokeWidth={ICON_STROKE}

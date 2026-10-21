@@ -405,7 +405,7 @@ export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps
         {marquee.box && (
           <div
             aria-hidden
-            className="pointer-events-none fixed z-50 rounded-md border border-primary bg-primary-weak"
+            className="pointer-events-none fixed z-50 rounded-lg border border-primary bg-primary-weak"
             style={{
               left: marquee.box.x,
               top: marquee.box.y,

@@ -62,7 +62,7 @@ export function Modal({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {body ??
           (isStatic && (
-            <div className="flex h-16 flex-col items-center justify-center rounded-md border border-dashed border-subtle px-12 py-6">
+            <div className="flex h-16 flex-col items-center justify-center rounded-lg border border-dashed border-subtle px-12 py-6">
               <p className="type-caption-xs-regular text-tertiary">Swap in content</p>
             </div>
           ))}

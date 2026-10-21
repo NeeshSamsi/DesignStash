@@ -167,7 +167,7 @@ function NavItem(props: {
       type="button"
       onClick={props.onClick}
       className={cn(
-        'flex items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-accent',
+        'flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-left text-sm hover:bg-accent',
         props.active && 'bg-accent font-medium'
       )}
     >
@@ -192,7 +192,7 @@ function Swatch({ cssVar, className }: { cssVar: string; className?: string }) {
   // Token values are data here, so the swatch colour comes from the CSS variable itself.
   return (
     <span
-      className={cn('shrink-0 rounded-md border border-border', className)}
+      className={cn('shrink-0 rounded-lg border border-border', className)}
       style={{ background: `var(${cssVar})` }}
     />
   )

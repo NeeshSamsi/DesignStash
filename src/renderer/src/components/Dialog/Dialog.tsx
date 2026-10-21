@@ -40,7 +40,7 @@ export function Dialog({ className, ...rest }: DialogProps) {
       {!isAlert && (
         <div
           className={cn(
-            'flex flex-col items-center justify-center rounded-md border border-dashed border-subtle px-4 py-10',
+            'flex flex-col items-center justify-center rounded-lg border border-dashed border-subtle px-4 py-10',
             props.variant === 'sheet' && 'flex-1'
           )}
         >

@@ -21,7 +21,7 @@ export const listRowVariants = cva(
 )
 
 export const listRowMediaVariants = cva(
-  'flex shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-3 text-muted-foreground',
+  'flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-3 text-muted-foreground',
   {
     variants: {
       density: {

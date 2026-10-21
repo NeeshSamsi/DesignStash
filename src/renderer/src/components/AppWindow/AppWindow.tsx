@@ -60,7 +60,7 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
           <div data-slot="main-content" className="flex min-h-0 flex-1 flex-col gap-6">
             {props.showHeader && props.header}
             {/* The extra right padding keeps the hover scrollbar gutter (12px) off the last column and the ring. */}
-            <div className="-m-2 -mr-3 min-h-0 flex-1 overflow-auto rounded-md p-2 pr-3">
+            <div className="-m-2 -mr-3 min-h-0 flex-1 overflow-auto rounded-lg p-2 pr-3">
               {props.page}
             </div>
           </div>

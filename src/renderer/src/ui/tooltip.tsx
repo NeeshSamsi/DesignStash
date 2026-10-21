@@ -7,7 +7,7 @@ import { cn } from "@renderer/lib/utils"
 
 /** Body shared by the live tooltip and the static catalog/Figma rendering. */
 const tooltipBodyClass =
-  "inline-flex w-fit max-w-xs items-center gap-2 rounded-md bg-surface-inverse px-3 py-1.5 type-caption-xs-regular text-inverse"
+  "inline-flex w-fit max-w-xs items-center gap-2 rounded-lg bg-surface-inverse px-3 py-1.5 type-caption-xs-regular text-inverse"
 
 /**
  * The 14×7 pointer: a 10px square turned 45°, half of it tucked under the body.

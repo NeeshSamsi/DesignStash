@@ -15,7 +15,7 @@ const dropdownMenuMotionClass =
 
 /** Row: icon · label · shortcut. Radix focuses the row under the pointer, so focus: is hover. */
 const dropdownMenuItemVariants = cva(
-  "group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 type-body-sm-regular outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5 type-body-sm-regular outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

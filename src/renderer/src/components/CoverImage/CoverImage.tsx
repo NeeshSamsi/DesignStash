@@ -57,7 +57,7 @@ export function CoverImage({
           />
         ) : (
           <div aria-hidden className={coverDeviceVariants({ size })}>
-            <div className="size-full rounded-md bg-primary-weak" />
+            <div className="size-full rounded-lg bg-primary-weak" />
           </div>
         ))}
       {(state === 'no-preview' || missing) && (
