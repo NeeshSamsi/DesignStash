@@ -20,7 +20,7 @@ export interface FlowModalProps
    * opens that ConfirmDialog (or does nothing while a pile is mid-edit) from here.
    */
   onRequestClose?: () => void
-  /** The tally by the current step: "38 mockups" in Sort, "3 of 12" in Look it over. */
+  /** The tally by the current step: "38 mockups" in Sort, "3 of 12" in Look it over. Empty shows no badge. */
   count?: string
   /** Look it over: how far through the haul, 0 to 1. Fills the second track. Figma's sample is 0.25. */
   progress?: number
@@ -110,7 +110,7 @@ export function FlowModal({
                 >
                   {name}
                 </span>
-                {state === 'current' && <Badge variant="secondary">{shown}</Badge>}
+                {state === 'current' && shown !== '' && <Badge variant="secondary">{shown}</Badge>}
               </span>
             </li>
           )
