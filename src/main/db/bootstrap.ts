@@ -15,7 +15,7 @@ export function bootstrapLibrary(libraryRoot: string): void {
   }
 }
 
-interface SeedCategory {
+export interface SeedCategory {
   label: string
   tags: string[]
 }
@@ -24,7 +24,7 @@ interface SeedCategory {
  * Seed taxonomy: two tiers, category then tag (spec §3.7). Tags are stored as the label people read:
  * sentence case, except terms with their own casing (iPhone, MacBook, T-shirt, TV).
  */
-const TAXONOMY: SeedCategory[] = [
+export const TAXONOMY: SeedCategory[] = [
   {
     label: 'Device',
     tags: [

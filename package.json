@@ -31,6 +31,7 @@
     "predev:ingest": "node scripts/rebuild-better-sqlite3.mjs node",
     "dev:reset": "node scripts/dev-reset.mjs",
     "ai-eval:covers": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/covers.ts",
+    "ai-eval:run": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/run.ts",
     "ds:tokens": "node scripts/ds/build-tokens.mjs",
     "ds:scaffold": "node scripts/ds/scaffold-components.mjs",
     "ds:check": "node scripts/ds/scaffold-components.mjs --check",
