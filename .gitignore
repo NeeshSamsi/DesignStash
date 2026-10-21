@@ -33,3 +33,7 @@ dev-fixtures/
 # OS / editor
 .DS_Store
 *.log
+
+# SwiftPM build output
+.build/
+.swiftpm/
