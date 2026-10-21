@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import prettier from 'eslint-config-prettier'
 
 export default tseslint.config(
-  { ignores: ['dist', 'out', 'node_modules', '**/*.config.*', '.github'] },
+  { ignores: ['dist', 'out', 'node_modules', 'tmp', '**/*.config.*', '.github'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
