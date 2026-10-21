@@ -5,13 +5,32 @@
 
 ## What the model sees
 
-The mockup's cover (the PSD's embedded preview) goes first. The file name and folder trail follow as text, marked as hints: when they disagree with the image, the image wins. For the rest of a pile, the first variant's title, description and tags are added so the suggestions stay consistent.
+**Tuned 2026-10-21 on the real test set** (39 mockups, both models, nine prompt versions). The full record, with every version, score and answer, is the review page "Mockup AI Tuning" (https://claude.ai/artifact/49CAgBduzsuKVAg9g66hLH); the harness is `scripts/ai-eval/` (`pnpm ai-eval:covers`, `ai-eval:run`, `ai-eval:score`), and the research behind it is `design/research/vlm-prompting.md` and `vlm-prompting-2.md`.
 
-The reply is `{title, description, tags:[{category, label}]}`, constrained by a JSON schema:
+- **The cover goes first,** then the file name and folders. The image says what the mockup is; the names supply a product name (MacBook, iPhone 16) when the image shows that kind of product. For the rest of a pile, the first variant's title, description and tags are added.
+- **A near-blank cover is sent as no image.** Some free PSDs embed a "Remove this layer to start" notice as their preview. Shown that, both models described the notice. Below a greyscale entropy of 1 (`PLACEHOLDER_ENTROPY`; the notices score about 0.23, the plainest real cover 2.24) the model gets the names only and is told to leave the setting out.
+- **The prompt is written for search:** a designer finds the mockup later by typing a few words. The description is one natural sentence that names the object and one or two other words people use for it ("a tote bag, also called a shopping bag").
+- **The only worked examples describe a bicycle.** Both models copy example strings into their answers (the 3B used an example title for unrelated covers; the 7B pasted the tote bag example into MacBook descriptions). Examples from outside the library make a copy harmless.
+- **Printed words are template filler.** The prompt says so, but Qwen 2.5 VL quotes printed text anyway, so `parseResult` cuts quoted text with the words around it, drops a sentence that only reports printed text, removes "mockup" a phrase at a time, takes "free", "mockup", "PSD" and stock-site names out of titles and tags, and shortens at a word.
+- **The grammar keeps title, description and labels to plain ASCII,** which stopped the 3B leaking Chinese characters into English text. `repeat_penalty` is 1.05, Qwen's own setting (the 7B once wrote "phone" thirty times).
 
-- **Title:** at most 60 characters. **Description:** one sentence, at most 200.
-- **Tags:** 3 to 6, two tiers. The category must be one of the seed categories (Device, Print & Branding, Apparel, Environment, Style, Angle), because `snapTags` matches categories exactly. Labels are free, then tidied to the seed style (lowercase, words joined by hyphens) and deduplicated.
-- **The prompt describes each category** in a few words and doesn't list the seed labels. With the full label list, the small models copied it in order (a laptop tag on a tote bag) instead of looking at the image.
+The reply is `{title, description, tags:[{category, label}]}`:
+
+- **Title:** at most 60 characters. **Description:** one sentence, at most 200. The grammar allows a little more and `parseResult` trims at a word.
+- **Tags:** 3 to 6. The category must be one of the seed categories minus **Angle**: both models got the camera angle wrong about half the time (the 7B said Side on 21 of 39), it was half of the 7B's wrong tags, and no search uses it. People can still add Angle tags by hand.
+- **Each category line has a few example labels,** not the seed list. With no examples the tags drifted into moods (Style: Futuristic) and Device filled with "Screen"; with the full seed list the models copied it in order.
+
+**Results, same 73 searches through the app's search** (found: share of searches that return the mockup; clean: share of results that are right):
+
+| | 3B found / clean | 7B found / clean |
+|---|---|---|
+| v0, the prompt before tuning | 46% / 55% | 55% / 60% |
+| v4, the best single run | 49% / 58% | 70% / 76% |
+| v7, shipped (single pass) | 51% / 59% | 63% / 69% |
+
+Single passes vary by several points, so the v4 and v7 numbers were also measured over three passes each (see the review page). Things that were tried and dropped: a describe-first "seen" field (no gain on 3B, small and costly on 7B), a hidden keywords field (about one point either way, and it took other names out of the 7B's descriptions), and removing all examples (generic answers).
+
+**Known limits:** the long-scroll MacBooks read as "flexible" or "curved" laptops on both models; the 7B sees a cosmic sky behind the iPhone 15 on dark sand; the 3B misreads stacked boxes as signs or books. The search also changed: a hyphenated word searches as a phrase and a plural finds the singular (`ftsMatchQuery`).
 
 ## Runtime decision: llama-server
 

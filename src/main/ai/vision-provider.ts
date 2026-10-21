@@ -5,42 +5,52 @@ import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
 
 /**
- * The categories a tag can go in, with what each covers. They are the seed categories in
- * `db/bootstrap.ts`: `snapTags` matches the category exactly, so the schema limits the model to
- * these. Labels are left to the model: listing the seed labels made the small models copy
- * the list instead of looking at the image (see design/specs/ai.md).
+ * The categories a suggested tag can go in, with what each covers. They are the seed categories in
+ * `db/bootstrap.ts` minus Angle: `snapTags` matches the category exactly, so the schema limits the
+ * model to these. Angle is left to people: both models got the camera angle wrong about half the
+ * time, and no search uses it (see design/specs/ai.md). Labels are left to the model: listing the
+ * seed labels made the small models copy the list instead of looking at the image.
  */
 export const VISION_CATEGORIES: Record<string, string> = {
-  Device: 'the screen device the design is shown on, like a laptop, phone, tablet or monitor',
-  'Print & Branding': 'printed or packaged items, like a poster, business card, box, bag or label',
-  Apparel: 'clothing and merchandise, like a t-shirt, cap, tote bag or mug',
-  Environment: 'the setting, like indoor, outdoor, desk scene, flat lay or hand-held',
-  Style: 'the look, like minimal, realistic, 3d render, dark or colorful',
-  Angle: 'the camera angle: front, side, angle or top-down'
+  Device: 'screen devices: laptop, MacBook, phone, iPhone, tablet, monitor, smartwatch, TV',
+  'Print & Branding':
+    'printed things and packaging: business card, poster, billboard, sign, box, packaging, label, book, stationery, envelope',
+  Apparel: 'clothing and merchandise: t-shirt, hoodie, cap, tote bag, mug, sticker',
+  Environment: 'the setting: indoor, outdoor, street, desk, floor, wall, water, floating',
+  Style: 'the look: minimal, realistic, 3D render, clay, dark, colorful'
 }
 
 const CATEGORIES = Object.keys(VISION_CATEGORIES)
+const MIN_TAGS = 3
 const MAX_TAGS = 6
 const TITLE_MAX = 60
 const DESCRIPTION_MAX = 200
 /** Longest edge of the image sent to the model. Bigger costs prompt time without better tags. */
 export const VISION_IMAGE_MAX_EDGE = 1024
 
+/**
+ * A string the grammar keeps to printable ASCII without `"`, `\\`, `<` or `>`. The 3B leaked Chinese
+ * characters into English descriptions; this rules them out at the source. The limit is looser than
+ * the saved length, because a hard cut ends a sentence mid-word; `parseResult` trims at a word.
+ */
+const plainText = (max: number) =>
+  ({ type: 'string', pattern: `^[ !#-;=?-\\[\\]-~]{1,${max}}$` }) as const
+
 /** JSON schema the runtime constrains the reply to: `{title, description, tags:[{category,label}]}`. */
 export const RESULT_JSON_SCHEMA = {
   type: 'object',
   properties: {
-    title: { type: 'string', maxLength: TITLE_MAX },
-    description: { type: 'string', maxLength: DESCRIPTION_MAX },
+    title: plainText(90),
+    description: plainText(300),
     tags: {
       type: 'array',
-      minItems: 1,
+      minItems: MIN_TAGS,
       maxItems: MAX_TAGS,
       items: {
         type: 'object',
         properties: {
           category: { type: 'string', enum: CATEGORIES },
-          label: { type: 'string' }
+          label: plainText(30)
         },
         required: ['category', 'label']
       }
@@ -58,6 +68,8 @@ export interface ChatRequest {
   messages: { role: 'system' | 'user'; content: string | ChatContentPart[] }[]
   response_format: { type: 'json_schema'; json_schema: { name: string; schema: object } }
   temperature: number
+  /** Qwen's own generation config uses 1.05; llama-server's default is off. */
+  repeat_penalty: number
   max_tokens: number
 }
 
@@ -70,21 +82,26 @@ export interface VisionProviderDeps {
   dispose?(): Promise<void>
 }
 
-const SYSTEM_PROMPT = `You catalogue design mockups (PSD templates) for a designer's library. You look at the mockup's preview image and say what it shows: the object or device the design is placed on, the scene, the style and the camera angle. Ignore watermarks, stock-site logos and placeholder text.`
+const SYSTEM_PROMPT = `You write the catalogue entry for one design mockup in a designer's library. A designer finds it later by typing a few plain words into a search box, so the words you choose decide whether it can be found. Write in English.`
 
+/**
+ * The per-mockup instructions, tuned on the test set (design/specs/ai.md, "Prompt"). The only worked
+ * examples describe a bicycle: the small models copy whatever examples they are shown into their
+ * answers, so the examples come from outside the library, where a copy is harmless and easy to spot.
+ */
 function contextText(input: AnalysisInput, hasImage: boolean): string {
-  const lines: string[] = []
+  const lines: string[] = [
+    hasImage
+      ? 'The image above is the mockup preview.'
+      : 'There is no usable preview image, so go by the names below.',
+    `File name: ${input.fileName}`
+  ]
+  if (input.folderTrail.length > 0) lines.push(`Folders: ${input.folderTrail.join(' / ')}`)
   lines.push(
     hasImage
-      ? 'The image above is the mockup preview. Describe what it shows.'
-      : 'There is no preview image for this mockup, so go by the names below.'
+      ? 'The image shows what the mockup is. When it shows the kind of product the names mention (a MacBook, an iPhone 16, an Apple Watch Ultra), use that product name.'
+      : "Describe the object the names point to, in your own words. You can't see the setting, so leave it out."
   )
-  lines.push('', `File name: ${input.fileName}`)
-  if (input.folderTrail.length > 0) lines.push(`Folders: ${input.folderTrail.join(' / ')}`)
-  if (hasImage)
-    lines.push(
-      'The file name and folders are hints. When they disagree with the image, trust the image.'
-    )
 
   if (input.groupContext) {
     const { originalTitle, originalDescription, originalTags } = input.groupContext
@@ -95,17 +112,18 @@ function contextText(input: AnalysisInput, hasImage: boolean): string {
     )
   }
 
-  const categories = CATEGORIES.map((c) => `- ${c}: ${VISION_CATEGORIES[c]}`).join('\n')
   lines.push(
     '',
-    'Reply with JSON only:',
-    `- title: what this mockup shows, at most ${TITLE_MAX} characters. Name the object and the setting, for example "Phone held over a cafe table" or "Coffee cup, top-down".`,
-    `- description: one sentence saying more than the title, at most ${DESCRIPTION_MAX} characters.`,
-    `- tags: 3 to ${MAX_TAGS} tags. Each tag is one thing you can see in this mockup, put in the category it belongs to. Never tag something that isn't there.`,
-    '- Each label is a short name in plain words, like "iPhone", "Tote bag" or "Flat lay".',
+    'Words printed on the object (a brand, a slogan, "mockup", a website on a screen) are template filler a designer replaces. Leave them out of every field and describe the object itself.',
+    '',
+    'Reply with JSON: title, description, tags.',
+    `- title: your own short name for the scene, at most ${TITLE_MAX} characters: the main object, its product name if known, and one detail of the setting. For a photo of a bike it would be "Red road bike against a garage door".`,
+    `- description: one natural sentence, at most ${DESCRIPTION_MAX} characters. Name the main object and, in the same sentence, one or two other words people use for it, then the setting and the main colours. For the bike: "A red road bike, also called a racing bicycle, leaning on a white garage door in afternoon sun."`,
+    `- tags: ${MIN_TAGS} to ${MAX_TAGS}, each one thing that is really in the picture, in its category. Most mockups use only some categories.`,
+    '- labels are one or two plain words.',
     '',
     'Categories:',
-    categories
+    ...CATEGORIES.map((c) => `- ${c}: ${VISION_CATEGORIES[c]}`)
   )
   return lines.join('\n')
 }
@@ -126,13 +144,84 @@ export function buildRequest(input: AnalysisInput, imageUrl: string | null): Cha
       json_schema: { name: 'mockup', schema: RESULT_JSON_SCHEMA }
     },
     temperature: 0.2,
+    repeat_penalty: 1.05,
     max_tokens: 400
   }
 }
 
+/**
+ * Words every file in a mockup library shares, plus the stock sites they come from. They match every
+ * search, so they say nothing; the models copy them from file names and from text printed on covers.
+ */
+const JUNK_WORDS = /\b(free|mockups?|psd|templates?|pixeden|pixelbuddha|freepik|mockupfree|ls\.?graphics)\b/gi
+
+/** Takes the junk words out of a title or label and tidies what's left. */
+function stripJunk(text: string): string {
+  return tidySpacing(text.replace(JUNK_WORDS, ''))
+}
+
+/** A quoted span: a quote at the start of a word, closed before a space or punctuation. Possessives never match. */
+const QUOTED = String.raw`'[^']+'(?=[\s,.;:!?]|$)`
+
+/**
+ * The printed text the models quote, whatever the prompt says (Qwen 2.5 VL is trained hard on
+ * reading text), cut with the words that introduce and follow it: "labeled 'SNACKBAR' with the number
+ * '1' in orange" goes as one piece, so no "with the number in orange" is left behind.
+ */
+const QUOTED_CLAUSE = new RegExp(
+  String.raw`\s*,?\s*\b(with|featuring|labeled|labelled|reading|reads|that reads|showing|displaying|including)\s+` +
+    String.raw`((a|an|the)\s+)?([a-z-]+\s+){0,2}?((text|words?|label|number|name)\s+)?${QUOTED}` +
+    String.raw`(\s*(,|and|with)\s*((the\s+)?(text|words?|number)\s+)?${QUOTED})*` +
+    String.raw`(\s+(text|words?|label|printed on it|on it|on the \w+|in ((bright|dark|light|pale|deep|bold|large|small|big)\s+)?[a-z]+(\s+(letters|text))?))*`,
+  'gi'
+)
+
+function stripQuoted(text: string): string {
+  return text.replace(QUOTED_CLAUSE, '').replace(new RegExp(String.raw`(^|\s)${QUOTED}`, 'g'), '$1')
+}
+
+/** Words that describe a mockup's look, so "a vibrant mockup featuring" reads "a vibrant design featuring". */
+const LOOK_WORDS = 'vibrant|minimalist|minimal|sleek|clean|modern|colorful|colourful|realistic|detailed|simple|professional|stylish'
+
+/** Removes "mockup" a phrase at a time: "a clay mockup of an Apple Watch" reads "a clay Apple Watch". */
+function stripMockup(text: string): string {
+  return text
+    .replace(/\b(a|the)\s+free\s+/gi, '$1 ')
+    .replace(new RegExp(String.raw`\b(${LOOK_WORDS})\s+mockups?\b(?!\s+of\b)`, 'gi'), '$1 design')
+    .replace(/\b(a|an|the)\s+mockups?\s+of\s+((a|an|the)\s+)?/gi, (_m, art: string, next?: string) => next ?? `${art} `)
+    .replace(/\bmockups?\s+of\s+((a|an|the)\s+)?/gi, '')
+    .replace(/\b(a|an|the)\s+mockups?\b/gi, '$1 design')
+    .replace(/\s+mockups?\b/gi, '')
+    .replace(/\bmockups?\s+/gi, '')
+}
+
+function tidySpacing(text: string): string {
+  return text
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:])/g, '$1')
+    .replace(/\(\s*\)/g, '')
+    .replace(/^[\s,.;:-]+|[\s,;:-]+$/g, '')
+    .trim()
+}
+
+/** A title or description starts with a capital, even after its first words were cut; iPhone stays iPhone. */
+function sentence(text: string): string {
+  return tidySpacing(text).replace(/^[a-z](?![A-Z])/, (c) => c.toUpperCase())
+}
+
+/** A sentence whose only news is the printed text ("The text around the sticker reads 'X'"). */
+const PRINTED_TEXT_SENTENCE = new RegExp(String.raw`^[^.]*\b(text|words?|label|reads?|says)\b[^.]*${QUOTED}[^.]*\.?$`, 'i')
+
+function dropPrintedTextSentences(text: string): string {
+  return text
+    .split(/(?<=\.)\s+/)
+    .filter((s) => !PRINTED_TEXT_SENTENCE.test(s) || !/^the\s+(text|words?|label)/i.test(s))
+    .join(' ')
+}
+
 /** A label as the model wrote it, trimmed. Snapping to the seed labels ("iphone" → "iPhone") is `snapTags`' job. */
 function toLabel(raw: string): string {
-  return raw.trim().replace(/\s+/g, ' ')
+  return stripJunk(raw)
 }
 
 function toCategory(raw: string): string {
@@ -140,12 +229,16 @@ function toCategory(raw: string): string {
   return CATEGORIES.find((c) => c.toLowerCase() === trimmed.toLowerCase()) ?? trimmed
 }
 
+/** Shortens text to `max` characters at a word, with an ellipsis. */
 function clip(text: string, max: number): string {
   const t = text.trim().replace(/\s+/g, ' ')
-  return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`
+  if (t.length <= max) return t
+  const cut = t.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > 0 ? cut.slice(0, space) : cut).replace(/[\s,;:]+$/, '')}…`
 }
 
-/** Parse and tidy the reply: valid shape, trimmed text, no duplicate tags ("iPhone" and "iphone" are one). */
+/** Parse and tidy the reply: valid shape, clean text, no duplicate tags ("iPhone" and "iphone" are one). */
 export function parseResult(raw: string): InferenceResult {
   const match = raw.match(/\{[\s\S]*\}/)
   if (!match) throw new Error(`No JSON found in model response: ${raw.slice(0, 120)}`)
@@ -171,25 +264,40 @@ export function parseResult(raw: string): InferenceResult {
     tags.push({ category, label })
   }
 
-  const title = clip(validated.data.title, TITLE_MAX)
-  if (!title) throw new Error('Model response has an empty title')
+  const rawTitle = validated.data.title.trim()
+  if (!rawTitle) throw new Error('Model response has an empty title')
+  const title = clip(sentence(stripJunk(stripQuoted(rawTitle))) || rawTitle, TITLE_MAX)
+  const description = sentence(
+    stripMockup(stripQuoted(dropPrintedTextSentences(validated.data.description)))
+  )
   return {
     title,
-    description: clip(validated.data.description, DESCRIPTION_MAX),
+    description: clip(description || validated.data.description, DESCRIPTION_MAX),
     tags: tags.slice(0, MAX_TAGS)
   }
 }
 
 /**
+ * Below this greyscale entropy a cover is a blank page or a notice, never a product shot. Measured on
+ * the test set: the three "Remove this layer to start" previews score about 0.23, the plainest real
+ * cover 2.24 (design/specs/ai.md).
+ */
+export const PLACEHOLDER_ENTROPY = 1
+
+/**
  * Reads a cover for the model: scaled to fit `VISION_IMAGE_MAX_EDGE` and re-encoded as JPEG,
  * which every llama.cpp build decodes. Covers are stored as 2048px WebP; the smaller image
  * needs about a third of the prompt tokens (see design/specs/ai.md). Null when the cover is
- * missing or unreadable, so the mockup is still described from its names.
+ * missing, unreadable or a near-blank placeholder, so the mockup is described from its names:
+ * shown a "Remove this layer to start" notice, both models described the notice.
  */
 export async function readCoverAsDataUrl(path: string): Promise<string | null> {
   if (!path) return null
   try {
-    const jpeg = await sharp(await readFile(path))
+    const bytes = await readFile(path)
+    const { entropy } = await sharp(bytes).greyscale().resize(256, 256, { fit: 'inside' }).stats()
+    if (entropy < PLACEHOLDER_ENTROPY) return null
+    const jpeg = await sharp(bytes)
       .resize(VISION_IMAGE_MAX_EDGE, VISION_IMAGE_MAX_EDGE, {
         fit: 'inside',
         withoutEnlargement: true
