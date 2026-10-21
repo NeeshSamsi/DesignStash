@@ -99,8 +99,13 @@ export class CopyQueue {
 
   /** Queue the PSDs under these paths. Joins the haul that is running or paused, else starts a new one. */
   async start(paths: string[]): Promise<CopyStatus> {
-    const scan = scanForPsds(paths)
-    const psds = [...scan.psds].sort((a, b) => a.psdPath.localeCompare(b.psdPath))
+    const scan = await scanForPsds(paths, {
+      stagingDir: join(this.root, '.staging', this.deps.newId())
+    })
+    // PSDs inside zips are queued from step 5 of the zip import (scratchpad 63).
+    const psds = scan.psds
+      .filter((p) => !p.archive)
+      .sort((a, b) => a.psdPath.localeCompare(b.psdPath))
 
     // Read every size first. Nothing below awaits, so the haul that gets joined is still going when the jobs land in it.
     const jobs = await Promise.all(
