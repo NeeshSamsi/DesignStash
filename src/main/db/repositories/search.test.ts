@@ -104,10 +104,25 @@ describe('ftsMatchQuery', () => {
     expect(ftsMatchQuery('tote bag')).toBe('tote* bag*')
   })
 
-  it('keeps letters, digits, hyphens and underscores, and drops the rest', () => {
-    expect(ftsMatchQuery('  café  "poster"! t-shirt 3D_render ')).toBe(
-      'caf* poster* t-shirt* 3D_render*'
-    )
+  it('keeps letters, digits and underscores, and drops the rest', () => {
+    expect(ftsMatchQuery('  café  "poster"! 3D_render ')).toBe('caf* poster* 3D_render*')
+  })
+
+  it('searches a hyphenated word as a phrase, the way the index splits it', () => {
+    expect(ftsMatchQuery('t-shirt')).toBe('"t shirt"*')
+    expect(ftsMatchQuery('z-fold brochure')).toBe('"z fold"* brochure*')
+    expect(ftsMatchQuery('-flat- lay')).toBe('flat* lay*')
+  })
+
+  it('folds a plural to its singular, so "bags" also finds a stored "bag"', () => {
+    expect(ftsMatchQuery('tote bags')).toBe('tote* bag*')
+    expect(ftsMatchQuery('boxes brushes glasses')).toBe('box* brush* glass*')
+    expect(ftsMatchQuery('stationeries iPhones')).toBe('stationery* iPhone*')
+    expect(ftsMatchQuery('t-shirts')).toBe('"t shirt"*')
+  })
+
+  it('leaves short words and -ss words as typed', () => {
+    expect(ftsMatchQuery('bus gas glass dress')).toBe('bus* gas* glass* dress*')
   })
 
   it('is null when nothing searchable is left', () => {
@@ -127,5 +142,23 @@ describe('ftsMatchQuery', () => {
 
     expect([...(repo.search.rankMatches('tote ba') ?? new Map()).keys()]).toEqual([m.id])
     expect(repo.search.rankMatches('!!')).toBeNull()
+  })
+
+  it('finds a T-shirt by "t-shirt" and "t-shirts", and a tote bag by "bags", without matching others', () => {
+    ensureSearchIndex(db)
+    seedTaxonomy(db)
+    const shirt = repo.mockups.createMockup({ ...sample, title: 'Folded shirt', libraryPath: '/lib/fts/s.psd' })
+    const bag = repo.mockups.createMockup({ ...sample, title: 'Tote bag on a chair', libraryPath: '/lib/fts/t.psd' })
+    const tee = repo.tags.getAllTags().find((t) => t.label === 'T-shirt')!
+    repo.mockups.addTagToMockup(shirt.id, tee.id)
+    for (const m of [shirt, bag]) {
+      repo.mockups.setStage([m.id], 'stashed')
+      repo.search.upsertSearchIndex(m.id)
+    }
+    const ids = (q: string) => [...(repo.search.rankMatches(q) ?? new Map()).keys()]
+
+    expect(ids('t-shirt')).toEqual([shirt.id])
+    expect(ids('t-shirts')).toEqual([shirt.id])
+    expect(ids('bags')).toEqual([bag.id])
   })
 })

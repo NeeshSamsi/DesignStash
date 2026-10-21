@@ -36,9 +36,9 @@ describe('SearchSim', () => {
     sim.close()
   })
 
-  it('passes back the error the app would hit on a hyphenated word', () => {
+  it('finds a hyphenated word the way the app does, as a phrase', () => {
     const sim = new SearchSim(items)
-    expect(sim.search('t-shirt')).toEqual({ ids: [], error: 'no such column: shirt' })
+    expect(sim.search('t-shirt')).toEqual({ ids: ['shirt'] })
     sim.close()
   })
 })
