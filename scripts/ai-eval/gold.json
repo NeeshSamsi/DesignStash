@@ -28,6 +28,10 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "flexib|foldab|folding|\\bbend|bent\\b|curl|chair|\\bcover\\b|solar|\\bskin\\b|innovative"
       ]
     },
     "m003t1513-b-long-scroll-macbook-mockup-08agu25": {
@@ -54,6 +58,10 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "flexib|foldab|folding|\\bbend|bent\\b|curl|chair|\\bcover\\b|solar|\\bskin\\b|innovative"
       ]
     },
     "m003t1513-c-long-scroll-macbook-mockup-08agu25": {
@@ -80,6 +88,10 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "flexib|foldab|folding|\\bbend|bent\\b|curl|chair|\\bcover\\b|solar|\\bskin\\b|innovative"
       ]
     },
     "m003t1514-a-long-scroll-macbook-mockup-08agu25": {
@@ -106,11 +118,15 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "flexib|foldab|folding|\\bbend|bent\\b|curl|chair|\\bcover\\b|solar|\\bskin\\b|innovative"
       ]
     },
     "m003t1514-b-long-scroll-macbook-mockup-08agu25": {
       "title": "Long scroll MacBook on white, rolled sheet",
-      "description": "A MacBook Pro whose screen runs out past the bottom of the laptop as one long wavy sheet, for showing a full scrolling website. Isolated on white, the sheet ends in a curl like a scroll.",
+      "description": "A MacBook Pro whose screen runs out past the bottom of the laptop as one long wavy sheet, for showing a full scrolling website. Isolated on white, the sheet ends rolled up like a scroll.",
       "tags": [
         {
           "category": "Device",
@@ -132,6 +148,10 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "flexib|foldab|folding|\\bbend|bent\\b|curl|chair|\\bcover\\b|solar|\\bskin\\b|innovative"
       ]
     },
     "m003t1514-c-long-scroll-macbook-mockup-08agu25": {
@@ -158,6 +178,10 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "flexib|foldab|folding|\\bbend|bent\\b|curl|chair|\\bcover\\b|solar|\\bskin\\b|innovative"
       ]
     },
     "macbook-mockup-on-rocks-boho-interior": {
@@ -188,6 +212,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "outdoor|outside"
       ]
     },
     "011": {
@@ -219,7 +247,11 @@
           "label": "Angle"
         }
       ],
-      "notes": "The file name is just 011.psd, so the image is all there is."
+      "notes": "The file name is just 011.psd, so the image is all there is.",
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "cushion|leather|couch|sofa"
+      ]
     },
     "sticker-mockup": {
       "title": "Round sticker with a peeling corner",
@@ -245,6 +277,10 @@
           "category": "Angle",
           "label": "Top-down"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "9110-poster-mockup-on-construction-fence": {
@@ -276,7 +312,11 @@
           "label": "Front"
         }
       ],
-      "notes": "A Pixelbuddha promo panel covers part of the preview; its text should stay out of the metadata."
+      "notes": "A Pixelbuddha promo panel covers part of the preview; its text should stay out of the metadata.",
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
+      ]
     },
     "apple-watch-ultra-lay-psd": {
       "title": "Apple Watch Ultra, white clay render, three views",
@@ -306,6 +346,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "outdoor"
       ]
     },
     "apple-watch-ultra-realistic-psd": {
@@ -332,6 +376,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "outdoor|activity tracking"
       ]
     },
     "b-mockups-psd": {
@@ -362,6 +410,10 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "armchair|\\bchair"
       ]
     },
     "boards-environment": {
@@ -392,6 +444,11 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "lamp|\\bsigns?\\b|signboard|\\bbook\\b|business card|ceiling|hanging"
       ]
     },
     "boards-isolated": {
@@ -418,6 +475,11 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "lamp|\\bsigns?\\b|signboard|\\bbook\\b|business card|hanging"
       ]
     },
     "floating-z-fold-brand-brochure-free-psd-mockup": {
@@ -437,7 +499,12 @@
           "label": "Floating"
         }
       ],
-      "notes": "The PSD's embedded preview is Pixeden's \"Remove this layer to start\" placeholder, so the model only has the file name."
+      "notes": "The PSD's embedded preview is Pixeden's \"Remove this layer to start\" placeholder, so the model only has the file name.",
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction"
+      ]
     },
     "free-2-id-cards-mockup": {
       "title": "Two ID cards on lanyards",
@@ -467,6 +534,11 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "business cards?"
       ]
     },
     "free-billboard-mockup": {
@@ -497,6 +569,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "free-cap-mockup": {
@@ -523,6 +599,10 @@
           "category": "Angle",
           "label": "Side"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "free-craft-cup-mockup": {
@@ -553,6 +633,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "free-fabric-shopper-bag-mockup": {
@@ -583,6 +667,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "free-fabric-tote-bag-mockup": {
@@ -613,6 +701,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "free-iphone-15-mockup": {
@@ -643,6 +735,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "cosmic|starr|\\bstars?\\b|galax|outer space|\\bspace\\b"
       ]
     },
     "free-notebook-envelope-and-business-card-mockup": {
@@ -673,6 +769,11 @@
           "category": "Angle",
           "label": "Top-down"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "notebook is open|open notebook|\\bopened\\b"
       ]
     },
     "free-notebook-envelope-and-business-card-mockup-2": {
@@ -703,6 +804,11 @@
           "category": "Angle",
           "label": "Top-down"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "notebook is open|open notebook|\\bopened\\b"
       ]
     },
     "free-outdoor-banner-mockup": {
@@ -733,6 +839,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "free-paper-postal-packages-mockup": {
@@ -763,6 +873,11 @@
           "category": "Angle",
           "label": "Top-down"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "\\btape\\b|folder|\\bmugs?\\b"
       ]
     },
     "free-realistic-tote-bag-mockup": {
@@ -789,6 +904,11 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "hang|hook"
       ]
     },
     "free-tote-bag-mockup-on-the-floor": {
@@ -815,6 +935,11 @@
           "category": "Angle",
           "label": "Top-down"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "hang|hook"
       ]
     },
     "free-tote-bag-mockup": {
@@ -845,6 +970,11 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "hang|hook"
       ]
     },
     "free-iphone-16": {
@@ -876,7 +1006,11 @@
           "label": "Angle"
         }
       ],
-      "notes": "The file name is 001.psd; only the folder says iPhone 16."
+      "notes": "The file name is 001.psd; only the folder says iPhone 16.",
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "triple camera|\\bone iphone\\b|iphone 1[345]\\b"
+      ]
     },
     "hanging-duct-tape-mockup": {
       "title": "Roll of packing tape hanging from a shelf",
@@ -906,6 +1040,10 @@
           "category": "Angle",
           "label": "Front"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "macbook-pro-showcase-screen-scene-free-psd": {
@@ -921,7 +1059,11 @@
           "label": "Laptop"
         }
       ],
-      "notes": "Placeholder preview (Pixeden); only the file name says what it is."
+      "notes": "Placeholder preview (Pixeden); only the file name says what it is.",
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction"
+      ]
     },
     "paperback-book-on-mirror-base-scene-free-psd": {
       "title": "Paperback book on a mirror base",
@@ -940,7 +1082,13 @@
           "label": "Mirror"
         }
       ],
-      "notes": "Placeholder preview (Pixeden); only the file name says what it is."
+      "notes": "Placeholder preview (Pixeden); only the file name says what it is.",
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction",
+        "dimly lit|dark tones"
+      ]
     },
     "free-lightbox-mockup": {
       "title": "Square lightbox sign on a concrete wall",
@@ -970,6 +1118,11 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "glow|illuminat|\\blit\\b|lit up|light(s|ing) up"
       ]
     },
     "qubus-eu": {
@@ -1000,6 +1153,11 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
+        "cyrillic|russian"
       ]
     },
     "matte-snack-bar-mockup": {
@@ -1030,6 +1188,10 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "tape-coiled-up-in-spiral-mockup": {
@@ -1061,7 +1223,11 @@
           "label": "Angle"
         }
       ],
-      "notes": "The file name says tape, but the image is a roll of stickers. The image should win."
+      "notes": "The file name says tape, but the image is a roll of stickers. The image should win.",
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
+      ]
     },
     "free-3-notebook-business-cards-and-envelope": {
       "title": "Gradient notebooks with business cards and envelope",
@@ -1091,6 +1257,10 @@
           "category": "Angle",
           "label": "Angle"
         }
+      ],
+      "absent": [
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     }
   },
