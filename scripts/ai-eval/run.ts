@@ -147,7 +147,8 @@ async function main(): Promise<void> {
           lastUsage = {}
           result.raw = await server.chat({
             ...prompt.buildRequest(input, imageUrl),
-            seed: EVAL_SEED
+            // Pass 0 keeps the original seed, so a single pass reproduces earlier runs; later passes sample afresh.
+            seed: EVAL_SEED + repeat
           })
           result.elapsedMs = Math.round(performance.now() - started)
           if (lastUsage.usage?.prompt_tokens !== undefined)
