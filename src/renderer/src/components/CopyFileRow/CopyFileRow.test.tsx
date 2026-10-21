@@ -12,9 +12,18 @@ describe('CopyFileRow', () => {
 
   it('renders the Figma default text', () => {
     render(<CopyFileRow />)
-    for (const text of Object.values<string>(COPY_FILE_ROW_CONTRACT.texts)) {
+    // `detail` is Figma's sample for the copying row's line; code shows a line only when one is passed.
+    const { detail: _sample, ...shown } = COPY_FILE_ROW_CONTRACT.texts
+    void _sample
+    for (const text of Object.values<string>(shown)) {
       expect(screen.getAllByText(text).length).toBeGreaterThan(0)
     }
+  })
+
+  it('does not draw the contract sample detail unless one is passed', () => {
+    render(<CopyFileRow state="copying" />)
+    expect(screen.queryByText(COPY_FILE_ROW_CONTRACT.texts.detail)).toBeNull()
+    expect(screen.getByRole('progressbar')).not.toBeNull()
   })
 })
 

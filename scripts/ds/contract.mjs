@@ -56,6 +56,8 @@ export const OVERRIDES = {
   FlowModal: {
     ignoreBooleans: ['progress-25', 'progress-50', 'progress-75', 'progress-100']
   },
+  // Figma swaps the bar for the detail line with these two; code shows the line whenever `detail` is passed.
+  CopyFileRow: { ignoreBooleans: ['show-detail', 'show-progress'] },
   // Exposed so a screen can edit the label of a nested Button or Badge; not slots in code.
   ConfirmDialog: { ignoreExposed: ['button'] },
   ChoiceDialog: { ignoreExposed: ['button', 'secondary'] },

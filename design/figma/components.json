@@ -1382,16 +1382,20 @@
     },
     {
       "code": null,
-      "booleans": {},
+      "booleans": {
+        "show-detail": false,
+        "show-progress": true
+      },
       "texts": {
-        "name": "phone_front.psd"
+        "name": "phone_front.psd",
+        "detail": "Unpacking… · From Phone kit.zip"
       },
       "swaps": {},
       "exposed": [],
       "name": "CopyFileRow",
       "figmaId": "372:5420",
       "section": "7 · Import & grouping",
-      "description": "One file in the copy widget: progress while copying, then what happened to it.\nSync 2026-10: a done row reads &quot;Copied · 312 MB&quot;. A queued row of a cancelled haul reads &quot;Not copied&quot; (detail override).",
+      "description": "One file in the copy widget. copying shows a per-file progress bar; finished rows say what happened (copied, duplicate, unreadable, not a PSD).\nSync 2026-10: a done row reads &quot;Copied · 312 MB&quot;. A queued row of a cancelled haul reads &quot;Not copied&quot; (detail override).\ncopying: show-detail swaps the progress bar (show-progress off) for a detail line, like &quot;Unpacking… · From Cap.zip&quot;; the percentage stays. The code shows the line whenever a copying row is given a detail.",
       "variants": {
         "state": [
           "queued",

@@ -53,7 +53,10 @@ const STATUS = {
  * A copying row given a `detail`, like "Unpacking… · From Cap.zip", shows it in place of the bar.
  */
 export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFileRowProps) {
-  const { state, name, ...props } = { ...COPY_FILE_ROW_DEFAULTS, ...rest }
+  // The contract's `detail` default is only Figma's sample line: a copying row shows a detail line
+  // when the caller passes one, so the sample never applies.
+  const { state, name, detail: _sample, ...props } = { ...COPY_FILE_ROW_DEFAULTS, ...rest }
+  void _sample
   const copying = state === 'copying'
   return (
     <div
