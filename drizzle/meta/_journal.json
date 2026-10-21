@@ -78,6 +78,13 @@
       "when": 1792518551497,
       "tag": "0010_drop_review_status",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1792560987127,
+      "tag": "0011_copy_job_archives",
+      "breakpoints": true
     }
   ]
 }

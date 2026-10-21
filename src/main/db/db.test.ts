@@ -467,3 +467,36 @@ describe('migration: drop review status, add the pile check', () => {
     ).toThrow(/CHECK constraint failed/)
   })
 })
+
+describe('migration: copy jobs from zips', () => {
+  /** A copy of ./drizzle whose journal stops before the archive columns. */
+  function migrationsBeforeArchives(): string {
+    const dir = tempDir()
+    cpSync('./drizzle', dir, { recursive: true })
+    const journalPath = join(dir, 'meta', '_journal.json')
+    const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: { tag: string }[] }
+    const cut = journal.entries.findIndex((e) => e.tag.endsWith('_copy_job_archives'))
+    expect(cut).toBeGreaterThan(0)
+    journal.entries = journal.entries.slice(0, cut)
+    writeFileSync(journalPath, JSON.stringify(journal))
+    return dir
+  }
+
+  it('adds the zip entry and zip name to copy jobs, empty for the jobs already there', () => {
+    const old = new Database(':memory:')
+    old.pragma('foreign_keys = ON')
+    const oldDb = drizzle(old, { schema })
+    migrate(oldDb, { migrationsFolder: migrationsBeforeArchives() })
+    old.exec(`
+      INSERT INTO copy_hauls (id) VALUES ('h1');
+      INSERT INTO copy_jobs (haul_id, source_path, file_name, size_bytes) VALUES ('h1', '/src/a.psd', 'a.psd', 9);
+    `)
+
+    migrate(oldDb, { migrationsFolder: './drizzle' })
+
+    expect(
+      old.prepare('SELECT source_path, file_name, size_bytes, archive_entry, archive_name FROM copy_jobs').get()
+    ).toEqual({ source_path: '/src/a.psd', file_name: 'a.psd', size_bytes: 9, archive_entry: null, archive_name: null })
+    old.close()
+  })
+})

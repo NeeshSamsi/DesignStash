@@ -4,7 +4,12 @@ import { copyHauls, copyJobs } from '../schema'
 import type { CopyHaul, CopyJob } from '../schema'
 
 export interface NewJob {
+  /** The PSD, or the zip that holds it. */
   sourcePath: string
+  /** The PSD's path inside the zip at `sourcePath`. Left out for a PSD dropped as itself. */
+  archiveEntry?: string
+  /** The zip's file name as dropped. */
+  archiveName?: string
   fileName: string
   folderTrail: string[]
   sizeBytes: number
@@ -26,11 +31,7 @@ export class CopyJobRepository {
   constructor(private readonly db: AppDatabase) {}
 
   createHaul(id: string, candidateImages: string[], notPsdCount: number): CopyHaul {
-    return this.db
-      .insert(copyHauls)
-      .values({ id, candidateImages, notPsdCount })
-      .returning()
-      .get()
+    return this.db.insert(copyHauls).values({ id, candidateImages, notPsdCount }).returning().get()
   }
 
   getHaul(id: string): CopyHaul | undefined {
@@ -48,7 +49,11 @@ export class CopyJobRepository {
   }
 
   getLatestHaul(): CopyHaul | undefined {
-    return this.db.select().from(copyHauls).orderBy(desc(copyHauls.createdAt), sql`${copyHauls}.rowid DESC`).get()
+    return this.db
+      .select()
+      .from(copyHauls)
+      .orderBy(desc(copyHauls.createdAt), sql`${copyHauls}.rowid DESC`)
+      .get()
   }
 
   /** Set the state and its pause reason as one value, so a reason can never outlive the pause. */
@@ -76,18 +81,47 @@ export class CopyJobRepository {
     if (jobs.length === 0) return
     this.db
       .insert(copyJobs)
-      .values(jobs.map((j) => ({
+      .values(
+        jobs.map((j) => ({
           haulId,
           sourcePath: j.sourcePath,
+          archiveEntry: j.archiveEntry ?? null,
+          archiveName: j.archiveName ?? null,
           fileName: j.fileName,
           folderTrail: j.folderTrail,
           sizeBytes: j.sizeBytes
-        })))
+        }))
+      )
+      .run()
+  }
+
+  /** Rows for things that were left out whole, such as an archive with no PSD inside. Nothing to copy. */
+  addSkippedJobs(
+    haulId: string,
+    items: { fileName: string; skipReason: NonNullable<CopyJob['skipReason']> }[]
+  ): void {
+    if (items.length === 0) return
+    this.db
+      .insert(copyJobs)
+      .values(
+        items.map((i) => ({
+          haulId,
+          sourcePath: '',
+          fileName: i.fileName,
+          status: 'skipped' as const,
+          skipReason: i.skipReason
+        }))
+      )
       .run()
   }
 
   getJobs(haulId: string): CopyJob[] {
-    return this.db.select().from(copyJobs).where(eq(copyJobs.haulId, haulId)).orderBy(asc(copyJobs.id)).all()
+    return this.db
+      .select()
+      .from(copyJobs)
+      .where(eq(copyJobs.haulId, haulId))
+      .orderBy(asc(copyJobs.id))
+      .all()
   }
 
   getJob(id: number): CopyJob | undefined {
@@ -115,7 +149,7 @@ export class CopyJobRepository {
         status: next.status,
         skipReason: next.status === 'skipped' ? next.skipReason : null,
         mockupId: next.status === 'done' ? next.mockupId : null,
-        ...(handled ? { sourcePath: '' } : {}),
+        ...(handled ? { sourcePath: '', archiveEntry: null } : {}),
         updatedAt: sql`CURRENT_TIMESTAMP`
       })
       .where(eq(copyJobs.id, id))
@@ -134,9 +168,27 @@ export class CopyJobRepository {
   forgetPendingSources(haulId: string): void {
     this.db
       .update(copyJobs)
-      .set({ sourcePath: '', updatedAt: sql`CURRENT_TIMESTAMP` })
+      .set({ sourcePath: '', archiveEntry: null, updatedAt: sql`CURRENT_TIMESTAMP` })
       .where(and(eq(copyJobs.haulId, haulId), inArray(copyJobs.status, ['queued', 'copying'])))
       .run()
+  }
+
+  /** The files still waiting in a haul that is running or paused: what staging must keep. */
+  pendingSourcePaths(): string[] {
+    return this.db
+      .select({ sourcePath: copyJobs.sourcePath })
+      .from(copyJobs)
+      .innerJoin(copyHauls, eq(copyJobs.haulId, copyHauls.id))
+      .where(
+        and(
+          inArray(copyHauls.state, ['running', 'paused']),
+          inArray(copyJobs.status, ['queued', 'copying'])
+        )
+      )
+      .orderBy(asc(copyJobs.id))
+      .all()
+      .map((r) => r.sourcePath)
+      .filter((p) => p !== '')
   }
 
   /** After a restart a file that was mid-copy has to be done again. */

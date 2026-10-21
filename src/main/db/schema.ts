@@ -187,13 +187,21 @@ export const copyHauls = sqliteTable('copy_hauls', {
   ...timestamps
 })
 
-/** One PSD in a haul. `sourcePath` is only the way back to the file while it waits; it is cleared once the file is handled. */
+/**
+ * One PSD in a haul. `sourcePath` is only the way back to the file while it waits; it is cleared once
+ * the file is handled. For a PSD inside a zip, `sourcePath` is the zip and `archiveEntry` the PSD's
+ * path inside it, cleared together.
+ */
 export const copyJobs = sqliteTable('copy_jobs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   haulId: text('haul_id')
     .notNull()
     .references(() => copyHauls.id, { onDelete: 'cascade' }),
   sourcePath: text('source_path').notNull(),
+  /** The PSD's path inside the zip at `sourcePath`. Null for a PSD dropped as itself. */
+  archiveEntry: text('archive_entry'),
+  /** The zip the PSD came out of, by its file name as dropped. Kept after the job is handled, for its row. */
+  archiveName: text('archive_name'),
   fileName: text('file_name').notNull(),
   folderTrail: text('folder_trail', { mode: 'json' })
     .$type<string[]>()
