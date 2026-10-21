@@ -7,6 +7,7 @@ import {
   archiveKindOf,
   classifyEntry,
   decodeEntryName,
+  entryPath,
   listArchive,
   openArchiveEntry
 } from './archive'
@@ -171,5 +172,18 @@ describe('classifyEntry', () => {
     expect(classifyEntry(file('help.pdf'))).toBe('other')
     expect(classifyEntry(file('Cap.fig'))).toBe('other')
     expect(classifyEntry(file('preview.jpg'))).toBe('other')
+  })
+})
+
+describe('entryPath', () => {
+  it('joins the zip and the entry, as a label for where the PSD came from', () => {
+    expect(entryPath('/d/Cap.zip', 'Files/Cap.psd')).toBe('/d/Cap.zip/Files/Cap.psd')
+  })
+
+  it('keeps an entry named with .. or a leading / inside the zip', () => {
+    expect(entryPath('/d/Slip.zip', '../../Escaped.psd')).toBe('/d/Slip.zip/Escaped.psd')
+    expect(entryPath('/d/Slip.zip', '/absolute/./Rooted.psd')).toBe(
+      '/d/Slip.zip/absolute/Rooted.psd'
+    )
   })
 })

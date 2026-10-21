@@ -2,7 +2,7 @@ import { createWriteStream, mkdirSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, basename, sep, relative } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { collectCandidateImages } from '../psd'
-import { archiveKindOf, classifyEntry, listArchive, openArchiveEntry } from './archive'
+import { archiveKindOf, classifyEntry, entryPath, listArchive, openArchiveEntry } from './archive'
 import type { ArchiveEntry } from './archive'
 import { archiveFolderTrail } from './archive-name'
 
@@ -134,7 +134,7 @@ export async function scanForPsds(droppedPaths: string[], opts: ScanOptions): Pr
     for (const { entry, kind } of wanted) {
       if (kind === 'psd') {
         psds.push({
-          psdPath: join(zipPath, entry.name),
+          psdPath: entryPath(zipPath, entry.name),
           archive: { path: zipPath, entry: entry.name, name: droppedName, size: entry.size },
           importContext: {
             originalFileName: basename(entry.name),

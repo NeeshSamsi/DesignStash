@@ -124,6 +124,14 @@ describe('archiveFolderTrail', () => {
     ).toEqual(['Free 3 Notebook Business Cards and Envelope Mockup', 'Cards'])
   })
 
+  it('never puts .. or a leading / from an entry name in the trail', () => {
+    expect(archiveFolderTrail(['Slip.zip'], ['../../Escaped Mockup.psd'])).toEqual(['Slip'])
+    expect(archiveFolderTrail(['Slip.zip'], ['/absolute/./Rooted Mockup.psd'])).toEqual([
+      'Slip',
+      'absolute'
+    ])
+  })
+
   it('keeps the folders a dropped folder put before the zip', () => {
     expect(archiveFolderTrail(['Cap.zip'], ['Files/Cap.psd'], ['Hats'])).toEqual(['Hats', 'Cap'])
   })

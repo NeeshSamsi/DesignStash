@@ -1,3 +1,8 @@
+/** An entry name's parts, without the `..`, `.` and empty parts a hostile or sloppy zip can hold. */
+export function entrySegments(entryName: string): string[] {
+  return entryName.split('/').filter((s) => s !== '' && s !== '.' && s !== '..')
+}
+
 /** Words that say nothing about a mockup on their own: a name made only of these is left out. */
 const GENERIC_WORDS = new Set([
   'archive',
@@ -68,7 +73,7 @@ export function archiveFolderTrail(
   archiveNames.forEach((archiveName, level) => {
     const name = words(archiveName)
     add(name, name)
-    const folders = (entryNames[level] ?? '').split('/').slice(0, -1)
+    const folders = entrySegments(entryNames[level] ?? '').slice(0, -1)
     for (const folder of folders) add(folder.trim(), words(folder))
   })
   return trail

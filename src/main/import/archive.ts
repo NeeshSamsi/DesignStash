@@ -1,7 +1,8 @@
-import { extname } from 'node:path'
+import { extname, join } from 'node:path'
 import type { Readable } from 'node:stream'
 import yauzl from 'yauzl'
 import type { Entry, ExtraField } from 'yauzl'
+import { entrySegments } from './archive-name'
 
 /** One entry in a zip, read from its central directory. Nothing is extracted to list it. */
 export interface ArchiveEntry {
@@ -94,6 +95,14 @@ export async function openArchiveEntry(zipPath: string, entryName: string): Prom
     // yauzl keeps the file open until the stream it handed out has ended.
     zip.close()
   }
+}
+
+/**
+ * Where a PSD inside a zip came from, as one path: the zip, then the entry. A label for sorting and
+ * sidecar matching, never opened or written; `..` and a leading `/` in the entry cannot climb out of it.
+ */
+export function entryPath(zipPath: string, entryName: string): string {
+  return join(zipPath, ...entrySegments(entryName))
 }
 
 const JUNK_NAMES = new Set(['.ds_store', 'thumbs.db', 'desktop.ini'])

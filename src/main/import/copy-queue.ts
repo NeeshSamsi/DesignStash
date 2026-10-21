@@ -8,7 +8,7 @@ import type { CopyJob } from '../db/schema'
 import { removeAppCopies } from '../library/app-files'
 import { resolveCover } from '../psd'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
-import { openArchiveEntry } from './archive'
+import { entryPath, openArchiveEntry } from './archive'
 import { scanForPsds } from './scanner'
 import { copyWithHash, type CopySource } from './stream-copy'
 
@@ -338,7 +338,7 @@ export class CopyQueue {
       // The preview is read from the stash's copy; sidecars are matched against where the PSD came from.
       const cover = await this.deps.resolveCover({
         psdPath: libraryPath,
-        sidecarFor: entry === null ? job.sourcePath : join(job.sourcePath, entry),
+        sidecarFor: entry === null ? job.sourcePath : entryPath(job.sourcePath, entry),
         candidateImagePaths,
         outDir: destDir
       })
