@@ -7,8 +7,8 @@ The code side is generated from a snapshot of that file, so porting a component 
 ```
 design/figma/                      snapshot of the Figma file (committed)
   tokens.json                      variables (primitives + design-tokens) and text styles
-  components.json                  84 component-set contracts (variants, booleans, text, swaps, nested instances)
-  screens.json                     267 flow-page screens (journey order) → the DS components each composes; prototype.start and happyPath are screen figmaIds
+  components.json                  85 component-set contracts (83 components plus the Figma-only ContentSlot and ModalLayer; variants, booleans, text, swaps, nested instances)
+  screens.json                     328 flow-page screens (journey order) → the DS components each composes; prototype.start and happyPath are screen figmaIds
   extract.figma.js                 Plugin-API extractor used to refresh the snapshot
 scripts/ds/
   contract.mjs                     Figma property → React prop rules (single source)
@@ -151,9 +151,9 @@ Figma shows how a component looks. When it also has rules that Figma can't hold 
 | [`inboxes.md`](specs/inboxes.md): To sort, To stash and Trash on the shared grid, the hover Look it over and Restore, the done toast, Restore all and Empty Trash | MockupGrid, MockupCard (pending-review, trash), ActionBar, Toast | `src/renderer/src/screens/inboxes/inboxes.behaviour.test.tsx` |
 | [`detail.md`](specs/detail.md): opening and loading, explicit save, the unsaved-changes guard, instant Trash and Disband pile with Undo, no Duplicate, and no permanent delete | CoverPanel, MockupMetaForm, ErrorState, Toast (the details sidebar replaced the detail modal) | `src/renderer/src/screens/details/` |
 
-## Status (2026-10-20)
+## Status (2026-10-21)
 
-`pnpm ds:check` passes for all 84 components, and `pnpm ds:scaffold` prints 0 stubs. It also fails on a prototype screen id that is not in `screens.json`. Every flow in the Figma file is built. One component is ported but deliberately dormant: **ProGate** (decision D7: all features are unlocked in Phase 1, so no screen wraps anything in it yet). StatTile was retired (decision D5) and its stub removed.
+`pnpm ds:check` passes for all 83 components, and `pnpm ds:scaffold` prints 0 stubs. It also fails on a prototype screen id that is not in `screens.json`. Every flow in the Figma file is built. One component is ported but deliberately dormant: **ProGate** (decision D7: all features are unlocked in Phase 1, so no screen wraps anything in it yet). StatTile was retired (decision D5) and its stub removed.
 
 The snapshot's `code` hints name the screen or component file that uses each component. A refresh from Figma rewrites them from the Figma descriptions, so re-apply them (or update the descriptions) when you refresh.
 
