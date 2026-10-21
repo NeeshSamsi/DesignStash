@@ -75,4 +75,36 @@ describe('ErrorState', () => {
       unmount()
     }
   })
+  it('inline renders a secondaryLabel before Retry and calls onSecondary', () => {
+    const onSecondary = vi.fn()
+    const onRetry = vi.fn()
+    render(
+      <ErrorState
+        variant="inline"
+        secondaryLabel="Close"
+        onSecondary={onSecondary}
+        retryLabel="Try again"
+        onRetry={onRetry}
+      />
+    )
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Close', 'Try again'])
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onSecondary).toHaveBeenCalledTimes(1)
+    expect(onRetry).not.toHaveBeenCalled()
+  })
+
+  it('inline shows only Retry when there is no secondaryLabel', () => {
+    render(<ErrorState variant="inline" />)
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Retry'])
+  })
+
+  it('showSecondary off hides the secondary on every variant', () => {
+    for (const variant of ['inline', 'page', 'full-window'] as const) {
+      const { unmount } = render(
+        <ErrorState variant={variant} secondaryLabel="Close" showSecondary={false} />
+      )
+      expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+      unmount()
+    }
+  })
 })

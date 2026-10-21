@@ -51,13 +51,19 @@ export function ErrorState({
           action
           actionLabel={retry}
           {...(onRetry ? { onAction: onRetry } : {})}
+          {...(props.showSecondary && secondaryLabel ? { secondaryLabel } : {})}
+          {...(onSecondary ? { onSecondary } : {})}
           dismissible={false}
         />
       </div>
     )
   }
 
-  const secondary = secondaryLabel === undefined ? DEFAULT_SECONDARY[props.variant] : secondaryLabel
+  const secondary =
+    (secondaryLabel === undefined ? DEFAULT_SECONDARY[props.variant] : secondaryLabel) &&
+    props.showSecondary
+      ? (secondaryLabel ?? DEFAULT_SECONDARY[props.variant])
+      : null
   const isFullWindow = props.variant === 'full-window'
   return (
     <div

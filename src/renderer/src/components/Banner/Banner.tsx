@@ -16,6 +16,9 @@ export interface BannerProps extends BannerContractProps {
   /** Label of the action button. The button shows when `action` is on and a label is given. */
   actionLabel?: string
   onAction?: () => void
+  /** A lighter button before the action (ErrorState inline: Close). Shows when a label is given. */
+  secondaryLabel?: string
+  onSecondary?: () => void
   onDismiss?: () => void
   className?: string
 }
@@ -32,7 +35,15 @@ const ICONS = {
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-777
  * Neutral card with a 3px left accent in the tone colour; errors are announced, the rest are polite.
  */
-export function Banner({ className, actionLabel, onAction, onDismiss, ...rest }: BannerProps) {
+export function Banner({
+  className,
+  actionLabel,
+  onAction,
+  secondaryLabel,
+  onSecondary,
+  onDismiss,
+  ...rest
+}: BannerProps) {
   const props = { ...BANNER_DEFAULTS, ...rest }
   return (
     <div
@@ -50,6 +61,11 @@ export function Banner({ className, actionLabel, onAction, onDismiss, ...rest }:
         <p className="type-body-sm-medium text-foreground">{props.title}</p>
         <p className="type-caption-xs-regular text-muted-foreground">{props.message}</p>
       </div>
+      {secondaryLabel && (
+        <Button variant="ghost" size="xs" type="button" onClick={onSecondary}>
+          {secondaryLabel}
+        </Button>
+      )}
       {props.action && actionLabel && (
         <Button variant="secondary" size="xs" type="button" onClick={onAction}>
           {actionLabel}
