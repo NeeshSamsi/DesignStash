@@ -1,4 +1,5 @@
-import { createWriteStream, readFileSync, writeFileSync } from 'node:fs'
+import { createWriteStream, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { once } from 'node:events'
 import { ZipFile } from 'yazl'
 
@@ -21,6 +22,7 @@ export async function makeZip(path: string, entries: ZipEntrySpec[]): Promise<st
       })
   }
   zip.end()
+  mkdirSync(dirname(path), { recursive: true })
   const out = createWriteStream(path)
   zip.outputStream.pipe(out)
   await once(out, 'close')
