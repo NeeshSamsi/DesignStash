@@ -214,9 +214,9 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
         open={picked !== null}
         title="Move your stash or use the new folder as it is?"
         description={moveDescription}
-        primaryLabel="Move my files here"
+        primaryLabel="Move my files"
         onPrimary={() => void apply('move')}
-        secondaryLabel="Use this folder, leave files"
+        secondaryLabel="Use as is"
         onSecondary={() => void apply('point')}
         tertiaryLabel="Cancel"
         onTertiary={() => setPicked(null)}

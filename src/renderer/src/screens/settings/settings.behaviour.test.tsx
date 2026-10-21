@@ -261,7 +261,7 @@ describe('Settings · My Stash', () => {
     expect(screen.getByText('128 mockups · 14.2 GB')).not.toBeNull()
   })
 
-  it('asks Move my files here, Use this folder, leave files or Cancel after Change… picks a folder', async () => {
+  it('asks Move my files, Use as is or Cancel after Change… picks a folder', async () => {
     open()
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
@@ -269,7 +269,7 @@ describe('Settings · My Stash', () => {
     const names = within(dialog)
       .getAllByRole('button')
       .map((b) => b.textContent)
-    expect(names.sort()).toEqual(['Cancel', 'Move my files here', 'Use this folder, leave files'])
+    expect(names.sort()).toEqual(['Cancel', 'Move my files', 'Use as is'])
     // The description says how much would move.
     expect(dialog.textContent).toContain('128 mockups (14.2 GB)')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
@@ -294,7 +294,7 @@ describe('Settings · My Stash', () => {
     fireEvent.click(btn('Change…'))
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
-        name: 'Move my files here'
+        name: 'Move my files'
       })
     )
     await waitFor(() =>
@@ -329,7 +329,7 @@ describe('Settings · My Stash', () => {
     fireEvent.click(btn('Change…'))
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
-        name: 'Use this folder, leave files'
+        name: 'Use as is'
       })
     )
     await waitFor(() =>
@@ -354,7 +354,7 @@ describe('Settings · My Stash', () => {
     fireEvent.click(btn('Change…'))
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
-        name: 'Use this folder, leave files'
+        name: 'Use as is'
       })
     )
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
