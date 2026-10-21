@@ -1,5 +1,4 @@
 import { promises as fs } from 'node:fs'
-import { basename } from 'node:path'
 import sharp from 'sharp'
 import {
   InferenceResultSchema,
@@ -235,8 +234,7 @@ export class LookOverService {
         missing,
         width: size?.width ?? null,
         height: size?.height ?? null
-      },
-      sidecarFileName: m.coverSource === 'sidecar' ? basename(m.coverPath) : null
+      }
     }
   }
 

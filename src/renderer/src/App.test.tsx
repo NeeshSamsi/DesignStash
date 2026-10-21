@@ -186,7 +186,6 @@ describe('App', () => {
                     tags: [],
                     touched: false,
                     checked: false,
-                    sidecarFileName: null,
                     cover: {
                       path: '/t.png',
                       source: 'embedded',

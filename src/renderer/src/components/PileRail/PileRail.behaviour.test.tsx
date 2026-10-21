@@ -27,7 +27,6 @@ const item = (
   touched: false,
   checked: false,
   cover,
-  sidecarFileName: null,
   ...over
 })
 

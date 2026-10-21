@@ -260,8 +260,7 @@ describe('CoverPanel · cover image', () => {
       tags: [],
       touched: false,
       checked: false,
-      cover: { path: '', source: 'none', missing: false, width: null, height: null },
-      sidecarFileName: null
+      cover: { path: '', source: 'none', missing: false, width: null, height: null }
     })
     window.api = {
       appName: 'x',

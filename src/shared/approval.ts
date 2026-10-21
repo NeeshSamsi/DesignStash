@@ -45,9 +45,7 @@ export const LookOverItemSchema = z.object({
   touched: z.boolean(),
   /** The user has opened it. An unchecked one reads "Not checked" on the review step. */
   checked: z.boolean(),
-  cover: LookOverCoverSchema,
-  /** The image next to the PSD that became the cover, when there is one to offer. */
-  sidecarFileName: z.string().nullable()
+  cover: LookOverCoverSchema
 })
 export type LookOverItem = z.infer<typeof LookOverItemSchema>
 

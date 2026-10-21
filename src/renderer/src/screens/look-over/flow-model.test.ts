@@ -36,7 +36,6 @@ const item = (
   touched: false,
   checked: false,
   cover: { path: '/c.png', source: 'embedded', missing: false, width: 1, height: 1 },
-  sidecarFileName: null,
   ...over
 })
 

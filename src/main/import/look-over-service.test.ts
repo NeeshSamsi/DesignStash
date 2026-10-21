@@ -152,14 +152,12 @@ describe('open', () => {
       width: null,
       height: null
     })
-    expect(item.sidecarFileName).toBe('a-sidecar.webp')
   })
 
   it('gives the size of a cover that is there', async () => {
     waiting('a')
     const item = (await service().open()).units[0]!.items[0]!
     expect(item.cover).toMatchObject({ missing: false, width: 1600, height: 1200 })
-    expect(item.sidecarFileName).toBeNull()
   })
 
   it('has no paths other than the cover path, and none in any title', async () => {
