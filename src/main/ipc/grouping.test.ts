@@ -124,4 +124,43 @@ describe('grouping propose handler', () => {
       .sort()
     expect(ids).toEqual([a, b].sort())
   })
+
+  describe('grouping propose handler: zips', () => {
+    it('passes on which zip each mockup came from', async () => {
+      const fromZip = (fileName: string, folderTrail: string[]) =>
+        repo.mockups.createMockup({
+          ...batchSample('b1'),
+          title: fileName,
+          libraryPath: `/lib/${fileName}`,
+          stage: 'to_sort',
+          importContext: {
+            batchId: 'b1',
+            folderTrail,
+            originalFilename: fileName,
+            archiveName: 'Apple-Watch-Ultra-Mockup.zip',
+            archiveTitle: 'Apple Watch Ultra Mockup'
+          }
+        }).id
+      const a = fromZip('Apple Watch Ultra - Realistic, PSD.psd', [
+        'Apple Watch Ultra Mockup',
+        'Realistic'
+      ])
+      const b = fromZip('Apple Watch Ultra - Сlay, PSD.psd', [
+        'Apple Watch Ultra Mockup',
+        'Clay Version'
+      ])
+
+      const res = await call<{
+        groups: { reason: string; members: { mockupId: number; archiveTitle?: string }[] }[]
+      }>(IPC_CHANNELS.GROUPING_PROPOSE, { batchId: 'b1' })
+      expect(res.success).toBe(true)
+      if (!res.success) return
+      expect(res.data.groups).toHaveLength(1)
+      expect(res.data.groups[0]).toMatchObject({ reason: 'archive' })
+      expect(res.data.groups[0]!.members.map((m) => m.mockupId).sort()).toEqual([a, b].sort())
+      expect(res.data.groups[0]!.members[0]).toMatchObject({
+        archiveTitle: 'Apple Watch Ultra Mockup'
+      })
+    })
+  })
 })

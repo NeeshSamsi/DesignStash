@@ -12,6 +12,8 @@ export interface BoardTile {
   fileName: string
   folderTrail: string[]
   coverPath: string
+  /** The cleaned name of the zip it came out of, which titles a pile from one zip. */
+  archiveTitle?: string
 }
 
 export interface BoardPile {
@@ -104,7 +106,8 @@ export function createBoard({ members, groups, stashedTitles = {} }: BoardSource
       id: m.mockupId,
       fileName: m.fileName,
       folderTrail: m.folderTrail,
-      coverPath: m.coverPath
+      coverPath: m.coverPath,
+      ...(m.archiveTitle ? { archiveTitle: m.archiveTitle } : {})
     }
   }
   const placed = new Set<number>()
@@ -156,7 +159,8 @@ export function titleOfPile(state: BoardState, pile: BoardPile): PileTitle {
   const members = pile.memberIds.map((id, index) => ({
     fileName: state.tiles[id]!.fileName,
     folderTrail: state.tiles[id]!.folderTrail,
-    isPrimary: index === 0
+    isPrimary: index === 0,
+    ...(state.tiles[id]!.archiveTitle ? { archiveTitle: state.tiles[id]!.archiveTitle } : {})
   }))
   const stashedTitle = state.stashedTitles[pile.id]
   return pileTitle(members, stashedTitle ? { stashedTitle } : {})

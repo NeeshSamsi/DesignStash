@@ -229,4 +229,108 @@ describe('GroupingService.propose', () => {
       }
     })
   })
+
+  describe('PSDs from the same zip', () => {
+    const fromZip = (
+      mockupId: number,
+      fileName: string,
+      folderTrail: string[],
+      archive: string,
+      archiveTitle?: string
+    ): GroupMember => ({
+      mockupId,
+      fileName,
+      folderTrail,
+      coverPath: `/covers/${mockupId}.png`,
+      isPrimary: false,
+      archive,
+      ...(archiveTitle ? { archiveTitle } : {})
+    })
+
+    it('piles the real Apple Watch pair, whose folders and names differ', () => {
+      // From Apple-Watch-Ultra-Mockup.zip. The "С" in Сlay is Cyrillic, as downloaded.
+      const proposal = GroupingService.propose('b', [
+        fromZip(
+          1,
+          'Apple Watch Ultra - Realistic, PSD.psd',
+          ['Apple Watch Ultra Mockup', 'Realistic'],
+          'Apple-Watch-Ultra-Mockup.zip',
+          'Apple Watch Ultra Mockup'
+        ),
+        fromZip(
+          2,
+          'Apple Watch Ultra - Сlay, PSD.psd',
+          ['Apple Watch Ultra Mockup', 'Clay Version'],
+          'Apple-Watch-Ultra-Mockup.zip',
+          'Apple Watch Ultra Mockup'
+        )
+      ])
+      expect(proposal.groups).toHaveLength(1)
+      expect(proposal.groups[0]!.reason).toBe('archive')
+      expect(proposal.groups[0]!.members.map((m) => m.mockupId).sort()).toEqual([1, 2])
+      expect(proposal.singletons).toEqual([])
+    })
+
+    it('keeps every PSD of a zip in one pile, even across its folders', () => {
+      const proposal = GroupingService.propose('b', [
+        fromZip(
+          1,
+          'Phone Front.psd',
+          ['Pile Of Variants'],
+          'Pile_Of_Variants.zip',
+          'Pile Of Variants'
+        ),
+        fromZip(
+          2,
+          'Phone Side.psd',
+          ['Pile Of Variants'],
+          'Pile_Of_Variants.zip',
+          'Pile Of Variants'
+        ),
+        fromZip(
+          3,
+          'Phone Back.psd',
+          ['Pile Of Variants', 'Back'],
+          'Pile_Of_Variants.zip',
+          'Pile Of Variants'
+        ),
+        fromZip(
+          4,
+          'Phone Back Dark.psd',
+          ['Pile Of Variants', 'Back'],
+          'Pile_Of_Variants.zip',
+          'Pile Of Variants'
+        )
+      ])
+      expect(proposal.groups).toHaveLength(1)
+      expect(proposal.groups[0]!.members).toHaveLength(4)
+    })
+
+    it('piles a zip whose name says nothing, by the zip all the same', () => {
+      const proposal = GroupingService.propose('b', [
+        fromZip(1, 'front.psd', [], '011.zip'),
+        fromZip(2, 'back.psd', [], '011.zip')
+      ])
+      expect(proposal.groups).toHaveLength(1)
+    })
+
+    it('never piles two zips together, or a lone PSD from a zip', () => {
+      const proposal = GroupingService.propose('b', [
+        fromZip(1, 'Cap.psd', ['Free Cap Mockup'], 'Free_Cap_Mockup.zip', 'Free Cap Mockup'),
+        fromZip(
+          2,
+          'Tote.psd',
+          ['Free Tote Bag Mockup'],
+          'Free_Tote_Bag_Mockup.zip',
+          'Free Tote Bag Mockup'
+        ),
+        makeLoose(3, 'Cap.psd')
+      ])
+      expect(proposal.groups.filter((g) => g.reason === 'archive')).toEqual([])
+    })
+
+    function makeLoose(mockupId: number, fileName: string): GroupMember {
+      return { mockupId, fileName, folderTrail: [], coverPath: '', isPrimary: false }
+    }
+  })
 })

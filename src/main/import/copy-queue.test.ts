@@ -96,6 +96,7 @@ describe('landing files', () => {
     expect(m.libraryPath.startsWith(join(root, 'mockups'))).toBe(true)
     expect(readFileSync(m.libraryPath, 'utf8')).toMatch(/AAAA|BBBBBB/)
     expect(m.importContext).toMatchObject({ folderTrail: ['Phones'] })
+    expect(m.importContext).not.toHaveProperty('archiveName')
     // Originals are untouched, and no record of where they were is kept.
     expect(existsSync(a) && existsSync(b)).toBe(true)
     expect(JSON.stringify(repo.mockups.getMockup(rows[0]!.id))).not.toContain(drop)
@@ -734,7 +735,9 @@ describe('zips', () => {
     const contents = rows.map((r) => readFileSync(repo.mockups.getMockup(r.id)!.libraryPath, 'utf8'))
     expect(contents.sort()).toEqual(['CAP-BACK!!', 'CAP-FRONT'])
     expect(repo.mockups.getMockup(rows[0]!.id)!.importContext).toMatchObject({
-      folderTrail: ['Free Cap Mockup']
+      folderTrail: ['Free Cap Mockup'],
+      archiveName: 'Free_Cap_Mockup.zip',
+      archiveTitle: 'Free Cap Mockup'
     })
     expect(readFileSync(z).equals(before)).toBe(true)
     expect(last()).toMatchObject({ state: 'done', landed: 2, bytesCopied: 19 })
@@ -820,6 +823,16 @@ describe('zips', () => {
     expect(readdirSync(join(root, 'mockups'))).toHaveLength(0)
   })
 
+  it('remembers a zip whose name says nothing, without a title for it', async () => {
+    const z = await zip('011.zip', [{ name: '011.psd', data: 'X' }])
+    const q = queue()
+    await q.start([z])
+    await q.idle()
+    const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
+    expect(m.importContext).toMatchObject({ archiveName: '011.zip' })
+    expect(m.importContext).not.toHaveProperty('archiveTitle')
+  })
+
   it('trims the spaces some zips leave around a file name from the title', async () => {
     const z = await zip('Tape.zip', [{ name: ' Hanging Duct Tape Mockup.psd', data: 'TAPE' }])
     const q = queue()
@@ -898,7 +911,9 @@ describe('zips', () => {
       const [row] = repo.inbox.list('to_sort')
       expect(readFileSync(repo.mockups.getMockup(row!.id)!.libraryPath, 'utf8')).toBe('NOTE')
       expect(repo.mockups.getMockup(row!.id)!.importContext).toMatchObject({
-        folderTrail: ['Free 3 Cards Mockup', 'Cards']
+        folderTrail: ['Free 3 Cards Mockup', 'Cards'],
+        archiveName: 'Free_3_Cards_Mockup.zip',
+        archiveTitle: 'Free 3 Cards Mockup'
       })
     })
 

@@ -71,6 +71,26 @@ export class GroupingService {
   static propose(batchId: string, members: GroupMember[]): GroupingProposal {
     const pool = [...members]
     const groups: ProposedGroup[] = []
+    const take = (groupMembers: GroupMember[]) => {
+      for (const m of groupMembers) {
+        const idx = pool.findIndex((p) => p.mockupId === m.mockupId)
+        if (idx !== -1) pool.splice(idx, 1)
+      }
+    }
+
+    // Pass 0 — the same dropped zip. Its PSDs belong together whatever folders and names they have.
+    const archiveGroupsMap = new Map<string, GroupMember[]>()
+    for (const member of pool) {
+      if (!member.archive) continue
+      if (!archiveGroupsMap.has(member.archive)) archiveGroupsMap.set(member.archive, [])
+      archiveGroupsMap.get(member.archive)!.push(member)
+    }
+    for (const groupMembers of archiveGroupsMap.values()) {
+      if (groupMembers.length >= 2) {
+        groups.push(this.createGroup(groupMembers, 'archive'))
+        take(groupMembers)
+      }
+    }
 
     // Pass 1 — folder grouping. A generic last folder (Downloads, Desktop…) never forms a pile.
     const folderGroupsMap = new Map<string, GroupMember[]>()
@@ -126,7 +146,10 @@ export class GroupingService {
     }
   }
 
-  private static createGroup(members: GroupMember[], reason: 'folder' | 'stem'): ProposedGroup {
+  private static createGroup(
+    members: GroupMember[],
+    reason: ProposedGroup['reason']
+  ): ProposedGroup {
     const sortedMembers = [...members].sort((a, b) => a.fileName.localeCompare(b.fileName))
 
     return {

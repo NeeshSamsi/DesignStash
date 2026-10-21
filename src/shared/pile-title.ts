@@ -8,6 +8,8 @@ export interface PileTitleMember {
   folderTrail: string[]
   /** The top mockup. When none is marked, the first member is the top. */
   isPrimary?: boolean
+  /** The cleaned name of the zip it came out of, when that name says something. */
+  archiveTitle?: string
 }
 
 export interface PileTitleOptions {
@@ -76,6 +78,12 @@ export function mockupCountLabel(count: number): string {
 const lastFolder = (member: PileTitleMember) =>
   member.folderTrail[member.folderTrail.length - 1]?.trim()
 
+/** The zip every member came out of, by its cleaned name. */
+function sharedArchive(members: PileTitleMember[]): string | undefined {
+  const first = members[0]?.archiveTitle
+  return first && members.every((m) => m.archiveTitle === first) ? first : undefined
+}
+
 function sharedFolder(members: PileTitleMember[]): string | undefined {
   const first = lastFolder(members[0]!)
   if (!first || isGenericFolder(first)) return undefined
@@ -105,6 +113,9 @@ export function pileTitle(members: PileTitleMember[], opts: PileTitleOptions = {
     return { title: opts.stashedTitle, source: 'leader', reason: REASON_TOP_STASHED }
   }
   if (members.length > 1) {
+    // A pile from one zip is named after the zip, shown like a folder.
+    const archive = sharedArchive(members)
+    if (archive) return { title: archive, source: 'folder' }
     const folder = sharedFolder(members)
     if (folder) return { title: folder, source: 'folder' }
     const start = sharedNameStart(members, top)

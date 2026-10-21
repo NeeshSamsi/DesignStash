@@ -9,6 +9,7 @@ import { removeAppCopies } from '../library/app-files'
 import { resolveCover } from '../psd'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
 import { entryPath, openArchiveEntry } from './archive'
+import { cleanArchiveName } from './archive-name'
 import { scanForPsds } from './scanner'
 import { copyWithHash, type CopySource } from './stream-copy'
 
@@ -353,7 +354,9 @@ export class CopyQueue {
         importContext: {
           batchId: haulId,
           folderTrail: job.folderTrail,
-          originalFilename: job.fileName
+          originalFilename: job.fileName,
+          // Which zip it came out of, so Sort suggests a zip's PSDs as one pile named after it.
+          ...(job.archiveName !== null ? archiveContext(job.archiveName) : {})
         },
         stage: 'to_sort',
         sizeBytes: size
@@ -488,6 +491,11 @@ export class CopyQueue {
     if (this.deps.now() - this.lastPush < PUSH_INTERVAL_MS) return
     this.emit(haulId, changedJobId)
   }
+}
+
+function archiveContext(archiveName: string): { archiveName: string; archiveTitle?: string } {
+  const archiveTitle = cleanArchiveName(archiveName)
+  return archiveTitle ? { archiveName, archiveTitle } : { archiveName }
 }
 
 function toFile(j: CopyJob, live: { jobId: number; bytes: number } | null): CopyFile {

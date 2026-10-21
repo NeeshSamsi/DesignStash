@@ -10,6 +10,7 @@ import {
   canPutOnTop,
   canTakeOut,
   countLabel,
+  createBoard,
   getPile,
   moveTargets,
   pileOf,
@@ -123,6 +124,23 @@ describe('building a board', () => {
 })
 
 describe('titles follow the members (pile-titles.md)', () => {
+  it('titles a pile from one zip by the zip name', () => {
+    const watch = (id: number, fileName: string, folder: string): GroupMember => ({
+      ...member(id, fileName, ['Apple Watch Ultra Mockup', folder]),
+      archive: 'Apple-Watch-Ultra-Mockup.zip',
+      archiveTitle: 'Apple Watch Ultra Mockup'
+    })
+    const members = [
+      watch(1, 'Apple Watch Ultra - Realistic, PSD.psd', 'Realistic'),
+      watch(2, 'Apple Watch Ultra - Сlay, PSD.psd', 'Clay Version')
+    ]
+    const s = createBoard({ members, groups: [{ id: 'w', memberIds: [1, 2] }] })
+    expect(titleOfPile(s, getPile(s, 'w')!)).toEqual({
+      title: 'Apple Watch Ultra Mockup',
+      source: 'folder'
+    })
+  })
+
   it('titles by the shared folder, then the shared filename start, then the top', () => {
     const s = fixture()
     expect(titleOfPile(s, getPile(s, 'phones')!)).toMatchObject({

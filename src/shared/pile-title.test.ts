@@ -212,4 +212,53 @@ describe('pileTitle', () => {
       expect(pileTitle([member('a.psd', [], true), member('b.psd')]).title).not.toMatch(/mockups?$/)
     })
   })
+
+  describe('same zip', () => {
+    const zipMember = (
+      fileName: string,
+      folder: string[],
+      archiveTitle?: string,
+      isPrimary = false
+    ): PileTitleMember => ({
+      fileName,
+      folderTrail: folder,
+      isPrimary,
+      ...(archiveTitle ? { archiveTitle } : {})
+    })
+
+    it('titles a pile from one zip by the zip’s cleaned name, with the folder icon', () => {
+      const result = pileTitle([
+        zipMember(
+          'Apple Watch Ultra - Realistic, PSD.psd',
+          ['Apple Watch Ultra Mockup', 'Realistic'],
+          'Apple Watch Ultra Mockup',
+          true
+        ),
+        zipMember(
+          'Apple Watch Ultra - Сlay, PSD.psd',
+          ['Apple Watch Ultra Mockup', 'Clay Version'],
+          'Apple Watch Ultra Mockup'
+        )
+      ])
+      expect(result).toEqual({ title: 'Apple Watch Ultra Mockup', source: 'folder' })
+    })
+
+    it('falls through to the other rules when the members come from different zips or none', () => {
+      expect(
+        pileTitle([zipMember('mug_a.psd', [], 'Mugs', true), zipMember('mug_b.psd', [], 'Cups')])
+          .source
+      ).toBe('filename')
+      expect(
+        pileTitle([zipMember('mug_a.psd', [], 'Mugs', true), zipMember('mug_b.psd', [])]).source
+      ).toBe('filename')
+    })
+
+    it('still loses to a stashed top mockup', () => {
+      expect(
+        pileTitle([zipMember('a.psd', [], 'Mugs', true), zipMember('b.psd', [], 'Mugs')], {
+          stashedTitle: 'Blue mug'
+        }).title
+      ).toBe('Blue mug')
+    })
+  })
 })
