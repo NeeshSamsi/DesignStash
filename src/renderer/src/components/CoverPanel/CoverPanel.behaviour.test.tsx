@@ -64,7 +64,7 @@ describe('CoverPanel · cover image', () => {
     expect(screen.queryByRole('button', { name: 'Use the PSD’s preview' })).toBeNull()
     rerender(<CoverPanel source="uploaded" />)
     expect(screen.getByRole('button', { name: 'Use the PSD’s preview' })).not.toBeNull()
-    rerender(<CoverPanel source="sidecar" sidecarAccepted />)
+    rerender(<CoverPanel source="sidecar" />)
     expect(screen.getByRole('button', { name: 'Use the PSD’s preview' })).not.toBeNull()
   })
 
@@ -214,21 +214,10 @@ describe('CoverPanel · cover image', () => {
     expect(screen.queryByText('ignored')).toBeNull()
   })
 
-  it('offers the sidecar image via an info Banner and tags the cover "Sidecar image" once used', () => {
-    const onUseSidecar = vi.fn()
-    const { container, rerender } = renderPanel({
-      source: 'sidecar',
-      sidecarName: 'phone_front.png',
-      onUseSidecar
-    })
-    expect(container.querySelector('[data-ds="Banner"]')?.getAttribute('data-tone')).toBe('info')
-    expect(screen.getByText('Found “phone_front.png” next to the PSD')).not.toBeNull()
-    expect(screen.queryByText('Embedded preview')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Use this cover' }))
-    expect(onUseSidecar).toHaveBeenCalledOnce()
-
-    rerender(<CoverPanel source="sidecar" sidecarAccepted coverSrc="file:///side.png" />)
+  it('tags a sidecar cover "Sidecar image" and never asks whether to use it', () => {
+    const { container } = renderPanel({ source: 'sidecar', coverSrc: 'file:///side.png' })
     expect(container.querySelector('[data-ds="Banner"]')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Use this cover' })).toBeNull()
     expect(screen.getByText('Sidecar image')).not.toBeNull()
   })
 

@@ -22,10 +22,6 @@ export interface CoverPanelProps
   imageSize?: { width: number; height: number }
   /** The cover file is gone from the stash folder: offers Replace cover. */
   coverMissing?: boolean
-  /** `source="sidecar"`: the image found next to the PSD, offered in an info Banner. */
-  sidecarName?: string
-  /** `source="sidecar"` once the sidecar is the cover: no Banner, and the tag reads "Sidecar image". */
-  sidecarAccepted?: boolean
   /** Upload progress, 0–100, while `state` is `replacing` or `uploading`. */
   percent?: number
   /** Replaces the error Banner's message when `state` is `error`. */
@@ -36,8 +32,6 @@ export interface CoverPanelProps
   onZoom?: () => void
   /** "Use the PSD’s preview", offered when the cover isn't the embedded preview. */
   onUsePsdPreview?: () => void
-  /** "Use this cover" on the sidecar Banner. */
-  onUseSidecar?: () => void
   /** Esc while replacing. The old cover stays. */
   onCancelReplace?: () => void
   /**
@@ -47,10 +41,13 @@ export interface CoverPanelProps
   variantIndex?: number
 }
 
-/** The source tag. The PSD's own preview is the normal case and says nothing; a chosen cover says so. */
+/**
+ * The source tag. The PSD's own preview is the normal case and says nothing; a chosen cover says so.
+ * A sidecar image is used automatically, only when the PSD has no embedded preview, so it is always the cover.
+ */
 const SOURCE_TAG = {
   embedded: '',
-  sidecar: '',
+  sidecar: 'Sidecar image',
   uploaded: 'Uploaded',
   none: ''
 } as const
@@ -73,14 +70,11 @@ export function CoverPanel({
   coverSrc,
   imageSize,
   coverMissing = false,
-  sidecarName = 'phone_front.png',
-  sidecarAccepted = false,
   percent,
   errorMessage,
   onCover,
   onZoom,
   onUsePsdPreview,
-  onUseSidecar,
   onCancelReplace,
   variantIndex,
   ...rest
@@ -117,12 +111,8 @@ export function CoverPanel({
   const replacing = state === 'replacing' || state === 'uploading'
   const failed = state === 'error' || intake.problem !== null
   const hoverable = state === 'default' && !coverMissing
-  const sidecarOffered = source === 'sidecar' && !sidecarAccepted
   const lowRes = imageSize !== undefined && Math.max(imageSize.width, imageSize.height) < LOW_RES_PX
-  const tag =
-    source === 'sidecar' && sidecarAccepted
-      ? 'Sidecar image'
-      : SOURCE_TAG[source] || (lowRes ? 'Low-res preview' : '')
+  const tag = SOURCE_TAG[source] || (lowRes ? 'Low-res preview' : '')
   const overlay = intake.drag ?? (given === 'drag-over' ? 'image' : null)
 
   // Esc cancels a replace and keeps the old cover.
@@ -318,16 +308,6 @@ export function CoverPanel({
         />
       )}
 
-      {sidecarOffered && (
-        <Banner
-          tone="info"
-          title={`Found “${sidecarName}” next to the PSD`}
-          message="Use it as the cover instead of the embedded preview?"
-          actionLabel="Use this cover"
-          {...(onUseSidecar ? { onAction: onUseSidecar } : {})}
-          dismissible={false}
-        />
-      )}
     </div>
   )
 }

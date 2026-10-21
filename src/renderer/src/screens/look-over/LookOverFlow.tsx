@@ -49,7 +49,7 @@ import {
 } from './look-over-copy'
 import { coverUrl } from '@shared/cover-url'
 
-export interface LookOverFlowProps {
+interface LookOverFlowProps {
   open: boolean
   /** Finish later (confirmed), or all done. */
   onClose: () => void
@@ -489,7 +489,6 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
             source={panelSource(cover)}
             state={coverState}
             coverMissing={cover.missing}
-            sidecarAccepted
             showDeck={theDeck.showDeck}
             deckMore={theDeck.deckMore}
             deckLabel={theDeck.label}

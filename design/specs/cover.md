@@ -34,7 +34,7 @@
 | Replace → file picker | Uploads; shows `replacing` |
 | Drag an image onto the cover | `DropOverlay` (drag-over) over the cover, the same component as dragging PSDs onto the library; drop → `replacing` |
 | ⌘V with an image on the clipboard | Same as a drop |
-| Sidecar image found next to the PSD | Info `Banner` under the tag row: “Found ‘x.png’ next to the PSD. Use it as the cover…?” → **Use this cover** |
+| Sidecar image next to the PSD | Automatic. The app uses it only when the PSD has no embedded preview, so there is no prompt. The tag reads `Sidecar image`, and **Use the PSD's preview** still works as for any cover that isn't the embedded preview. |
 
 - **Replacing:** the old cover stays visible, dimmed, with progress on top. Esc cancels and keeps it.
 - **No cover at all** (no embedded preview, no sidecar): the required `CoverDropZone` is shown, and **Stash & next is disabled** with a tooltip until a cover is added. Its drag-over is the same `DropOverlay`.

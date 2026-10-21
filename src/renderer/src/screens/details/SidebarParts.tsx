@@ -129,7 +129,6 @@ export function EditableCover({
         source={panelSource(coverPath, coverSource)}
         state={ui}
         coverMissing={missing}
-        sidecarAccepted
         showDeck={false}
         {...(src ? { coverSrc: src } : {})}
         {...(imageSize ? { imageSize } : {})}
