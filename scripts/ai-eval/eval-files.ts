@@ -16,6 +16,9 @@ export const TEST_SET =
 
 export const ITEMS_PATH = join(EVAL_DIR, 'items.json')
 
+/** One folder per item id: cover.webp, preview.jpg and, when the orchestrator has made it, vision.json. */
+export const COVERS_DIR = join(EVAL_DIR, 'covers')
+
 /** The real downloads in the test set, as a designer would drop them. The generated cases are left out. */
 export function realItemPaths(root: string = TEST_SET): string[] {
   const zips = readdirSync(join(root, 'zips'))
