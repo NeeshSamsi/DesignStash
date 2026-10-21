@@ -28,7 +28,6 @@ const buttonVariants = cva(
         icon: "p-2 [&_svg:not([class*='size-'])]:size-5",
         "icon-xs": "p-1 [&_svg:not([class*='size-'])]:size-4",
         "icon-sm": "p-2 [&_svg:not([class*='size-'])]:size-4",
-        "icon-lg": "p-2.5 [&_svg:not([class*='size-'])]:size-5",
       },
     },
     compoundVariants: [{ variant: "link", className: "px-0" }],
