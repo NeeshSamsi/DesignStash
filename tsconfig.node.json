@@ -26,6 +26,7 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "e2e/**/*",
-    "scripts/ai-eval/**/*"
+    "scripts/ai-eval/**/*",
+    "scripts/helper-try.ts"
   ]
 }
