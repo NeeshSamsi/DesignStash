@@ -297,11 +297,22 @@ describe('Rail', () => {
     expect(r.title).toBe('m10')
     expect(r.steps.map((x) => [x.label, x.status])).toEqual([
       ['Top · m10', 'done'],
-      ['Variant · m11', 'current'],
-      ['Variant · m12', 'todo'],
+      ['Variant · m11 · 1', 'current'],
+      ['Variant · m12 · 2', 'todo'],
       ['Review & stash pile', 'todo']
     ])
     expect(r.steps.map((x) => x.showConnector)).toEqual([true, true, true, false])
+  })
+
+  it('follows the edited titles, and keeps the opened title when a draft title is blank', () => {
+    const r = rail(start(), { 10: 'Edited top', 11: 'Edited variant', 12: '   ' })!
+    expect(r.title).toBe('Edited top')
+    expect(r.steps.map((x) => x.label)).toEqual([
+      'Top · Edited top',
+      'Variant · Edited variant · 1',
+      'Variant · m12 · 2',
+      'Review & stash pile'
+    ])
   })
 
   it('marks mockups jumped past as skipped, and Review as current on review', () => {

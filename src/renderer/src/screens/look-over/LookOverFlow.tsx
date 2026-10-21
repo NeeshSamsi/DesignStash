@@ -190,7 +190,10 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const pile = isPile(unit)
   const model = primary(flow)
   const theDeck = deck(flow)
-  const theRail = rail(flow)
+  const theRail = rail(
+    flow,
+    Object.fromEntries(Object.entries(forms).map(([id, f]) => [id, f.title]))
+  )
   const blocked = item && form ? form.title.trim() === '' : false
   const noCover = item && cover ? panelSource(cover) === 'none' : false
 
@@ -553,6 +556,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
         open={zooming && cover !== undefined}
         mode="single"
         state={cover?.missing ? 'missing' : 'loaded'}
+        caption={form?.title.trim() || item?.title || ''}
         {...(cover?.path ? { src: coverUrl(cover.path) } : {})}
         onClose={() => setZooming(false)}
         onCheckLibrary={() => {

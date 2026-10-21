@@ -131,6 +131,27 @@ describe('Look it over · header, zoom and progress', () => {
     await waitFor(() => expect(maybe('Zoom in')).toBeNull())
   })
 
+  it('captions the Lightbox with the mockup’s title as edited', async () => {
+    await start()
+    fireEvent.change(titleField(), { target: { value: 'Edited title' } })
+    fireEvent.click(btn('Zoom'))
+    const caption = await screen.findAllByText('Edited title')
+    expect(caption.some((el) => el.closest('[role="dialog"]') !== null)).toBe(true)
+    expect(document.querySelector('img[alt="Edited title"]')).not.toBeNull()
+  })
+
+  it('keeps the rail labels in step with the title as it is edited', async () => {
+    await start()
+    fireEvent.change(titleField(), { target: { value: 'Clay phone' } })
+    expect(railLabels()[0]).toBe('Top · Clay phone')
+    expect(screen.getByRole('navigation', { name: /PILE/ }).textContent).toContain('Clay phone')
+    fireEvent.click(btn('Next'))
+    await waitFor(() => expect(badge()).toContain('Pile 1 of 2'))
+    fireEvent.change(titleField(), { target: { value: 'Clay phone side' } })
+    expect(railLabels()[1]).toBe('Variant · Clay phone side · 1')
+    expect(railLabels()[0]).toBe('Top · Clay phone')
+  })
+
   it('moves the progress track as they go: Next, stash, skip', async () => {
     await start()
     // 6 mockups: the one you are on counts.
@@ -190,8 +211,8 @@ describe('Piles · drafts until Stash pile', () => {
     expect(screen.getByText('PILE 1 OF 2')).not.toBeNull()
     expect(railLabels()).toEqual([
       'Top · Title 10',
-      'Variant · Title 10',
-      'Variant · Title 10',
+      'Variant · Title 10 · 1',
+      'Variant · Title 10 · 2',
       'Review & stash pile'
     ])
   })

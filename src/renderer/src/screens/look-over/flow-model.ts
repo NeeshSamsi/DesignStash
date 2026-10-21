@@ -217,8 +217,12 @@ export interface Rail {
   steps: RailStep[]
 }
 
-/** The rail for the current pile: the top mockup, the variants, then Review & stash pile. Null for a single. */
-export function rail(s: FlowState): Rail | null {
+/**
+ * The rail for the current pile: the top mockup, the variants, then Review & stash pile. Null for a
+ * single. `titles` are the drafts as edited (by mockup id), so the labels follow the typing; a
+ * blank draft keeps the title the mockup opened with.
+ */
+export function rail(s: FlowState, titles: Readonly<Record<number, string>> = {}): Rail | null {
   const unit = currentUnit(s)
   if (!isPile(unit)) return null
   const n = piles(s).findIndex((p) => p.unitId === unit.unitId) + 1
@@ -230,10 +234,12 @@ export function rail(s: FlowState): Rail | null {
         : s.skipped.has(mockupId)
           ? 'skipped'
           : 'todo'
+  const titleOf = (item: LookOverItem) => titles[item.mockupId]?.trim() || item.title
   const steps: RailStep[] = unit.items.map((item, step) => ({
     key: String(item.mockupId),
     mockupId: item.mockupId,
-    label: `${item.role === 'top' ? 'Top' : 'Variant'} · ${item.title}`,
+    label:
+      item.role === 'top' ? `Top · ${titleOf(item)}` : `Variant · ${titleOf(item)} · ${step}`,
     status: statusOf(item.mockupId, step),
     showConnector: true,
     step
@@ -246,7 +252,7 @@ export function rail(s: FlowState): Rail | null {
     showConnector: false,
     step: unit.items.length
   })
-  return { pile: `PILE ${n} OF ${piles(s).length}`, title: unit.items[0]!.title, steps }
+  return { pile: `PILE ${n} OF ${piles(s).length}`, title: titleOf(unit.items[0]!), steps }
 }
 
 export interface ReviewCard {
