@@ -400,31 +400,35 @@ describe('AI setup', () => {
 })
 
 describe('privacy and finish', () => {
-  it('shows what is and is not collected, and Don’t share records the choice', async () => {
+  it('shows what is and is not collected, with sharing on by default, and Continue records it', async () => {
     const api = installApi(base())
     mount('privacy')
     expect(screen.getByText('What we never collect')).toBeTruthy()
-    fireEvent.click(btn('Don’t share'))
+    expect(
+      screen.getByRole('switch', { name: 'Share anonymous usage data' }).getAttribute('aria-checked')
+    ).toBe('true')
+    fireEvent.click(btn('Continue'))
     await waitFor(() =>
-      expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: false }])
+      expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: true }])
     )
     expect(await screen.findByRole('heading', { name: 'Your stash is ready!' })).toBeTruthy()
   })
 
-  it('Share usage data records the other choice', async () => {
+  it('switching it off before Continue records the opt-out', async () => {
     const api = installApi(base())
     mount('privacy')
-    fireEvent.click(btn('Share usage data'))
+    fireEvent.click(screen.getByRole('switch', { name: 'Share anonymous usage data' }))
+    fireEvent.click(btn('Continue'))
     await waitFor(() =>
-      expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: true }])
+      expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: false }])
     )
   })
 
-  it('the privacy step has the standard footer with Back, and no primary of its own', () => {
+  it('the privacy step has the standard footer with Back and Continue', () => {
     installApi(base())
     mount('privacy')
     expect(btn('Back')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
+    expect(btn('Continue')).toBeTruthy()
     fireEvent.click(btn('Back'))
     expect(screen.getByRole('heading', { name: 'Set up on-device AI' })).toBeTruthy()
   })
@@ -472,7 +476,7 @@ describe('privacy and finish', () => {
     fireEvent.click(btn('Continue'))
     await screen.findByRole('heading', { name: 'Set up on-device AI' })
     fireEvent.click(await screen.findByRole('button', { name: 'Skip AI' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Don’t share' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Open My Stash' }))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.APP_RELAUNCH)).toHaveLength(1))
     expect(onComplete).not.toHaveBeenCalled()

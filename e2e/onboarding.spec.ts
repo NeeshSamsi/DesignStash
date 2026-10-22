@@ -17,7 +17,9 @@ test('first run: welcome, stash folder, skip AI, say no to usage data, open My S
   await window.getByRole('button', { name: 'Skip AI' }).first().click()
 
   await expect(window.getByText('Your privacy')).toBeVisible()
-  await window.getByRole('button', { name: 'Don’t share' }).click()
+  // Sharing is on by default; this tester switches it off before continuing.
+  await window.getByRole('switch', { name: 'Share anonymous usage data' }).click()
+  await window.getByRole('button', { name: 'Continue' }).click()
 
   await expect(window.getByText('Your stash is ready!')).toBeVisible()
   await window.getByRole('button', { name: 'Open My Stash' }).click()

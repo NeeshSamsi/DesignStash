@@ -28,11 +28,11 @@ describe('useUpdateNotice', () => {
     invoke.mockResolvedValue({ success: true, data: available })
     const first = renderHook(() => useUpdateNotice())
     await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
-    expect(toast.mock.calls[0][0]).toMatchObject({
+    expect(toast.mock.calls[0]![0]).toMatchObject({
       message: 'DesignStash 0.2.0 is out',
       action: { label: 'Download' }
     })
-    toast.mock.calls[0][0].action.onClick()
+    toast.mock.calls[0]![0].action.onClick()
     expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.UPDATES_INSTALL, undefined)
     first.unmount()
 
