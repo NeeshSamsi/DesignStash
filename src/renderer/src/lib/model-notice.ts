@@ -39,7 +39,7 @@ export function useActiveModelNotice(): void {
     const check = async () => {
       const res = await window.api.invoke(IPC_CHANNELS.AI_LIST_MODELS, undefined).catch(() => null)
       if (!res?.success) return
-      const problem = res.data.activeProblem
+      const problem = res.data.activeProblem ?? null
       const isNew = problem !== null && problem !== last.current
       last.current = problem
       if (!isNew) return
