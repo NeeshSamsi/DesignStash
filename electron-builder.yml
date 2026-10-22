@@ -8,16 +8,30 @@ directories:
 files:
   - out/**
   - package.json
+publish: null # releases are made by .github/workflows/release.yml, not by electron-builder
+artifactName: DesignStash-${version}-${arch}.${ext}
 mac:
   target:
     - target: dmg
       arch: arm64
+  category: public.app-category.graphics-design
+  # Beta builds are unsigned (pnpm package:mac sets CSC_IDENTITY_AUTO_DISCOVERY=false, so signing
+  # is skipped and notarization with it). Signing is a config change: provide the certificate and
+  # run pnpm package:mac:signed (see scripts/packaging/README.md for the exact secrets).
   # Signing walks every Mach-O file in the app, the extra resources included, so llama-server and
-  # the Swift helper are signed with the app's identity and the hardened runtime whenever one is
-  # configured (CSC_LINK, or a Developer ID in the keychain). With none, signing is skipped and the
-  # build still runs unsigned for development. The helper is signed without entitlements; check
-  # Vision and Foundation Models on the first signed build (design/specs/ai.md, "Open").
+  # the Swift helper are signed with the app's identity and the hardened runtime. The helper is
+  # signed without entitlements; check Vision and Foundation Models on the first signed build
+  # (design/specs/ai.md, "Open").
   hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: scripts/packaging/entitlements.mac.plist
+  entitlementsInherit: scripts/packaging/entitlements.mac.plist
+  # Off by default so an unsigned build never tries. package:mac:signed turns it on
+  # (-c.mac.notarize=true); electron-builder then reads APPLE_API_KEY, APPLE_API_KEY_ID and
+  # APPLE_API_ISSUER, or APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID.
+  notarize: false
+dmg:
+  title: DesignStash ${version}
 # The migrations, llama-server and the Swift helper are read at run time from <resources>, next
 # to the app. The main process looks for the helper at <resources>/helper/designstash-helper.
 extraResources:
