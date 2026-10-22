@@ -58,7 +58,7 @@ describe('CI guard — runtime boundaries', () => {
       exists: () => true,
       createVision
     })
-    expect(await factory.forModel('qwen2.5-vl-3b')).toBeNull()
+    expect(await factory.forModel('qwen3-vl-4b')).toBeNull()
     expect(createVision).not.toHaveBeenCalled()
   })
 

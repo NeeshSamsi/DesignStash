@@ -116,7 +116,7 @@ export class ModelDownloader {
   /** Bytes already on disk for a model, finished or partial. A stopped download resumes from here. */
   async downloadedBytes(id: string): Promise<number> {
     const model = getModel(id)
-    if (!model) return 0
+    if (!model?.files) return 0
     let sum = 0
     for (const kind of ['model', 'mmproj'] as const) {
       const final = await this.sizeOf(join(this.modelPath(id), MODEL_FILE_NAMES[kind]))
@@ -187,9 +187,9 @@ export class ModelDownloader {
     if (receivedBytes < expectedSize) throw new DownloadError('server')
   }
 
-  /** Installed means both files are there: the model and its image projector. */
+  /** Installed means both files are there: the model and its image projector. A built-in model has none. */
   async isInstalled(id: string): Promise<boolean> {
-    if (!getModel(id)) return false
+    if (!getModel(id)?.files) return false
     try {
       await fs.stat(join(this.modelPath(id), MODEL_FILE_NAMES.model))
       await fs.stat(join(this.modelPath(id), MODEL_FILE_NAMES.mmproj))
@@ -274,12 +274,14 @@ export class ModelDownloader {
   ): Promise<void> {
     const model = getModel(id)
     if (!model) throw new Error(`Model not found: ${id}`)
+    const modelFiles = model.files
+    if (!modelFiles) throw new Error(`${model.name} is built into macOS; there is nothing to download`)
 
     const modelDir = this.modelPath(id)
     await fs.mkdir(modelDir, { recursive: true })
 
     const files = (['model', 'mmproj'] as const).map((kind) => ({
-      ...model.files[kind],
+      ...modelFiles[kind],
       fileName: MODEL_FILE_NAMES[kind]
     }))
     const total = files.reduce((sum, f) => sum + f.sizeBytes, 0)

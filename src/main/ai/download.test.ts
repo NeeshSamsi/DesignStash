@@ -16,6 +16,8 @@ const makeModel = (id: string, sums: boolean) => ({
   id,
   name: id,
   tier: 'small' as ModelTier,
+  runtime: 'llama' as const,
+  prompt: 'qwen3-vl-4b' as const,
   description: '',
   languages: ['English'],
   quality: 3,
@@ -29,10 +31,18 @@ const makeModel = (id: string, sums: boolean) => ({
 })
 const mockModel = makeModel('test-model', true)
 const mockModelNoSha = makeModel('test-model-nohash', false)
+const builtIn = {
+  ...makeModel('built-in', false),
+  runtime: 'apple' as const,
+  prompt: 'apple' as const,
+  sizeBytes: 0,
+  files: null
+}
 
 vi.spyOn(registry, 'getModel').mockImplementation((id) => {
   if (id === 'test-model') return mockModel
   if (id === 'test-model-nohash') return mockModelNoSha
+  if (id === 'built-in') return builtIn
   return undefined
 })
 
@@ -381,6 +391,14 @@ describe('deleting, undoing and old folders', () => {
     expect(await downloader.listLegacy()).toEqual([{ id: 'qwen2.5-1.5b', sizeBytes: 1 }])
     // An old folder is never counted as an installed model.
     expect(await downloader.listInstalled()).toEqual(['test-model'])
+  })
+
+  it('has nothing on disk for a built-in model, and refuses to download one', async () => {
+    const downloader = new ModelDownloader(tempModelsDir)
+    expect(await downloader.isInstalled('built-in')).toBe(false)
+    expect(await downloader.downloadedBytes('built-in')).toBe(0)
+    await expect(downloader.download('built-in')).rejects.toThrow('built in')
+    expect(await fs.readdir(tempModelsDir)).toEqual([])
   })
 
   it('refuses an id that is a path', async () => {
