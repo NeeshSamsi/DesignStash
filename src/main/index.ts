@@ -1,7 +1,8 @@
 import { app, session, shell, screen, protocol, net, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { APP_ID } from '@shared/constants'
-import { createHandlerContext, type TelemetryRef } from './ipc/context'
+import { IPC_CHANNELS } from '@shared/ipc'
+import { createHandlerContext, createPush, type TelemetryRef } from './ipc/context'
 import { registerAllHandlers, registerPreAppHandlers } from './ipc'
 import { initDb, getDb, closeDb } from './db/connection'
 import { runMigrations } from './db/migrate'
@@ -17,6 +18,7 @@ import { Repository } from './db/repository'
 import { createIntegrityService, createStashCheck } from './ipc/integrity'
 import { applyPendingStash } from './library/stash-folder-service'
 import { createTelemetry, type Telemetry } from './telemetry'
+import { installAppMenu } from './menu'
 
 const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
 
@@ -154,6 +156,17 @@ app.whenReady().then(() => {
   process.on('unhandledRejection', (reason) => telemetry.captureError(reason))
 
   openWindow()
+  // Menu items reach whichever window is open, through the menu:command push. With every window
+  // closed, a menu item brings the window back instead of doing nothing.
+  const push = createPush(() => mainWindow)
+  installAppMenu({
+    send: (command) => {
+      if (!mainWindow) openWindow()
+      else push(IPC_CHANNELS.MENU_COMMAND, command)
+    },
+    openExternal: (url) => void shell.openExternal(url),
+    dev: !app.isPackaged
+  })
   const repo = libraryOpen ? new Repository(getDb()) : null
   // The screens before the app (launch error, onboarding) run on this set, so it is registered
   // whether or not the library opened. The library domains come on top of it, never instead.
