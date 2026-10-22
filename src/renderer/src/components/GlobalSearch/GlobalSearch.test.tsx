@@ -39,6 +39,12 @@ describe('GlobalSearch', () => {
       expect(SEARCH_DEBOUNCE_MS).toBe(250)
     })
 
+    it('hints ⌘F, the main shortcut (⌘K still works)', () => {
+      const { container } = render(<GlobalSearch />)
+      const hint = container.querySelector('[data-ds="KeyboardShortcut"]')
+      expect(hint?.textContent).toBe('⌘F')
+    })
+
     it.each(['f', 'k'])('focuses the field on ⌘%s', (key) => {
       render(<GlobalSearch />)
       const input = screen.getByRole('textbox', { name: 'Search' })

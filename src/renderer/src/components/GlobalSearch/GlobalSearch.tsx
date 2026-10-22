@@ -34,8 +34,9 @@ export function focusGlobalSearch(): void {
   mountedSearch?.current?.select()
 }
 
-/** ⌘F, and ⌘K as its alias. */
+/** ⌘F, and ⌘K as its alias. The field's hint shows the first. */
 const SEARCH_KEYS = ['f', 'k']
+const SEARCH_HINT = '⌘F'
 
 /** ⌘F (or ⌘K) focuses and selects the field behind `ref`, from anywhere in the window. */
 export function useSearchFocusShortcut(ref: RefObject<HTMLInputElement | null>) {
@@ -119,6 +120,7 @@ export function GlobalSearch({
       <Input
         ref={inputRef}
         variant="search"
+        shortcut={SEARCH_HINT}
         className={SEARCH_HAIRLINE}
         placeholder="Search"
         aria-label="Search"
