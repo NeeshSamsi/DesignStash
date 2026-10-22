@@ -220,15 +220,24 @@ export const copyJobs = sqliteTable('copy_jobs', {
   ...timestamps
 })
 
-/** Semantic-search vectors — placeholder for M13 (spec §8). */
-export const embeddings = sqliteTable('embeddings', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  mockupId: integer('mockup_id')
-    .notNull()
-    .references(() => mockups.id, { onDelete: 'cascade' }),
-  vector: blob('vector').notNull(),
-  modelId: text('model_id').notNull()
-})
+/**
+ * Meaning-search vectors: one per stashed mockup per model, a Float32 BLOB of `dimension` floats
+ * (unit length). `textHash` is the hash of the text that was embedded, so a vector is only
+ * recomputed when the title, description or tags change.
+ */
+export const mockupEmbeddings = sqliteTable(
+  'mockup_embeddings',
+  {
+    mockupId: integer('mockup_id')
+      .notNull()
+      .references(() => mockups.id, { onDelete: 'cascade' }),
+    modelId: text('model_id').notNull(),
+    dimension: integer('dimension').notNull(),
+    vector: blob('vector', { mode: 'buffer' }).notNull(),
+    textHash: text('text_hash').notNull()
+  },
+  (t) => [primaryKey({ columns: [t.mockupId, t.modelId] })]
+)
 
 // mockups_fts (FTS5 virtual table) is maintained via raw SQL in search-index.ts and repository.ts — NOT a Drizzle table.
 

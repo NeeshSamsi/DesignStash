@@ -4,6 +4,7 @@ import { mockups, tags, mockupTags } from '../schema'
 import { isStashed } from './stashed'
 import { searchKeywords } from '../search-keywords'
 import { nameKeywords } from '../search-names'
+import { meaningDocument } from '../../search/meaning'
 
 /**
  * An English plural folded to its singular ("bags" → "bag", "boxes" → "box", "stationeries" →
@@ -66,18 +67,39 @@ export const FTS_WEIGHTS = [1, 1, 1, 0.25] as const
 
 /** The mockups_fts index: title, description, tag labels and hidden keywords of approved mockups. */
 export class SearchRepository {
+  private indexListener: ((mockupId: number, meaningText: string) => void) | null = null
+
   constructor(private readonly db: AppDatabase) {}
 
-  upsertSearchIndex(mockupId: number): void {
-    const m = this.db.select().from(mockups).where(eq(mockups.id, mockupId)).get()
-    if (!m) return
-    const tagLabels = this.db
+  /** Told the text to embed whenever a mockup is indexed, so meaning search can keep its vectors current. */
+  setIndexListener(listener: ((mockupId: number, meaningText: string) => void) | null): void {
+    this.indexListener = listener
+  }
+
+  private tagLabelsOf(mockupId: number): string[] {
+    return this.db
       .select()
       .from(tags)
       .innerJoin(mockupTags, eq(tags.id, mockupTags.tagId))
       .where(eq(mockupTags.mockupId, mockupId))
       .all()
       .map((row) => row.tags.label)
+  }
+
+  /** The text meaning search embeds for every stashed, non-trashed mockup. */
+  meaningDocuments(): { id: number; text: string }[] {
+    return this.db
+      .select()
+      .from(mockups)
+      .where(and(isStashed, isNull(mockups.deletedAt)))
+      .all()
+      .map((m) => ({ id: m.id, text: meaningDocument(m.title, m.description, this.tagLabelsOf(m.id)) }))
+  }
+
+  upsertSearchIndex(mockupId: number): void {
+    const m = this.db.select().from(mockups).where(eq(mockups.id, mockupId)).get()
+    if (!m) return
+    const tagLabels = this.tagLabelsOf(mockupId)
     const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
     const names = ctx?.originalFilename
       ? nameKeywords(ctx.originalFilename, ctx.folderTrail ?? [])
@@ -88,10 +110,13 @@ export class SearchRepository {
       sql`INSERT INTO mockups_fts(rowid, title, description, tags, keywords)
           VALUES (${mockupId}, ${m.title}, ${m.description ?? ''}, ${tagLabels.join(' ')}, ${keywords})`
     )
+    this.indexListener?.(mockupId, meaningDocument(m.title, m.description, tagLabels))
   }
 
+  /** Takes a mockup out of search: its keyword row and its meaning vectors. */
   removeSearchIndex(mockupId: number): void {
     this.db.run(sql`DELETE FROM mockups_fts WHERE rowid = ${mockupId}`)
+    this.db.run(sql`DELETE FROM mockup_embeddings WHERE mockup_id = ${mockupId}`)
   }
 
   rebuildSearchIndex(): void {
@@ -102,6 +127,8 @@ export class SearchRepository {
       .where(and(isStashed, isNull(mockups.deletedAt)))
       .all()
     for (const m of rows) this.upsertSearchIndex(m.id)
+    // Vectors of mockups that are no longer in the index (trashed, unstashed) go too.
+    this.db.run(sql`DELETE FROM mockup_embeddings WHERE mockup_id NOT IN (SELECT rowid FROM mockups_fts)`)
   }
 
   /**
