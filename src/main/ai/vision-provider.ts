@@ -5,6 +5,13 @@ import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
 import type { PromptProfile } from './prompts/profile'
 import { isPlaceholder } from '../psd/placeholder'
+import {
+  SCENE_CHECK_THRESHOLD,
+  mentionedThings,
+  pYes,
+  sceneQuestion,
+  withoutThing
+} from './scene-check'
 
 /**
  * The categories the model tags in, with what each covers: the seed categories in `db/bootstrap.ts`
@@ -89,11 +96,17 @@ export interface ChatRequest {
   seed?: number
 }
 
+/** One chat completion's reply: its text, and the logprobs when the request asked for them. */
+export interface ChatReply {
+  text: string
+  logprobs?: unknown
+}
+
 export interface VisionProviderDeps {
   /** The model's own prompt: how it is asked and how its reply is read. */
   prompt: PromptProfile
-  /** Send one chat request and return the reply text. */
-  complete(request: ChatRequest): Promise<string>
+  /** Send one chat request (an answer, or a scene-thing question) and return the reply. */
+  complete(request: object): Promise<ChatReply>
   /** The cover as a data URL the runtime can decode, or null when there isn't one to read. */
   readImage(path: string): Promise<string | null>
   /** Release the runtime (stop the server). */
@@ -324,11 +337,31 @@ export async function readCoverAsDataUrl(path: string): Promise<string | null> {
 }
 
 /**
+ * One scene-thing question on the answer's own image (llama-server reuses it from its cache): one
+ * greedy token held to "yes" or "no", with logprobs, so `pYes` can read how sure the model is.
+ */
+function sceneThingRequest(answerRequest: ChatRequest, thing: string): object {
+  const [system, user] = answerRequest.messages
+  const image = (user!.content as ChatContentPart[]).filter((p) => p.type === 'image_url')
+  return {
+    messages: [
+      system,
+      { role: 'user', content: [...image, { type: 'text', text: `Look only at the image. ${sceneQuestion(thing)}` }] }
+    ],
+    grammar: 'root ::= "yes" | "no"',
+    temperature: 0,
+    max_tokens: 1,
+    logprobs: true,
+    top_logprobs: 5
+  }
+}
+
+/**
  * Inference provider for a vision model (GGUF + mmproj) behind llama.cpp. It shows the model
  * the mockup's cover first, with the file name and folder trail as secondary text, and asks
- * in the words of the model's prompt profile (today's profiles all use `buildRequest`, a JSON
- * reply constrained by `RESULT_JSON_SCHEMA`). The transport is injected: the provider factory
- * wires it to a `LlamaServer`; tests pass a stub.
+ * in the words of the model's prompt profile (a JSON reply constrained by its schema). When the
+ * cover was shown, each scene thing the answer mentions is then checked (`scene-check.ts`). The
+ * transport is injected: the provider factory wires it to a `LlamaServer`; tests pass a stub.
  */
 export class VisionInferenceProvider implements InferenceProvider {
   readonly id = 'vision'
@@ -340,8 +373,18 @@ export class VisionInferenceProvider implements InferenceProvider {
 
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
     const imageUrl = await this.deps.readImage(input.imagePath)
-    const reply = await this.deps.complete(this.deps.prompt.buildRequest(input, imageUrl))
-    return this.deps.prompt.parseResult(reply)
+    const request = this.deps.prompt.buildRequest(input, imageUrl)
+    let answer = this.deps.prompt.parseResult((await this.deps.complete(request)).text)
+    if (!imageUrl) return answer
+    for (const thing of mentionedThings(answer, this.deps.prompt.sceneThings ?? [])) {
+      const p = await this.deps
+        .complete(sceneThingRequest(request, thing))
+        .then((reply) => pYes(reply.logprobs))
+        // A check that fails says nothing about the thing, so it stays.
+        .catch(() => null)
+      if (p !== null && p < SCENE_CHECK_THRESHOLD) answer = withoutThing(answer, thing)
+    }
+    return answer
   }
 
   async dispose(): Promise<void> {

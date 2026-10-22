@@ -1,6 +1,7 @@
 import type { AnalysisInput, InferenceProvider, InferenceResult } from '../../shared/inference'
 import type { DescribeRequest, NativeHelper } from '../native/helper'
 import type { PromptProfile } from './prompts/profile'
+import { mentionedThings, sceneQuestion, withoutThing } from './scene-check'
 import { readCoverAsDataUrl, type ChatContentPart } from './vision-provider'
 
 export interface AppleProviderDeps {
@@ -56,8 +57,8 @@ export function appleDescribeRequest(
 /**
  * Inference over Apple's on-device model (Foundation Models, macOS 27, Apple Intelligence on),
  * through the Swift helper's `describe`: the model's prompt profile, the cover attached as a file,
- * a placeholder cover sent as names only. The provider factory builds it for the catalogue's
- * `apple` entry.
+ * a placeholder cover sent as names only, then the scene-thing check on the cover
+ * (`scene-check.ts`). The provider factory builds it for the catalogue's `apple` entry.
  */
 export class AppleInferenceProvider implements InferenceProvider {
   readonly id = 'apple'
@@ -71,8 +72,39 @@ export class AppleInferenceProvider implements InferenceProvider {
       imagePath: usable ? input.imagePath : null,
       ...appleDescribeRequest(input, usable, this.deps.prompt)
     })
-    return this.deps.prompt.parseResult(reply.text)
+    let answer = this.deps.prompt.parseResult(reply.text)
+    if (!usable) return answer
+    for (const thing of mentionedThings(answer, this.deps.prompt.sceneThings ?? [])) {
+      if ((await this.check(input.imagePath, thing)) === 'no') answer = withoutThing(answer, thing)
+    }
+    return answer
   }
+
+  /**
+   * One scene-thing question on the cover. Apple's model gives no logprobs, so the answer is its
+   * greedy yes or no, held to those by the schema. Null when the check fails.
+   */
+  private async check(imagePath: string, thing: string): Promise<'yes' | 'no' | null> {
+    try {
+      const reply = await this.deps.helper.describe({
+        imagePath,
+        instructions: 'You answer questions about one image, looking only at the image.',
+        prompt: sceneQuestion(thing),
+        schema: YES_NO_SCHEMA,
+        maxTokens: 10
+      })
+      const said = (JSON.parse(reply.text) as { answer?: unknown }).answer
+      return said === 'yes' || said === 'no' ? said : null
+    } catch {
+      return null
+    }
+  }
+}
+
+const YES_NO_SCHEMA = {
+  type: 'object',
+  properties: { answer: { type: 'string', enum: ['yes', 'no'] } },
+  required: ['answer']
 }
 
 async function hasUsableCover(path: string): Promise<boolean> {

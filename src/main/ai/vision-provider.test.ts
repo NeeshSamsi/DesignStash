@@ -12,8 +12,10 @@ import {
   parseResult,
   readCoverAsDataUrl,
   type ChatContentPart,
+  type ChatReply,
   type ChatRequest
 } from './vision-provider'
+import { SCENE_THINGS } from './scene-check'
 import type { PromptProfile } from './prompts'
 
 const VALID = {
@@ -36,9 +38,9 @@ const IMAGE = 'data:image/jpeg;base64,AAAA'
 const SHIPPED: PromptProfile = { buildRequest, parseResult }
 
 function makeProvider(reply: object | string = VALID, image: string | null = IMAGE) {
-  const complete = vi.fn<(req: ChatRequest) => Promise<string>>(async () =>
-    typeof reply === 'string' ? reply : JSON.stringify(reply)
-  )
+  const complete = vi.fn<(req: ChatRequest) => Promise<ChatReply>>(async () => ({
+    text: typeof reply === 'string' ? reply : JSON.stringify(reply)
+  }))
   const readImage = vi.fn<(path: string) => Promise<string | null>>(async () => image)
   const dispose = vi.fn(async () => {})
   const provider = new VisionInferenceProvider('Qwen 2.5 VL 3B', {
@@ -106,7 +108,7 @@ describe('VisionInferenceProvider.analyze', () => {
       buildRequest: vi.fn(() => request),
       parseResult: vi.fn(() => ({ title: 'From the profile', description: 'd', tags: [] }))
     }
-    const complete = vi.fn(async () => 'raw reply')
+    const complete = vi.fn(async () => ({ text: 'raw reply' }))
     const provider = new VisionInferenceProvider('m', {
       prompt,
       complete,
@@ -139,6 +141,99 @@ describe('VisionInferenceProvider.analyze', () => {
       readImage: async () => IMAGE
     })
     await expect(provider.analyze(INPUT)).rejects.toThrow('answered 500')
+  })
+})
+
+describe('VisionInferenceProvider scene-thing check', () => {
+  const DESK = {
+    title: 'iMac on a wooden desk',
+    description: 'An iMac, also called a desktop computer, on a wooden desk beside a plant.',
+    tags: [
+      { category: 'Device', label: 'iMac' },
+      { category: 'Environment', label: 'desk' },
+      { category: 'Environment', label: 'plant' }
+    ]
+  }
+  const CHECKED: PromptProfile = { ...SHIPPED, sceneThings: SCENE_THINGS }
+  const answerToken = (yes: number, no: number) => ({
+    content: [
+      {
+        top_logprobs: [
+          { token: 'yes', logprob: Math.log(yes) },
+          { token: 'no', logprob: Math.log(no) }
+        ]
+      }
+    ]
+  })
+
+  /** The answer first, then each check's P(yes) for the thing its question names. */
+  function checked(pYes: Record<string, number | Error>, prompt: PromptProfile = CHECKED, image: string | null = IMAGE) {
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      const text = JSON.stringify(req)
+      const thing = /Is there an? ([a-z]+) in this image/.exec(text)?.[1]
+      if (!thing) return { text: JSON.stringify(DESK) }
+      const p = pYes[thing]!
+      if (p instanceof Error) throw p
+      return { text: p >= 0.5 ? 'yes' : 'no', logprobs: answerToken(p, 1 - p) }
+    })
+    const provider = new VisionInferenceProvider('m', { prompt, complete, readImage: async () => image })
+    return { provider, complete }
+  }
+
+  it('takes out a thing the image says no to, and keeps one it says yes to', async () => {
+    const { provider } = checked({ desk: 0.01, plant: 0.9 })
+    await expect(provider.analyze(INPUT)).resolves.toEqual({
+      title: 'iMac',
+      description: 'An iMac, also called a desktop computer beside a plant.',
+      tags: [
+        { category: 'Device', label: 'iMac' },
+        { category: 'Environment', label: 'plant' }
+      ]
+    })
+  })
+
+  it('takes a thing out under P(yes) 0.2 only', async () => {
+    const { provider } = checked({ desk: 0.2, plant: 0.19 })
+    const result = await provider.analyze(INPUT)
+    expect(result.tags.map((t) => t.label)).toEqual(['iMac', 'desk'])
+  })
+
+  it('asks one greedy one-token yes/no question per thing, on the same image, with logprobs', async () => {
+    const { provider, complete } = checked({ desk: 0.9, plant: 0.9 })
+    await provider.analyze(INPUT)
+    expect(complete).toHaveBeenCalledTimes(3)
+    const question = complete.mock.calls[1]![0] as ChatRequest & Record<string, unknown>
+    expect(question).toMatchObject({
+      grammar: 'root ::= "yes" | "no"',
+      temperature: 0,
+      max_tokens: 1,
+      logprobs: true,
+      top_logprobs: 5
+    })
+    expect(question).not.toHaveProperty('response_format')
+    expect(question.messages[0]).toEqual(buildRequest(INPUT, IMAGE).messages[0])
+    expect(question.messages[1]!.content).toEqual([
+      { type: 'image_url', image_url: { url: IMAGE } },
+      { type: 'text', text: 'Look only at the image. Is there a desk in this image? Answer yes or no.' }
+    ])
+  })
+
+  it('checks nothing when there is no image to look at', async () => {
+    const { provider, complete } = checked({}, CHECKED, null)
+    await expect(provider.analyze(INPUT)).resolves.toMatchObject({ title: 'iMac on a wooden desk' })
+    expect(complete).toHaveBeenCalledOnce()
+  })
+
+  it('checks nothing for a profile without scene things', async () => {
+    const { provider, complete } = checked({}, SHIPPED)
+    await provider.analyze(INPUT)
+    expect(complete).toHaveBeenCalledOnce()
+  })
+
+  it('keeps a thing whose check fails or gives no reading', async () => {
+    const { provider } = checked({ desk: new Error('answered 500'), plant: Number.NaN })
+    const result = await provider.analyze(INPUT)
+    expect(result.tags.map((t) => t.label)).toEqual(['iMac', 'desk', 'plant'])
   })
 })
 

@@ -4,7 +4,8 @@ import { join, resolve } from 'node:path'
 import sharp from 'sharp'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { AnalysisInput } from '../../shared/inference'
-import { HelperError, NativeHelper } from '../native/helper'
+import { HelperError, NativeHelper, type DescribeRequest } from '../native/helper'
+import { SCENE_THINGS } from './scene-check'
 import { AppleInferenceProvider, appleDescribeRequest, withoutPatterns } from './apple-provider'
 import type { PromptProfile } from './prompts'
 import { RESULT_JSON_SCHEMA, buildRequest, parseResult, type ChatContentPart } from './vision-provider'
@@ -119,6 +120,74 @@ describe('AppleInferenceProvider', () => {
     const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper })
     expect(provider.id).toBe('apple')
     expect(provider.name).toBe("Apple's on-device model")
+  })
+})
+
+describe('AppleInferenceProvider scene-thing check', () => {
+  const DESK = JSON.stringify({
+    title: 'iMac on a wooden desk',
+    description: 'An iMac on a wooden desk beside a plant.',
+    tags: [
+      { category: 'Device', label: 'iMac' },
+      { category: 'Environment', label: 'desk' },
+      { category: 'Environment', label: 'plant' }
+    ]
+  })
+  const CHECKED: PromptProfile = { ...SHIPPED, sceneThings: SCENE_THINGS }
+
+  /** A helper that gives the answer, then the given yes or no for each thing it is asked about. */
+  function stubHelper(answers: Record<string, 'yes' | 'no' | Error>) {
+    const calls: DescribeRequest[] = []
+    const describe = async (request: DescribeRequest) => {
+      calls.push(request)
+      const thing = /Is there an? ([a-z]+) in this image/.exec(request.prompt)?.[1]
+      if (!thing) return { text: DESK, json: true, ms: 1 }
+      const said = answers[thing]!
+      if (said instanceof Error) throw said
+      return { text: JSON.stringify({ answer: said }), json: true, ms: 1 }
+    }
+    return { helper: { describe }, calls }
+  }
+
+  it('takes out a thing the model says no to, and keeps one it says yes to', async () => {
+    const { helper: stub } = stubHelper({ desk: 'no', plant: 'yes' })
+    const provider = new AppleInferenceProvider({ prompt: CHECKED, helper: stub, hasUsableCover: async () => true })
+    const result = await provider.analyze(INPUT)
+    expect(result.title).toBe('iMac')
+    expect(result.description).toBe('An iMac beside a plant.')
+    expect(result.tags.map((t) => t.label)).toEqual(['iMac', 'plant'])
+  })
+
+  it('asks each thing about the same cover, as a yes or no held by a schema', async () => {
+    const { helper: stub, calls } = stubHelper({ desk: 'yes', plant: 'yes' })
+    const provider = new AppleInferenceProvider({ prompt: CHECKED, helper: stub, hasUsableCover: async () => true })
+    await provider.analyze(INPUT)
+    expect(calls).toHaveLength(3)
+    expect(calls[1]).toEqual({
+      imagePath: INPUT.imagePath,
+      instructions: 'You answer questions about one image, looking only at the image.',
+      prompt: 'Is there a desk in this image? Answer yes or no.',
+      schema: {
+        type: 'object',
+        properties: { answer: { type: 'string', enum: ['yes', 'no'] } },
+        required: ['answer']
+      },
+      maxTokens: 10
+    })
+  })
+
+  it('checks nothing when the cover is a placeholder', async () => {
+    const { helper: stub, calls } = stubHelper({})
+    const provider = new AppleInferenceProvider({ prompt: CHECKED, helper: stub, hasUsableCover: async () => false })
+    await provider.analyze(INPUT)
+    expect(calls).toHaveLength(1)
+  })
+
+  it('keeps a thing whose check fails or answers something else', async () => {
+    const { helper: stub } = stubHelper({ desk: new Error('helper crashed'), plant: 'maybe' as 'yes' })
+    const provider = new AppleInferenceProvider({ prompt: CHECKED, helper: stub, hasUsableCover: async () => true })
+    const result = await provider.analyze(INPUT)
+    expect(result.tags.map((t) => t.label)).toEqual(['iMac', 'desk', 'plant'])
   })
 })
 
