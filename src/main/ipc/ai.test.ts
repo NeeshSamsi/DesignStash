@@ -25,6 +25,7 @@ let settings: SettingsStore
 let push: ReturnType<typeof vi.fn>
 let activeDownloads: Map<string, AbortController>
 let appleReady: boolean
+let appleReason: string
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -43,6 +44,7 @@ beforeEach(() => {
   push = vi.fn()
   activeDownloads = new Map()
   appleReady = false
+  appleReason = 'appleIntelligenceNotEnabled'
   registerAiHandlers({
     settings,
     push,
@@ -51,7 +53,8 @@ beforeEach(() => {
       modelsDir,
       downloader: new ModelDownloader(modelsDir),
       activeDownloads,
-      appleAvailable: async () => appleReady
+      appleStatus: async () =>
+        appleReady ? { available: true, reason: null } : { available: false, reason: appleReason }
     }
   } as unknown as HandlerContext)
 })
@@ -66,6 +69,38 @@ const listModels = async () => {
   if (!res.success) throw new Error('AI_LIST_MODELS failed')
   return res.data
 }
+
+describe('AI_LIST_MODELS: the active model can’t run', () => {
+  const problem = async () => {
+    const res = await call<{ activeProblem: string | null }>(IPC_CHANNELS.AI_LIST_MODELS)
+    if (!res.success) throw new Error('AI_LIST_MODELS failed')
+    return res.data.activeProblem
+  }
+
+  it('says Apple Intelligence is off when Apple’s model is in use and the helper says so', async () => {
+    settings.update({ activeModelId: 'apple' })
+    expect(await problem()).toBe('apple-intelligence-off')
+  })
+
+  it('says macOS is still getting Apple’s model ready, or that it can’t run here', async () => {
+    settings.update({ activeModelId: 'apple' })
+    appleReason = 'modelNotReady'
+    expect(await problem()).toBe('apple-model-not-ready')
+    appleReason = 'deviceNotEligible'
+    expect(await problem()).toBe('apple-unavailable')
+  })
+
+  it('has no problem when Apple’s model can run, or another model is in use', async () => {
+    settings.update({ activeModelId: 'apple' })
+    appleReady = true
+    expect(await problem()).toBeNull()
+    appleReady = false
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+    expect(await problem()).toBeNull()
+    settings.update({ activeModelId: null })
+    expect(await problem()).toBeNull()
+  })
+})
 
 describe('AI_LIST_MODELS', () => {
   it('lists the two Qwen models with Qwen3-VL 4B as Best fit, and old models apart', async () => {

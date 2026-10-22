@@ -44,11 +44,24 @@ describe('createAppleAvailability', () => {
     await expect(createAppleAvailability({ helper: broken }).available()).resolves.toBe(false)
   })
 
+  it('says why it is not available, and nothing when it is', async () => {
+    const off = createAppleAvailability({ helper: stubHelper(async () => info(false, 'appleIntelligenceNotEnabled')) })
+    await expect(off.status()).resolves.toEqual({ available: false, reason: 'appleIntelligenceNotEnabled' })
+    const on = createAppleAvailability({ helper: stubHelper(async () => info(true)) })
+    await expect(on.status()).resolves.toEqual({ available: true, reason: null })
+    const broken = createAppleAvailability({
+      helper: stubHelper(async () => {
+        throw new HelperError('crashed', 'gone')
+      })
+    })
+    await expect(broken.status()).resolves.toEqual({ available: false, reason: 'unknown' })
+  })
+
   it('asks the helper once for a while, sharing one answer between callers', async () => {
     let now = 0
     const helper = stubHelper(async () => info(true))
     const apple = createAppleAvailability({ helper, ttlMs: 1000, now: () => now })
-    await Promise.all([apple.available(), apple.available()])
+    await Promise.all([apple.available(), apple.status()])
     now = 999
     await apple.available()
     expect(helper.info).toHaveBeenCalledOnce()

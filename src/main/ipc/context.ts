@@ -6,7 +6,7 @@ import type { SettingsStore } from '../settings'
 import type { Telemetry } from '../telemetry'
 import type { Repository } from '../db/repository'
 import { forgetRemovedModel } from '../ai/active-model'
-import { createAppleAvailability } from '../ai/apple-availability'
+import { createAppleAvailability, type AppleStatus } from '../ai/apple-availability'
 import { ModelDownloader } from '../ai/download'
 import { LlamaPidFile } from '../ai/llama-pid'
 import {
@@ -35,8 +35,8 @@ export interface AiRuntime {
   activeDownloads: Map<string, AbortController>
   /** The active model's provider, or null when none is set or it isn't installed. */
   activeProvider(): Promise<InferenceProvider | null>
-  /** Whether Apple's on-device model can run here (the Swift helper's `info`, cached a while). */
-  appleAvailable(): Promise<boolean>
+  /** Whether Apple's on-device model can run here, and why not (the Swift helper's `info`, cached a while). */
+  appleStatus(): Promise<AppleStatus>
 }
 
 /** What every domain's handler module gets. */
@@ -90,7 +90,8 @@ export function createAiRuntime(settings: SettingsStore): AiRuntime {
       return providers.forModel(model.id)
     },
     // End-to-end runs never ask the real helper, so what they see doesn't depend on the Mac.
-    appleAvailable: () => (stubAiEnabled() ? Promise.resolve(false) : apple.available())
+    appleStatus: () =>
+      stubAiEnabled() ? Promise.resolve({ available: false, reason: 'unknown' }) : apple.status()
   }
 }
 

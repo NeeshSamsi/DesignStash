@@ -1,10 +1,18 @@
 import { IPC_CHANNELS } from '@shared/ipc'
+import type { AiActiveProblem } from '@shared/ipc/ai'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { detectHardware, recommendTier } from '../ai/hardware'
 import { DownloadError, assertSafeId, classifyDownloadError } from '../ai/download'
 import { MODEL_REGISTRY, availableModels, bestFitModelId, getModel, isBuiltIn } from '../ai/registry'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
+
+/** Why the active model (Apple's) can't run, as the renderer words it. */
+function appleProblem(reason: string | null): AiActiveProblem {
+  if (reason === 'appleIntelligenceNotEnabled') return 'apple-intelligence-off'
+  if (reason === 'modelNotReady') return 'apple-model-not-ready'
+  return 'apple-unavailable'
+}
 
 export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerContext): void {
   const { downloader, activeDownloads } = ai
@@ -21,8 +29,8 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
     const activeModelId = settings.get().activeModelId
     const bestFit = bestFitModelId(detectHardware())
     // Apple's model is offered only where it can run: macOS 27 with Apple Intelligence on.
-    const appleReady = await ai.appleAvailable()
-    const offered = availableModels().filter((entry) => !isBuiltIn(entry) || appleReady)
+    const apple = await ai.appleStatus()
+    const offered = availableModels().filter((entry) => !isBuiltIn(entry) || apple.available)
     const models = await Promise.all(
       offered.map(async (entry) => ({
         id: entry.id,
@@ -41,7 +49,12 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
         active: entry.id === activeModelId
       }))
     )
-    return { models, legacy: await downloader.listLegacy() }
+    const active = activeModelId ? getModel(activeModelId) : undefined
+    return {
+      models,
+      legacy: await downloader.listLegacy(),
+      activeProblem: active && isBuiltIn(active) && !apple.available ? appleProblem(apple.reason) : null
+    }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_DOWNLOAD_MODEL, (args) => {

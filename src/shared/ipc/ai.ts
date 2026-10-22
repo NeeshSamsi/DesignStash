@@ -30,6 +30,17 @@ export const AiModelInfoSchema = z.object({
 })
 export type AiModelInfo = z.infer<typeof AiModelInfoSchema>
 
+/**
+ * Why the active model can't make suggestions right now. Only Apple's model has one: Apple
+ * Intelligence turned off, macOS still getting the model ready, or anything else that stops it.
+ */
+export const AiActiveProblemSchema = z.enum([
+  'apple-intelligence-off',
+  'apple-model-not-ready',
+  'apple-unavailable'
+])
+export type AiActiveProblem = z.infer<typeof AiActiveProblemSchema>
+
 /** The only reasons a download stops. */
 export const AiDownloadFailureSchema = z.enum(['offline', 'disk-full', 'checksum', 'server'])
 export type AiDownloadFailure = z.infer<typeof AiDownloadFailureSchema>
@@ -64,7 +75,9 @@ export const aiContract = {
     response: z.object({
       models: z.array(AiModelInfoSchema),
       /** Folders from earlier versions (the old text models). Ignored by the app and deletable. */
-      legacy: z.array(z.object({ id: z.string(), sizeBytes: z.number() }))
+      legacy: z.array(z.object({ id: z.string(), sizeBytes: z.number() })),
+      /** Set when the active model can't run, so the app can say why and offer another. */
+      activeProblem: AiActiveProblemSchema.nullable()
     })
   },
   [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: {

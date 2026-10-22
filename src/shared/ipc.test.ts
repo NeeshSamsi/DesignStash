@@ -175,9 +175,14 @@ describe('IPC Contract', () => {
             active: false
           }
         ],
-        legacy: [{ id: 'qwen2.5-1.5b', sizeBytes: 1040000000 }]
+        legacy: [{ id: 'qwen2.5-1.5b', sizeBytes: 1040000000 }],
+        activeProblem: null
       }
       expect(response.parse(valid)).toEqual(valid)
+      expect(response.parse({ ...valid, activeProblem: 'apple-intelligence-off' }).activeProblem).toBe(
+        'apple-intelligence-off'
+      )
+      expect(() => response.parse({ ...valid, activeProblem: 'gone' })).toThrow()
     })
   })
 
