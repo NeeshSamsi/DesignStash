@@ -16,7 +16,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanArchiveName } from '../../src/main/import/archive-name'
 import { stemOf } from '../../src/main/import/look-over-service'
-import { HELD_OUT_DIR, argValue, readItems, runDir, writeJson, type EvalItem } from './eval-files'
+import { HELD_OUT_DIR, SIGN_OFF_DIR, argValue, readItems, runDir, writeJson, type EvalItem } from './eval-files'
 import {
   checkAnswer,
   compileAbsent,
@@ -46,15 +46,18 @@ const HELD_OUT_GOLD_PATH = join(import.meta.dirname, 'gold-heldout.json')
  * scores the same as one that didn't.
  */
 const HELD_OUT = process.argv.includes('--held-out')
-const SCORE_NAME = HELD_OUT ? 'score-heldout' : 'score'
+const SIGN_OFF_GOLD_PATH = join(import.meta.dirname, 'gold-signoff.json')
+/** `--sign-off`: the sign-off items and gold-signoff.json join in, like `--held-out` (and alongside it, if both). */
+const SIGN_OFF = process.argv.includes('--sign-off')
+const SCORE_NAME = ['score', HELD_OUT && 'heldout', SIGN_OFF && 'signoff'].filter(Boolean).join('-')
 
 interface HeldOutGold extends Gold {
   /** Held-out ids to add to gold.json queries of the same text. */
   addToQueries: Record<string, string[]>
 }
 
-function withHeldOut(gold: Gold): Gold {
-  const held = JSON.parse(readFileSync(HELD_OUT_GOLD_PATH, 'utf8')) as HeldOutGold
+function withHeldOut(gold: Gold, path: string = HELD_OUT_GOLD_PATH): Gold {
+  const held = JSON.parse(readFileSync(path, 'utf8')) as HeldOutGold
   const queries = gold.queries.map((q) => ({
     ...q,
     relevant: [...q.relevant, ...(held.addToQueries[q.q] ?? [])]
@@ -70,8 +73,15 @@ function withHeldOut(gold: Gold): Gold {
   }
 }
 
-function isHeldOut(item: EvalItem): boolean {
-  return item.source.path.includes(`/${HELD_OUT_DIR}/`)
+function inDir(item: EvalItem, dir: string): boolean {
+  return item.source.path.includes(`/${dir}/`)
+}
+
+/** Whether a scored run includes this item: tuning items always, held-out and sign-off ones with their flags. */
+function inScope(item: EvalItem): boolean {
+  if (inDir(item, HELD_OUT_DIR)) return HELD_OUT
+  if (inDir(item, SIGN_OFF_DIR)) return SIGN_OFF
+  return true
 }
 
 /** Every answer in one pass that has a gold entry, checked against it. A failed answer is left out. */
@@ -153,7 +163,7 @@ async function main(): Promise<void> {
   const model = argValue('model')
   const version = argValue('prompt')
   if (!model || !version)
-    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out]')
+    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off]')
   if (!existsSync(GOLD_PATH)) throw new Error(`No gold data at ${GOLD_PATH}`)
   const dir = runDir(model, version)
   const resultsPath = join(dir, 'results.json')
@@ -161,11 +171,12 @@ async function main(): Promise<void> {
     throw new Error(`No run at ${resultsPath}. Run \`pnpm ai-eval:run\` first.`)
 
   const goldOnly = JSON.parse(readFileSync(GOLD_PATH, 'utf8')) as Gold
-  const gold = HELD_OUT ? withHeldOut(goldOnly) : goldOnly
-  const items = readItems().filter((i) => !i.duplicateOf && (HELD_OUT || !isHeldOut(i)))
-  const inScope = new Set(items.map((i) => i.id))
+  const withHeld = HELD_OUT ? withHeldOut(goldOnly) : goldOnly
+  const gold = SIGN_OFF ? withHeldOut(withHeld, SIGN_OFF_GOLD_PATH) : withHeld
+  const items = readItems().filter((i) => !i.duplicateOf && inScope(i))
+  const scoped = new Set(items.map((i) => i.id))
   const results = (JSON.parse(readFileSync(resultsPath, 'utf8')) as ItemResult[]).filter((r) =>
-    inScope.has(r.id)
+    scoped.has(r.id)
   )
 
   const known = new Set(items.map((i) => i.id))

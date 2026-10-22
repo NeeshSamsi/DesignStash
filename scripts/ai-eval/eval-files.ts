@@ -26,24 +26,34 @@ export const COVERS_DIR = join(EVAL_DIR, 'covers')
  */
 export const HELD_OUT_DIR = 'held-out'
 
-/** The folder a test set zip is in: `zips/`, or `held-out/` for a held-out download. */
+/** The final check (test set MANIFEST.md): covered like the rest, scored only with `--sign-off`. */
+export const SIGN_OFF_DIR = 'sign-off'
+
+const APART_DIRS = [HELD_OUT_DIR, SIGN_OFF_DIR]
+
+function zipsIn(root: string, dir: string): string[] {
+  return existsSync(join(root, dir))
+    ? readdirSync(join(root, dir))
+        .filter((n) => n.toLowerCase().endsWith('.zip'))
+        .map((n) => join(root, dir, n))
+    : []
+}
+
+/** The folder a test set zip is in: `zips/`, `held-out/` or `sign-off/`. */
 export function zipDir(name: string, root: string = TEST_SET): string {
-  return existsSync(join(root, HELD_OUT_DIR, name)) ? join(root, HELD_OUT_DIR) : join(root, 'zips')
+  const apart = APART_DIRS.find((dir) => existsSync(join(root, dir, name)))
+  return join(root, apart ?? 'zips')
 }
 
 export function realItemPaths(root: string = TEST_SET): string[] {
   const zips = readdirSync(join(root, 'zips'))
     .filter((n) => n.toLowerCase().endsWith('.zip'))
     .map((n) => join(root, 'zips', n))
-  const heldOut = existsSync(join(root, HELD_OUT_DIR))
-    ? readdirSync(join(root, HELD_OUT_DIR))
-        .filter((n) => n.toLowerCase().endsWith('.zip'))
-        .map((n) => join(root, HELD_OUT_DIR, n))
-    : []
+  const apart = APART_DIRS.flatMap((dir) => zipsIn(root, dir))
   const psds = readdirSync(join(root, 'psds'))
     .filter((n) => n.toLowerCase().endsWith('.psd'))
     .map((n) => join(root, 'psds', n))
-  return [...zips, ...heldOut, ...psds, join(root, 'folders', 'Long Website Mockup')].sort()
+  return [...zips, ...apart, ...psds, join(root, 'folders', 'Long Website Mockup')].sort()
 }
 
 export interface EvalItem {
