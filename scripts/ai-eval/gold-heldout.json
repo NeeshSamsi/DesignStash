@@ -1,0 +1,50 @@
+{
+ "_note": "Held-out item, written 2026-10-22 before any model answered it. Not read by ai-eval:score until the final check: merge with merge-heldout.",
+ "item_id": "office-identity-business-cards-free-psd-mockup",
+ "item": {
+  "title": "Floating business cards with a yellow stapler",
+  "description": "A set of white and grey business cards, also called name cards, floating around a yellow stapler on a light grey background, for a brand identity.",
+  "tags": [
+   {
+    "category": "Print & Branding",
+    "label": "Business card"
+   },
+   {
+    "category": "Print & Branding",
+    "label": "Stationery"
+   },
+   {
+    "category": "Print & Branding",
+    "label": "Brand identity"
+   },
+   {
+    "category": "Style",
+    "label": "Minimal"
+   }
+  ],
+  "absent": [
+   "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction",
+   "\\bremove\\b|\\bstart\\b|smaller|\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bdesk\\b|\\btable\\b"
+  ]
+ },
+ "add_to_queries": [
+  "business card",
+  "business cards",
+  "stationery",
+  "floating"
+ ],
+ "new_queries": [
+  {
+   "q": "brand identity",
+   "relevant": [
+    "office-identity-business-cards-free-psd-mockup"
+   ]
+  },
+  {
+   "q": "office",
+   "relevant": [
+    "office-identity-business-cards-free-psd-mockup"
+   ]
+  }
+ ]
+}
