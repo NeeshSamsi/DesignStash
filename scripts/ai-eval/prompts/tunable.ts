@@ -54,6 +54,16 @@ export const SHIPPED: PromptSpec = {
   schema: RESULT_JSON_SCHEMA
 }
 
+/** The shipped schema with a different tag count. */
+export function schemaWithTags(min: number, max: number): object {
+  const schema = structuredClone(RESULT_JSON_SCHEMA) as unknown as {
+    properties: { tags: { minItems: number; maxItems: number } }
+  }
+  schema.properties.tags.minItems = min
+  schema.properties.tags.maxItems = max
+  return schema
+}
+
 export function requestFrom(spec: PromptSpec) {
   return (input: AnalysisInput, imageUrl: string | null): ChatRequest => {
     const hasImage = imageUrl !== null
