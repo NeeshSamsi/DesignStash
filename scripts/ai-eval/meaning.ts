@@ -9,6 +9,12 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DEV_DIR, EVAL_DIR } from './eval-files'
+import {
+  DOCUMENT_PREFIX,
+  QUERY_PREFIX,
+  appendMeaningHits,
+  meaningHits
+} from '../../src/main/search/meaning'
 
 export interface EmbedModel {
   id: string
@@ -45,8 +51,8 @@ export const EMBED_MODELS: Record<string, EmbedModel> = {
   nomic: {
     id: 'nomic-embed-text-v1.5',
     file: 'nomic-embed-text-v1.5.Q8_0.gguf',
-    documentPrefix: 'search_document: ',
-    queryPrefix: 'search_query: '
+    documentPrefix: DOCUMENT_PREFIX,
+    queryPrefix: QUERY_PREFIX
   },
   qwen3: {
     id: 'Qwen3-Embedding-0.6B',
@@ -218,13 +224,9 @@ export interface Lever {
 
 const RRF_K = 60
 
-/** Meaning hits for one query, closest first. */
+/** Meaning hits for one query, closest first. The rank rule is the app's own (`src/main/search/meaning.ts`). */
 function hits(lever: Lever, query: string): string[] {
-  return [...lever.sims(query)]
-    .filter(([, s]) => s >= lever.cut)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, lever.top ?? Infinity)
-    .map(([id]) => id)
+  return meaningHits(lever.sims(query), { floor: lever.cut, top: lever.top ?? Infinity })
 }
 
 /**
@@ -241,6 +243,8 @@ export function fuse(
 ): string[] {
   if (levers.length === 0) return keywordIds
   const lists = levers.map((l) => hits(l, query))
+  // One meaning lever, keyword first: exactly what the app does.
+  if (fusion === 'cutoff' && lists.length === 1) return appendMeaningHits(keywordIds, lists[0]!)
   const score = (ids: string[][]): Map<string, number> => {
     const out = new Map<string, number>()
     for (const list of ids)

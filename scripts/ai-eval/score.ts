@@ -46,6 +46,7 @@ import {
   type Lever
 } from './meaning'
 import { createTagSnapper } from './searchable-tags'
+import { meaningDocument } from '../../src/main/search/meaning'
 
 const GOLD_PATH = join(import.meta.dirname, 'gold.json')
 const HELD_OUT_GOLD_PATH = join(import.meta.dirname, 'gold-heldout.json')
@@ -252,7 +253,7 @@ async function main(): Promise<void> {
   const embedder = EMBED ? new TextEmbedder(EMBED_MODELS[EMBED]!) : null
   const imageLever = IMAGE ? imageSimilarities() : null
   const queryTexts = gold.queries.map((q) => q.q)
-  const docText = (i: IndexedItem) => [i.title, i.description, ...i.tags.map((t) => t.label)].filter(Boolean).join('. ')
+  const docText = (i: IndexedItem) => meaningDocument(i.title, i.description, i.tags.map((t) => t.label))
   const passes = []
   for (const repeat of repeats) {
     const byId = new Map(results.filter((r) => r.repeat === repeat).map((r) => [r.id, r]))
