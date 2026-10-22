@@ -109,6 +109,12 @@ function withHeldOut(gold: Gold, path: string = HELD_OUT_GOLD_PATH): Gold {
   }
 }
 
+/** A query file: a bare `[{ q, relevant }]`, or an object with those under `queries` (gold-blind.json). */
+function readQueries(path: string): Gold['queries'] {
+  const raw = JSON.parse(readFileSync(path, 'utf8')) as Gold['queries'] | { queries: Gold['queries'] }
+  return Array.isArray(raw) ? raw : raw.queries
+}
+
 function inDir(item: EvalItem, dir: string): boolean {
   return item.source.path.includes(`/${dir}/`)
 }
@@ -200,7 +206,7 @@ async function main(): Promise<void> {
   const model = argValue('model')
   const version = argValue('prompt')
   if (!model || !version)
-    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off] [--embed bge|nomic|qwen3] [--image] [--fuse cutoff|rrf] [--cut n] [--top k] [--image-cut n] [--queries file]')
+    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off] [--embed bge|nomic|qwen3|nlsentence|nlcontextual] [--image] [--fuse cutoff|rrf] [--cut n] [--top k] [--image-cut n] [--queries file]')
   if (!existsSync(GOLD_PATH)) throw new Error(`No gold data at ${GOLD_PATH}`)
   const dir = runDir(model, version)
   const resultsPath = join(dir, 'results.json')
@@ -217,7 +223,7 @@ async function main(): Promise<void> {
         items: Object.fromEntries(
           Object.entries(goldAll.items).filter(([id]) => items.some((i) => i.id === id))
         ),
-        queries: (JSON.parse(readFileSync(QUERIES_PATH, 'utf8')) as Gold['queries']).map((q) => ({
+        queries: readQueries(QUERIES_PATH).map((q) => ({
           q: q.q,
           relevant: q.relevant
         }))

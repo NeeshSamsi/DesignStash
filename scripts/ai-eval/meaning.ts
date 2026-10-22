@@ -3,9 +3,10 @@
  * (computed by a script outside the repo), and the ways to blend them with the keyword search.
  * Eval-only; nothing here is in the app.
  */
-import { spawn, type ChildProcess } from 'node:child_process'
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DEV_DIR, EVAL_DIR } from './eval-files'
 
@@ -16,9 +17,25 @@ export interface EmbedModel {
   /** Put in front of every indexed document and every query. */
   documentPrefix: string
   queryPrefix: string
+  /** Set for macOS's built-in NaturalLanguage models, run by `apple/embed.swift` instead of llama-server. */
+  apple?: 'sentence' | 'contextual'
 }
 
 export const EMBED_MODELS: Record<string, EmbedModel> = {
+  nlsentence: {
+    id: 'nl-sentence',
+    file: '',
+    documentPrefix: '',
+    queryPrefix: '',
+    apple: 'sentence'
+  },
+  nlcontextual: {
+    id: 'nl-contextual',
+    file: '',
+    documentPrefix: '',
+    queryPrefix: '',
+    apple: 'contextual'
+  },
   bge: {
     id: 'bge-small-en-v1.5',
     file: 'bge-small-en-v1.5-q8_0.gguf',
@@ -73,6 +90,26 @@ export class TextEmbedder {
     return createHash('sha1').update(text).digest('hex')
   }
 
+  /** Embeds texts with the compiled `apple/embed.swift`, built on first use. */
+  private embedApple(texts: string[]): Vec[] {
+    const bin = join(EVAL_DIR, 'bin', 'ds-embed')
+    if (!existsSync(bin)) {
+      mkdirSync(join(EVAL_DIR, 'bin'), { recursive: true })
+      execFileSync('swiftc', ['-O', join(import.meta.dirname, 'apple', 'embed.swift'), '-o', bin])
+    }
+    const dir = mkdtempSync(join(tmpdir(), 'ds-embed-'))
+    try {
+      writeFileSync(join(dir, 'in.json'), JSON.stringify(texts))
+      execFileSync(bin, [this.model.apple!, join(dir, 'in.json'), join(dir, 'out.json')], {
+        stdio: ['ignore', 'ignore', 'inherit']
+      })
+      const raw = JSON.parse(readFileSync(join(dir, 'out.json'), 'utf8')) as (Vec | null)[]
+      return raw.map((v) => normalise(v ?? new Array(512).fill(0)))
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }
+
   private async start(): Promise<void> {
     if (this.proc) return
     const gguf = join(DEV_DIR, 'models', `embed-${this.model.id}`, this.model.file)
@@ -111,9 +148,11 @@ export class TextEmbedder {
   async embed(texts: string[]): Promise<Vec[]> {
     const missing = [...new Set(texts.filter((t) => !(this.key(t) in this.cache)))]
     if (missing.length > 0) {
-      await this.start()
       const t0 = Date.now()
-      for (let i = 0; i < missing.length; i += 16) {
+      if (this.model.apple) {
+        this.embedApple(missing).forEach((v, i) => (this.cache[this.key(missing[i]!)] = v))
+      } else await this.start()
+      for (let i = 0; !this.model.apple && i < missing.length; i += 16) {
         const batch = missing.slice(i, i + 16)
         const res = await fetch(`http://127.0.0.1:${this.port}/v1/embeddings`, {
           method: 'POST',
