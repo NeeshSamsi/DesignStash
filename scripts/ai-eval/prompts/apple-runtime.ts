@@ -10,7 +10,7 @@ import type { AnalyzeContext, EvalResult, PromptVersion } from './prompt-version
  */
 let helper: NativeHelper | null = null
 
-function useHelper(): NativeHelper {
+function sharedHelper(): NativeHelper {
   // A short idle stop, so the harness exits once the last answer is in.
   helper ??= new NativeHelper({ binaryPath: resolveHelperPath(), idleMs: 3_000 })
   return helper
@@ -43,7 +43,7 @@ export function appleVersion(version: {
       const system = request.messages.find((m) => m.role === 'system')!.content as string
       const user = request.messages.find((m) => m.role === 'user')!.content as ChatContentPart[]
       const t0 = Date.now()
-      const reply = await useHelper().describe({
+      const reply = await sharedHelper().describe({
         imagePath: hasImage ? ctx.input.imagePath : null,
         instructions: system,
         prompt: user.flatMap((p) => (p.type === 'text' ? [p.text] : [])).join('\n'),
