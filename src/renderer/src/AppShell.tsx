@@ -121,8 +121,9 @@ export default function AppShell({
   const setQuery = useLibraryStore((s) => s.setQuery)
 
   useShortcutDispatcher()
-  // ⌘K is handled by GlobalSearch (useSearchFocusShortcut); reserving it keeps anyone else off it.
-  useShortcut({ id: 'search.focus', combo: 'mod+k' })
+  // ⌘F and ⌘K are handled by GlobalSearch (useSearchFocusShortcut); reserving them keeps anyone else off them.
+  useShortcut({ id: 'search.focus', combo: 'mod+f' })
+  useShortcut({ id: 'search.focus-alias', combo: 'mod+k' })
   useShortcut({
     id: 'import.add-files',
     combo: 'mod+o',
@@ -145,32 +146,6 @@ export default function AppShell({
     id: 'settings.open',
     combo: 'mod+,',
     handler: () => runMenuCommand('settings', menuActions)
-  })
-  // ⌘1 to ⌘5 go to the pages, in sidebar order. They take the menu's path, so a dialog blocks them too.
-  useShortcut({
-    id: 'view.all',
-    combo: 'mod+1',
-    handler: () => runMenuCommand('view:all', menuActions)
-  })
-  useShortcut({
-    id: 'view.starred',
-    combo: 'mod+2',
-    handler: () => runMenuCommand('view:starred', menuActions)
-  })
-  useShortcut({
-    id: 'view.to-sort',
-    combo: 'mod+3',
-    handler: () => runMenuCommand('view:to-sort', menuActions)
-  })
-  useShortcut({
-    id: 'view.to-stash',
-    combo: 'mod+4',
-    handler: () => runMenuCommand('view:to-stash', menuActions)
-  })
-  useShortcut({
-    id: 'view.trash',
-    combo: 'mod+5',
-    handler: () => runMenuCommand('view:trash', menuActions)
   })
 
   // The page's "Clear search" empties the library query; the field follows it.

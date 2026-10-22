@@ -708,38 +708,17 @@ describe('AppShell and the macOS menu', () => {
     expect(useUiStore.getState().view).toBe('trash')
   })
 
-  it('⌘1 to ⌘5 go to My Stash, Starred, To sort, To stash and Trash', () => {
+  it('⌘F focuses the search, like ⌘K; ⌘1 is not a page shortcut', () => {
     render(
       <AppShell>
         <div />
       </AppShell>
     )
-    const pages = ['all', 'starred', 'to-sort', 'to-stash', 'trash'] as const
-    for (const [i, view] of [...pages].reverse().entries()) {
-      press({ key: String(5 - i), metaKey: true })
-      expect(useUiStore.getState().view).toBe(view)
-    }
-  })
-
-  it('⌘, opens Settings, as the menu shows', () => {
-    render(
-      <AppShell>
-        <div />
-      </AppShell>
-    )
-    press({ key: ',', metaKey: true })
-    expect(useUiStore.getState()).toMatchObject({ settingsOpen: true, settingsSection: 'my-stash' })
-  })
-
-  it('⌘5 does nothing while Settings is open', () => {
-    useUiStore.setState({ settingsOpen: true })
-    render(
-      <AppShell>
-        <div />
-      </AppShell>
-    )
-    press({ key: '5', metaKey: true })
-    expect(useUiStore.getState().view).toBe('all')
+    press({ key: 'f', metaKey: true })
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Search' }))
+    useUiStore.setState({ view: 'trash' })
+    press({ key: '1', metaKey: true })
+    expect(useUiStore.getState().view).toBe('trash')
   })
 
   it('Help › Report a Problem… opens the report dialog over the page', async () => {

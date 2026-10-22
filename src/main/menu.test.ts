@@ -82,14 +82,12 @@ describe('buildMenuTemplate', () => {
     expect(find(template, 'File', 'Add Folder…').accelerator).toBe('CmdOrCtrl+Shift+O')
   })
 
-  it('View shows ⌘K for Search and ⌘1 to ⌘5 for the pages, in sidebar order', () => {
+  it('View shows ⌘F for Search, and the pages have no shortcut', () => {
     const { template } = setup()
-    expect(find(template, 'View', 'Search').accelerator).toBe('CmdOrCtrl+K')
-    expect(
-      ['My Stash', 'Starred', 'To sort', 'To stash', 'Trash'].map(
-        (label) => find(template, 'View', label).accelerator
-      )
-    ).toEqual(['CmdOrCtrl+1', 'CmdOrCtrl+2', 'CmdOrCtrl+3', 'CmdOrCtrl+4', 'CmdOrCtrl+5'])
+    expect(find(template, 'View', 'Search').accelerator).toBe('CmdOrCtrl+F')
+    for (const label of ['My Stash', 'Starred', 'To sort', 'To stash', 'Trash']) {
+      expect(find(template, 'View', label).accelerator).toBeUndefined()
+    }
   })
 
   it('leaves every app shortcut to the window, so a key never fires twice', () => {

@@ -39,11 +39,11 @@ describe('GlobalSearch', () => {
       expect(SEARCH_DEBOUNCE_MS).toBe(250)
     })
 
-    it('focuses the field on ⌘K', () => {
+    it.each(['f', 'k'])('focuses the field on ⌘%s', (key) => {
       render(<GlobalSearch />)
       const input = screen.getByRole('textbox', { name: 'Search' })
       expect(document.activeElement).not.toBe(input)
-      fireEvent.keyDown(window, { key: 'k', metaKey: true })
+      fireEvent.keyDown(window, { key, metaKey: true })
       expect(document.activeElement).toBe(input)
     })
 

@@ -71,13 +71,13 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
     {
       label: 'View',
       submenu: [
-        command(deps, 'Search', 'search', 'CmdOrCtrl+K'),
+        command(deps, 'Search', 'search', 'CmdOrCtrl+F'),
         separator,
-        command(deps, 'My Stash', 'view:all', 'CmdOrCtrl+1'),
-        command(deps, 'Starred', 'view:starred', 'CmdOrCtrl+2'),
-        command(deps, 'To sort', 'view:to-sort', 'CmdOrCtrl+3'),
-        command(deps, 'To stash', 'view:to-stash', 'CmdOrCtrl+4'),
-        command(deps, 'Trash', 'view:trash', 'CmdOrCtrl+5'),
+        command(deps, 'My Stash', 'view:all'),
+        command(deps, 'Starred', 'view:starred'),
+        command(deps, 'To sort', 'view:to-sort'),
+        command(deps, 'To stash', 'view:to-stash'),
+        command(deps, 'Trash', 'view:trash'),
         ...devItems,
         separator,
         { role: 'togglefullscreen' }
