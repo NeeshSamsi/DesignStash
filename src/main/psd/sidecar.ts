@@ -19,6 +19,17 @@ export function collectCandidateImages(rootDir: string): string[] {
   return results
 }
 
+/** The images in a PSD's own folder (not below it) with the PSD's name, in any case. */
+export function imagesNamedFor(psdPath: string): string[] {
+  const dir = dirname(psdPath)
+  const stem = normalizeStem(psdPath)
+  return readdirSync(dir)
+    .filter((name) => SIDECAR_EXTENSIONS.includes(extname(name).toLowerCase()))
+    .filter((name) => normalizeStem(name) === stem)
+    .map((name) => join(dir, name))
+    .filter((path) => statSync(path).isFile())
+}
+
 export function normalizeStem(fileName: string): string {
   const base = basename(fileName, extname(fileName))
   return base.toLowerCase().trim().replace(/\s+/g, ' ')

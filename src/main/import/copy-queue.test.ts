@@ -95,7 +95,7 @@ describe('landing files', () => {
     expect(m).toMatchObject({ stage: 'to_sort', coverSource: 'embedded' })
     expect(m.libraryPath.startsWith(join(root, 'mockups'))).toBe(true)
     expect(readFileSync(m.libraryPath, 'utf8')).toMatch(/AAAA|BBBBBB/)
-    expect(m.importContext).toMatchObject({ folderTrail: ['Phones'] })
+    expect(m.importContext).toMatchObject({ folderTrail: ['drop', 'Phones'] })
     expect(m.importContext).not.toHaveProperty('archiveName')
     // Originals are untouched, and no record of where they were is kept.
     expect(existsSync(a) && existsSync(b)).toBe(true)

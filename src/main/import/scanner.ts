@@ -1,7 +1,7 @@
 import { createWriteStream, mkdirSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, basename, sep, relative } from 'node:path'
 import { pipeline } from 'node:stream/promises'
-import { collectCandidateImages } from '../psd'
+import { collectCandidateImages, imagesNamedFor } from '../psd'
 import { archiveKindOf, classifyEntry, entryPath, listArchive, openArchiveEntry } from './archive'
 import type { ArchiveEntry } from './archive'
 import { archiveFolderTrail } from './archive-name'
@@ -165,14 +165,16 @@ export async function scanForPsds(droppedPaths: string[], opts: ScanOptions): Pr
 
   for (const path of droppedPaths) {
     const stat = statSync(path)
-    // Cover images come from dropped folders. A dropped zip's own folder is not walked.
-    if (stat.isDirectory() || archiveKindOf(path) === null) {
-      const root = stat.isDirectory() ? path : join(path, '..')
-      for (const imagePath of collectCandidateImages(root)) {
-        candidateImages.add(imagePath)
-      }
+    // Cover images come from dropped folders. A dropped PSD gets only the images beside it with its
+    // own name, so its folder (Downloads, say) isn't walked; nor is a dropped zip's.
+    if (stat.isDirectory()) {
+      for (const imagePath of collectCandidateImages(path)) candidateImages.add(imagePath)
+    } else if (extname(path).toLowerCase() === '.psd') {
+      for (const imagePath of imagesNamedFor(path)) candidateImages.add(imagePath)
     }
-    recurse(path, stat.isDirectory() ? path : join(path, '..'))
+    // A dropped folder's own name starts its PSDs' trail ("Long Website Mockup / PSD"): it is often the
+    // only name that says what they are. A dropped file's folder isn't part of the drop.
+    recurse(path, join(path, '..'))
   }
 
   for (const zip of zips) {
