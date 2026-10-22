@@ -15,6 +15,12 @@ const cspMetaPlugin = {
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    // The PostHog key is baked in at build time (the release workflow passes the secret), never
+    // read from the environment at runtime. Without POSTHOG_KEY the build has no key and stays Noop.
+    define: {
+      __POSTHOG_KEY__: JSON.stringify(process.env.POSTHOG_KEY ?? ''),
+      __POSTHOG_HOST__: JSON.stringify(process.env.POSTHOG_HOST ?? '')
+    },
     resolve: {
       alias: { '@shared': resolve('src/shared') }
     },
