@@ -6,8 +6,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { AnalysisInput } from '../../shared/inference'
 import { HelperError, NativeHelper } from '../native/helper'
 import { AppleInferenceProvider, appleDescribeRequest, withoutPatterns } from './apple-provider'
-import { RESULT_JSON_SCHEMA, buildRequest, type ChatContentPart } from './vision-provider'
+import type { PromptProfile } from './prompts'
+import { RESULT_JSON_SCHEMA, buildRequest, parseResult, type ChatContentPart } from './vision-provider'
 
+const SHIPPED: PromptProfile = { buildRequest, parseResult }
 const FAKE = resolve('src/main/native/__fixtures__/fake-helper.mjs')
 
 const INPUT: AnalysisInput = {
@@ -46,7 +48,7 @@ const textOf = (input: AnalysisInput, hasImage: boolean) =>
 
 describe('AppleInferenceProvider', () => {
   it('asks the helper with the cover and returns the parsed suggestion', async () => {
-    const provider = new AppleInferenceProvider({ helper, hasUsableCover: async () => true })
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper, hasUsableCover: async () => true })
     const result = await provider.analyze(INPUT)
     expect(result.title).toBe('Tape roll on a wall')
     // parseResult's rules apply: the Angle tag is never suggested.
@@ -57,7 +59,7 @@ describe('AppleInferenceProvider', () => {
   })
 
   it("sends the app's own prompt and schema, the schema without patterns", async () => {
-    const provider = new AppleInferenceProvider({ helper, hasUsableCover: async () => true })
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper, hasUsableCover: async () => true })
     await provider.analyze(INPUT)
     const request = buildRequest(INPUT, 'image')
     expect(sent()).toEqual([
@@ -72,7 +74,7 @@ describe('AppleInferenceProvider', () => {
   })
 
   it('describes from the names alone when the cover is missing or a placeholder', async () => {
-    const provider = new AppleInferenceProvider({ helper, hasUsableCover: async () => false })
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper, hasUsableCover: async () => false })
     const result = await provider.analyze(INPUT)
     expect(result.title).toBe('Tape roll')
     const [args] = sent()
@@ -85,12 +87,28 @@ describe('AppleInferenceProvider', () => {
     await sharp({ create: { width: 400, height: 300, channels: 3, background: '#ffffff' } })
       .png()
       .toFile(blank)
-    await new AppleInferenceProvider({ helper }).analyze({ ...INPUT, imagePath: blank })
+    await new AppleInferenceProvider({ prompt: SHIPPED, helper }).analyze({ ...INPUT, imagePath: blank })
     expect(sent()[0]!.path).toBeNull()
+  })
+
+  it("asks in the words of the model's prompt profile and reads the reply with it", async () => {
+    const tuned = buildRequest(INPUT, 'image')
+    const prompt: PromptProfile = {
+      buildRequest: (input, imageUrl) => ({
+        ...buildRequest(input, imageUrl),
+        messages: [{ role: 'system', content: 'Tuned instructions.' }, tuned.messages[1]!],
+        max_tokens: 300
+      }),
+      parseResult: (text) => ({ ...parseResult(text), title: 'Read by the profile' })
+    }
+    const provider = new AppleInferenceProvider({ prompt, helper, hasUsableCover: async () => true })
+    await expect(provider.analyze(INPUT)).resolves.toMatchObject({ title: 'Read by the profile' })
+    expect(sent()[0]).toMatchObject({ instructions: 'Tuned instructions.', maxTokens: 300 })
   })
 
   it('passes a helper failure on to the queue', async () => {
     const provider = new AppleInferenceProvider({
+      prompt: SHIPPED,
       helper: new NativeHelper({ binaryPath: null }),
       hasUsableCover: async () => true
     })
@@ -98,7 +116,7 @@ describe('AppleInferenceProvider', () => {
   })
 
   it('exposes id "apple" and a name', () => {
-    const provider = new AppleInferenceProvider({ helper })
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper })
     expect(provider.id).toBe('apple')
     expect(provider.name).toBe("Apple's on-device model")
   })
@@ -110,7 +128,7 @@ describe('appleDescribeRequest', () => {
       ...INPUT,
       groupContext: { originalTitle: 'Tape roll', originalDescription: 'A roll.', originalTags: [] }
     }
-    expect(appleDescribeRequest(variant, true).prompt).toContain('This is a variant of "Tape roll"')
+    expect(appleDescribeRequest(variant, true, SHIPPED).prompt).toContain('This is a variant of "Tape roll"')
   })
 })
 

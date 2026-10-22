@@ -3,6 +3,7 @@ import sharp from 'sharp'
 import type { InferenceProvider, AnalysisInput, InferenceResult } from '../../shared/inference'
 import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
+import type { PromptProfile } from './prompts/profile'
 
 /**
  * The categories the model tags in, with what each covers: the seed categories in `db/bootstrap.ts`
@@ -79,9 +80,17 @@ export interface ChatRequest {
   /** Qwen's own generation config uses 1.05; llama-server's default is off. */
   repeat_penalty: number
   max_tokens: number
+  /** The rest of llama-server's sampling settings, for a model's tuned prompt profile. */
+  top_p?: number
+  top_k?: number
+  min_p?: number
+  presence_penalty?: number
+  seed?: number
 }
 
 export interface VisionProviderDeps {
+  /** The model's own prompt: how it is asked and how its reply is read. */
+  prompt: PromptProfile
   /** Send one chat request and return the reply text. */
   complete(request: ChatRequest): Promise<string>
   /** The cover as a data URL the runtime can decode, or null when there isn't one to read. */
@@ -322,8 +331,9 @@ export async function readCoverAsDataUrl(path: string): Promise<string | null> {
 /**
  * Inference provider for a vision model (GGUF + mmproj) behind llama.cpp. It shows the model
  * the mockup's cover first, with the file name and folder trail as secondary text, and asks
- * for a JSON reply constrained by `RESULT_JSON_SCHEMA`. The transport is injected: the
- * provider factory wires it to a `LlamaServer`; tests pass a stub.
+ * in the words of the model's prompt profile (today's profiles all use `buildRequest`, a JSON
+ * reply constrained by `RESULT_JSON_SCHEMA`). The transport is injected: the provider factory
+ * wires it to a `LlamaServer`; tests pass a stub.
  */
 export class VisionInferenceProvider implements InferenceProvider {
   readonly id = 'vision'
@@ -335,8 +345,8 @@ export class VisionInferenceProvider implements InferenceProvider {
 
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
     const imageUrl = await this.deps.readImage(input.imagePath)
-    const reply = await this.deps.complete(buildRequest(input, imageUrl))
-    return parseResult(reply)
+    const reply = await this.deps.complete(this.deps.prompt.buildRequest(input, imageUrl))
+    return this.deps.prompt.parseResult(reply)
   }
 
   async dispose(): Promise<void> {

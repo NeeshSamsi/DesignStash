@@ -7,13 +7,14 @@
  *   pnpm helper:try people <image>
  *   pnpm helper:try classify <image>
  *   pnpm helper:try featureprint <image>
- *   pnpm helper:try describe <image> [--name "File name.psd"]   # AppleInferenceProvider, the app's prompt
+ *   pnpm helper:try describe <image> [--name "File name.psd"]   # AppleInferenceProvider, prompts/apple.ts
  *   pnpm helper:try describe-text <image | -> "<prompt>"        # plain text, no schema
  *
  * Uses `DESIGNSTASH_HELPER` or the dev copy; never starts llama-server.
  */
 import { basename, dirname, resolve } from 'node:path'
 import { AppleInferenceProvider } from '../src/main/ai/apple-provider'
+import { PROMPT_PROFILES } from '../src/main/ai/prompts'
 import { NativeHelper, resolveHelperPath } from '../src/main/native/helper'
 
 const [cmd, target, ...rest] = process.argv.slice(2)
@@ -62,7 +63,7 @@ async function main(): Promise<void> {
         const path = need()
         // An eval cover lives at covers/<id>/cover.webp, so the folder name stands in for the file name.
         const fileName = option('name') ?? `${basename(dirname(path))}.psd`
-        output = await new AppleInferenceProvider({ helper }).analyze({
+        output = await new AppleInferenceProvider({ prompt: PROMPT_PROFILES.apple, helper }).analyze({
           imagePath: path,
           fileName,
           folderTrail: []

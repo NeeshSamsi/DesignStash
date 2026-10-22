@@ -14,6 +14,7 @@ import {
   type ChatContentPart,
   type ChatRequest
 } from './vision-provider'
+import type { PromptProfile } from './prompts'
 
 const VALID = {
   title: 'MacBook on white steps',
@@ -32,6 +33,7 @@ const INPUT: AnalysisInput = {
 }
 
 const IMAGE = 'data:image/jpeg;base64,AAAA'
+const SHIPPED: PromptProfile = { buildRequest, parseResult }
 
 function makeProvider(reply: object | string = VALID, image: string | null = IMAGE) {
   const complete = vi.fn<(req: ChatRequest) => Promise<string>>(async () =>
@@ -39,7 +41,12 @@ function makeProvider(reply: object | string = VALID, image: string | null = IMA
   )
   const readImage = vi.fn<(path: string) => Promise<string | null>>(async () => image)
   const dispose = vi.fn(async () => {})
-  const provider = new VisionInferenceProvider('Qwen 2.5 VL 3B', { complete, readImage, dispose })
+  const provider = new VisionInferenceProvider('Qwen 2.5 VL 3B', {
+    prompt: SHIPPED,
+    complete,
+    readImage,
+    dispose
+  })
   return { provider, complete, readImage, dispose }
 }
 
@@ -93,6 +100,24 @@ describe('VisionInferenceProvider.analyze', () => {
     expect(text).toContain('Device: macbook')
   })
 
+  it("asks with the model's own prompt profile and reads the reply with it", async () => {
+    const request = { ...buildRequest(INPUT, IMAGE), temperature: 0.7, top_k: 20 }
+    const prompt: PromptProfile = {
+      buildRequest: vi.fn(() => request),
+      parseResult: vi.fn(() => ({ title: 'From the profile', description: 'd', tags: [] }))
+    }
+    const complete = vi.fn(async () => 'raw reply')
+    const provider = new VisionInferenceProvider('m', {
+      prompt,
+      complete,
+      readImage: async () => IMAGE
+    })
+    await expect(provider.analyze(INPUT)).resolves.toMatchObject({ title: 'From the profile' })
+    expect(prompt.buildRequest).toHaveBeenCalledWith(INPUT, IMAGE)
+    expect(complete).toHaveBeenCalledWith(request)
+    expect(prompt.parseResult).toHaveBeenCalledWith('raw reply')
+  })
+
   it('stops its runtime on dispose', async () => {
     const { provider, dispose } = makeProvider()
     await provider.dispose()
@@ -107,6 +132,7 @@ describe('VisionInferenceProvider.analyze', () => {
 
   it('passes a failed request on to the queue', async () => {
     const provider = new VisionInferenceProvider('m', {
+      prompt: SHIPPED,
       complete: async () => {
         throw new Error('llama-server answered 500: boom')
       },
