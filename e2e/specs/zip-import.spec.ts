@@ -150,12 +150,14 @@ test.describe('zip import on the test set', () => {
     // The test set itself is untouched.
     for (const z of zips) expect(sha256(join(edge, z)), z).toBe(before[z])
 
-    // Folder names: no `..`, the random ID prefix is gone, and a zip's four PSDs are one pile.
+    // Folder names: the dropped folder's own name first, no `..`, the random ID prefix is gone, and
+    // a zip's four PSDs are one pile.
     const batchId = (await toSort(app))[0]!.batchId
     const proposal = (await app.invoke<Proposal>('grouping:propose', { batchId })).data!
     const members = [...proposal.groups.flatMap((g) => g.members), ...proposal.singletons]
     expect(members.flatMap((m) => m.folderTrail)).not.toContain('..')
     expect(members.find((m) => m.fileName === 'Random Prefix Mockup.psd')?.folderTrail).toEqual([
+      'edge',
       'Random Prefix Mockup'
     ])
     const variants = proposal.groups.find((g) =>
