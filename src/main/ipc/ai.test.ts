@@ -316,6 +316,29 @@ describe('the meaning-search model', () => {
     expect(again).toMatchObject({ data: { meaning: { installed: true } } })
   })
 
+  it('downloads and catches up the index with no vision model installed or in use (AI skipped)', async () => {
+    const download = vi
+      .spyOn(ModelDownloader.prototype, 'download')
+      .mockImplementation(async (modelId: string) => {
+        install(modelId, ['model.gguf'])
+      })
+    expect(settings.get().activeModelId).toBeNull()
+    expect(await call(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id })).toEqual({
+      success: true,
+      data: { started: true }
+    })
+    await vi.waitFor(() => expect(embeddings.backfill).toHaveBeenCalledTimes(1))
+    expect(download).toHaveBeenCalledWith(id, expect.anything())
+    const list = await call<{ models: ListedModel[]; meaning: { installed: boolean } }>(
+      IPC_CHANNELS.AI_LIST_MODELS
+    )
+    if (!list.success) throw new Error('list failed')
+    expect(list.data.meaning.installed).toBe(true)
+    expect(list.data.models.filter((m) => m.installed && m.id !== 'apple')).toEqual([])
+    expect(settings.get().activeModelId).toBeNull()
+    download.mockRestore()
+  })
+
   it('can not be made the active model', async () => {
     settings.update({ activeModelId: 'qwen3-vl-4b' })
     expect(await call(IPC_CHANNELS.AI_SET_ACTIVE, { id })).toMatchObject({
