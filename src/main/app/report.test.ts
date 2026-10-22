@@ -12,7 +12,7 @@ const facts: ReportFacts = {
   toStash: 2,
   trash: 1,
   stashCheck: 'in-sync',
-  aiModel: 'qwen2.5-vl-3b'
+  aiModel: 'qwen3-vl-4b'
 }
 
 describe('buildReport', () => {

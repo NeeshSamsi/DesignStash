@@ -1,9 +1,8 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { detectHardware, recommendTier } from '../ai/hardware'
-import { getModel } from '../ai/registry'
 import { DownloadError, assertSafeId, classifyDownloadError } from '../ai/download'
-import { MODEL_REGISTRY, availableModels, bestFitModelId } from '../ai/registry'
+import { MODEL_REGISTRY, availableModels, bestFitModelId, getModel, isBuiltIn } from '../ai/registry'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
@@ -21,8 +20,11 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
   registerIpcHandler(IPC_CHANNELS.AI_LIST_MODELS, async () => {
     const activeModelId = settings.get().activeModelId
     const bestFit = bestFitModelId(detectHardware())
+    // Apple's model is offered only where it can run: macOS 27 with Apple Intelligence on.
+    const appleReady = await ai.appleAvailable()
+    const offered = availableModels().filter((entry) => !isBuiltIn(entry) || appleReady)
     const models = await Promise.all(
-      availableModels().map(async (entry) => ({
+      offered.map(async (entry) => ({
         id: entry.id,
         name: entry.name,
         tier: entry.tier,
@@ -33,8 +35,9 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
         speed: entry.speed,
         minMemoryGB: entry.minMemoryGB,
         bestFit: entry.id === bestFit,
+        builtIn: isBuiltIn(entry),
         downloadedBytes: await downloader.downloadedBytes(entry.id),
-        installed: await downloader.isInstalled(entry.id),
+        installed: isBuiltIn(entry) || (await downloader.isInstalled(entry.id)),
         active: entry.id === activeModelId
       }))
     )
@@ -84,6 +87,9 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
 
   registerIpcHandler(IPC_CHANNELS.AI_DELETE_MODEL, async (args) => {
     assertSafeId(args.id)
+    const model = getModel(args.id)
+    // A built-in model comes with macOS: there is nothing of ours to delete.
+    if (model && isBuiltIn(model)) return { deleted: false, inUse: false, undoable: false }
     const inUse = settings.get().activeModelId === args.id
     if (inUse && !args.confirmed) return { deleted: false, inUse: true, undoable: false }
 
@@ -91,7 +97,7 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
     activeDownloads.get(args.id)?.abort()
     activeDownloads.delete(args.id)
 
-    const legacy = !getModel(args.id)
+    const legacy = !model
     if (legacy) {
       await downloader.deleteModel(args.id)
       return { deleted: true, inUse: false, undoable: false }

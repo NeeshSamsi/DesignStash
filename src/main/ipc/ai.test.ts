@@ -24,6 +24,7 @@ let modelsDir: string
 let settings: SettingsStore
 let push: ReturnType<typeof vi.fn>
 let activeDownloads: Map<string, AbortController>
+let appleReady: boolean
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -41,92 +42,135 @@ beforeEach(() => {
   settings = createSettingsStore(base)
   push = vi.fn()
   activeDownloads = new Map()
+  appleReady = false
   registerAiHandlers({
     settings,
     push,
     telemetry: { get: () => ({ track: vi.fn() }) },
-    ai: { modelsDir, downloader: new ModelDownloader(modelsDir), activeDownloads }
+    ai: {
+      modelsDir,
+      downloader: new ModelDownloader(modelsDir),
+      activeDownloads,
+      appleAvailable: async () => appleReady
+    }
   } as unknown as HandlerContext)
 })
 
 afterEach(() => rmSync(base, { recursive: true, force: true }))
 
+type ListedModel = { id: string; installed: boolean; bestFit: boolean; builtIn: boolean; sizeBytes: number }
+const listModels = async () => {
+  const res = await call<{ models: ListedModel[]; legacy: { id: string }[] }>(
+    IPC_CHANNELS.AI_LIST_MODELS
+  )
+  if (!res.success) throw new Error('AI_LIST_MODELS failed')
+  return res.data
+}
+
 describe('AI_LIST_MODELS', () => {
-  it('lists the two vision models with Best fit marked, and old text models apart', async () => {
-    install('qwen2.5-vl-3b')
+  it('lists the two Qwen models with Qwen3-VL 4B as Best fit, and old models apart', async () => {
+    install('qwen3-vl-4b')
     install('qwen2.5-1.5b', ['old.gguf'])
 
-    const res = await call<{
-      models: { id: string; installed: boolean; bestFit: boolean }[]
-      legacy: { id: string }[]
-    }>(IPC_CHANNELS.AI_LIST_MODELS)
+    const { models, legacy } = await listModels()
+    expect(models.map((m) => m.id)).toEqual(['qwen3-vl-4b', 'qwen3.5-9b'])
+    expect(models.filter((m) => m.bestFit).map((m) => m.id)).toEqual(['qwen3-vl-4b'])
+    expect(models.find((m) => m.id === 'qwen3-vl-4b')?.installed).toBe(true)
+    expect(models.every((m) => !m.builtIn)).toBe(true)
+    expect(legacy.map((l) => l.id)).toEqual(['qwen2.5-1.5b'])
+  })
 
-    expect(res.success && res.data.models.map((m) => m.id)).toEqual([
-      'qwen2.5-vl-3b',
-      'qwen2.5-vl-7b'
-    ])
-    expect(res.success && res.data.models.filter((m) => m.bestFit)).toHaveLength(1)
-    expect(res.success && res.data.models.find((m) => m.id === 'qwen2.5-vl-3b')?.installed).toBe(
-      true
-    )
-    expect(res.success && res.data.legacy.map((l) => l.id)).toEqual(['qwen2.5-1.5b'])
+  it('lists the removed Qwen 2.5 models as old folders, with their files left on disk', async () => {
+    install('qwen2.5-vl-3b')
+    install('qwen2.5-vl-7b')
+    const { models, legacy } = await listModels()
+    expect(models.map((m) => m.id)).not.toContain('qwen2.5-vl-3b')
+    expect(legacy.map((l) => l.id).sort()).toEqual(['qwen2.5-vl-3b', 'qwen2.5-vl-7b'])
+    expect(existsSync(join(modelsDir, 'qwen2.5-vl-3b', 'model.gguf'))).toBe(true)
+  })
+
+  it('adds Apple’s model, built in and ready, only when the helper says it is available', async () => {
+    appleReady = true
+    const { models } = await listModels()
+    expect(models.map((m) => m.id)).toEqual(['qwen3-vl-4b', 'qwen3.5-9b', 'apple'])
+    expect(models.find((m) => m.id === 'apple')).toMatchObject({
+      builtIn: true,
+      installed: true,
+      bestFit: false,
+      sizeBytes: 0
+    })
+  })
+
+  it('shows no model as active when the stored one was removed from the catalogue', async () => {
+    settings.update({ activeModelId: 'qwen2.5-vl-3b' })
+    const res = await call<{ models: { active: boolean }[] }>(IPC_CHANNELS.AI_LIST_MODELS)
+    expect(res.success && res.data.models.some((m) => m.active)).toBe(false)
   })
 })
 
 describe('AI_DELETE_MODEL', () => {
   it('deletes a model that is not in use at once, and Undo brings it back', async () => {
-    install('qwen2.5-vl-7b')
+    install('qwen3.5-9b')
 
-    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-7b' })).toEqual({
+    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen3.5-9b' })).toEqual({
       success: true,
       data: { deleted: true, inUse: false, undoable: true }
     })
-    expect(existsSync(join(modelsDir, 'qwen2.5-vl-7b'))).toBe(false)
+    expect(existsSync(join(modelsDir, 'qwen3.5-9b'))).toBe(false)
 
-    expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen2.5-vl-7b' })).toEqual({
+    expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen3.5-9b' })).toEqual({
       success: true,
       data: { restored: true }
     })
-    expect(existsSync(join(modelsDir, 'qwen2.5-vl-7b', 'model.gguf'))).toBe(true)
+    expect(existsSync(join(modelsDir, 'qwen3.5-9b', 'model.gguf'))).toBe(true)
   })
 
   it('keeps the model in use and says so until the user confirms', async () => {
-    install('qwen2.5-vl-3b')
-    settings.update({ activeModelId: 'qwen2.5-vl-3b' })
+    install('qwen3-vl-4b')
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
 
-    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-3b' })).toEqual({
+    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen3-vl-4b' })).toEqual({
       success: true,
       data: { deleted: false, inUse: true, undoable: false }
     })
-    expect(existsSync(join(modelsDir, 'qwen2.5-vl-3b', 'model.gguf'))).toBe(true)
-    expect(settings.get().activeModelId).toBe('qwen2.5-vl-3b')
+    expect(existsSync(join(modelsDir, 'qwen3-vl-4b', 'model.gguf'))).toBe(true)
+    expect(settings.get().activeModelId).toBe('qwen3-vl-4b')
   })
 
   it('deletes the model in use once confirmed, stops using it, and Undo can make it active again', async () => {
-    install('qwen2.5-vl-3b')
-    settings.update({ activeModelId: 'qwen2.5-vl-3b' })
+    install('qwen3-vl-4b')
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
 
     expect(
-      await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-3b', confirmed: true })
+      await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen3-vl-4b', confirmed: true })
     ).toEqual({
       success: true,
       data: { deleted: true, inUse: true, undoable: true }
     })
     expect(settings.get().activeModelId).toBeNull()
 
-    await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen2.5-vl-3b', makeActive: true })
-    expect(settings.get().activeModelId).toBe('qwen2.5-vl-3b')
+    await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen3-vl-4b', makeActive: true })
+    expect(settings.get().activeModelId).toBe('qwen3-vl-4b')
   })
 
   it('stops a download of the model being deleted', async () => {
-    install('qwen2.5-vl-7b')
+    install('qwen3.5-9b')
     const controller = new AbortController()
-    activeDownloads.set('qwen2.5-vl-7b', controller)
+    activeDownloads.set('qwen3.5-9b', controller)
 
-    await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-7b' })
+    await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen3.5-9b' })
 
     expect(controller.signal.aborted).toBe(true)
-    expect(activeDownloads.has('qwen2.5-vl-7b')).toBe(false)
+    expect(activeDownloads.has('qwen3.5-9b')).toBe(false)
+  })
+
+  it('never deletes Apple’s built-in model', async () => {
+    settings.update({ activeModelId: 'apple' })
+    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'apple', confirmed: true })).toEqual({
+      success: true,
+      data: { deleted: false, inUse: false, undoable: false }
+    })
+    expect(settings.get().activeModelId).toBe('apple')
   })
 
   it('deletes an old text-model folder for good', async () => {
@@ -147,7 +191,7 @@ describe('AI_DELETE_MODEL', () => {
   })
 
   it('reports nothing deleted for a model that is not there', async () => {
-    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen2.5-vl-7b' })).toEqual({
+    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen3.5-9b' })).toEqual({
       success: true,
       data: { deleted: false, inUse: false, undoable: false }
     })
@@ -172,7 +216,7 @@ describe('AI_DOWNLOAD_MODEL tracking', () => {
       }
     } as unknown as HandlerContext)
 
-    const id = 'qwen2.5-vl-3b'
+    const id = 'qwen3-vl-4b'
     expect(await call(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id })).toMatchObject({
       data: { started: true }
     })

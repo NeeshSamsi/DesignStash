@@ -18,6 +18,11 @@ export const AiModelInfoSchema = z.object({
   minMemoryGB: z.number(),
   /** The model shown as "Best fit for this Mac". */
   bestFit: z.boolean(),
+  /**
+   * Comes with macOS (Apple's on-device model): nothing to download or delete, always installed.
+   * Listed only when this Mac can run it (macOS 27, Apple Intelligence on).
+   */
+  builtIn: z.boolean(),
   /** Bytes of a stopped download already on disk. Trying again carries on from here. */
   downloadedBytes: z.number(),
   installed: z.boolean(),

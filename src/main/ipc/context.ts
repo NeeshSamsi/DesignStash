@@ -5,9 +5,17 @@ import type { InferenceProvider } from '@shared/inference'
 import type { SettingsStore } from '../settings'
 import type { Telemetry } from '../telemetry'
 import type { Repository } from '../db/repository'
+import { forgetRemovedModel } from '../ai/active-model'
+import { createAppleAvailability } from '../ai/apple-availability'
 import { ModelDownloader } from '../ai/download'
 import { LlamaPidFile } from '../ai/llama-pid'
-import { createProviderFactory, resolveLlamaServerPath } from '../ai/provider-factory'
+import {
+  createProviderFactory,
+  resolveLlamaServerPath,
+  stubAiEnabled
+} from '../ai/provider-factory'
+import { getModel, isBuiltIn } from '../ai/registry'
+import { NativeHelper, resolveHelperPath } from '../native/helper'
 import { LibraryService } from '../library/library-service'
 
 /**
@@ -27,6 +35,8 @@ export interface AiRuntime {
   activeDownloads: Map<string, AbortController>
   /** The active model's provider, or null when none is set or it isn't installed. */
   activeProvider(): Promise<InferenceProvider | null>
+  /** Whether Apple's on-device model can run here (the Swift helper's `info`, cached a while). */
+  appleAvailable(): Promise<boolean>
 }
 
 /** What every domain's handler module gets. */
@@ -44,6 +54,12 @@ export interface HandlerContext {
 export function createAiRuntime(settings: SettingsStore): AiRuntime {
   const modelsDir = join(settings.getLibraryRoot(), '..', 'models')
   const downloader = new ModelDownloader(modelsDir)
+  // Qwen 2.5 VL 3B or 7B, chosen before the switch, reads as no model chosen.
+  forgetRemovedModel(settings)
+
+  // The Swift helper starts on first use and stops itself when idle.
+  const helper = new NativeHelper({ binaryPath: resolveHelperPath() })
+  const apple = createAppleAvailability({ helper })
 
   // A llama-server left running by a crashed or killed app is stopped now, and this run's is
   // remembered so the next launch can do the same.
@@ -52,10 +68,14 @@ export function createAiRuntime(settings: SettingsStore): AiRuntime {
   const providers = createProviderFactory({
     modelsDir,
     llamaServerPath: () => resolveLlamaServerPath(),
-    pidFile
+    pidFile,
+    apple: { helper, availability: apple }
   })
-  // A normal quit stops it too, rather than leaving that to the process exit hook.
-  app.on('will-quit', () => void providers.dispose().catch(() => {}))
+  // A normal quit stops them too, rather than leaving that to the process exit hook.
+  app.on('will-quit', () => {
+    void providers.dispose().catch(() => {})
+    void helper.stop().catch(() => {})
+  })
 
   return {
     modelsDir,
@@ -63,11 +83,14 @@ export function createAiRuntime(settings: SettingsStore): AiRuntime {
     activeDownloads: new Map(),
     async activeProvider() {
       const activeModelId = settings.get().activeModelId
-      if (!activeModelId) return null
-      const installed = await downloader.isInstalled(activeModelId)
-      if (!installed) return null
-      return providers.forModel(activeModelId)
-    }
+      const model = activeModelId ? getModel(activeModelId) : undefined
+      if (!model) return null
+      // A built-in model has no files; the factory asks the helper whether it can run.
+      if (!isBuiltIn(model) && !(await downloader.isInstalled(model.id))) return null
+      return providers.forModel(model.id)
+    },
+    // End-to-end runs never ask the real helper, so what they see doesn't depend on the Mac.
+    appleAvailable: () => (stubAiEnabled() ? Promise.resolve(false) : apple.available())
   }
 }
 
