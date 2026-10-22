@@ -36,6 +36,15 @@ import {
   type QueryScore
 } from './scoring'
 import { SearchSim, type IndexedItem } from './search-sim'
+import {
+  EMBED_MODELS,
+  TextEmbedder,
+  fuse,
+  imageSimilarities,
+  textSimilarities,
+  type Fusion,
+  type Lever
+} from './meaning'
 import { createTagSnapper } from './searchable-tags'
 
 const GOLD_PATH = join(import.meta.dirname, 'gold.json')
@@ -49,7 +58,25 @@ const HELD_OUT = process.argv.includes('--held-out')
 const SIGN_OFF_GOLD_PATH = join(import.meta.dirname, 'gold-signoff.json')
 /** `--sign-off`: the sign-off items and gold-signoff.json join in, like `--held-out` (and alongside it, if both). */
 const SIGN_OFF = process.argv.includes('--sign-off')
-const SCORE_NAME = ['score', HELD_OUT && 'heldout', SIGN_OFF && 'signoff'].filter(Boolean).join('-')
+/**
+ * Meaning search, off unless asked for: `--embed bge|nomic|qwen3` blends in text embeddings,
+ * `--image` the SigLIP image scores (`siglip-scores.json`), both blended by `--fuse cutoff|rrf`.
+ * `--cut` and `--image-cut` set the similarity a meaning hit needs.
+ */
+const EMBED = argValue('embed')
+const IMAGE = process.argv.includes('--image')
+const FUSION = (argValue('fuse') ?? 'cutoff') as Fusion
+const CUT = Number(argValue('cut') ?? '0.6')
+const IMAGE_CUT = Number(argValue('image-cut') ?? '0.3')
+const MEANING = [EMBED && `embed-${EMBED}`, IMAGE && 'image'].filter(Boolean).join('-')
+const SCORE_NAME = [
+  'score',
+  HELD_OUT && 'heldout',
+  SIGN_OFF && 'signoff',
+  MEANING && `${MEANING}-${FUSION}`
+]
+  .filter(Boolean)
+  .join('-')
 
 interface HeldOutGold extends Gold {
   /** Held-out ids to add to gold.json queries of the same text. */
@@ -112,12 +139,12 @@ const NAMES = !process.argv.includes('--no-names')
 // Stemming is not in the app (see the guide), so it is off unless asked for.
 const STEM = process.argv.includes('--stem')
 
-function searchAll(gold: Gold, indexed: IndexedItem[]): QueryScore[] {
+function searchAll(gold: Gold, indexed: IndexedItem[], levers: Lever[] = []): QueryScore[] {
   const sim = new SearchSim(indexed, { synonyms: SYNONYMS, names: NAMES, stem: STEM })
   try {
     return gold.queries.map((query) => {
       const { ids, error } = sim.search(query.q)
-      return scoreQuery(query, ids, error)
+      return scoreQuery(query, fuse(FUSION, query.q, ids, levers), error)
     })
   } finally {
     sim.close()
@@ -163,7 +190,7 @@ async function main(): Promise<void> {
   const model = argValue('model')
   const version = argValue('prompt')
   if (!model || !version)
-    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off]')
+    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off] [--embed bge|nomic|qwen3] [--image] [--fuse cutoff|rrf] [--cut n] [--image-cut n]')
   if (!existsSync(GOLD_PATH)) throw new Error(`No gold data at ${GOLD_PATH}`)
   const dir = runDir(model, version)
   const resultsPath = join(dir, 'results.json')
@@ -194,15 +221,29 @@ async function main(): Promise<void> {
   }
 
   const repeats = [...new Set(results.map((r) => r.repeat))].sort((a, b) => a - b)
-  const passes = repeats.map((repeat) => {
+  const embedder = EMBED ? new TextEmbedder(EMBED_MODELS[EMBED]!) : null
+  const imageLever = IMAGE ? imageSimilarities() : null
+  const queryTexts = gold.queries.map((q) => q.q)
+  const docText = (i: IndexedItem) => [i.title, i.description, ...i.tags.map((t) => t.label)].filter(Boolean).join('. ')
+  const passes = []
+  for (const repeat of repeats) {
     const byId = new Map(results.filter((r) => r.repeat === repeat).map((r) => [r.id, r]))
     const missing = items.filter((i) => !byId.has(i.id)).map((i) => i.id)
-    const scores = searchAll(
-      gold,
-      items.map((i) => indexedFor(i, byId.get(i.id)))
-    )
+    const indexed = items.map((i) => indexedFor(i, byId.get(i.id)))
+    const levers: Lever[] = []
+    if (embedder)
+      levers.push({
+        sims: await textSimilarities(
+          embedder,
+          indexed.map((i) => ({ id: i.id, text: docText(i) })),
+          queryTexts
+        ),
+        cut: CUT
+      })
+    if (imageLever) levers.push({ sims: imageLever, cut: IMAGE_CUT })
+    const scores = searchAll(gold, indexed, levers)
     const checks = checkPass(gold, items, byId, repeat)
-    return {
+    passes.push({
       repeat,
       byId,
       missing,
@@ -210,8 +251,9 @@ async function main(): Promise<void> {
       headline: headline(scores),
       checks,
       hallucination: summarise(checks)
-    }
-  })
+    })
+  }
+  embedder?.close()
   const first = passes[0]!
   const allChecks = passes.flatMap((p) => p.checks)
   const firstChecks = new Map(first.checks.map((c) => [c.id, c]))
