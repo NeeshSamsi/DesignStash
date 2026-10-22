@@ -7,8 +7,16 @@ import { ModelRow } from '@renderer/components/ModelRow'
 import { OnboardingStep } from '@renderer/components/OnboardingStep'
 import { Switch } from '@renderer/components/Switch'
 import { formatBytes } from '../settings/settings-copy'
-import { meaningLine } from '../settings/settings-copy'
-import { aiHeading, aiScreen, hardwareView, modelDetail, rowView, type AiScreen } from './ai-setup'
+import {
+  aiHeading,
+  aiScreen,
+  downloadLabel,
+  hardwareView,
+  modelDetail,
+  rowView,
+  type AiScreen
+} from './ai-setup'
+import { MeaningSearchCard } from './MeaningSearchCard'
 import { AI_STEP } from './onboarding-copy'
 import { continueInBackground } from './background-download'
 import { useAiSetup } from './useAiSetup'
@@ -47,6 +55,7 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
   }
   const leave = async () => {
     if (ai.aiOn && screen === 'complete') await ai.activate()
+    else if (!ai.aiOn) ai.leaveWithoutAi()
     keepDownloading()
     onNext()
   }
@@ -56,6 +65,7 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
   }
   const skip = () => {
     ai.setAiOn(false)
+    ai.leaveWithoutAi()
     onNext()
   }
 
@@ -126,16 +136,24 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
           model2={rows[1]}
           model3={rows[2]}
         />
-        {ai.meaning && screen !== 'skipped' && screen !== 'unsupported' && (
-          <p className="px-1 type-caption-xs-regular text-tertiary" role="status">
-            {meaningLine(ai.meaning, ai.meaningEvent)}
-          </p>
+        {ai.meaning && screen !== 'unsupported' && (
+          <MeaningSearchCard
+            meaning={ai.meaning}
+            event={ai.meaningEvent}
+            on={ai.meaningOn}
+            onChange={ai.setMeaningOn}
+          />
         )}
       </div>
     )
   }
 
   const footer = footerFor(screen)
+  // Download says how much it fetches: the picked model, plus meaning search while it is switched on.
+  const primaryLabel =
+    screen === 'choose'
+      ? downloadLabel(selected, ai.meaning, ai.meaningEvent, ai.meaningOn)
+      : footer.primary
 
   return (
     <>
@@ -146,7 +164,7 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
         body={heading.body}
         content={content}
         footer={screen !== 'empty'}
-        primaryLabel={footer.primary}
+        primaryLabel={primaryLabel}
         skipLabel="Skip AI"
         {...(footer.skip ? { onSkip: skip } : {})}
         onBack={back}

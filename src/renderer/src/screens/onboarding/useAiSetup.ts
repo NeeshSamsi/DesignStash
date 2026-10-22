@@ -13,6 +13,9 @@ export interface AiSetup {
   /** The meaning-search model and its download, started with the vision model. */
   meaning: AiMeaningInfo | null
   meaningEvent: AiDownloadProgress | null
+  /** The meaning search card's switch: on by default. Off, it never downloads from this step. */
+  meaningOn: boolean
+  setMeaningOn: (on: boolean) => void
   aiOn: boolean
   selectedId: string | null
   /** The latest event for the download in flight (or that just ended). */
@@ -28,6 +31,8 @@ export interface AiSetup {
   dismissPartial: () => void
   /** Makes the selected model the one in use. Call when leaving the step with AI on. */
   activate: () => Promise<void>
+  /** Leaving with AI off: meaning search still downloads if its switch is on. */
+  leaveWithoutAi: () => void
 }
 
 /** Everything the AI step needs from main: hardware, the catalogue, and the download's progress. */
@@ -45,6 +50,7 @@ export function useAiSetup(): AiSetup {
   } = catalogue
   const meaningEvent = meaning ? (events[meaning.id] ?? null) : null
   const [aiOn, setAiOn] = useState(true)
+  const [meaningOn, setMeaningOn] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [partial, setPartial] = useState<AiModelInfo | null>(null)
   const chosen = useRef(false)
@@ -61,9 +67,12 @@ export function useAiSetup(): AiSetup {
     await reloadCatalogue()
   }, [reloadCatalogue])
 
-  /** Meaning search downloads beside the vision model. Nothing to do when it is there or on its way. */
+  /**
+   * Meaning search downloads beside the vision model, or on its own when AI is skipped. Nothing to
+   * do when it is switched off, already there or on its way.
+   */
   const startMeaning = useCallback(async () => {
-    if (!meaning || meaning.installed || meaningEvent?.phase === 'downloading') return
+    if (!meaningOn || !meaning || meaning.installed || meaningEvent?.phase === 'downloading') return
     setEvent(meaning.id, {
       modelId: meaning.id,
       receivedBytes: meaning.downloadedBytes,
@@ -72,7 +81,7 @@ export function useAiSetup(): AiSetup {
     })
     const res = await window.api.invoke(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: meaning.id })
     if (!res.success || !res.data.started) setEvent(meaning.id, null)
-  }, [meaning, meaningEvent?.phase, setEvent])
+  }, [meaningOn, meaning, meaningEvent?.phase, setEvent])
 
   const download = useCallback(
     async (id?: string) => {
@@ -128,6 +137,8 @@ export function useAiSetup(): AiSetup {
     models,
     meaning,
     meaningEvent,
+    meaningOn,
+    setMeaningOn,
     aiOn,
     selectedId,
     event,
@@ -139,6 +150,7 @@ export function useAiSetup(): AiSetup {
     cancel,
     startOver,
     dismissPartial: () => setPartial(null),
-    activate
+    activate,
+    leaveWithoutAi: () => void startMeaning()
   }
 }

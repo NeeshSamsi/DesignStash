@@ -1,11 +1,12 @@
-import type { AiDownloadProgress, AiModelInfo } from '@shared/ipc/ai'
+import type { AiDownloadProgress, AiMeaningInfo, AiModelInfo } from '@shared/ipc/ai'
 import type { ModelRowState } from '@renderer/components/ModelRow/ModelRow.types'
 import { modelPhase, type HardwareInfo } from './model-phase'
 import {
   downloadFailureCopy,
   downloadRate,
   downloadRemaining,
-  formatBytes
+  formatBytes,
+  meaningStarted
 } from '../settings/settings-copy'
 
 /** The model to pick first: the one marked best fit, else the recommended tier, else the first. */
@@ -160,4 +161,19 @@ export function aiHeading(
     }
   }
   return base
+}
+
+/**
+ * The step's Download button with what it will fetch: the picked model, plus meaning search while
+ * its switch is on and its own download hasn't begun.
+ */
+export function downloadLabel(
+  selected: Pick<AiModelInfo, 'sizeBytes'> | null,
+  meaning: Pick<AiMeaningInfo, 'id' | 'installed' | 'sizeBytes' | 'downloadedBytes'> | null,
+  meaningEvent: AiDownloadProgress | null,
+  meaningOn: boolean
+): string {
+  if (!selected) return 'Download'
+  const withMeaning = meaning && meaningOn && !meaningStarted(meaning, meaningEvent)
+  return `Download ${formatBytes(selected.sizeBytes + (withMeaning ? meaning.sizeBytes : 0))}`
 }

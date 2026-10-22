@@ -98,25 +98,35 @@ export function stashCheckView(status: StashCheckStatus, now: Date = new Date())
   }
 }
 
+/** Whether meaning search's own download has begun (or ended), so its choice is settled. */
+export function meaningStarted(
+  meaning: Pick<AiMeaningInfo, 'id' | 'installed' | 'sizeBytes' | 'downloadedBytes'>,
+  event: AiDownloadProgress | null
+): boolean {
+  const { phase } = modelPhase(meaning, event)
+  return phase !== 'not-installed' && phase !== 'paused'
+}
+
 /**
- * The one line onboarding shows for meaning search under the model choice: its size before it
- * starts, then how far it is, then ready, or where to retry.
+ * The status line on onboarding's meaning search card: its size before it starts, then how far it
+ * is, then ready, or where to retry. Switched off before it starts, it says what search does without it.
  */
 export function meaningLine(
   meaning: Pick<AiMeaningInfo, 'id' | 'installed' | 'sizeBytes' | 'downloadedBytes'>,
-  event: AiDownloadProgress | null
+  event: AiDownloadProgress | null,
+  on = true
 ): string {
   const status = modelPhase(meaning, event)
   switch (status.phase) {
     case 'installed':
-      return 'Meaning search · ready'
+      return 'Ready'
     case 'downloading':
-      return `Meaning search · downloading ${status.percent}%`
+      return `Downloading ${status.percent}%`
     case 'verifying':
-      return 'Meaning search · checking the download'
+      return 'Checking the download'
     case 'failed':
-      return 'Meaning search · couldn’t download. Try again in Settings › AI model.'
+      return 'Couldn’t download. Try again in Settings › AI model.'
     default:
-      return `Meaning search · ${formatBytes(meaning.sizeBytes)}`
+      return on ? formatBytes(meaning.sizeBytes) : 'Off · search matches the words you type'
   }
 }

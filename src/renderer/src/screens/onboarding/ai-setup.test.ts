@@ -4,6 +4,7 @@ import {
   aiHeading,
   aiScreen,
   defaultSelection,
+  downloadLabel,
   hardwareView,
   modelDetail,
   partialDownload,
@@ -175,9 +176,48 @@ describe('headings and helpers', () => {
 
   it('says a built-in model is built in once it is picked', () => {
     const base = { title: 'Set up AI', body: 'Pick a model.' }
-    const apple = model('apple', { name: 'Apple’s on-device model', builtIn: true, installed: true })
+    const apple = model('apple', {
+      name: 'Apple’s on-device model',
+      builtIn: true,
+      installed: true
+    })
     expect(aiHeading('complete', base, apple).body).toMatch(
       /^Apple’s on-device model is built into your Mac and switched on\./
     )
+  })
+})
+
+describe('downloadLabel', () => {
+  const meaning = {
+    id: 'nomic-embed-v1.5',
+    installed: false,
+    sizeBytes: 146_146_432,
+    downloadedBytes: 0
+  }
+
+  it('adds meaning search to the vision model while its switch is on', () => {
+    expect(downloadLabel(model('a'), meaning, null, true)).toBe('Download 2.2 GB')
+  })
+
+  it('is the vision model alone with the switch off, with no meaning model, or once it is there', () => {
+    expect(downloadLabel(model('a'), meaning, null, false)).toBe('Download 2.1 GB')
+    expect(downloadLabel(model('a'), null, null, true)).toBe('Download 2.1 GB')
+    expect(downloadLabel(model('a'), { ...meaning, installed: true }, null, true)).toBe(
+      'Download 2.1 GB'
+    )
+  })
+
+  it('leaves meaning search out once its own download has started', () => {
+    const event: AiDownloadProgress = {
+      modelId: meaning.id,
+      receivedBytes: 10,
+      totalBytes: meaning.sizeBytes,
+      phase: 'downloading'
+    }
+    expect(downloadLabel(model('a'), meaning, event, true)).toBe('Download 2.1 GB')
+  })
+
+  it('is plain Download with nothing picked', () => {
+    expect(downloadLabel(null, meaning, null, true)).toBe('Download')
   })
 })
