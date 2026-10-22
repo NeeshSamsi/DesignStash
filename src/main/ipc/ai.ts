@@ -48,6 +48,9 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
     if (activeDownloads.has(args.id)) return { started: false }
     const controller = new AbortController()
     activeDownloads.set(args.id, controller)
+    const startedAt = Date.now()
+    // Telemetry: the catalogue id, its size and how long it took. Never a path.
+    const sizeMb = Math.round((getModel(args.id)?.sizeBytes ?? 0) / 1_000_000)
     void downloader
       .download(args.id, {
         signal: controller.signal,
@@ -55,9 +58,22 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
           push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, p)
         }
       })
+      .then(() => {
+        telemetry.get().track(TELEMETRY_EVENTS.MODEL_DOWNLOAD_FINISHED, {
+          model_id: args.id,
+          size_mb: sizeMb,
+          duration_s: Math.round((Date.now() - startedAt) / 1000)
+        })
+      })
       .catch((err: unknown) => {
         const failure = classifyDownloadError(err)
         if (failure.name === 'AbortError') return
+        telemetry.get().track(TELEMETRY_EVENTS.MODEL_DOWNLOAD_FAILED, {
+          model_id: args.id,
+          size_mb: sizeMb,
+          duration_s: Math.round((Date.now() - startedAt) / 1000),
+          reason: failure instanceof DownloadError ? failure.reason : 'server'
+        })
         // Only the reason goes to the screen, never the system's own message.
         push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
           modelId: args.id,

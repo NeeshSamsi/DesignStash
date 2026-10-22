@@ -1,4 +1,4 @@
-import { app, session, shell, screen, protocol, net, BrowserWindow } from 'electron'
+import { app, session, shell, screen, protocol, net, crashReporter, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { APP_ID } from '@shared/constants'
 import { IPC_CHANNELS } from '@shared/ipc'
@@ -13,14 +13,23 @@ import { isLibraryOpen, runBoot, setBootStatus } from './boot-status'
 import { MIN_WINDOW, windowSizeOptions } from './window-size'
 import { applyCsp } from './csp'
 import { handleCoverRequests, registerCoverScheme } from './cover-protocol'
-import { logger } from './logger'
+import { attachLogFile, logger } from './logger'
+import { createLogFile } from './log-file'
 import { Repository } from './db/repository'
 import { createIntegrityService, createStashCheck } from './ipc/integrity'
 import { applyPendingStash } from './library/stash-folder-service'
-import { createTelemetry, type Telemetry } from './telemetry'
+import { createTelemetry, scrubText, type Telemetry } from './telemetry'
+import { telemetryBuildConfig } from './telemetry/build-config'
+import { noteProcessGone, recentCrashLine, takeNewCrashes } from './telemetry/crash'
+import { ProblemReporter } from './telemetry/problem-reporter'
+import { TELEMETRY_EVENTS, sizeBucket } from '@shared/telemetry'
 import { installAppMenu } from './menu'
 
 const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
+
+// Crash dumps are written locally and never uploaded (uploadToServer: false). On the next launch
+// a new dump becomes an `app_crashed` event, if the person shares usage data.
+crashReporter.start({ uploadToServer: false, submitURL: '' })
 
 // Covers are served through their own scheme (see shared/cover-url.ts). It has to be declared before ready.
 registerCoverScheme(protocol)
@@ -76,6 +85,8 @@ function openWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   app.setAppUserModelId(APP_ID)
+  // The log file comes first so everything after it is kept. Every line is path-scrubbed on the way in.
+  attachLogFile(createLogFile({ dir: join(app.getPath('userData'), 'logs'), scrub: scrubText }))
   // Dev gets its policy as a header (it must allow Vite's HMR); the packaged build carries it as a
   // meta tag in index.html, because headers are not reliable for file:// pages.
   if (rendererDevUrl) applyCsp(session.defaultSession, { devUrl: rendererDevUrl })
@@ -128,18 +139,20 @@ app.whenReady().then(() => {
     logger.info(`Database and library initialized at ${libraryRoot}`)
   }
 
-  // Telemetry: NO-OP in dev/test and when consent is off or no key is set.
-  // Nothing is sent until onboarding is complete (spec §13.3a).
+  // Telemetry: NO-OP in dev/test and when consent is off or no key was baked into the build.
+  // On by default for a new install; onboarding shows the switch. Nothing is sent until onboarding
+  // is complete (spec §13.3a).
   const isTest = process.env.NODE_ENV === 'test'
   const isProd = app.isPackaged
-  const apiKey = process.env.POSTHOG_KEY // absent in dev/CI -> Noop
+  const { apiKey, host } = telemetryBuildConfig() // baked in at build time, absent in dev/CI -> Noop
   const buildTelemetry = (): Telemetry =>
     createTelemetry({
       enabled: settings.get().telemetryEnabled && settings.get().onboarded,
       isProd,
       isTest,
       installId: settings.get().telemetryInstallId,
-      apiKey
+      apiKey,
+      host
     })
   let telemetry = buildTelemetry()
   telemetryRef = {
@@ -151,9 +164,46 @@ app.whenReady().then(() => {
     }
   }
 
+  // Problem reports go out whether or not usage data is on: the person presses Send after seeing
+  // exactly what is sent. Same build-time key, same production-only rule.
+  const userData = app.getPath('userData')
+  const crashState = join(userData, 'crash-state.json')
+  const reporter = new ProblemReporter({
+    apiKey: isProd && !isTest ? apiKey : undefined,
+    host,
+    installId: settings.get().telemetryInstallId,
+    queueFile: join(userData, 'pending-reports.json')
+  })
+  void reporter.flushQueued().catch(() => {})
+
+  // A renderer or helper process that died is noted, so the next launch can name the crash.
+  app.on('render-process-gone', (_e, _wc, details) => {
+    logger.error(`Renderer process gone: ${details.reason}`)
+    if (details.reason !== 'clean-exit' && details.reason !== 'killed') noteProcessGone(crashState, 'renderer')
+  })
+  app.on('child-process-gone', (_e, details) => {
+    logger.error(`${details.type} process gone: ${details.reason}`)
+    if (details.reason !== 'clean-exit' && details.reason !== 'killed') noteProcessGone(crashState, details.type)
+  })
+  for (const crash of takeNewCrashes({ dumpsDir: app.getPath('crashDumps'), stateFile: crashState })) {
+    logger.error(`A crash from the last run was found (${crash.type})`)
+    telemetry.track(TELEMETRY_EVENTS.APP_CRASHED, { process_type: crash.type, version: app.getVersion() })
+  }
+
+  telemetry.track(TELEMETRY_EVENTS.APP_OPENED, {
+    version: app.getVersion(),
+    library_size_bucket: libraryOpen ? sizeBucket(new Repository(getDb()).library.getLibraryStats().total) : 'unavailable'
+  })
+
   // Crash capture — captureError scrubs absolute paths before any dispatch.
-  process.on('uncaughtException', (err) => telemetry.captureError(err))
-  process.on('unhandledRejection', (reason) => telemetry.captureError(reason))
+  process.on('uncaughtException', (err) => {
+    logger.error('Uncaught exception', err)
+    telemetry.captureError(err)
+  })
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled rejection', reason)
+    telemetry.captureError(reason)
+  })
 
   openWindow()
   // Menu items reach whichever window is open, through the menu:command push. With every window
@@ -170,7 +220,12 @@ app.whenReady().then(() => {
   const repo = libraryOpen ? new Repository(getDb()) : null
   // The screens before the app (launch error, onboarding) run on this set, so it is registered
   // whether or not the library opened. The library domains come on top of it, never instead.
-  registerPreAppHandlers({ settings, repo })
+  registerPreAppHandlers({
+    settings,
+    repo,
+    reporter,
+    crashLine: () => recentCrashLine(crashState)
+  })
   if (repo) {
     registerAllHandlers(
       createHandlerContext({
@@ -191,8 +246,15 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('will-quit', () => {
+// Quitting waits briefly for PostHog to send what it holds, then quits for real.
+let flushedTelemetry = false
+app.on('will-quit', (event) => {
   logger.info('Closing database connection…')
-  void telemetryRef?.get().shutdown()
   closeDb()
+  if (flushedTelemetry || !telemetryRef) return
+  flushedTelemetry = true
+  event.preventDefault()
+  const flush = telemetryRef.get().shutdown().catch(() => {})
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2000))
+  void Promise.race([flush, timeout]).finally(() => app.quit())
 })

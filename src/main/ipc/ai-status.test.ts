@@ -32,6 +32,8 @@ let root: string
 let push: ReturnType<typeof vi.fn>
 let analyze: ReturnType<typeof vi.fn<InferenceProvider['analyze']>>
 let ctx: HandlerContext
+let track: ReturnType<typeof vi.fn>
+let settingsState: { installedAt: string; firstSuggestionSentAt: string | null }
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -43,13 +45,20 @@ beforeEach(() => {
   ;({ sqlite, repo } = test)
   ensureSearchIndex(test.db)
   push = vi.fn()
+  track = vi.fn()
+  settingsState = { installedAt: new Date().toISOString(), firstSuggestionSentAt: null }
   analyze = vi.fn(async () => ({ title: 'Suggested', description: 'd', tags: [] }))
   const provider: InferenceProvider = { id: 'stub', name: 'Stub', analyze }
   ctx = {
     repo,
     push,
     ai: { activeProvider: async () => provider },
-    settings: { getLibraryRoot: () => root },
+    settings: {
+      getLibraryRoot: () => root,
+      get: () => settingsState,
+      update: (patch: Partial<typeof settingsState>) => Object.assign(settingsState, patch)
+    },
+    telemetry: { get: () => ({ track }), rebuild: () => {} },
     library: new LibraryService(repo, root)
   } as unknown as HandlerContext
   registerInboxHandlers(ctx)
@@ -106,6 +115,18 @@ describe('ai:status push', () => {
       IPC_CHANNELS.INBOX_COUNTS_CHANGED,
       expect.objectContaining({ toSort: 1, sniffing: 0 })
     )
+  })
+
+  it('sends first_suggestion once, the first time a suggestion is ready', async () => {
+    make('a')
+    make('b')
+    await inferenceQueueFor(ctx).enqueue([1, 2])
+    await vi.waitFor(() =>
+      expect(repo.mockups.getMockup(2)?.aiStatus).toBe('ready')
+    )
+    const firsts = track.mock.calls.filter(([name]) => name === 'first_suggestion')
+    expect(firsts).toHaveLength(1)
+    expect(firsts[0]?.[1]).toMatchObject({ seconds_since_install: expect.any(Number) })
   })
 
   it('is one shared queue for the whole app', () => {

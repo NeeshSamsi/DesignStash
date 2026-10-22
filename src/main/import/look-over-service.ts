@@ -51,6 +51,8 @@ export const stemOf = (fileName: string) => fileName.replace(/\.[^/.]+$/, '').re
 export class LookOverService {
   private readonly deps: LookOverDeps
   private readonly tagService: TagService
+  /** Told which parts of a suggestion a save changed (names only, never the text). Set by the IPC layer for telemetry. */
+  onEdited: (fields: ('title' | 'description' | 'tags')[]) => void = () => {}
 
   constructor(
     private readonly repo: Repository,
@@ -86,6 +88,14 @@ export class LookOverService {
     const descriptionChanged = before.description !== req.description
     const tagsChanged = !sameIds(before.tagIds, req.tagIds)
     const changed = before.title !== req.title || descriptionChanged || tagsChanged
+
+    if (changed) {
+      this.onEdited([
+        ...(before.title !== req.title ? (['title'] as const) : []),
+        ...(descriptionChanged ? (['description'] as const) : []),
+        ...(tagsChanged ? (['tags'] as const) : [])
+      ])
+    }
 
     this.repo.drafts.updateDraft(m.id, {
       title: req.title,
