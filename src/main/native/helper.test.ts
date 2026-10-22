@@ -151,7 +151,8 @@ describe('NativeHelper', () => {
   })
 
   it('times out a hung call, stops that helper and starts a fresh one for the next', async () => {
-    const helper = fake({ timeoutMs: 200 })
+    // Long enough for the fake (a Node process) to boot and log its start on a busy machine.
+    const helper = fake({ timeoutMs: 1500 })
     const err = await rejection(helper.ocr('/hang'))
     expect(err.code).toBe('timeout')
     expect(err.message).toContain('ocr')
