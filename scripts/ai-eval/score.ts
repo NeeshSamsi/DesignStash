@@ -5,7 +5,9 @@
  * Each answer is also checked for words its gold entry's `absent` list rules out, and each saved
  * tag for support in the gold text.
  *
- *   pnpm ai-eval:score --model qwen2.5-vl-3b --prompt v0
+ *   pnpm ai-eval:score --model qwen2.5-vl-3b --prompt v0 [--no-synonyms]
+ *
+ * The search adds the app's hidden synonym words to every answer; --no-synonyms leaves them off.
  *
  * Writes runs/<model>/<prompt>/score.json and score.md. An item that failed is searched as the app
  * would save it with no suggestion: its file name as the title, no description, no tags.
@@ -61,8 +63,10 @@ function checkPass(
   })
 }
 
+const SYNONYMS = !process.argv.includes('--no-synonyms')
+
 function searchAll(gold: Gold, indexed: IndexedItem[]): QueryScore[] {
-  const sim = new SearchSim(indexed)
+  const sim = new SearchSim(indexed, { synonyms: SYNONYMS })
   try {
     return gold.queries.map((query) => {
       const { ids, error } = sim.search(query.q)
@@ -103,7 +107,7 @@ async function main(): Promise<void> {
   const model = argValue('model')
   const version = argValue('prompt')
   if (!model || !version)
-    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version>')
+    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms]')
   if (!existsSync(GOLD_PATH)) throw new Error(`No gold data at ${GOLD_PATH}`)
   const dir = runDir(model, version)
   const resultsPath = join(dir, 'results.json')
@@ -216,6 +220,7 @@ async function main(): Promise<void> {
   const score = {
     model,
     prompt: version,
+    synonyms: SYNONYMS,
     scoredAt: new Date().toISOString(),
     repeats: repeats.length,
     headline: meanHeadline(passes.map((p) => p.headline)),
@@ -255,7 +260,10 @@ async function main(): Promise<void> {
   writeJson(join(dir, 'score.json'), score)
   writeFileSync(join(dir, 'score.md'), markdown(score))
 
-  console.log(`${model} · ${version} · ${gold.queries.length} queries · ${repeats.length} pass(es)`)
+  console.log(
+    `${model} · ${version} · ${gold.queries.length} queries · ${repeats.length} pass(es)` +
+      (SYNONYMS ? '' : ' · no synonyms')
+  )
   console.log(
     `recall ${pct(score.headline.recall)}  precision ${pct(score.headline.precision)}  ` +
       `all-in-top ${pct(score.headline.allInTop)}`

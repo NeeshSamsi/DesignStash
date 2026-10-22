@@ -24,7 +24,7 @@ const items = [
 
 describe('SearchSim', () => {
   it('prefix-matches title, description and tags, best match first', () => {
-    const sim = new SearchSim(items)
+    const sim = new SearchSim(items, { synonyms: false })
     expect(sim.search('tote').ids).toEqual(['tote', 'shirt'])
     expect(sim.search('ca').ids).toEqual(['cap', 'tote'])
     sim.close()
@@ -50,5 +50,14 @@ describe('SearchSim', () => {
     const sim = new SearchSim(items)
     expect(sim.search('t-shirt')).toEqual({ ids: ['shirt'] })
     sim.close()
+  })
+
+  it('adds synonyms as hidden words unless they are turned off', () => {
+    const on = new SearchSim(items)
+    expect(on.search('shopping bag').ids).toContain('tote')
+    on.close()
+    const off = new SearchSim(items, { synonyms: false })
+    expect(off.search('shopping bag').ids).toEqual([])
+    off.close()
   })
 })
