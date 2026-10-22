@@ -15,6 +15,7 @@ import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { toast } from './stores/toastStore'
 import { useUpdateNotice } from './lib/update-notice'
+import { useActiveModelNotice } from './lib/model-notice'
 import { GatherDock, useGather, useGatherDrops } from './screens/gather'
 
 type AddFlow = 'approval' | null
@@ -38,6 +39,7 @@ function AppMain() {
   const setLibraryStats = useLibraryStore((s) => s.setStats)
 
   useUpdateNotice()
+  useActiveModelNotice()
 
   useEffect(() => {
     void (async () => {

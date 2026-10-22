@@ -628,6 +628,29 @@ describe('Settings · AI model', () => {
     )
   })
 
+  it('says why Apple’s model in use makes no suggestions, and lets another be chosen', async () => {
+    setup({
+      [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+        ok({
+          models: [model({ active: false })],
+          legacy: [],
+          activeProblem: 'apple-intelligence-off'
+        })
+    })
+    open()
+    goto('AI model')
+    const banner = (await screen.findByText('Apple Intelligence is turned off')).closest(
+      '[data-ds="Banner"]'
+    ) as HTMLElement
+    expect(within(banner).getByText(/Turn it on in System Settings, or choose another model/)).not.toBeNull()
+    // AI is still on: the person only has to pick a model.
+    expect(screen.getByRole('switch', { name: 'Use on-device AI' }).getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Use this model' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'qwen3b' })
+    )
+  })
+
   it('turns the switch off for Intel, with the plain reason', async () => {
     setup({
       [IPC_CHANNELS.AI_HARDWARE_INFO]: () =>

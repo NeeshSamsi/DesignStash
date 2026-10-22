@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { AiModelInfo } from '@shared/ipc/ai'
+import { Banner } from '../../components/Banner'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { HardwareSummary } from '../../components/HardwareSummary'
 import { ModelCard, type ModelCardProps } from '../../components/ModelCard'
 import { SettingsGroup } from '../../components/SettingsLayout'
 import { Switch } from '../../components/Switch'
+import { activeProblemCopy } from '../../lib/model-notice'
 import { cn } from '../../lib/utils'
 import { toast, undoToast } from '../../stores/toastStore'
 import { BUILT_IN_SIZE } from '../onboarding/ai-setup'
@@ -18,17 +20,19 @@ const languagesText = (languages: string[]) =>
 
 /** Settings › AI model: this Mac, the on-device switch, and the model cards. Actions are buttons only. */
 export function AiModelPane() {
-  const { loaded, hardware, models, events, reload: load, setEvent } = useModelCatalogue()
+  const { loaded, hardware, models, activeProblem, events, reload: load, setEvent } =
+    useModelCatalogue()
   const [on, setOn] = useState(false)
   const started = useRef(false)
   const [deleting, setDeleting] = useState<AiModelInfo | null>(null)
 
-  // The switch starts on when a model is in use; after that only the person changes it.
+  // The switch starts on when a model is in use (even one that can't run right now); after that
+  // only the person changes it.
   useEffect(() => {
     if (!loaded || started.current) return
     started.current = true
-    setOn(models.some((m) => m.active))
-  }, [loaded, models])
+    setOn(models.some((m) => m.active) || activeProblem !== null)
+  }, [loaded, models, activeProblem])
 
   const toggle = async (next: boolean) => {
     setOn(next)
@@ -192,6 +196,16 @@ export function AiModelPane() {
             onCheckedChange={(next) => void toggle(next)}
           />
         </div>
+        {activeProblem && (
+          <div className="px-4 pt-3.5">
+            <Banner
+              tone="warning"
+              {...activeProblemCopy(activeProblem)}
+              action={false}
+              dismissible={false}
+            />
+          </div>
+        )}
         {models.length > 0 && (
           <div className="flex flex-col gap-2 px-4 pt-3.5 pb-4">
             {!on && supported && (
