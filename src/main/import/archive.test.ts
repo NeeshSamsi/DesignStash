@@ -9,7 +9,9 @@ import {
   decodeEntryName,
   entryPath,
   listArchive,
-  openArchiveEntry
+  openArchiveEntry,
+  previewImages,
+  type ArchiveEntry
 } from './archive'
 import { makeZip, markEncrypted } from './__tests__/zips'
 
@@ -33,6 +35,33 @@ describe('archiveKindOf', () => {
   it('leaves everything else alone', () => {
     expect(archiveKindOf('/a/cap.psd')).toBeNull()
     expect(archiveKindOf('/a/zip')).toBeNull()
+  })
+})
+
+describe('previewImages', () => {
+  const entry = (name: string, over: Partial<ArchiveEntry> = {}): ArchiveEntry => ({
+    name,
+    size: 1000,
+    encrypted: false,
+    directory: false,
+    ...over
+  })
+
+  it('maps each image that could be a preview, by its entry path, to its entry', () => {
+    const images = previewImages('/drop/Can.zip', [
+      entry('Kit/Can.psd'),
+      entry('Kit/Can.JPG'),
+      entry('Kit/detail.png'),
+      entry('Kit/license.pdf'),
+      entry('__MACOSX/Kit/._Can.jpg'),
+      entry('Kit/huge.jpg', { size: 30 * 1024 * 1024 }),
+      entry('Kit/locked.jpg', { encrypted: true }),
+      entry('Kit/', { directory: true })
+    ])
+    expect([...images]).toEqual([
+      [join('/drop/Can.zip', 'Kit', 'Can.JPG'), 'Kit/Can.JPG'],
+      [join('/drop/Can.zip', 'Kit', 'detail.png'), 'Kit/detail.png']
+    ])
   })
 })
 
