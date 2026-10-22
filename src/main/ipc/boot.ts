@@ -1,7 +1,9 @@
 import { release } from 'node:os'
 import { app, clipboard, dialog } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc'
-import { buildReport } from '../app/report'
+import { buildReport, buildReportDetails, REPORT_LOG_LINES, type ReportFacts } from '../app/report'
+import { logTail } from '../logger'
+import type { ProblemReporter } from '../telemetry/problem-reporter'
 import { checkFolder, getBootStatus } from '../boot-status'
 import type { Repository } from '../db/repository'
 import type { SettingsStore } from '../settings'
@@ -13,6 +15,12 @@ export interface BootHandlerDeps {
   repo: Repository | null
   writeClipboard?: (text: string) => void
   version?: () => string
+  /** Sends "Report a problem". Without one (tests), Send says it is unavailable. */
+  reporter?: Pick<ProblemReporter, 'send'>
+  /** The log tail that goes with a report. The real log by default. */
+  logTail?: (lines: number) => string
+  /** The crash line for the report, e.g. "none in the last 7 days". */
+  crashLine?: () => string
 }
 
 /**
@@ -53,23 +61,40 @@ export function registerBootHandlers({ settings, repo, ...deps }: BootHandlerDep
     return { path }
   })
 
-  registerIpcHandler(IPC_CHANNELS.REPORT_COPY, () => {
+  const readTail = deps.logTail ?? logTail
+  const facts = (): ReportFacts => {
     const counts = repo?.inbox.getCounts()
-    writeClipboard(
-      buildReport({
-        version: version(),
-        electron: process.versions.electron ?? 'unknown',
-        platform: process.platform,
-        arch: process.arch,
-        osRelease: release(),
-        stashCount: repo ? repo.library.getLibraryStats().total : null,
-        toSort: counts?.toSort ?? null,
-        toStash: counts?.toStash ?? null,
-        trash: counts?.trash ?? null,
-        stashCheck: settings.get().stashCheck?.result ?? 'not checked yet',
-        aiModel: settings.get().activeModelId ?? 'none'
-      })
-    )
+    const crashes = deps.crashLine?.()
+    return {
+      version: version(),
+      electron: process.versions.electron ?? 'unknown',
+      platform: process.platform,
+      arch: process.arch,
+      osRelease: release(),
+      stashCount: repo ? repo.library.getLibraryStats().total : null,
+      toSort: counts?.toSort ?? null,
+      toStash: counts?.toStash ?? null,
+      trash: counts?.trash ?? null,
+      stashCheck: settings.get().stashCheck?.result ?? 'not checked yet',
+      aiModel: settings.get().activeModelId ?? 'none',
+      ...(crashes !== undefined && { crashes })
+    }
+  }
+  const details = () => buildReportDetails(facts(), readTail(REPORT_LOG_LINES))
+
+  registerIpcHandler(IPC_CHANNELS.REPORT_COPY, async (args) => {
+    const action = args?.action ?? 'copy'
+    if (action === 'preview') return { copied: false, text: details() }
+    if (action === 'send') {
+      const outcome = (await deps.reporter?.send(args?.message ?? '', details())) ?? 'unavailable'
+      return { copied: false, outcome }
+    }
+    if (action === 'copy-full') {
+      const message = args?.message?.trim()
+      writeClipboard(message ? `${message}\n\n${details()}` : details())
+      return { copied: true }
+    }
+    writeClipboard(buildReport(facts()))
     return { copied: true }
   })
 }

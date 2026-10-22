@@ -184,7 +184,12 @@ function setup(overrides: Record<string, Handler> = {}) {
     [IPC_CHANNELS.UPDATES_CANCEL]: () => ok({ state: 'up-to-date', lastCheckedAt: NOW }),
     [IPC_CHANNELS.UPDATES_INSTALL]: () => ok({ installing: true }),
     [IPC_CHANNELS.LICENCES_TEXT]: () => ok({ text: 'MIT License for everything' }),
-    [IPC_CHANNELS.REPORT_COPY]: () => ok({ copied: true }),
+    [IPC_CHANNELS.REPORT_COPY]: (p) => {
+      const action = (p as { action?: string } | undefined)?.action
+      if (action === 'preview') return ok({ copied: false, text: 'Version: 1.0.0\n[INFO] opened' })
+      if (action === 'send') return ok({ copied: false, outcome: 'sent' })
+      return ok({ copied: true })
+    },
     ...overrides
   }
   invoke = vi.fn(
@@ -844,12 +849,44 @@ describe('Settings · About', () => {
     expect(screen.getByRole('dialog', { name: 'Open-source licences' })).not.toBeNull()
   })
 
-  it('copies the problem report', async () => {
+  it('opens the report dialog, shows what will be sent in full and sends it with the message', async () => {
     open()
     goto('About')
-    fireEvent.click(await screen.findByRole('button', { name: 'Copy report' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Report…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Report a problem' })
+    expect(dialog).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }))
+    expect((await screen.findByTestId('report-details')).textContent).toContain('[INFO] opened')
+    fireEvent.change(screen.getByRole('textbox', { name: 'What happened' }), {
+      target: { value: 'The import froze' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
-    expect(toasts.toast.mock.calls[0]![0].message).toBe('Copied your problem report')
+    expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.REPORT_COPY, {
+      action: 'send',
+      message: 'The import froze'
+    })
+    expect(toasts.toast.mock.calls[0]![0].message).toBe('Thanks, your report was sent')
+  })
+
+  it('offers Copy report when the report could not be sent', async () => {
+    setup({
+      [IPC_CHANNELS.REPORT_COPY]: (p) => {
+        const action = (p as { action?: string } | undefined)?.action
+        if (action === 'preview') return ok({ copied: false, text: 'Version: 1.0.0' })
+        if (action === 'send') return ok({ copied: false, outcome: 'unavailable' })
+        return ok({ copied: true })
+      }
+    })
+    open()
+    goto('About')
+    fireEvent.click(await screen.findByRole('button', { name: 'Report…' }))
+    await screen.findByRole('dialog', { name: 'Report a problem' })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy report' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.REPORT_COPY, { action: 'copy-full', message: '' })
+    )
   })
 
   it('offers no orange text links', async () => {

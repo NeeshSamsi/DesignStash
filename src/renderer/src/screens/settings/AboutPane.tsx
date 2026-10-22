@@ -6,6 +6,7 @@ import { SettingsGroup, SettingsRow } from '../../components/SettingsLayout'
 import { DialogFrame, DialogHeading } from '../../lib/dialog-shell'
 import { toast } from '../../stores/toastStore'
 import { Badge } from '../../ui/badge'
+import { ReportDialog } from './ReportDialog'
 import { formatWhen } from './settings-copy'
 
 type Update = UpdateStatus
@@ -16,6 +17,7 @@ export function AboutPane() {
   const [update, setUpdate] = useState<Update | null>(null)
   const [checking, setChecking] = useState(false)
   const [licences, setLicences] = useState<string | null>(null)
+  const [reporting, setReporting] = useState(false)
   const [notesOpen, setNotesOpen] = useState(false)
 
   const status = useCallback(async () => {
@@ -67,23 +69,6 @@ export function AboutPane() {
         message: 'Couldn’t load the licences',
         description: 'Try again in a moment.'
       })
-  }
-
-  const report = async () => {
-    const res = await window.api.invoke(IPC_CHANNELS.REPORT_COPY, undefined)
-    if (res.success && res.data.copied) {
-      toast({
-        variant: 'success',
-        message: 'Copied your problem report',
-        description: 'Paste it into your message. No files are included.'
-      })
-    } else {
-      toast({
-        variant: 'error',
-        message: 'Couldn’t copy the report',
-        description: 'Try again in a moment.'
-      })
-    }
   }
 
   const download = () => void window.api.invoke(IPC_CHANNELS.UPDATES_INSTALL, undefined)
@@ -141,8 +126,8 @@ export function AboutPane() {
         />
         <SettingsRow
           title="Report a problem"
-          value="Copies a short report with your app version. No files are included."
-          controls={secondary('Copy report', () => void report())}
+          value="Tell us what went wrong. You see exactly what is sent first. No files are included."
+          controls={secondary('Report…', () => setReporting(true))}
         />
       </SettingsGroup>
       <DialogFrame
@@ -160,6 +145,7 @@ export function AboutPane() {
           {update?.state === 'available' ? update.notes : ''}
         </pre>
       </DialogFrame>
+      <ReportDialog open={reporting} onClose={() => setReporting(false)} />
       <DialogFrame
         open={licences !== null}
         dataDs="LicencesDialog"
