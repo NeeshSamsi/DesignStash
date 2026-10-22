@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import { FTS_WEIGHTS, ftsMatchQuery } from '../../src/main/db/repositories/search'
 import { searchKeywords } from '../../src/main/db/search-keywords'
+import { nameKeywords } from '../../src/main/db/search-names'
 import { tagsColumn, type TagPair } from './searchable-tags'
 
 export interface IndexedItem {
@@ -8,6 +9,9 @@ export interface IndexedItem {
   title: string
   description: string
   tags: TagPair[]
+  /** The original file name and folders, for the hidden name words. */
+  fileName?: string
+  folderTrail?: string[]
   /** Searchable but not shown: appended to the tags column text. */
   keywords?: string[]
 }
@@ -27,23 +31,29 @@ export class SearchSim {
   private readonly db = new DatabaseSync(':memory:')
   private readonly ids: string[] = []
 
-  constructor(items: IndexedItem[], options: { synonyms?: boolean } = {}) {
+  constructor(items: IndexedItem[], options: { synonyms?: boolean; names?: boolean; stem?: boolean } = {}) {
     const synonyms = options.synonyms ?? true
+    const names = options.names ?? true
+    const tokenize = options.stem ? ", tokenize='porter unicode61'" : ''
     this.db.exec(
-      'CREATE VIRTUAL TABLE mockups_fts USING fts5(title, description, tags, keywords)'
+      `CREATE VIRTUAL TABLE mockups_fts USING fts5(title, description, tags, keywords${tokenize})`
     )
     const insert = this.db.prepare(
       'INSERT INTO mockups_fts(rowid, title, description, tags, keywords) VALUES (?, ?, ?, ?, ?)'
     )
     items.forEach((item, i) => {
       this.ids.push(item.id)
-      const hidden = synonyms
-        ? searchKeywords(
-            item.title,
-            item.description,
-            item.tags.map((t) => t.label)
-          ).join(' ')
-        : ''
+      const nameWords = names && item.fileName ? nameKeywords(item.fileName, item.folderTrail ?? []) : []
+      const hidden = (
+        synonyms
+          ? searchKeywords(
+              item.title,
+              item.description,
+              item.tags.map((t) => t.label),
+              nameWords
+            )
+          : nameWords
+      ).join(' ')
       insert.run(i + 1, item.title, item.description, tagsColumnText(item), hidden)
     })
   }

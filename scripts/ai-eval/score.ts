@@ -98,9 +98,12 @@ function checkPass(
 }
 
 const SYNONYMS = !process.argv.includes('--no-synonyms')
+const NAMES = !process.argv.includes('--no-names')
+// Stemming is not in the app (see the guide), so it is off unless asked for.
+const STEM = process.argv.includes('--stem')
 
 function searchAll(gold: Gold, indexed: IndexedItem[]): QueryScore[] {
-  const sim = new SearchSim(indexed, { synonyms: SYNONYMS })
+  const sim = new SearchSim(indexed, { synonyms: SYNONYMS, names: NAMES, stem: STEM })
   try {
     return gold.queries.map((query) => {
       const { ids, error } = sim.search(query.q)
@@ -119,10 +122,19 @@ function indexedFor(item: EvalItem, result: ItemResult | undefined): IndexedItem
       title: result.parsed.title,
       description: result.parsed.description,
       tags: result.searchTags,
+      fileName: item.fileName,
+      folderTrail: item.folderTrail,
       ...(result.parsed.keywords && { keywords: result.parsed.keywords })
     }
   }
-  return { id: item.id, title: stemOf(item.fileName), description: '', tags: [] }
+  return {
+    id: item.id,
+    title: stemOf(item.fileName),
+    description: '',
+    tags: [],
+    fileName: item.fileName,
+    folderTrail: item.folderTrail
+  }
 }
 
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`
@@ -141,7 +153,7 @@ async function main(): Promise<void> {
   const model = argValue('model')
   const version = argValue('prompt')
   if (!model || !version)
-    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--held-out]')
+    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out]')
   if (!existsSync(GOLD_PATH)) throw new Error(`No gold data at ${GOLD_PATH}`)
   const dir = runDir(model, version)
   const resultsPath = join(dir, 'results.json')
@@ -218,7 +230,9 @@ async function main(): Promise<void> {
         id: item.id,
         title: g.title,
         description: g.description,
-        tags: await snap(g.tags)
+        tags: await snap(g.tags),
+        fileName: item.fileName,
+        folderTrail: item.folderTrail
       })
     else goldIndexed.push(indexedFor(item, undefined))
   }
@@ -300,7 +314,9 @@ async function main(): Promise<void> {
 
   console.log(
     `${model} · ${version} · ${gold.queries.length} queries · ${repeats.length} pass(es)` +
-      (SYNONYMS ? '' : ' · no synonyms')
+      (SYNONYMS ? '' : ' · no synonyms') +
+      (NAMES ? '' : ' · no names') +
+      (STEM ? ' · stem' : '')
   )
   console.log(
     `recall ${pct(score.headline.recall)}  precision ${pct(score.headline.precision)}  ` +

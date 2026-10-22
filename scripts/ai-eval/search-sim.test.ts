@@ -60,4 +60,14 @@ describe('SearchSim', () => {
     expect(off.search('shopping bag').ids).toEqual([])
     off.close()
   })
+
+  it('adds words from the file and folder names unless they are turned off', () => {
+    const named = [{ ...items[0]!, fileName: 'Bus_Stop_Citylight.psd', folderTrail: [] }]
+    const on = new SearchSim(named)
+    expect(on.search('citylight').ids).toEqual(['tote'])
+    on.close()
+    const off = new SearchSim(named, { names: false })
+    expect(off.search('citylight').ids).toEqual([])
+    off.close()
+  })
 })
