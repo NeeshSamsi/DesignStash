@@ -1,7 +1,23 @@
 # AI: vision runtime
 
-**Status:** decided and built 2026-10-20 (WP4.1). The catalogue and downloads are WP4.2.
-**Code:** `src/main/ai/llama-server.ts`, `vision-provider.ts`, `provider-factory.ts`; `scripts/fetch-llama-server.mjs`.
+**Status:** decided and built 2026-10-20 (WP4.1). The catalogue and downloads are WP4.2. The models changed on 2026-10-22 after the AI bake-off (see "The catalogue").
+**Code:** `src/main/ai/llama-server.ts`, `vision-provider.ts`, `provider-factory.ts`, `registry.ts`, `prompts/`; `scripts/fetch-llama-server.mjs`.
+
+## The catalogue
+
+**Since 2026-10-22,** after the AI bake-off (Research hub, "AI bake-off"; the candidates are in `design/research/vlm-models.md`). Every number below is from the bake-off: the shipped request, three passes over the 39 test-set mockups, on an M3 Max.
+
+| Model | Id | Tier | Card | Measured |
+|---|---|---|---|---|
+| Qwen3-VL 4B Instruct | `qwen3-vl-4b` | medium, Best fit on every Mac | quality 4, speed 4, 8 GB | 5.1% of answers hallucinated (16.2% for Qwen 2.5 VL 3B), 3.6 s per mockup, 4.4 GB after the first answer, 2.95 GB download |
+| Qwen3.5 9B, thinking off | `qwen3.5-9b` | large, 16 GB and more | quality 5, speed 3, 16 GB | 6.0% hallucinated, the most searches found, 10.1 s per mockup, 6.9 GB, 6.60 GB download |
+| Apple's on-device model | `apple` | built in | quality 3, speed 5, 8 GB | 2.8% hallucinated, thinner wording, 2.5 s per mockup, nothing to download; macOS 27 with Apple Intelligence |
+
+- **Files:** Qwen3-VL 4B is `Qwen/Qwen3-VL-4B-Instruct-GGUF` (Q4_K_M and the Q8_0 mmproj); Qwen3.5 9B is `unsloth/Qwen3.5-9B-GGUF` (Q4_K_M and `mmproj-F16.gguf`). The sha256 values in `registry.ts` match the downloaded files (`shasum -a 256`, 2026-10-22).
+- **Qwen 2.5 VL 3B and 7B are gone.** The 3B's licence is non-commercial, and both did worse on every measure. An active model the catalogue no longer has reads as no model chosen at launch (`forgetRemovedModel`); its folder stays on disk and is listed as an old model the person can delete.
+- **Apple's model is offered only where it runs.** `AI_LIST_MODELS` asks the helper's `info` (cached 5 minutes, `apple-availability.ts`) and lists the `apple` entry with `builtIn: true` and `installed: true` only when Foundation Models is available. Onboarding shows it as a third row ("Built in"), Settings under "Built into macOS", with no Delete. Qwen3-VL 4B stays the recommended pick. End-to-end runs (the stub provider) never ask the real helper.
+- **One prompt per model.** `src/main/ai/prompts/` has a module per model id (`qwen3-vl-4b.ts`, `qwen3.5-9b.ts`, `apple.ts`), each a `PromptProfile` (`buildRequest`, `parseResult`), and each catalogue entry names its profile. Today all three reuse the shipped `buildRequest` and `parseResult` unchanged; tuned prompts replace them per model. `ChatRequest` carries `temperature`, `top_p`, `top_k`, `min_p`, `repeat_penalty`, `presence_penalty`, `seed` and `max_tokens`. For Apple, `appleDescribeRequest` turns the profile's request into a helper `describe` (instructions, prompt, schema without patterns, reply cap); the helper is greedy, so sampling settings don't apply.
+- **Server flags** (`MODEL_SERVER_ARGS`): `--cache-ram 0` for every model, and `--reasoning off` for Qwen3.5 9B. llama-server's host prompt cache defaults to 8 GB and grew the server to 10 to 12 GB over long bake-off runs; we send one image per request, so it never helps. The slot's own KV cache still reuses the system prompt.
 
 ## What the model sees
 
@@ -42,7 +58,7 @@ Single passes vary by several points, so the v4 and v7 numbers were also measure
   - **On app quit** it's killed from `process.on('exit')`. On stop it gets SIGTERM, then SIGKILL after 5 s.
   - Requests go to the OpenAI-compatible `/v1/chat/completions`: the image as a base64 `image_url`, and `response_format: {type: 'json_schema'}`.
 - **Covers are resized for the model:** stored covers are 2048 px WebP, and the provider scales them to fit 1024 px and re-encodes as JPEG (sharp). llama.cpp `b11748` decodes WebP too, but on SmolVLM2 the smaller image took the prompt from 1,780 to 610 tokens and the time from 6.3 s to 2.5 s.
-- **Per-model server flags:** `MODEL_SERVER_ARGS` in `provider-factory.ts`. Moondream 2 needs `--no-jinja --chat-template vicuna`, because its own template drops the image marker and every image request fails with "Failed to tokenize prompt".
+- **Per-model server flags:** `MODEL_SERVER_ARGS` in `provider-factory.ts` (see "The catalogue"). During the spike, Moondream 2 needed `--no-jinja --chat-template vicuna`, because its own template drops the image marker and every image request fails with "Failed to tokenize prompt".
 - **Where the binary is found:**
   1. `DESIGNSTASH_LLAMA_SERVER`, if set;
   2. the bundled copy, `<resourcesPath>/llama-server/llama-server` (planned);
@@ -103,6 +119,8 @@ The last two have a large MockupFree.co watermark over a dimmed product, which i
 
 ## For WP4.2 (catalogue)
 
+Superseded on 2026-10-22 by "The catalogue"; kept as the record of the first choice.
+
 - **Moondream 2:**
   - Compatible files exist at `ggml-org/moondream2-20250414-GGUF`. The registry currently points at `moondream/moondream2-gguf`, which wasn't tested here.
   - The runtime flags are handled.
@@ -114,7 +132,7 @@ The last two have a large MockupFree.co watermark over a dimmed product, which i
 
 ## Apple on-device helper
 
-**Status:** built 2026-10-22, not wired in. The AI bake-off decides whether Apple's model ships as a provider and how Vision feeds the pipeline (OCR filter, evidence, similarity).
+**Status:** built 2026-10-22 and turned on the same day: Apple's model is the catalogue's `apple` entry, and the helper ships in `<resources>/helper/`. How Vision feeds the pipeline (OCR filter, evidence, similarity) is still open.
 **Code:** `native/designstash-helper/` (Swift, protocol in its README), `src/main/native/helper.ts` and `helper-schemas.ts`, `src/main/ai/apple-provider.ts`; `scripts/build-helper.mjs`, `scripts/helper-try.ts`. The research is `design/research/native-vs-electron.md` and `vlm-pipeline-helpers.md`.
 
 - **One Swift command-line tool, `designstash-helper`,** runs as a child of the main process like llama-server: one JSON request per stdin line, one JSON reply per stdout line, matched by `id`, logs on stderr. arm64, macOS 26 and later; Foundation Models only on macOS 27. It builds with the Command Line Tools (`pnpm helper:build`), because guided generation uses `DynamicGenerationSchema` and no `@Generable` macro.
@@ -127,7 +145,8 @@ The last two have a large MockupFree.co watermark over a dimmed product, which i
   - `describe`: Foundation Models with the image attached, greedy; with a schema the reply is JSON in that shape.
 - **Boxes are top-left origin,** fractions of the image. The eval's `vision.json` (from `scripts/ai-eval/apple/vision.swift`) kept Vision's bottom-left origin.
 - **The client** (`NativeHelper`) finds the binary at `DESIGNSTASH_HELPER`, then `<resources>/helper/designstash-helper`, then `~/Library/Application Support/DesignStash-dev/helper/designstash-helper`. With none, calls fail as `unavailable` and nothing crashes. It starts the helper on first use, stops it after 5 minutes idle, starts a fresh one after a crash, sends one call at a time and kills a call that hangs: 60 s for Vision (the very first OCR on this Mac took 35 s while the system loaded its text models; after that 0.1 to 0.4 s), 2 minutes for `describe`.
-- **`AppleInferenceProvider`** sends the vision provider's own system prompt, user text, schema and reply cap through `describe`, attaches the cover file (the framework scales it), sends a placeholder cover as names only, and parses with `parseResult`. It is not in the catalogue or the factory.
+- **`AppleInferenceProvider`** sends its prompt profile's (`prompts/apple.ts`) system prompt, user text, schema and reply cap through `describe`, attaches the cover file (the framework scales it), sends a placeholder cover as names only, and parses with the profile. The provider factory builds it for the `apple` entry, over the runtime's one `NativeHelper`, when the helper says Foundation Models is available.
+- **Packaging:** `pnpm build` runs `helper:build --stage --optional` first (a Mac whose SDK can't build it warns and carries on, and that build doesn't offer Apple's model); `pnpm package:stage` builds it strictly. `electron-builder.yml` ships `build/helper/designstash-helper` to `<resources>/helper/` with `hardenedRuntime: true`, and signing covers it whenever an identity is configured.
 - **Regex guides don't work.** On macOS 27.2 the on-device model rejects every `pattern` in a dynamic schema (`UnsupportedGuide`, even for `[A-Za-z ]+`); enums and array counts work. The provider sends the schema without its ASCII patterns, which only kept the 3B from leaking Chinese characters.
 - **Measured once by hand** (M3 Max, the duct tape cover): OCR 0.37 s, people 0.2 s, classify 0.1 s, feature print 0.09 s (768 floats), `describe` with the full prompt 4.8 s including the model's first load, a short plain-text answer 0.8 s.
 - **Tests:** unit tests run the client and provider against a fake helper script (`src/main/native/__fixtures__/fake-helper.mjs`). `helper.integration.test.ts` runs the real binary's Vision commands when `DESIGNSTASH_HELPER_IT=1` and the helper is built; it never calls Foundation Models. Swift-side unit tests need Xcode (Swift Testing and XCTest aren't in the Command Line Tools).
@@ -135,7 +154,9 @@ The last two have a large MockupFree.co watermark over a dimmed product, which i
 ## Open
 
 - **Packaging:** the repo has no packager yet, so shipping `llama-server` (and its dylibs) with the app is unsolved. The factory already looks in `<resourcesPath>/llama-server/`.
-- **Packaging the helper:** `pnpm helper:build --stage` puts `designstash-helper` in `build/helper/`, and the client already looks in `<resourcesPath>/helper/`, but `electron-builder.yml` doesn't ship it yet. It needs signing with the app's identity and the hardened runtime, and the inherited-sandbox entitlements for a Mac App Store build.
+- **Signing the helper:** `electron-builder.yml` ships it and signs it with the app's identity and the hardened runtime when one is configured, but no signed build has been made (electron-builder isn't installed in the repo yet). Check on the first one that Vision and Foundation Models work under the hardened runtime with no entitlements. A Mac App Store build would also need the inherited-sandbox entitlements.
+- **Apple's model when it goes away:** if Apple Intelligence is turned off while `apple` is the active model, the list stops showing it and suggestions stop, with no message saying why. Settings then shows no model in use.
+- **Base-chip speed:** the bake-off timed every model on an M3 Max; Qwen3.5 9B's 10 s per mockup will be slower on a base M1 or M2.
 - **Hard crash:** if Electron is killed outright, the `exit` hook doesn't run and llama-server keeps running until it's killed. The next launch starts its own on a new port.
 - **Renamed categories:** the schema limits categories to the seed six, so if someone renames "Device", suggestions recreate it. A follow-up could pass the live category list into the prompt.
 - **Titles:** they sometimes come back hyphenated ("scroll-macbook-mockup"), with the label style bleeding into the title. This is minor; the user edits titles in Look it over.
