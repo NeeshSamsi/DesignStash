@@ -59,6 +59,20 @@ export const AiDownloadProgressSchema = z.object({
 })
 export type AiDownloadProgress = z.infer<typeof AiDownloadProgressSchema>
 
+/** The meaning-search model: listed beside the vision models, but never one of them. */
+export const AiMeaningInfoSchema = z.object({
+  /** The id the download, cancel, delete and restore channels take. */
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  license: z.string(),
+  sizeBytes: z.number(),
+  /** Bytes on disk, finished or partial. */
+  downloadedBytes: z.number(),
+  installed: z.boolean()
+})
+export type AiMeaningInfo = z.infer<typeof AiMeaningInfoSchema>
+
 /** On-device AI models. */
 export const aiContract = {
   [IPC_CHANNELS.AI_HARDWARE_INFO]: {
@@ -74,6 +88,8 @@ export const aiContract = {
     request: z.void(),
     response: z.object({
       models: z.array(AiModelInfoSchema),
+      /** Meaning search: an embedding model downloaded with the vision model, never selectable. */
+      meaning: AiMeaningInfoSchema,
       /** Folders from earlier versions (the old text models). Ignored by the app and deletable. */
       legacy: z.array(z.object({ id: z.string(), sizeBytes: z.number() })),
       /** Set when the active model can't run, so the app can say why and offer another. */

@@ -9,7 +9,7 @@ export interface EmbeddingServiceDeps {
   /** Builds the embedder on first use, so no process starts until there is work. */
   embedder(): MeaningEmbedder
   /** True while AI suggestions are running; indexing waits for them to finish. */
-  isBusy?(): boolean
+  isBusy?: () => boolean
   sleep?(ms: number): Promise<void>
   log?(message: string, err: unknown): void
 }
@@ -33,6 +33,12 @@ export class EmbeddingService {
   private stopped = false
 
   constructor(private readonly deps: EmbeddingServiceDeps) {}
+
+  /** Set after construction, because the suggestion queue is built from the handler context. */
+  setBusyCheck(isBusy: (() => boolean) | undefined): void {
+    if (isBusy) this.deps.isBusy = isBusy
+    else delete this.deps.isBusy
+  }
 
   private get embedder(): MeaningEmbedder {
     return (this.embedderInstance ??= this.deps.embedder())

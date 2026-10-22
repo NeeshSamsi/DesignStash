@@ -3,7 +3,16 @@ import type { AiActiveProblem } from '@shared/ipc/ai'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { detectHardware, recommendTier } from '../ai/hardware'
 import { DownloadError, assertSafeId, classifyDownloadError } from '../ai/download'
-import { MODEL_REGISTRY, availableModels, bestFitModelId, getModel, isBuiltIn } from '../ai/registry'
+import {
+  MEANING_MODEL,
+  MODEL_REGISTRY,
+  availableModels,
+  bestFitModelId,
+  getModel,
+  isBuiltIn,
+  isMeaningModel
+} from '../ai/registry'
+import { inferenceQueueFor } from './library-effects'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
@@ -14,8 +23,12 @@ function appleProblem(reason: string | null): AiActiveProblem {
   return 'apple-unavailable'
 }
 
-export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerContext): void {
+export function registerAiHandlers(ctx: HandlerContext): void {
+  const { settings, telemetry, ai, push } = ctx
   const { downloader, activeDownloads } = ai
+
+  // Meaning-search vectors wait for suggestions to finish first.
+  ai.embeddings.setBusyCheck(() => inferenceQueueFor(ctx).busy)
 
   // Models deleted last session can no longer be undone.
   void downloader.purgeSetAside().catch(() => {})
@@ -52,6 +65,15 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
     const active = activeModelId ? getModel(activeModelId) : undefined
     return {
       models,
+      meaning: {
+        id: MEANING_MODEL.id,
+        name: MEANING_MODEL.name,
+        description: MEANING_MODEL.description,
+        license: MEANING_MODEL.license,
+        sizeBytes: MEANING_MODEL.sizeBytes,
+        downloadedBytes: await downloader.downloadedBytes(MEANING_MODEL.id),
+        installed: await downloader.isInstalled(MEANING_MODEL.id)
+      },
       legacy: await downloader.listLegacy(),
       activeProblem: active && isBuiltIn(active) && !apple.available ? appleProblem(apple.reason) : null
     }
@@ -63,7 +85,9 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
     activeDownloads.set(args.id, controller)
     const startedAt = Date.now()
     // Telemetry: the catalogue id, its size and how long it took. Never a path.
-    const sizeMb = Math.round((getModel(args.id)?.sizeBytes ?? 0) / 1_000_000)
+    const sizeMb = Math.round(
+      ((isMeaningModel(args.id) ? MEANING_MODEL : getModel(args.id))?.sizeBytes ?? 0) / 1_000_000
+    )
     void downloader
       .download(args.id, {
         signal: controller.signal,
@@ -72,6 +96,8 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
         }
       })
       .then(() => {
+        // Meaning search catches up on the library now that its model is there.
+        if (isMeaningModel(args.id)) ai.embeddings.backfill()
         telemetry.get().track(TELEMETRY_EVENTS.MODEL_DOWNLOAD_FINISHED, {
           model_id: args.id,
           size_mb: sizeMb,
@@ -126,23 +152,28 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
     activeDownloads.get(args.id)?.abort()
     activeDownloads.delete(args.id)
 
-    const legacy = !model
+    const legacy = !model && !isMeaningModel(args.id)
     if (legacy) {
       await downloader.deleteModel(args.id)
       return { deleted: true, inUse: false, undoable: false }
     }
     const deleted = await downloader.setAside(args.id)
     if (deleted && inUse) settings.update({ activeModelId: null })
+    // Search goes back to keywords only: the vectors and the server go with the model.
+    if (deleted && isMeaningModel(args.id)) await ai.embeddings.modelRemoved()
     return { deleted, inUse: deleted && inUse, undoable: deleted }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_RESTORE_MODEL, async (args) => {
     const restored = await downloader.restoreSetAside(args.id)
+    if (restored && isMeaningModel(args.id)) ai.embeddings.backfill()
     if (restored && args.makeActive) settings.update({ activeModelId: args.id })
     return { restored }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_SET_ACTIVE, (args) => {
+    // The meaning-search model is not a vision model; it can never be the active one.
+    if (args.id && isMeaningModel(args.id)) return { modelId: settings.get().activeModelId }
     settings.update({ activeModelId: args.id })
     // Telemetry: hardware/model tier enum only — never the model id beyond its tier.
     if (args.id) {

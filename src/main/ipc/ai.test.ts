@@ -26,6 +26,12 @@ let push: ReturnType<typeof vi.fn>
 let activeDownloads: Map<string, AbortController>
 let appleReady: boolean
 let appleReason: string
+let embeddings: {
+  setBusyCheck: ReturnType<typeof vi.fn>
+  backfill: ReturnType<typeof vi.fn>
+  similarities: ReturnType<typeof vi.fn>
+  modelRemoved: ReturnType<typeof vi.fn>
+}
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -44,6 +50,12 @@ beforeEach(() => {
   push = vi.fn()
   activeDownloads = new Map()
   appleReady = false
+  embeddings = {
+    setBusyCheck: vi.fn(),
+    backfill: vi.fn(),
+    similarities: vi.fn(async () => null),
+    modelRemoved: vi.fn(async () => {})
+  }
   appleReason = 'appleIntelligenceNotEnabled'
   registerAiHandlers({
     settings,
@@ -54,14 +66,21 @@ beforeEach(() => {
       downloader: new ModelDownloader(modelsDir),
       activeDownloads,
       appleStatus: async () =>
-        appleReady ? { available: true, reason: null } : { available: false, reason: appleReason }
+        appleReady ? { available: true, reason: null } : { available: false, reason: appleReason },
+      embeddings
     }
   } as unknown as HandlerContext)
 })
 
 afterEach(() => rmSync(base, { recursive: true, force: true }))
 
-type ListedModel = { id: string; installed: boolean; bestFit: boolean; builtIn: boolean; sizeBytes: number }
+type ListedModel = {
+  id: string
+  installed: boolean
+  bestFit: boolean
+  builtIn: boolean
+  sizeBytes: number
+}
 const listModels = async () => {
   const res = await call<{ models: ListedModel[]; legacy: { id: string }[] }>(
     IPC_CHANNELS.AI_LIST_MODELS
@@ -247,7 +266,8 @@ describe('AI_DOWNLOAD_MODEL tracking', () => {
       ai: {
         modelsDir,
         downloader: { purgeSetAside: async () => {}, download },
-        activeDownloads
+        activeDownloads,
+        embeddings
       }
     } as unknown as HandlerContext)
 
@@ -277,5 +297,43 @@ describe('AI_DOWNLOAD_MODEL tracking', () => {
     settle[1]?.()
     await new Promise((r) => setTimeout(r, 0))
     expect(activeDownloads.has(id)).toBe(false)
+  })
+})
+
+describe('the meaning-search model', () => {
+  const id = 'nomic-embed-v1.5'
+
+  it('is listed beside the vision models but never among them', async () => {
+    const res = await call<{
+      models: { id: string }[]
+      meaning: { id: string; installed: boolean; sizeBytes: number }
+    }>(IPC_CHANNELS.AI_LIST_MODELS)
+    if (!res.success) throw new Error('list failed')
+    expect(res.data.models.map((m) => m.id)).not.toContain(id)
+    expect(res.data.meaning).toMatchObject({ id, installed: false, sizeBytes: 146_146_432 })
+    install(id, ['model.gguf'])
+    const again = await call<{ meaning: { installed: boolean } }>(IPC_CHANNELS.AI_LIST_MODELS)
+    expect(again).toMatchObject({ data: { meaning: { installed: true } } })
+  })
+
+  it('can not be made the active model', async () => {
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+    expect(await call(IPC_CHANNELS.AI_SET_ACTIVE, { id })).toMatchObject({
+      data: { modelId: 'qwen3-vl-4b' }
+    })
+    expect(settings.get().activeModelId).toBe('qwen3-vl-4b')
+  })
+
+  it('deletes with Undo, tells search to let go, and catches up when restored', async () => {
+    install(id, ['model.gguf'])
+    expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id })).toEqual({
+      success: true,
+      data: { deleted: true, inUse: false, undoable: true }
+    })
+    expect(embeddings.modelRemoved).toHaveBeenCalledTimes(1)
+    expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id })).toMatchObject({
+      data: { restored: true }
+    })
+    expect(embeddings.backfill).toHaveBeenCalledTimes(1)
   })
 })

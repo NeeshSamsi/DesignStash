@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { BrowserWindow } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { createSettingsStore } from '../settings'
+import type { Repository } from '../db/repository'
 
 vi.mock('electron', () => ({ app: { on: vi.fn() }, shell: { openPath: vi.fn() } }))
 
@@ -41,6 +42,9 @@ describe('createPush', () => {
   })
 })
 
+/** Meaning search only needs somewhere to hang its index listener here. */
+const repoStub = { search: { setIndexListener: vi.fn() } } as unknown as Repository
+
 describe('createAiRuntime', () => {
   let base: string | null = null
   afterEach(() => {
@@ -56,13 +60,13 @@ describe('createAiRuntime', () => {
 
   it('starts with no model chosen when the stored one left the catalogue', async () => {
     const settings = settingsWith('qwen2.5-vl-3b')
-    const ai = createAiRuntime(settings)
+    const ai = createAiRuntime(settings, repoStub)
     expect(settings.get().activeModelId).toBeNull()
     await expect(ai.activeProvider()).resolves.toBeNull()
   })
 
   it('has no provider for a Qwen model whose files are not there', async () => {
-    const ai = createAiRuntime(settingsWith('qwen3-vl-4b'))
+    const ai = createAiRuntime(settingsWith('qwen3-vl-4b'), repoStub)
     await expect(ai.activeProvider()).resolves.toBeNull()
   })
 })

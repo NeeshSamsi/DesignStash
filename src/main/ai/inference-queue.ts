@@ -106,6 +106,11 @@ export class InferenceQueue {
     }
   }
 
+  /** Whether a suggestion is being read or waiting its turn. */
+  get busy(): boolean {
+    return this.pumping !== null || this.fifo.length > 0
+  }
+
   /** Resolves when nothing is queued or running. */
   async idle(): Promise<void> {
     while (this.pumping) await this.pumping

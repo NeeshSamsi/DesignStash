@@ -44,7 +44,8 @@ describe('handler registration', () => {
         modelsDir: base,
         downloader: quiet,
         activeDownloads: new Map(),
-        activeProvider: async () => null
+        activeProvider: async () => null,
+        embeddings: { setBusyCheck: vi.fn(), backfill: vi.fn(), similarities: async () => null, modelRemoved: async () => {} }
       },
       push: vi.fn()
     } as unknown as HandlerContext

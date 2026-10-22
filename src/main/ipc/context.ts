@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, shell, type BrowserWindow } from 'electron'
 import type { PushChannel, PushPayload } from '@shared/ipc'
@@ -17,6 +18,12 @@ import {
 import { getModel, isBuiltIn } from '../ai/registry'
 import { NativeHelper, resolveHelperPath } from '../native/helper'
 import { LibraryService } from '../library/library-service'
+import { LlamaServer } from '../ai/llama-server'
+import { HOST_PROMPT_CACHE_OFF } from '../ai/provider-factory'
+import { MODEL_FILE_NAMES } from '../ai/registry'
+import { LlamaMeaningEmbedder } from '../search/embedder'
+import { EmbeddingService } from '../search/embedding-service'
+import { MEANING_MODEL_ID } from '../search/meaning'
 
 /**
  * Mutable holder for the telemetry instance. Consent can flip at runtime, so
@@ -37,6 +44,8 @@ export interface AiRuntime {
   activeProvider(): Promise<InferenceProvider | null>
   /** Whether Apple's on-device model can run here, and why not (the Swift helper's `info`, cached a while). */
   appleStatus(): Promise<AppleStatus>
+  /** Meaning search: the vectors, their queue, and the closeness of each mockup to a search. */
+  embeddings: EmbeddingService
 }
 
 /** What every domain's handler module gets. */
@@ -51,7 +60,7 @@ export interface HandlerContext {
   push<C extends PushChannel>(channel: C, payload: PushPayload<C>): void
 }
 
-export function createAiRuntime(settings: SettingsStore): AiRuntime {
+export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRuntime {
   const modelsDir = join(settings.getLibraryRoot(), '..', 'models')
   const downloader = new ModelDownloader(modelsDir)
   // Qwen 2.5 VL 3B or 7B, chosen before the switch, reads as no model chosen.
@@ -71,10 +80,38 @@ export function createAiRuntime(settings: SettingsStore): AiRuntime {
     pidFile,
     apple: { helper, availability: apple }
   })
+
+  // Meaning search runs a second llama-server in embedding mode, with its own pid file.
+  const embedPidFile = new LlamaPidFile(join(modelsDir, '..', 'llama-server-embed.pid'))
+  void embedPidFile.reapStale().catch(() => {})
+  const meaningModelPath = join(modelsDir, MEANING_MODEL_ID, MODEL_FILE_NAMES.model)
+  const embeddings = new EmbeddingService({
+    repo,
+    available: () => !stubAiEnabled() && existsSync(meaningModelPath) && resolveLlamaServerPath() !== null,
+    embedder: () =>
+      new LlamaMeaningEmbedder(
+        new LlamaServer({
+          binaryPath: resolveLlamaServerPath() ?? '',
+          modelPath: meaningModelPath,
+          embedding: true,
+          ctxSize: 2048,
+          startTimeoutMs: 60_000,
+          requestTimeoutMs: 20_000,
+          extraArgs: HOST_PROMPT_CACHE_OFF,
+          tracker: embedPidFile
+        })
+      ),
+    log: (message, err) => console.error(`[search] ${message}:`, err)
+  })
+  repo.search.setIndexListener((id, text) => embeddings.documentChanged(id, text))
+  // Catch up on mockups that have no vector yet, once the app has settled and behind AI suggestions.
+  setTimeout(() => embeddings.backfill(), 15_000).unref()
+
   // A normal quit stops them too, rather than leaving that to the process exit hook.
   app.on('will-quit', () => {
     void providers.dispose().catch(() => {})
     void helper.stop().catch(() => {})
+    void embeddings.stop().catch(() => {})
   })
 
   return {
@@ -91,7 +128,8 @@ export function createAiRuntime(settings: SettingsStore): AiRuntime {
     },
     // End-to-end runs never ask the real helper, so what they see doesn't depend on the Mac.
     appleStatus: () =>
-      stubAiEnabled() ? Promise.resolve({ available: false, reason: 'unknown' }) : apple.status()
+      stubAiEnabled() ? Promise.resolve({ available: false, reason: 'unknown' }) : apple.status(),
+    embeddings
   }
 }
 
@@ -117,7 +155,7 @@ export function createHandlerContext(opts: {
     settings: opts.settings,
     telemetry: opts.telemetry,
     repo: opts.repo,
-    ai: createAiRuntime(opts.settings),
+    ai: createAiRuntime(opts.settings, opts.repo),
     library: new LibraryService(opts.repo, opts.settings.getLibraryRoot(), {
       openPath: (p) => shell.openPath(p)
     }),
