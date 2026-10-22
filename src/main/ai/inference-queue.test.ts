@@ -329,6 +329,43 @@ describe('InferenceQueue', () => {
   })
 })
 
+describe('pile context', () => {
+  function stashedTop() {
+    const top = repo.mockups.createMockup(
+      approvedMockup({ title: 'Tape roll on a wall', description: 'A roll of tape on a white wall.', isGroup: true })
+    )
+    const device = repo.tags.getCategoryByLabel('Device') ?? repo.tags.createCategory({ label: 'Device' })
+    const tag = repo.tags.createTag({ categoryId: device.id, label: 'tape' })
+    repo.mockups.addTagToMockup(top.id, tag.id)
+    return top
+  }
+
+  it('shows a variant the approved title, description and tags of its pile’s first mockup', async () => {
+    const top = stashedTop()
+    const variant = imported('Tape 2', { stage: 'to_stash', groupId: top.id })
+    const { provider, calls } = stubProvider(() => result('Tape'))
+    const queue = new InferenceQueue({ repo, getProvider: async () => provider, onStatus: () => {} })
+    await queue.enqueue([variant.id])
+    await queue.idle()
+    expect(calls[0]!.groupContext).toEqual({
+      originalTitle: 'Tape roll on a wall',
+      originalDescription: 'A roll of tape on a white wall.',
+      originalTags: [{ category: 'Device', label: 'tape' }]
+    })
+  })
+
+  it('gives no pile context while the first mockup is still waiting to be looked over', async () => {
+    const top = repo.mockups.createMockup(approvedMockup({ title: 'Top', stage: 'to_stash', isGroup: true }))
+    const variant = imported('Tape 2', { stage: 'to_stash', groupId: top.id })
+    const single = imported('Alone')
+    const { provider, calls } = stubProvider(() => result('Tape'))
+    const queue = new InferenceQueue({ repo, getProvider: async () => provider, onStatus: () => {} })
+    await queue.enqueue([variant.id, single.id])
+    await queue.idle()
+    expect(calls.map((c) => c.groupContext)).toEqual([undefined, undefined])
+  })
+})
+
 describe('analysisInputFor', () => {
   it('shows the cover, the name the file came in as, and its folders', () => {
     const m = imported('front')
