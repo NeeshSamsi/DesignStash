@@ -46,7 +46,7 @@ export function serverArgsFor(id: string): readonly string[] {
 /** What runs Apple's on-device model: the Swift helper, and whether the model is ready. */
 export interface AppleRuntime {
   helper: Pick<NativeHelper, 'describe'>
-  availability: AppleAvailability
+  availability: Pick<AppleAvailability, 'available'>
 }
 
 /** Set by the end-to-end tests, together with NODE_ENV=test, to answer with the stub below instead of a model. */
