@@ -1,0 +1,93 @@
+name: Release
+
+# release-please reads the conventional commits on main and keeps one release PR open with the
+# next version and its CHANGELOG.md entry (only feat, fix and perf reach the notes). Merging that PR
+# tags the release and creates the GitHub Release; the build job then attaches the DMG.
+# The tag is made with the default token, which does not start other workflows, so the build is a
+# job here rather than a separate "on: push: tags" workflow.
+#
+# Run it by hand (Actions > Release > Run workflow) with a tag to rebuild and re-attach the DMG.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to rebuild the DMG for (for example v0.1.0)
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build:
+    needs: release-please
+    # Runs after a release was created, or on a manual run (release-please is skipped then).
+    if: always() && (needs.release-please.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch')
+    # The Swift helper needs the macOS 27 SDK (Foundation Models). The xcode-27 image is Apple
+    # Silicon, runs macOS 27 and has Xcode 27 (generally available since 2026-10-15). If it is ever
+    # withdrawn, build the helper on a Mac and use `node scripts/build-helper.mjs --stage --from <binary>`.
+    runs-on: xcode-27
+    env:
+      TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Fetches llama-server and builds the Swift helper into build/.
+      - name: Stage llama-server and the Swift helper
+        run: pnpm package:stage
+
+      # The app reads POSTHOG_KEY when it is built (the secret is absent on forks and the build
+      # still works; telemetry is then off).
+      - name: Build the app
+        run: pnpm build
+        env:
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+
+      # Unsigned beta. For signed builds, import the certificate, use `pnpm package:mac:signed` and
+      # set the secrets listed in scripts/packaging/README.md.
+      - name: Package the DMG
+        run: pnpm package:mac
+
+      - name: Attach the DMG to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" dist/DesignStash-*-arm64.dmg --clobber
+
+      - name: Add the tester install steps to the release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$TAG" --json body --jq .body > notes.md
+          if ! grep -q "Installing the beta (testers)" notes.md; then
+            cat .github/release-tester-notes.md >> notes.md
+            gh release edit "$TAG" --notes-file notes.md
+          fi
