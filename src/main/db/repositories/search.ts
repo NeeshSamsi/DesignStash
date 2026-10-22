@@ -2,6 +2,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags } from '../schema'
 import { isStashed } from './stashed'
+import { searchKeywords } from '../search-keywords'
 
 /**
  * An English plural folded to its singular ("bags" → "bag", "boxes" → "box", "stationeries" →
@@ -44,7 +45,13 @@ export function ftsMatchQuery(query: string): string | null {
   return terms || null
 }
 
-/** The mockups_fts index: title, description and tag labels of approved mockups. */
+/**
+ * bm25 column weights: title, description, tags, keywords. A word that only the hidden keywords
+ * carry counts for a quarter of one the person can see, so direct hits rank above keyword-only hits.
+ */
+export const FTS_WEIGHTS = [1, 1, 1, 0.25] as const
+
+/** The mockups_fts index: title, description, tag labels and hidden keywords of approved mockups. */
 export class SearchRepository {
   constructor(private readonly db: AppDatabase) {}
 
@@ -58,11 +65,11 @@ export class SearchRepository {
       .where(eq(mockupTags.mockupId, mockupId))
       .all()
       .map((row) => row.tags.label)
-      .join(' ')
+    const keywords = searchKeywords(m.title, m.description ?? '', tagLabels).join(' ')
     this.db.run(sql`DELETE FROM mockups_fts WHERE rowid = ${mockupId}`)
     this.db.run(
-      sql`INSERT INTO mockups_fts(rowid, title, description, tags)
-          VALUES (${mockupId}, ${m.title}, ${m.description ?? ''}, ${tagLabels})`
+      sql`INSERT INTO mockups_fts(rowid, title, description, tags, keywords)
+          VALUES (${mockupId}, ${m.title}, ${m.description ?? ''}, ${tagLabels.join(' ')}, ${keywords})`
     )
   }
 
@@ -81,14 +88,15 @@ export class SearchRepository {
   }
 
   /**
-   * Prefix-match a free-text query. Returns mockup id → FTS rank, or null when the query
+   * Prefix-match a free-text query. Returns mockup id → weighted bm25 rank (lower is better), or null when the query
    * has no searchable terms (so the caller skips the filter).
    */
   rankMatches(query: string): Map<number, number> | null {
     const ftsTerms = ftsMatchQuery(query)
     if (!ftsTerms) return null
     const ftsRows = this.db.all<{ rowid: number; rank: number }>(
-      sql`SELECT rowid, rank FROM mockups_fts WHERE mockups_fts MATCH ${ftsTerms}`
+      sql`SELECT rowid, bm25(mockups_fts, ${sql.raw(FTS_WEIGHTS.join(', '))}) AS rank
+          FROM mockups_fts WHERE mockups_fts MATCH ${ftsTerms}`
     )
     return new Map(ftsRows.map((r) => [r.rowid, r.rank]))
   }

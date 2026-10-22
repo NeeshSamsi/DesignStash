@@ -99,6 +99,34 @@ describe('search index', () => {
   })
 })
 
+describe('keyword search', () => {
+  it('finds a mockup by a word only the hidden keywords carry, below a direct hit', () => {
+    const tote = repo.mockups.createMockup({
+      ...sample,
+      title: 'Canvas tote bag',
+      libraryPath: '/lib/fts/k1.psd',
+      stage: 'stashed'
+    })
+    const direct = repo.mockups.createMockup({
+      ...sample,
+      title: 'Shopping bag on a table',
+      libraryPath: '/lib/fts/k2.psd',
+      stage: 'stashed'
+    })
+    repo.search.rebuildSearchIndex()
+
+    const ranks = repo.search.rankMatches('shopping bag')!
+    expect([...ranks.keys()].sort()).toEqual([tote.id, direct.id].sort())
+    expect(ranks.get(direct.id)!).toBeLessThan(ranks.get(tote.id)!)
+    // The keyword is hidden: the title column does not carry it.
+    const row = sqlite
+      .prepare('SELECT title, keywords FROM mockups_fts WHERE rowid = ?')
+      .get(tote.id) as { title: string; keywords: string }
+    expect(row.title).toBe('Canvas tote bag')
+    expect(row.keywords).toContain('shopping bag')
+  })
+})
+
 describe('ftsMatchQuery', () => {
   it('prefix-matches every word', () => {
     expect(ftsMatchQuery('tote bag')).toBe('tote* bag*')

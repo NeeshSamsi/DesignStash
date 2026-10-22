@@ -500,3 +500,35 @@ describe('migration: copy jobs from zips', () => {
     old.close()
   })
 })
+
+describe('migration: search keywords', () => {
+  it('replaces mockups_fts with one that has a keywords column, on a database at 0011', () => {
+    const dir = tempDir()
+    cpSync('./drizzle', dir, { recursive: true })
+    const journalPath = join(dir, 'meta', '_journal.json')
+    const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: { tag: string }[] }
+    const cut = journal.entries.findIndex((e) => e.tag.endsWith('_search_keywords'))
+    expect(cut).toBeGreaterThan(0)
+    journal.entries = journal.entries.slice(0, cut)
+    writeFileSync(journalPath, JSON.stringify(journal))
+
+    const old = new Database(':memory:')
+    const oldDb = drizzle(old, { schema })
+    migrate(oldDb, { migrationsFolder: dir })
+    old.exec('CREATE VIRTUAL TABLE mockups_fts USING fts5(title, description, tags)')
+
+    migrate(oldDb, { migrationsFolder: './drizzle' })
+
+    const cols = old
+      .prepare('PRAGMA table_info(mockups_fts)')
+      .all()
+      .map((r) => (r as { name: string }).name)
+    expect(cols).toEqual(['title', 'description', 'tags', 'keywords'])
+    old
+      .prepare('INSERT INTO mockups_fts(rowid, title, description, tags, keywords) VALUES (2, ?, ?, ?, ?)')
+      .run('Bag', '', '', 'shopper')
+    const hit = old.prepare("SELECT rowid FROM mockups_fts WHERE mockups_fts MATCH 'shopper'").all()
+    expect(hit).toEqual([{ rowid: 2 }])
+    old.close()
+  })
+})
