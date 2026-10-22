@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { join } from 'node:path'
 import type { InferenceProvider } from '../../shared/inference'
+import { AppleInferenceProvider } from './apple-provider'
+import { PROMPT_PROFILES } from './prompts'
 import {
+  MODEL_SERVER_ARGS,
   createProviderFactory,
   resolveLlamaServerPath,
+  serverArgsFor,
   type ProviderFactoryOptions,
   type VisionModelFiles
 } from './provider-factory'
@@ -41,26 +45,38 @@ afterEach(() => {
 })
 
 describe('createProviderFactory', () => {
-  it('runs a model with an mmproj as a vision model on llama-server', async () => {
-    const { factory, createVision } = setup([
-      'qwen2.5-vl-3b/model.gguf',
-      'qwen2.5-vl-3b/mmproj.gguf'
-    ])
-    const provider = await factory.forModel('qwen2.5-vl-3b')
+  it('runs Qwen3-VL 4B on llama-server with its own prompt and the prompt cache off', async () => {
+    const { factory, createVision } = setup(['qwen3-vl-4b/model.gguf', 'qwen3-vl-4b/mmproj.gguf'])
+    const provider = await factory.forModel('qwen3-vl-4b')
     expect(provider?.id).toBe('vision')
     expect(createVision).toHaveBeenCalledWith({
-      name: 'Qwen 2.5 VL 3B',
-      modelPath: '/models/qwen2.5-vl-3b/model.gguf',
-      mmprojPath: '/models/qwen2.5-vl-3b/mmproj.gguf',
+      name: 'Qwen3-VL 4B',
+      modelPath: '/models/qwen3-vl-4b/model.gguf',
+      mmprojPath: '/models/qwen3-vl-4b/mmproj.gguf',
       binaryPath: '/bin/llama-server',
-      extraArgs: []
+      prompt: PROMPT_PROFILES['qwen3-vl-4b'],
+      extraArgs: ['--cache-ram', '0']
     })
   })
 
-  it('names a model that is not in the catalogue by its id', async () => {
+  it('runs Qwen3.5 9B with thinking off, its own prompt and the prompt cache off', async () => {
+    const { factory, createVision } = setup(['qwen3.5-9b/model.gguf', 'qwen3.5-9b/mmproj.gguf'])
+    await factory.forModel('qwen3.5-9b')
+    expect(createVision.mock.calls[0]![0]).toMatchObject({
+      name: 'Qwen3.5 9B',
+      prompt: PROMPT_PROFILES['qwen3.5-9b'],
+      extraArgs: ['--cache-ram', '0', '--reasoning', 'off']
+    })
+  })
+
+  it('names a model that is not in the catalogue by its id, with the default prompt', async () => {
     const { factory, createVision } = setup(['custom/model.gguf', 'custom/mmproj.gguf'])
     await factory.forModel('custom')
-    expect(createVision.mock.calls[0]![0].name).toBe('custom')
+    expect(createVision.mock.calls[0]![0]).toMatchObject({
+      name: 'custom',
+      prompt: PROMPT_PROFILES['qwen3-vl-4b'],
+      extraArgs: ['--cache-ram', '0']
+    })
   })
 
   it('has no provider for an old text-only model (no mmproj)', async () => {
@@ -106,6 +122,63 @@ describe('createProviderFactory', () => {
     const a = (await factory.forModel('a')) as ReturnType<typeof stubProvider>
     await factory.dispose()
     expect(a.dispose).toHaveBeenCalledOnce()
+  })
+})
+
+describe('Apple’s on-device model', () => {
+  const DESCRIBED = JSON.stringify({
+    title: 'Tape roll on a wall',
+    description: 'A roll of tape on a white wall.',
+    tags: [{ category: 'Print & Branding', label: 'tape' }]
+  })
+
+  function appleSetup(available: boolean) {
+    const helper = { describe: vi.fn(async () => ({ text: DESCRIBED, json: true, ms: 1 })) }
+    const availability = { available: vi.fn(async () => available) }
+    const { factory, createVision } = setup([], { apple: { helper, availability } })
+    return { factory, createVision, helper, availability }
+  }
+
+  it('is an AppleInferenceProvider over the helper, asked with the apple prompt', async () => {
+    const { factory, createVision, helper } = appleSetup(true)
+    const provider = await factory.forModel('apple')
+    expect(provider).toBeInstanceOf(AppleInferenceProvider)
+    expect(createVision).not.toHaveBeenCalled()
+    const result = await provider!.analyze({ imagePath: '', fileName: 'Tape.psd', folderTrail: [] })
+    expect(result.title).toBe('Tape roll on a wall')
+    expect(helper.describe).toHaveBeenCalledOnce()
+  })
+
+  it('has no provider when the helper says the model is not available', async () => {
+    const { factory } = appleSetup(false)
+    await expect(factory.forModel('apple')).resolves.toBeNull()
+  })
+
+  it('has no provider without a helper', async () => {
+    const { factory } = setup([])
+    await expect(factory.forModel('apple')).resolves.toBeNull()
+  })
+
+  it('stops the running llama-server when Apple’s model becomes active', async () => {
+    const helper = { describe: vi.fn() }
+    const { factory } = setup(['qwen3-vl-4b/model.gguf', 'qwen3-vl-4b/mmproj.gguf'], {
+      apple: { helper, availability: { available: async () => true } }
+    })
+    const qwen = (await factory.forModel('qwen3-vl-4b')) as ReturnType<typeof stubProvider>
+    await factory.forModel('apple')
+    expect(qwen.dispose).toHaveBeenCalledOnce()
+  })
+})
+
+describe('server args', () => {
+  it('turns off llama-server’s host prompt cache for every model, known or not', () => {
+    for (const args of Object.values(MODEL_SERVER_ARGS)) expect(args).toContain('--cache-ram')
+    expect(serverArgsFor('qwen3-vl-4b')).toEqual(['--cache-ram', '0'])
+    expect(serverArgsFor('someone-elses-model')).toEqual(['--cache-ram', '0'])
+  })
+
+  it('runs Qwen3.5 9B with thinking off', () => {
+    expect(serverArgsFor('qwen3.5-9b')).toEqual(['--cache-ram', '0', '--reasoning', 'off'])
   })
 })
 

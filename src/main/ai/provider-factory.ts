@@ -2,8 +2,12 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { InferenceProvider } from '../../shared/inference'
+import type { NativeHelper } from '../native/helper'
+import type { AppleAvailability } from './apple-availability'
+import { AppleInferenceProvider } from './apple-provider'
 import { LlamaPidFile } from './llama-pid'
 import { LlamaServer } from './llama-server'
+import { PROMPT_PROFILES, promptProfile, type PromptProfile } from './prompts'
 import { MODEL_FILE_NAMES, getModel } from './registry'
 import { VisionInferenceProvider, readCoverAsDataUrl } from './vision-provider'
 
@@ -16,11 +20,34 @@ export interface VisionModelFiles {
   modelPath: string
   mmprojPath: string
   binaryPath: string
+  /** The model's prompt profile. */
+  prompt: PromptProfile
   extraArgs: readonly string[]
 }
 
-/** llama-server flags a model needs, by model id. The two Qwen models need none. */
-export const MODEL_SERVER_ARGS: Record<string, readonly string[]> = {}
+/**
+ * llama-server keeps up to 8 GB of past prompts in host memory by default, and grew to 10 to 12 GB
+ * over long runs in the AI bake-off. The app sends one image per request, so the cache never pays
+ * off: `--cache-ram 0` turns it off. The slot's own KV cache still reuses the shared system prompt.
+ */
+export const HOST_PROMPT_CACHE_OFF = ['--cache-ram', '0'] as const
+
+/** llama-server flags a model needs, by model id. Qwen3.5 thinks unless told not to. */
+export const MODEL_SERVER_ARGS: Record<string, readonly string[]> = {
+  'qwen3-vl-4b': HOST_PROMPT_CACHE_OFF,
+  'qwen3.5-9b': [...HOST_PROMPT_CACHE_OFF, '--reasoning', 'off']
+}
+
+/** The flags for a model, the prompt cache off for one outside the catalogue too. */
+export function serverArgsFor(id: string): readonly string[] {
+  return MODEL_SERVER_ARGS[id] ?? HOST_PROMPT_CACHE_OFF
+}
+
+/** What runs Apple's on-device model: the Swift helper, and whether the model is ready. */
+export interface AppleRuntime {
+  helper: Pick<NativeHelper, 'describe'>
+  availability: AppleAvailability
+}
 
 /** Set by the end-to-end tests, together with NODE_ENV=test, to answer with the stub below instead of a model. */
 export const STUB_AI_ENV = 'DESIGNSTASH_E2E_STUB_AI'
@@ -52,6 +79,8 @@ export interface ProviderFactoryOptions {
   createVision?: (files: VisionModelFiles) => ManagedProvider
   /** Where the running llama-server's pid is kept, so the next launch can stop one left behind. */
   pidFile?: LlamaPidFile
+  /** Apple's on-device model. Without it, the `apple` entry has no provider. */
+  apple?: AppleRuntime
 }
 
 export interface ProviderFactory {
@@ -70,6 +99,7 @@ function createVisionProvider(files: VisionModelFiles, pidFile?: LlamaPidFile): 
     ...(pidFile && { tracker: pidFile })
   })
   return new VisionInferenceProvider(files.name, {
+    prompt: files.prompt,
     complete: (request) => server.chat(request),
     readImage: readCoverAsDataUrl,
     dispose: () => server.stop()
@@ -77,13 +107,16 @@ function createVisionProvider(files: VisionModelFiles, pidFile?: LlamaPidFile): 
 }
 
 /**
- * Builds the provider for the active model from its files at `<modelsDir>/<id>/`: the GGUF and
- * its mmproj, run by llama-server. A folder without an mmproj (an old text-only model) has no
- * provider. One provider, so one llama-server, at a time: switching models stops the previous one.
+ * Builds the provider for the active model. A llama model runs from its files at
+ * `<modelsDir>/<id>/`, the GGUF and its mmproj, on llama-server with its own prompt profile and
+ * flags; a folder without an mmproj (an old text-only model) has no provider. Apple's model runs
+ * through the Swift helper, when the helper says it is available. One provider, so one
+ * llama-server, at a time: switching models stops the previous one.
  */
 export function createProviderFactory(options: ProviderFactoryOptions): ProviderFactory {
   const exists = options.exists ?? existsSync
-  const createVision = options.createVision ?? ((files) => createVisionProvider(files, options.pidFile))
+  const createVision =
+    options.createVision ?? ((files) => createVisionProvider(files, options.pidFile))
   let current: { id: string; provider: ManagedProvider } | null = null
   let warnedNoServer = false
 
@@ -93,7 +126,18 @@ export function createProviderFactory(options: ProviderFactoryOptions): Provider
     await previous?.provider.dispose?.()
   }
 
-  function build(id: string): ManagedProvider | null {
+  async function buildApple(): Promise<ManagedProvider | null> {
+    if (!options.apple || !(await options.apple.availability.available())) return null
+    return new AppleInferenceProvider({
+      prompt: PROMPT_PROFILES.apple,
+      helper: options.apple.helper
+    })
+  }
+
+  async function build(id: string): Promise<ManagedProvider | null> {
+    const entry = getModel(id)
+    if (entry?.runtime === 'apple') return buildApple()
+
     const modelPath = join(options.modelsDir, id, MODEL_FILE_NAMES.model)
     const mmprojPath = join(options.modelsDir, id, MODEL_FILE_NAMES.mmproj)
     if (!exists(modelPath) || !exists(mmprojPath)) return null
@@ -107,11 +151,13 @@ export function createProviderFactory(options: ProviderFactoryOptions): Provider
       return null
     }
     return createVision({
-      name: getModel(id)?.name ?? id,
+      name: entry?.name ?? id,
       modelPath,
       mmprojPath,
       binaryPath,
-      extraArgs: MODEL_SERVER_ARGS[id] ?? []
+      // A folder outside the catalogue gets the default model's prompt.
+      prompt: (entry && promptProfile(entry.prompt)) ?? PROMPT_PROFILES['qwen3-vl-4b'],
+      extraArgs: serverArgsFor(id)
     })
   }
 
@@ -120,7 +166,7 @@ export function createProviderFactory(options: ProviderFactoryOptions): Provider
       if (stubAiEnabled()) return stubProvider
       if (current?.id === id) return current.provider
       await dispose()
-      const provider = build(id)
+      const provider = await build(id)
       if (provider) current = { id, provider }
       return provider
     },
