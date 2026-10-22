@@ -19,6 +19,11 @@ export interface PromptSpec {
   description: string
   tags: string
   labels: string
+  /**
+   * The description and tag rules when no image is sent (a placeholder cover). Default: the same as
+   * with an image, which asks for the setting and colours the model can't see.
+   */
+  noImage?: { description: string; tags: string }
   /** Extra lines after the label rule, before the categories. */
   extraRules: string[]
   categories: Record<string, string>
@@ -54,7 +59,25 @@ export const SHIPPED: PromptSpec = {
   schema: RESULT_JSON_SCHEMA
 }
 
+/** A schema copy with a different least number of tags. */
+function withMinTags(schema: object, min: number): object {
+  const copy = structuredClone(schema) as { properties: { tags: { minItems: number } } }
+  copy.properties.tags.minItems = min
+  return copy
+}
+
 /** The shipped schema with a different tag count. */
+/**
+ * For a placeholder cover the model has only the names, so the description and tags stick to what
+ * the names say. The shipped rules ask for the setting and colours either way, and the models
+ * invent them (an iMac "on a clean desk in soft light", a menu "displayed on a screen").
+ */
+export const NAMES_ONLY = {
+  description:
+    '- description: one natural sentence, at most 200 characters, about the object the names point to and one or two other words people use for it. Only what the names tell you: no colours, light, setting or surface.',
+  tags: '- tags: 1 to 6, only the object and its kind, from the names.'
+}
+
 export function schemaWithTags(min: number, max: number): object {
   const schema = structuredClone(RESULT_JSON_SCHEMA) as unknown as {
     properties: { tags: { minItems: number; maxItems: number } }
@@ -84,8 +107,8 @@ export function requestFrom(spec: PromptSpec) {
       '',
       'Reply with JSON: title, description, tags.',
       spec.title,
-      spec.description,
-      spec.tags,
+      hasImage || !spec.noImage ? spec.description : spec.noImage.description,
+      hasImage || !spec.noImage ? spec.tags : spec.noImage.tags,
       spec.labels,
       ...spec.extraRules,
       '',
@@ -100,7 +123,10 @@ export function requestFrom(spec: PromptSpec) {
         { role: 'system', content: spec.system },
         { role: 'user', content }
       ],
-      response_format: { type: 'json_schema', json_schema: { name: 'mockup', schema: spec.schema } },
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'mockup', schema: hasImage || !spec.noImage ? spec.schema : withMinTags(spec.schema, 1) }
+      },
       ...spec.sampling,
       max_tokens: spec.maxTokens
     } as ChatRequest

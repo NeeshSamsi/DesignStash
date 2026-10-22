@@ -7,7 +7,7 @@ import { SHIPPED, requestFrom } from './tunable'
  * and its few inventions are materials (a "leather" velvet chair, a "flexible, solar" screen), so:
  * the names may supply the kind of mockup when the image fits, and materials only when clearly seen.
  */
-const spec = {
+export const q41Spec = {
   ...SHIPPED,
   namesRule:
     'The image shows what the mockup is. The names often say what kind of mockup it is or the product it shows (a long scroll website, a mailer box, an iPhone 16, an Apple Watch Ultra). When the image fits, use those words.',
@@ -17,7 +17,7 @@ const spec = {
 const version: PromptVersion = {
   id: 'q4-1',
   notes: 'Names may give the mockup type when the image fits; materials only when clearly seen.',
-  buildRequest: requestFrom(spec),
+  buildRequest: requestFrom(q41Spec),
   parseResult
 }
 
