@@ -18,6 +18,8 @@ export interface ModelRowProps
   detail?: string
   /** The Recommended tag next to the name (only while it isn't installed). */
   recommended?: boolean
+  /** `installed`: the tag next to the name. "Built in" for a model that comes with macOS. */
+  installedLabel?: string
   /** The chosen row in the radio list. Defaults to every state except `installed`, as in Figma. */
   selected?: boolean
   /** `downloading` and `paused`: how far along, 0 to 100. Figma's sample is 41. */
@@ -47,6 +49,7 @@ export function ModelRow({
   name = 'Qwen 2.5 VL 3B',
   detail = '2.8 GB · medium · better titles and tags',
   recommended = false,
+  installedLabel = 'Downloaded',
   selected,
   percent = 41,
   progressText = '860 MB of 2.8 GB · about 2 min left',
@@ -89,7 +92,7 @@ export function ModelRow({
         <div className="flex items-center gap-2">
           <p className="type-body-sm-medium whitespace-nowrap text-foreground">{name}</p>
           {state === 'not-installed' && recommended && <Badge>Recommended</Badge>}
-          {state === 'installed' && <Badge variant="secondary">Downloaded</Badge>}
+          {state === 'installed' && <Badge variant="secondary">{installedLabel}</Badge>}
         </div>
 
         {(state === 'not-installed' || state === 'installed') && (

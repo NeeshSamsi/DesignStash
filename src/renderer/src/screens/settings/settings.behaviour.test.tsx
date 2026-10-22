@@ -80,6 +80,7 @@ const model = (over: Record<string, unknown> = {}) => ({
   speed: 3,
   minMemoryGB: 8,
   bestFit: true,
+  builtIn: false,
   downloadedBytes: 0,
   installed: true,
   active: true,
@@ -585,6 +586,40 @@ describe('Settings · AI model', () => {
     toasts.undoToast.mock.calls[0]![1]()
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen7b' })
+    )
+  })
+
+  it('offers Apple’s built-in model as its own card, with nothing to download or delete', async () => {
+    setup({
+      [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+        ok({
+          models: [
+            model(),
+            model({
+              id: 'apple',
+              name: 'Apple’s on-device model',
+              tier: 'small',
+              sizeBytes: 0,
+              bestFit: false,
+              builtIn: true,
+              installed: true,
+              active: false
+            })
+          ],
+          legacy: []
+        })
+    })
+    open()
+    goto('AI model')
+    await screen.findByText('Built into macOS')
+    const card = screen
+      .getByText('Apple’s on-device model')
+      .closest('[data-ds="ModelCard"]') as HTMLElement
+    expect(within(card).getByText('Built in, no download')).not.toBeNull()
+    expect(within(card).queryByRole('button', { name: 'Delete' })).toBeNull()
+    fireEvent.click(within(card).getByRole('button', { name: 'Use this model' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'apple' })
     )
   })
 

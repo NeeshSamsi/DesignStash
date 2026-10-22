@@ -77,6 +77,7 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
         name={model.name}
         detail={modelDetail(model)}
         recommended={model.bestFit && view.state !== 'installed'}
+        {...(model.builtIn ? { installedLabel: 'Built in' } : {})}
         selected={model.id === ai.selectedId}
         percent={view.percent}
         progressText={view.progressText}
@@ -121,6 +122,7 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
         }
         model1={rows[0]}
         model2={rows[1]}
+        model3={rows[2]}
       />
     )
   }

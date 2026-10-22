@@ -21,15 +21,20 @@ export function defaultSelection(
   )
 }
 
+/** What a built-in model shows where a size would be. */
+export const BUILT_IN_SIZE = 'Built in, no download'
+
 const TIER_LINE = {
   small: 'small · fastest',
   medium: 'medium · better titles and tags',
   large: 'large · best descriptions'
 } as const
 
-/** "2.1 GB · medium · better titles and tags". */
+/** "2.1 GB · medium · better titles and tags"; a built-in model has nothing to download. */
 export const modelDetail = (model: AiModelInfo) =>
-  `${formatBytes(model.sizeBytes)} · ${TIER_LINE[model.tier]}`
+  model.builtIn
+    ? `${BUILT_IN_SIZE} · fastest, shorter descriptions`
+    : `${formatBytes(model.sizeBytes)} · ${TIER_LINE[model.tier]}`
 
 export interface RowView {
   state: ModelRowState
@@ -151,7 +156,7 @@ export function aiHeading(
   if (screen === 'complete' && model) {
     return {
       title: 'Your AI model is ready to go',
-      body: `${model.name} is installed and switched on. From now on, everything you gather gets titles and tags automatically.`
+      body: `${model.name} is ${model.builtIn ? 'built into your Mac' : 'installed'} and switched on. From now on, everything you gather gets titles and tags automatically.`
     }
   }
   return base

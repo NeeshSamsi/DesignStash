@@ -6,7 +6,9 @@ import { HardwareSummary } from '../../components/HardwareSummary'
 import { ModelCard, type ModelCardProps } from '../../components/ModelCard'
 import { SettingsGroup } from '../../components/SettingsLayout'
 import { Switch } from '../../components/Switch'
+import { cn } from '../../lib/utils'
 import { toast, undoToast } from '../../stores/toastStore'
+import { BUILT_IN_SIZE } from '../onboarding/ai-setup'
 import { modelPhase } from '../onboarding/model-phase'
 import { useModelCatalogue } from '../onboarding/useModelCatalogue'
 import { downloadFailureCopy, downloadRate, downloadRemaining, formatBytes } from './settings-copy'
@@ -119,7 +121,7 @@ export function AiModelPane() {
         name={model.name}
         description={model.description}
         languages={languagesText(model.languages)}
-        size={formatBytes(model.sizeBytes)}
+        size={model.builtIn ? BUILT_IN_SIZE : formatBytes(model.sizeBytes)}
         bestFit={model.bestFit}
         quality={model.quality}
         speed={model.speed}
@@ -134,6 +136,7 @@ export function AiModelPane() {
             }
           : {})}
         useDisabled={!on}
+        deletable={!model.builtIn}
         downloadDisabled={!supported}
         onUse={() => void use(model.id)}
         onDownload={() => void download(model.id)}
@@ -145,8 +148,10 @@ export function AiModelPane() {
   }
 
   const yours = models
-    .filter((m) => m.installed)
+    .filter((m) => m.installed && !m.builtIn)
     .sort((a, b) => Number(b.active) - Number(a.active))
+  // Apple's model, listed only on a Mac that can run it.
+  const builtIn = models.filter((m) => m.builtIn)
   const available = models.filter((m) => !m.installed)
 
   const mac = hardware ? (
@@ -196,6 +201,14 @@ export function AiModelPane() {
               <>
                 <p className="type-label-xs-medium text-tertiary">Your models</p>
                 {yours.map(cardFor)}
+              </>
+            )}
+            {builtIn.length > 0 && (
+              <>
+                <p className={cn('type-label-xs-medium text-tertiary', yours.length > 0 && 'mt-2')}>
+                  Built into macOS
+                </p>
+                {builtIn.map(cardFor)}
               </>
             )}
             {available.length > 0 && (

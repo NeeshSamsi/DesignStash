@@ -22,6 +22,7 @@ const model = (id: string, over: Partial<AiModelInfo> = {}): AiModelInfo => ({
   speed: 3,
   minMemoryGB: 8,
   bestFit: false,
+  builtIn: false,
   downloadedBytes: 0,
   installed: false,
   active: false,
@@ -165,5 +166,18 @@ describe('headings and helpers', () => {
 
   it('details a model in one plain line', () => {
     expect(modelDetail(model('a'))).toBe('2.1 GB · medium · better titles and tags')
+  })
+
+  it('details a built-in model by what it needs instead of a size', () => {
+    const apple = model('apple', { tier: 'small', sizeBytes: 0, builtIn: true, installed: true })
+    expect(modelDetail(apple)).toBe('Built in, no download · fastest, shorter descriptions')
+  })
+
+  it('says a built-in model is built in once it is picked', () => {
+    const base = { title: 'Set up AI', body: 'Pick a model.' }
+    const apple = model('apple', { name: 'Apple’s on-device model', builtIn: true, installed: true })
+    expect(aiHeading('complete', base, apple).body).toMatch(
+      /^Apple’s on-device model is built into your Mac and switched on\./
+    )
   })
 })

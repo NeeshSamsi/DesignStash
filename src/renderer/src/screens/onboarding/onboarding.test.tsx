@@ -19,6 +19,7 @@ const model = (id: string, over: Partial<AiModelInfo> = {}): AiModelInfo => ({
   speed: 3,
   minMemoryGB: 8,
   bestFit: id === 'a',
+  builtIn: false,
   downloadedBytes: 0,
   installed: false,
   active: false,
@@ -249,6 +250,38 @@ describe('AI setup', () => {
     fireEvent.click(btn('Continue'))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_SET_ACTIVE)).toEqual([{ id: 'a' }]))
     expect(await screen.findByRole('heading', { name: 'Your privacy' })).toBeTruthy()
+  })
+
+  it('offers Apple’s built-in model as a third row; picking it needs no download', async () => {
+    const apple = model('apple', {
+      name: 'Apple’s on-device model',
+      tier: 'small',
+      sizeBytes: 0,
+      builtIn: true,
+      installed: true
+    })
+    const api = installApi(
+      base({
+        [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+          ok({ models: [model('a'), model('b'), apple], legacy: [] })
+      })
+    )
+    mount('ai')
+    await screen.findByText('Model a')
+    expect(lastRow()).toHaveLength(3)
+    expect(screen.getByText('Built in')).toBeTruthy()
+    expect(screen.getByText(/Built in, no download/)).toBeTruthy()
+    // Qwen stays the pick until the person chooses otherwise.
+    expect(screen.getByRole('radio', { name: 'Model a' }).getAttribute('aria-checked')).toBe('true')
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Apple’s on-device model' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Your AI model is ready to go' })
+    ).toBeTruthy()
+    expect(screen.getByText(/built into your Mac and switched on/)).toBeTruthy()
+    fireEvent.click(btn('Continue'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_SET_ACTIVE)).toEqual([{ id: 'apple' }]))
+    expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toHaveLength(0)
   })
 
   it.each([
