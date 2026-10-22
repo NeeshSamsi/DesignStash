@@ -22,16 +22,22 @@ interface UiState {
   /** Opens Settings on a pane; without one it opens on My Stash. */
   openSettings: (section?: SettingsLayoutSection) => void
   closeSettings: () => void
-  /** Bumped by the menu's Check for Updates…; Settings › About runs a check each time it changes. */
-  updateCheckRequest: number
+  /** The menu's Check for Updates… asked for a check that Settings › About hasn't run yet. */
+  updateCheckPending: boolean
   requestUpdateCheck: () => void
+  /** Settings › About takes the pending check: true once per request. */
+  takeUpdateCheck: () => boolean
+  /** Report a problem, opened from the macOS menu over whatever is on show. */
+  reportOpen: boolean
+  openReport: () => void
+  closeReport: () => void
   setSearchText: (text: string) => void
   openModal: (modal: Modal) => void
   closeModal: () => void
   setView: (view: AppView) => void
 }
 
-export const useUiStore = create<UiState>((set) => ({
+export const useUiStore = create<UiState>((set, get) => ({
   view: 'all',
   modal: null,
   searchText: '',
@@ -40,8 +46,16 @@ export const useUiStore = create<UiState>((set) => ({
   setSettingsSection: (settingsSection) => set({ settingsSection }),
   openSettings: (section = 'my-stash') => set({ settingsOpen: true, settingsSection: section }),
   closeSettings: () => set({ settingsOpen: false }),
-  updateCheckRequest: 0,
-  requestUpdateCheck: () => set((s) => ({ updateCheckRequest: s.updateCheckRequest + 1 })),
+  updateCheckPending: false,
+  requestUpdateCheck: () => set({ updateCheckPending: true }),
+  takeUpdateCheck: () => {
+    if (!get().updateCheckPending) return false
+    set({ updateCheckPending: false })
+    return true
+  },
+  reportOpen: false,
+  openReport: () => set({ reportOpen: true }),
+  closeReport: () => set({ reportOpen: false }),
   setSearchText: (searchText) => set({ searchText }),
   openModal: (modal) => set({ modal }),
   closeModal: () => set({ modal: null }),

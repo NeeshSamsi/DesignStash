@@ -20,7 +20,13 @@ function showModal(): () => void {
 }
 
 beforeEach(() => {
-  useUiStore.setState({ view: 'all', settingsOpen: false, settingsSection: 'my-stash' })
+  useUiStore.setState({
+    view: 'all',
+    settingsOpen: false,
+    settingsSection: 'my-stash',
+    updateCheckPending: false,
+    reportOpen: false
+  })
 })
 
 afterEach(() => {
@@ -33,18 +39,21 @@ describe('runMenuCommand', () => {
     expect(useUiStore.getState()).toMatchObject({ settingsOpen: true, settingsSection: 'my-stash' })
   })
 
-  it.each(['about', 'check-updates', 'report-problem'] as const)(
-    '%s opens Settings › About',
-    (command) => {
-      runMenuCommand(command, actions())
-      expect(useUiStore.getState()).toMatchObject({ settingsOpen: true, settingsSection: 'about' })
-    }
-  )
+  it.each(['about', 'check-updates'] as const)('%s opens Settings › About', (command) => {
+    runMenuCommand(command, actions())
+    expect(useUiStore.getState()).toMatchObject({ settingsOpen: true, settingsSection: 'about' })
+  })
 
-  it('Check for Updates… asks About to run a check', () => {
-    const before = useUiStore.getState().updateCheckRequest
+  it('Check for Updates… leaves a check for About to run, once', () => {
     runMenuCommand('check-updates', actions())
-    expect(useUiStore.getState().updateCheckRequest).toBe(before + 1)
+    expect(useUiStore.getState().updateCheckPending).toBe(true)
+    expect(useUiStore.getState().takeUpdateCheck()).toBe(true)
+    expect(useUiStore.getState().takeUpdateCheck()).toBe(false)
+  })
+
+  it('Report a Problem… opens the report dialog over the page, without Settings', () => {
+    runMenuCommand('report-problem', actions())
+    expect(useUiStore.getState()).toMatchObject({ reportOpen: true, settingsOpen: false })
   })
 
   it('Add Files… and Add Folder… run the gather flow', () => {
@@ -98,10 +107,20 @@ describe('runMenuCommand', () => {
   it('while another dialog is open, nothing runs, not even Settings', () => {
     const hide = showModal()
     const a = actions()
-    for (const command of ['settings', 'about', 'import-files', 'view:trash'] as const) {
+    for (const command of [
+      'settings',
+      'about',
+      'report-problem',
+      'import-files',
+      'view:trash'
+    ] as const) {
       runMenuCommand(command, a)
     }
-    expect(useUiStore.getState()).toMatchObject({ settingsOpen: false, view: 'all' })
+    expect(useUiStore.getState()).toMatchObject({
+      settingsOpen: false,
+      reportOpen: false,
+      view: 'all'
+    })
     expect(a.addFiles).not.toHaveBeenCalled()
     hide()
   })

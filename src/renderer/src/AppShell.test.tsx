@@ -708,6 +708,44 @@ describe('AppShell and the macOS menu', () => {
     expect(useUiStore.getState().view).toBe('trash')
   })
 
+  it('⌘1 to ⌘5 go to My Stash, Starred, To sort, To stash and Trash', () => {
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    const pages = ['all', 'starred', 'to-sort', 'to-stash', 'trash'] as const
+    for (const [i, view] of [...pages].reverse().entries()) {
+      press({ key: String(5 - i), metaKey: true })
+      expect(useUiStore.getState().view).toBe(view)
+    }
+  })
+
+  it('⌘5 does nothing while Settings is open', () => {
+    useUiStore.setState({ settingsOpen: true })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    press({ key: '5', metaKey: true })
+    expect(useUiStore.getState().view).toBe('all')
+  })
+
+  it('Help › Report a Problem… opens the report dialog over the page', async () => {
+    useUiStore.setState({ reportOpen: false })
+    const menu = withMenu()
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    menu('report-problem')
+    expect(await screen.findByRole('dialog', { name: 'Report a problem' })).not.toBeNull()
+    expect(useUiStore.getState().settingsOpen).toBe(false)
+    act(() => useUiStore.getState().closeReport())
+  })
+
   it('File › Add Files… and Add Folder… run the same actions as ⌘O and ⌘⇧O', () => {
     const menu = withMenu()
     const onAddFiles = vi.fn()

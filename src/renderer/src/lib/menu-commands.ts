@@ -24,7 +24,7 @@ const VIEWS: Partial<Record<MenuCommand, AppView>> = {
 /**
  * Runs a menu item the way its in-app control would. A menu item can't reach what a dialog
  * covers, just as a click can't: with Settings open only the Settings items work (they switch
- * its pane), and with any other dialog open nothing does.
+ * its pane, or raise Report a problem over it), and with any other dialog open nothing does.
  */
 export function runMenuCommand(command: MenuCommand, actions: MenuActions): void {
   const ui = useUiStore.getState()
@@ -37,8 +37,10 @@ export function runMenuCommand(command: MenuCommand, actions: MenuActions): void
       ui.openSettings()
       return
     case 'about':
-    case 'report-problem':
       ui.openSettings('about')
+      return
+    case 'report-problem':
+      ui.openReport()
       return
     case 'check-updates':
       ui.openSettings('about')

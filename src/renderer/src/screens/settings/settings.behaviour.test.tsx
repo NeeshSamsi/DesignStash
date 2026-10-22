@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { SettingsModal } from './SettingsModal'
+import { useUiStore } from '../../stores/uiStore'
 
 // Behaviour spec for Settings — see design/specs/settings.md.
 
@@ -796,6 +797,37 @@ describe('Settings · About', () => {
     expect(screen.getByText(/^Checked today/)).not.toBeNull()
     fireEvent.click(btn('Check for updates'))
     await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1))
+  })
+
+  it('runs one check when the menu’s Check for Updates… opened it, and none the next time', async () => {
+    useUiStore.getState().requestUpdateCheck()
+    const first = open({ section: 'about' })
+    await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1))
+    expect(useUiStore.getState().updateCheckPending).toBe(false)
+    first.unmount()
+    open({ section: 'about' })
+    expect(await screen.findByText('Version 1.0.0 (42)')).not.toBeNull()
+    expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1)
+  })
+
+  it('a Check for Updates… while About is already open checks again, and Download still installs', async () => {
+    setup({
+      [IPC_CHANNELS.UPDATES_CHECK]: () =>
+        ok({
+          state: 'available',
+          version: '1.1.0',
+          notes: '',
+          releaseUrl: 'https://github.com/NeeshSamsi/DesignStash/releases/tag/v1.1.0',
+          lastCheckedAt: NOW
+        })
+    })
+    open({ section: 'about' })
+    expect(await screen.findByText('Up to date')).not.toBeNull()
+    act(() => useUiStore.getState().requestUpdateCheck())
+    expect(await screen.findByText('Version 1.1.0 is available.')).not.toBeNull()
+    expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1)
+    fireEvent.click(btn('Download'))
+    await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_INSTALL)).toHaveLength(1))
   })
 
   it('claims nothing before the first check: no Up to date tag, just Not checked yet', async () => {

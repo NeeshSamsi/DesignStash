@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { UpdateStatus } from '@shared/ipc/app'
 import { Button } from '../../components/Button'
 import { SettingsGroup, SettingsRow } from '../../components/SettingsLayout'
 import { DialogFrame, DialogHeading } from '../../lib/dialog-shell'
 import { toast } from '../../stores/toastStore'
+import { useUiStore } from '../../stores/uiStore'
 import { Badge } from '../../ui/badge'
 import { ReportDialog } from './ReportDialog'
 import { formatWhen } from './settings-copy'
@@ -54,6 +55,17 @@ export function AboutPane() {
         description: 'Try again in a moment.'
       })
   }
+
+  // The menu's Check for Updates… opens this pane and leaves a check for it to run, so the
+  // checking state and the result show here.
+  const checkPending = useUiStore((s) => s.updateCheckPending)
+  const runPendingCheck = useEffectEvent(() => {
+    if (useUiStore.getState().takeUpdateCheck()) void check()
+  })
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (checkPending) runPendingCheck()
+  }, [checkPending])
 
   const cancel = async () => {
     const res = await window.api.invoke(IPC_CHANNELS.UPDATES_CANCEL, undefined)

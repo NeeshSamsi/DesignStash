@@ -10,6 +10,7 @@ import { useDetailsStore } from './stores/detailsStore'
 import { PANEL_SHARE } from './screens/details/panel-share'
 import './styles/details-transition.css'
 import { SettingsModal } from './screens/settings'
+import { ReportDialog } from './screens/settings/ReportDialog'
 import { StashCheckModal } from './screens/integrity'
 import { Toaster } from './ui/sonner'
 import { ActivityDock } from './components/ActivityDock'
@@ -24,7 +25,7 @@ import { libraryDescription } from './lib/library-header'
 import { filterChips } from './lib/tag-filter'
 import { useTagTreeStore } from './stores/tagTreeStore'
 import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
-import { useMenuCommands } from './lib/menu-commands'
+import { runMenuCommand, useMenuCommands, type MenuActions } from './lib/menu-commands'
 
 interface AppShellProps {
   children: ReactNode
@@ -101,6 +102,8 @@ export default function AppShell({
   const settingsSection = useUiStore((s) => s.settingsSection)
   const setSettingsSection = useUiStore((s) => s.setSettingsSection)
   const closeSettings = useUiStore((s) => s.closeSettings)
+  const reportOpen = useUiStore((s) => s.reportOpen)
+  const closeReport = useUiStore((s) => s.closeReport)
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
   const stats = useLibraryStore((s) => s.stats)
@@ -131,7 +134,38 @@ export default function AppShell({
     handler: () => onAddFolder?.()
   })
   // The macOS menu's items run the same actions as the app's own controls and shortcuts.
-  useMenuCommands({ addFiles: onAddFiles, addFolder: onAddFolder, focusSearch: focusGlobalSearch })
+  const menuActions: MenuActions = {
+    addFiles: onAddFiles,
+    addFolder: onAddFolder,
+    focusSearch: focusGlobalSearch
+  }
+  useMenuCommands(menuActions)
+  // ⌘1 to ⌘5 go to the pages, in sidebar order. They take the menu's path, so a dialog blocks them too.
+  useShortcut({
+    id: 'view.all',
+    combo: 'mod+1',
+    handler: () => runMenuCommand('view:all', menuActions)
+  })
+  useShortcut({
+    id: 'view.starred',
+    combo: 'mod+2',
+    handler: () => runMenuCommand('view:starred', menuActions)
+  })
+  useShortcut({
+    id: 'view.to-sort',
+    combo: 'mod+3',
+    handler: () => runMenuCommand('view:to-sort', menuActions)
+  })
+  useShortcut({
+    id: 'view.to-stash',
+    combo: 'mod+4',
+    handler: () => runMenuCommand('view:to-stash', menuActions)
+  })
+  useShortcut({
+    id: 'view.trash',
+    combo: 'mod+5',
+    handler: () => runMenuCommand('view:trash', menuActions)
+  })
 
   // The page's "Clear search" empties the library query; the field follows it.
   const lastQuery = useRef(query)
@@ -291,6 +325,8 @@ export default function AppShell({
         onOpenTrash={() => setView('trash')}
         onReview={() => useUiStore.getState().openModal({ kind: 'reconcile' })}
       />
+      {/* Help › Report a Problem… opens this over any page; Settings › About has its own. */}
+      <ReportDialog open={reportOpen} onClose={closeReport} />
     </div>
   )
 }
