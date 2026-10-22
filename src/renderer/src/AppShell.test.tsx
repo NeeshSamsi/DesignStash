@@ -414,8 +414,8 @@ describe('AppShell inbox counts', () => {
           ? { success: true, data: counts }
           : { success: true, data: {} }
       ),
-      subscribe: vi.fn((_channel: string, cb: (payload: unknown) => void) => {
-        push = cb
+      subscribe: vi.fn((channel: string, cb: (payload: unknown) => void) => {
+        if (channel === IPC_CHANNELS.INBOX_COUNTS_CHANGED) push = cb
         return () => {}
       })
     } as unknown as typeof window.api
@@ -682,5 +682,44 @@ describe('AppShell details sidebar and pile page', () => {
     ).toBe('header-actions')
     undo()
     expect(nearestName(screen.getByText('128 items'))).toBeNull()
+  })
+})
+
+describe('AppShell and the macOS menu', () => {
+  const withMenu = () => {
+    let send: (command: unknown) => void = () => {}
+    window.api.subscribe = vi.fn((channel: string, cb: (payload: unknown) => void) => {
+      if (channel === IPC_CHANNELS.MENU_COMMAND) send = cb
+      return () => {}
+    }) as unknown as typeof window.api.subscribe
+    return (command: string) => act(() => send(command))
+  }
+
+  it('View › Search focuses the title-bar search, and View › Trash opens Trash', () => {
+    const menu = withMenu()
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    menu('search')
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Search' }))
+    menu('view:trash')
+    expect(useUiStore.getState().view).toBe('trash')
+  })
+
+  it('File › Add Files… and Add Folder… run the same actions as ⌘O and ⌘⇧O', () => {
+    const menu = withMenu()
+    const onAddFiles = vi.fn()
+    const onAddFolder = vi.fn()
+    render(
+      <AppShell onAddFiles={onAddFiles} onAddFolder={onAddFolder}>
+        <div />
+      </AppShell>
+    )
+    menu('import-files')
+    menu('import-folder')
+    expect(onAddFiles).toHaveBeenCalledOnce()
+    expect(onAddFolder).toHaveBeenCalledOnce()
   })
 })

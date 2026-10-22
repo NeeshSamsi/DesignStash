@@ -22,6 +22,9 @@ interface UiState {
   /** Opens Settings on a pane; without one it opens on My Stash. */
   openSettings: (section?: SettingsLayoutSection) => void
   closeSettings: () => void
+  /** Bumped by the menu's Check for Updates…; Settings › About runs a check each time it changes. */
+  updateCheckRequest: number
+  requestUpdateCheck: () => void
   setSearchText: (text: string) => void
   openModal: (modal: Modal) => void
   closeModal: () => void
@@ -37,6 +40,8 @@ export const useUiStore = create<UiState>((set) => ({
   setSettingsSection: (settingsSection) => set({ settingsSection }),
   openSettings: (section = 'my-stash') => set({ settingsOpen: true, settingsSection: section }),
   closeSettings: () => set({ settingsOpen: false }),
+  updateCheckRequest: 0,
+  requestUpdateCheck: () => set((s) => ({ updateCheckRequest: s.updateCheckRequest + 1 })),
   setSearchText: (searchText) => set({ searchText }),
   openModal: (modal) => set({ modal }),
   closeModal: () => set({ modal: null }),

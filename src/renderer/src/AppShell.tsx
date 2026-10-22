@@ -15,7 +15,7 @@ import { Toaster } from './ui/sonner'
 import { ActivityDock } from './components/ActivityDock'
 import { Button } from './components/Button'
 import { AppWindow } from './components/AppWindow'
-import { GlobalSearch } from './components/GlobalSearch'
+import { GlobalSearch, focusGlobalSearch } from './components/GlobalSearch'
 import { PageHeader } from './components/PageHeader'
 import { SidebarNav, sidebarNavVariant, type SidebarNavKey } from './components/SidebarNav'
 import { useInboxCounts } from './hooks/use-inbox-counts'
@@ -24,6 +24,7 @@ import { libraryDescription } from './lib/library-header'
 import { filterChips } from './lib/tag-filter'
 import { useTagTreeStore } from './stores/tagTreeStore'
 import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
+import { useMenuCommands } from './lib/menu-commands'
 
 interface AppShellProps {
   children: ReactNode
@@ -129,6 +130,8 @@ export default function AppShell({
     combo: 'mod+shift+o',
     handler: () => onAddFolder?.()
   })
+  // The macOS menu's items run the same actions as the app's own controls and shortcuts.
+  useMenuCommands({ addFiles: onAddFiles, addFolder: onAddFolder, focusSearch: focusGlobalSearch })
 
   // The page's "Clear search" empties the library query; the field follows it.
   const lastQuery = useRef(query)

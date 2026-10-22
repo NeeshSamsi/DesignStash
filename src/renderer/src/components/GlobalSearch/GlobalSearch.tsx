@@ -26,7 +26,22 @@ export interface GlobalSearchProps extends GlobalSearchContractProps {
 }
 
 /** ⌘K focuses (and selects) the field behind `ref`, from anywhere in the window. */
+/** The search field on screen, for the menu's View › Search. */
+let mountedSearch: RefObject<HTMLInputElement | null> | null = null
+
+/** Focuses the title-bar search and selects what is in it, as ⌘K does. */
+export function focusGlobalSearch(): void {
+  mountedSearch?.current?.focus()
+  mountedSearch?.current?.select()
+}
+
 export function useSearchFocusShortcut(ref: RefObject<HTMLInputElement | null>) {
+  useEffect(() => {
+    mountedSearch = ref
+    return () => {
+      if (mountedSearch === ref) mountedSearch = null
+    }
+  }, [ref])
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (!event.metaKey || event.key.toLowerCase() !== 'k') return
