@@ -127,6 +127,28 @@ describe('keyword search', () => {
   })
 })
 
+describe('plural search', () => {
+  it('finds "golden fries" by "fries", and "bag" by "bags"', () => {
+    const fries = repo.mockups.createMockup({
+      ...sample,
+      title: 'Takeaway tray',
+      description: 'A tray of golden fries',
+      libraryPath: '/lib/fts/p1.psd',
+      stage: 'stashed'
+    })
+    const bag = repo.mockups.createMockup({
+      ...sample,
+      title: 'Paper bag',
+      libraryPath: '/lib/fts/p2.psd',
+      stage: 'stashed'
+    })
+    repo.search.rebuildSearchIndex()
+    expect(repo.search.rankMatches('fries')!.has(fries.id)).toBe(true)
+    expect(repo.search.rankMatches('fry')!.has(fries.id)).toBe(false)
+    expect(repo.search.rankMatches('bags')!.has(bag.id)).toBe(true)
+  })
+})
+
 describe('name search', () => {
   it('finds a mockup by a word only its file or folder name has', () => {
     const m = repo.mockups.createMockup({
@@ -172,10 +194,17 @@ describe('ftsMatchQuery', () => {
     expect(ftsMatchQuery('-flat- lay')).toBe('flat* lay*')
   })
 
+  it('matches an -ies word as typed too, since the fold ("fries" to "fry") is not its prefix', () => {
+    expect(ftsMatchQuery('fries')).toBe('(fries* OR fry*)')
+    expect(ftsMatchQuery('golden pies')).toBe('golden* (pies* OR py*)')
+    expect(ftsMatchQuery('series')).toBe('(series* OR sery*)')
+    expect(ftsMatchQuery('french-fries')).toBe('("french fries"* OR "french fry"*)')
+  })
+
   it('folds a plural to its singular, so "bags" also finds a stored "bag"', () => {
     expect(ftsMatchQuery('tote bags')).toBe('tote* bag*')
     expect(ftsMatchQuery('boxes brushes glasses')).toBe('box* brush* glass*')
-    expect(ftsMatchQuery('stationeries iPhones')).toBe('stationery* iPhone*')
+    expect(ftsMatchQuery('stationeries iPhones')).toBe('(stationeries* OR stationery*) iPhone*')
     expect(ftsMatchQuery('t-shirts')).toBe('"t shirt"*')
   })
 

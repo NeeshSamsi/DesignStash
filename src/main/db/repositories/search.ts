@@ -20,17 +20,24 @@ export function singular(word: string): string {
 
 /**
  * One typed word as an FTS5 term, prefix-matched. A hyphenated word ("t-shirt") becomes a phrase,
- * since the index splits it at the hyphen and a bare hyphen is FTS5 syntax. Null when nothing is left.
+ * since the index splits it at the hyphen and a bare hyphen is FTS5 syntax. A plural is also
+ * folded to its singular; when that fold does not start the typed word ("fries" to "fry"), either
+ * form matches, so "fries" still finds "fries". Null when nothing is left.
  */
 function ftsTerm(word: string): string | null {
   const parts = word
     .replace(/[^a-zA-Z0-9\-_]/g, '')
     .split('-')
     .filter(Boolean)
-  const last = parts.length - 1
-  if (last >= 0) parts[last] = singular(parts[last]!)
   if (parts.length === 0) return null
-  return parts.length === 1 ? `${parts[0]}*` : `"${parts.join(' ')}"*`
+  const typed = parts[parts.length - 1]!
+  const folded = singular(typed)
+  const term = (last: string): string => {
+    const all = [...parts.slice(0, -1), last]
+    return all.length === 1 ? `${all[0]}*` : `"${all.join(' ')}"*`
+  }
+  if (typed.toLowerCase().startsWith(folded.toLowerCase())) return term(folded)
+  return `(${term(typed)} OR ${term(folded)})`
 }
 
 /** Little words that say nothing in a search ("mug on a table"). */
@@ -72,7 +79,9 @@ export class SearchRepository {
       .all()
       .map((row) => row.tags.label)
     const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
-    const names = ctx?.originalFilename ? nameKeywords(ctx.originalFilename, ctx.folderTrail ?? []) : []
+    const names = ctx?.originalFilename
+      ? nameKeywords(ctx.originalFilename, ctx.folderTrail ?? [])
+      : []
     const keywords = searchKeywords(m.title, m.description ?? '', tagLabels, names).join(' ')
     this.db.run(sql`DELETE FROM mockups_fts WHERE rowid = ${mockupId}`)
     this.db.run(
