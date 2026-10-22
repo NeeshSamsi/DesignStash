@@ -721,6 +721,16 @@ describe('AppShell and the macOS menu', () => {
     }
   })
 
+  it('⌘, opens Settings, as the menu shows', () => {
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    press({ key: ',', metaKey: true })
+    expect(useUiStore.getState()).toMatchObject({ settingsOpen: true, settingsSection: 'my-stash' })
+  })
+
   it('⌘5 does nothing while Settings is open', () => {
     useUiStore.setState({ settingsOpen: true })
     render(

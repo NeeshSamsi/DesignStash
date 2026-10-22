@@ -140,6 +140,12 @@ export default function AppShell({
     focusSearch: focusGlobalSearch
   }
   useMenuCommands(menuActions)
+  // ⌘, is the macOS Settings key; the menu shows it and this runs it.
+  useShortcut({
+    id: 'settings.open',
+    combo: 'mod+,',
+    handler: () => runMenuCommand('settings', menuActions)
+  })
   // ⌘1 to ⌘5 go to the pages, in sidebar order. They take the menu's path, so a dialog blocks them too.
   useShortcut({
     id: 'view.all',
