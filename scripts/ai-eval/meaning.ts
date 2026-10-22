@@ -173,6 +173,8 @@ export interface Lever {
   sims: Similarities
   /** Items at or above this similarity count as meaning hits. */
   cut: number
+  /** Rank rule: keep only the closest `top` hits above the cut. */
+  top?: number
 }
 
 const RRF_K = 60
@@ -182,6 +184,7 @@ function hits(lever: Lever, query: string): string[] {
   return [...lever.sims(query)]
     .filter(([, s]) => s >= lever.cut)
     .sort((a, b) => b[1] - a[1])
+    .slice(0, lever.top ?? Infinity)
     .map(([id]) => id)
 }
 

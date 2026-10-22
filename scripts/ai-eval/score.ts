@@ -54,10 +54,15 @@ const HELD_OUT_GOLD_PATH = join(import.meta.dirname, 'gold-heldout.json')
  * (gold-heldout.json) join gold.json. Without it they are left out, so a run that answered them
  * scores the same as one that didn't.
  */
-const HELD_OUT = process.argv.includes('--held-out')
+/**
+ * `--queries <file>` scores a separate query file (`[{ q, relevant }]`, written blind) over only the
+ * held-out and sign-off items it was judged against, so tuning items are not counted as wrong.
+ */
+const QUERIES_PATH = argValue('queries')
+const HELD_OUT = process.argv.includes('--held-out') || QUERIES_PATH !== undefined
 const SIGN_OFF_GOLD_PATH = join(import.meta.dirname, 'gold-signoff.json')
 /** `--sign-off`: the sign-off items and gold-signoff.json join in, like `--held-out` (and alongside it, if both). */
-const SIGN_OFF = process.argv.includes('--sign-off')
+const SIGN_OFF = process.argv.includes('--sign-off') || QUERIES_PATH !== undefined
 /**
  * Meaning search, off unless asked for: `--embed bge|nomic|qwen3` blends in text embeddings,
  * `--image` the SigLIP image scores (`siglip-scores.json`), both blended by `--fuse cutoff|rrf`.
@@ -67,13 +72,17 @@ const EMBED = argValue('embed')
 const IMAGE = process.argv.includes('--image')
 const FUSION = (argValue('fuse') ?? 'cutoff') as Fusion
 const CUT = Number(argValue('cut') ?? '0.6')
+/** Rank rule: at most this many meaning hits per query (above the `--cut` floor). Unlimited if unset. */
+const TOP = argValue('top') === undefined ? undefined : Number(argValue('top'))
+const IMAGE_TOP = argValue('image-top') === undefined ? undefined : Number(argValue('image-top'))
 const IMAGE_CUT = Number(argValue('image-cut') ?? '0.3')
 const MEANING = [EMBED && `embed-${EMBED}`, IMAGE && 'image'].filter(Boolean).join('-')
 const SCORE_NAME = [
   'score',
   HELD_OUT && 'heldout',
   SIGN_OFF && 'signoff',
-  MEANING && `${MEANING}-${FUSION}`
+  QUERIES_PATH && 'userq',
+  MEANING && `${MEANING}-${FUSION}${TOP !== undefined ? `-top${TOP}` : ''}`
 ]
   .filter(Boolean)
   .join('-')
@@ -106,6 +115,7 @@ function inDir(item: EvalItem, dir: string): boolean {
 
 /** Whether a scored run includes this item: tuning items always, held-out and sign-off ones with their flags. */
 function inScope(item: EvalItem): boolean {
+  if (QUERIES_PATH) return inDir(item, HELD_OUT_DIR) || inDir(item, SIGN_OFF_DIR)
   if (inDir(item, HELD_OUT_DIR)) return HELD_OUT
   if (inDir(item, SIGN_OFF_DIR)) return SIGN_OFF
   return true
@@ -190,7 +200,7 @@ async function main(): Promise<void> {
   const model = argValue('model')
   const version = argValue('prompt')
   if (!model || !version)
-    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off] [--embed bge|nomic|qwen3] [--image] [--fuse cutoff|rrf] [--cut n] [--image-cut n]')
+    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off] [--embed bge|nomic|qwen3] [--image] [--fuse cutoff|rrf] [--cut n] [--top k] [--image-cut n] [--queries file]')
   if (!existsSync(GOLD_PATH)) throw new Error(`No gold data at ${GOLD_PATH}`)
   const dir = runDir(model, version)
   const resultsPath = join(dir, 'results.json')
@@ -199,8 +209,20 @@ async function main(): Promise<void> {
 
   const goldOnly = JSON.parse(readFileSync(GOLD_PATH, 'utf8')) as Gold
   const withHeld = HELD_OUT ? withHeldOut(goldOnly) : goldOnly
-  const gold = SIGN_OFF ? withHeldOut(withHeld, SIGN_OFF_GOLD_PATH) : withHeld
+  const goldAll = SIGN_OFF ? withHeldOut(withHeld, SIGN_OFF_GOLD_PATH) : withHeld
   const items = readItems().filter((i) => !i.duplicateOf && inScope(i))
+  const gold: Gold = QUERIES_PATH
+    ? {
+        ...goldAll,
+        items: Object.fromEntries(
+          Object.entries(goldAll.items).filter(([id]) => items.some((i) => i.id === id))
+        ),
+        queries: (JSON.parse(readFileSync(QUERIES_PATH, 'utf8')) as Gold['queries']).map((q) => ({
+          q: q.q,
+          relevant: q.relevant
+        }))
+      }
+    : goldAll
   const scoped = new Set(items.map((i) => i.id))
   const results = (JSON.parse(readFileSync(resultsPath, 'utf8')) as ItemResult[]).filter((r) =>
     scoped.has(r.id)
@@ -238,9 +260,10 @@ async function main(): Promise<void> {
           indexed.map((i) => ({ id: i.id, text: docText(i) })),
           queryTexts
         ),
-        cut: CUT
+        cut: CUT,
+        ...(TOP !== undefined && { top: TOP })
       })
-    if (imageLever) levers.push({ sims: imageLever, cut: IMAGE_CUT })
+    if (imageLever) levers.push({ sims: imageLever, cut: IMAGE_CUT, ...(IMAGE_TOP !== undefined && { top: IMAGE_TOP }) })
     const scores = searchAll(gold, indexed, levers)
     const checks = checkPass(gold, items, byId, repeat)
     passes.push({

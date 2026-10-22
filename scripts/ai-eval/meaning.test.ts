@@ -32,4 +32,9 @@ describe('fuse', () => {
     const text = lever({ z: 0.4 }, 0.5)
     expect(fuse('rrf', 'q', ['a'], [text])).toEqual(['a'])
   })
+
+  it('rank rule: only the closest `top` hits above the floor count', () => {
+    const text: Lever = { ...lever({ a: 0.9, b: 0.8, c: 0.7, d: 0.3 }, 0.5), top: 2 }
+    expect(fuse('cutoff', 'q', [], [text])).toEqual(['a', 'b'])
+  })
 })
