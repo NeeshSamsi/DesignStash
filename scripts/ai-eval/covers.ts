@@ -11,9 +11,11 @@
  * Long Website Mockup folder. The test set is only read.
  */
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename, extname, join } from 'node:path'
 import sharp from 'sharp'
-import { entryPath, openArchiveEntry } from '../../src/main/import/archive'
+import { classifyEntry, entryPath, listArchive, openArchiveEntry } from '../../src/main/import/archive'
+import { SIDECAR_EXTENSIONS } from '../../src/shared/constants'
+import { COVER_MAX_BYTES } from '../../src/shared/cover-fit'
 import { scanForPsds } from '../../src/main/import/scanner'
 import { copyWithHash } from '../../src/main/import/stream-copy'
 import { resolveCover } from '../../src/main/psd'
@@ -51,6 +53,21 @@ async function writePreview(coverPath: string, dest: string): Promise<void> {
     .flatten({ background: '#ffffff' })
     .jpeg({ quality: 85 })
     .toFile(dest)
+}
+
+/**
+ * As copy-queue's `zipImages`: the images in a PSD's own zip, by the path `entryPath` gives each, to
+ * their entry, offered to `resolveCover` as preview candidates.
+ */
+async function zipImages(zipPath: string): Promise<Map<string, string>> {
+  const images = new Map<string, string>()
+  const entries = await listArchive(zipPath).catch(() => [])
+  for (const e of entries) {
+    if (classifyEntry(e) !== 'other' || e.encrypted || e.size > COVER_MAX_BYTES) continue
+    if (!SIDECAR_EXTENSIONS.includes(extname(e.name).toLowerCase())) continue
+    images.set(entryPath(zipPath, e.name), e.name)
+  }
+  return images
 }
 
 async function main(): Promise<void> {
@@ -117,10 +134,16 @@ async function main(): Promise<void> {
       rmSync(outDir, { recursive: true, force: true })
       mkdirSync(outDir, { recursive: true })
       // As copy-queue does: the preview from the copy, sidecars matched against where the PSD came from.
+      const images = archive ? await zipImages(archive.path) : new Map<string, string>()
       const cover = await resolveCover({
         psdPath: tmpPsd,
         sidecarFor: archive ? entryPath(archive.path, archive.entry) : p.psdPath,
-        candidateImagePaths: scan.candidateImagePaths,
+        candidateImagePaths: [...scan.candidateImagePaths, ...images.keys()],
+        readImage: async (path) => {
+          const name = images.get(path)
+          if (name === undefined) return readFileSync(path)
+          return Buffer.concat(await (await openArchiveEntry(archive!.path, name)).toArray())
+        },
         outDir
       })
       if (cover.source === 'none') {
