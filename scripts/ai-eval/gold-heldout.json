@@ -1,9 +1,9 @@
 {
- "_note": "Held-out items (test set held-out/), written 2026-10-22 from the covers before any model answered them. ai-eval:score reads them only with --held-out. Items whose embedded cover is a 'Delete/Remove this layer' placeholder get names-only reference answers.",
+ "_note": "Held-out items (test set held-out/), written 2026-10-22 from the covers before any model answered them. ai-eval:score reads them only with --held-out. Items whose embedded cover is a 'Delete/Remove this layer' placeholder get names-only reference answers. 2026-10-22: the 18 former placeholder items were rewritten from their sidecar covers (the import now uses a kit preview beside a placeholder PSD), before any model answered them with an image.",
  "items": {
   "office-identity-business-cards-free-psd-mockup": {
-   "title": "Business cards for an office identity",
-   "description": "A set of business cards, also called name cards, for a brand identity.",
+   "title": "Floating business cards with a yellow stapler",
+   "description": "A set of white and grey business cards, also called name cards, floating around a yellow stapler on a light grey background, for a brand identity.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -16,16 +16,20 @@
     {
      "category": "Print & Branding",
      "label": "Brand identity"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b",
+    "john doe|graphic designer|manhattan|stapler\\.office",
     "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b"
    ]
   },
   "hand-held-iphone-duo-foldable-smartphone-free": {
-   "title": "Hand-held iPhone Duo foldable smartphone",
-   "description": "An iPhone Duo foldable smartphone held in a hand.",
+   "title": "Hand holding a foldable iPhone Duo",
+   "description": "A hand holding a foldable iPhone Duo smartphone, also called a folding phone, against a soft pink background.",
    "tags": [
     {
      "category": "Device",
@@ -34,11 +38,15 @@
     {
      "category": "Device",
      "label": "Foldable phone"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b",
-    "\\bdesk\\b|\\btable\\b|laptop"
+    "\\bdesk\\b|\\btable\\b|laptop|free mockup",
+    "desert|dunes?|sand|mountain"
    ]
   },
   "apple-set": {
@@ -301,8 +309,8 @@
    ]
   },
   "bus-stop-citylight-mockup": {
-   "title": "Bus stop citylight poster",
-   "description": "A citylight poster in a glass bus shelter, also called a bus stop ad.",
+   "title": "Blue poster in a bus shelter on a city street",
+   "description": "A blue citylight poster in a glass bus shelter, also called a bus stop ad, on a tree-lined street, with a person sitting on the bench.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -311,15 +319,24 @@
     {
      "category": "Environment",
      "label": "Street"
+    },
+    {
+     "category": "Environment",
+     "label": "Outdoor"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "best ads|shout|mockups-design",
+    "night|\\bsnow"
    ]
   },
   "poster-mockup": {
-   "title": "Poster on a graffiti wall",
-   "description": "A poster on a graffiti wall, with a fly on it.",
+   "title": "Blue poster on a graffiti wall",
+   "description": "A blue street poster pasted on a black wall covered in graffiti, with a fly on it.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -328,205 +345,332 @@
     {
      "category": "Environment",
      "label": "Wall"
+    },
+    {
+     "category": "Environment",
+     "label": "Street"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "flies stop|even the|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
    ]
   },
   "mens-t-shirt-mockup": {
-   "title": "Men's t-shirt",
-   "description": "A men's t-shirt, also called a tee.",
+   "title": "Men's t-shirt with a colourful geometric print",
+   "description": "A men's t-shirt, also called a tee, with a bold multicoloured geometric pattern, floating on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
      "label": "T-shirt"
+    },
+    {
+     "category": "Style",
+     "label": "Colorful"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|hanger|\\bdesk\\b"
    ]
   },
   "free-imac-mockup-1": {
-   "title": "Minimal iMac",
-   "description": "An iMac, also called a desktop computer.",
+   "title": "Silver iMac with keyboard and mouse",
+   "description": "A silver iMac, also called a desktop computer, with a dark screen, a keyboard and a mouse on a light grey background.",
    "tags": [
     {
      "category": "Device",
      "label": "iMac"
+    },
+    {
+     "category": "Device",
+     "label": "Keyboard"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "perfect free|md\\.com|\\blaptop|macbook",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b"
    ]
   },
   "free-imac-mockup-2": {
-   "title": "Minimal iMac",
-   "description": "An iMac, also called a desktop computer.",
+   "title": "Silver iMac with keyboard and mouse",
+   "description": "A silver iMac, also called a desktop computer, with a dark screen, a keyboard and a mouse on a light grey background.",
    "tags": [
     {
      "category": "Device",
      "label": "iMac"
+    },
+    {
+     "category": "Device",
+     "label": "Keyboard"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "perfect free|md\\.com|\\blaptop|macbook",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b"
    ]
   },
   "free-imac-mockup-3": {
-   "title": "Minimal iMac",
-   "description": "An iMac, also called a desktop computer.",
+   "title": "Silver iMac with keyboard and mouse",
+   "description": "A silver iMac, also called a desktop computer, with a dark screen, a keyboard and a mouse on a light grey background.",
    "tags": [
     {
      "category": "Device",
      "label": "iMac"
+    },
+    {
+     "category": "Device",
+     "label": "Keyboard"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "perfect free|md\\.com|\\blaptop|macbook",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b"
    ]
   },
   "oval-mug-mockup-1": {
-   "title": "Round-bellied mug",
-   "description": "A round oval mug, also called a coffee cup.",
+   "title": "Round white mug with a black handle",
+   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
      "label": "Mug"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "mug mockup|\\bmoc",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|saucer|steam"
    ]
   },
   "oval-mug-mockup-2": {
-   "title": "Round-bellied mug",
-   "description": "A round oval mug, also called a coffee cup.",
+   "title": "Round white mug with a black handle",
+   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
      "label": "Mug"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "mug mockup|\\bmoc",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|saucer|steam"
    ]
   },
   "oval-mug-mockup-3": {
-   "title": "Round-bellied mug",
-   "description": "A round oval mug, also called a coffee cup.",
+   "title": "Round white mug with a black handle",
+   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
      "label": "Mug"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "mug mockup|\\bmoc",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|saucer|steam"
    ]
   },
   "oval-mug-mockup-4": {
-   "title": "Round-bellied mug",
-   "description": "A round oval mug, also called a coffee cup.",
+   "title": "Round white mug with a black handle",
+   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
      "label": "Mug"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "mug mockup|\\bmoc",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|saucer|steam"
    ]
   },
   "dl-menu-mockup-1": {
-   "title": "Slim DL restaurant menu",
-   "description": "A slim DL restaurant menu, also called a menu card.",
+   "title": "Restaurant menu on a grey plate",
+   "description": "A slim DL restaurant menu, also called a menu card, on a grey ceramic plate on a wooden table, with a green herb sprig and leaf shadows.",
    "tags": [
     {
      "category": "Print & Branding",
      "label": "Menu"
+    },
+    {
+     "category": "Environment",
+     "label": "Table"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "salt|vine|starters|mains",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|screen|digital"
    ]
   },
   "dl-menu-mockup-2": {
-   "title": "Slim DL restaurant menu",
-   "description": "A slim DL restaurant menu, also called a menu card.",
+   "title": "Restaurant menu on a grey plate",
+   "description": "A slim DL restaurant menu, also called a menu card, on a grey ceramic plate on a wooden table, with a green herb sprig and leaf shadows.",
    "tags": [
     {
      "category": "Print & Branding",
      "label": "Menu"
+    },
+    {
+     "category": "Environment",
+     "label": "Table"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "salt|vine|starters|mains",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|screen|digital"
    ]
   },
   "dl-menu-mockup-3": {
-   "title": "Slim DL restaurant menu",
-   "description": "A slim DL restaurant menu, also called a menu card.",
+   "title": "Two restaurant menus on a wooden table",
+   "description": "Two slim DL restaurant menus, also called menu cards, front and back, on a wooden table by a grey plate and a green herb sprig, with leaf shadows.",
    "tags": [
     {
      "category": "Print & Branding",
      "label": "Menu"
+    },
+    {
+     "category": "Environment",
+     "label": "Table"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "salt|vine|starters|mains",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|screen|digital"
    ]
   },
   "dl-menu-mockup-4": {
-   "title": "Slim DL restaurant menu",
-   "description": "A slim DL restaurant menu, also called a menu card.",
+   "title": "Two restaurant menus on a wooden table",
+   "description": "Two slim DL restaurant menus, also called menu cards, front and back, on a wooden table by a grey plate and a green herb sprig, with leaf shadows.",
    "tags": [
     {
      "category": "Print & Branding",
      "label": "Menu"
+    },
+    {
+     "category": "Environment",
+     "label": "Table"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "salt|vine|starters|mains",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|screen|digital"
    ]
   },
   "iphone-mockup-1": {
-   "title": "Sunlit iPhone",
-   "description": "An iPhone, also called a smartphone, in sunlight.",
+   "title": "iPhone on grey tiles in sunlight",
+   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows, its screen showing a dark blue and purple design.",
    "tags": [
     {
      "category": "Device",
      "label": "iPhone"
+    },
+    {
+     "category": "Environment",
+     "label": "Floor"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "iphone mockup(?! )|perfect",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bwater\\b"
    ]
   },
   "iphone-mockup-2": {
-   "title": "Sunlit iPhone",
-   "description": "An iPhone, also called a smartphone, in sunlight.",
+   "title": "iPhone on grey tiles in sunlight",
+   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows, its screen showing a dark blue and purple design.",
    "tags": [
     {
      "category": "Device",
      "label": "iPhone"
+    },
+    {
+     "category": "Environment",
+     "label": "Floor"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "iphone mockup(?! )|perfect",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bwater\\b"
    ]
   },
   "iphone-mockup-3": {
-   "title": "Sunlit iPhone",
-   "description": "An iPhone, also called a smartphone, in sunlight.",
+   "title": "iPhone on grey tiles in sunlight",
+   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows, its screen showing a dark blue and purple design.",
    "tags": [
     {
      "category": "Device",
      "label": "iPhone"
+    },
+    {
+     "category": "Environment",
+     "label": "Floor"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
     }
    ],
    "absent": [
-    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+    "iphone mockup(?! )|perfect",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bwater\\b"
    ]
   }
  },
