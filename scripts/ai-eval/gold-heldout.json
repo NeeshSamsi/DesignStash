@@ -1,50 +1,777 @@
 {
- "_note": "Held-out item, written 2026-10-22 before any model answered it. Not read by ai-eval:score until the final check: merge with merge-heldout.",
- "item_id": "office-identity-business-cards-free-psd-mockup",
- "item": {
-  "title": "Floating business cards with a yellow stapler",
-  "description": "A set of white and grey business cards, also called name cards, floating around a yellow stapler on a light grey background, for a brand identity.",
-  "tags": [
-   {
-    "category": "Print & Branding",
-    "label": "Business card"
-   },
-   {
-    "category": "Print & Branding",
-    "label": "Stationery"
-   },
-   {
-    "category": "Print & Branding",
-    "label": "Brand identity"
-   },
-   {
-    "category": "Style",
-    "label": "Minimal"
-   }
-  ],
-  "absent": [
-   "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction",
-   "\\bremove\\b|\\bstart\\b|smaller|\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bdesk\\b|\\btable\\b"
-  ]
+ "_note": "Held-out items (test set held-out/), written 2026-10-22 from the covers before any model answered them. ai-eval:score reads them only with --held-out. Items whose embedded cover is a 'Delete/Remove this layer' placeholder get names-only reference answers.",
+ "items": {
+  "office-identity-business-cards-free-psd-mockup": {
+   "title": "Business cards for an office identity",
+   "description": "A set of business cards, also called name cards, for a brand identity.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Business card"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Stationery"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Brand identity"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b"
+   ]
+  },
+  "hand-held-iphone-duo-foldable-smartphone-free": {
+   "title": "Hand-held iPhone Duo foldable smartphone",
+   "description": "An iPhone Duo foldable smartphone held in a hand.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    },
+    {
+     "category": "Device",
+     "label": "Foldable phone"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b",
+    "\\bdesk\\b|\\btable\\b|laptop"
+   ]
+  },
+  "apple-set": {
+   "title": "iPhones and iPad Pro with keyboard and pencil",
+   "description": "Two iPhones and an iPad Pro, also called a tablet, on a Magic Keyboard with an Apple Pencil, floating on a white background with colourful screens.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    },
+    {
+     "category": "Device",
+     "label": "iPad"
+    },
+    {
+     "category": "Device",
+     "label": "Keyboard"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|presentation|\\bkit\\b",
+    "macbook|laptop"
+   ]
+  },
+  "scene-02": {
+   "title": "Hand tapping an Apple HomeView smart display",
+   "description": "A hand tapping an Apple HomeView smart display, also called a home hub, on a round silver speaker base against a light grey background.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "Smart display"
+    },
+    {
+     "category": "Device",
+     "label": "HomeView"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "wannathis|explore|made by|off duty",
+    "\\bdesk\\b|\\btable\\b|laptop|ipad"
+   ]
+  },
+  "free-stylish-cosmetic-tube-mockup": {
+   "title": "Red and white cosmetic tube in grey smoke",
+   "description": "A tall red-to-white cosmetic tube, also called a spray bottle, standing in a plume of grey smoke against a grey background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Cosmetic tube"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Environment",
+     "label": "Smoke"
+    },
+    {
+     "category": "Style",
+     "label": "Dark"
+    }
+   ],
+   "absent": [
+    "kaolin|create your own|unique design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bfire\\b|flame"
+   ]
+  },
+  "free-cosmetic-box-and-tube-mockup": {
+   "title": "Blue cosmetic box and tube",
+   "description": "A light blue cosmetic box with a matching squeeze tube, also called cream packaging, standing on a light grey background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Box"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Cosmetic tube"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "\\bpackage\\b(?! design)|30g|packaging mockups",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "metallic-foil-pouch-mockup": {
+   "title": "Silver foil zip pouch on grey",
+   "description": "A silver metallic foil pouch with a zip seal, also called a zip bag, lying flat on a grey surface.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Pouch"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "free download|zip pouch mockup",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "matt-can-mockup": {
+   "title": "Pink and white matte drink can",
+   "description": "A matte drink can, also called a beverage can, with a pink, gold and white design standing on a white background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Can"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "smarty|perfect|smartymockups",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "spray-can-mockup": {
+   "title": "White spray can on teal",
+   "description": "A white spray can, also called an aerosol can, standing on a teal background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Spray can"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "\\bmckp\\b",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|graffiti"
+   ]
+  },
+  "kraft-paper-food-pack-mockup": {
+   "title": "Kraft paper stand-up pouch",
+   "description": "A kraft paper stand-up pouch, also called a food bag, on a white background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Pouch"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "premium quality|high quality|customi[sz]able|favourite",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "leggings-mockup": {
+   "title": "Blue to pink gradient leggings",
+   "description": "A pair of women's leggings, also called tights, in a blue to pink gradient, floating on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Leggings"
+    },
+    {
+     "category": "Style",
+     "label": "Colorful"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "top-mockup": {
+   "title": "Blue to pink gradient tank top",
+   "description": "A women's tank top, also called a crop top, in a blue to pink gradient, floating on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Tank top"
+    },
+    {
+     "category": "Style",
+     "label": "Colorful"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "top-leggings-mockup": {
+   "title": "Gradient top and leggings set",
+   "description": "A women's tank top and leggings, also called sportswear, in a blue to pink gradient, floating on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Tank top"
+    },
+    {
+     "category": "Apparel",
+     "label": "Leggings"
+    },
+    {
+     "category": "Style",
+     "label": "Colorful"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "bus-stop-citylight-mockup": {
+   "title": "Bus stop citylight poster",
+   "description": "A citylight poster in a glass bus shelter, also called a bus stop ad.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Poster"
+    },
+    {
+     "category": "Environment",
+     "label": "Street"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "poster-mockup": {
+   "title": "Poster on a graffiti wall",
+   "description": "A poster on a graffiti wall, with a fly on it.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Poster"
+    },
+    {
+     "category": "Environment",
+     "label": "Wall"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "mens-t-shirt-mockup": {
+   "title": "Men's t-shirt",
+   "description": "A men's t-shirt, also called a tee.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "T-shirt"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "free-imac-mockup-1": {
+   "title": "Minimal iMac",
+   "description": "An iMac, also called a desktop computer.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iMac"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "free-imac-mockup-2": {
+   "title": "Minimal iMac",
+   "description": "An iMac, also called a desktop computer.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iMac"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "free-imac-mockup-3": {
+   "title": "Minimal iMac",
+   "description": "An iMac, also called a desktop computer.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iMac"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "oval-mug-mockup-1": {
+   "title": "Round-bellied mug",
+   "description": "A round oval mug, also called a coffee cup.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Mug"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "oval-mug-mockup-2": {
+   "title": "Round-bellied mug",
+   "description": "A round oval mug, also called a coffee cup.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Mug"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "oval-mug-mockup-3": {
+   "title": "Round-bellied mug",
+   "description": "A round oval mug, also called a coffee cup.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Mug"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "oval-mug-mockup-4": {
+   "title": "Round-bellied mug",
+   "description": "A round oval mug, also called a coffee cup.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Mug"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "dl-menu-mockup-1": {
+   "title": "Slim DL restaurant menu",
+   "description": "A slim DL restaurant menu, also called a menu card.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Menu"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "dl-menu-mockup-2": {
+   "title": "Slim DL restaurant menu",
+   "description": "A slim DL restaurant menu, also called a menu card.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Menu"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "dl-menu-mockup-3": {
+   "title": "Slim DL restaurant menu",
+   "description": "A slim DL restaurant menu, also called a menu card.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Menu"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "dl-menu-mockup-4": {
+   "title": "Slim DL restaurant menu",
+   "description": "A slim DL restaurant menu, also called a menu card.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Menu"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "iphone-mockup-1": {
+   "title": "Sunlit iPhone",
+   "description": "An iPhone, also called a smartphone, in sunlight.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "iphone-mockup-2": {
+   "title": "Sunlit iPhone",
+   "description": "An iPhone, also called a smartphone, in sunlight.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  },
+  "iphone-mockup-3": {
+   "title": "Sunlit iPhone",
+   "description": "An iPhone, also called a smartphone, in sunlight.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    }
+   ],
+   "absent": [
+    "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction|\\bdelete\\b|optimi[sz]|disk space|\\bremove\\b"
+   ]
+  }
  },
- "add_to_queries": [
-  "business card",
-  "business cards",
-  "stationery",
-  "floating"
- ],
- "new_queries": [
+ "queries": [
+  {
+   "q": "ipad",
+   "relevant": [
+    "apple-set"
+   ]
+  },
+  {
+   "q": "tablet",
+   "relevant": [
+    "apple-set"
+   ]
+  },
+  {
+   "q": "smart display",
+   "relevant": [
+    "scene-02"
+   ]
+  },
+  {
+   "q": "hand",
+   "relevant": [
+    "scene-02",
+    "hand-held-iphone-duo-foldable-smartphone-free"
+   ]
+  },
+  {
+   "q": "cosmetic",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup",
+    "free-cosmetic-box-and-tube-mockup"
+   ]
+  },
+  {
+   "q": "tube",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup",
+    "free-cosmetic-box-and-tube-mockup"
+   ]
+  },
+  {
+   "q": "smoke",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup"
+   ]
+  },
+  {
+   "q": "pouch",
+   "relevant": [
+    "metallic-foil-pouch-mockup",
+    "kraft-paper-food-pack-mockup"
+   ]
+  },
+  {
+   "q": "foil",
+   "relevant": [
+    "metallic-foil-pouch-mockup"
+   ]
+  },
+  {
+   "q": "kraft",
+   "relevant": [
+    "kraft-paper-food-pack-mockup"
+   ]
+  },
+  {
+   "q": "can",
+   "relevant": [
+    "matt-can-mockup",
+    "spray-can-mockup"
+   ]
+  },
+  {
+   "q": "drink can",
+   "relevant": [
+    "matt-can-mockup"
+   ]
+  },
+  {
+   "q": "spray",
+   "relevant": [
+    "spray-can-mockup"
+   ]
+  },
+  {
+   "q": "leggings",
+   "relevant": [
+    "leggings-mockup",
+    "top-leggings-mockup"
+   ]
+  },
+  {
+   "q": "tank top",
+   "relevant": [
+    "top-mockup",
+    "top-leggings-mockup"
+   ]
+  },
+  {
+   "q": "sportswear",
+   "relevant": [
+    "leggings-mockup",
+    "top-mockup",
+    "top-leggings-mockup"
+   ]
+  },
+  {
+   "q": "t-shirt",
+   "relevant": [
+    "mens-t-shirt-mockup"
+   ]
+  },
+  {
+   "q": "tee",
+   "relevant": [
+    "mens-t-shirt-mockup"
+   ]
+  },
+  {
+   "q": "bus stop",
+   "relevant": [
+    "bus-stop-citylight-mockup"
+   ]
+  },
+  {
+   "q": "citylight",
+   "relevant": [
+    "bus-stop-citylight-mockup"
+   ]
+  },
+  {
+   "q": "graffiti",
+   "relevant": [
+    "poster-mockup"
+   ]
+  },
+  {
+   "q": "imac",
+   "relevant": [
+    "free-imac-mockup-1",
+    "free-imac-mockup-2",
+    "free-imac-mockup-3"
+   ]
+  },
+  {
+   "q": "desktop computer",
+   "relevant": [
+    "free-imac-mockup-1",
+    "free-imac-mockup-2",
+    "free-imac-mockup-3"
+   ]
+  },
+  {
+   "q": "mug",
+   "relevant": [
+    "oval-mug-mockup-1",
+    "oval-mug-mockup-2",
+    "oval-mug-mockup-3",
+    "oval-mug-mockup-4"
+   ]
+  },
+  {
+   "q": "menu",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4"
+   ]
+  },
+  {
+   "q": "restaurant menu",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4"
+   ]
+  },
+  {
+   "q": "foldable phone",
+   "relevant": [
+    "hand-held-iphone-duo-foldable-smartphone-free"
+   ]
+  },
   {
    "q": "brand identity",
    "relevant": [
     "office-identity-business-cards-free-psd-mockup"
    ]
-  },
-  {
-   "q": "office",
-   "relevant": [
-    "office-identity-business-cards-free-psd-mockup"
-   ]
   }
- ]
+ ],
+ "addToQueries": {
+  "packaging": [
+   "matt-can-mockup",
+   "spray-can-mockup",
+   "metallic-foil-pouch-mockup",
+   "kraft-paper-food-pack-mockup",
+   "free-stylish-cosmetic-tube-mockup",
+   "free-cosmetic-box-and-tube-mockup"
+  ],
+  "iphone": [
+   "apple-set",
+   "hand-held-iphone-duo-foldable-smartphone-free",
+   "iphone-mockup-1",
+   "iphone-mockup-2",
+   "iphone-mockup-3"
+  ],
+  "phone": [
+   "apple-set",
+   "hand-held-iphone-duo-foldable-smartphone-free",
+   "iphone-mockup-1",
+   "iphone-mockup-2",
+   "iphone-mockup-3"
+  ],
+  "iphones": [
+   "apple-set"
+  ],
+  "business card": [
+   "office-identity-business-cards-free-psd-mockup"
+  ],
+  "business cards": [
+   "office-identity-business-cards-free-psd-mockup"
+  ],
+  "stationery": [
+   "office-identity-business-cards-free-psd-mockup"
+  ],
+  "poster": [
+   "bus-stop-citylight-mockup",
+   "poster-mockup"
+  ],
+  "street": [
+   "bus-stop-citylight-mockup"
+  ],
+  "coffee cup": [
+   "oval-mug-mockup-1",
+   "oval-mug-mockup-2",
+   "oval-mug-mockup-3",
+   "oval-mug-mockup-4"
+  ],
+  "box": [
+   "free-cosmetic-box-and-tube-mockup"
+  ]
+ }
 }

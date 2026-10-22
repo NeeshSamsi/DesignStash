@@ -16,7 +16,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanArchiveName } from '../../src/main/import/archive-name'
 import { stemOf } from '../../src/main/import/look-over-service'
-import { argValue, readItems, runDir, writeJson, type EvalItem } from './eval-files'
+import { HELD_OUT_DIR, argValue, readItems, runDir, writeJson, type EvalItem } from './eval-files'
 import {
   checkAnswer,
   compileAbsent,
@@ -39,6 +39,40 @@ import { SearchSim, type IndexedItem } from './search-sim'
 import { createTagSnapper } from './searchable-tags'
 
 const GOLD_PATH = join(import.meta.dirname, 'gold.json')
+const HELD_OUT_GOLD_PATH = join(import.meta.dirname, 'gold-heldout.json')
+/**
+ * `--held-out` is the final check: the held-out items join the search and their reference answers
+ * (gold-heldout.json) join gold.json. Without it they are left out, so a run that answered them
+ * scores the same as one that didn't.
+ */
+const HELD_OUT = process.argv.includes('--held-out')
+const SCORE_NAME = HELD_OUT ? 'score-heldout' : 'score'
+
+interface HeldOutGold extends Gold {
+  /** Held-out ids to add to gold.json queries of the same text. */
+  addToQueries: Record<string, string[]>
+}
+
+function withHeldOut(gold: Gold): Gold {
+  const held = JSON.parse(readFileSync(HELD_OUT_GOLD_PATH, 'utf8')) as HeldOutGold
+  const queries = gold.queries.map((q) => ({
+    ...q,
+    relevant: [...q.relevant, ...(held.addToQueries[q.q] ?? [])]
+  }))
+  const known = new Set(queries.map((q) => q.q))
+  const extra = Object.entries(held.addToQueries)
+    .filter(([q]) => !known.has(q))
+    .map(([q, relevant]) => ({ q, relevant }))
+  return {
+    ...gold,
+    items: { ...gold.items, ...held.items },
+    queries: [...queries, ...held.queries, ...extra]
+  }
+}
+
+function isHeldOut(item: EvalItem): boolean {
+  return item.source.path.includes(`/${HELD_OUT_DIR}/`)
+}
 
 /** Every answer in one pass that has a gold entry, checked against it. A failed answer is left out. */
 function checkPass(
@@ -107,16 +141,20 @@ async function main(): Promise<void> {
   const model = argValue('model')
   const version = argValue('prompt')
   if (!model || !version)
-    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms]')
+    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--held-out]')
   if (!existsSync(GOLD_PATH)) throw new Error(`No gold data at ${GOLD_PATH}`)
   const dir = runDir(model, version)
   const resultsPath = join(dir, 'results.json')
   if (!existsSync(resultsPath))
     throw new Error(`No run at ${resultsPath}. Run \`pnpm ai-eval:run\` first.`)
 
-  const gold = JSON.parse(readFileSync(GOLD_PATH, 'utf8')) as Gold
-  const items = readItems().filter((i) => !i.duplicateOf)
-  const results = JSON.parse(readFileSync(resultsPath, 'utf8')) as ItemResult[]
+  const goldOnly = JSON.parse(readFileSync(GOLD_PATH, 'utf8')) as Gold
+  const gold = HELD_OUT ? withHeldOut(goldOnly) : goldOnly
+  const items = readItems().filter((i) => !i.duplicateOf && (HELD_OUT || !isHeldOut(i)))
+  const inScope = new Set(items.map((i) => i.id))
+  const results = (JSON.parse(readFileSync(resultsPath, 'utf8')) as ItemResult[]).filter((r) =>
+    inScope.has(r.id)
+  )
 
   const known = new Set(items.map((i) => i.id))
   const strays = [...Object.keys(gold.items), ...gold.queries.flatMap((q) => q.relevant)].filter(
@@ -257,8 +295,8 @@ async function main(): Promise<void> {
       }
     })
   }
-  writeJson(join(dir, 'score.json'), score)
-  writeFileSync(join(dir, 'score.md'), markdown(score))
+  writeJson(join(dir, `${SCORE_NAME}.json`), score)
+  writeFileSync(join(dir, `${SCORE_NAME}.md`), markdown(score))
 
   console.log(
     `${model} · ${version} · ${gold.queries.length} queries · ${repeats.length} pass(es)` +
@@ -284,7 +322,7 @@ async function main(): Promise<void> {
     console.log(
       `gold entries matching their own absent list: ${goldAbsentConflicts.map((c) => `${c.id} (${c.words.join(', ')})`).join('; ')}`
     )
-  console.log(`Wrote ${join(dir, 'score.json')} and score.md`)
+  console.log(`Wrote ${join(dir, `${SCORE_NAME}.json`)} and ${SCORE_NAME}.md`)
 }
 
 function markdown(s: {
