@@ -5,6 +5,7 @@ import { StashMoveProgressSchema } from '../stash'
 import { AiDownloadProgressSchema } from './ai'
 import { AiStatusEventSchema } from './ai-status'
 import { CopyProgressSchema } from './import'
+import { MenuCommandSchema } from './menu'
 
 /**
  * Main → renderer push events, each with its payload schema. They have no request or response
@@ -16,5 +17,6 @@ export const PUSH_CONTRACT = {
   [IPC_CHANNELS.AI_STATUS]: { payload: AiStatusEventSchema },
   [IPC_CHANNELS.STASH_MOVE_PROGRESS]: { payload: StashMoveProgressSchema },
   [IPC_CHANNELS.COPY_PROGRESS]: { payload: CopyProgressSchema },
-  [IPC_CHANNELS.INBOX_COUNTS_CHANGED]: { payload: InboxCountsSchema }
+  [IPC_CHANNELS.INBOX_COUNTS_CHANGED]: { payload: InboxCountsSchema },
+  [IPC_CHANNELS.MENU_COMMAND]: { payload: MenuCommandSchema }
 } as const satisfies { [C in PushChannel]: { payload: z.ZodType } }

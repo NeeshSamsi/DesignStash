@@ -599,3 +599,18 @@ describe('IPC Contract', () => {
     })
   })
 })
+
+describe('menu:command push', () => {
+  const { payload } = PUSH_CONTRACT[IPC_CHANNELS.MENU_COMMAND]
+
+  it('is a push channel the preload relays', () => {
+    expect(isPushChannel(IPC_CHANNELS.MENU_COMMAND)).toBe(true)
+  })
+
+  it('carries one of the known commands and nothing else', () => {
+    expect(payload.parse('settings')).toBe('settings')
+    expect(payload.parse('view:trash')).toBe('view:trash')
+    expect(payload.safeParse('view:somewhere').success).toBe(false)
+    expect(payload.safeParse({ command: 'settings' }).success).toBe(false)
+  })
+})
