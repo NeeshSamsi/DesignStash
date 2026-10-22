@@ -5,6 +5,8 @@ vi.mock('electron', () => ({ Menu: { buildFromTemplate: vi.fn(), setApplicationM
 
 import { GUIDE_URL, buildMenuTemplate, type MenuDeps } from './menu'
 
+const GUIDE = 'https://example.com/guide'
+
 function setup(): { deps: MenuDeps; template: MenuItemConstructorOptions[] } {
   const deps: MenuDeps = { send: vi.fn(), openExternal: vi.fn() }
   return { deps, template: buildMenuTemplate(deps) }
@@ -101,10 +103,16 @@ describe('buildMenuTemplate', () => {
   })
 
   it('Help › DesignStash Guide opens the guide in the browser', () => {
-    const { deps, template } = setup()
-    click(find(template, 'Help', 'DesignStash Guide'))
-    expect(deps.openExternal).toHaveBeenCalledWith(GUIDE_URL)
+    const deps: MenuDeps = { send: vi.fn(), openExternal: vi.fn(), guideUrl: GUIDE }
+    click(find(buildMenuTemplate(deps), 'Help', 'DesignStash Guide'))
+    expect(deps.openExternal).toHaveBeenCalledWith(GUIDE)
     expect(deps.send).not.toHaveBeenCalled()
+  })
+
+  it('has no Guide item while there is no guide to open', () => {
+    expect(GUIDE_URL).toBeNull()
+    const help = setup().template.find((m) => m.label === 'Help')!
+    expect(submenu(help).map((i) => i.label)).toEqual(['Report a Problem…'])
   })
 
   it('only offers the dev tools in development', () => {

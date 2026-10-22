@@ -1,8 +1,11 @@
 import { Menu, type MenuItemConstructorOptions } from 'electron'
 import type { MenuCommand } from '@shared/ipc/menu'
 
-/** Help › DesignStash Guide. Neesh gives the real address later. */
-export const GUIDE_URL = 'https://designstash.app/guide'
+/**
+ * Help › DesignStash Guide opens this. There is no guide yet, so the item stays out of the menu
+ * until the address is set here.
+ */
+export const GUIDE_URL: string | null = null
 
 export interface MenuDeps {
   /** Hand a command to the window, which runs it like the matching in-app control. */
@@ -10,6 +13,8 @@ export interface MenuDeps {
   openExternal: (url: string) => void
   /** Adds Reload and the dev tools to View. */
   dev?: boolean
+  /** Where Help › DesignStash Guide goes; without one there is no Guide item. */
+  guideUrl?: string | null
 }
 
 /**
@@ -33,6 +38,10 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
   const separator: MenuItemConstructorOptions = { type: 'separator' }
   const devItems: MenuItemConstructorOptions[] = deps.dev
     ? [separator, { role: 'reload' }, { role: 'toggleDevTools' }]
+    : []
+  const guideUrl = deps.guideUrl === undefined ? GUIDE_URL : deps.guideUrl
+  const guide: MenuItemConstructorOptions[] = guideUrl
+    ? [{ label: 'DesignStash Guide', click: () => deps.openExternal(guideUrl) }]
     : []
 
   return [
@@ -78,10 +87,7 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
     {
       role: 'help',
       label: 'Help',
-      submenu: [
-        { label: 'DesignStash Guide', click: () => deps.openExternal(GUIDE_URL) },
-        command(deps, 'Report a Problem…', 'report-problem')
-      ]
+      submenu: [...guide, command(deps, 'Report a Problem…', 'report-problem')]
     }
   ]
 }
