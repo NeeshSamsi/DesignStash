@@ -175,10 +175,20 @@ describe('IPC Contract', () => {
             active: false
           }
         ],
+        meaning: {
+          id: 'nomic-embed-v1.5',
+          name: 'Meaning search',
+          description: 'Finds mockups by what a search means.',
+          license: 'Apache 2.0',
+          sizeBytes: 146146432,
+          downloadedBytes: 0,
+          installed: false
+        },
         legacy: [{ id: 'qwen2.5-1.5b', sizeBytes: 1040000000 }],
         activeProblem: null
       }
       expect(response.parse(valid)).toEqual(valid)
+      expect(() => response.parse({ ...valid, meaning: undefined })).toThrow()
       expect(response.parse({ ...valid, activeProblem: 'apple-intelligence-off' }).activeProblem).toBe(
         'apple-intelligence-off'
       )
