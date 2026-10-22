@@ -249,3 +249,61 @@ describe('ftsMatchQuery', () => {
     expect(ids('bags')).toEqual([bag.id])
   })
 })
+
+describe('meaning search through the library', () => {
+  const stash = (title: string, path: string) =>
+    repo.mockups.createMockup({ ...sample, title, libraryPath: path, stage: 'stashed' })
+
+  it('"jumper" finds a mockup tagged "sweatshirt" that keyword search misses', () => {
+    ensureSearchIndex(db)
+    seedTaxonomy(db)
+    const m = stash('Black raglan top', '/lib/fts/m1.psd')
+    const other = stash('Coffee cup', '/lib/fts/m2.psd')
+    const apparel = repo.tags.getAllCategories().find((c) => c.label === 'Apparel')!
+    const tag = repo.tags.createTag({ label: 'Sweatshirt', categoryId: apparel.id, createdBy: 'ai' })
+    repo.mockups.addTagToMockup(m.id, tag.id)
+    repo.search.rebuildSearchIndex()
+    const stubSims = new Map([
+      [m.id, 0.62],
+      [other.id, 0.31]
+    ])
+    // Keyword search finds neither.
+    expect(repo.library.getLibrary({ query: 'jumper', sort: 'date' })).toEqual([])
+    const result = repo.library.queryLibrary({ query: 'jumper', sort: 'date', meaning: stubSims })
+    expect(result.rows.map((r) => r.id)).toEqual([m.id])
+    expect(result.meaningHit).toBe(true)
+  })
+
+  it('puts keyword hits first and adds the meaning hit after them', () => {
+    ensureSearchIndex(db)
+    const kw = stash('Jumper on a hanger', '/lib/fts/m3.psd')
+    const sw = stash('Black sweatshirt', '/lib/fts/m4.psd')
+    repo.search.rebuildSearchIndex()
+    const sims = new Map([
+      [kw.id, 0.9],
+      [sw.id, 0.7]
+    ])
+    // The closest is already a keyword hit, so the top-1 rule adds nothing.
+    expect(repo.library.queryLibrary({ query: 'jumper', sort: 'date', meaning: sims })).toMatchObject({
+      rows: [{ id: kw.id }],
+      meaningHit: false
+    })
+    const sims2 = new Map([
+      [kw.id, 0.4],
+      [sw.id, 0.7]
+    ])
+    const out = repo.library.queryLibrary({ query: 'jumper', sort: 'date', meaning: sims2 })
+    expect(out.rows.map((r) => r.id)).toEqual([kw.id, sw.id])
+    expect(out.meaningHit).toBe(true)
+  })
+
+  it('adds nothing below the floor, and nothing without meaning data', () => {
+    ensureSearchIndex(db)
+    const m = stash('Black sweatshirt', '/lib/fts/m5.psd')
+    repo.search.rebuildSearchIndex()
+    expect(
+      repo.library.queryLibrary({ query: 'jumper', sort: 'date', meaning: new Map([[m.id, 0.4]]) }).rows
+    ).toEqual([])
+    expect(repo.library.queryLibrary({ query: 'jumper', sort: 'date', meaning: null }).rows).toEqual([])
+  })
+})

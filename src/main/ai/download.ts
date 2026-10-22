@@ -1,7 +1,19 @@
 import { createWriteStream, promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
-import { getModel, MODEL_FILE_NAMES } from './registry'
+import type { ModelFile } from './registry'
+import { MEANING_MODEL, MODEL_FILE_NAMES, getModel, isMeaningModel } from './registry'
+
+/** The files a download for this id fetches, in order, or null when the id has nothing to download. */
+function downloadFilesOf(id: string): { fileName: string; file: ModelFile }[] | null {
+  if (isMeaningModel(id)) return [{ fileName: MODEL_FILE_NAMES.model, file: MEANING_MODEL.file }]
+  const files = getModel(id)?.files
+  if (!files) return null
+  return [
+    { fileName: MODEL_FILE_NAMES.model, file: files.model },
+    { fileName: MODEL_FILE_NAMES.mmproj, file: files.mmproj }
+  ]
+}
 
 /** Why a download stopped. These are the only reasons the screen ever shows. */
 export type DownloadFailure = 'offline' | 'disk-full' | 'checksum' | 'server'
@@ -115,12 +127,10 @@ export class ModelDownloader {
 
   /** Bytes already on disk for a model, finished or partial. A stopped download resumes from here. */
   async downloadedBytes(id: string): Promise<number> {
-    const model = getModel(id)
-    if (!model?.files) return 0
     let sum = 0
-    for (const kind of ['model', 'mmproj'] as const) {
-      const final = await this.sizeOf(join(this.modelPath(id), MODEL_FILE_NAMES[kind]))
-      sum += final > 0 ? final : await this.sizeOf(join(this.modelPath(id), `${MODEL_FILE_NAMES[kind]}.part`))
+    for (const { fileName } of downloadFilesOf(id) ?? []) {
+      const final = await this.sizeOf(join(this.modelPath(id), fileName))
+      sum += final > 0 ? final : await this.sizeOf(join(this.modelPath(id), `${fileName}.part`))
     }
     return sum
   }
@@ -187,12 +197,15 @@ export class ModelDownloader {
     if (receivedBytes < expectedSize) throw new DownloadError('server')
   }
 
-  /** Installed means both files are there: the model and its image projector. A built-in model has none. */
+  /**
+   * Installed means every file is there: a vision model's GGUF and its image projector, or the
+   * meaning-search model's one GGUF. A built-in model has none.
+   */
   async isInstalled(id: string): Promise<boolean> {
-    if (!getModel(id)?.files) return false
+    const files = downloadFilesOf(id)
+    if (!files) return false
     try {
-      await fs.stat(join(this.modelPath(id), MODEL_FILE_NAMES.model))
-      await fs.stat(join(this.modelPath(id), MODEL_FILE_NAMES.mmproj))
+      for (const { fileName } of files) await fs.stat(join(this.modelPath(id), fileName))
       return true
     } catch {
       return false
@@ -204,7 +217,10 @@ export class ModelDownloader {
     try {
       const dirs = await fs.readdir(this.modelsDir, { withFileTypes: true })
       for (const dir of dirs) {
-        if (dir.isDirectory() && (await this.isInstalled(dir.name))) installed.push(dir.name)
+        // Vision models only; the meaning-search model is reported by `isInstalled` on its own.
+        if (dir.isDirectory() && !isMeaningModel(dir.name) && (await this.isInstalled(dir.name))) {
+          installed.push(dir.name)
+        }
       }
     } catch {
       // models dir may not exist
@@ -248,7 +264,7 @@ export class ModelDownloader {
   async listLegacy(): Promise<{ id: string; sizeBytes: number }[]> {
     const out: { id: string; sizeBytes: number }[] = []
     for (const name of await this.folderNames()) {
-      if (name.endsWith(ASIDE_SUFFIX) || getModel(name)) continue
+      if (name.endsWith(ASIDE_SUFFIX) || getModel(name) || isMeaningModel(name)) continue
       out.push({ id: name, sizeBytes: await folderSize(join(this.modelsDir, name)) })
     }
     return out
@@ -273,17 +289,14 @@ export class ModelDownloader {
     opts: { onProgress?: (p: DownloadProgress) => void; signal?: AbortSignal } = {}
   ): Promise<void> {
     const model = getModel(id)
-    if (!model) throw new Error(`Model not found: ${id}`)
-    const modelFiles = model.files
-    if (!modelFiles) throw new Error(`${model.name} is built into macOS; there is nothing to download`)
+    if (!model && !isMeaningModel(id)) throw new Error(`Model not found: ${id}`)
+    const listed = downloadFilesOf(id)
+    if (!listed) throw new Error(`${model?.name ?? id} is built into macOS; there is nothing to download`)
 
     const modelDir = this.modelPath(id)
     await fs.mkdir(modelDir, { recursive: true })
 
-    const files = (['model', 'mmproj'] as const).map((kind) => ({
-      ...modelFiles[kind],
-      fileName: MODEL_FILE_NAMES[kind]
-    }))
+    const files = listed.map(({ fileName, file }) => ({ ...file, fileName }))
     const total = files.reduce((sum, f) => sum + f.sizeBytes, 0)
 
     // Enough room for what is still to come, before asking the network for anything.

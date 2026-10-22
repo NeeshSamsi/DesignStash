@@ -1,5 +1,6 @@
 import type { HardwareInfo, ModelTier } from './hardware'
 import type { PromptProfileId } from './prompts'
+import { MEANING_MODEL_ID } from '../search/meaning'
 
 /** One of the two files a vision model needs. */
 export interface ModelFile {
@@ -159,4 +160,39 @@ export function bestFitModelId(hw: HardwareInfo): string {
     MODEL_REGISTRY.find((m) => m.tier === 'medium')
   if (!fit) throw new Error('No medium model in the catalogue')
   return fit.id
+}
+
+/**
+ * The embedding model behind meaning search. It is not a vision model: it is never offered as the
+ * active model, and downloads, installs and deletes by its id go through the same downloader. Chosen
+ * in the meaning-search bake-off (Roadmap, "Meaning search measured"): the best found/right of the
+ * three tested, 146 MB, Apache 2.0.
+ */
+export interface MeaningModelEntry {
+  id: string
+  name: string
+  description: string
+  license: string
+  /** The one GGUF, kept at `<modelsDir>/<id>/model.gguf`. */
+  file: ModelFile
+  sizeBytes: number
+}
+
+const MEANING_FILE: ModelFile = {
+  url: `${HF}/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q8_0.gguf`,
+  sizeBytes: 146_146_432,
+  sha256: '3e24342164b3d94991ba9692fdc0dd08e3fd7362e0aacc396a9a5c54a544c3b7'
+}
+
+export const MEANING_MODEL: MeaningModelEntry = {
+  id: MEANING_MODEL_ID,
+  name: 'Meaning search',
+  description: 'Finds mockups by what a search means, like “jumper” for a sweatshirt. Runs on this Mac.',
+  license: 'Apache 2.0',
+  file: MEANING_FILE,
+  sizeBytes: MEANING_FILE.sizeBytes
+}
+
+export function isMeaningModel(id: string): boolean {
+  return id === MEANING_MODEL.id
 }

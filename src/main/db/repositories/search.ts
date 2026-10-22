@@ -113,6 +113,14 @@ export class SearchRepository {
     this.indexListener?.(mockupId, meaningDocument(m.title, m.description, tagLabels))
   }
 
+  /** Whether the mockup is in the index (stashed and not in Trash). */
+  isIndexed(mockupId: number): boolean {
+    return (
+      this.db.get<{ n: number }>(sql`SELECT 1 AS n FROM mockups_fts WHERE rowid = ${mockupId}`) !==
+      undefined
+    )
+  }
+
   /** Takes a mockup out of search: its keyword row and its meaning vectors. */
   removeSearchIndex(mockupId: number): void {
     this.db.run(sql`DELETE FROM mockups_fts WHERE rowid = ${mockupId}`)

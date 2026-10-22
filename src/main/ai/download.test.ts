@@ -407,3 +407,46 @@ describe('deleting, undoing and old folders', () => {
     await expect(downloader.restoreSetAside('a/b')).rejects.toThrow()
   })
 })
+
+describe('ModelDownloader and the meaning-search model', () => {
+  const id = registry.MEANING_MODEL.id
+  const file = Buffer.from('G'.repeat(50))
+  const original = { ...registry.MEANING_MODEL.file }
+  beforeEach(() => {
+    Object.assign(registry.MEANING_MODEL.file, {
+      sizeBytes: 50,
+      sha256: sha(file),
+      url: 'http://test.com/nomic/big.gguf'
+    })
+  })
+  afterEach(() => {
+    Object.assign(registry.MEANING_MODEL.file, original)
+  })
+
+  it('downloads its one file as model.gguf, with no projector', async () => {
+    const fetchImpl = createMockFetch({ big: file, proj: B })
+    const d = new ModelDownloader(tempModelsDir, { fetchImpl, freeBytes: async () => 1e12 })
+    expect(await d.isInstalled(id)).toBe(false)
+    await d.download(id)
+    expect(await d.isInstalled(id)).toBe(true)
+    expect((await fs.readdir(join(tempModelsDir, id))).sort()).toEqual(['model.gguf'])
+  })
+
+  it('is not a vision model: not in listInstalled, not legacy', async () => {
+    const fetchImpl = createMockFetch({ big: file, proj: B })
+    const d = new ModelDownloader(tempModelsDir, { fetchImpl, freeBytes: async () => 1e12 })
+    await d.download(id)
+    expect(await d.listInstalled()).toEqual([])
+    expect(await d.listLegacy()).toEqual([])
+  })
+
+  it('can be set aside and brought back like a vision model', async () => {
+    const fetchImpl = createMockFetch({ big: file, proj: B })
+    const d = new ModelDownloader(tempModelsDir, { fetchImpl, freeBytes: async () => 1e12 })
+    await d.download(id)
+    expect(await d.setAside(id)).toBe(true)
+    expect(await d.isInstalled(id)).toBe(false)
+    expect(await d.restoreSetAside(id)).toBe(true)
+    expect(await d.isInstalled(id)).toBe(true)
+  })
+})
