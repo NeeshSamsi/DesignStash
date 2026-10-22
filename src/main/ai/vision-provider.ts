@@ -4,6 +4,7 @@ import type { InferenceProvider, AnalysisInput, InferenceResult } from '../../sh
 import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
 import type { PromptProfile } from './prompts/profile'
+import { isPlaceholder } from '../psd/placeholder'
 
 /**
  * The categories the model tags in, with what each covers: the seed categories in `db/bootstrap.ts`
@@ -170,7 +171,7 @@ export function buildRequest(input: AnalysisInput, imageUrl: string | null): Cha
  * Words every file in a mockup library shares, plus the stock sites they come from. They match every
  * search, so they say nothing; the models copy them from file names and from text printed on covers.
  */
-const JUNK_WORDS = /\b(free|mockups?|psd|templates?|pixeden|pixelbuddha|freepik|mockupfree|ls\.?graphics)\b/gi
+export const JUNK_WORDS = /\b(free|mockups?|psd|templates?|pixeden|pixelbuddha|freepik|mockupfree|ls\.?graphics)\b/gi
 
 /** Takes the junk words out of a title or label and tidies what's left. */
 function stripJunk(text: string): string {
@@ -294,12 +295,7 @@ export function parseResult(raw: string): InferenceResult {
   }
 }
 
-/**
- * Below this greyscale entropy a cover is a blank page or a notice, never a product shot. Measured on
- * the test set: the three "Remove this layer to start" previews score about 0.23, the plainest real
- * cover 2.24 (design/specs/ai.md).
- */
-export const PLACEHOLDER_ENTROPY = 1
+export { PLACEHOLDER_ENTROPY } from '../psd/placeholder'
 
 /**
  * Reads a cover for the model: scaled to fit `VISION_IMAGE_MAX_EDGE` and re-encoded as JPEG,
@@ -312,8 +308,7 @@ export async function readCoverAsDataUrl(path: string): Promise<string | null> {
   if (!path) return null
   try {
     const bytes = await readFile(path)
-    const { entropy } = await sharp(bytes).greyscale().resize(256, 256, { fit: 'inside' }).stats()
-    if (entropy < PLACEHOLDER_ENTROPY) return null
+    if (await isPlaceholder(bytes)) return null
     const jpeg = await sharp(bytes)
       .resize(VISION_IMAGE_MAX_EDGE, VISION_IMAGE_MAX_EDGE, {
         fit: 'inside',

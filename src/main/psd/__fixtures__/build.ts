@@ -15,19 +15,40 @@ export interface CompositeOptions {
   width?: number
   height?: number
   color?: { r: number; g: number; b: number }
+  /**
+   * `flat` fills it with `color` (the default). `placeholder` is a white card with a block of dark
+   * "text", like a "DELETE THIS LAYER" notice. `photo` varies every pixel, like a real product shot.
+   */
+  look?: 'flat' | 'placeholder' | 'photo'
 }
 
 /** Writes a PSD with a composite image ≥ MIN_EMBEDDED_EDGE on its long edge. */
 export function buildPsdWithComposite(
   path: string,
-  { width = 1024, height = 768, color = { r: 200, g: 150, b: 100 } }: CompositeOptions = {}
+  {
+    width = 1024,
+    height = 768,
+    color = { r: 200, g: 150, b: 100 },
+    look = 'flat'
+  }: CompositeOptions = {}
 ): void {
   mkdirSync(dirname(path), { recursive: true })
   const data = new Uint8ClampedArray(width * height * 4)
   for (let i = 0; i < data.length; i += 4) {
-    data[i] = color.r
-    data[i + 1] = color.g
-    data[i + 2] = color.b
+    const x = (i / 4) % width
+    const y = Math.floor(i / 4 / width)
+    let [r, g, b] = [color.r, color.g, color.b]
+    if (look === 'placeholder') {
+      const text = x > width * 0.3 && x < width * 0.7 && y > height * 0.45 && y < height * 0.55
+      r = g = b = text ? 20 : 255
+    } else if (look === 'photo') {
+      r = (x * 7 + y * 3) % 256
+      g = (x * 3 + y * 11) % 256
+      b = (x * y) % 256
+    }
+    data[i] = r
+    data[i + 1] = g
+    data[i + 2] = b
     data[i + 3] = 255
   }
   const buf = writePsdBuffer({

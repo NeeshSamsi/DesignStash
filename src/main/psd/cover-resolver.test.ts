@@ -1,9 +1,10 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, existsSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import sharp from 'sharp'
 import { resolveCover } from './cover-resolver'
-import { buildPsdWithComposite, buildDroppedTree } from './__fixtures__/build'
+import { buildPsdWithComposite, buildDroppedTree, buildSidecarImage } from './__fixtures__/build'
 
 const dirs: string[] = []
 function tempDir(): string {
@@ -124,5 +125,131 @@ describe('resolveCover — none branch', () => {
     expect(result.source).toBe('none')
     expect(existsSync(join(outDir, 'cover.webp'))).toBe(false)
     expect(existsSync(join(outDir, 'thumb.webp'))).toBe(false)
+  })
+})
+
+describe('resolveCover — placeholder composite', () => {
+  // The sidecar fixture is brown (128, 64, 32); the placeholder card is white.
+  const isSidecarColour = async (coverPath: string) => {
+    const { channels } = await sharp(coverPath).stats()
+    return channels[0]!.mean > 100 && channels[0]!.mean < 160 && channels[2]!.mean < 60
+  }
+
+  async function folder(psdName: string, look: 'placeholder' | 'photo', images: string[]) {
+    const dir = tempDir()
+    const psdPath = join(dir, 'Kit', psdName)
+    buildPsdWithComposite(psdPath, { look })
+    const imagePaths: string[] = []
+    for (const image of images) {
+      const path = join(dir, 'Kit', image)
+      await buildSidecarImage(path)
+      imagePaths.push(path)
+    }
+    return { psdPath, imagePaths, outDir: join(dir, 'out') }
+  }
+
+  it('uses the image with the PSD’s own name in place of a placeholder', async () => {
+    const { psdPath, imagePaths, outDir } = await folder('iPhone_Mockup_1.psd', 'placeholder', [
+      'iPhone_Mockup_1.jpg',
+      'iPhone_Mockup_2.jpg'
+    ])
+
+    const result = await resolveCover({ psdPath, candidateImagePaths: imagePaths, outDir })
+
+    expect(result).toMatchObject({ source: 'sidecar', candidateName: 'iPhone_Mockup_1.jpg' })
+    if (result.source === 'sidecar') expect(await isSidecarColour(result.coverPath)).toBe(true)
+  })
+
+  it('uses a lone preview.jpg beside a placeholder', async () => {
+    const { psdPath, imagePaths, outDir } = await folder('Business-Cards.psd', 'placeholder', [
+      'preview.jpg'
+    ])
+
+    const result = await resolveCover({ psdPath, candidateImagePaths: imagePaths, outDir })
+
+    expect(result).toMatchObject({ source: 'sidecar', candidateName: 'preview.jpg' })
+  })
+
+  it('uses the only image in the folder when its name is close but not the same', async () => {
+    const { psdPath, imagePaths, outDir } = await folder('Bus_Stop_Mockup.psd', 'placeholder', [
+      'Bus_Stop_Mockup_1.jpg'
+    ])
+
+    const result = await resolveCover({ psdPath, candidateImagePaths: imagePaths, outDir })
+
+    expect(result).toMatchObject({ source: 'sidecar', candidateName: 'Bus_Stop_Mockup_1.jpg' })
+  })
+
+  it('prefers preview.jpg among other images in the folder', async () => {
+    const { psdPath, imagePaths, outDir } = await folder('Cards.psd', 'placeholder', [
+      'detail.png',
+      'preview.jpg'
+    ])
+
+    const result = await resolveCover({ psdPath, candidateImagePaths: imagePaths, outDir })
+
+    expect(result).toMatchObject({ source: 'sidecar', candidateName: 'preview.jpg' })
+  })
+
+  it('keeps the placeholder when several images could be the preview', async () => {
+    const { psdPath, imagePaths, outDir } = await folder('Top&Leggings_Mockup.psd', 'placeholder', [
+      'Top_Mockup.jpg',
+      'Leggings_Mockup.jpg'
+    ])
+
+    const result = await resolveCover({ psdPath, candidateImagePaths: imagePaths, outDir })
+
+    expect(result.source).toBe('embedded')
+  })
+
+  it('keeps the placeholder when the only image is in another folder', async () => {
+    const { psdPath, outDir } = await folder('Scene 02.psd', 'placeholder', [])
+    const elsewhere = join(psdPath, '..', '..', 'Preview', 'Scene #2.png')
+    await buildSidecarImage(elsewhere, { format: 'png' })
+
+    const result = await resolveCover({ psdPath, candidateImagePaths: [elsewhere], outDir })
+
+    expect(result.source).toBe('embedded')
+  })
+
+  it('keeps a real composite even with an image of the same name beside it', async () => {
+    const { psdPath, imagePaths, outDir } = await folder('Can_Mockup.psd', 'photo', [
+      'Can_Mockup.jpg'
+    ])
+
+    const result = await resolveCover({ psdPath, candidateImagePaths: imagePaths, outDir })
+
+    expect(result.source).toBe('embedded')
+    if (result.source === 'embedded') expect(await isSidecarColour(result.coverPath)).toBe(false)
+  })
+
+  it('reads the preview through readImage, for images that are not files on disk', async () => {
+    const { psdPath, imagePaths, outDir } = await folder('Pouch.psd', 'placeholder', ['Pouch.jpg'])
+    const bytes = readFileSync(imagePaths[0]!)
+    const inZip = '/drop/Pouch.zip/Kit/Pouch.jpg'
+
+    const result = await resolveCover({
+      psdPath,
+      sidecarFor: '/drop/Pouch.zip/Kit/Pouch.psd',
+      candidateImagePaths: [inZip],
+      readImage: async (path) => {
+        expect(path).toBe(inZip)
+        return bytes
+      },
+      outDir
+    })
+
+    expect(result).toMatchObject({ source: 'sidecar', candidateName: 'Pouch.jpg' })
+  })
+
+  it('keeps the placeholder when the preview cannot be read', async () => {
+    const { psdPath, outDir } = await folder('Mug.psd', 'placeholder', [])
+    const broken = join(psdPath, '..', 'Mug.jpg')
+    mkdirSync(join(broken, '..'), { recursive: true })
+    writeFileSync(broken, 'not a jpeg')
+
+    const result = await resolveCover({ psdPath, candidateImagePaths: [broken], outDir })
+
+    expect(result.source).toBe('embedded')
   })
 })

@@ -1,5 +1,5 @@
 import { readdirSync, statSync } from 'node:fs'
-import { join, extname, basename } from 'node:path'
+import { join, extname, basename, dirname } from 'node:path'
 import { SIDECAR_EXTENSIONS, SIDECAR_FUZZY_THRESHOLD } from '@shared/constants'
 
 export function collectCandidateImages(rootDir: string): string[] {
@@ -103,5 +103,31 @@ export function findSidecar(psdPath: string, candidateImagePaths: string[]): Sid
     return fuzzyMatches[0] ?? null
   }
 
+  return null
+}
+
+/**
+ * The preview image a mockup kit ships beside a PSD whose composite is a placeholder. Stricter than
+ * `findSidecar`, because it replaces a cover the PSD does have: an image with the PSD's own name
+ * (the nearest, if several), else the folder's `preview` image, else the only image in the folder.
+ * Null when the folder holds several images and none of them is named for the PSD.
+ */
+export function findPreviewFor(psdPath: string, candidateImagePaths: string[]): SidecarMatch | null {
+  const psdStem = normalizeStem(psdPath)
+  const match = (path: string, confidence: number): SidecarMatch => ({
+    path,
+    candidateName: basename(path),
+    confidence
+  })
+
+  const named = candidateImagePaths
+    .filter((p) => normalizeStem(p) === psdStem)
+    .sort((a, b) => pathDistance(psdPath, a) - pathDistance(psdPath, b))
+  if (named[0]) return match(named[0], 1)
+
+  const beside = candidateImagePaths.filter((p) => dirname(p) === dirname(psdPath))
+  const previews = beside.filter((p) => normalizeStem(p) === 'preview')
+  if (previews.length === 1) return match(previews[0]!, 1)
+  if (beside.length === 1) return match(beside[0]!, 1)
   return null
 }
