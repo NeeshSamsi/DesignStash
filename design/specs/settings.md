@@ -26,7 +26,7 @@
 - **ModelCard** (after Handy): name, In use / Best fit for this Mac, one plain line, quality and speed as five-step bars; a divider; languages, size, and the action. The model in use has an orange border and no fill.
 - **Actions are buttons,** never the whole card: Use this model, Download, Cancel, Try again, Delete. Downloading shows progress, speed and time left in the card's footer. A stopped download says why in the footer and offers Try again (it resumes).
 - **Delete:** deleting the model in use asks first and says AI titles and tags stop until another is picked. Deleting any other model is instant with Undo.
-- **Meaning search** (a row under the model cards, headed Search): the embedding model that lets a search match meaning, nomic-embed-text v1.5 (Apache 2.0, 146 MB). It has the card's states and footer (Download or Resume, progress with Cancel, Try again, Delete with Undo) but no quality and speed bars and no Use button: it is not a vision model, never the active one, and works whenever it is downloaded, whether or not on-device AI is on. It downloads by itself with the vision model in onboarding (also for Apple's built-in model), shown there as one line under the choice: "Meaning search · 146 MB", then its progress, then ready; if it fails, the line points to this row. Deleting it is instant with Undo and returns search to keywords.
+- **Meaning search** (a row under the model cards, headed Search): the embedding model that lets a search match meaning, nomic-embed-text v1.5 (Apache 2.0, 146 MB). It has the card's states and footer (Download or Resume, progress with Cancel, Try again, Delete with Undo) but no quality and speed bars and no Use button: it is not a vision model, never the active one, and works whenever it is downloaded, whether or not on-device AI is on. In onboarding it has its own card (see "Onboarding · A3 · AI setup" below); if its download fails there, the card points to this row. Deleting it is instant with Undo and returns search to keywords.
 
 ## Tags
 
@@ -62,3 +62,16 @@ The rule from `tags.md` holds here too: **add where the result appears.**
 - **Couldn't check:** nothing blocks; a toast says so and points at Settings › My Stash, where the Stash check row reads “Couldn't check” with Check now.
 - **Copy:** plain names, never file paths or error codes.
 
+## Onboarding · A3 · AI setup: meaning search (D6 M2, 2026-10-22)
+
+- **The card:** under the AI panel, 12 px below it, with the panel's border and radius. On the left, "Meaning search" with the Recommended badge (hidden once it is on this Mac), then "Finds mockups by what you mean, like “jumper” for a sweatshirt. Without it, search matches the words you type.", then a status line (caption, tertiary). On the right, a Switch labelled "Download meaning search" for screen readers, **on by default**.
+- **Status line:** on and not started "146 MB" (the real size); off "Off · search matches the words you type"; "Downloading 37%"; "Checking the download"; "Ready"; failed "Couldn’t download. Try again in Settings › AI model." (`meaningLine` in `settings-copy.ts`).
+- **Locked once started:** from the first byte (and when it is already there, or failed), the switch is disabled with the tooltip "Already chosen. Change it in Settings › AI model." Settings handles it from then on.
+- **Shown with AI off too** (the AI switch off, or Skip AI). Hidden only on a Mac that can't run on-device AI, and when the model list couldn't load.
+- **The Download button carries the total:** "Download 2.2 GB" is the picked model plus meaning search while its switch is on and its download hasn't begun; switched off, the button shows the vision model alone.
+- **When it downloads:**
+  - with the vision model, when Download is pressed;
+  - when the step is left with a built-in or already-downloaded model in use;
+  - when the step is left with AI off (Continue or Skip AI), on its own;
+  - never while its switch is off. With both off, nothing downloads.
+- Meaning search needs no vision model: it downloads and indexes the library with none installed or in use.
