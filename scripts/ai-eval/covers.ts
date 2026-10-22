@@ -23,6 +23,7 @@ import {
   TEST_SET,
   realItemPaths,
   writeJson,
+  zipDir,
   type EvalItem
 } from './eval-files'
 import { itemIds } from './item-id'
@@ -76,7 +77,7 @@ async function main(): Promise<void> {
 
   for (const [i, p] of psds.entries()) {
     const id = ids[i]!
-    const zipPath = p.archive ? join(TEST_SET, 'zips', p.archive.name) : undefined
+    const zipPath = p.archive ? join(zipDir(p.archive.name), p.archive.name) : undefined
     const sourcePath = p.archive ? entryPath(zipPath!, p.archive.entry) : p.psdPath
     const base = {
       id,

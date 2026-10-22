@@ -20,14 +20,30 @@ export const ITEMS_PATH = join(EVAL_DIR, 'items.json')
 export const COVERS_DIR = join(EVAL_DIR, 'covers')
 
 /** The real downloads in the test set, as a designer would drop them. The generated cases are left out. */
+/**
+ * Downloads kept apart from prompt tuning (test set MANIFEST.md): covered like the rest, scored
+ * against `gold-heldout.json` only for the final check.
+ */
+export const HELD_OUT_DIR = 'held-out'
+
+/** The folder a test set zip is in: `zips/`, or `held-out/` for a held-out download. */
+export function zipDir(name: string, root: string = TEST_SET): string {
+  return existsSync(join(root, HELD_OUT_DIR, name)) ? join(root, HELD_OUT_DIR) : join(root, 'zips')
+}
+
 export function realItemPaths(root: string = TEST_SET): string[] {
   const zips = readdirSync(join(root, 'zips'))
     .filter((n) => n.toLowerCase().endsWith('.zip'))
     .map((n) => join(root, 'zips', n))
+  const heldOut = existsSync(join(root, HELD_OUT_DIR))
+    ? readdirSync(join(root, HELD_OUT_DIR))
+        .filter((n) => n.toLowerCase().endsWith('.zip'))
+        .map((n) => join(root, HELD_OUT_DIR, n))
+    : []
   const psds = readdirSync(join(root, 'psds'))
     .filter((n) => n.toLowerCase().endsWith('.psd'))
     .map((n) => join(root, 'psds', n))
-  return [...zips, ...psds, join(root, 'folders', 'Long Website Mockup')].sort()
+  return [...zips, ...heldOut, ...psds, join(root, 'folders', 'Long Website Mockup')].sort()
 }
 
 export interface EvalItem {
