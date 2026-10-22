@@ -26,6 +26,7 @@
 - **ModelCard** (after Handy): name, In use / Best fit for this Mac, one plain line, quality and speed as five-step bars; a divider; languages, size, and the action. The model in use has an orange border and no fill.
 - **Actions are buttons,** never the whole card: Use this model, Download, Cancel, Try again, Delete. Downloading shows progress, speed and time left in the card's footer. A stopped download says why in the footer and offers Try again (it resumes).
 - **Delete:** deleting the model in use asks first and says AI titles and tags stop until another is picked. Deleting any other model is instant with Undo.
+- **Meaning search** (a row under the model cards, headed Search): the embedding model that lets a search match meaning, nomic-embed-text v1.5 (Apache 2.0, 146 MB). It has the card's states and footer (Download or Resume, progress with Cancel, Try again, Delete with Undo) but no quality and speed bars and no Use button: it is not a vision model, never the active one, and works whenever it is downloaded, whether or not on-device AI is on. It downloads by itself with the vision model in onboarding (also for Apple's built-in model), shown there as one line under the choice: "Meaning search · 146 MB", then its progress, then ready; if it fails, the line points to this row. Deleting it is instant with Undo and returns search to keywords.
 
 ## Tags
 
