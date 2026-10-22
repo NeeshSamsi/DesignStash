@@ -14,9 +14,9 @@ const build = requestFrom({ ...SHIPPED, noImage: NAMES_ONLY })
 
 /** Things a model adds because they usually go with the object: furniture, surfaces, props, people. */
 const SCENE_THINGS = ['desk', 'table', 'chair', 'armchair', 'sofa', 'couch', 'bench', 'shelf', 'stool', 'bed', 'counter', 'plate', 'tray', 'plant', 'vase', 'book', 'pen', 'pencil', 'keyboard', 'mouse', 'lamp', 'hook', 'hand', 'wrist', 'person', 'woman', 'man', 'model']
-const THRESHOLD = 0.2
+export const THRESHOLD = 0.2
 
-function mentioned(answer: EvalResult): string[] {
+export function mentioned(answer: EvalResult): string[] {
   const text = [answer.title, answer.description, ...answer.tags.map((t) => t.label)].join(' ').toLowerCase()
   return SCENE_THINGS.filter((w) => new RegExp(String.raw`\b${w}s?\b`).test(text))
 }
