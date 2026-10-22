@@ -127,7 +127,37 @@ describe('keyword search', () => {
   })
 })
 
+describe('name search', () => {
+  it('finds a mockup by a word only its file or folder name has', () => {
+    const m = repo.mockups.createMockup({
+      ...sample,
+      title: 'Poster on a glass shelter',
+      libraryPath: '/lib/fts/n1.psd',
+      stage: 'stashed',
+      importContext: {
+        batchId: 'b',
+        folderTrail: ['MDU089_Bus_Stop_Citylight_Mockup'],
+        originalFilename: 'Poster_Mockup_63db6f047a0e4b24dc6be794.psd'
+      }
+    })
+    repo.search.rebuildSearchIndex()
+    expect(repo.search.rankMatches('citylight')!.has(m.id)).toBe(true)
+    // A phrase made of two name words matches.
+    expect(repo.search.rankMatches('bus stop')!.has(m.id)).toBe(true)
+    // Ids and hashes are not words.
+    expect(repo.search.rankMatches('63db6f047a0e4b24dc6be794')?.has(m.id) ?? false).toBe(false)
+    expect(repo.search.rankMatches('mockup')?.has(m.id) ?? false).toBe(false)
+  })
+})
+
 describe('ftsMatchQuery', () => {
+  it('leaves filler words out unless the query is only filler', () => {
+    expect(ftsMatchQuery('mug on a table')).toBe('mug* table*')
+    expect(ftsMatchQuery('Bag with the Logo')).toBe('Bag* Logo*')
+    expect(ftsMatchQuery('the')).toBe('the*')
+    expect(ftsMatchQuery('of the')).toBe('of* the*')
+  })
+
   it('prefix-matches every word', () => {
     expect(ftsMatchQuery('tote bag')).toBe('tote* bag*')
   })

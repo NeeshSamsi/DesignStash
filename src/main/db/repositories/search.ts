@@ -3,6 +3,7 @@ import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags } from '../schema'
 import { isStashed } from './stashed'
 import { searchKeywords } from '../search-keywords'
+import { nameKeywords } from '../search-names'
 
 /**
  * An English plural folded to its singular ("bags" → "bag", "boxes" → "box", "stationeries" →
@@ -32,13 +33,18 @@ function ftsTerm(word: string): string | null {
   return parts.length === 1 ? `${parts[0]}*` : `"${parts.join(' ')}"*`
 }
 
+/** Little words that say nothing in a search ("mug on a table"). */
+const FILLER = new Set(['on', 'in', 'with', 'the', 'a', 'and', 'of', 'for', 'at'])
+
 /**
  * The FTS5 MATCH expression for a free-text query: each word prefix-matched, with everything but
- * letters, digits, hyphens and underscores dropped. Null when no word is left.
+ * letters, digits, hyphens and underscores dropped, and filler words left out unless the query is
+ * only filler. Null when no word is left.
  */
 export function ftsMatchQuery(query: string): string | null {
-  const terms = query
-    .split(/\s+/)
+  const words = query.split(/\s+/).filter(Boolean)
+  const meaningful = words.filter((w) => !FILLER.has(w.toLowerCase()))
+  const terms = (meaningful.length > 0 ? meaningful : words)
     .map(ftsTerm)
     .filter((t): t is string => t !== null)
     .join(' ')
@@ -65,7 +71,9 @@ export class SearchRepository {
       .where(eq(mockupTags.mockupId, mockupId))
       .all()
       .map((row) => row.tags.label)
-    const keywords = searchKeywords(m.title, m.description ?? '', tagLabels).join(' ')
+    const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
+    const names = ctx?.originalFilename ? nameKeywords(ctx.originalFilename, ctx.folderTrail ?? []) : []
+    const keywords = searchKeywords(m.title, m.description ?? '', tagLabels, names).join(' ')
     this.db.run(sql`DELETE FROM mockups_fts WHERE rowid = ${mockupId}`)
     this.db.run(
       sql`INSERT INTO mockups_fts(rowid, title, description, tags, keywords)

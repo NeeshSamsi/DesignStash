@@ -16,14 +16,16 @@ const ENTRIES = Object.entries(SEARCH_THESAURUS).map(
  * The hidden search words for a mockup: for every thesaurus phrase found as a whole word or phrase
  * (case-insensitive, with an optional plural "s" or "es") in the title, description or tag labels,
  * the other names listed for it. Words are only added, in thesaurus order, without repeats.
+ * `nameWords` (from the file and folder names) come first and are expanded like the rest.
  */
 export function searchKeywords(
   title: string,
   description: string,
-  tagLabels: readonly string[]
+  tagLabels: readonly string[],
+  nameWords: readonly string[] = []
 ): string[] {
-  const text = ` ${normalise([title, description, ...tagLabels].join(' '))} `
-  const found = new Set<string>()
+  const text = ` ${normalise([title, description, ...tagLabels, ...nameWords].join(' '))} `
+  const found = new Set<string>(nameWords)
   for (const [phrase, words] of ENTRIES) {
     if (!phrase) continue
     const at = (suffix: string) => text.includes(` ${phrase}${suffix} `)
