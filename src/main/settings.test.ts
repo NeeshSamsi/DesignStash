@@ -120,7 +120,8 @@ describe('settings store', () => {
     expect(store.get()).toMatchObject({
       pendingStash: null,
       stashCheck: null,
-      updatesCheckedAt: null
+      updatesCheckedAt: null,
+      updatesLatest: null
     })
   })
 

@@ -6,7 +6,7 @@ import type Database from 'better-sqlite3'
 import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
 import { createSettingsStore } from '../settings'
 import { createTestDb } from '../db/repositories/__tests__/setup'
-import { NoopUpdateService } from '../updates/update-service'
+import { GithubUpdateService, NoopUpdateService } from '../updates/update-service'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -72,5 +72,38 @@ describe('licences', () => {
   it('returns the notice text', async () => {
     const res = await call<{ text: string }>(IPC_CHANNELS.LICENCES_TEXT)
     expect(res.success && res.data.text).toContain('zod 4.0.0  MIT')
+  })
+})
+
+describe('updates from GitHub', () => {
+  it('waits for the launch check, then reports the release; Download opens its page', async () => {
+    handlers.clear()
+    const settings = createSettingsStore(base)
+    const url = 'https://github.com/NeeshSamsi/DesignStash/releases/tag/v1.0.0'
+    const openExternal = vi.fn()
+    const updates = new GithubUpdateService({
+      settings,
+      currentVersion: '0.1.0',
+      fetch: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ tag_name: 'v1.0.0', body: 'Notes', html_url: url })
+      }),
+      now: () => new Date('2026-10-20T03:00:00.000Z'),
+      openExternal
+    })
+    registerAboutHandlers({ settings } as unknown as HandlerContext, {
+      updates,
+      launchCheck: true,
+      packages: { readApp: () => ({}), readDependency: () => null }
+    })
+    expect(await call(IPC_CHANNELS.UPDATES_STATUS)).toMatchObject({
+      data: { state: 'available', version: '1.0.0', notes: 'Notes', releaseUrl: url }
+    })
+    expect(await call(IPC_CHANNELS.UPDATES_INSTALL)).toEqual({
+      success: true,
+      data: { installing: false }
+    })
+    expect(openExternal).toHaveBeenCalledWith(url)
   })
 })

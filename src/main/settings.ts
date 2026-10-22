@@ -11,10 +11,17 @@ export interface AppSettings {
   libraryRoot: string
   onboarded: boolean
   activeModelId: string | null
-  /** Telemetry consent — default ON (spec §13.3, pseudonymous). Nothing is sent until `onboarded`. */
+  /**
+   * Usage-data consent. On by default for a new install (opt-out): onboarding says so plainly and
+   * the switch sits right there. Nothing is sent until `onboarded`. An existing file keeps its choice.
+   */
   telemetryEnabled: boolean
   /** Pseudonymous, stable install identifier — generated once on first store init. */
   telemetryInstallId: string
+  /** When this install first ran (ISO), minted with the install id. Only ever sent as a time since. */
+  installedAt: string
+  /** Set once `first_suggestion` has been sent, so it is sent once. */
+  firstSuggestionSentAt: string | null
   /**
    * A stash folder change waiting for a restart. At the next launch `libraryRoot` becomes `path`;
    * for a move, the old folder's contents are removed once the new copy is confirmed.
@@ -24,6 +31,8 @@ export interface AppSettings {
   stashCheck: StashCheckRecord | null
   /** When the app last looked for an update (ISO). */
   updatesCheckedAt: string | null
+  /** The newest release the last successful check found, kept so a throttled launch can still report it. */
+  updatesLatest: { version: string; notes: string; releaseUrl: string } | null
   /** Stash check items the user chose to ignore (opaque ids, no paths). */
   ignoredDrift: string[]
 }
@@ -75,10 +84,13 @@ export function createSettingsStore(
     onboarded: false,
     activeModelId: null,
     telemetryEnabled: true,
-    telemetryInstallId: '', // placeholder — a real UUID is minted on first init (see ensureInstallId)
+    telemetryInstallId: '', // placeholder — a real UUID is minted on first init (see get)
+    installedAt: '',
+    firstSuggestionSentAt: null,
     pendingStash: null,
     stashCheck: null,
     updatesCheckedAt: null,
+    updatesLatest: null,
     ignoredDrift: []
   }
   const now = options.now ?? (() => new Date())
@@ -128,8 +140,14 @@ export function createSettingsStore(
     if (cache) return cache
     const loaded = readFromDisk()
     // Mint a stable pseudonymous install ID once, the first time it's missing, and persist it.
-    if (!loaded.telemetryInstallId) {
-      cache = update({ telemetryInstallId: randomUUID() }, loaded)
+    if (!loaded.telemetryInstallId || !loaded.installedAt) {
+      cache = update(
+        {
+          telemetryInstallId: loaded.telemetryInstallId || randomUUID(),
+          installedAt: loaded.installedAt || now().toISOString()
+        },
+        loaded
+      )
       return cache
     }
     cache = loaded

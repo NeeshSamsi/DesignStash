@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import type { UpdateStatus } from '@shared/ipc/app'
 import { Button } from '../../components/Button'
 import { SettingsGroup, SettingsRow } from '../../components/SettingsLayout'
 import { DialogFrame, DialogHeading } from '../../lib/dialog-shell'
@@ -7,11 +8,7 @@ import { toast } from '../../stores/toastStore'
 import { Badge } from '../../ui/badge'
 import { formatWhen } from './settings-copy'
 
-type Update =
-  | { state: 'up-to-date'; lastCheckedAt: string | null }
-  | { state: 'available'; version: string; lastCheckedAt: string | null }
-  | { state: 'downloading'; version: string; progress: number; lastCheckedAt: string | null }
-  | { state: 'ready'; version: string; lastCheckedAt: string | null }
+type Update = UpdateStatus
 
 /** Settings › About: version, updates, licences and the problem report. */
 export function AboutPane() {
@@ -19,6 +16,7 @@ export function AboutPane() {
   const [update, setUpdate] = useState<Update | null>(null)
   const [checking, setChecking] = useState(false)
   const [licences, setLicences] = useState<string | null>(null)
+  const [notesOpen, setNotesOpen] = useState(false)
 
   const status = useCallback(async () => {
     const res = await window.api.invoke(IPC_CHANNELS.UPDATES_STATUS, undefined)
@@ -45,6 +43,7 @@ export function AboutPane() {
     setChecking(true)
     const res = await window.api.invoke(IPC_CHANNELS.UPDATES_CHECK, undefined).catch(() => null)
     setChecking(false)
+    // A check that could not reach GitHub comes back as a status and reads in the row, not a toast.
     if (res?.success) setUpdate(res.data)
     else
       toast({
@@ -87,6 +86,8 @@ export function AboutPane() {
     }
   }
 
+  const download = () => void window.api.invoke(IPC_CHANNELS.UPDATES_INSTALL, undefined)
+
   const secondary = (label: string, onClick: () => void, loading = false) => (
     <Button variant="secondary" size="sm" label={label} loading={loading} onClick={onClick} />
   )
@@ -102,10 +103,17 @@ export function AboutPane() {
     } else {
       line = 'Not checked yet'
     }
+  } else if (update?.state === 'check-failed') {
+    line = 'Couldn’t check. You may be offline, or GitHub is busy.'
   } else if (update?.state === 'available') {
     tag = <Badge variant="info">{update.version}</Badge>
-    line = 'Starting the download…'
-    control = secondary('Cancel', () => void cancel())
+    line = `Version ${update.version} is available.`
+    control = (
+      <>
+        {update.notes.trim() && secondary('What’s new', () => setNotesOpen(true))}
+        <Button size="sm" label="Download" onClick={download} />
+      </>
+    )
   } else if (update?.state === 'downloading') {
     tag = <Badge variant="info">{update.version}</Badge>
     line = `Downloading ${Math.round(update.progress * 100)}%`
@@ -137,6 +145,21 @@ export function AboutPane() {
           controls={secondary('Copy report', () => void report())}
         />
       </SettingsGroup>
+      <DialogFrame
+        open={notesOpen && update?.state === 'available'}
+        dataDs="WhatsNewDialog"
+        className="w-160 max-w-full"
+        onDismiss={() => setNotesOpen(false)}
+        showCloseButton
+      >
+        <DialogHeading
+          title={update?.state === 'available' ? `What’s new in ${update.version}` : ''}
+          description="The changes since your version."
+        />
+        <pre className="max-h-modal-body overflow-y-auto rounded-lg bg-surface-1 p-3 type-caption-xs-regular whitespace-pre-wrap text-muted-foreground">
+          {update?.state === 'available' ? update.notes : ''}
+        </pre>
+      </DialogFrame>
       <DialogFrame
         open={licences !== null}
         dataDs="LicencesDialog"

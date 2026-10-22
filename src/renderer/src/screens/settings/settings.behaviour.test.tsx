@@ -801,6 +801,41 @@ describe('Settings · About', () => {
     await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_INSTALL)).toHaveLength(1))
   })
 
+  it('offers a newer release with What’s new and Download', async () => {
+    setup({
+      [IPC_CHANNELS.UPDATES_STATUS]: () =>
+        ok({
+          state: 'available',
+          version: '1.1.0',
+          notes: '### Features\n\n* a new thing',
+          releaseUrl: 'https://github.com/NeeshSamsi/DesignStash/releases/tag/v1.1.0',
+          lastCheckedAt: NOW
+        })
+    })
+    open()
+    goto('About')
+    expect(await screen.findByText('Version 1.1.0 is available.')).not.toBeNull()
+    fireEvent.click(btn('What’s new'))
+    expect(await screen.findByRole('dialog', { name: 'What’s new in 1.1.0' })).not.toBeNull()
+    expect(screen.getByText(/a new thing/)).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.click(btn('Download'))
+    await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_INSTALL)).toHaveLength(1))
+  })
+
+  it('says it could not check, in the row and without an error toast', async () => {
+    setup({
+      [IPC_CHANNELS.UPDATES_STATUS]: () => ok({ state: 'check-failed', lastCheckedAt: null }),
+      [IPC_CHANNELS.UPDATES_CHECK]: () => ok({ state: 'check-failed', lastCheckedAt: null })
+    })
+    open()
+    goto('About')
+    expect(await screen.findByText(/^Couldn’t check\./)).not.toBeNull()
+    fireEvent.click(btn('Check for updates'))
+    await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1))
+    expect(screen.queryByText('Couldn’t check for updates')).toBeNull()
+  })
+
   it('shows the licences in a View modal', async () => {
     open()
     goto('About')
