@@ -1,5 +1,5 @@
-// Builds the Swift helper (native/designstash-helper) for development.
-//   node scripts/build-helper.mjs [--stage [dir]] [--to <dir>] [--from <binary>]
+// Builds the Swift helper (native/designstash-helper) for development and packaging.
+//   node scripts/build-helper.mjs [--stage [dir]] [--to <dir>] [--from <binary>] [--optional]
 //
 // The main process runs `designstash-helper` as a child for Vision and Apple's on-device model
 // (see native/designstash-helper/README.md). This compiles a release build with SwiftPM (the
@@ -8,8 +8,10 @@
 // main process looks in development. DESIGNSTASH_HELPER overrides it.
 //
 // --stage also copies it to build/helper (or the given dir), the way stage-llama-server.mjs
-// stages llama-server. Packaging and signing the helper for release are still open, so
-// electron-builder.yml doesn't pick it up yet. --from copies an existing binary instead of building.
+// stages llama-server; electron-builder.yml ships that copy to <resources>/helper/. --from copies
+// an existing binary instead of building. --optional (used by `pnpm build`) prints a warning and
+// exits 0 when the helper can't be built, for example on a Mac whose SDK predates macOS 26: the
+// app runs without it and simply doesn't offer Apple's model. `pnpm package:stage` leaves it off.
 import { execFileSync } from 'node:child_process'
 import { chmodSync, copyFileSync, existsSync, mkdirSync, renameSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -19,6 +21,17 @@ const NAME = 'designstash-helper'
 const PACKAGE = resolve('native', NAME)
 
 const args = process.argv.slice(2)
+const optional = args.includes('--optional')
+
+/** Stops with an error, or with a warning and success under --optional. */
+function fail(message) {
+  if (optional) {
+    console.log(`${message}\nSkipped the helper: Apple's on-device model won't be offered by this build.`)
+    process.exit(0)
+  }
+  console.error(message)
+  process.exit(1)
+}
 const option = (name) => {
   const at = args.indexOf(name)
   if (at === -1) return undefined
@@ -27,8 +40,7 @@ const option = (name) => {
 }
 
 if (process.platform !== 'darwin' || process.arch !== 'arm64') {
-  console.error('The helper is only built for macOS on Apple Silicon.')
-  process.exit(1)
+  fail('The helper is only built for macOS on Apple Silicon.')
 }
 
 const to =
@@ -42,15 +54,13 @@ if (!binary) {
   try {
     execFileSync('swift', swift, { stdio: 'inherit' })
   } catch {
-    console.error('swift build failed. Install the Command Line Tools: xcode-select --install')
-    process.exit(1)
+    fail('swift build failed. Install the Command Line Tools: xcode-select --install')
   }
   const binDir = execFileSync('swift', [...swift, '--show-bin-path'], { encoding: 'utf8' }).trim()
   binary = join(binDir, NAME)
 }
 if (!existsSync(binary)) {
-  console.error(`No helper binary at ${binary}`)
-  process.exit(1)
+  fail(`No helper binary at ${binary}`)
 }
 
 /** Copies next to the target and renames over it, so a helper that is running keeps its own file. */

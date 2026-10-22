@@ -23,8 +23,9 @@ import {
 export const HELPER_BINARY = 'designstash-helper'
 
 /**
- * Where the Swift helper lives: `DESIGNSTASH_HELPER` if set, then the app's bundled resources (once
- * packaging ships it), then the development copy that `pnpm helper:build` puts outside the repo.
+ * Where the Swift helper lives: `DESIGNSTASH_HELPER` if set, then the app's bundled resources
+ * (electron-builder.yml ships it to `<resources>/helper/`), then the development copy that
+ * `pnpm helper:build` puts outside the repo.
  * Null when none exists: the helper is then unavailable, and nothing that uses it crashes.
  */
 export function resolveHelperPath(

@@ -13,11 +13,15 @@ the same way it runs `llama-server` (`src/main/native/helper.ts`). Nothing here 
 
 ```sh
 pnpm helper:build            # release build, copied to ~/Library/Application Support/DesignStash-dev/helper/
-pnpm helper:build --stage    # also copies it to build/helper/ for packaging (not wired into electron-builder yet)
+pnpm helper:build --stage    # also copies it to build/helper/, which electron-builder ships to <resources>/helper/
 ```
 
-The main process finds the binary at `DESIGNSTASH_HELPER` if set, then `<resources>/helper/designstash-helper`
-(once packaging ships it), then the development copy above. With none, the helper is unavailable and
+`pnpm build` runs `helper:build --stage --optional` first: where the helper can't be built (an SDK older
+than macOS 26), it warns and the build carries on without it. `pnpm package:stage` builds it without
+`--optional`, so a release can't leave it out by accident.
+
+The main process finds the binary at `DESIGNSTASH_HELPER` if set, then `<resources>/helper/designstash-helper`,
+then the development copy above. With none, the helper is unavailable and
 nothing that uses it crashes.
 
 ## Protocol (version 1)
@@ -75,6 +79,9 @@ about 35 s while the system loads its text models; after that it is about 0.1 to
 
 ## Packaging and signing
 
-Still open, like llama-server's (`design/specs/ai.md`, "Open"). The binary needs signing with the
-app's identity and the hardened runtime, and, for a Mac App Store build, the inherited-sandbox
-entitlements of an embedded helper tool.
+`electron-builder.yml` ships `build/helper/designstash-helper` to `<resources>/helper/`. Signing walks
+every Mach-O file in the app, so the helper is signed with the app's identity and the hardened runtime
+whenever an identity is configured; with none, the build stays unsigned (the linker's ad-hoc
+signature) and runs for development. Still open: checking Vision and Foundation Models under the
+hardened runtime on the first signed build, and the inherited-sandbox entitlements of an embedded
+helper tool for a Mac App Store build.

@@ -46,5 +46,10 @@ describe.runIf(process.platform === 'darwin' && process.arch === 'arm64')(
     it('fails when the given binary is missing', () => {
       expect(() => build('--from', join(base, 'nope'), '--to', join(base, 'dev'))).toThrow()
     })
+
+    it('with --optional, says it skipped the helper and succeeds, so pnpm build carries on', () => {
+      const out = build('--from', join(base, 'nope'), '--to', join(base, 'dev'), '--optional')
+      expect(out).toContain('Skipped the helper')
+    })
   }
 )
