@@ -20,7 +20,9 @@ afterEach(() => sqlite.close())
 /** Vectors by a keyword in the text: "sweatshirt" is [1,0], "bag" is [0,1], anything else [0.7,0.7]. */
 function fakeEmbedder(): MeaningEmbedder & { documentBatches: string[][] } {
   const vec = (t: string) =>
-    Float32Array.from(normalise(t.includes('sweatshirt') ? [1, 0] : t.includes('bag') ? [0, 1] : [0.7, 0.7]))
+    Float32Array.from(
+      normalise(t.includes('sweatshirt') ? [1, 0] : t.includes('bag') ? [0, 1] : [0.7, 0.7])
+    )
   const batches: string[][] = []
   return {
     documentBatches: batches,
@@ -87,6 +89,17 @@ describe('EmbeddingService', () => {
     svc.backfill()
     await svc.idle()
     expect(embedder.documentBatches).toHaveLength(1)
+  })
+
+  it('backfill returns quietly once the service is stopped or the database is closed', async () => {
+    stashed('Tote bag', '/lib/s/q.psd')
+    const { svc, embedder } = service()
+    sqlite.close()
+    expect(() => svc.backfill()).not.toThrow()
+    await svc.idle()
+    await svc.stop()
+    expect(() => svc.backfill()).not.toThrow()
+    expect(embedder.documentBatches).toEqual([])
   })
 
   it('works in batches of 8 and waits while AI suggestions are running', async () => {
@@ -157,7 +170,12 @@ describe('EmbeddingService', () => {
     embedder.embedQuery = async () => {
       throw new Error('down')
     }
-    const svc = new EmbeddingService({ repo, available: () => true, embedder: () => embedder, log: () => {} })
+    const svc = new EmbeddingService({
+      repo,
+      available: () => true,
+      embedder: () => embedder,
+      log: () => {}
+    })
     const m = stashed('Tote bag', '/lib/s/k.psd')
     repo.embeddings.upsert(m.id, MEANING_MODEL_ID, [1, 0], 'h')
     expect(await svc.similarities('bag')).toBeNull()

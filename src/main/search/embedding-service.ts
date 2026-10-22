@@ -55,7 +55,16 @@ export class EmbeddingService {
 
   /** Queue every stashed mockup that has no current vector. Cheap when all are current. */
   backfill(): void {
-    for (const { id, text } of this.deps.repo.search.meaningDocuments()) this.documentChanged(id, text)
+    if (this.stopped) return
+    const documents = (() => {
+      try {
+        return this.deps.repo.search.meaningDocuments()
+      } catch {
+        // The database is closed (the app is quitting): there is nothing left to catch up on.
+        return []
+      }
+    })()
+    for (const { id, text } of documents) this.documentChanged(id, text)
   }
 
   /** Resolves when the queue is empty. */

@@ -9,6 +9,7 @@ import type { Repository } from '../db/repository'
 
 vi.mock('electron', () => ({ app: { on: vi.fn() }, shell: { openPath: vi.fn() } }))
 
+import { app } from 'electron'
 import { createAiRuntime, createPush } from './context'
 
 const fakeWindow = (destroyed = false) => {
@@ -68,5 +69,25 @@ describe('createAiRuntime', () => {
   it('has no provider for a Qwen model whose files are not there', async () => {
     const ai = createAiRuntime(settingsWith('qwen3-vl-4b'), repoStub)
     await expect(ai.activeProvider()).resolves.toBeNull()
+  })
+
+  it('clears the after-launch meaning backfill when the app quits', () => {
+    vi.useFakeTimers()
+    try {
+      const backfill = vi.fn()
+      const repo = {
+        search: { setIndexListener: vi.fn(), meaningDocuments: backfill }
+      } as unknown as Repository
+      vi.mocked(app.on).mockClear()
+      createAiRuntime(settingsWith(null), repo)
+      const quit = vi
+        .mocked(app.on)
+        .mock.calls.find(([name]) => (name as string) === 'will-quit')?.[1] as () => void
+      quit()
+      vi.advanceTimersByTime(20_000)
+      expect(backfill).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

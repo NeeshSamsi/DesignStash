@@ -179,20 +179,30 @@ app.whenReady().then(() => {
   // A renderer or helper process that died is noted, so the next launch can name the crash.
   app.on('render-process-gone', (_e, _wc, details) => {
     logger.error(`Renderer process gone: ${details.reason}`)
-    if (details.reason !== 'clean-exit' && details.reason !== 'killed') noteProcessGone(crashState, 'renderer')
+    if (details.reason !== 'clean-exit' && details.reason !== 'killed')
+      noteProcessGone(crashState, 'renderer')
   })
   app.on('child-process-gone', (_e, details) => {
     logger.error(`${details.type} process gone: ${details.reason}`)
-    if (details.reason !== 'clean-exit' && details.reason !== 'killed') noteProcessGone(crashState, details.type)
+    if (details.reason !== 'clean-exit' && details.reason !== 'killed')
+      noteProcessGone(crashState, details.type)
   })
-  for (const crash of takeNewCrashes({ dumpsDir: app.getPath('crashDumps'), stateFile: crashState })) {
+  for (const crash of takeNewCrashes({
+    dumpsDir: app.getPath('crashDumps'),
+    stateFile: crashState
+  })) {
     logger.error(`A crash from the last run was found (${crash.type})`)
-    telemetry.track(TELEMETRY_EVENTS.APP_CRASHED, { process_type: crash.type, version: app.getVersion() })
+    telemetry.track(TELEMETRY_EVENTS.APP_CRASHED, {
+      process_type: crash.type,
+      version: app.getVersion()
+    })
   }
 
   telemetry.track(TELEMETRY_EVENTS.APP_OPENED, {
     version: app.getVersion(),
-    library_size_bucket: libraryOpen ? sizeBucket(new Repository(getDb()).library.getLibraryStats().total) : 'unavailable'
+    library_size_bucket: libraryOpen
+      ? sizeBucket(new Repository(getDb()).library.getLibraryStats().total)
+      : 'unavailable'
   })
 
   // Crash capture — captureError scrubs absolute paths before any dispatch.
@@ -246,7 +256,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-// Quitting waits briefly for PostHog to send what it holds, then quits for real.
+// Quitting waits briefly for PostHog to send what it holds, then exits. A second app.quit() would
+// not raise will-quit again, so the process ends with app.exit once the flush settles.
 let flushedTelemetry = false
 app.on('will-quit', (event) => {
   logger.info('Closing database connection…')
@@ -254,7 +265,10 @@ app.on('will-quit', (event) => {
   if (flushedTelemetry || !telemetryRef) return
   flushedTelemetry = true
   event.preventDefault()
-  const flush = telemetryRef.get().shutdown().catch(() => {})
+  const flush = telemetryRef
+    .get()
+    .shutdown()
+    .catch(() => {})
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2000))
-  void Promise.race([flush, timeout]).finally(() => app.quit())
+  void Promise.race([flush, timeout]).finally(() => app.exit(0))
 })

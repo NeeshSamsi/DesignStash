@@ -87,7 +87,8 @@ export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRu
   const meaningModelPath = join(modelsDir, MEANING_MODEL_ID, MODEL_FILE_NAMES.model)
   const embeddings = new EmbeddingService({
     repo,
-    available: () => !stubAiEnabled() && existsSync(meaningModelPath) && resolveLlamaServerPath() !== null,
+    available: () =>
+      !stubAiEnabled() && existsSync(meaningModelPath) && resolveLlamaServerPath() !== null,
     embedder: () =>
       new LlamaMeaningEmbedder(
         new LlamaServer({
@@ -105,10 +106,12 @@ export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRu
   })
   repo.search.setIndexListener((id, text) => embeddings.documentChanged(id, text))
   // Catch up on mockups that have no vector yet, once the app has settled and behind AI suggestions.
-  setTimeout(() => embeddings.backfill(), 15_000).unref()
+  const backfillTimer = setTimeout(() => embeddings.backfill(), 15_000)
+  backfillTimer.unref()
 
   // A normal quit stops them too, rather than leaving that to the process exit hook.
   app.on('will-quit', () => {
+    clearTimeout(backfillTimer)
     void providers.dispose().catch(() => {})
     void helper.stop().catch(() => {})
     void embeddings.stop().catch(() => {})
