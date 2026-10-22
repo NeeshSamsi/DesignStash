@@ -7,6 +7,7 @@ import { ModelRow } from '@renderer/components/ModelRow'
 import { OnboardingStep } from '@renderer/components/OnboardingStep'
 import { Switch } from '@renderer/components/Switch'
 import { formatBytes } from '../settings/settings-copy'
+import { meaningLine } from '../settings/settings-copy'
 import { aiHeading, aiScreen, hardwareView, modelDetail, rowView, type AiScreen } from './ai-setup'
 import { AI_STEP } from './onboarding-copy'
 import { continueInBackground } from './background-download'
@@ -108,22 +109,29 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
     )
   } else if (screen !== 'loading') {
     content = (
-      <ModelPicker
-        ai={screen === 'skipped' ? 'off' : 'on'}
-        hardware={hardwareCard}
-        aiSwitch={
-          <Switch
-            showLabel={false}
-            checked={ai.aiOn && screen !== 'unsupported'}
-            disabled={working || screen === 'unsupported'}
-            onCheckedChange={ai.setAiOn}
-            aria-label="Use on-device AI"
-          />
-        }
-        model1={rows[0]}
-        model2={rows[1]}
-        model3={rows[2]}
-      />
+      <div className="flex flex-col gap-3">
+        <ModelPicker
+          ai={screen === 'skipped' ? 'off' : 'on'}
+          hardware={hardwareCard}
+          aiSwitch={
+            <Switch
+              showLabel={false}
+              checked={ai.aiOn && screen !== 'unsupported'}
+              disabled={working || screen === 'unsupported'}
+              onCheckedChange={ai.setAiOn}
+              aria-label="Use on-device AI"
+            />
+          }
+          model1={rows[0]}
+          model2={rows[1]}
+          model3={rows[2]}
+        />
+        {ai.meaning && screen !== 'skipped' && screen !== 'unsupported' && (
+          <p className="px-1 type-caption-xs-regular text-tertiary" role="status">
+            {meaningLine(ai.meaning, ai.meaningEvent)}
+          </p>
+        )}
+      </div>
     )
   }
 

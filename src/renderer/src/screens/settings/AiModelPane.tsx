@@ -13,6 +13,7 @@ import { toast, undoToast } from '../../stores/toastStore'
 import { BUILT_IN_SIZE } from '../onboarding/ai-setup'
 import { modelPhase } from '../onboarding/model-phase'
 import { useModelCatalogue } from '../onboarding/useModelCatalogue'
+import { MeaningSearchRow } from './MeaningSearchRow'
 import { downloadFailureCopy, downloadRate, downloadRemaining, formatBytes } from './settings-copy'
 
 const languagesText = (languages: string[]) =>
@@ -20,7 +21,7 @@ const languagesText = (languages: string[]) =>
 
 /** Settings › AI model: this Mac, the on-device switch, and the model cards. Actions are buttons only. */
 export function AiModelPane() {
-  const { loaded, hardware, models, activeProblem, events, reload: load, setEvent } =
+  const { loaded, hardware, models, meaning, activeProblem, events, reload: load, setEvent } =
     useModelCatalogue()
   const [on, setOn] = useState(false)
   const started = useRef(false)
@@ -50,7 +51,7 @@ export function AiModelPane() {
     void load()
   }
   const download = async (id: string) => {
-    const model = models.find((m) => m.id === id)
+    const model = models.find((m) => m.id === id) ?? (meaning?.id === id ? meaning : undefined)
     setEvent(id, {
       modelId: id,
       receivedBytes: model?.downloadedBytes ?? 0,
@@ -100,6 +101,25 @@ export function AiModelPane() {
             ...(confirmed ? { makeActive: true } : {})
           })
           .then(() => load())
+      })
+    }
+  }
+
+  const removeMeaning = async () => {
+    if (!meaning) return
+    const res = await window.api.invoke(IPC_CHANNELS.AI_DELETE_MODEL, { id: meaning.id })
+    if (!res.success) {
+      toast({
+        variant: 'error',
+        message: 'Couldn’t delete meaning search',
+        description: 'Nothing was changed. Try again.'
+      })
+      return
+    }
+    void load()
+    if (res.data.undoable) {
+      undoToast('Meaning search deleted', () => {
+        void window.api.invoke(IPC_CHANNELS.AI_RESTORE_MODEL, { id: meaning.id }).then(() => load())
       })
     }
   }
@@ -231,6 +251,18 @@ export function AiModelPane() {
                 {available.map(cardFor)}
               </>
             )}
+          </div>
+        )}
+        {meaning && (
+          <div className="flex flex-col gap-2 px-4 pt-1 pb-4">
+            <p className="type-label-xs-medium text-tertiary">Search</p>
+            <MeaningSearchRow
+              meaning={meaning}
+              event={events[meaning.id] ?? null}
+              onDownload={() => void download(meaning.id)}
+              onCancel={() => void cancel(meaning.id)}
+              onDelete={() => void removeMeaning()}
+            />
           </div>
         )}
       </SettingsGroup>

@@ -51,6 +51,76 @@ const mount = (start: OnboardingPage, onComplete = vi.fn()) => {
 }
 const btn = (name: string | RegExp) => screen.getByRole('button', { name })
 
+const meaningInfo = (over: Record<string, unknown> = {}) => ({
+  id: 'nomic-embed-v1.5',
+  name: 'Meaning search',
+  description: 'Finds mockups by what a search means.',
+  license: 'Apache 2.0',
+  sizeBytes: 146_146_432,
+  downloadedBytes: 0,
+  installed: false,
+  ...over
+})
+
+describe('meaning search in AI setup', () => {
+  const withMeaning = (over: Record<string, unknown> = {}) =>
+    base({
+      [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+        ok({ models: [model('a'), model('b')], meaning: meaningInfo(over), legacy: [] }),
+      [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: () => ok({ started: true })
+    })
+
+  it('shows one more line with its size', async () => {
+    installApi(withMeaning())
+    mount('ai')
+    expect(await screen.findByText('Meaning search · 146 MB')).toBeTruthy()
+  })
+
+  it('downloads with the vision model, and its progress shows on that line', async () => {
+    const api = installApi(withMeaning())
+    mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(btn('Download'))
+    await waitFor(() =>
+      expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toEqual(
+        expect.arrayContaining([{ id: 'a' }, { id: 'nomic-embed-v1.5' }])
+      )
+    )
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
+      modelId: 'nomic-embed-v1.5',
+      receivedBytes: 73_000_000,
+      totalBytes: 146_146_432,
+      phase: 'downloading'
+    })
+    expect(await screen.findByText('Meaning search · downloading 50%')).toBeTruthy()
+  })
+
+  it('does not download again when it is already there', async () => {
+    const api = installApi(withMeaning({ installed: true, downloadedBytes: 146_146_432 }))
+    mount('ai')
+    await screen.findByText('Model a')
+    expect(screen.getByText('Meaning search · ready')).toBeTruthy()
+    fireEvent.click(btn('Download'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toEqual([{ id: 'a' }]))
+  })
+
+  it('says where to try again when it fails, and leaves the vision model alone', async () => {
+    const api = installApi(withMeaning())
+    mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(btn('Download'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toHaveLength(2))
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
+      modelId: 'nomic-embed-v1.5',
+      receivedBytes: 0,
+      totalBytes: 0,
+      phase: 'error',
+      reason: 'offline'
+    })
+    expect(await screen.findByText(/couldn’t download. Try again in Settings/)).toBeTruthy()
+  })
+})
+
 describe('welcome and stash folder', () => {
   it('starts with the welcome in current words', () => {
     installApi(base())

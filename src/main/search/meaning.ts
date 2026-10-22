@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto'
+import { MEANING_MODEL_ID } from '../../shared/meaning'
+
+export { MEANING_MODEL_ID }
 
 /**
  * Meaning search, as evaluated in the AI bake-off (Roadmap, "Meaning search measured"): nomic-embed
@@ -6,8 +9,6 @@ import { createHash } from 'node:crypto'
  * eval harness (`scripts/ai-eval/meaning.ts`) imports this file, so it measures what ships.
  */
 
-/** The catalogue id of the embedding model, and the id stored beside each vector. */
-export const MEANING_MODEL_ID = 'nomic-embed-v1.5'
 /** The least cosine a meaning hit needs. */
 export const MEANING_FLOOR = 0.55
 /** How many meaning hits a search adds, at most. */

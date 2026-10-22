@@ -34,7 +34,10 @@ const percentOf = (received: number, total: number) =>
  * Where one model is, from the catalogue entry and the latest download event for it. Onboarding and
  * Settings both read this, so the same half-downloaded model reads the same in both.
  */
-export function modelPhase(model: AiModelInfo, event: AiDownloadProgress | null): ModelStatus {
+export function modelPhase(
+  model: Pick<AiModelInfo, 'id' | 'installed' | 'sizeBytes' | 'downloadedBytes'>,
+  event: AiDownloadProgress | null
+): ModelStatus {
   const live = event && event.modelId === model.id ? event : null
   const status = (phase: ModelPhase, received: number, total: number): ModelStatus => ({
     phase,

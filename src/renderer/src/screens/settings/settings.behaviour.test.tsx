@@ -951,3 +951,65 @@ describe('Settings · About', () => {
     expect(document.querySelector('a')).toBeNull()
   })
 })
+
+describe('Meaning search row', () => {
+  const meaning = (over: Record<string, unknown> = {}) => ({
+    id: 'nomic-embed-v1.5',
+    name: 'Meaning search',
+    description: 'Finds mockups by what a search means.',
+    license: 'Apache 2.0',
+    sizeBytes: 146_146_432,
+    downloadedBytes: 0,
+    installed: false,
+    ...over
+  })
+  const withMeaning = (over: Record<string, unknown> = {}) => ({
+    [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+      ok({ models: [model()], meaning: meaning(over), legacy: [], activeProblem: null })
+  })
+
+  it('downloads from its own button and shows progress with Cancel', async () => {
+    setup(withMeaning())
+    open()
+    goto('AI model')
+    const row = (await screen.findByTestId('meaning-search-row')) as HTMLElement
+    expect(within(row).getByText('146 MB')).toBeTruthy()
+    fireEvent.click(within(row).getByRole('button', { name: 'Download' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: 'nomic-embed-v1.5' })
+    )
+    expect(within(row).getByRole('button', { name: 'Cancel' })).toBeTruthy()
+  })
+
+  it('offers Try again after a failed download, and Resume for a partial one', async () => {
+    setup(withMeaning({ downloadedBytes: 50_000_000 }))
+    open()
+    goto('AI model')
+    const row = (await screen.findByTestId('meaning-search-row')) as HTMLElement
+    expect(within(row).getByRole('button', { name: 'Resume' })).toBeTruthy()
+    act(() =>
+      pushes[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]!({
+        modelId: 'nomic-embed-v1.5',
+        receivedBytes: 50_000_000,
+        totalBytes: 146_146_432,
+        phase: 'error',
+        reason: 'offline'
+      })
+    )
+    expect(await within(row).findByRole('button', { name: 'Try again' })).toBeTruthy()
+  })
+
+  it('deletes with Undo once installed, without a confirm', async () => {
+    setup(withMeaning({ installed: true, downloadedBytes: 146_146_432 }))
+    open()
+    goto('AI model')
+    const row = (await screen.findByTestId('meaning-search-row')) as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Delete' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'nomic-embed-v1.5' })
+    )
+    await waitFor(() =>
+      expect(toasts.undoToast).toHaveBeenCalledWith('Meaning search deleted', expect.any(Function))
+    )
+  })
+})
