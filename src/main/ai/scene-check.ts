@@ -104,3 +104,26 @@ export function withoutThing(answer: InferenceResult, thing: string): InferenceR
     tags: answer.tags.filter((t) => !new RegExp(String.raw`\b${plural(thing)}`, 'i').test(t.label))
   }
 }
+
+/** Said after the request when it is asked again, about the things the check refused. */
+export function refusedNote(things: readonly string[]): string {
+  const list = things.length > 1 ? `${things.slice(0, -1).join(', ')} or ${things.at(-1)}` : things[0]
+  return `Checked against the image: there is no ${list} in it. Do not mention ${things.length > 1 ? 'them' : 'it'}; say what the object really is.`
+}
+
+/** A chat request with a line added to the end of its text. */
+export function withNote<T extends { messages: { role: string; content: unknown }[] }>(request: T, note: string): T {
+  return {
+    ...request,
+    messages: request.messages.map((m) =>
+      m.role === 'user' && Array.isArray(m.content)
+        ? {
+            ...m,
+            content: (m.content as { type: string; text?: string }[]).map((p, i, all) =>
+              p.type === 'text' && i === all.map((q) => q.type).lastIndexOf('text') ? { ...p, text: `${p.text}\n\n${note}` } : p
+            )
+          }
+        : m
+    )
+  }
+}

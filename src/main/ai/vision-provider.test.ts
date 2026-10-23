@@ -237,6 +237,88 @@ describe('VisionInferenceProvider scene-thing check', () => {
   })
 })
 
+describe('VisionInferenceProvider with a masked design slot', () => {
+  const MASKED = 'data:image/jpeg;base64,MASKED'
+  const LAMP = {
+    title: 'Stacked white cube lamp',
+    description: 'A white cube lamp with three stacked sections on a dark base.',
+    tags: [{ category: 'Environment', label: 'lamp' }]
+  }
+  const BOXES = {
+    title: 'Three stacked boxes',
+    description: 'Three stacked boxes on a dark base.',
+    tags: [{ category: 'Print & Branding', label: 'box' }]
+  }
+
+  /** Answers LAMP first and BOXES when asked again; the check says no to a lamp. */
+  function masked(profile: Partial<PromptProfile>, redoFails = false, maskPath: string | null = '/library/mockups/1/cover-ai-outline.png') {
+    const answers: object[] = []
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      const text = JSON.stringify(req)
+      if (/Is there a lamp in this image/.test(text)) return { text: 'no', logprobs: { content: [{ top_logprobs: [{ token: 'no', logprob: 0 }] }] } }
+      if (/there is no lamp in it/.test(text)) {
+        if (redoFails) throw new Error('answered 500')
+        answers.push(BOXES)
+        return { text: JSON.stringify(BOXES) }
+      }
+      answers.push(LAMP)
+      return { text: JSON.stringify(LAMP) }
+    })
+    const readImage = vi.fn(async (path: string) => (path.includes('cover-ai') ? MASKED : IMAGE))
+    const maskedCover = vi.fn(async () => maskPath)
+    const provider = new VisionInferenceProvider('m', {
+      prompt: { ...SHIPPED, sceneThings: SCENE_THINGS, mask: 'outline', ...profile },
+      complete,
+      readImage,
+      maskedCover
+    })
+    return { provider, complete, readImage, maskedCover }
+  }
+
+  it("answers from the cover with the slot painted over, in the profile's fill", async () => {
+    const { provider, complete, maskedCover } = masked({})
+    await provider.analyze(INPUT)
+    expect(maskedCover).toHaveBeenCalledWith(INPUT.imagePath, 'outline')
+    expect(userParts(complete.mock.calls[0]![0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: MASKED } })
+  })
+
+  it('asks the scene check about the cover as it is', async () => {
+    const { provider, complete } = masked({})
+    await provider.analyze(INPUT)
+    const question = complete.mock.calls[1]![0] as ChatRequest
+    expect(userParts(question)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+  })
+
+  it('answers from the cover as it is when the mockup has no slot mask', async () => {
+    const { provider, complete } = masked({}, false, null)
+    await provider.analyze(INPUT)
+    expect(userParts(complete.mock.calls[0]![0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+  })
+
+  it('without redo, takes the refused thing out of the first answer', async () => {
+    const { provider, complete } = masked({})
+    const result = await provider.analyze(INPUT)
+    expect(complete).toHaveBeenCalledTimes(2)
+    expect(result.tags).toEqual([])
+  })
+
+  it('with redo, asks again once, told the image has none of the refused things', async () => {
+    const { provider, complete } = masked({ redo: true })
+    await expect(provider.analyze(INPUT)).resolves.toEqual(BOXES)
+    expect(complete).toHaveBeenCalledTimes(3)
+    const again = complete.mock.calls[2]![0] as ChatRequest
+    expect(userParts(again)[0]).toEqual({ type: 'image_url', image_url: { url: MASKED } })
+    expect(userText(again)).toContain('Checked against the image: there is no lamp in it.')
+  })
+
+  it('keeps the first answer, less the refused thing, when asking again fails', async () => {
+    const { provider } = masked({ redo: true }, true)
+    const result = await provider.analyze(INPUT)
+    expect(result.title).toBe('Stacked white cube lamp')
+    expect(result.tags).toEqual([])
+  })
+})
+
 describe('buildRequest', () => {
   it('constrains the reply with the JSON schema: 3 to 6 tags in the seed categories', () => {
     const req = buildRequest(INPUT, IMAGE)

@@ -191,6 +191,61 @@ describe('AppleInferenceProvider scene-thing check', () => {
   })
 })
 
+describe('AppleInferenceProvider with a masked design slot', () => {
+  const MASKED = '/library/mockups/1/cover-ai-soft.png'
+  const LAMP = JSON.stringify({ title: 'Cube lamp', description: 'A white cube lamp on a dark base.', tags: [{ category: 'Environment', label: 'lamp' }] })
+  const BOXES = JSON.stringify({ title: 'Stacked boxes', description: 'Three stacked boxes on a dark base.', tags: [] })
+
+  function stub(redoFails = false) {
+    const calls: DescribeRequest[] = []
+    const describe = async (request: DescribeRequest) => {
+      calls.push(request)
+      if (/Is there a lamp/.test(request.prompt)) return { text: JSON.stringify({ answer: 'no' }), json: true, ms: 1 }
+      if (/there is no lamp in it/.test(request.prompt)) {
+        if (redoFails) throw new Error('helper crashed')
+        return { text: BOXES, json: true, ms: 1 }
+      }
+      return { text: LAMP, json: true, ms: 1 }
+    }
+    return { helper: { describe }, calls }
+  }
+  const provider = (helper: Pick<NativeHelper, 'describe'>, profile: Partial<PromptProfile> = {}, mask: string | null = MASKED) =>
+    new AppleInferenceProvider({
+      prompt: { ...SHIPPED, sceneThings: SCENE_THINGS, mask: 'soft', ...profile },
+      helper,
+      hasUsableCover: async () => true,
+      maskedCover: async () => mask
+    })
+
+  it('answers from the masked cover and checks the cover as it is', async () => {
+    const { helper, calls } = stub()
+    await provider(helper).analyze(INPUT)
+    expect(calls[0]!.imagePath).toBe(MASKED)
+    expect(calls[1]!.imagePath).toBe(INPUT.imagePath)
+  })
+
+  it('answers from the cover as it is without a slot mask', async () => {
+    const { helper, calls } = stub()
+    await provider(helper, {}, null).analyze(INPUT)
+    expect(calls[0]!.imagePath).toBe(INPUT.imagePath)
+  })
+
+  it('with redo, asks again once about the masked cover, told what is not there', async () => {
+    const { helper, calls } = stub()
+    await expect(provider(helper, { redo: true }).analyze(INPUT)).resolves.toMatchObject({ title: 'Stacked boxes' })
+    expect(calls).toHaveLength(3)
+    expect(calls[2]!.imagePath).toBe(MASKED)
+    expect(calls[2]!.prompt).toContain('Checked against the image: there is no lamp in it.')
+  })
+
+  it('keeps the first answer, less the refused thing, when asking again fails', async () => {
+    const { helper } = stub(true)
+    const result = await provider(helper, { redo: true }).analyze(INPUT)
+    expect(result.title).toBe('Cube lamp')
+    expect(result.tags).toEqual([])
+  })
+})
+
 describe('appleDescribeRequest', () => {
   it('carries a pile variant into the prompt like the vision request', () => {
     const variant: AnalysisInput = {

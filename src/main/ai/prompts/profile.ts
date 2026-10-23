@@ -1,4 +1,5 @@
 import type { AnalysisInput, InferenceResult } from '../../../shared/inference'
+import type { MaskFill } from '../masked-cover'
 import type { ChatRequest } from '../vision-provider'
 
 /**
@@ -17,4 +18,16 @@ export interface PromptProfile {
    * (`scene-check.ts`). Left out, nothing is checked.
    */
   sceneThings?: readonly string[]
+  /**
+   * How the design slot is painted over in the cover the model answers from (`masked-cover.ts`), so
+   * it never describes the placeholder. The scene check then looks at the cover as it is. Left out,
+   * the model sees the cover as it is.
+   */
+  mask?: MaskFill
+  /**
+   * When the scene check refuses a thing, ask for the answer once more, told the image has none of
+   * them (`refusedNote`); the refused things are still taken out of the new answer. For a thing that
+   * is the object's own name ("a white cube lamp"), which taking a phrase out can't mend.
+   */
+  redo?: boolean
 }
