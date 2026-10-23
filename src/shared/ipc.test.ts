@@ -629,3 +629,28 @@ describe('menu:command push', () => {
     expect(payload.safeParse({ command: 'settings' }).success).toBe(false)
   })
 })
+
+describe('look-over:draft push', () => {
+  const { payload } = PUSH_CONTRACT[IPC_CHANNELS.LOOK_OVER_DRAFT]
+  const item = {
+    mockupId: 14,
+    pileId: 13,
+    role: 'variant',
+    title: 'Blue scroll Macbook',
+    description: 'A long page',
+    tags: [],
+    touched: false,
+    checked: false,
+    waitingForAi: false,
+    cover: { path: '/lib/c.webp', source: 'embedded', missing: false, width: 10, height: 10 }
+  }
+
+  it('is a push channel the preload relays', () => {
+    expect(isPushChannel(IPC_CHANNELS.LOOK_OVER_DRAFT)).toBe(true)
+  })
+
+  it('carries one Look it over item, saying whether it still waits for the AI', () => {
+    expect(payload.parse(item)).toEqual(item)
+    expect(payload.safeParse({ ...item, waitingForAi: undefined }).success).toBe(false)
+  })
+})

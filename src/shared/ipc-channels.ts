@@ -44,6 +44,7 @@ export const IPC_CHANNELS = {
   LOOK_OVER_SAVE_DRAFT: 'look-over:save-draft',
   LOOK_OVER_SKIP: 'look-over:skip',
   LOOK_OVER_SET_RESUME: 'look-over:set-resume',
+  LOOK_OVER_DRAFT: 'look-over:draft',
   TAG_LIST_BY_CATEGORY: 'tag:list-by-category',
   TAG_CREATE: 'tag:create',
   TAG_TREE: 'tag:tree',
@@ -120,7 +121,8 @@ export const PUSH_CHANNELS = [
   IPC_CHANNELS.STASH_MOVE_PROGRESS,
   IPC_CHANNELS.COPY_PROGRESS,
   IPC_CHANNELS.INBOX_COUNTS_CHANGED,
-  IPC_CHANNELS.MENU_COMMAND
+  IPC_CHANNELS.MENU_COMMAND,
+  IPC_CHANNELS.LOOK_OVER_DRAFT
 ] as const
 
 export type PushChannel = (typeof PUSH_CHANNELS)[number]

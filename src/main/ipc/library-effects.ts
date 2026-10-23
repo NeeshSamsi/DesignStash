@@ -1,5 +1,7 @@
 import { IPC_CHANNELS } from '@shared/ipc'
+import type { AiStatusEvent } from '@shared/ipc/ai-status'
 import { InferenceQueue } from '../ai/inference-queue'
+import { LookOverService } from '../import/look-over-service'
 import { reportFirstSuggestion } from '../telemetry/events'
 import type { HandlerContext } from './context'
 
@@ -26,11 +28,25 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
         }
         // "Still sniffing" also rides on the inbox counts.
         countsChanged(ctx)
+        settleDrafts(ctx, event.updates)
       }
     })
     queues.set(ctx, queue)
   }
   return queue
+}
+
+/** The queue is done with these mockups: Look it over drafts waiting for them take what they got. */
+function settleDrafts(ctx: HandlerContext, updates: AiStatusEvent['updates']): void {
+  const done = updates.filter((u) => u.status === 'ready' || u.status === 'failed' || u.status === 'off')
+  if (done.length === 0) return
+  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider())
+  for (const { mockupId } of done) {
+    lookOver
+      .settle(mockupId)
+      .then((item) => item && ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item))
+      .catch((err: unknown) => console.error('[AI] Could not fill in a draft:', err))
+  }
 }
 
 /** Ids plus the members of any pile among them. */
