@@ -24,6 +24,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import prettier from 'prettier'
 import { ROOT, loadSnapshot } from './contract.mjs'
+import { fontFamilies, fontStack, fontVariable, weightOf } from './fonts.mjs'
 
 const snap = loadSnapshot('tokens.json')
 const OUT = resolve(ROOT, 'src/renderer/src/styles')
@@ -123,12 +124,9 @@ const aliasValue = (t) =>
 for (const t of snap.tokens.colors) lines.push(`  ${v(t.name)}: ${aliasValue(t)};`)
 lines.push('', '  /* spacing, radius, border width, icon sizes and stroke, durations */')
 for (const t of snap.tokens.numbers) lines.push(`  ${v(t.name)}: ${withUnit(t)};`)
-const families = {}
-for (const s of snap.textStyles) families[s.name.split('/')[0]] ??= s.family
-// The bundled font first: @fontsource-variable registers it as '<Family> Variable'.
-const fontStack = (f) => `'${f} Variable', '${f}', ui-sans-serif, system-ui, sans-serif`
+const families = fontFamilies(snap.textStyles)
 lines.push('', '  /* font families (from the Figma text styles) */')
-lines.push(`  --ds-font-display: ${fontStack(families.display ?? families.body)};`)
+lines.push(`  --ds-font-display: ${fontStack(families.display)};`)
 lines.push(`  --ds-font-body: ${fontStack(families.body)};`)
 writeFileSync(resolve(OUT, 'tokens.css'), `${HEADER}:root {\n${lines.join('\n')}\n}\n`)
 
@@ -141,24 +139,12 @@ for (const t of snap.tokens.colors) {
 }
 theme.push(`  --font-display: var(--ds-font-display);`, `  --font-body: var(--ds-font-body);`)
 
-const WEIGHT = {
-  Thin: 100,
-  'Extra Light': 200,
-  Light: 300,
-  Regular: 400,
-  Medium: 500,
-  'Semi Bold': 600,
-  Bold: 700,
-  'Extra Bold': 800,
-  Black: 900
-}
 const utilities = snap.textStyles.map((s) => {
-  const [role] = s.name.split('/')
   const body = [
-    `  font-family: var(${role === 'display' ? '--ds-font-display' : '--ds-font-body'});`,
+    `  font-family: var(${fontVariable(s, families)});`,
     `  font-size: ${s.size}px;`,
     `  line-height: ${s.lineHeight ? `${s.lineHeight}px` : 'normal'};`,
-    `  font-weight: ${WEIGHT[s.style] ?? 400};`
+    `  font-weight: ${weightOf(s.style)};`
   ]
   if (s.letterSpacingPercent) body.push(`  letter-spacing: ${s.letterSpacingPercent / 100}em;`)
   if (s.textCase === 'UPPER') body.push('  text-transform: uppercase;')
