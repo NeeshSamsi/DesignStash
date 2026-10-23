@@ -25,6 +25,11 @@ export function analysisInputFor(m: Mockup, repo?: Repository): AnalysisInput {
   }
 }
 
+/**
+ * The one place a variant's reference from its pile is chosen. Today that is only a top already
+ * stashed, with its approved words; giving variants the top's suggestion while it is still a draft
+ * would be a change here alone.
+ */
 function pileContextFor(m: Mockup, repo: Repository): AnalysisInput['groupContext'] | null {
   if (m.groupId === null) return null
   const top = repo.mockups.getMockup(m.groupId)

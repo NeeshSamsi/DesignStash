@@ -45,6 +45,8 @@ export const LookOverItemSchema = z.object({
   touched: z.boolean(),
   /** The user has opened it. An unchecked one reads "Not checked" on the review step. */
   checked: z.boolean(),
+  /** Filled from its file name (and a variant's top) while the AI is still working on it. */
+  waitingForAi: z.boolean(),
   cover: LookOverCoverSchema
 })
 export type LookOverItem = z.infer<typeof LookOverItemSchema>

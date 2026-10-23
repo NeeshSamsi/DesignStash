@@ -50,6 +50,10 @@ const pile = (...names: string[]) => {
   return rows
 }
 
+/** The background queue's suggestion for a mockup, as it saves it. */
+const ready = (id: number, aiResult: { title: string; description: string; tags: { category: string; label: string }[] }) =>
+  repo.mockups.updateMockup(id, { aiStatus: 'ready', aiResult })
+
 const phone = () => repo.tags.getAllTags().find((t) => t.label === 'Phone')!
 const laptop = () => repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
 
@@ -124,17 +128,40 @@ describe('open', () => {
     expect(analyze).toHaveBeenCalledTimes(1)
   })
 
-  it('fills variants from the top mockup, keeping each variant\'s own name', async () => {
+  it('starts each variant with its own cached suggestion, tags snapped like the top\'s', async () => {
     const [top, side] = pile('phone_front', 'phone_side')
-    repo.mockups.updateMockup(top!.id, {
-      aiStatus: 'ready',
-      aiResult: { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'Phone' }] }
-    })
+    ready(top!.id, { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'Phone' }] })
+    ready(side!.id, { title: 'Clay phone, side', description: 'Edge on', tags: [{ category: 'Device', label: 'Laptop' }] })
 
     const items = (await service().open()).units[0]!.items
 
-    expect(items[1]).toMatchObject({ mockupId: side!.id, title: 'phone side', description: 'On a stand' })
+    expect(items[1]).toMatchObject({ mockupId: side!.id, title: 'Clay phone, side', description: 'Edge on', waitingForAi: false })
+    expect(items[1]!.tags.map((t) => t.label)).toEqual(['Laptop'])
+  })
+
+  it('fills a variant the AI hasn\'t finished from its name and the top, and says it is waiting', async () => {
+    const [top, side] = pile('phone_front', 'phone_side')
+    ready(top!.id, { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'Phone' }] })
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+
+    const items = (await service().open()).units[0]!.items
+
+    expect(items[0]!.waitingForAi).toBe(false)
+    expect(items[1]).toMatchObject({ title: 'phone side', description: 'On a stand', waitingForAi: true })
     expect(items[1]!.tags.map((t) => t.label)).toEqual(['Phone'])
+  })
+
+  it('never asks the provider for a variant: the background queue reads those', async () => {
+    const [top, side, back] = pile('top', 'side', 'back')
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(back!.id, { aiStatus: 'sniffing' })
+    const analyze = vi.fn<InferenceProvider['analyze']>(async () => ({ title: 'Live', description: '', tags: [] }))
+
+    await service({ id: 's', name: 's', analyze }).open()
+
+    expect(analyze).toHaveBeenCalledTimes(1)
+    expect(analyze.mock.calls[0]![0]).toMatchObject({ fileName: 'top.psd' })
+    expect(top).toBeDefined()
   })
 
   it('reports the cover with its size, whether it is missing, and the sidecar it came from', async () => {
@@ -316,5 +343,97 @@ describe('resume pointer', () => {
     await service().setResume(top!.id, side!.id)
     repo.mockups.setStage([top!.id, side!.id], 'stashed')
     expect((await service().open()).resume).toBeNull()
+  })
+})
+
+describe('a suggestion that lands after the draft was made', () => {
+  const landed = { title: 'Blue scroll Macbook', description: 'A long page', tags: [{ category: 'Device', label: 'Laptop' }] }
+
+  it('replaces a waiting variant\'s fallback and stops waiting, once', async () => {
+    const [, side] = pile('top', 'side')
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+    const svc = service()
+    await svc.open()
+
+    expect(await svc.settle(side!.id)).toBeNull()
+    ready(side!.id, landed)
+    const item = await svc.settle(side!.id)
+
+    expect(item).toMatchObject({ mockupId: side!.id, role: 'variant', title: 'Blue scroll Macbook', description: 'A long page', waitingForAi: false })
+    expect(item!.tags.map((t) => t.label)).toEqual(['Laptop'])
+    expect(await svc.settle(side!.id)).toBeNull()
+    expect((await svc.open()).units[0]!.items[1]).toMatchObject({ title: 'Blue scroll Macbook', waitingForAi: false })
+  })
+
+  it('keeps every field the user edited', async () => {
+    const [, side] = pile('top', 'side')
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+    const svc = service()
+    const before = (await svc.open()).units[0]!.items[1]!
+    await svc.saveDraft({ mockupId: side!.id, title: 'My side', description: before.description, tagIds: [] })
+
+    ready(side!.id, landed)
+    const item = await svc.settle(side!.id)
+
+    expect(item).toMatchObject({ title: 'My side', description: 'A long page', waitingForAi: false })
+    expect(item!.tags.map((t) => t.label)).toEqual(['Laptop'])
+  })
+
+  it('keeps the description and tags a carry-over from the top set, and still takes the title', async () => {
+    const [top, side] = pile('top', 'side')
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+    const svc = service()
+    await svc.open()
+    await svc.saveDraft({ mockupId: top!.id, title: 'top', description: 'Shared words', tagIds: [phone().id] })
+
+    ready(side!.id, landed)
+    const item = await svc.settle(side!.id)
+
+    expect(item).toMatchObject({ title: 'Blue scroll Macbook', description: 'Shared words', waitingForAi: false })
+    expect(item!.tags.map((t) => t.label)).toEqual(['Phone'])
+  })
+
+  it('upgrades a top or a mockup on its own whose provider call failed when it opened', async () => {
+    const alone = waiting('my_mockup')
+    repo.mockups.updateMockup(alone.id, { aiStatus: 'pending' })
+    const analyze = vi.fn(async () => {
+      throw new Error('busy')
+    })
+    const svc = service({ id: 's', name: 's', analyze })
+    expect((await svc.open()).units[0]!.items[0]).toMatchObject({ title: 'my mockup', waitingForAi: true })
+
+    ready(alone.id, landed)
+    expect(await svc.settle(alone.id)).toMatchObject({ role: 'single', pileId: null, title: 'Blue scroll Macbook' })
+  })
+
+  it('stops waiting with the fallback kept when the AI fails or is turned off', async () => {
+    const [, side, back] = pile('top', 'side', 'back')
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(back!.id, { aiStatus: 'sniffing' })
+    const svc = service()
+    await svc.open()
+
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'failed' })
+    repo.mockups.updateMockup(back!.id, { aiStatus: 'off' })
+
+    expect(await svc.settle(side!.id)).toMatchObject({ title: 'side', waitingForAi: false })
+    expect(await svc.settle(back!.id)).toMatchObject({ title: 'back', waitingForAi: false })
+  })
+
+  it('catches up on open when the suggestion landed while Look it over was shut', async () => {
+    const [, side] = pile('top', 'side')
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+    await service().open()
+
+    ready(side!.id, landed)
+
+    expect((await service().open()).units[0]!.items[1]).toMatchObject({ title: 'Blue scroll Macbook', waitingForAi: false })
+  })
+
+  it('has nothing to say for a mockup with no draft or not in To stash', async () => {
+    const [, side] = pile('top', 'side')
+    ready(side!.id, landed)
+    expect(await service().settle(side!.id)).toBeNull()
+    expect(await service().settle(9999)).toBeNull()
   })
 })

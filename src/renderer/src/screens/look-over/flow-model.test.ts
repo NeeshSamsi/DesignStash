@@ -12,6 +12,7 @@ import {
   finished,
   headerBadge,
   jumpTo,
+  landedDraft,
   next,
   onReview,
   primary,
@@ -35,6 +36,7 @@ const item = (
   tags: [],
   touched: false,
   checked: false,
+  waitingForAi: false,
   cover: { path: '/c.png', source: 'embedded', missing: false, width: 1, height: 1 },
   ...over
 })
@@ -422,5 +424,30 @@ describe('Progress', () => {
     s = afterStash(afterStash(s))
     expect(progress(s)).toBe(1)
     expect(progress(createFlow({ units: [], resume: null }))).toBe(0)
+  })
+})
+
+describe('landedDraft', () => {
+  const phone = { tagId: 1, label: 'Phone', categoryId: 1, categoryLabel: 'Device' }
+  const laptop = { tagId: 2, label: 'Laptop', categoryId: 1, categoryLabel: 'Device' }
+  const fallback = { title: 'phone side', description: 'On a stand', tags: [phone] }
+  const landed = item(2, 'variant', {
+    title: 'Blue scroll Macbook',
+    description: 'A long page',
+    tags: [laptop]
+  })
+
+  it('shows the suggestion that landed when the form holds what main had', () => {
+    const { form, saved } = landedDraft(fallback, fallback, landed)
+    expect(form).toEqual({ title: 'Blue scroll Macbook', description: 'A long page', tags: [laptop] })
+    expect(saved).toEqual(form)
+  })
+
+  it('keeps a field the user is still editing, and records what main now has', () => {
+    const typing = { ...fallback, title: 'My side' }
+    const { form, saved } = landedDraft(typing, fallback, landed)
+    expect(form).toEqual({ title: 'My side', description: 'A long page', tags: [laptop] })
+    // Saving then counts only the title as the user's edit.
+    expect(saved.title).toBe('Blue scroll Macbook')
   })
 })

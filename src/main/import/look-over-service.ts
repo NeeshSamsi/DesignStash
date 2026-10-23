@@ -14,7 +14,7 @@ import type {
 } from '@shared/approval'
 import { analysisInputFor } from '../ai/inference-queue'
 import type { Repository } from '../db/repository'
-import type { Draft, Mockup } from '../db/schema'
+import type { Draft, DraftField, Mockup } from '../db/schema'
 import { TagService } from '../db/tag-service'
 
 export interface LookOverDeps {
@@ -37,6 +37,14 @@ interface Fields {
   tagIds: number[]
 }
 
+/** A new draft: its fields, and whether they are a fallback until the AI's suggestion lands. */
+interface Defaults extends Fields {
+  awaitingAi: boolean
+}
+
+/** The background queue is reading it, or will. */
+const aiWorking = (m: Mockup) => m.aiStatus === 'pending' || m.aiStatus === 'sniffing'
+
 const sameIds = (a: number[], b: number[]) =>
   a.length === b.length && [...a].sort((x, y) => x - y).every((id, i) => id === [...b].sort((x, y) => x - y)[i])
 
@@ -47,6 +55,7 @@ export const stemOf = (fileName: string) => fileName.replace(/\.[^/.]+$/, '').re
  * Look it over, on the main side. Everything the user does in a pile is a draft until Stash pile
  * (see `stash-service.ts`), so a mockup never reaches My Stash one at a time. The queue is piles
  * first, then mockups on their own, and suggestions come from the background AI queue's cache.
+ * A draft made before its suggestion is ready waits for it: `settle` fills it in when it lands.
  */
 export class LookOverService {
   private readonly deps: LookOverDeps
@@ -89,19 +98,19 @@ export class LookOverService {
     const tagsChanged = !sameIds(before.tagIds, req.tagIds)
     const changed = before.title !== req.title || descriptionChanged || tagsChanged
 
-    if (changed) {
-      this.onEdited([
-        ...(before.title !== req.title ? (['title'] as const) : []),
-        ...(descriptionChanged ? (['description'] as const) : []),
-        ...(tagsChanged ? (['tags'] as const) : [])
-      ])
-    }
+    const edited: DraftField[] = [
+      ...(before.title !== req.title ? (['title'] as const) : []),
+      ...(descriptionChanged ? (['description'] as const) : []),
+      ...(tagsChanged ? (['tags'] as const) : [])
+    ]
+    if (changed) this.onEdited(edited)
 
     this.repo.drafts.updateDraft(m.id, {
       title: req.title,
       description: req.description,
       tagIds: req.tagIds,
       checked: req.checked ?? true,
+      keptFields: keep(before, edited),
       ...(m.groupId !== null && changed ? { touched: true } : {})
     })
 
@@ -146,6 +155,22 @@ export class LookOverService {
     return { saved: true }
   }
 
+  /**
+   * The background queue finished a mockup (ready, failed or off). A draft waiting for its
+   * suggestion takes it, in every field the user hasn't edited and a carry-over hasn't set, and
+   * stops waiting. Returns the updated item for the open flow, or null when nothing changed.
+   */
+  async settle(mockupId: number): Promise<LookOverItem | null> {
+    const m = this.repo.mockups.getMockup(mockupId)
+    if (!m || m.deletedAt !== null || m.stage !== 'to_stash') return null
+    const draft = this.repo.drafts.getDraft(m.id)
+    if (!draft?.awaitingAi) return null
+    const settled = await this.settled(m, draft)
+    if (settled.awaitingAi) return null
+    const role = m.isGroup ? 'top' : m.groupId !== null ? 'variant' : 'single'
+    return this.toItem(m, settled, role, m.isGroup ? m.id : m.groupId)
+  }
+
   // ---- drafts ----
 
   private members(pileId: number): Mockup[] {
@@ -163,21 +188,27 @@ export class LookOverService {
     return m
   }
 
-  /** The draft for a mockup, made from its suggestion the first time it is needed. */
+  /**
+   * The draft for a mockup, made the first time it is needed. One still waiting for the AI is
+   * settled first, in case its suggestion landed while nothing was listening.
+   */
   private async draftFor(m: Mockup, provider: InferenceProvider | null, top: Draft | null): Promise<Draft> {
     const existing = this.repo.drafts.getDraft(m.id)
-    if (existing) return existing
+    if (existing) return existing.awaitingAi ? this.settled(m, existing) : existing
     return this.repo.drafts.ensureDraft(m.id, await this.defaults(m, provider, top))
   }
 
-  private async defaults(m: Mockup, provider: InferenceProvider | null, top: Draft | null): Promise<Fields> {
+  /**
+   * A new draft's fields: the mockup's own suggestion, title, description and snapped tags alike.
+   * Only a top or a mockup on its own is ever asked for one here; variants are left to the
+   * background queue, because a pile of them on a slow model would hold up opening the pile.
+   * Without a suggestion it falls back to the file name, and a variant to its top's description
+   * and tags, and it waits for the AI if the queue is still on it.
+   */
+  private async defaults(m: Mockup, provider: InferenceProvider | null, top: Draft | null): Promise<Defaults> {
     const input = analysisInputFor(m)
-    const stem = stemOf(input.fileName) || m.title
+    let result = this.cachedSuggestion(m)
 
-    const cached = m.aiStatus === 'ready' ? InferenceResultSchema.safeParse(m.aiResult) : null
-    let result: InferenceResult | null = cached?.success ? cached.data : null
-
-    // A variant is filled from its top; only the top and mockups on their own are asked for a suggestion.
     if (!result && !top && provider) {
       try {
         result = await provider.analyze(input)
@@ -186,10 +217,38 @@ export class LookOverService {
       }
     }
 
-    if (top) {
-      return { title: result?.title ?? stem, description: top.description, tagIds: [...top.tagIds] }
+    if (result) return { ...(await this.fieldsFrom(result)), awaitingAi: false }
+    return {
+      title: stemOf(input.fileName) || m.title,
+      description: top?.description ?? '',
+      tagIds: top ? [...top.tagIds] : [],
+      awaitingAi: aiWorking(m)
     }
-    if (!result) return { title: stem, description: '', tagIds: [] }
+  }
+
+  /** A waiting draft once the queue is done with its mockup: the suggestion in its open fields, or the fallback kept. */
+  private async settled(m: Mockup, draft: Draft): Promise<Draft> {
+    const result = this.cachedSuggestion(m)
+    if (!result && aiWorking(m)) return draft
+    const patch: Partial<Fields> = {}
+    if (result) {
+      const fields = await this.fieldsFrom(result)
+      const kept = new Set(draft.keptFields)
+      if (!kept.has('title')) patch.title = fields.title
+      if (!kept.has('description')) patch.description = fields.description
+      if (!kept.has('tags')) patch.tagIds = fields.tagIds
+    }
+    this.repo.drafts.updateDraft(m.id, { ...patch, awaitingAi: false })
+    return this.repo.drafts.getDraft(m.id)!
+  }
+
+  private cachedSuggestion(m: Mockup): InferenceResult | null {
+    if (m.aiStatus !== 'ready') return null
+    const cached = InferenceResultSchema.safeParse(m.aiResult)
+    return cached.success ? cached.data : null
+  }
+
+  private async fieldsFrom(result: InferenceResult): Promise<Fields> {
     return {
       title: result.title,
       description: result.description ?? '',
@@ -197,13 +256,14 @@ export class LookOverService {
     }
   }
 
-  /** Give variants that were not touched the top mockup's new description and tags. */
+  /** Apply the top's edit to its variants, as `carriedEdit` decides for each, and say how far it got. */
   private async carryToVariants(top: Mockup, req: SaveDraftRequest): Promise<number[]> {
-    const variants = this.members(top.id)
-    const targets: Mockup[] = []
-    for (const v of variants) {
-      const draft = await this.draftFor(v, null, this.repo.drafts.getDraft(top.id) ?? null)
-      if (!draft.touched) targets.push(v)
+    const topDraft = this.repo.drafts.getDraft(top.id) ?? null
+    const targets: { id: number; draft: Draft; patch: Pick<Fields, 'description' | 'tagIds'> }[] = []
+    for (const v of this.members(top.id)) {
+      const draft = await this.draftFor(v, null, topDraft)
+      const patch = carriedEdit(draft, req)
+      if (patch) targets.push({ id: v.id, draft, patch })
     }
     if (targets.length === 0) return []
 
@@ -211,9 +271,9 @@ export class LookOverService {
       this.onProgress({ pileId: top.id, completed, total: targets.length, phase })
     report(0, 'running')
     const done: number[] = []
-    for (const v of targets) {
-      this.repo.drafts.updateDraft(v.id, { description: req.description, tagIds: req.tagIds })
-      done.push(v.id)
+    for (const { id, draft, patch } of targets) {
+      this.repo.drafts.updateDraft(id, { ...patch, keptFields: keep(draft, ['description', 'tags']) })
+      done.push(id)
       if (done.length < targets.length) report(done.length, 'running')
     }
     report(done.length, 'done')
@@ -239,6 +299,7 @@ export class LookOverService {
       tags: this.repo.tags.getApprovalTagsByIds(draft.tagIds),
       touched: draft.touched,
       checked: draft.checked,
+      waitingForAi: draft.awaitingAi,
       cover: {
         path: m.coverPath,
         source: m.coverSource,
@@ -261,3 +322,21 @@ export class LookOverService {
     return null
   }
 }
+
+/**
+ * What a variant takes from an edit to its pile's top: today the top's description and tags, for
+ * every variant the user hasn't touched, and nothing for one they have. The one place that
+ * decides, so it can become a judged step later.
+ */
+export function carriedEdit(
+  variant: Pick<Draft, 'touched'>,
+  edit: Pick<SaveDraftRequest, 'description' | 'tagIds'>
+): Pick<Fields, 'description' | 'tagIds'> | null {
+  if (variant.touched) return null
+  return { description: edit.description, tagIds: [...edit.tagIds] }
+}
+
+/** A draft's kept fields with these added. */
+const keep = (draft: Pick<Draft, 'keptFields'>, fields: DraftField[]): DraftField[] => [
+  ...new Set([...draft.keptFields, ...fields])
+]

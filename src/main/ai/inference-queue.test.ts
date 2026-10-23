@@ -289,6 +289,25 @@ describe('InferenceQueue', () => {
     expect(repo.mockups.getMockup(done.id)?.aiResult).toEqual(result('kept'))
   })
 
+  it('reads pile members waiting in To stash, when queued and after a restart', async () => {
+    const stub = stubProvider((input) => result(input.fileName))
+    const [top, side, back] = [imported('top'), imported('side'), imported('back')]
+    repo.piles.createPile([top.id, side.id, back.id], top.id)
+    repo.mockups.setStage([top.id, side.id, back.id], 'to_stash')
+    repo.mockups.updateMockup(back.id, { aiStatus: 'pending' })
+
+    const queue = queueWith(stub.provider)
+    await queue.enqueue([side.id])
+    await queue.idle()
+    const restarted = queueWith(stub.provider)
+    await restarted.resume()
+    await restarted.idle()
+
+    expect(status(side.id)).toBe('ready')
+    expect(status(back.id)).toBe('ready')
+    expect(stub.calls.map((c) => c.fileName).sort()).toEqual(['back.psd', 'side.psd'])
+  })
+
   it('on restart with no provider, marks what was waiting as off', async () => {
     const a = imported('a')
     repo.mockups.updateMockup(a.id, { aiStatus: 'pending' })
