@@ -3,7 +3,7 @@
   "source": {
     "fileKey": "fB8PHTrzz89lAQOhXbsHMK",
     "componentsPage": "189:343",
-    "exportedAt": "2026-09-30"
+    "exportedAt": "2026-10-23"
   },
   "components": [
     {
@@ -61,7 +61,7 @@
       "name": "Input",
       "figmaId": "212:190",
       "section": "2 · Primitives (shadcn)",
-      "description": "Single-line text entry. search = title-bar field (icon + ⌘K); inline-title = the Detail title field, bordered at rest like Textarea, at title size.",
+      "description": "Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.",
       "code": "ui/input.tsx + input-group",
       "variants": {
         "variant": [
@@ -220,7 +220,7 @@
         "show-description": true
       },
       "texts": {
-        "label": "Qwen 2.5 1.5B",
+        "label": "Qwen3-VL 4B",
         "description": "1.0 GB · small"
       },
       "swaps": {},
@@ -363,7 +363,7 @@
       },
       "booleans": {},
       "texts": {
-        "keys": "⌘K"
+        "keys": "⌘F"
       },
       "swaps": {},
       "exposed": []
@@ -660,7 +660,7 @@
       "name": "GlobalSearch",
       "figmaId": "218:1649",
       "section": "3 · Layout & navigation",
-      "description": "Title-bar search; ⌘K focuses, 250 ms debounce; zero results → MockupGrid no-results.",
+      "description": "Title-bar search; ⌘F focuses (⌘K is an alias), 250 ms debounce; zero results → MockupGrid no-results.",
       "code": "AppShell.tsx (title bar)",
       "variants": {
         "state": [
@@ -697,7 +697,7 @@
         "show-icon": true
       },
       "texts": {
-        "label": "My Stash",
+        "label": "Starred",
         "count": "12"
       },
       "swaps": {
@@ -712,7 +712,7 @@
       "name": "SidebarNav",
       "figmaId": "218:1964",
       "section": "3 · Layout & navigation",
-      "description": "Primary navigation: AddMenu, My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.",
+      "description": "Primary navigation: AddMenu, My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.\nSync 2026-10-23: the wordmark uses title/sm/semibold (Unbounded SemiBold 14) and the logo sits flush left in the brand row (no row padding).",
       "code": "AppShell.tsx",
       "variants": {
         "variant": [
@@ -757,7 +757,7 @@
       "name": "AddMenu",
       "figmaId": "218:1767",
       "section": "3 · Layout & navigation",
-      "description": "Import entry point: Add files… / Add folder… + drop hint. Disabled while an import runs.",
+      "description": "Import entry point: Add files… / Add folder… + drop hint. Disabled while an import runs.\nSync 2026-10-23: the trigger is Button base (16px padding, 20px icon) and fills the sidebar column (152).",
       "code": "components/AddMenu/AddMenu.tsx",
       "variants": {
         "state": [
@@ -863,7 +863,7 @@
       "name": "DropOverlay",
       "figmaId": "218:1990",
       "section": "3 · Layout & navigation",
-      "description": "Full-window drag-over state; rejected = no PSDs; queued = import already running.",
+      "description": "Full-window drag-over state; rejected = no PSDs; queued = import already running.\nSync 2026-10-23: inside CoverPanel the title uses title/lg/semibold; display/2xl does not fit the cover.",
       "code": "screens/gather/useGatherDrops.tsx",
       "variants": {
         "state": [
@@ -884,7 +884,7 @@
       "name": "EmptyState",
       "figmaId": "214:403",
       "section": "4 · Feedback & states",
-      "description": "Zero-data / zero-result state with a required primary action. secondary-action is off by default: only add one when it has a real destination (there is no help site).",
+      "description": "Zero-data / zero-result state with a required primary action. secondary-action is off by default: only add one when it has a real destination (there is no help site).\nSync 2026-10-23: the page variant is 480 wide (384 of text inside 48 padding), so page titles in Unbounded stay on one line.",
       "code": "components/EmptyState/EmptyState.tsx",
       "variants": {
         "variant": [
@@ -1366,7 +1366,7 @@
       "name": "CopyWidget",
       "figmaId": "373:5804",
       "section": "7 · Import & grouping",
-      "description": "Bottom-right copy panel (transport only): per-file and overall progress, failures inline, Cancel asks keep or undo, done collapses to a summary.\nSync 2026-10: while copying the title reads &quot;12 of 40 copied&quot; (files that landed, matching the rows marked Copied); counts use thousands separators (&quot;1,204 copied&quot;). The strip carries the headline and this widget the per-file detail. A done card with nothing failed dismisses itself after about 6 seconds and never shows over a flow modal.",
+      "description": "Bottom-right copy panel (transport only): per-file and overall progress, failures inline, Cancel asks keep or undo, done collapses to a summary.\nSync 2026-10: while copying the title reads &quot;12 of 40 copied&quot; (files that landed, matching the rows marked Copied); counts use thousands separators (&quot;1,204 copied&quot;). The strip carries the headline and this widget the per-file detail. A done card with nothing failed dismisses itself after about 6 seconds and never shows over a flow modal.\nSync 2026-10-23: the title wraps to two lines before it truncates, so “Copying paused · a drive was unplugged” keeps its reason.",
       "variants": {
         "view": [
           "expanded",
@@ -1785,7 +1785,7 @@
       "name": "ModelRow",
       "figmaId": "223:4073",
       "section": "9 · Onboarding & AI models",
-      "description": "One on-device model in the onboarding picker (a radio list): download, pause/resume, verify, installed, failed. Settings › AI model uses ModelCard.",
+      "description": "One on-device model in the onboarding picker (a radio list): download, pause/resume, verify, installed, failed. Settings › AI model uses ModelCard.\nSync 2026-10-22: installed reads Downloaded, or Built in for Apple’s model. Recommended shows only on the best-fit row.",
       "code": "screens/onboarding/AiStep.tsx",
       "variants": {
         "variant": [
@@ -1810,10 +1810,31 @@
       "exposed": []
     },
     {
+      "name": "MeaningSearchCard",
+      "figmaId": "1000:6352",
+      "section": "9 · Onboarding & AI models",
+      "description": "Meaning search in onboarding’s AI step (D6 option M2, chosen 2026-10-22): its own card under the AI panel, shown whether or not on-device AI is on. The switch is on by default and disabled once the download has started. The status line follows the download (meaningLine in settings-copy.ts).",
+      "code": "screens/onboarding/MeaningSearchCard.tsx",
+      "variants": {
+        "state": [
+          "on",
+          "off",
+          "downloading",
+          "checking",
+          "ready",
+          "failed"
+        ]
+      },
+      "booleans": {},
+      "texts": {},
+      "swaps": {},
+      "exposed": []
+    },
+    {
       "name": "ModelCard",
       "figmaId": "795:9758",
       "section": "9 · Onboarding & AI models",
-      "description": "One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.",
+      "description": "One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.\nSync 2026-10-22: catalogue is Qwen3-VL 4B, Qwen3.5 9B and Apple’s on-device model. Apple’s card has no Delete and sits under “Built into macOS”. The Meaning search row reuses this card with the bars, the globe and Use this model hidden (MeaningSearchRow).",
       "code": "screens/settings/AiModelPane.tsx",
       "variants": {
         "state": [
@@ -1830,11 +1851,11 @@
         "best-fit": false
       },
       "texts": {
-        "name": "Qwen 2.5 VL 3B",
-        "description": "Good titles and tags in a few seconds per mockup.",
-        "languages": "29 languages",
-        "size": "2.1 GB",
-        "resume-note": "840 MB of 2.1 GB downloaded"
+        "name": "Qwen3-VL 4B",
+        "description": "Accurate titles and tags at a quick pace. Uses about 4.4 GB of memory while it works.",
+        "languages": "7 languages",
+        "size": "3.0 GB",
+        "resume-note": "1.2 GB of 3.0 GB downloaded"
       },
       "swaps": {},
       "exposed": []
@@ -1843,7 +1864,7 @@
       "name": "ModelPicker",
       "figmaId": "278:5325",
       "section": "9 · Onboarding & AI models",
-      "description": "Onboarding A3 model chooser: HardwareSummary card, then the AI panel — “Use on-device AI” label with the Switch on the right, 3 picker ModelRows inside. ai=off collapses the panel to its header.",
+      "description": "Onboarding A3 model chooser: HardwareSummary card, then the AI panel: “Use on-device AI” label with the Switch on the right, 3 picker ModelRows inside (Qwen3-VL 4B, Qwen3.5 9B, Apple’s on-device model; model-3 only on a Mac that can run it). ai=off collapses the panel to its header.",
       "code": null,
       "variants": {
         "ai": [
@@ -1851,21 +1872,24 @@
           "off"
         ]
       },
-      "booleans": {},
+      "booleans": {
+        "meaning": false
+      },
       "texts": {},
       "swaps": {},
       "exposed": [
         "hardware:HardwareSummary",
         "ai-switch:Switch",
         "model-1:ModelRow",
-        "model-2:ModelRow"
+        "model-2:ModelRow",
+        "model-3:ModelRow"
       ]
     },
     {
       "name": "ConsentPanel",
       "figmaId": "223:4275",
       "section": "9 · Onboarding & AI models",
-      "description": "Telemetry disclosure + choice for onboarding (A4): what we collect / never collect, with No thanks · Keep it on. Settings › Privacy shows the same lists in its usage-data accordion.\nSync 2026-10: neutral, equal-weight choices (Don’t share / Share usage data, both secondary). The What we collect and What we never collect lists are always visible, including in Settings › Privacy whatever the switch state.",
+      "description": "Telemetry disclosure for onboarding (A4): what we collect and never collect, then a “Share anonymous usage data” switch, on by default (opt-out, 2026-10-22). Settings › Privacy shows the same lists in its usage-data accordion. The lists are always visible, whatever the switch state.",
       "code": "screens/settings/PrivacyPane.tsx",
       "variants": {
         "variant": [
@@ -1899,8 +1923,10 @@
       "texts": {},
       "swaps": {},
       "exposed": [
-        "model · Qwen 2.5 VL 3B:ModelCard",
-        "model · Qwen 2.5 VL 7B:ModelCard",
+        "model · Qwen3-VL 4B:ModelCard",
+        "model · Apple’s on-device model:ModelCard",
+        "model · Qwen3.5 9B:ModelCard",
+        "meaning search row:ModelCard",
         "tag tree:TagTree"
       ]
     },
