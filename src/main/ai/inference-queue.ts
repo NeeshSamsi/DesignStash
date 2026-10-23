@@ -50,6 +50,11 @@ export interface InferenceQueueDeps {
   getProvider: () => Promise<InferenceProvider | null>
   /** Called after every change of status, for the push event. */
   onStatus: (event: AiStatusEvent) => void
+  /**
+   * Readies a mockup's files before it is asked about: today, its design slot mask for one imported
+   * before the mask was made at import. A failure only means the provider sees the cover as it is.
+   */
+  prepare?: (m: Mockup) => Promise<void>
 }
 
 /** Tries per mockup: the first, and one retry. */
@@ -154,6 +159,7 @@ export class InferenceQueue {
     }
 
     this.emit([this.setStatus(id, 'sniffing')])
+    await this.deps.prepare?.(m).catch(() => {})
     const result = await this.suggest(provider, m)
 
     // Tossed or trashed while it was being read: nothing to write to.

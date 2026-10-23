@@ -59,16 +59,37 @@ const imported = (name: string, extra = {}) =>
     ...extra
   })
 
-const queueWith = (provider: InferenceProvider | null) =>
+const queueWith = (provider: InferenceProvider | null, extra: Partial<ConstructorParameters<typeof InferenceQueue>[0]> = {}) =>
   new InferenceQueue({
     repo,
     getProvider: async () => provider,
-    onStatus: (e) => events.push(e)
+    onStatus: (e) => events.push(e),
+    ...extra
   })
 
 const status = (id: number) => repo.mockups.getMockup(id)?.aiStatus
 
 describe('InferenceQueue', () => {
+  it('prepares each mockup before asking about it, and asks anyway when preparing fails', async () => {
+    const order: string[] = []
+    const stub = stubProvider((input) => {
+      order.push(`analyze ${input.fileName}`)
+      return result(input.fileName)
+    })
+    const [a, b] = [imported('a'), imported('b')]
+    const prepare = vi.fn(async (m: { title: string }) => {
+      order.push(`prepare ${m.title}`)
+      if (m.title === 'b') throw new Error('no PSD')
+    })
+    const queue = queueWith(stub.provider, { prepare })
+
+    await queue.enqueue([a.id, b.id])
+    await queue.idle()
+
+    expect(order).toEqual(['prepare a', 'analyze a.psd', 'prepare b', 'analyze b.psd'])
+    expect([status(a.id), status(b.id)]).toEqual(['ready', 'ready'])
+  })
+
   it('works through the files in the order they landed, one at a time', async () => {
     const stub = stubProvider((input) => result(input.fileName))
     const [a, b, c] = [imported('a'), imported('b'), imported('c')]
