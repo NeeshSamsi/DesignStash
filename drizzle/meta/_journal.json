@@ -99,6 +99,13 @@
       "when": 1792568187127,
       "tag": "0013_meaning_embeddings",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1792736014269,
+      "tag": "0014_drafts_awaiting_ai",
+      "breakpoints": true
     }
   ]
 }

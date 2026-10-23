@@ -136,6 +136,9 @@ export const sortBoards = sqliteTable('sort_boards', {
  * draft until Stash pile, so nothing reaches My Stash one mockup at a time. A row is made when the
  * queue opens and is removed when the mockup is stashed.
  */
+/** A draft's fields, by name. */
+export type DraftField = 'title' | 'description' | 'tags'
+
 export const drafts = sqliteTable('drafts', {
   mockupId: integer('mockup_id')
     .primaryKey()
@@ -152,6 +155,16 @@ export const drafts = sqliteTable('drafts', {
   checked: integer('checked', { mode: 'boolean' }).notNull().default(false),
   /** Set by Skip for now (a mockup on its own): it moves to the end of the queue. */
   skippedAt: text('skipped_at'),
+  /**
+   * Made from the fallback (the file name, and a variant's top) while the background AI was still
+   * working on it. When the suggestion lands it replaces every field not in `keptFields`.
+   */
+  awaitingAi: integer('awaiting_ai', { mode: 'boolean' }).notNull().default(false),
+  /** Fields a late suggestion leaves alone: ones the user edited, and ones a carry-over from the top set. */
+  keptFields: text('kept_fields', { mode: 'json' })
+    .$type<DraftField[]>()
+    .notNull()
+    .default(sql`'[]'`),
   ...timestamps
 })
 
