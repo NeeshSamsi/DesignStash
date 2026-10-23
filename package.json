@@ -40,6 +40,7 @@
     "ai-eval:run": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/run.ts",
     "ai-eval:score": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/score.ts",
     "ai-eval:edit-carry": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/edit-carry.ts",
+    "ai-eval:pile-score": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/pile-score.ts",
     "ai-eval:slots": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/slots.ts",
     "ai-eval:table": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/table.ts",
     "ds:tokens": "node scripts/ds/build-tokens.mjs",

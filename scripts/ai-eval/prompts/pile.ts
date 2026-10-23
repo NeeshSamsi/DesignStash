@@ -6,14 +6,21 @@ import type { ItemResult } from '../run'
 import type { AnalyzeContext, EvalResult, EvalVersion, PromptVersion } from './prompt-version'
 
 /**
+ * The variant line said after the top's words, in place of the app's "Keep the title and tags
+ * consistent with it.": the product and its names carry over, the scene is the variant's own.
+ */
+export const VARIANT_OWN_SCENE =
+  'Use the same name for the product and keep the tags consistent with it, but describe what this image shows: its own setting, surface, angle and colours, which may differ from the first one.'
+
+/**
  * Round 3, experiment B: a pile variant gets its top's suggestion as a reference, in the app's
  * `groupContext` shape (`analysisInputFor`). Piles are what the app's `GroupingService.propose`
  * makes of the eval items when they are all dropped at once (same zip, then same folder, then same
  * name stem); the top is each pile's first member by file name, as the app picks it.
  *
  * The top's suggestion is read from the base version's own run for the same model and pass
- * (`runs/<model>/<base>/results.json`), so a variant sees exactly what the app would have shown
- * the person for the top. Run a pile version with `--only` its variants: `pileIds()` lists them.
+ * (`runs/<model>/<base>/results.json`, or `topsFrom`'s), so a variant sees exactly what the app
+ * would have shown the person for the top. Run a pile version with `--only` its variants: `pileIds()` lists them.
  * Not a version itself.
  */
 export interface Pile {
@@ -41,7 +48,7 @@ export function pileIds(): string[] {
   return piles().flatMap((p) => p.variants)
 }
 
-export function pileVersion(base: EvalVersion, opts: { id: string; notes: string }): PromptVersion {
+export function pileVersion(base: EvalVersion, opts: { id: string; notes: string; topsFrom?: string }): PromptVersion {
   const items = readItems().filter((i) => !i.duplicateOf)
   const topOf = new Map(piles().flatMap((p) => p.variants.map((v) => [v, p.top] as const)))
   let tops: ItemResult[] | null = null
@@ -49,12 +56,12 @@ export function pileVersion(base: EvalVersion, opts: { id: string; notes: string
     if (!tops) {
       const model = argValue('model')
       if (!model) throw new Error('pile versions read the --model run of their base version')
-      const path = join(runDir(model, base.id), 'results.json')
-      if (!existsSync(path)) throw new Error(`No ${base.id} run for ${model} to take the tops from`)
+      const path = join(runDir(model, opts.topsFrom ?? base.id), 'results.json')
+      if (!existsSync(path)) throw new Error(`No ${opts.topsFrom ?? base.id} run for ${model} to take the tops from`)
       tops = JSON.parse(readFileSync(path, 'utf8')) as ItemResult[]
     }
     const r = tops.find((t) => t.id === topId && t.repeat === repeat) ?? tops.find((t) => t.id === topId)
-    if (!r?.parsed) throw new Error(`No ${base.id} answer for top ${topId}`)
+    if (!r?.parsed) throw new Error(`No ${opts.topsFrom ?? base.id} answer for top ${topId}`)
     return { ...r.parsed, tags: r.searchTags.length > 0 ? r.searchTags : r.parsed.tags }
   }
   return {

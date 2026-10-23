@@ -52,7 +52,7 @@ export function withoutThing(answer: EvalResult, thing: string): EvalResult {
 
 const article = (thing: string) => (/^[aeiou]/.test(thing) ? 'an' : 'a')
 
-function question(base: ChatRequest, thing: string): object {
+function question(base: ChatRequest, thing: string, imageUrl?: string): object {
   const user = base.messages[1]!.content as ChatContentPart[]
   return {
     messages: [
@@ -60,7 +60,7 @@ function question(base: ChatRequest, thing: string): object {
       {
         role: 'user',
         content: [
-          ...user.filter((p) => p.type === 'image_url'),
+          ...(imageUrl ? [{ type: 'image_url', image_url: { url: imageUrl } }] : user.filter((p) => p.type === 'image_url')),
           { type: 'text', text: `Look only at the image. Is there ${article(thing)} ${thing} in this image? Answer yes or no.` }
         ]
       }
@@ -84,7 +84,85 @@ export interface R3Options {
   variantRule?: string
   /** Leave out the bad "also called" names (Apple). */
   alternates?: boolean
+  /** Ask the scene check about the cover as it is, not the masked one ("two looks"). */
+  checkCover?: boolean
+  /** Tell the model the slot is blanked out (`MASK_RULE`). */
+  maskRule?: boolean
+  /**
+   * When the check refuses a thing, ask for the answer again once, told the image has none of the
+   * refused things; the removal still runs on the new answer as a guard. For a thing that is the
+   * object's own name ("a white cube lamp"), which no removal can cut sensibly.
+   */
+  redo?: boolean
+  /**
+   * Two looks for the object's name: before answering from the masked cover, ask the cover as it is
+   * what kind of object the mockup shows (one to three words, no colours, brands or printed words),
+   * and tell the masked request. The 4B named products from their sample art (a lime print made "a
+   * branded box", address text made "envelopes"); masked, they became "white cubes" and "paper".
+   */
+  objectHint?: boolean | 'names'
+  /** `exact`: the hint line also says to prefer a more exact name from the names (the 9B kept "smartphone" over "iPhone 15"). */
+  hintStyle?: 'exact'
 }
+
+/** The question for `objectHint`, asked about the cover as it is. */
+export function hintRequest(coverUrl: string, fileName?: string): object {
+  return {
+    messages: [
+      { role: 'system', content: 'You name the object a design mockup shows.' },
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: coverUrl } },
+          {
+            type: 'text',
+            text: `${fileName ? `The file is named "${fileName}". ` : ''}What kind of object is this mockup of? Give its everyday name in one to three words, plural if there are several of it. No colours, brands, printed words or setting.`
+          }
+        ]
+      }
+    ],
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'object', schema: { type: 'object', properties: { object: { type: 'string', maxLength: 40 } }, required: ['object'] } }
+    },
+    temperature: 0,
+    max_tokens: 30
+  }
+}
+
+/** The line the masked request gets from `objectHint`. */
+export const hintLine = (object: string) => `Seen in full, the main object is: ${object}. Use that name for it.`
+
+/** `hintStyle: 'exact'`. */
+export const exactHintLine = (object: string) =>
+  `Seen in full, the main object is: ${object}. Where the names give a more exact product name, such as a model or size, use that.`
+
+/** The request with a line added at the end of its text. */
+function withLine(request: ChatRequest, line: string): ChatRequest {
+  const user = request.messages[1]!.content as ChatContentPart[]
+  return {
+    ...request,
+    messages: [request.messages[0]!, { role: 'user', content: user.map((p) => (p.type === 'text' ? { ...p, text: `${p.text}\n\n${line}` } : p)) }]
+  } as ChatRequest
+}
+
+/** The request again, with a line saying which things the image does not have. */
+function withoutThings(request: ChatRequest, things: string[]): ChatRequest {
+  const user = request.messages[1]!.content as ChatContentPart[]
+  const list = things.map((t) => `${article(t)} ${t}`).join(', ').replace(/, ([^,]*)$/, ' or $1')
+  const note = `Checked against the image: there is no ${list} in it. Do not mention ${things.length > 1 ? 'them' : 'it'}; say what the object really is.`
+  return {
+    ...request,
+    messages: [
+      request.messages[0]!,
+      { role: 'user', content: user.map((p) => (p.type === 'text' ? { ...p, text: `${p.text}\n\n${note}` } : p)) }
+    ]
+  } as ChatRequest
+}
+
+/** Said after the printed-words rule when the model sees a masked cover. */
+export const MASK_RULE =
+  'The screen, label or print area where the designer puts their own work has been blanked out in the image: it shows as a flat or blurred grey area, or one marked DESIGN AREA. That area is not an object and has no colour or pattern of its own. Call it the screen, label or print of the object it is on, never describe what is on it, and never write the words design area.'
 
 function checker(opts: R3Options) {
   const things = opts.things
@@ -99,6 +177,7 @@ export const ALTERNATES_RULE =
 
 function specFor(base: PromptSpec, opts: R3Options): PromptSpec {
   let spec = opts.rule ? { ...base, printedRule: `${base.printedRule}\n${PLACEHOLDER_RULE}` } : base
+  if (opts.maskRule) spec = { ...spec, printedRule: `${spec.printedRule}\n${MASK_RULE}` }
   if (opts.variantRule) spec = { ...spec, variantRule: opts.variantRule }
   if (opts.alternates) spec = { ...spec, description: spec.description + ALTERNATES_RULE }
   return spec
@@ -116,16 +195,33 @@ export function qwenR3(opts: R3Options): PromptVersion {
     parseResult,
     ...(mask && { readImage: async (path: string) => readCoverAsDataUrl(await maskedCoverPath(path, mask)) }),
     async analyze(ctx: AnalyzeContext) {
-      const request = build(ctx.input, ctx.imageUrl)
+      let request = build(ctx.input, ctx.imageUrl)
+      let hint: string | undefined
+      if (opts.objectHint && ctx.imageUrl) {
+        const cover = await readCoverAsDataUrl(ctx.input.imagePath)
+        if (cover) {
+          try {
+            hint = (JSON.parse((await ctx.chat(hintRequest(cover, opts.objectHint === 'names' ? ctx.input.fileName : undefined))).raw) as { object: string }).object.trim()
+            if (hint) request = withLine(request, (opts.hintStyle === 'exact' ? exactHintLine : hintLine)(hint))
+          } catch {
+            // No hint: answer from the masked cover alone.
+          }
+        }
+      }
       let answer = parseResult((await ctx.chat(request)).raw)
       if (!ctx.imageUrl) return answer
       const checks: Record<string, number | null> = {}
-      for (const thing of check.mentioned(answer)) {
-        const p = pYes((await ctx.chat(question(request, thing))).logprobs)
+      const things = check.mentioned(answer)
+      const coverUrl = opts.checkCover && things.length > 0 ? ((await readCoverAsDataUrl(ctx.input.imagePath)) ?? undefined) : undefined
+      const refused: string[] = []
+      for (const thing of things) {
+        const p = pYes((await ctx.chat(question(request, thing, coverUrl))).logprobs)
         checks[thing] = p
-        if (p !== null && p < THRESHOLD) answer = check.without(answer, thing)
+        if (p !== null && p < THRESHOLD) refused.push(thing)
       }
-      return { ...answer, extra: { checks } }
+      if (opts.redo && refused.length > 0) answer = parseResult((await ctx.chat(withoutThings(request, refused))).raw)
+      for (const thing of refused) answer = check.without(answer, thing)
+      return { ...answer, extra: { checks, ...(hint && { hint }), ...(opts.redo && refused.length > 0 && { redone: refused }) } }
     }
   }
 }
@@ -140,7 +236,10 @@ const AP5_NAMES_RULE =
 /** An Apple version: ap-6 (ap-5's answer, then a yes/no check per scene thing) with the options. */
 export function appleR3(opts: R3Options): PromptVersion {
   const spec = specFor({ ...SHIPPED, namesRule: AP5_NAMES_RULE, noImage: NAMES_ONLY }, opts)
-  const inner = appleVersion({ id: opts.id, notes: opts.notes, buildRequest: requestFrom(spec), parseResult })
+  const build = requestFrom(spec)
+  const inner = appleVersion({ id: opts.id, notes: opts.notes, buildRequest: build, parseResult })
+  const redoApple = (ctx: AnalyzeContext, things: string[]) =>
+    appleVersion({ id: opts.id, notes: opts.notes, buildRequest: (input, url) => withoutThings(build(input, url), things), parseResult }).analyze!(ctx)
   const check = checker(opts)
   const mask = opts.mask
   return {
@@ -151,9 +250,10 @@ export function appleR3(opts: R3Options): PromptVersion {
       let answer = await inner.analyze!(c)
       if (!ctx.imageUrl) return answer
       const checks: Record<string, string> = {}
+      const refused: string[] = []
       for (const thing of check.mentioned(answer)) {
         const reply = await sharedHelper().describe({
-          imagePath,
+          imagePath: opts.checkCover ? ctx.input.imagePath : imagePath,
           instructions: 'You answer questions about one image, looking only at the image.',
           prompt: `Is there ${article(thing)} ${thing} in this image? Answer yes or no.`,
           schema: { type: 'object', properties: { answer: { type: 'string', enum: ['yes', 'no'] } }, required: ['answer'] },
@@ -161,8 +261,10 @@ export function appleR3(opts: R3Options): PromptVersion {
         })
         const said = (JSON.parse(reply.text) as { answer: string }).answer
         checks[thing] = said
-        if (said === 'no') answer = check.without(answer, thing)
+        if (said === 'no') refused.push(thing)
       }
+      if (opts.redo && refused.length > 0) answer = await redoApple(c, refused)
+      for (const thing of refused) answer = check.without(answer, thing)
       return { ...answer, extra: { ...answer.extra, checks } }
     }
   }
