@@ -1,15 +1,17 @@
-// Live progress for eval runs that write to log files (pnpm ai-eval:progress [dir]).
+// Live progress for eval runs that write to log files (node scripts/ai-eval/progress.mjs [dir]).
 // Each run log starts with run.ts's header line "<model> · <version> · <n> items × <repeats>" and
 // gets one "<ms>ms  <id>  <title>" line per answer. Shows a bar, the count, the average time and an
 // estimate for every run touched in the last 30 minutes, newest first, redrawn every 2 s.
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { setInterval } from 'node:timers'
 
 const dir = resolve(process.argv[2] ?? 'tmp/round3')
 const RECENT_MS = 30 * 60_000
 const WIDTH = 30
 // Log files carry the colour codes of pnpm and the terminal; strip them before matching.
-const plain = (s) => s.replace(/\u001b\[[0-9;]*m/g, '')
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g')
+const plain = (s) => s.replace(ANSI, '')
 
 function readRun(path) {
   const lines = plain(readFileSync(path, 'utf8')).split('\n')
@@ -34,18 +36,21 @@ const time = (ms) => {
   return s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`
 }
 
-function draw() {
-  const now = Date.now()
-  let files = []
+function recentLogs(now) {
   try {
-    files = readdirSync(dir)
+    return readdirSync(dir)
       .filter((f) => f.endsWith('.log') && f.startsWith('run-'))
       .map((f) => ({ path: join(dir, f), mtime: statSync(join(dir, f)).mtimeMs }))
       .filter((f) => now - f.mtime < RECENT_MS)
       .sort((a, b) => b.mtime - a.mtime)
   } catch {
-    files = []
+    return []
   }
+}
+
+function draw() {
+  const now = Date.now()
+  const files = recentLogs(now)
   const out = [`Eval runs in ${dir} · ${new Date().toLocaleTimeString()}`, '']
   if (files.length === 0) out.push('No run has written to a log in the last 30 minutes.')
   for (const f of files) {
