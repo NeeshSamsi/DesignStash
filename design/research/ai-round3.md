@@ -409,3 +409,70 @@ The app gives variants the stashed top's approved words today, and that path cop
 1. **Should variants stop getting the stashed top's words?** Today they do, and the models copy the top's scene from them onto variants whose scene differs: Apple and the 9B do it on most such variants, the 4B on a quarter. I recommend analysing every variant alone (`pileContextFor` returns null). Product names alone are safe but gain nothing measurable.
 2. **One zip can hold different products.** The leggings zip holds leggings, a tank top and a top-and-leggings set, and the grouping makes them one pile because it groups by zip first. Any reference from the top then risks naming the other two "leggings" (Apple did with the top's words, draft or approved, and with its approved name). Should a zip's files with different name stems become separate piles?
 
+
+## C. Model-judged edit carry-over
+
+### C1. The set and the measures
+
+Today, editing a pile top's description or tags copies the top's new description and tags onto every variant the person hasn't touched (`carriedEdit` in `look-over-service.ts`), so a variant's own scene is overwritten. The question is whether the model can judge each variant instead.
+
+The set (`scripts/ai-eval/round3/edits.json`): 24 realistic edits on the tops of the 13 piles from B (7 surfaces, 8 renames, 4 removals of an invented thing, 3 colours, 2 states such as "closed"), each with a before and an after and a pattern for the edited fact. One case per edit and variant gives 62 cases. Labels come from gold (`labelFor`): keep when the variant's gold lacks the edited fact, apply when the variant's gold is the top's word for word, adapt otherwise. That gives 25 apply, 23 adapt and 14 keep. The variant's current entry is its pass-0 answer from the model's winner run, and each model looks at the cover it answers from (Apple soft, 4B label, 9B as it is). One pass each, at temperature 0.
+
+Measured (`pnpm ai-eval:edit-carry`, scored by `pnpm ai-eval:edit-carry-score`):
+- the decision against the label, exact and as carry or keep;
+- **right:** what the variant ends with has the edited fact right (for keep, the fact did not arrive; for apply or adapt, it is there), with the draft standing when the model says keep;
+- **right and clean:** right, with no word of the top's entry brought in that the variant's own draft and gold lack (a word check, so a word like "rests" can count when the scene around it is wrong);
+- the time per variant.
+
+Two baselines: today's rule, and carrying nothing at all.
+
+### C2. Three ways of asking
+
+- **c1**, the brief's shape: one request per variant with the cover, the top's before and after and the variant's entry, answering `{decision: apply|adapt|keep, description, tags}`.
+- **c2**, check then change: code finds the words the edit added and took out. Once per edit the model turns what was added into one yes/no question ("Is the lighter closed?"). Each variant's cover is asked that question, and only on a yes is the variant's own entry given the change, in a text-only request. An edit that only takes words out needs no question: it goes to every variant whose entry has those words.
+- **c3**: c2 with no question. Each cover is asked about the edit itself, told the words it added ("The edit added: slatted, bench. Is what the edit added also true of this image?").
+
+| Model | Version | Carry or keep right | Right | Right and clean | Keep cases left alone | Time per variant |
+|---|---|---|---|---|---|---|
+| any | today's rule | 48 (77%) | 48 (77%) | 26 (42%) | 0 of 14 | none |
+| Apple | carry nothing | | 41 (66%) | 41 (66%) | 14 | |
+| Apple | c1 | 48 (77%) | 34 (55%) | 27 (44%) | 3 | 1.9 s |
+| Apple | c2 | 33 (53%) | 42 (68%) | 39 (63%) | 10 | 1.0 s, plus 0.6 s per edit |
+| Apple | c3 | 22 (35%) | 41 (66%) | 41 (66%) | 14 | 0.7 s |
+| 4B | carry nothing | | 47 (76%) | 47 (76%) | 14 | |
+| 4B | c1 | 47 (76%) | 40 (65%) | 39 (63%) | 5 | 2.5 s |
+| 4B | c2 | 39 (63%) | 47 (76%) | 47 (76%) | 14 | 1.7 s, plus 0.5 s per edit |
+| 4B | c3 | 36 (58%) | 47 (76%) | 47 (76%) | 14 | 1.8 s |
+| 9B | carry nothing | | 48 (77%) | 48 (77%) | 14 | |
+| 9B | c1 | 48 (77%) | 49 (79%) | 40 (65%) | 2 | 8.8 s |
+| 9B | c2 | 48 (77%) | 54 (87%) | 53 (85%) | 12 | 6.5 s, plus 2.1 s per edit |
+| 9B | c3 | 47 (76%) | 54 (87%) | 53 (85%) | 12 | 6.7 s |
+
+(Keep cases left alone: of the 14, those where the variant ends without the edited fact, a rewrite that leaves the fact out included.)
+
+**c1 can't keep.** Asked to decide and write in one reply, every model says "adapt" to almost every case (the 4B says "keep" once, wrongly), so the exact decision is right only 35 to 37% of the time and most of the variants that should be left alone get the edit (9 to 12 of 14): "slatted bench" spreads to the other long-scroll variants, and "closed" to the open lighters. The models never tell apply from adapt either. The 9B's c1 rewrites keep most of the variant's own words, but it brings in the top's scene on 14 cases.
+
+**Asking yes or no first makes keep work.** In c2 and c3 the 4B leaves all 14 keep cases alone, Apple 10 or 14, and the 9B 12. The rewrites keep the variant's own scene: the Qwen models never give a variant the top's entry word for word, the 9B brings in one word (the isolated boxes' tag "Interior") and the 4B none. Apple's c2 brings words in on five and copies the top's entry onto one.
+
+**Only the 9B gains anything over leaving the variants alone.** Carrying nothing is right on 41 to 48 cases already, because many variants' own drafts already have the edited fact (and the removal edits never found their words in a variant's draft). Apple and the 4B say no where they should carry, so their best versions end exactly where carrying nothing does. The 9B gains 8 right answers on the carries and loses 2 keep cases, so it ends right and clean on 53 of 62, against 48 carrying nothing and 26 for today's rule.
+- What the 9B still gets wrong: two keep cases (the window-ledge MacBook given the top's bench, and menu 3, which lies beside the plate, put on it), the MacBook name declined on the mesh-floor one, one lighter's "Zippo-style", the hanging gift card holder's "hanging" left out of the rewrite, and the books' "open spine" left out or declined.
+- Apple's c2 questions often copy the example ("Does the laptop rest on a white slatted bench?" for the closed lighter), and its safety filter refused all three mug cases ("round-bellied"). c3 avoids both but makes Apple say no to nearly everything (8 carries where 48 were due).
+- c2 and c3 come out the same for the 9B; c3 is simpler (no question to write and store per edit).
+
+### C, in sum
+
+| Model | Ship? | What to do on an edit to the top |
+|---|---|---|
+| 9B | Yes, c3 | Ask each untouched variant's cover whether what the edit added is true of it; on a yes, give that variant's own entry the change; take removed words out wherever they appear. Right and clean on 53 of 62 (today 26); about 7 s per variant, in the background after the edit. |
+| 4B | No | Its judgement ends where carrying nothing does (47 of 62). Leaving each variant's own words beats today's rule (26). |
+| Apple | No | The same (41 of 62 either way), and its safety filter refuses some edits outright. |
+
+Even with no model, the copying is the main fault: today's rule is right and clean on 26 of 62, and leaving every variant alone on 41 to 48. A pile edit that should reach a variant the model declines can still be made by hand.
+
+The set is small: 24 edits written for this test, one pass each, with "before" texts that are not the models' own drafts of the tops. Removals in particular were never put to the test, since no variant's draft had the removed words.
+
+### For Neesh (C)
+
+1. **Should the 9B judge pile edits (c3), and the 4B and Apple leave variants alone?** That would replace today's copy-to-every-variant rule (`carriedEdit`) with a model step for the 9B, about 7 s per variant in the background (Look it over's carry progress already shows "running" and "done"), and plain "leave it" for the other two. I recommend it.
+2. **What should a variant the model declines show?** Today an untouched variant silently takes the edit. With c3 a declined variant keeps its own words; it could also offer the person the edit to accept by hand.
+
