@@ -35,6 +35,7 @@ import {
   tagRowClass,
   tagTreeVariants
 } from './TagTree.variants'
+import { pointMenuAlign } from '@renderer/lib/point-menu'
 
 type Category = TagTreeData[number]
 type Result = void | Promise<void>
@@ -535,7 +536,7 @@ export function TagTree({
     <DropdownMenu
       open
       onOpenChange={(open) => !open && setMenu(null)}
-      align="start"
+      align={pointMenuAlign(menu.at.x)}
       trigger={
         <span
           aria-hidden

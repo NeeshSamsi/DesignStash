@@ -20,6 +20,7 @@ import { useInboxStore } from '@renderer/stores/inboxStore'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { coverUrl } from '@shared/cover-url'
+import { pointMenuAlign } from '@renderer/lib/point-menu'
 
 type Ask =
   | { kind: 'delete'; items: TrashItem[] }
@@ -238,7 +239,7 @@ export default function TrashPage() {
       <DropdownMenu
         open={menu !== null}
         onOpenChange={(next) => !next && setMenu(null)}
-        align="start"
+        align={pointMenuAlign(menu?.at.x ?? 0)}
         trigger={
           <span
             aria-hidden

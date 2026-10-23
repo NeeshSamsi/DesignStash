@@ -2,6 +2,7 @@ import { DropdownMenu, DropdownMenuDivider } from '@renderer/components/Dropdown
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import type { BoardAction, BoardState } from './board-model'
 import { buildMenu, type MenuTarget } from './menu-model'
+import { pointMenuAlign } from '@renderer/lib/point-menu'
 
 export interface SortMenuProps {
   state: BoardState
@@ -23,7 +24,7 @@ export function SortMenu({ state, target, at, onClose, onAction }: SortMenuProps
     <DropdownMenu
       open={target !== null}
       onOpenChange={(next) => !next && onClose()}
-      align="start"
+      align={pointMenuAlign(at.x)}
       trigger={
         <span
           aria-hidden
