@@ -82,6 +82,14 @@ describe('prompt profiles', () => {
     expect(textOf(apple.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))).not.toContain('has been blanked out')
   })
 
+  it('shows the 4B the cover with its design slot labelled, names the object from the cover as it is, and asks again on a refusal', () => {
+    expect(qwen3vl).toMatchObject({ mask: 'label', redo: true, objectHint: true })
+    const text = textOf(qwen3vl.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))
+    expect(text).toContain(`${SHIPPED.printedRule}\n${MASK_RULE}`)
+    expect(MASK_RULE).toContain('never write the words design area')
+    expect(textOf(qwen3vl.buildRequest(INPUT, IMAGE))).not.toContain(MASK_RULE)
+  })
+
   it('looks a profile up by id, and has none for an unknown id', () => {
     expect(promptProfile('qwen3.5-9b')).toBe(qwen35)
     expect(promptProfile('qwen2.5-vl-3b')).toBeUndefined()

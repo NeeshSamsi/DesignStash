@@ -68,11 +68,11 @@ export const NAMES_ONLY = {
 }
 
 /**
- * For a cover shown with its design slot painted over (eval ck-5lr): what the grey area is, so the
- * model calls it a screen, label or print and never an object or a colour of its own.
+ * For a cover shown with its design slot painted over (eval ck-5lr, ck-7b): what the grey area is, so
+ * the model calls it a screen, label or print and never an object, a colour of its own or "design area".
  */
 export const MASK_RULE =
-  'The screen, label or print area where the designer puts their own work has been blanked out in the image: it shows as a flat or blurred grey area, or one marked DESIGN AREA. That area is not an object and has no colour or pattern of its own. Call it the screen, label or print of the object it is on, and never describe what is on it.'
+  'The screen, label or print area where the designer puts their own work has been blanked out in the image: it shows as a flat or blurred grey area, or one marked DESIGN AREA. That area is not an object and has no colour or pattern of its own. Call it the screen, label or print of the object it is on, never describe what is on it, and never write the words design area.'
 
 /** A schema copy that allows as few as `min` tags. */
 function withMinTags(schema: object, min: number): object {
