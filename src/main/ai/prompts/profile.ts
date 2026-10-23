@@ -25,6 +25,12 @@ export interface PromptProfile {
    */
   mask?: MaskFill
   /**
+   * The fill to show instead when the masked cover is too blank to send (a label over leggings that
+   * fill the slot, on a grey ground, reads as a placeholder notice). Left out, the model answers from
+   * the names alone there, and `verify` keeps its first answer.
+   */
+  blankFallback?: MaskFill
+  /**
    * When the scene check refuses a thing, ask for the answer once more, told the image has none of
    * them (`refusedNote`); the refused things are still taken out of the new answer. For a thing that
    * is the object's own name ("a white cube lamp"), which taking a phrase out can't mend.
@@ -39,7 +45,7 @@ export interface PromptProfile {
    * The reverse two looks, for a model that names products from their sample art (the 9B): it answers
    * from the cover as it is; each colour or pattern word is asked about on the cover masked with
    * `check`, and when one is only on the slot the answer is made again from the cover masked with
-   * `remask`, told the object's name (`placeholder-check.ts`). Used without `mask`.
+   * `remask`, given the first answer less those words (`placeholder-check.ts`). Used without `mask`.
    */
   verify?: { check: MaskFill; remask: MaskFill }
 }

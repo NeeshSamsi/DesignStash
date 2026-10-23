@@ -343,6 +343,28 @@ describe('VisionInferenceProvider with a masked design slot', () => {
     expect(userParts(question)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
   })
 
+  it("shows the profile's fallback fill when the masked cover is too blank to show", async () => {
+    const SOFT = 'data:image/jpeg;base64,SOFT'
+    const buildRequest = vi.fn(SHIPPED.buildRequest)
+    const complete = vi.fn<(req: object) => Promise<ChatReply>>(async () => ({ text: JSON.stringify(BOXES) }))
+    const readImage = vi.fn(async (path: string) => (path.includes('label') ? null : path.includes('soft') ? SOFT : IMAGE))
+    const provider = (blankFallback?: 'soft') =>
+      new VisionInferenceProvider('m', {
+        prompt: { ...SHIPPED, buildRequest, mask: 'label', ...(blankFallback && { blankFallback }) },
+        complete,
+        readImage,
+        maskedCover: async (_path, fill) => `/m/cover-ai-${fill}.png`
+      })
+    await provider('soft').analyze(INPUT)
+    expect(userParts(complete.mock.calls[0]![0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: SOFT } })
+    expect(buildRequest.mock.calls[0]![0]).toEqual({ ...INPUT, slotMasked: true })
+    complete.mockClear()
+    buildRequest.mockClear()
+    await provider().analyze(INPUT)
+    expect(userParts(complete.mock.calls[0]![0] as ChatRequest).some((p) => p.type === 'image_url')).toBe(false)
+    expect(buildRequest.mock.calls[0]![0]).toEqual(INPUT)
+  })
+
   it('answers from the cover as it is when the mockup has no slot mask', async () => {
     const { provider, complete } = masked({}, false, null)
     await provider.analyze(INPUT)
@@ -411,12 +433,37 @@ describe('VisionInferenceProvider placeholder check (verify)', () => {
     expect(calls).toHaveLength(3)
   })
 
-  it('answers again from the labelled cover, named from the first title, when a word is only on the slot', async () => {
+  it('answers again from the labelled cover, given the first answer less those words, when a word is only on the slot', async () => {
     const { provider, calls } = verifying({ blue: 'no', grid: 'yes' })
     await expect(provider.analyze(INPUT)).resolves.toEqual(CLEAN)
     const again = calls[3] as ChatRequest
     expect(userParts(again)[0]).toEqual({ type: 'image_url', image_url: { url: LABEL } })
-    expect(userText(again)).toContain('Seen in full, the main object is: grid MacBook on white bench. Use that name for it.')
+    expect(userText(again)).toContain(
+      "A first draft, written from the cover before its design area was blanked out, with the stand-in design's words taken out:\n" +
+        'Title: grid MacBook on white bench\nDescription: A MacBook with a grid screen on a white bench.\nTags: \n' +
+        'Keep its names, other names and details where the image agrees, mend any sentence the cuts left broken, and never describe the design area.'
+    )
+  })
+
+  it("answers again from the profile's fallback fill when the labelled cover is too blank to show, or keeps the answer without one", async () => {
+    const calls: object[] = []
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      calls.push(req)
+      if (/Is anything in this image blue/.test(JSON.stringify(req))) return { text: 'no', logprobs: { content: [{ top_logprobs: [{ token: 'no', logprob: 0 }] }] } }
+      return { text: JSON.stringify(calls.length > 1 ? CLEAN : GRID) }
+    })
+    const provider = (blankFallback?: 'soft') =>
+      new VisionInferenceProvider('m', {
+        prompt: { ...SHIPPED, verify: { check: 'soft', remask: 'label' }, ...(blankFallback && { blankFallback }) },
+        complete,
+        readImage: async (path) => (path.includes('soft') ? SOFT : path.includes('label') ? null : IMAGE),
+        maskedCover: async (_path, fill) => `/m/cover-ai-${fill}.png`
+      })
+    await expect(provider('soft').analyze(INPUT)).resolves.toEqual(CLEAN)
+    expect(userParts(calls[3] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: SOFT } })
+    calls.length = 0
+    await expect(provider().analyze(INPUT)).resolves.toEqual(GRID)
+    expect(calls).toHaveLength(3)
   })
 
   it('checks nothing for a mockup without a slot mask', async () => {

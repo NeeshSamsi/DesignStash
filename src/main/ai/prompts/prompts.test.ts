@@ -82,12 +82,20 @@ describe('prompt profiles', () => {
     expect(textOf(apple.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))).not.toContain('has been blanked out')
   })
 
-  it('shows the 4B the cover with its design slot labelled, names the object from the cover as it is, and asks again on a refusal', () => {
-    expect(qwen3vl).toMatchObject({ mask: 'label', redo: true, objectHint: true })
+  it('shows the 4B the cover with its design slot labelled (blurred where the label leaves it blank), names the object from the cover as it is, and asks again on a refusal', () => {
+    expect(qwen3vl).toMatchObject({ mask: 'label', blankFallback: 'soft', redo: true, objectHint: true })
     const text = textOf(qwen3vl.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))
     expect(text).toContain(`${SHIPPED.printedRule}\n${MASK_RULE}`)
     expect(MASK_RULE).toContain('never write the words design area')
     expect(textOf(qwen3vl.buildRequest(INPUT, IMAGE))).not.toContain(MASK_RULE)
+  })
+
+  it('answers the 9B from the cover as it is, checks its colour and pattern words on the blurred slot, and answers again from the labelled cover', () => {
+    expect(qwen35).toMatchObject({ verify: { check: 'soft', remask: 'label' }, redo: true })
+    expect(qwen35.mask).toBeUndefined()
+    expect(qwen35.blankFallback).toBeUndefined()
+    expect(textOf(qwen35.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))).toContain(`${SHIPPED.printedRule}\n${MASK_RULE}`)
+    expect(textOf(qwen35.buildRequest(INPUT, IMAGE))).not.toContain(MASK_RULE)
   })
 
   it('looks a profile up by id, and has none for an unknown id', () => {

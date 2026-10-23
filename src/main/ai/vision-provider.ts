@@ -5,7 +5,7 @@ import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
 import { objectHintLine, objectHintRequest, readObjectHint } from './object-hint'
-import { placeholderQuestion, placeholderWordsIn, withoutWords } from './placeholder-check'
+import { draftLine, placeholderQuestion, placeholderWordsIn } from './placeholder-check'
 import type { PromptProfile } from './prompts/profile'
 import { isPlaceholder } from '../psd/placeholder'
 import {
@@ -385,7 +385,8 @@ export class VisionInferenceProvider implements InferenceProvider {
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
     const { prompt } = this.deps
     const masked = prompt.mask ? await (this.deps.maskedCover ?? maskedCoverPath)(input.imagePath, prompt.mask) : null
-    const imageUrl = await this.deps.readImage(masked ?? input.imagePath)
+    let imageUrl = await this.deps.readImage(masked ?? input.imagePath)
+    if (masked && !imageUrl && prompt.blankFallback) imageUrl = await this.readFill(input.imagePath, prompt.blankFallback)
     let request = prompt.buildRequest(masked && imageUrl ? { ...input, slotMasked: true } : input, imageUrl)
     // The masked cover hides the sample art the model named the product by: name it from the cover as it is.
     const coverUrl = masked && imageUrl ? await this.deps.readImage(input.imagePath) : null
@@ -423,7 +424,7 @@ export class VisionInferenceProvider implements InferenceProvider {
   /**
    * The reverse two looks (`placeholder-check.ts`): each colour or pattern word in an answer made
    * from the cover as it is is asked about on the cover with its slot masked; when one is only on the
-   * slot, the answer is made again from the cover masked for answering, told the object's name.
+   * slot, the answer is made again from the cover masked for answering, given the first answer less those words.
    */
   private async verified(
     input: AnalysisInput,
@@ -431,10 +432,8 @@ export class VisionInferenceProvider implements InferenceProvider {
     answer: InferenceResult,
     verify: NonNullable<PromptProfile['verify']>
   ): Promise<InferenceResult> {
-    const { prompt, readImage, complete } = this.deps
-    const masked = this.deps.maskedCover ?? maskedCoverPath
-    const checkPath = await masked(input.imagePath, verify.check)
-    const checkUrl = checkPath ? await readImage(checkPath) : null
+    const { prompt, complete } = this.deps
+    const checkUrl = await this.readFill(input.imagePath, verify.check)
     if (!checkUrl) return answer
     const onlyOnSlot: string[] = []
     for (const word of placeholderWordsIn(answer)) {
@@ -444,13 +443,20 @@ export class VisionInferenceProvider implements InferenceProvider {
       if (p !== null && p < SCENE_CHECK_THRESHOLD) onlyOnSlot.push(word)
     }
     if (onlyOnSlot.length === 0) return answer
-    const againPath = await masked(input.imagePath, verify.remask)
-    const againUrl = againPath ? await readImage(againPath) : null
+    const againUrl =
+      (await this.readFill(input.imagePath, verify.remask)) ??
+      (prompt.blankFallback ? await this.readFill(input.imagePath, prompt.blankFallback) : null)
     if (!againUrl) return answer
-    const again = withNote(prompt.buildRequest({ ...input, slotMasked: true }, againUrl), objectHintLine(withoutWords(answer.title, onlyOnSlot)))
+    const again = withNote(prompt.buildRequest({ ...input, slotMasked: true }, againUrl), draftLine(answer, onlyOnSlot))
     return complete(again)
       .then((reply) => prompt.parseResult(reply.text))
       .catch(() => answer)
+  }
+
+  /** The cover with its slot painted in `fill`, read for the model; null without a slot mask or when too blank to show. */
+  private async readFill(coverPath: string, fill: MaskFill): Promise<string | null> {
+    const path = await (this.deps.maskedCover ?? maskedCoverPath)(coverPath, fill)
+    return path ? this.deps.readImage(path) : null
   }
 
   async dispose(): Promise<void> {
