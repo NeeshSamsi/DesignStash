@@ -103,6 +103,41 @@ export interface R3Options {
   objectHint?: boolean | 'names'
   /** `exact`: the hint line also says to prefer a more exact name from the names (the 9B kept "smartphone" over "iPhone 15"). */
   hintStyle?: 'exact'
+  /**
+   * The reverse two looks, for a model that names products from their sample art (the 9B): answer
+   * from the cover as it is, then ask about each colour or pattern word in the answer on the cover
+   * with its slot painted this way ("Is anything blue in this image?"). A "no" means the word only
+   * described the placeholder, so the answer is asked for once more, told to leave those out.
+   */
+  verify?: MaskStyle
+  /**
+   * With `verify`: when a word is found to describe only the placeholder, answer again from the
+   * cover masked this way (with the mask rule), told the object's name from the first answer's
+   * title less the placeholder words. Masking then touches only covers whose placeholder was described.
+   */
+  remaskWith?: MaskStyle
+  /**
+   * With `remaskWith`: the masked request is given the first answer less the placeholder words, and
+   * told to keep its names. ck-9m's re-answer, told only the object's name, lost other names the
+   * first answer had ("also called a shop sign", "Zippo-style").
+   */
+  remaskDraft?: boolean
+  /**
+   * A masked cover too blank to show (the label over leggings that fill the slot, on a grey
+   * ground) is replaced by the cover masked this way. Without it the masked answer has no image
+   * and comes from the names alone, and `remaskWith` keeps the first answer.
+   */
+  blankFallback?: MaskStyle
+}
+
+/** Colour words checked by `verify`. Grey, white and black are left out: masks and scenes are full of them. */
+const VERIFY_COLOURS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'violet', 'pink', 'magenta', 'teal', 'turquoise', 'lime', 'navy', 'lilac', 'lavender', 'gold', 'neon', 'colorful', 'colourful', 'multicolored', 'multicoloured', 'pastel']
+/** Pattern and content words checked by `verify`. */
+const VERIFY_PATTERNS = ['grid', 'checkerboard', 'pattern', 'stripes', 'gradient', 'geometric', 'abstract', 'wallpaper', 'interface', 'icons', 'lettering', 'typography', 'logo', 'artwork', 'illustration', 'solar']
+
+function verifyQuestion(word: string): string {
+  if (VERIFY_COLOURS.includes(word)) return `Is anything in this image ${word === 'colorful' || word === 'colourful' || word.startsWith('multi') ? 'colourful' : word} in colour? Answer yes or no.`
+  return `Is there ${/^[aeiou]/.test(word) ? 'an' : 'a'} ${word} in this image? Answer yes or no.`
 }
 
 /** The question for `objectHint`, asked about the cover as it is. */
@@ -132,6 +167,10 @@ export function hintRequest(coverUrl: string, fileName?: string): object {
 
 /** The line the masked request gets from `objectHint`. */
 export const hintLine = (object: string) => `Seen in full, the main object is: ${object}. Use that name for it.`
+
+/** `remaskDraft`: the first answer less the placeholder words, for the masked answer to keep its names. */
+export const draftLine = (title: string, description: string, tags: readonly string[]) =>
+  `A first draft, written from the cover before its design area was blanked out, with the stand-in design's words taken out:\nTitle: ${title}\nDescription: ${description}\nTags: ${tags.join(', ')}\nKeep its names, other names and details where the image agrees, mend any sentence the cuts left broken, and never describe the design area.`
 
 /** `hintStyle: 'exact'`. */
 export const exactHintLine = (object: string) =>
@@ -183,9 +222,16 @@ function specFor(base: PromptSpec, opts: R3Options): PromptSpec {
   return spec
 }
 
+/** The cover masked with `style`, or with `fallback` when that one is too blank to show. */
+async function readMasked(path: string, style: MaskStyle, fallback?: MaskStyle): Promise<string | null> {
+  const url = await readCoverAsDataUrl(await maskedCoverPath(path, style))
+  return url ?? (fallback ? readCoverAsDataUrl(await maskedCoverPath(path, fallback)) : null)
+}
+
 /** A Qwen version: ck-2 (q9-2's answer, then the scene-thing check) with the options. */
 export function qwenR3(opts: R3Options): PromptVersion {
   const build = requestFrom(specFor({ ...SHIPPED, noImage: NAMES_ONLY }, opts))
+  const buildMasked = requestFrom(specFor({ ...SHIPPED, noImage: NAMES_ONLY }, { ...opts, maskRule: true }))
   const check = checker(opts)
   const mask = opts.mask
   return {
@@ -193,7 +239,7 @@ export function qwenR3(opts: R3Options): PromptVersion {
     notes: opts.notes,
     buildRequest: build,
     parseResult,
-    ...(mask && { readImage: async (path: string) => readCoverAsDataUrl(await maskedCoverPath(path, mask)) }),
+    ...(mask && { readImage: async (path: string) => readMasked(path, mask, opts.blankFallback) }),
     async analyze(ctx: AnalyzeContext) {
       let request = build(ctx.input, ctx.imageUrl)
       let hint: string | undefined
@@ -221,7 +267,47 @@ export function qwenR3(opts: R3Options): PromptVersion {
       }
       if (opts.redo && refused.length > 0) answer = parseResult((await ctx.chat(withoutThings(request, refused))).raw)
       for (const thing of refused) answer = check.without(answer, thing)
-      return { ...answer, extra: { checks, ...(hint && { hint }), ...(opts.redo && refused.length > 0 && { redone: refused }) } }
+      const verified: Record<string, number | null> = {}
+      const placeholderOnly: string[] = []
+      if (opts.verify) {
+        const maskedUrl = await readCoverAsDataUrl(await maskedCoverPath(ctx.input.imagePath, opts.verify))
+        const text = [answer.title, answer.description, ...answer.tags.map((t) => t.label)].join(' ').toLowerCase()
+        const words = [...VERIFY_COLOURS, ...VERIFY_PATTERNS].filter((w) => new RegExp(String.raw`\b${w}(?:s|ed|y)?\b`).test(text))
+        for (const word of maskedUrl ? words : []) {
+          const q = {
+            messages: [request.messages[0], { role: 'user', content: [{ type: 'image_url', image_url: { url: maskedUrl } }, { type: 'text', text: `Look only at the image. ${verifyQuestion(word)}` }] }],
+            grammar: 'root ::= "yes" | "no"',
+            temperature: 0,
+            max_tokens: 1,
+            logprobs: true,
+            top_logprobs: 5
+          }
+          const p = pYes((await ctx.chat(q)).logprobs)
+          verified[word] = p
+          if (p !== null && p < THRESHOLD) placeholderOnly.push(word)
+        }
+        if (placeholderOnly.length > 0 && opts.remaskWith) {
+          const remasked = await readMasked(ctx.input.imagePath, opts.remaskWith, opts.blankFallback)
+          const drop = new RegExp(String.raw`\b(?:${placeholderOnly.join('|')})(?:s|ed|y)?\b`, 'gi')
+          const strip = (s: string) => s.replace(drop, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.])/g, '$1').trim()
+          const name = strip(answer.title)
+          const line = opts.remaskDraft
+            ? draftLine(name, strip(answer.description), answer.tags.map((t) => strip(t.label)).filter(Boolean))
+            : hintLine(name)
+          if (remasked) {
+            const again = withLine(buildMasked(ctx.input, remasked), line)
+            answer = parseResult((await ctx.chat(again)).raw)
+          }
+        } else if (placeholderOnly.length > 0) {
+          const list = placeholderOnly.join(', ').replace(/, ([^,]*)$/, ' or $1')
+          const note = `Checked against the image without its design area (the screen, label or print the designer replaces): nothing outside it is ${list}. Those belong to the stand-in design, so leave them out of every field.`
+          answer = parseResult((await ctx.chat(withLine(request, note))).raw)
+        }
+      }
+      return {
+        ...answer,
+        extra: { checks, ...(hint && { hint }), ...(opts.redo && refused.length > 0 && { redone: refused }), ...(opts.verify && { verified, placeholderOnly }) }
+      }
     }
   }
 }
