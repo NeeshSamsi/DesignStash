@@ -331,3 +331,39 @@ export function progress(s: FlowState): number {
   if (here) seen.add(here.mockupId)
   return Math.min(1, seen.size / total)
 }
+
+/** What the form shows for one mockup. */
+export interface DraftForm {
+  title: string
+  description: string
+  tags: LookOverItem['tags']
+}
+
+export const formOf = (item: LookOverItem): DraftForm => ({
+  title: item.title,
+  description: item.description,
+  tags: item.tags
+})
+
+const tagKey = (form: DraftForm) => form.tags.map((t) => t.tagId).join()
+
+/**
+ * A draft main filled in after the flow opened (a late AI suggestion). Each field the user hasn't
+ * changed since the last save takes main's value; one they are editing keeps their words. `saved`
+ * becomes what main now holds, so the next save counts only their edits.
+ */
+export function landedDraft(
+  form: DraftForm,
+  saved: DraftForm,
+  item: LookOverItem
+): { form: DraftForm; saved: DraftForm } {
+  const fresh = formOf(item)
+  return {
+    form: {
+      title: form.title === saved.title ? fresh.title : form.title,
+      description: form.description === saved.description ? fresh.description : form.description,
+      tags: tagKey(form) === tagKey(saved) ? fresh.tags : form.tags
+    },
+    saved: fresh
+  }
+}

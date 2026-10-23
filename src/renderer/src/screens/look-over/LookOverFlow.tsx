@@ -13,6 +13,7 @@ import { PileRail } from '@renderer/components/PileRail'
 import { PileStep } from '@renderer/components/PileStep'
 import { Tooltip } from '@renderer/components/Tooltip'
 import { useTagVocabulary } from '@renderer/hooks/use-tag-vocabulary'
+import { subscribePush } from '@renderer/lib/subscribe'
 import { useFlowOpen } from '@renderer/stores/copyStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { useUiStore } from '@renderer/stores/uiStore'
@@ -31,6 +32,8 @@ import {
   headerBadge,
   isPile,
   jumpTo,
+  landedDraft,
+  formOf,
   next,
   onReview,
   primary,
@@ -38,6 +41,7 @@ import {
   rail,
   reviewCards,
   skip,
+  type DraftForm,
   type FlowState
 } from './flow-model'
 import {
@@ -57,11 +61,7 @@ interface LookOverFlowProps {
   onBackToSort?: () => void
 }
 
-interface Form {
-  title: string
-  description: string
-  tags: LookOverItem['tags']
-}
+type Form = DraftForm
 
 interface Cover {
   path: string
@@ -76,11 +76,6 @@ type Loaded =
   | { status: 'failed' }
   | { status: 'ready'; queue: LookOverQueue }
 
-const formOf = (item: LookOverItem): Form => ({
-  title: item.title,
-  description: item.description,
-  tags: item.tags
-})
 const tagIds = (form: Form) => form.tags.map((t) => t.tagId)
 const sameForm = (a: Form, b: Form) =>
   a.title === b.title && a.description === b.description && tagIds(a).join() === tagIds(b).join()
@@ -181,6 +176,21 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const [coverState, setCoverState] = useState<'default' | 'replacing' | 'error'>('default')
   const [zooming, setZooming] = useState(false)
   const { vocabulary, createTag } = useTagVocabulary()
+
+  // A late AI suggestion filled in a draft: show it, keeping any field the user is editing.
+  useEffect(
+    () =>
+      subscribePush(IPC_CHANNELS.LOOK_OVER_DRAFT, (item) => {
+        const was = saved.current[item.mockupId]
+        if (!was) return
+        saved.current = { ...saved.current, [item.mockupId]: formOf(item) }
+        setForms((current) => ({
+          ...current,
+          [item.mockupId]: landedDraft(current[item.mockupId] ?? was, was, item).form
+        }))
+      }),
+    []
+  )
 
   const unit = currentUnit(flow)
   const item = currentItem(flow)
