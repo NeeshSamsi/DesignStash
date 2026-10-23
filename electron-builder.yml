@@ -34,9 +34,12 @@ dmg:
   title: DesignStash ${version}
 # The migrations, llama-server and the Swift helper are read at run time from <resources>, next
 # to the app. The main process looks for the helper at <resources>/helper/designstash-helper.
+# The bundled fonts' licences go to <resources>/licenses, as the SIL Open Font License requires.
 extraResources:
   - from: drizzle
     to: drizzle
+  - from: licenses
+    to: licenses
   - from: build/llama-server
     to: llama-server
     filter:
