@@ -1,6 +1,6 @@
 # AI suggestions, round 3: placeholders, piles and carried edits
 
-**Started:** 2026-10-23, after Neesh's feedback on "Long scroll Macbook". **Brief:** three experiments, in order: A (placeholders and invented surfaces), B (variants with the top as a reference), C (model-judged edit carry-over). Work lives in `scripts/ai-eval/`; run outputs stay under `~/Library/Application Support/DesignStash-dev/ai-eval/` and are never committed. No app code changed.
+**Started:** 2026-10-23, after Neesh's feedback on "Long scroll Macbook". **Brief:** three experiments, in order: A (placeholders and invented surfaces), B (variants with the top as a reference), C (model-judged edit carry-over). Work lives in `scripts/ai-eval/`; run outputs stay under `~/Library/Application Support/DesignStash-dev/ai-eval/` and are never committed. The winners are in the app (`src/main/ai/`, `src/main/psd/design-slot.ts`); the commits are named in each section.
 
 The feedback, on Apple's model: "A long scroll MacBook, also called a website, resting on a stack of white books with a blue and white grid pattern." The title is right. The grid is the placeholder (where the designer's screen goes), the books are invented (it is a plain white ledge), and "website" is a bad alternate name.
 
@@ -207,51 +207,106 @@ The loss is concentrated. The two stacked-box mockups' slot is every visible fac
 
 Recall and precision are within half a point of today's (inside the pass-to-pass noise); inventions go to zero; placeholder mentions fall by three to four times. Over all 270 answers the misreading count falls from 48 to 32, and what remains is mostly real ("book" on the books, "pouch" on the pouches); the true slips left are "blank" ID cards (3), the Z-fold brochure "glowing" (3, 2 before) and one "design area". The app's `MASK_RULE`, object question and hint line are word for word the eval's (checked).
 
-### Where this stopped (paused 2026-10-23 at Neesh's request)
+### A7. The 9B
 
-**Done:**
-- The slot finder, the placeholder labels and metric, the "also called" metric, the table script, all A versions, and the B and C harnesses (written and type-checked, never run).
-- Baselines rescored for all three models (A2).
-- Apple: ap-7m, ap-7s and ap-7r ran in full and are scored above.
+The 9B does not take the 4B's pipeline. Screens on the 32 trouble covers, merged into ck-2's full run (so the other 58 covers are unmasked and the placeholder gain is understated):
 
-**Stopped or not run:**
-- Apple ap-7mr (mask and rule) was stopped at 65 of 90; nothing was saved.
-- Qwen 4B and 9B: none of ck-3m, ck-3s, ck-3r or ck-3mr has a finished run. Partial runs were stopped (they save nothing until the end).
-- Not written yet: the wider scene-thing check version (`r3.ts` already has `SURFACE_THINGS`, the `things` option, and a `withoutThing` that cuts "a stack of white books" and the "resting" before it) and the Apple "also called" version (`alternates: true` option, `ALTERNATES_RULE`).
-- B and C have not run.
+| Version | Set | Found / right | Invented | Placeholder |
+|---|---|---|---|---|
+| ck-2 (today) | tuning | 92.7 / 87.5 | 6.0% | 34.2% |
+| | held-out | 92.9 / 82.8 | 0.0% | 24.4% |
+| | sign-off | 91.3 / 85.1 | 0.0% | 30.2% |
+| ck-7b (the 4B winner) | tuning | 89.6 / 84.5 | 1.7% | 12.0% |
+| | held-out | 90.6 / 81.1 | 4.4% | 16.7% |
+| | sign-off | 87.6 / 81.1 | 0.0% | 14.3% |
+| ck-8s (soft in place of label) | tuning | 88.7 / 84.2 | 5.1% | 12.8% |
+| | held-out | 90.0 / 80.8 | 0.0% | 16.7% |
+| | sign-off | 87.0 / 80.6 | 0.0% | 12.7% |
+| ck-7d (hint prefers exact names) | tuning | 87.6 / 82.4 | 0.9% | 12.0% |
+| | held-out | 89.2 / 79.6 | 3.3% | 16.7% |
+| | sign-off | 86.4 / 79.7 | 0.0% | 12.7% |
+| ck-6lr (no object name) | tuning | 85.6 / 81.7 | 0.0% | 7.7% |
+| | held-out | 88.0 / 79.1 | 3.3% | 16.7% |
+| | sign-off | 85.4 / 79.6 | 0.0% | 11.1% |
 
-**Lessons for the resume:**
-- Run one model at a time. With Apple, 4B and 9B running together, the 9B fell from about 11 s to 47 s per mockup and the 4B from about 9 s to 20 s, so parallel runs are slower than running them in turn.
-- Solo terminals: 266 (`ai-eval-run`), 268 (`ai-eval-apple`), 269 (`ai-eval-9b`), all idle.
-- A `pgrep -f "<pattern>"` wait loop matches its own shell; use a log line to wait on instead (as below).
+Every masked version costs the 9B 2 to 7 points of recall and adds one or two invented answers on held-out (an invented "desk" on HomeView that the check scored 0.30, just over the 0.2 cut, and the masked iPhone 15 "on cosmic dust"). The 9B, more than the 4B, read exact names from the sample art: "iPhone 15" from the screen's own text, "mailer" from the address panel. Masked, even told the name from the cover as it is, it falls back to "smartphone" and "shipping envelopes"; telling it to prefer exact names from the file name (ck-7d) did worse.
 
-**To resume** (from the repo root, in one Solo terminal, one command at a time). Covers, masks and `placeholder.jpg` are already made; `pnpm ai-eval:slots` only needs to run again if `items.json` changes.
+**Reverse two looks (ck-9v).** For the 9B the answer comes from the cover as it is (keeping every name it reads), and then each colour or pattern word in it (blue, pink, gradient, grid, wallpaper, lettering and the like; grey, white and black left out as too common) is asked about on the soft-masked cover: "Is anything in this image blue in colour?" A "no" means the word only described the placeholder, and the answer is asked for once more: "Checked against the image without its design area ... nothing outside it is blue or grid. Those belong to the stand-in design, so leave them out of every field."
 
-```sh
-# A, Apple: the last variant
-pnpm ai-eval:run --model apple --prompt ap-7mr > tmp/round3/run-apple-ap-7mr.log 2>&1
+The checks find the right words, but the 9B, still looking at the placeholder, writes them again: on the 32-cover screen placeholder mentions barely move (34.2 / 24.4 / 30.2% to 33.3 / 23.3 / 30.2%).
 
-# A, Qwen: soft mask and rule first (the two that tell most), then grey and both
-for v in ck-3s ck-3r ck-3m ck-3mr; do pnpm ai-eval:run --model qwen3-vl-4b --prompt $v --repeat 3 > tmp/round3/run-4b-$v.log 2>&1; done
-for v in ck-3s ck-3r ck-3m ck-3mr; do pnpm ai-eval:run --model qwen3.5-9b --prompt $v --repeat 3 > tmp/round3/run-9b-$v.log 2>&1; done
+**Answer again from the labelled cover only when needed (ck-9m).** The same checks; when a word is only on the placeholder, the answer is made again from the label-filled cover with the mask rule, told the object's name from the first title less those words. Covers whose placeholder went undescribed keep their first answer untouched, so the 9B keeps the names it reads from the sample art everywhere else. 19 of 90 covers (52 of 270 answers) are answered again. Full run:
 
-# Score: one row per run and set
-pnpm ai-eval:table qwen3-vl-4b/ck-2 qwen3-vl-4b/ck-3s qwen3-vl-4b/ck-3r qwen3-vl-4b/ck-3m qwen3-vl-4b/ck-3mr \
-  qwen3.5-9b/ck-2 qwen3.5-9b/ck-3s qwen3.5-9b/ck-3r qwen3.5-9b/ck-3m qwen3.5-9b/ck-3mr \
-  apple/ap-6 apple/ap-7m apple/ap-7s apple/ap-7r apple/ap-7mr
-```
+| Run | Set | Found / right | Invented | Placeholder |
+|---|---|---|---|---|
+| ck-2 (before) | tuning | 92.7 / 87.5 | 6.0% | 34.2% |
+| | held-out | 92.9 / 82.8 | 0.0% | 24.4% |
+| | sign-off | 91.3 / 85.1 | 0.0% | 30.2% |
+| ck-9m | tuning | 92.6 / 87.7 | 6.0% | **22.2%** |
+| | held-out | 92.8 / 82.9 | 0.0% | **16.7%** |
+| | sign-off | 90.0 / 84.0 | 0.0% | **20.6%** |
 
-Expected time alone: Apple about 5 minutes; 4B about 45 minutes per variant; 9B about 50 minutes per variant.
+Inventions are unchanged and placeholder mentions fall by a third (81 to 54 of 270 answers), much less than the 4B's and Apple's. Tuning and held-out recall are within 0.1 point. Sign-off recall is 1.3 points lower, and it is a real drop: scored pass by pass, ck-2's sign-off recall is 91.7 / 91.0 / 91.2 and ck-9m's 90.0 / 89.9 / 90.1. Almost all of it is one cover. The signboard's blue panel is its placeholder; the first answer is "A blue hanging signboard, also called a shop sign", and the re-answer, told only "hanging signboard", drops "shop sign" on every pass, so the "shop sign" search falls from 100 to 0. The same happens to "Zippo-style" on one lighter answer and "concrete" on one MacBook. Misreadings rise from 36 to 43: the labelled covers bring back "blank" (the tape, a long-scroll screen, the can, 6 answers).
 
-**Next steps after that:**
-1. Write the wider-check versions on each model's best mask, e.g. `prompts/ap-8.ts`: `appleR3({ id: 'ap-8', notes: '...', mask: 'soft', things: [...CK2_THINGS, ...SURFACE_THINGS, 'paper'] })`, and the same with `qwenR3` as `ck-4`. Check new false removals against gold (a real bench, pedestal or box taken out).
-2. Apple only: the same plus `alternates: true` (`ap-9`), to cut the bad "also called" names.
-3. Time per mockup for the winners, one run at a time on 10 items: `pnpm ai-eval:run --model <id> --prompt <winner> --only <10 ids>`, against the baseline on the same ids.
-4. B: for each model's winner `<w>`, write `prompts/<w>-pile.ts` as `pileVersion(base, { id, notes })` from `pile.ts` (it reads the tops from `runs/<model>/<w>/`), and run it on the variants only: `--only` with `pileIds()` (13 piles, 31 variants, from the app's own `GroupingService.propose`: 12 by zip, the six long-scroll files by folder). Compare against the same variants in the winner's own run. Also try `variantRule` (e.g. "Describe this image's own setting, angle and colours; they may differ.") for the copying worry, which is sharpest in the long-scroll pile.
-5. C: `pnpm ai-eval:edit-carry --model <id> --drafts <winner> --mask soft` per model. The 24 edits are in `scripts/ai-eval/round3/edits.json`; labels come from gold.
+**Give the re-answer the first answer (ck-9d).** The same, but the labelled request is given the first answer less the placeholder words, and told: "Keep its names, other names and details where the image agrees, mend any sentence the cuts left broken, and never describe the design area." Only the 19 re-answered covers change, so they were run alone (57 answers) and merged into ck-9m's full run:
 
-### For Neesh (so far)
+| Run | Set | Found / right | Invented | Placeholder |
+|---|---|---|---|---|
+| ck-2 (before) | tuning | 92.7 / 87.5 | 6.0% | 34.2% |
+| | held-out | 92.9 / 82.8 | 0.0% | 24.4% |
+| | sign-off | 91.3 / 85.1 | 0.0% | 30.2% |
+| **ck-9d** | tuning | 92.3 / 86.8 | 6.0% | **17.9%** |
+| | held-out | 92.6 / 82.6 | 0.0% | **15.6%** |
+| | sign-off | 90.6 / 84.2 | 0.0% | **15.9%** |
+
+"Also called a shop sign" and "Zippo-style" come back. Pass by pass, ck-9d's sign-off recall is 91.7 / 91.0 / 89.0 against ck-2's 91.7 / 91.0 / 91.2: two passes match today's, and the third loses two one-item searches to wording ("shop sign" once more, and "peeling sticker" to "peeled corner"). Over all 270 answers placeholder mentions fall from 81 to 45 (30% to 17%), inventions stay at 7, misreadings are 40 (36 before). The new slips come from the light grey label: a "round grey sticker", a MacBook "resting on an abstract grey shape" (the hidden scroll), a "Black MacBook".
+
+What is left (45 answers) is mostly where the check says yes because the colour really is elsewhere in the picture: blue sky behind the blue flags, a colourful graffiti wall behind the poster, lime boxes beside the lime print. The question asks about the whole image; asking about the object itself ("Are the flags blue?") would be the next thing to try.
+
+**9B in the app: ck-9d** (`0d2246a`). It does not meet the target in full: placeholder mentions halve but stay at about one answer in six, against one in ten or fewer for the 4B and Apple; inventions are unchanged and recall is within the pass-to-pass spread on two sets and about half a point under it on sign-off. It is the best option that cuts placeholder mentions without adding inventions. Its time cost is in A8.
+
+**Covers the label leaves blank.** Two covers (the leggings, and the top and leggings) are all grey on grey once labelled, and `readCoverAsDataUrl` refuses them as near-blank, as it should a "Remove this layer" notice. So the 4B answered them from the names alone ("A digital leggings designed for female wear", one tag) and the 9B kept its first answer. A profile can now name a `blankFallback` fill. With the soft blur there, the 4B (ck-7e) says "White leggings on neutral background ... also called workout tights" and "Monochrome athletic wear", with every score as ck-7b's; it is in the app (`0d2246a`). The 9B (ck-9e) gets the leggings right but calls the top and leggings "a grey athletic bodysuit" in two passes of three, losing "tank top"; a wrong object name is worse than leftover sample colours, so the 9B goes without it.
+
+### A8. The app's own code, and the time cost
+
+**The app gives the eval's answers.** The `app` eval version runs the app's own provider and each model's shipped profile:
+- Apple, all 90 covers: 90 of 90 answers identical to ap-10s.
+- 9B, the 19 covers it answers again (57 answers): 57 of 57 identical to ck-9d.
+- 4B, the 32 trouble covers plus the top and leggings (99 answers): 89 identical to ck-7e. The other 10 follow a redo, and the eval's redo note had a slip the app's doesn't ("there is no a lamp in it"); merged into the full run, the app's answers score the same as ck-7e to 0.1 point (87.3 / 85.4, 87.8 / 81.7, 85.3 / 80.8; inventions 0 / 0 / 0; placeholder 9.4 / 10.0 / 0%).
+
+**Time per mockup.** Ten covers per model, today's version against the app's, run back to back twice (A, B, A, B) with nothing else of mine running. Other work on the machine moved token speed between pairs (the 9B ran at 32, 12, 24 and 23 tokens a second), so each pair is read only against itself; in the second pair both sides ran at the same speed.
+
+| Model | Today | In the app | Requests per mockup |
+|---|---|---|---|
+| Apple | 2.7 s (ap-6) | 2.6 s (ap-10s) | one helper call each |
+| 4B | 4.0 s, 5.2 s (ck-2) | 6.8 s, 8.5 s (ck-7e) | 1.5 to 2.7 |
+| 9B | 10.8 s (ck-2) | 12.9 s (ck-9d) | 1.4 to 2.0 |
+
+- Apple costs nothing: the soft fill replaces the cover it was already sent.
+- The 4B costs about two thirds more. Every masked cover adds the object question, and the scene check now looks at a different image (the cover as it is) from the one answered, so each check encodes an image of its own.
+- The 9B costs about a fifth more on average. A cover with no colour or pattern word costs nothing extra; each word checked adds about a second; a cover answered again adds about 7 s (the blue-grid long scroll: 15.1 to 22.6 s).
+- The slot mask is made once at import (in a worker) and each fill once per cover on its first analysis; neither is counted here, since the eval's are already on disk.
+
+### A, in sum
+
+| Model | In the app | Found / right (tuning, held-out, sign-off) | Invented | Placeholder (all answers) | Time |
+|---|---|---|---|---|---|
+| Apple | ap-10s: soft blur, check on the cover, redo (`d808ea8`) | 83.7 / 84.5, 85.0 / 80.9, 82.7 / 81.9 (was 79.7 / 79.1, 82.8 / 78.9, 79.4 / 77.1) | 2.6, 0, 4.8% (was 2.6, 3.3, 4.8%) | 6% (was 48%) | same |
+| 4B | ck-7e: label, mask rule, object name from the cover, check on the cover, redo, soft where the label leaves it blank (`0567dfc`, `0d2246a`) | 87.3 / 85.5, 87.8 / 81.7, 85.3 / 80.8 (was 87.2 / 85.5, 88.3 / 82.2, 85.3 / 81.3) | 0, 0, 0% (was 5.1, 0, 1.6%) | 7% (was 40%) | +65% |
+| 9B | ck-9d: answer from the cover, check colour and pattern words on the blurred slot, answer again from the label with the first answer, redo (`0d2246a`) | 92.3 / 86.8, 92.6 / 82.6, 90.6 / 84.2 (was 92.7 / 87.5, 92.9 / 82.8, 91.3 / 85.1) | 6.0, 0, 0% (same) | 17% (was 30%) | +20% |
+
+Apple and the 4B meet the target on all three sets. The 9B does not: placeholder mentions halve but stay at one answer in six, and its recall is within the pass-to-pass spread on two sets and about half a point under it on sign-off. Every version tried that masks the 9B's cover first cost it 2 to 7 points of recall, because it reads exact names from the sample art.
+
+
+### The pause (2026-10-23)
+
+Neesh paused the work on 2026-10-23 and it resumed the same day. One lesson from it holds: run one model at a time. With Apple, the 4B and the 9B running together, the 9B slowed from about 11 s to 47 s per mockup and the 4B from about 9 s to 20 s. Everything since has run in turn in one Solo terminal, each run logging to `tmp/round3/run-<model>-<version>.log` for the progress view.
+
+### For Neesh
 
 1. **The gold describes placeholders in 37 of 90 entries** (violet lighters, blue flags, purple gift card holders, gradient leggings, dark iMac screens). By your rule these words shouldn't be there. Should the gold entries drop them? It barely changes the search scores (no search depends on them), but it changes what "right" means for colour words.
-2. **The apparel and print slots cover the whole product.** On the leggings, top, T-shirt and flags, the "placeholder" is the fabric print itself, so a masked cover gives no colour at all ("three blank flags"). That matches "never describe the placeholder", but it means those mockups get no colour. Is that what you want?
-3. **The books are a code bug as well as a model one.** Apple's check says "no" to a book on those covers, but the app's `withoutThing` can't cut "on a stack of white books". The eval's `r3.ts` version fixes it; the app fix waits for your go-ahead.
+2. **The apparel and print slots cover the whole product.** On the leggings, top, T-shirt and flags, the "placeholder" is the fabric print itself, so a masked cover gives no colour at all ("three blank flags", "white leggings"). That matches "never describe the placeholder", but it means those mockups get no colour. Is that what you want?
+3. **The books were a code bug as well as a model one.** Apple's check says "no" to a book on those covers, but the app's `withoutThing` couldn't cut "on a stack of white books". Fixed in the app with your go-ahead (`28a9739`): it now cuts the whole phrase, "resting on a stack of" included.
+4. **The 9B still describes the placeholder in about one answer in six** (Apple one in eighteen, the 4B one in fourteen). Most of what is left is where the colour really is elsewhere in the picture (blue sky behind blue flags). The next thing to try is asking about the object itself ("Are the flags blue?") in place of the whole image.
+5. **Apple's bad "also called" names fall but stay**: from 30% of its answers to 18% with the soft blur, since the placeholder supplied many of them ("a MacBook, also called a website"). A rule that holds the other names to real names halves them but costs 1.5 to 3.8 points of recall (ap-9, A3), so it is not in the app. Dropping the "also called" request for Apple alone is the other way to go; it would cost the searches those names win.
+6. **The 4B is about two thirds slower per mockup** (about 5 s to 8.5 s here). The checks could look at the masked image the answer came from to save the extra image encodes, but on the masked image they miss things read into the painted slot.
