@@ -1,5 +1,5 @@
-// Font rules for build-tokens.mjs: which family is the display face, which CSS variable a text
-// style uses, its weight, and the font stack. Pure, so fonts.test.ts can check them.
+// Text style rules for build-tokens.mjs: which family is the display face, which CSS variable a
+// style uses, its weight and line height, and the font stack. Pure, so fonts.test.ts can check them.
 
 /** Figma style names → CSS weights. Inter spells them with a space, newer fonts without. */
 const WEIGHT = {
@@ -18,6 +18,16 @@ const WEIGHT = {
 }
 
 export const weightOf = (style) => WEIGHT[style] ?? 400
+
+/**
+ * A percentage line height (Figma's lineHeightPercent, 140 for 140%) becomes unitless (1.4), so it
+ * scales with the font size. Figma stores percentages as floats (130.00000476837158), hence the
+ * rounding. Without one, px; without either, normal.
+ */
+export function lineHeightOf({ lineHeight, lineHeightPercent }) {
+  if (lineHeightPercent != null) return String(Math.round(lineHeightPercent * 100) / 10000)
+  return lineHeight ? `${lineHeight}px` : 'normal'
+}
 
 /** The display family is the one the display/* styles use; body is the body/* styles' family. */
 export function fontFamilies(textStyles) {

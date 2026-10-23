@@ -298,7 +298,8 @@ function TextStyles() {
             <div className="flex w-64 shrink-0 flex-col">
               <code className="text-sm">{s.utility}</code>
               <span className="text-xs text-muted-foreground">
-                {s.family} {s.style} · {s.size}/{s.lineHeight}
+                {s.family} {s.style} · {s.size}/
+                {s.lineHeightPercent != null ? `${Math.round(s.lineHeightPercent)}%` : s.lineHeight}
               </span>
             </div>
             <span className={s.utility}>Mockups, sorted and searchable</span>

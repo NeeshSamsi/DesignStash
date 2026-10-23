@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error plain ESM helper with no types
-import { fontFamilies, fontStack, fontVariable, weightOf } from './fonts.mjs'
+import { fontFamilies, fontStack, fontVariable, lineHeightOf, weightOf } from './fonts.mjs'
 
 const style = (name: string, family: string, weight = 'Regular') => ({
   name,
@@ -30,6 +30,24 @@ describe('weightOf', () => {
 
   it('falls back to regular for a name it does not know', () => {
     expect(weightOf('Book')).toBe(400)
+  })
+})
+
+describe('lineHeightOf', () => {
+  it('turns a percentage into a unitless line height', () => {
+    expect(lineHeightOf({ lineHeight: null, lineHeightPercent: 140 })).toBe('1.4')
+    expect(lineHeightOf({ lineHeight: null, lineHeightPercent: 120 })).toBe('1.2')
+    expect(lineHeightOf({ lineHeight: null, lineHeightPercent: 130.00000476837158 })).toBe('1.3')
+  })
+
+  it('prefers the percentage when a style has both', () => {
+    expect(lineHeightOf({ lineHeight: 20, lineHeightPercent: 150 })).toBe('1.5')
+  })
+
+  it('falls back to px, then to normal', () => {
+    expect(lineHeightOf({ lineHeight: 20, lineHeightPercent: null })).toBe('20px')
+    expect(lineHeightOf({ lineHeight: 20 })).toBe('20px')
+    expect(lineHeightOf({ lineHeight: null, lineHeightPercent: null })).toBe('normal')
   })
 })
 

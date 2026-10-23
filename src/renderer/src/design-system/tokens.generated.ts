@@ -1322,6 +1322,7 @@ export const TOKENS = {
       style: 'Semi Bold',
       size: 30,
       lineHeight: 36,
+      lineHeightPercent: null,
       description: 'Onboarding hero titles (Tailwind text-3xl).'
     },
     {
@@ -1331,6 +1332,7 @@ export const TOKENS = {
       style: 'Medium',
       size: 24,
       lineHeight: 32,
+      lineHeightPercent: null,
       description: 'Breadcrumb / page title, current page.'
     },
     {
@@ -1340,6 +1342,7 @@ export const TOKENS = {
       style: 'Regular',
       size: 24,
       lineHeight: 32,
+      lineHeightPercent: null,
       description: 'Breadcrumb / page title, regular part.'
     },
     {
@@ -1349,6 +1352,7 @@ export const TOKENS = {
       style: 'Semi Bold',
       size: 18,
       lineHeight: 28,
+      lineHeightPercent: null,
       description: 'Dialog, card and section titles (text-lg).'
     },
     {
@@ -1358,6 +1362,7 @@ export const TOKENS = {
       style: 'Regular',
       size: 16,
       lineHeight: 24,
+      lineHeightPercent: null,
       description: 'Nav items, larger body.'
     },
     {
@@ -1367,6 +1372,7 @@ export const TOKENS = {
       style: 'Regular',
       size: 14,
       lineHeight: 20,
+      lineHeightPercent: null,
       description: 'Default body text (text-sm).'
     },
     {
@@ -1376,6 +1382,7 @@ export const TOKENS = {
       style: 'Medium',
       size: 14,
       lineHeight: 20,
+      lineHeightPercent: null,
       description: 'Buttons, emphasised body.'
     },
     {
@@ -1385,6 +1392,7 @@ export const TOKENS = {
       style: 'Regular',
       size: 12,
       lineHeight: 16,
+      lineHeightPercent: null,
       description: 'Meta, counts, helper text (text-xs).'
     },
     {
@@ -1394,6 +1402,7 @@ export const TOKENS = {
       style: 'Medium',
       size: 12,
       lineHeight: 16,
+      lineHeightPercent: null,
       description: 'Badges, field labels, overlines.'
     }
   ]

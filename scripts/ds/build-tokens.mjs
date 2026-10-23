@@ -24,7 +24,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import prettier from 'prettier'
 import { ROOT, loadSnapshot } from './contract.mjs'
-import { fontFamilies, fontStack, fontVariable, weightOf } from './fonts.mjs'
+import { fontFamilies, fontStack, fontVariable, lineHeightOf, weightOf } from './fonts.mjs'
 
 const snap = loadSnapshot('tokens.json')
 const OUT = resolve(ROOT, 'src/renderer/src/styles')
@@ -143,7 +143,7 @@ const utilities = snap.textStyles.map((s) => {
   const body = [
     `  font-family: var(${fontVariable(s, families)});`,
     `  font-size: ${s.size}px;`,
-    `  line-height: ${s.lineHeight ? `${s.lineHeight}px` : 'normal'};`,
+    `  line-height: ${lineHeightOf(s)};`,
     `  font-weight: ${weightOf(s.style)};`
   ]
   if (s.letterSpacingPercent) body.push(`  letter-spacing: ${s.letterSpacingPercent / 100}em;`)
@@ -228,6 +228,7 @@ const data = {
     style: s.style,
     size: s.size,
     lineHeight: s.lineHeight,
+    lineHeightPercent: s.lineHeightPercent ?? null,
     description: s.description
   }))
 }
