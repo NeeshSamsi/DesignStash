@@ -67,6 +67,8 @@ if (MODE === 'tokens') {
       style: s.fontName.style,
       size: s.fontSize,
       lineHeight: s.lineHeight.unit === 'PIXELS' ? s.lineHeight.value : null,
+      // Text styles set line height as a percentage of the font size (in steps of 10).
+      lineHeightPercent: s.lineHeight.unit === 'PERCENT' ? s.lineHeight.value : null,
       letterSpacingPercent: s.letterSpacing.unit === 'PERCENT' ? s.letterSpacing.value : 0,
       textCase: s.textCase,
       description: s.description
