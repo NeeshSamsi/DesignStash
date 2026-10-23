@@ -254,7 +254,7 @@ export function AiModelPane() {
           </div>
         )}
         {meaning && (
-          <div className="flex flex-col gap-2 px-4 pt-1 pb-4">
+          <div className="flex flex-col gap-2 px-4 pt-3.5 pb-4">
             <p className="type-label-xs-medium text-tertiary">Search</p>
             <MeaningSearchRow
               meaning={meaning}
