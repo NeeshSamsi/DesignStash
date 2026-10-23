@@ -310,3 +310,102 @@ Neesh paused the work on 2026-10-23 and it resumed the same day. One lesson from
 4. **The 9B still describes the placeholder in about one answer in six** (Apple one in eighteen, the 4B one in fourteen). Most of what is left is where the colour really is elsewhere in the picture (blue sky behind blue flags). The next thing to try is asking about the object itself ("Are the flags blue?") in place of the whole image.
 5. **Apple's bad "also called" names fall but stay**: from 30% of its answers to 18% with the soft blur, since the placeholder supplied many of them ("a MacBook, also called a website"). A rule that holds the other names to real names halves them but costs 1.5 to 3.8 points of recall (ap-9, A3), so it is not in the app. Dropping the "also called" request for Apple alone is the other way to go; it would cost the searches those names win.
 6. **The 4B is about two thirds slower per mockup** (about 5 s to 8.5 s here). The checks could look at the masked image the answer came from to save the extra image encodes, but on the masked image they miss things read into the painted slot.
+
+## B. Variants with the top as a reference
+
+### B1. The piles
+
+Piles are what the app's `GroupingService.propose` makes of the eval items when they are all dropped at once (same zip, then same folder, then same name stem), and the top is each pile's first file by name, as in the app (`scripts/ai-eval/prompts/pile.ts`). That gives 13 piles and 31 variants (8 in tuning, 12 held-out, 11 sign-off): 12 piles from zips and the long-scroll MacBooks from their folder, one top and five variants.
+
+In most piles the variants' gold matches the top's: the same product and scene from another angle or crop (iMac, mug, iPhone, gift card holder, apron, stationery, most lighters and books). 12 variants differ from their top in scene or product:
+- the five long-scroll variants: a metal mesh floor, a dark concrete bench, a window ledge, isolated with the sheet rolled up, and floating on grey (the wavy render Neesh named);
+- two menus on a wooden table, where the top is one menu on a plate (menu 3 and 4);
+- the open book (book 4), the white clay Apple Watch, and the isolated boxes whose top stands in a concrete room;
+- the leggings zip, which holds three products: leggings (the top), a tank top, and a top-and-leggings set.
+
+Each variant gets its usual inputs plus the top's suggestion in the app's `groupContext` shape and words: "This is a variant of "<title>" (<description>). Keep the title and tags consistent with it. Its tags: …". The top's suggestion is the same model's answer for the top from its winner run, on the same pass. A second wording (`-own`) replaces the second sentence with "Use the same name for the product and keep the tags consistent with it, but describe what this image shows: its own setting, surface, angle and colours, which may differ from the first one."
+
+What is measured (`pnpm ai-eval:pile-score`, which also writes the winner run with the variants' answers swapped in, `<version>-merged`, for `ai-eval:table`):
+- the searches, found / right, per set;
+- per variant answer: gold inventions, tag support, placeholder mentions, and consistency with the top (tag overlap, share of the top's title words kept);
+- by hand, on the first pass of the 12 variants that differ: answers that carry a detail from the top that is wrong for the variant (scene, pose, product, or the top's own mistake). A word-match count of this proved too noisy ("minimal", "grey" and "against" dominated it).
+
+### B2. The top's suggestion as a reference
+
+Runs: `b-ap`, `b-ap-own` (Apple, one pass), `b-4b`, `b-4b-own`, `b-9b`, `b-9b-own` (three passes), each on the 31 variants, on the shipped winners (ap-10s, ck-7e, ck-9d).
+
+| Model | Variants given | Found / right (tuning, held-out, sign-off) | Tag overlap with top | Tag support | Placeholder (variants) | Wrong detail from the top (of 12) |
+|---|---|---|---|---|---|---|
+| Apple | nothing (ap-10s) | 83.7 / 84.5, 85.0 / 80.9, 82.7 / 81.9 | 0.47 | 62.0% | 0% | 0 |
+| Apple | the top's suggestion | 83.0 / 82.4, 84.0 / 79.9, 82.1 / 80.6 | 0.95 | 56.4% | 6.5% | 9 |
+| Apple | the same, own-scene wording | 83.0 / 82.4, 84.0 / 79.8, 82.1 / 80.2 | 0.93 | 58.1% | 6.5% | 9 |
+| 4B | nothing (ck-7e) | 87.3 / 85.5, 87.8 / 81.7, 85.3 / 80.8 | 0.63 | 62.7% | 3.2% | 0 |
+| 4B | the top's suggestion | 86.6 / 84.2, 87.3 / 80.8, 84.8 / 79.8 | 0.94 | 59.1% | 2.2% | 7 |
+| 4B | the same, own-scene wording | 86.5 / 84.4, 87.2 / 81.0, 84.7 / 79.9 | 0.94 | 58.2% | 1.1% | 6 |
+| 9B | nothing (ck-9d) | 92.3 / 86.8, 92.6 / 82.6, 90.6 / 84.2 | 0.53 | 72.3% | 15.1% | 0 |
+| 9B | the top's suggestion | 91.5 / 86.7, 91.6 / 82.8, 89.4 / 83.0 | 0.89 | 66.4% | 17.2% | 8 |
+| 9B | the same, own-scene wording | 91.5 / 86.7, 91.6 / 82.7, 89.4 / 82.9 | 0.90 | 65.3% | 17.2% | 6 |
+
+No gold inventions with a reference, for any model (the 9B's variants had 3.2% alone; the top's words replaced them). The time per mockup barely moves.
+
+**The consistency is copying.** Tag overlap with the top goes from about 0.5 to about 0.9 for every model, and the titles keep 0.7 to 0.97 of the top's title words (0.62 to 0.65 alone). Where the variant shows the same thing that is harmless, but where it differs the top's words win:
+- **Apple** repeats the top almost word for word. All five long-scroll variants become "Long scroll laptop on paper stack", which is the top's own invention. The clay watch becomes "Apple Watch Ultra - Realistic … with silver and yellow accents", the isolated boxes "White box in concrete room", and the tank top and the top-and-leggings set both "a pair of leggings". On the same-scene piles it spreads the top's mistakes too: both gift card holders become "a clear plastic holder, also called a pouch" (they are purple hanging card holders; alone, one was named right).
+- **The 4B** carries the top's pose and furniture. Every long-scroll variant "leans against a modular shelf" (or a curved surface, or an abstract form), the isolated boxes stand "on a gray concrete floor", and the open book becomes the top's closed "white book". It keeps its own product names (the tank top stays a tank top) and the menus' wooden table.
+- **The 9B** carries the scene. The menus on wood move "onto a grey ceramic plate in sunlight", the isolated boxes are "in a minimalist concrete room", the window-ledge and rolled-sheet MacBooks sit "on a white bench", and the wavy floating render becomes "Blue grid MacBook on white bench", the top's placeholder included. It also drops names it read right alone: three lighters lose "Zippo-style" for the top's "cigarette lighter".
+
+The own-scene wording saves one or two of the twelve for the Qwen models and none for Apple. The searches fall with every reference, on every set and model: 0.5 to 1.2 points of recall, and up to 2.1 of precision for Apple. The steps are small, but they all point the same way, and only a third of the items changed.
+
+### B3. What the app does today, and product names alone
+
+The app already gives variants a reference, in one case: once the pile's top is stashed, `pileContextFor` (`src/main/ai/inference-queue.ts`) passes its approved title, description and tags in the same words. Three more runs per model, on the same 31 variants:
+- `b-*-gold`: today's path, with the top's gold standing in for the words a person approved;
+- `b-*-name`: the top's suggestion cut to its product names (its Device, Print & Branding and Apparel tags), with no title, description or scene tags: "It is one of several mockups of the same product, which the first one names: Laptop. Use those names where this image shows that product, and describe this image's own setting, surface, angle and colours." (`productOnlyLines` in `pile.ts`);
+- `b-*-goldname`: the same lines from the approved tags (gold), which is what `pileContextFor` would pass if it were cut to names.
+
+| Model | Variants given | Found / right (tuning, held-out, sign-off) | Tag overlap with top | Placeholder (variants) | Invented (variants) | Wrong detail from the top (of 12) |
+|---|---|---|---|---|---|---|
+| Apple | nothing (ap-10s) | 83.7 / 84.5, 85.0 / 80.9, 82.7 / 81.9 | 0.47 | 0% | 0% | 0 |
+| Apple | approved words (today) | 84.1 / 85.2, 84.9 / 80.7, 83.9 / 83.9 | | 22.6% | 0% | 9 |
+| Apple | product names | 83.0 / 83.1, 84.5 / 80.2, 82.1 / 80.6 | 0.45 | 0% | 0% | 0 |
+| Apple | approved product names | 83.0 / 83.1, 84.5 / 80.2, 82.1 / 80.6 | 0.43 | 0% | 0% | 1 |
+| 4B | nothing (ck-7e) | 87.3 / 85.5, 87.8 / 81.7, 85.3 / 80.8 | 0.63 | 3.2% | 0% | 0 |
+| 4B | approved words (today) | 87.5 / 85.5, 88.4 / 80.9, 86.3 / 81.9 | | 6.5% | 0% | 3 |
+| 4B | product names | 87.1 / 84.6, 87.7 / 81.0, 85.2 / 80.1 | 0.57 | 6.5% | 0% | 0 |
+| 4B | approved product names | 87.0 / 84.6, 87.6 / 80.7, 85.1 / 80.1 | 0.57 | 5.4% | 0% | 0 |
+| 9B | nothing (ck-9d) | 92.3 / 86.8, 92.6 / 82.6, 90.6 / 84.2 | 0.53 | 15.1% | 3.2% | 0 |
+| 9B | approved words (today) | 92.4 / 87.1, 92.2 / 83.1, 90.9 / 84.4 | | 23.7% | 3.2% | 7 |
+| 9B | product names | 92.5 / 87.4, 92.9 / 82.9, 90.9 / 84.7 | 0.56 | 12.9% | 1.1% | 0 |
+| 9B | approved product names | 92.0 / 86.9, 92.4 / 82.5, 90.5 / 84.2 | 0.53 | 12.9% | 2.2% | 0 |
+
+(Tag overlap is measured against the top's draft, so it means nothing for the approved-words runs.)
+
+**Today's path carries the scene too.** With the approved words, 9 (Apple), 3 (4B) and 7 (9B) of the 12 differing variants take a detail from the top that is wrong for them:
+- Apple puts the floating render, the isolated one and the mesh-floor one "on a light grey wall" and the concrete-bench one "on a white slatted bench", gives the clay watch the top's "yellow and beige trail loop bands", stands the isolated boxes "in a bright concrete room", and calls the tank top and the set "gradient leggings";
+- the 9B copies the top's sentence "in a bright concrete room with stairs" onto the isolated boxes word for word, moves both menus on wood onto the plate, sets three long-scroll variants "on a white bench", and calls the set "leggings";
+- the 4B is the most careful (the clay watch's "trail loop bands", the boxes' "concrete interior", one menu title on the plate).
+The searches look as good or better, but that flatters it: the reference here is the gold itself, and most variants share their top's gold word for word, so copying it is copying the answer. Placeholder mentions rise for Apple and the 9B (to 23 and 24% of variant answers), because the gold names the sample art's colours (item 1 of "For Neesh" above); a person who approves such words would see the same.
+
+**Product names alone carry none of it.** No variant took a wrong detail from the top, for any model, and Apple's invented "paper" (tagged Print & Branding on its long-scroll top) did not spread either. The mixed leggings pile came through too: the tank top stayed a tank top for every model, and the set became "athletic wear" (4B), "a female athletic set" (9B) or "a bodysuit" (Apple). What it buys differs by model:
+- **9B:** a little better on every number. Found and right rise by 0.2 to 0.6 on all three sets, placeholder mentions on variants fall from 15.1 to 12.9%, and inventions from 3.2 to 1.1%. Consistency barely moves (tag overlap 0.53 to 0.56). The steps are within the spread, but all point the same way.
+- **4B:** recall holds (0.1 to 0.2 under), right falls 0.7 to 0.9, placeholder mentions on variants go from 3 to 6 answers of 93, and consistency falls (0.63 to 0.57).
+- **Apple:** found falls 0.5 to 0.7 and right 0.7 to 1.4, and three variants of 31 get their file name as a title ("DL_Menu_Mockup_3"; one alone). There is no consistency gained (0.47 to 0.45).
+
+**Taken from the approved tags, the names buy nothing either.** The 9B's small gain goes (found 0.1 to 0.3 under alone, right within 0.1), the 4B loses 0.7 to 1.0 of right again, and Apple calls the top-and-leggings set "leggings" (the top's approved name) and gives 6 of 31 variants their file name as a title ("Lighter_Mockup_3"). Consistency stays where it was alone for every model.
+
+### B, in sum
+
+| Model | Best option | Why |
+|---|---|---|
+| Apple | each variant alone | Every reference makes it copy: the top's words (draft or approved) carry the scene onto 9 of 12; product names leave consistency where it was and cost 0.5 to 1.4 points and more file-name titles. |
+| 4B | each variant alone | The draft words carry the scene onto 6 or 7 of 12 and the approved words onto 3; product names cost 0.7 to 1.0 of right and gain no consistency. |
+| 9B | each variant alone | The draft words carry the scene onto 6 to 8 of 12 and the approved words onto 7; product names are safe and within the spread, so not worth a change. |
+
+No reference passes the test the brief set: the consistency they bring is the top's words, and where a variant's scene differs those words are wrong for it. Product names alone are the one safe form, but they don't make variants more consistent, so there is nothing to ship from B.
+
+The app gives variants the stashed top's approved words today, and that path copies the scene now (3, 7 and 9 of the 12 differing variants for the 4B, 9B and Apple). Making `pileContextFor` return nothing would analyse every variant alone, a one-line change with its tests. It isn't made, because it removes a behaviour Neesh chose. Where the variants do share the scene, the consistent words can come from the person's own edits instead: that is experiment C.
+
+### For Neesh (B)
+
+1. **Should variants stop getting the stashed top's words?** Today they do, and the models copy the top's scene from them onto variants whose scene differs: Apple and the 9B do it on most such variants, the 4B on a quarter. I recommend analysing every variant alone (`pileContextFor` returns null). Product names alone are safe but gain nothing measurable.
+2. **One zip can hold different products.** The leggings zip holds leggings, a tank top and a top-and-leggings set, and the grouping makes them one pile because it groups by zip first. Any reference from the top then risks naming the other two "leggings" (Apple did with the top's words, draft or approved, and with its approved name). Should a zip's files with different name stems become separate piles?
+
