@@ -96,12 +96,11 @@ export function SidebarNav({
       aria-label="Primary"
       className={cn(sidebarNavVariants({ variant: props.variant }), className)}
     >
-      {props.add}
       <div data-slot="brand" className={sidebarNavBrandClass}>
         <span aria-hidden className={sidebarNavLogoClass}>
           <HugeiconsIcon icon={Layers01Icon} strokeWidth={ICON_STROKE} className="size-4" />
         </span>
-        <span className="type-title-lg-semibold whitespace-nowrap text-foreground">
+        <span className="type-title-sm-semibold whitespace-nowrap text-foreground">
           DesignStash
         </span>
       </div>

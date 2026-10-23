@@ -1,7 +1,8 @@
 import { cva } from 'class-variance-authority'
 
-// Figma AddMenu 218:1767. The trigger is Button (primary, lg); while the menu is open it keeps
-// the 2px focus ring. The menu panel is DropdownMenu.
+// Figma AddMenu 218:1767. The trigger is Button (primary, base: lg's padding spilled "Add a mockup"
+// in Funnel Sans) and fills the sidebar column; while the menu is open it keeps the 2px focus ring.
+// The menu panel is DropdownMenu.
 export const addMenuVariants = cva('flex w-full flex-col gap-1', {
   variants: {
     open: { true: '', false: '' },

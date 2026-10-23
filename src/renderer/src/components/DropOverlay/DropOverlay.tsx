@@ -5,11 +5,14 @@ import { cn } from '@renderer/lib/utils'
 import { DROP_OVERLAY_DEFAULTS, type DropOverlayContractProps } from './DropOverlay.types'
 import {
   dropOverlayIconVariants,
+  dropOverlayTitleVariants,
   dropOverlayVariants,
   dropOverlayZoneVariants
 } from './DropOverlay.variants'
 
 export interface DropOverlayProps extends DropOverlayContractProps {
+  /** Inside a small area such as the cover: the title drops to title/lg so it fits. */
+  compact?: boolean
   className?: string
 }
 
@@ -24,7 +27,7 @@ const ICONS = {
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1990
  * Fills the nearest positioned ancestor (AppWindow). Drag handling lives in the app, not here.
  */
-export function DropOverlay({ className, ...rest }: DropOverlayProps) {
+export function DropOverlay({ className, compact = false, ...rest }: DropOverlayProps) {
   const props = { ...DROP_OVERLAY_DEFAULTS, ...rest }
   return (
     <div
@@ -41,7 +44,7 @@ export function DropOverlay({ className, ...rest }: DropOverlayProps) {
             className={dropOverlayIconVariants({ state: props.state })}
           />
         </div>
-        <p className="type-display-2xl-medium text-foreground">{props.title}</p>
+        <p className={dropOverlayTitleVariants({ compact })}>{props.title}</p>
         <p className="type-body-sm-regular text-muted-foreground">{props.description}</p>
       </div>
     </div>

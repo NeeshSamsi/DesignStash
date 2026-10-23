@@ -45,7 +45,7 @@ export function AddMenu({
         {...(onOpenChange ? { onOpenChange } : {})}
         align="start"
         trigger={
-          <Button size="lg" disabled={disabled} className={addMenuTriggerClass}>
+          <Button disabled={disabled} className={addMenuTriggerClass}>
             <HugeiconsIcon icon={AddSquareIcon} strokeWidth={ICON_STROKE} />
             Add a mockup
           </Button>

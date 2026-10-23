@@ -126,7 +126,7 @@ export function CopyWidget({
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1 pt-2">
-          <p className="w-full truncate type-body-sm-medium text-foreground">{headline}</p>
+          <p className="line-clamp-2 w-full type-body-sm-medium text-foreground">{headline}</p>
           {expanded && note && (
             <p className="w-full type-caption-xs-regular text-muted-foreground">{note}</p>
           )}

@@ -59,7 +59,8 @@ describe('SidebarNav behaviour', () => {
     const { container } = render(<SidebarNav />)
     const brand = container.querySelector('[data-slot="brand"]')!
     expect(brand.textContent).toBe('DesignStash')
-    expect(brand.className).toContain('pl-2')
+    // Flush left: the brand row has no side padding (Figma 2026-10-23).
+    expect(brand.className).not.toMatch(/\bp[lrx]-/)
     expect(brand.className).toContain('gap-2')
     expect(brand.className).toContain('py-2')
     const logo = brand.querySelector('span[aria-hidden]')!
@@ -68,7 +69,7 @@ describe('SidebarNav behaviour', () => {
     expect(logo.className).toContain('bg-primary')
     expect(logo.querySelector('svg')!.getAttribute('class')).toContain('size-4')
     const name = screen.getByText('DesignStash')
-    expect(name.className).toContain('type-title-lg-semibold')
+    expect(name.className).toContain('type-title-sm-semibold')
     expect(name.className).toContain('whitespace-nowrap')
     const myStash = screen.getByText('My Stash')
     expect(brand.compareDocumentPosition(myStash) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

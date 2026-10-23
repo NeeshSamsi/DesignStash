@@ -4,7 +4,7 @@ import { cva } from 'class-variance-authority'
 export const emptyStateVariants = cva('mx-auto flex w-full flex-col items-center text-center', {
   variants: {
     variant: {
-      page: 'max-w-100 gap-4 p-12',
+      page: 'max-w-120 gap-4 p-12',
       inline: 'max-w-80 gap-3 p-6'
     }
   },
