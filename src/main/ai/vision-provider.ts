@@ -5,6 +5,7 @@ import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
 import { objectHintLine, objectHintRequest, readObjectHint } from './object-hint'
+import { placeholderQuestion, placeholderWordsIn, withoutWords } from './placeholder-check'
 import type { PromptProfile } from './prompts/profile'
 import { isPlaceholder } from '../psd/placeholder'
 import {
@@ -347,15 +348,17 @@ export async function readCoverAsDataUrl(path: string): Promise<string | null> {
  * greedy token held to "yes" or "no", with logprobs, so `pYes` can read how sure the model is.
  */
 function sceneThingRequest(answerRequest: ChatRequest, thing: string, imageUrl?: string): object {
+  return yesNoRequest(answerRequest, `Look only at the image. ${sceneQuestion(thing)}`, imageUrl)
+}
+
+/** One greedy one-token yes/no question with logprobs, on the given image or the answer's own. */
+function yesNoRequest(answerRequest: ChatRequest, text: string, imageUrl?: string): object {
   const [system, user] = answerRequest.messages
   const image = imageUrl
     ? [{ type: 'image_url', image_url: { url: imageUrl } }]
     : (user!.content as ChatContentPart[]).filter((p) => p.type === 'image_url')
   return {
-    messages: [
-      system,
-      { role: 'user', content: [...image, { type: 'text', text: `Look only at the image. ${sceneQuestion(thing)}` }] }
-    ],
+    messages: [system, { role: 'user', content: [...image, { type: 'text', text }] }],
     grammar: 'root ::= "yes" | "no"',
     temperature: 0,
     max_tokens: 1,
@@ -413,7 +416,41 @@ export class VisionInferenceProvider implements InferenceProvider {
         .catch(() => answer)
     }
     for (const thing of refused) answer = withoutThing(answer, thing)
+    if (prompt.verify && !masked) answer = await this.verified(input, request, answer, prompt.verify)
     return answer
+  }
+
+  /**
+   * The reverse two looks (`placeholder-check.ts`): each colour or pattern word in an answer made
+   * from the cover as it is is asked about on the cover with its slot masked; when one is only on the
+   * slot, the answer is made again from the cover masked for answering, told the object's name.
+   */
+  private async verified(
+    input: AnalysisInput,
+    request: ChatRequest,
+    answer: InferenceResult,
+    verify: NonNullable<PromptProfile['verify']>
+  ): Promise<InferenceResult> {
+    const { prompt, readImage, complete } = this.deps
+    const masked = this.deps.maskedCover ?? maskedCoverPath
+    const checkPath = await masked(input.imagePath, verify.check)
+    const checkUrl = checkPath ? await readImage(checkPath) : null
+    if (!checkUrl) return answer
+    const onlyOnSlot: string[] = []
+    for (const word of placeholderWordsIn(answer)) {
+      const p = await complete(yesNoRequest(request, placeholderQuestion(word), checkUrl))
+        .then((reply) => pYes(reply.logprobs))
+        .catch(() => null)
+      if (p !== null && p < SCENE_CHECK_THRESHOLD) onlyOnSlot.push(word)
+    }
+    if (onlyOnSlot.length === 0) return answer
+    const againPath = await masked(input.imagePath, verify.remask)
+    const againUrl = againPath ? await readImage(againPath) : null
+    if (!againUrl) return answer
+    const again = withNote(prompt.buildRequest({ ...input, slotMasked: true }, againUrl), objectHintLine(withoutWords(answer.title, onlyOnSlot)))
+    return complete(again)
+      .then((reply) => prompt.parseResult(reply.text))
+      .catch(() => answer)
   }
 
   async dispose(): Promise<void> {

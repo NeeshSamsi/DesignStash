@@ -373,6 +373,59 @@ describe('VisionInferenceProvider with a masked design slot', () => {
   })
 })
 
+describe('VisionInferenceProvider placeholder check (verify)', () => {
+  const SOFT = 'data:image/jpeg;base64,SOFT'
+  const LABEL = 'data:image/jpeg;base64,LABEL'
+  const GRID = { title: 'Blue grid MacBook on white bench', description: 'A MacBook with a blue grid screen on a white bench.', tags: [] }
+  const CLEAN = { title: 'Long scroll MacBook on white bench', description: 'A MacBook on a white bench.', tags: [] }
+
+  function verifying(says: Record<string, 'yes' | 'no'>, masks = true) {
+    const calls: object[] = []
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      calls.push(req)
+      const text = JSON.stringify(req)
+      const word = /Is anything in this image ([a-z]+) in colour|Is there an? ([a-z]+) in this image/.exec(text)
+      if (word) {
+        const yes = says[word[1] ?? word[2]!] === 'yes'
+        return { text: yes ? 'yes' : 'no', logprobs: { content: [{ top_logprobs: [{ token: yes ? 'yes' : 'no', logprob: 0 }] }] } }
+      }
+      return { text: JSON.stringify(text.includes(LABEL) ? CLEAN : GRID) }
+    })
+    const provider = new VisionInferenceProvider('m', {
+      prompt: { ...SHIPPED, verify: { check: 'soft', remask: 'label' } },
+      complete,
+      readImage: async (path) => (path.includes('soft') ? SOFT : path.includes('label') ? LABEL : IMAGE),
+      maskedCover: async (_path, fill) => (masks ? `/m/cover-ai-${fill}.png` : null)
+    })
+    return { provider, calls }
+  }
+
+  it('answers from the cover as it is, and keeps the answer when every word is also outside the slot', async () => {
+    const { provider, calls } = verifying({ blue: 'yes', grid: 'yes' })
+    await expect(provider.analyze(INPUT)).resolves.toEqual(GRID)
+    expect(userParts(calls[0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+    expect(userParts(calls[1] as ChatRequest)).toEqual([
+      { type: 'image_url', image_url: { url: SOFT } },
+      { type: 'text', text: 'Look only at the image. Is anything in this image blue in colour? Answer yes or no.' }
+    ])
+    expect(calls).toHaveLength(3)
+  })
+
+  it('answers again from the labelled cover, named from the first title, when a word is only on the slot', async () => {
+    const { provider, calls } = verifying({ blue: 'no', grid: 'yes' })
+    await expect(provider.analyze(INPUT)).resolves.toEqual(CLEAN)
+    const again = calls[3] as ChatRequest
+    expect(userParts(again)[0]).toEqual({ type: 'image_url', image_url: { url: LABEL } })
+    expect(userText(again)).toContain('Seen in full, the main object is: grid MacBook on white bench. Use that name for it.')
+  })
+
+  it('checks nothing for a mockup without a slot mask', async () => {
+    const { provider, calls } = verifying({}, false)
+    await expect(provider.analyze(INPUT)).resolves.toEqual(GRID)
+    expect(calls).toHaveLength(1)
+  })
+})
+
 describe('buildRequest', () => {
   it('constrains the reply with the JSON schema: 3 to 6 tags in the seed categories', () => {
     const req = buildRequest(INPUT, IMAGE)

@@ -35,4 +35,11 @@ export interface PromptProfile {
    * masked request (`object-hint.ts`), so the product keeps its name when its sample art is hidden.
    */
   objectHint?: boolean
+  /**
+   * The reverse two looks, for a model that names products from their sample art (the 9B): it answers
+   * from the cover as it is; each colour or pattern word is asked about on the cover masked with
+   * `check`, and when one is only on the slot the answer is made again from the cover masked with
+   * `remask`, told the object's name (`placeholder-check.ts`). Used without `mask`.
+   */
+  verify?: { check: MaskFill; remask: MaskFill }
 }
