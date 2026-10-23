@@ -6,6 +6,7 @@ import {
   defaultSelection,
   downloadLabel,
   hardwareView,
+  meaningCardState,
   modelDetail,
   partialDownload,
   rowView
@@ -219,5 +220,39 @@ describe('downloadLabel', () => {
 
   it('is plain Download with nothing picked', () => {
     expect(downloadLabel(null, meaning, null, true)).toBe('Download')
+  })
+})
+
+describe('meaningCardState', () => {
+  const meaning = {
+    id: 'nomic-embed-v1.5',
+    installed: false,
+    sizeBytes: 146_146_432,
+    downloadedBytes: 0
+  }
+  const event = (phase: AiDownloadProgress['phase']): AiDownloadProgress => ({
+    modelId: meaning.id,
+    receivedBytes: 10,
+    totalBytes: meaning.sizeBytes,
+    phase
+  })
+
+  it('follows the switch until the download starts', () => {
+    expect(meaningCardState(meaning, null, true)).toBe('on')
+    expect(meaningCardState(meaning, null, false)).toBe('off')
+  })
+
+  it('treats a paused download like one not started', () => {
+    const paused = { ...meaning, downloadedBytes: 40_000_000 }
+    expect(meaningCardState(paused, null, true)).toBe('on')
+    expect(meaningCardState(paused, null, false)).toBe('off')
+  })
+
+  it('follows the download once it has started, whatever the switch says', () => {
+    expect(meaningCardState(meaning, event('downloading'), false)).toBe('downloading')
+    expect(meaningCardState(meaning, event('verifying'), false)).toBe('checking')
+    expect(meaningCardState(meaning, event('error'), false)).toBe('failed')
+    expect(meaningCardState(meaning, event('done'), false)).toBe('ready')
+    expect(meaningCardState({ ...meaning, installed: true }, null, false)).toBe('ready')
   })
 })

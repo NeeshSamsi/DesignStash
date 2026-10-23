@@ -2,21 +2,22 @@ import { ArrowReloadHorizontalIcon, WifiDisconnected01Icon } from '@hugeicons/co
 import { ChoiceDialog } from '@renderer/components/ChoiceDialog'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { HardwareSummary } from '@renderer/components/HardwareSummary'
+import { MeaningSearchCard } from '@renderer/components/MeaningSearchCard'
 import { ModelPicker } from '@renderer/components/ModelPicker'
 import { ModelRow } from '@renderer/components/ModelRow'
 import { OnboardingStep } from '@renderer/components/OnboardingStep'
 import { Switch } from '@renderer/components/Switch'
-import { formatBytes } from '../settings/settings-copy'
+import { formatBytes, meaningLine } from '../settings/settings-copy'
 import {
   aiHeading,
   aiScreen,
   downloadLabel,
   hardwareView,
+  meaningCardState,
   modelDetail,
   rowView,
   type AiScreen
 } from './ai-setup'
-import { MeaningSearchCard } from './MeaningSearchCard'
 import { AI_STEP } from './onboarding-copy'
 import { continueInBackground } from './background-download'
 import { useAiSetup } from './useAiSetup'
@@ -138,10 +139,9 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
         />
         {ai.meaning && screen !== 'unsupported' && (
           <MeaningSearchCard
-            meaning={ai.meaning}
-            event={ai.meaningEvent}
-            on={ai.meaningOn}
-            onChange={ai.setMeaningOn}
+            state={meaningCardState(ai.meaning, ai.meaningEvent, ai.meaningOn)}
+            status={meaningLine(ai.meaning, ai.meaningEvent, ai.meaningOn)}
+            onCheckedChange={ai.setMeaningOn}
           />
         )}
       </div>
