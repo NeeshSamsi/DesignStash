@@ -293,6 +293,49 @@ describe('VisionInferenceProvider with a masked design slot', () => {
     expect(buildRequest.mock.calls[0]![0]).toEqual(INPUT)
   })
 
+  it('with an object hint, names the object from the cover as it is and tells the masked request', async () => {
+    const calls: object[] = []
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      calls.push(req)
+      const text = JSON.stringify(req)
+      if (/What kind of object is this mockup of/.test(text)) return { text: JSON.stringify({ object: 'boxes' }) }
+      return { text: JSON.stringify(BOXES) }
+    })
+    const readImage = vi.fn(async (path: string) => (path.includes('cover-ai') ? MASKED : IMAGE))
+    const provider = new VisionInferenceProvider('m', {
+      prompt: { ...SHIPPED, mask: 'label', objectHint: true },
+      complete,
+      readImage,
+      maskedCover: async () => '/library/mockups/1/cover-ai-label.png'
+    })
+    await expect(provider.analyze(INPUT)).resolves.toEqual(BOXES)
+    const hint = calls[0] as ChatRequest
+    expect(userParts(hint)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+    expect(userText(hint)).not.toContain(INPUT.fileName)
+    const answer = calls[1] as ChatRequest
+    expect(userParts(answer)[0]).toEqual({ type: 'image_url', image_url: { url: MASKED } })
+    expect(userText(answer)).toContain('Seen in full, the main object is: boxes. Use that name for it.')
+  })
+
+  it('answers without a hint when naming the object fails, and asks none without a mask', async () => {
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      if (/What kind of object/.test(JSON.stringify(req))) throw new Error('answered 500')
+      return { text: JSON.stringify(BOXES) }
+    })
+    const provider = (mask: string | null) =>
+      new VisionInferenceProvider('m', {
+        prompt: { ...SHIPPED, mask: 'label', objectHint: true },
+        complete,
+        readImage: async () => IMAGE,
+        maskedCover: async () => mask
+      })
+    await expect(provider('/m/cover-ai-label.png').analyze(INPUT)).resolves.toEqual(BOXES)
+    expect(userText(complete.mock.calls[1]![0] as ChatRequest)).not.toContain('Seen in full')
+    complete.mockClear()
+    await provider(null).analyze(INPUT)
+    expect(complete).toHaveBeenCalledOnce()
+  })
+
   it('asks the scene check about the cover as it is', async () => {
     const { provider, complete } = masked({})
     await provider.analyze(INPUT)

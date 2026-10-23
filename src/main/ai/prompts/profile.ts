@@ -30,4 +30,9 @@ export interface PromptProfile {
    * is the object's own name ("a white cube lamp"), which taking a phrase out can't mend.
    */
   redo?: boolean
+  /**
+   * With a mask: first ask the cover as it is what kind of object the mockup shows, and tell the
+   * masked request (`object-hint.ts`), so the product keeps its name when its sample art is hidden.
+   */
+  objectHint?: boolean
 }

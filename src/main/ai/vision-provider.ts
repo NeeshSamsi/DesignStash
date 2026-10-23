@@ -4,6 +4,7 @@ import type { InferenceProvider, AnalysisInput, InferenceResult } from '../../sh
 import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
+import { objectHintLine, objectHintRequest, readObjectHint } from './object-hint'
 import type { PromptProfile } from './prompts/profile'
 import { isPlaceholder } from '../psd/placeholder'
 import {
@@ -382,11 +383,20 @@ export class VisionInferenceProvider implements InferenceProvider {
     const { prompt } = this.deps
     const masked = prompt.mask ? await (this.deps.maskedCover ?? maskedCoverPath)(input.imagePath, prompt.mask) : null
     const imageUrl = await this.deps.readImage(masked ?? input.imagePath)
-    const request = prompt.buildRequest(masked && imageUrl ? { ...input, slotMasked: true } : input, imageUrl)
+    let request = prompt.buildRequest(masked && imageUrl ? { ...input, slotMasked: true } : input, imageUrl)
+    // The masked cover hides the sample art the model named the product by: name it from the cover as it is.
+    const coverUrl = masked && imageUrl ? await this.deps.readImage(input.imagePath) : null
+    if (prompt.objectHint && coverUrl) {
+      const hint = await this.deps
+        .complete(objectHintRequest(coverUrl))
+        .then((reply) => readObjectHint(reply.text))
+        .catch(() => null)
+      if (hint) request = withNote(request, objectHintLine(hint))
+    }
     let answer = prompt.parseResult((await this.deps.complete(request)).text)
     if (!imageUrl) return answer
     // The check looks at the cover as it is, so a thing read into the painted slot is checked against the real scene.
-    const checkUrl = masked ? ((await this.deps.readImage(input.imagePath)) ?? undefined) : undefined
+    const checkUrl = coverUrl ?? undefined
     const refused: string[] = []
     for (const thing of mentionedThings(answer, prompt.sceneThings ?? [])) {
       const p = await this.deps
