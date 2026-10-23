@@ -77,6 +77,11 @@ describe('prompt profiles', () => {
     expect(text).not.toContain('When it shows the kind of product the names mention')
   })
 
+  it("shows Apple's model the cover with its design slot blurred in grey, and asks again on a refusal", () => {
+    expect(apple).toMatchObject({ mask: 'soft', redo: true })
+    expect(textOf(apple.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))).not.toContain('has been blanked out')
+  })
+
   it('looks a profile up by id, and has none for an unknown id', () => {
     expect(promptProfile('qwen3.5-9b')).toBe(qwen35)
     expect(promptProfile('qwen2.5-vl-3b')).toBeUndefined()
