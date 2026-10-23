@@ -382,7 +382,7 @@ export class VisionInferenceProvider implements InferenceProvider {
     const { prompt } = this.deps
     const masked = prompt.mask ? await (this.deps.maskedCover ?? maskedCoverPath)(input.imagePath, prompt.mask) : null
     const imageUrl = await this.deps.readImage(masked ?? input.imagePath)
-    const request = prompt.buildRequest(input, imageUrl)
+    const request = prompt.buildRequest(masked && imageUrl ? { ...input, slotMasked: true } : input, imageUrl)
     let answer = prompt.parseResult((await this.deps.complete(request)).text)
     if (!imageUrl) return answer
     // The check looks at the cover as it is, so a thing read into the painted slot is checked against the real scene.

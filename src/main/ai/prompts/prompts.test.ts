@@ -3,7 +3,7 @@ import type { AnalysisInput } from '../../../shared/inference'
 import { buildRequest, parseResult, type ChatContentPart, type ChatRequest } from '../vision-provider'
 import { SCENE_THINGS } from '../scene-check'
 import { PROMPT_PROFILES, promptProfile } from '.'
-import { SHIPPED, requestFrom } from './request'
+import { MASK_RULE, SHIPPED, requestFrom } from './request'
 import { profile as apple } from './apple'
 import { profile as qwen35 } from './qwen3.5-9b'
 import { profile as qwen3vl } from './qwen3-vl-4b'
@@ -90,6 +90,22 @@ describe('requestFrom', () => {
       expect(requestFrom(SHIPPED)(input, IMAGE)).toEqual(buildRequest(input, IMAGE))
       expect(requestFrom(SHIPPED)(input, null)).toEqual(buildRequest(input, null))
     }
+  })
+})
+
+describe('requestFrom with a mask rule', () => {
+  const text = (req: ChatRequest) =>
+    (req.messages[1]!.content as ChatContentPart[]).flatMap((p) => (p.type === 'text' ? [p.text] : [])).join('\n')
+  const spec = { ...SHIPPED, maskRule: MASK_RULE }
+
+  it('says the rule after the printed-words rule when the cover shown has its slot painted over', () => {
+    const t = text(requestFrom(spec)({ ...INPUT, slotMasked: true }, IMAGE))
+    expect(t).toContain(`${SHIPPED.printedRule}\n${MASK_RULE}`)
+  })
+
+  it('says nothing about a mask when the cover is shown as it is, or not at all', () => {
+    expect(text(requestFrom(spec)(INPUT, IMAGE))).not.toContain(MASK_RULE)
+    expect(text(requestFrom(spec)({ ...INPUT, slotMasked: true }, null))).not.toContain(MASK_RULE)
   })
 })
 

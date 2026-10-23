@@ -23,6 +23,8 @@ export interface AnalysisInput {
   imagePath: string
   fileName: string
   folderTrail: string[]
+  /** Set by a provider when the image it shows has the design slot painted over (`masked-cover.ts`). */
+  slotMasked?: boolean
   groupContext?: {
     originalTitle: string
     originalDescription: string

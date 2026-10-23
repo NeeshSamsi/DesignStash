@@ -73,7 +73,8 @@ export class AppleInferenceProvider implements InferenceProvider {
     const { prompt } = this.deps
     const usable = await (this.deps.hasUsableCover ?? hasUsableCover)(input.imagePath)
     const masked = usable && prompt.mask ? await (this.deps.maskedCover ?? maskedCoverPath)(input.imagePath, prompt.mask) : null
-    const request = { imagePath: usable ? (masked ?? input.imagePath) : null, ...appleDescribeRequest(input, usable, prompt) }
+    const asked = masked ? { ...input, slotMasked: true } : input
+    const request = { imagePath: usable ? (masked ?? input.imagePath) : null, ...appleDescribeRequest(asked, usable, prompt) }
     let answer = prompt.parseResult((await this.deps.helper.describe(request)).text)
     if (!usable) return answer
     // The check looks at the cover as it is, so a thing read into the painted slot is checked against the real scene.

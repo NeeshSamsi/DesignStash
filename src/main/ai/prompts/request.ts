@@ -25,6 +25,8 @@ export interface PromptSpec {
   labels: string
   /** The description and tag rules when no image is sent (a placeholder cover). Default: as with an image. */
   noImage?: { description: string; tags: string }
+  /** Said after the printed-words rule when the image has its design slot painted over (`MASK_RULE`). */
+  maskRule?: string
   categories: Record<string, string>
   sampling: { temperature: number; repeat_penalty: number }
   maxTokens: number
@@ -65,6 +67,13 @@ export const NAMES_ONLY = {
   tags: '- tags: 1 to 6, only the object and its kind, from the names.'
 }
 
+/**
+ * For a cover shown with its design slot painted over (eval ck-5lr): what the grey area is, so the
+ * model calls it a screen, label or print and never an object or a colour of its own.
+ */
+export const MASK_RULE =
+  'The screen, label or print area where the designer puts their own work has been blanked out in the image: it shows as a flat or blurred grey area, or one marked DESIGN AREA. That area is not an object and has no colour or pattern of its own. Call it the screen, label or print of the object it is on, and never describe what is on it.'
+
 /** A schema copy that allows as few as `min` tags. */
 function withMinTags(schema: object, min: number): object {
   const copy = structuredClone(schema) as { properties: { tags: { minItems: number } } }
@@ -88,9 +97,9 @@ export function requestFrom(spec: PromptSpec) {
         `Keep the title and tags consistent with it. Its tags: ${originalTags.map((t) => `${t.category}: ${t.label}`).join(', ') || 'none'}.`
       )
     }
+    lines.push('', spec.printedRule)
+    if (hasImage && input.slotMasked && spec.maskRule) lines.push(spec.maskRule)
     lines.push(
-      '',
-      spec.printedRule,
       '',
       'Reply with JSON: title, description, tags.',
       spec.title,

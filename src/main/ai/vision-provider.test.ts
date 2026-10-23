@@ -282,6 +282,17 @@ describe('VisionInferenceProvider with a masked design slot', () => {
     expect(userParts(complete.mock.calls[0]![0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: MASKED } })
   })
 
+  it('tells the prompt the slot is painted over, and only when it is', async () => {
+    const buildRequest = vi.fn(SHIPPED.buildRequest)
+    const { provider } = masked({ buildRequest })
+    await provider.analyze(INPUT)
+    expect(buildRequest.mock.calls[0]![0]).toEqual({ ...INPUT, slotMasked: true })
+    const unmasked = masked({ buildRequest }, false, null)
+    buildRequest.mockClear()
+    await unmasked.provider.analyze(INPUT)
+    expect(buildRequest.mock.calls[0]![0]).toEqual(INPUT)
+  })
+
   it('asks the scene check about the cover as it is', async () => {
     const { provider, complete } = masked({})
     await provider.analyze(INPUT)
