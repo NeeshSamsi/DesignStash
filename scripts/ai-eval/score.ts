@@ -46,9 +46,18 @@ import {
   type Lever
 } from './meaning'
 import { createTagSnapper } from './searchable-tags'
+import {
+  badAlternate,
+  placeholderWords,
+  summarisePlaceholders,
+  type PlaceholderCheck,
+  type PlaceholderData
+} from './placeholder'
 import { meaningDocument } from '../../src/main/search/meaning'
 
 const GOLD_PATH = join(import.meta.dirname, 'gold.json')
+/** What each item's design slot shows, and the words that describe it (`placeholder.ts`). */
+const PLACEHOLDERS_PATH = join(import.meta.dirname, 'placeholders.json')
 const HELD_OUT_GOLD_PATH = join(import.meta.dirname, 'gold-heldout.json')
 /**
  * `--held-out` is the final check: the held-out items join the search and their reference answers
@@ -249,6 +258,9 @@ async function main(): Promise<void> {
     }
   }
 
+  const placeholders = existsSync(PLACEHOLDERS_PATH)
+    ? (JSON.parse(readFileSync(PLACEHOLDERS_PATH, 'utf8')) as PlaceholderData)
+    : null
   const repeats = [...new Set(results.map((r) => r.repeat))].sort((a, b) => a - b)
   const embedder = EMBED ? new TextEmbedder(EMBED_MODELS[EMBED]!) : null
   const imageLever = IMAGE ? imageSimilarities() : null
@@ -273,7 +285,20 @@ async function main(): Promise<void> {
     if (imageLever) levers.push({ sims: imageLever, cut: IMAGE_CUT, ...(IMAGE_TOP !== undefined && { top: IMAGE_TOP }) })
     const scores = searchAll(gold, indexed, levers)
     const checks = checkPass(gold, items, byId, repeat)
+    const placeholderChecks: PlaceholderCheck[] = placeholders
+      ? items.flatMap((item) => {
+          const entry = placeholders.items[item.id]
+          const result = byId.get(item.id)
+          if (!entry || !result?.parsed) return []
+          const words = placeholderWords(result.parsed, result.searchTags.map((t) => t.label), entry, placeholders.generic)
+          return [{ id: item.id, repeat, words }]
+        })
+      : []
+    const answered = items.flatMap((item) => byId.get(item.id)?.parsed ?? [])
+    const badAlternates = answered.flatMap((p) => badAlternate(p.description) ?? [])
     passes.push({
+      placeholderChecks,
+      badAlternates: { answers: answered.length, bad: badAlternates },
       repeat,
       byId,
       missing,
@@ -297,6 +322,19 @@ async function main(): Promise<void> {
     )
     return absentWords.length > 0 ? [{ id, words: absentWords }] : []
   })
+
+  // A gold entry that matches its own placeholder words describes the placeholder itself.
+  const goldPlaceholderConflicts = placeholders
+    ? Object.entries(gold.items).flatMap(([id, entry]) => {
+        const ph = placeholders.items[id]
+        if (!ph) return []
+        const words = placeholderWords(entry, entry.tags.map((t) => t.label), ph, placeholders.generic)
+        return words.length > 0 ? [{ id, words }] : []
+      })
+    : []
+  const allPlaceholder = passes.flatMap((p) => p.placeholderChecks)
+  const bad = passes.flatMap((p) => p.badAlternates.bad)
+  const badAnswers = passes.reduce((t, p) => t + p.badAlternates.answers, 0)
 
   const unsupportedCounts = new Map<string, number>()
   for (const check of allChecks)
@@ -370,6 +408,13 @@ async function main(): Promise<void> {
       .filter((c) => c.absentWords.length > 0)
       .map((c) => ({ id: c.id, repeat: c.repeat, words: c.absentWords })),
     goldAbsentConflicts,
+    placeholder: summarisePlaceholders(allPlaceholder),
+    placeholderFound: allPlaceholder
+      .filter((c) => c.words.length > 0)
+      .map((c) => ({ id: c.id, repeat: c.repeat, words: c.words })),
+    goldPlaceholderConflicts,
+    badAlternates: { answers: badAnswers, rate: badAnswers === 0 ? 0 : bad.length / badAnswers, phrases: bad },
+    meanMs: Math.round(results.reduce((t, r) => t + r.elapsedMs, 0) / Math.max(results.length, 1)),
     unsupportedTags: [...unsupportedCounts]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(([label, count]) => ({ label, count })),
@@ -417,6 +462,15 @@ async function main(): Promise<void> {
     `hallucinated ${pct(h.hallucinated)} of ${h.answers} answers, ${h.absentPerAnswer.toFixed(2)} absent words per answer, ` +
       `tag support ${pct(h.tagSupport)} of ${h.labels} labels`
   )
+  const ph = score.placeholder
+  console.log(
+    `placeholder mentioned in ${pct(ph.mentioned)} of ${ph.answers} answers (${ph.wordsPerAnswer.toFixed(2)} words each); ` +
+      `bad "also called" in ${pct(score.badAlternates.rate)} of ${score.badAlternates.answers}; mean ${score.meanMs} ms per mockup`
+  )
+  if (goldPlaceholderConflicts.length > 0)
+    console.log(
+      `gold entries describing their placeholder: ${goldPlaceholderConflicts.map((c) => `${c.id} (${c.words.join(', ')})`).join('; ')}`
+    )
   if (goldAbsentConflicts.length > 0)
     console.log(
       `gold entries matching their own absent list: ${goldAbsentConflicts.map((c) => `${c.id} (${c.words.join(', ')})`).join('; ')}`

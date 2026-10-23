@@ -1,0 +1,79 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { GroupingService } from '../../../src/main/import/grouping-service'
+import { argValue, readItems, runDir } from '../eval-files'
+import type { ItemResult } from '../run'
+import type { AnalyzeContext, EvalResult, EvalVersion, PromptVersion } from './prompt-version'
+
+/**
+ * Round 3, experiment B: a pile variant gets its top's suggestion as a reference, in the app's
+ * `groupContext` shape (`analysisInputFor`). Piles are what the app's `GroupingService.propose`
+ * makes of the eval items when they are all dropped at once (same zip, then same folder, then same
+ * name stem); the top is each pile's first member by file name, as the app picks it.
+ *
+ * The top's suggestion is read from the base version's own run for the same model and pass
+ * (`runs/<model>/<base>/results.json`), so a variant sees exactly what the app would have shown
+ * the person for the top. Run a pile version with `--only` its variants: `pileIds()` lists them.
+ * Not a version itself.
+ */
+export interface Pile {
+  top: string
+  variants: string[]
+}
+
+export function piles(): Pile[] {
+  const items = readItems().filter((i) => !i.duplicateOf)
+  const members = items.map((i, n) => ({
+    mockupId: n + 1,
+    fileName: i.fileName,
+    folderTrail: i.folderTrail,
+    ...(i.source.zip && { archive: i.source.zip })
+  }))
+  const proposal = GroupingService.propose('eval', members as Parameters<typeof GroupingService.propose>[1])
+  return proposal.groups.map((g) => {
+    const ids = g.members.map((m) => ({ id: items[m.mockupId - 1]!.id, primary: m.isPrimary }))
+    return { top: ids.find((m) => m.primary)!.id, variants: ids.filter((m) => !m.primary).map((m) => m.id) }
+  })
+}
+
+/** Every variant id, for `--only`. */
+export function pileIds(): string[] {
+  return piles().flatMap((p) => p.variants)
+}
+
+export function pileVersion(base: EvalVersion, opts: { id: string; notes: string }): PromptVersion {
+  const items = readItems().filter((i) => !i.duplicateOf)
+  const topOf = new Map(piles().flatMap((p) => p.variants.map((v) => [v, p.top] as const)))
+  let tops: ItemResult[] | null = null
+  const topAnswer = (topId: string, repeat: number): EvalResult => {
+    if (!tops) {
+      const model = argValue('model')
+      if (!model) throw new Error('pile versions read the --model run of their base version')
+      const path = join(runDir(model, base.id), 'results.json')
+      if (!existsSync(path)) throw new Error(`No ${base.id} run for ${model} to take the tops from`)
+      tops = JSON.parse(readFileSync(path, 'utf8')) as ItemResult[]
+    }
+    const r = tops.find((t) => t.id === topId && t.repeat === repeat) ?? tops.find((t) => t.id === topId)
+    if (!r?.parsed) throw new Error(`No ${base.id} answer for top ${topId}`)
+    return { ...r.parsed, tags: r.searchTags.length > 0 ? r.searchTags : r.parsed.tags }
+  }
+  return {
+    ...(base as PromptVersion),
+    id: opts.id,
+    notes: opts.notes,
+    async analyze(ctx: AnalyzeContext) {
+      const item = items.find(
+        (i) => i.fileName === ctx.input.fileName && i.folderTrail.join('/') === ctx.input.folderTrail.join('/')
+      )
+      const top = item && topOf.get(item.id)
+      if (!top) throw new Error(`${ctx.input.fileName} is no pile's variant`)
+      const t = topAnswer(top, ctx.repeat)
+      const input = {
+        ...ctx.input,
+        groupContext: { originalTitle: t.title, originalDescription: t.description, originalTags: t.tags }
+      }
+      const answer = await base.analyze!({ ...ctx, input })
+      return { ...answer, extra: { ...answer.extra, top } }
+    }
+  }
+}

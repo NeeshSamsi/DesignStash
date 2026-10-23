@@ -26,6 +26,8 @@ export interface PromptSpec {
   noImage?: { description: string; tags: string }
   /** Extra lines after the label rule, before the categories. */
   extraRules: string[]
+  /** For a pile variant, said after the top's title and description. Default: the app's "Keep the title and tags consistent with it." */
+  variantRule?: string
   categories: Record<string, string>
   sampling: Record<string, number>
   maxTokens: number
@@ -98,7 +100,7 @@ export function requestFrom(spec: PromptSpec) {
       lines.push(
         '',
         `This is a variant of "${originalTitle}" (${originalDescription}).`,
-        `Keep the title and tags consistent with it. Its tags: ${originalTags.map((t) => `${t.category}: ${t.label}`).join(', ') || 'none'}.`
+        `${spec.variantRule ?? 'Keep the title and tags consistent with it.'} Its tags: ${originalTags.map((t) => `${t.category}: ${t.label}`).join(', ') || 'none'}.`
       )
     }
     lines.push(
