@@ -51,6 +51,24 @@ describe('maskedCoverPath', () => {
     expect(g).toBe(b)
   })
 
+  it('paints the slot light grey and writes DESIGN AREA in it for label', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ds-mask-'))
+    dirs.push(dir)
+    // A larger cover, so the label has room: 400x200, the left half the slot.
+    await sharp({ create: { width: 400, height: 200, channels: 3, background: '#ff0000' } }).webp({ lossless: true }).toFile(join(dir, 'cover.webp'))
+    const mask = Buffer.alloc(400 * 200)
+    for (let y = 0; y < 200; y++) for (let x = 0; x < 200; x++) mask[y * 400 + x] = 255
+    await sharp(mask, { raw: { width: 400, height: 200, channels: 1 } }).png().toFile(join(dir, 'slot-mask.png'))
+    const out = (await maskedCoverPath(join(dir, 'cover.webp'), 'label'))!
+    expect(await pixel(out, 10, 10)).toEqual([214, 214, 214])
+    expect(await pixel(out, 300, 100)).toEqual([255, 0, 0])
+    // The label's darker type sits in the middle of the slot.
+    const { data, info } = await sharp(out).extract({ left: 40, top: 80, width: 120, height: 40 }).removeAlpha().raw().toBuffer({ resolveWithObject: true })
+    let dark = 0
+    for (let i = 0; i < info.width * info.height; i++) if (data[i * 3]! < 180) dark++
+    expect(dark).toBeGreaterThan(50)
+  })
+
   it('writes the masked cover once and reuses it', async () => {
     const dir = await mockupDir()
     const first = (await maskedCoverPath(join(dir, 'cover.webp'), 'outline'))!
