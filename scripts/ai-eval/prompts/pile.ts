@@ -4,6 +4,7 @@ import { GroupingService } from '../../../src/main/import/grouping-service'
 import { argValue, readItems, runDir } from '../eval-files'
 import type { ItemResult } from '../run'
 import type { AnalyzeContext, EvalResult, EvalVersion, PromptVersion } from './prompt-version'
+import type { AnalysisInput } from '../../../src/shared/inference'
 
 /**
  * The variant line said after the top's words, in place of the app's "Keep the title and tags
@@ -11,6 +12,22 @@ import type { AnalyzeContext, EvalResult, EvalVersion, PromptVersion } from './p
  */
 export const VARIANT_OWN_SCENE =
   'Use the same name for the product and keep the tags consistent with it, but describe what this image shows: its own setting, surface, angle and colours, which may differ from the first one.'
+
+/** The tag categories that name the product; the others (Environment, Style, Angle) describe the scene. */
+const PRODUCT_CATEGORIES = new Set(['Device', 'Print & Branding', 'Apparel'])
+
+/**
+ * The variant lines for a reference of the top's product names alone (`b-*-name`): no title,
+ * description or scene tags, so nothing of the top's setting can carry over. Nothing is said when
+ * the top has no product tag.
+ */
+export function productOnlyLines(group: NonNullable<AnalysisInput['groupContext']>): string[] {
+  const names = [...new Set(group.originalTags.filter((t) => PRODUCT_CATEGORIES.has(t.category)).map((t) => t.label))]
+  if (names.length === 0) return []
+  return [
+    `It is one of several mockups of the same product, which the first one names: ${names.join(', ')}. Use those names where this image shows that product, and describe this image's own setting, surface, angle and colours.`
+  ]
+}
 
 /**
  * Round 3, experiment B: a pile variant gets its top's suggestion as a reference, in the app's
@@ -20,7 +37,9 @@ export const VARIANT_OWN_SCENE =
  *
  * The top's suggestion is read from the base version's own run for the same model and pass
  * (`runs/<model>/<base>/results.json`, or `topsFrom`'s), so a variant sees exactly what the app
- * would have shown the person for the top. Run a pile version with `--only` its variants: `pileIds()` lists them.
+ * would have shown the person for the top. With `reference: 'gold'` it is the top's gold entry
+ * instead, standing in for the approved words the app passes today once the top is stashed
+ * (`pileContextFor`). Run a pile version with `--only` its variants: `pileIds()` lists them.
  * Not a version itself.
  */
 export interface Pile {
@@ -48,11 +67,22 @@ export function pileIds(): string[] {
   return piles().flatMap((p) => p.variants)
 }
 
-export function pileVersion(base: EvalVersion, opts: { id: string; notes: string; topsFrom?: string }): PromptVersion {
+export function pileVersion(
+  base: EvalVersion,
+  opts: { id: string; notes: string; topsFrom?: string; reference?: 'draft' | 'gold' }
+): PromptVersion {
   const items = readItems().filter((i) => !i.duplicateOf)
+  const gold: Record<string, EvalResult> = {}
+  if (opts.reference === 'gold')
+    for (const f of ['gold.json', 'gold-heldout.json', 'gold-signoff.json'])
+      Object.assign(gold, (JSON.parse(readFileSync(join(import.meta.dirname, '..', f), 'utf8')) as { items: Record<string, EvalResult> }).items)
   const topOf = new Map(piles().flatMap((p) => p.variants.map((v) => [v, p.top] as const)))
   let tops: ItemResult[] | null = null
   const topAnswer = (topId: string, repeat: number): EvalResult => {
+    if (opts.reference === 'gold') {
+      if (!gold[topId]) throw new Error(`No gold entry for top ${topId}`)
+      return gold[topId]
+    }
     if (!tops) {
       const model = argValue('model')
       if (!model) throw new Error('pile versions read the --model run of their base version')

@@ -28,6 +28,8 @@ export interface PromptSpec {
   extraRules: string[]
   /** For a pile variant, said after the top's title and description. Default: the app's "Keep the title and tags consistent with it." */
   variantRule?: string
+  /** For a pile variant, the lines said in place of the top's title, description and tags (`productOnlyLines`). */
+  variantLines?: (group: NonNullable<AnalysisInput['groupContext']>) => string[]
   categories: Record<string, string>
   sampling: Record<string, number>
   maxTokens: number
@@ -95,7 +97,10 @@ export function requestFrom(spec: PromptSpec) {
     const lines: string[] = [hasImage ? spec.imageLine : spec.noImageLine, `File name: ${input.fileName}`]
     if (input.folderTrail.length > 0) lines.push(`Folders: ${input.folderTrail.join(' / ')}`)
     lines.push(hasImage ? spec.namesRule : spec.noImageNamesRule)
-    if (input.groupContext) {
+    if (input.groupContext && spec.variantLines) {
+      const said = spec.variantLines(input.groupContext)
+      if (said.length > 0) lines.push('', ...said)
+    } else if (input.groupContext) {
       const { originalTitle, originalDescription, originalTags } = input.groupContext
       lines.push(
         '',

@@ -82,6 +82,8 @@ export interface R3Options {
   things?: string[]
   /** Reword the line a pile variant gets after its top's words (`PromptSpec.variantRule`). */
   variantRule?: string
+  /** Say these lines to a pile variant in place of the top's words (`PromptSpec.variantLines`). */
+  variantLines?: PromptSpec['variantLines']
   /** Leave out the bad "also called" names (Apple). */
   alternates?: boolean
   /** Ask the scene check about the cover as it is, not the masked one ("two looks"). */
@@ -218,6 +220,7 @@ function specFor(base: PromptSpec, opts: R3Options): PromptSpec {
   let spec = opts.rule ? { ...base, printedRule: `${base.printedRule}\n${PLACEHOLDER_RULE}` } : base
   if (opts.maskRule) spec = { ...spec, printedRule: `${spec.printedRule}\n${MASK_RULE}` }
   if (opts.variantRule) spec = { ...spec, variantRule: opts.variantRule }
+  if (opts.variantLines) spec = { ...spec, variantLines: opts.variantLines }
   if (opts.alternates) spec = { ...spec, description: spec.description + ALTERNATES_RULE }
   return spec
 }
