@@ -1,6 +1,7 @@
 # Piles in Look it over
 
 **Status:** designed 2026-10-12, built 2026-10-20. Its behaviour tests are real tests now (`src/renderer/src/components/PileRail/PileRail.behaviour.test.tsx`).
+**Proposed (awaiting Neesh):** the AI working state and the edit check, in [look-over.md](look-over.md).
 **Figma:** components PileRail, PileStep and CoverPanel (deck). The flow is in _↳ Look it over_ › sub-flow _2 · Piles_ (L2.1–L2.5, L2.E1–E5) and _5 · Moving around_ (L5.1–L5.3, L5.E1–E3).
 
 ## Model: a pile is a sub-form of drafts
