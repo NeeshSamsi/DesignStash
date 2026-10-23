@@ -10,7 +10,7 @@ export const MEANING_SEARCH_CARD_CONTRACT = {
   section: '9 · Onboarding & AI models',
   description:
     'Meaning search in onboarding’s AI step (D6 option M2, chosen 2026-10-22): its own card under the AI panel, shown whether or not on-device AI is on. The switch is on by default and disabled once the download has started. The status line follows the download (meaningLine in settings-copy.ts).',
-  code: 'screens/onboarding/MeaningSearchCard.tsx',
+  code: 'components/MeaningSearchCard/MeaningSearchCard.tsx',
   axes: {
     state: ['on', 'off', 'downloading', 'checking', 'ready', 'failed']
   },

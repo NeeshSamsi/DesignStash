@@ -56,8 +56,6 @@ export const OVERRIDES = {
   FlowModal: {
     ignoreBooleans: ['progress-25', 'progress-50', 'progress-75', 'progress-100']
   },
-  // Figma no longer nests AddMenu in the sidebar; the snapshot's curated `add` slot is a leftover.
-  SidebarNav: { ignoreExposed: ['add'] },
   // Figma's `meaning` draws the retired meaning search line inside the panel; code shows meaning
   // search as its own MeaningSearchCard under the picker.
   ModelPicker: { ignoreBooleans: ['meaning'] },

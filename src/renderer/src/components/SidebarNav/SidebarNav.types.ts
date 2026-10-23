@@ -10,7 +10,7 @@ export const SIDEBAR_NAV_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1964',
   section: '3 · Layout & navigation',
   description:
-    'Primary navigation: AddMenu, My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.\nSync 2026-10-23: the wordmark uses title/sm/semibold (Unbounded SemiBold 14) and the logo sits flush left in the brand row (no row padding).',
+    'Primary navigation: My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.\nSync 2026-10-23: the wordmark uses title/sm/semibold (Unbounded SemiBold 14) and the logo sits flush left in the brand row (no row padding).',
   code: 'AppShell.tsx',
   axes: {
     variant: ['none', 'to-stash', 'to-sort', 'both']
