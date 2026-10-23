@@ -41,7 +41,7 @@ The tuned versions' existing runs (ck-2 for both Qwen models, three passes, seed
 
 So a third to a half of all answers describe the placeholder, on every model.
 
-### A3. Options (Apple measured; Qwen not yet run)
+### A3. Options
 
 Versions in `scripts/ai-eval/prompts/`, built by `r3.ts` on top of the tuned ones (ck-2 for Qwen, ap-6 for Apple), each changing one thing:
 - **m (grey mask):** the cover the model sees has the design slot painted flat mid grey (`masked.ts`, `masked-grey.png` beside the cover). The scene check asks about the same masked image.
@@ -66,7 +66,21 @@ Apple, one greedy pass each:
 | | held-out | 83.1 / 77.5 | 6.7% | 43.3% |
 | | sign-off | 80.5 / 78.3 | 9.5% | 33.3% |
 
-Bad "also called" names: ap-6 30%, ap-7m 20%, ap-7s 18%, ap-7r 20% (over all 90 answers).
+| ap-7mr soft mask and rule | tuning | 81.9 / 84.0 | 2.6% | 2.6% |
+| | held-out | 84.0 / 81.5 | 0.0% | 6.7% |
+| | sign-off | 81.3 / 81.6 | 4.8% | 0.0% |
+| ap-8 soft mask, wider check | tuning | 82.0 / 83.6 | 2.6% | 5.1% |
+| | held-out | 83.8 / 80.2 | 0.0% | 6.7% |
+| | sign-off | 81.3 / 81.0 | 4.8% | 4.8% |
+| ap-9 ap-8 and the "also called" rule | tuning | 79.9 / 81.0 | 0.0% | 5.1% |
+| | held-out | 83.5 / 80.0 | 0.0% | 10.0% |
+| | sign-off | 79.6 / 79.0 | 4.8% | 4.8% |
+
+Bad "also called" names: ap-6 30%, ap-7m 20%, ap-7s 18%, ap-7r 20%, ap-7mr 11%, ap-8 18%, ap-9 9% (over all 90 answers).
+
+The wider check (ap-8: pedestal, plinth, podium, box, crate, cube, block, stand, rock, stone, step, ledge, platform, paper, with "stack of" cut) catches nothing on Apple and does harm. Apple says "yes" to every new thing that is really there, and also to "paper" for the blurred long-scroll sheet, so "resting on a stack of paper" stays. It said "no" twice, both wrongly: "a brown paper pouch" lost "brown paper", and the postal package lost "mailer box", leaving "also called, resting on". Apple's yes/no check is only useful for what it already rejects (desks, tables). The removal fix still matters: for the reported sentence Apple says "no" to "book", and only the new `withoutThing` can cut "on a stack of white books".
+
+The "also called" rule (ap-9) halves the bad names (18% to 9%) but costs 1.5 to 3.8 points of recall, because the good alternates go too.
 
 What this says so far, for Apple:
 - **Masking works; the rule alone doesn't.** Either mask cuts placeholder mentions from about half the answers to 5 to 17%, and search gets better (found +3 to +4 points, right +3 to +5), because the words that went to the grid and sample art now go to the object and scene. The rule alone barely moves mentions and raises inventions on held-out and sign-off, so it fails the target.
@@ -75,6 +89,123 @@ What this says so far, for Apple:
 - Remaining mentions on ap-7s are the 5 covers whose mask can't be fitted (Pixeden and Office Identity sidecars) plus a few colour words.
 
 Times in these runs are not clean: Apple ran alongside the Qwen runs for part of the time. Masking itself is cheap (a one-off image write of well under a second per cover); the time cost has to be re-measured with one run at a time.
+
+### A4. Qwen 4B, first pass (resumed 2026-10-23, one model at a time)
+
+| Run | Set | Found / right | Invented | Placeholder |
+|---|---|---|---|---|
+| 4B ck-2 (baseline) | tuning | 87.2 / 85.5 | 5.1% | 48.7% |
+| | held-out | 88.3 / 82.2 | 0.0% | 32.2% |
+| | sign-off | 85.3 / 81.3 | 1.6% | 34.9% |
+| 4B ck-3s soft mask | tuning | 87.4 / 85.5 | 7.7% | 12.8% |
+| | held-out | 86.9 / 76.7 | 0.0% | 5.6% |
+| | sign-off | 85.3 / 80.9 | 0.0% | 0.0% |
+| 4B ck-3r rule | tuning | 88.5 / 87.5 | 6.8% | 42.7% |
+| | held-out | 88.7 / 84.0 | 3.3% | 30.0% |
+| | sign-off | 86.2 / 83.1 | 0.0% | 31.7% |
+
+- **The soft mask fixes the placeholder on the 4B too, but it reads the blur as an object.** The three stacked boxes, whose lime print is the slot, become "a glowing white cube lamp" in all three passes; the blurred long-scroll sheet "flows like a chair" in two. The scene check keeps both, because it asks about the same masked image and the model agrees with itself. The old "flexible solar panel" reading of the 1514-B sheet is gone. Net: 6 to 9 invented answers of 117 on tuning, which fails the strict target.
+- **Held-out precision drops 5.5 points,** mostly in a few searches: answers that used to say "screen displaying" matched "smart display" by accident, and a few new loose matches (a menu matched "brochure", the long-scroll MacBook "notebook").
+- **The rule alone does little on the 4B** (placeholder 49% to 43%) and adds inventions ("flexible" on three long-scroll covers), as on Apple.
+- A finer blur (radius a quarter of the soft one) keeps the grid and the mug lettering readable, so it was dropped without a run.
+
+### A5. Free rein: fills, two looks, and the fixes in the app (2026-10-23)
+
+Neesh gave free rein to fix this and ship the winners. Done so far:
+
+**The withoutThing fix is in the app** (`src/main/ai/scene-check.ts`, commit `28a9739`, test-first). A refused thing now goes out as a whole phrase: "resting on a stack of white books" (a stack, pile, heap, set, row, pair or couple of the thing, with up to two words before it, and the verb that placed the object there), and -es plurals ("benches") are found and cut. The reported sentence becomes "A long scroll MacBook, also called a website with a blue and white grid pattern." once the check says no to the book. All 234 AI unit tests pass.
+
+**The slot mask is made at import** (`src/main/psd/design-slot.ts`, test-first). It is the eval's `slots.ts` logic, unchanged in behaviour: on 8 real PSDs the app's mask matches the eval's to the hundredth of a percent. The copy queue writes `slot-mask.png` beside the cover after `resolveCover`; the cover people see is untouched. Reading every layer's pixels takes 0.25 to 4 s and up to about a gigabyte on the large 6000x4500 documents, so the app runs it in a worker thread per PSD (`design-slot-worker.ts`, electron-vite `?nodeWorker`): the main process never blocks, the memory goes when the worker exits, and a failure or a 60 s timeout only means the AI sees the plain cover. The built worker wrote the 1514-A mask in 0.66 s, start-up included.
+
+**Fills screened on the 4B.** New fills in `masked.ts`: `outline` (flat grey with a thin dark edge), `tone` (flat, in the scene's colour just around the slot), `inpaint` (filled from the surroundings) and `label` (light grey with "DESIGN AREA" in each slot). `inpaint` was dropped on sight: the push-pull fill is blocky and lets the lime and blue placeholder bleed back in at the edges. The others run with two new options in `r3.ts`:
+- `checkCover`, the "two looks" idea: the scene check asks its yes/no questions about the cover as it is, so a lamp read into the masked blur is checked against the real boxes;
+- `maskRule`: "The screen, label or print area ... has been blanked out in the image: it shows as a flat or blurred grey area, or one marked DESIGN AREA. That area is not an object and has no colour or pattern of its own."
+
+The screen is 27 covers chosen for the trouble (all six long-scroll files, both box files, lighters, the gift card holder, a mug, HomeView, the Apple set, iPhones, 011, B-Mockups, the apparel, flags, stationery, the sticker, an iMac, the boho MacBook, the lightbox), three passes. `tmp/round3/subscore.mts` counts placeholder mentions, gold `absent` words, and misreadings (lamp, chair, paper, glowing, translucent, solar, flexible, books, blank, "grey screen", "design area" and the like; 011's real armchair is skipped).
+
+**Screen results, 4B, 27 covers × 3 passes** ("Grey leak": "grey" or "gray" in a title or description whose gold has neither; the fill's own colour read as the product's):
+
+| Version | Placeholder | Gold `absent` | Misreadings | Grey leak |
+|---|---|---|---|---|
+| ck-2 (today) | 59% | 7% | 5% | 0% |
+| ck-3s soft | 7% | 11% | 11% | 9% |
+| ck-5s soft, two looks | 7% | 10% | 10% | 9% |
+| ck-5o outline, two looks | 11% | 4% | 1% | 15% |
+| ck-5t tone, two looks | 10% | 2% | 5% | 16% |
+| ck-5l label, two looks | 7% | 4% | 6% | 7% |
+| ck-5sr soft, two looks, mask rule | 6% | 9% | 7% | 9% |
+| ck-5or outline, two looks, mask rule | 7% | 4% | 5% | 15% |
+| **ck-5lr label, two looks, mask rule** | **6%** | **4%** | **1%** | **7%** |
+
+What the screen showed:
+- **Two looks works, but the cut can't mend a misnamed object.** Asked about the real cover, the 4B says no to the lamp (P(yes) 1e-9) and the chair (0.0004). They stay because they name the object itself ("Stacked white cube lamp", "laptop as chair"), which taking a phrase out can't fix. That is why the redo step exists: when the check refuses a thing, the model is asked once more, told "Checked against the image: there is no lamp in it."
+- **Flat fills leak their colour.** Outline and tone turn a white mug "gray", a lighter "gray", the flags "gray". Label plus the mask rule does this least; its only real leak is the gift card holder, whose whole surface is the slot (no true colour exists there), and its "grey perforated floor" for 1513-B is accurate.
+- **Label alone leaks its own words** ("Colorful T-Shirt with Design Area"); with the mask rule it doesn't.
+- **The mask rule doesn't stop the soft blur reading as an object** (ck-5sr still has the cube lamp five times).
+- **Every mask loses "long scroll" from the long-scroll titles**, since the sheet no longer looks like a screen: "MacBook on White Shelf". The search scores on the full runs say what that costs.
+- **Gift card holder:** outline gives "Gray rectangular on light background"; label plus rule keeps "Grey gift card holder".
+
+So the 4B's lead is **label, two looks, mask rule**, with redo added (ck-6lr) for the cases the cut can't mend.
+
+**In the app so far** (commits, all test-first, AI unit tests 254 passing):
+- `ddc7ddf`: a profile can set `mask` (the fill), and then the scene check asks about the cover as it is; `redo` asks once more on a refusal.
+- `99e2307`: the `label` fill (`masked-cover.ts`), pixel-identical to the eval's.
+- `2a7b982`: `MASK_RULE`, said only when the image shown really has its slot painted over (`AnalysisInput.slotMasked`, set by the provider).
+- The eval now has an `app` version (`prompts/app.ts`) that runs the app's own provider and profile for `--model`, so the final numbers come from the code that ships.
+
+### A6. Full runs, the recall cost, and naming the object from the cover
+
+**Apple: soft mask, two looks, redo (ap-10s) meets the target on all three sets** and is in the app (`d808ea8`). The two looks and redo change nothing measurable for Apple (identical to ap-7s: its yes/no check rarely says no), but they cost nothing and guard the same failure.
+
+| Run | Set | Found / right | Invented | Placeholder |
+|---|---|---|---|---|
+| ap-6 (before) | tuning | 79.7 / 79.1 | 2.6% | 53.8% |
+| | held-out | 82.8 / 78.9 | 3.3% | 43.3% |
+| | sign-off | 79.4 / 77.1 | 4.8% | 42.9% |
+| **ap-10s** | tuning | **83.7 / 84.5** | 2.6% | **5.1%** |
+| | held-out | **85.0 / 80.9** | **0.0%** | **6.7%** |
+| | sign-off | **82.7 / 81.9** | 4.8% | **4.8%** |
+| ap-10o outline | tuning | 83.0 / 82.5 | 2.6% | 7.7% |
+| | held-out | 85.6 / 81.1 | 0.0% | 20.0% |
+| | sign-off | 82.0 / 80.7 | 4.8% | 0.0% |
+| ap-10t tone | tuning | 83.5 / 82.9 | 2.6% | 7.7% |
+| | held-out | 85.9 / 80.7 | 0.0% | 16.7% |
+| | sign-off | 82.6 / 81.0 | 4.8% | 4.8% |
+| ap-10l label, mask rule | tuning | 74.7 / 78.4 | 2.6% | 15.4% |
+| | held-out | 77.6 / 76.4 | 0.0% | 3.3% |
+| | sign-off | 75.7 / 77.5 | 4.8% | 0.0% |
+
+The label hurts Apple (recall down 5 points), so Apple keeps the soft blur. Apple's "grey" words under the soft mask are mostly the real scene ("grey pavement", "grey walls", "grey sky"); the true slips are few (a poster's "large gray square", notebooks with "grey covers").
+
+**4B: label, mask rule, two looks, redo (ck-6lr), full run.** Inventions and placeholder mentions improve on every set, but recall falls 3 to 4 points:
+
+| Run | Set | Found / right | Invented | Placeholder |
+|---|---|---|---|---|
+| ck-2 (before) | tuning | 87.2 / 85.5 | 5.1% | 48.7% |
+| | held-out | 88.3 / 82.2 | 0.0% | 32.2% |
+| | sign-off | 85.3 / 81.3 | 1.6% | 34.9% |
+| ck-6lr | tuning | 83.4 / 83.6 | 2.6% | 9.4% |
+| | held-out | 85.0 / 77.4 | 0.0% | 3.3% |
+| | sign-off | 82.3 / 80.0 | 1.6% | 1.6% |
+
+The loss is concentrated. The two stacked-box mockups' slot is every visible face of all three boxes, so masked they are "white cubes" or (from the file name) "white boards", and drop out of "box", "boxes", "stacked boxes", "packaging" and "pedestal". The postal packages lose "envelope" (masked, "white paper"), HomeView loses "smart display" ("tablet"), the fence poster loses "outdoor". The pattern: **the 4B named the product from its sample art.** A lime print made "a branded box", address text "envelopes", app icons "a smart display".
+
+**Naming the object from the cover as it is (ck-7lr).** Two looks again, for the name: before answering from the masked cover, one short request on the cover as it is, "What kind of object is this mockup of? Give its everyday name in one to three words, plural if there are several of it. No colours, brands, printed words or setting.", and the masked request is told "Seen in full, the main object is: boxes. Use that name for it." The names come back right (boxes, envelopes, smart display, gift cards, posters, laptop), and the answers follow ("Stacked Boxes in Concrete Space", "White envelopes on gray surface"). On the 32 trouble covers merged into the full ck-6lr run, recall comes back to within a point of today's: 86.3 / 87.8 / 84.7 against 87.2 / 88.3 / 85.3, with inventions at or below today's. Two problems: the question about the unmasked cover can read the placeholder too (the two blue-grid long-scroll covers came back "solar panels"; the answers didn't take it up), and "design area" leaked into seven answers. ck-7b rewords the hint line and adds "never write the words design area" to the mask rule; ck-7c also gives the question the file name.
+
+**ck-7b screen (32 covers merged into ck-6lr's full run):** 87.3 / 85.3, 88.6 / 80.2, 85.4 / 81.9; inventions 0 / 0 / 1.6%; placeholder 10 / 7 / 0%; one misreading in 96 answers. ck-7c (the file name in the object question) scored lower on every set and was dropped. The "solar panels" name for two blue-grid covers was never taken up: the answers say MacBook every time.
+
+**4B winner, full run: ck-7b** (label fill, mask rule that also bans "design area", object name from the cover as it is, scene check on the cover as it is, redo). It meets the target on all three sets and is in the app (`0567dfc`):
+
+| Run | Set | Found / right | Invented | Placeholder |
+|---|---|---|---|---|
+| ck-2 (before) | tuning | 87.2 / 85.5 | 5.1% | 48.7% |
+| | held-out | 88.3 / 82.2 | 0.0% | 32.2% |
+| | sign-off | 85.3 / 81.3 | 1.6% | 34.9% |
+| **ck-7b** | tuning | 87.3 / 85.5 | **0.0%** | **9.4%** |
+| | held-out | 87.8 / 81.7 | 0.0% | **10.0%** |
+| | sign-off | 85.3 / 80.8 | **0.0%** | **0.0%** |
+
+Recall and precision are within half a point of today's (inside the pass-to-pass noise); inventions go to zero; placeholder mentions fall by three to four times. Over all 270 answers the misreading count falls from 48 to 32, and what remains is mostly real ("book" on the books, "pouch" on the pouches); the true slips left are "blank" ID cards (3), the Z-fold brochure "glowing" (3, 2 before) and one "design area". The app's `MASK_RULE`, object question and hint line are word for word the eval's (checked).
 
 ### Where this stopped (paused 2026-10-23 at Neesh's request)
 
