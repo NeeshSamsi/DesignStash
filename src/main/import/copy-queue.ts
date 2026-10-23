@@ -6,7 +6,7 @@ import type { CopyFile, CopyPauseReason, CopyProgress, CopyStatus } from '@share
 import type { Repository } from '../db/repository'
 import type { CopyJob } from '../db/schema'
 import { removeAppCopies } from '../library/app-files'
-import { resolveCover } from '../psd'
+import { SLOT_MASK_FILE, resolveCover, writeDesignSlotMask } from '../psd'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
 import {
   entryPath,
@@ -21,6 +21,11 @@ import { copyWithHash, type CopySource } from './stream-copy'
 
 export interface CopyQueueDeps {
   resolveCover: (input: ResolveCoverInput) => Promise<CoverResolution>
+  /**
+   * Writes the PSD's design slot mask beside its cover (`writeDesignSlotMask`), so the AI never sees
+   * the placeholder. Says whether it wrote one; a failure only means the AI sees the cover as it is.
+   */
+  writeSlotMask: (psdPath: string, coverPath: string, outPath: string) => Promise<boolean>
   freeBytes: (path: string) => Promise<number>
   /** Copy a file (or a stream of one) by streaming it, telling `onBytes` how much is written, and return its SHA-256. */
   copyHashed: (
@@ -46,6 +51,7 @@ export interface CopyQueueDeps {
 
 const defaultDeps: CopyQueueDeps = {
   resolveCover,
+  writeSlotMask: writeDesignSlotMask,
   freeBytes: async (p) => {
     const s = await fs.statfs(p)
     return s.bavail * s.bsize
@@ -362,6 +368,11 @@ export class CopyQueue {
         },
         outDir: destDir
       })
+
+      if (cover.source !== 'none')
+        await this.deps
+          .writeSlotMask(libraryPath, cover.coverPath, join(destDir, SLOT_MASK_FILE))
+          .catch(() => false)
 
       const mockup = this.repo.mockups.createMockup({
         // Names inside zips sometimes start with a space.
