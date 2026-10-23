@@ -48,8 +48,9 @@ describe('SettingsLayout', () => {
     expect(screen.getByRole('button', { name: 'Empty Trash…' })).not.toBeNull()
     rerender(<SettingsLayout section="ai-model" />)
     expect(screen.getByText('Use on-device AI')).not.toBeNull()
+    expect(screen.getByText('Built into macOS')).not.toBeNull()
     expect(screen.getByText('Available to download')).not.toBeNull()
-    expect(document.querySelectorAll('[data-ds="ModelCard"]')).toHaveLength(2)
+    expect(document.querySelectorAll('[data-ds="ModelCard"]')).toHaveLength(3)
     rerender(<SettingsLayout section="about" />)
     expect(screen.getByText('Version 1.0.0 (42)')).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Copy report' })).not.toBeNull()
@@ -67,9 +68,15 @@ describe('SettingsLayout', () => {
 
   it('takes model cards and the tag tree through its slots', () => {
     const { rerender } = render(
-      <SettingsLayout section="ai-model" modelQwen25VL3B={<div>my model</div>} />
+      <SettingsLayout
+        section="ai-model"
+        modelQwen3VL4B={<div>my model</div>}
+        meaningSearchRow={<div>meaning row</div>}
+      />
     )
     expect(screen.getByText('my model')).not.toBeNull()
+    expect(screen.getByText('meaning row')).not.toBeNull()
+    expect(screen.getByText('Search')).not.toBeNull()
     rerender(<SettingsLayout section="tags" tagTree={<div>tree here</div>} />)
     expect(screen.getByText('tree here')).not.toBeNull()
   })

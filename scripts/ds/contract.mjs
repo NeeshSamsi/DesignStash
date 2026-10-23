@@ -56,6 +56,11 @@ export const OVERRIDES = {
   FlowModal: {
     ignoreBooleans: ['progress-25', 'progress-50', 'progress-75', 'progress-100']
   },
+  // Figma no longer nests AddMenu in the sidebar; the snapshot's curated `add` slot is a leftover.
+  SidebarNav: { ignoreExposed: ['add'] },
+  // Figma's `meaning` draws the retired meaning search line inside the panel; code shows meaning
+  // search as its own MeaningSearchCard under the picker.
+  ModelPicker: { ignoreBooleans: ['meaning'] },
   // Figma swaps the bar for the detail line with these two; code shows the line whenever `detail` is passed.
   CopyFileRow: { ignoreBooleans: ['show-detail', 'show-progress'] },
   // Exposed so a screen can edit the label of a nested Button or Badge; not slots in code.

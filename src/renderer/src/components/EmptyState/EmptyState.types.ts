@@ -11,7 +11,7 @@ export const EMPTY_STATE_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-403',
   section: '4 · Feedback & states',
   description:
-    'Zero-data / zero-result state with a required primary action. secondary-action is off by default: only add one when it has a real destination (there is no help site).',
+    'Zero-data / zero-result state with a required primary action. secondary-action is off by default: only add one when it has a real destination (there is no help site).\nSync 2026-10-23: the page variant is 480 wide (384 of text inside 48 padding), so page titles in Unbounded stay on one line.',
   code: 'components/EmptyState/EmptyState.tsx',
   axes: {
     variant: ['page', 'inline']

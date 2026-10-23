@@ -18,7 +18,7 @@ export interface InputProps
 }
 
 /**
- * Input — Single-line text entry. search = title-bar field (icon + ⌘K); inline-title = the Detail title field.
+ * Input — Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=212-190
  * Styles live in ui/input.tsx (search uses its InputGroup); this maps the Figma props onto it.
  * Figma's empty/filled state is the value itself. Pass onChange to control `value`; without it,

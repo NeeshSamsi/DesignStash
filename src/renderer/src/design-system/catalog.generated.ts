@@ -79,6 +79,10 @@ import { StepIndicator, STEP_INDICATOR_CONTRACT } from '@renderer/components/Ste
 import { PathField, PATH_FIELD_CONTRACT } from '@renderer/components/PathField'
 import { HardwareSummary, HARDWARE_SUMMARY_CONTRACT } from '@renderer/components/HardwareSummary'
 import { ModelRow, MODEL_ROW_CONTRACT } from '@renderer/components/ModelRow'
+import {
+  MeaningSearchCard,
+  MEANING_SEARCH_CARD_CONTRACT
+} from '@renderer/components/MeaningSearchCard'
 import { ModelCard, MODEL_CARD_CONTRACT } from '@renderer/components/ModelCard'
 import { ModelPicker, MODEL_PICKER_CONTRACT } from '@renderer/components/ModelPicker'
 import { ConsentPanel, CONSENT_PANEL_CONTRACT } from '@renderer/components/ConsentPanel'
@@ -177,6 +181,7 @@ export const CATALOG: CatalogEntry[] = [
   entry(PATH_FIELD_CONTRACT, PathField),
   entry(HARDWARE_SUMMARY_CONTRACT, HardwareSummary),
   entry(MODEL_ROW_CONTRACT, ModelRow),
+  entry(MEANING_SEARCH_CARD_CONTRACT, MeaningSearchCard),
   entry(MODEL_CARD_CONTRACT, ModelCard),
   entry(MODEL_PICKER_CONTRACT, ModelPicker),
   entry(CONSENT_PANEL_CONTRACT, ConsentPanel),

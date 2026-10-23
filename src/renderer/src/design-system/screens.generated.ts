@@ -41,91 +41,112 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '178:5',
     flow: '0 · Launch',
     page: '↳ Start',
-    components: ['CenteredLayout', 'LoadingState']
+    components: ['CenteredLayout', 'LoadingState', 'Spinner']
   },
   {
     title: 'Library failed to open',
     figmaId: '178:95',
     flow: '0 · Launch',
     page: '↳ Start',
-    components: ['CenteredLayout', 'ErrorState']
+    components: ['Button', 'CenteredLayout', 'ErrorState']
   },
   {
     title: 'Library folder unavailable',
     figmaId: '178:185',
     flow: '0 · Launch',
     page: '↳ Start',
-    components: ['CenteredLayout', 'ErrorState']
+    components: ['Button', 'CenteredLayout', 'ErrorState']
   },
   {
     title: 'settings.json corrupt',
     figmaId: '178:274',
     flow: '0 · Launch',
     page: '↳ Start',
-    components: ['Banner', 'CenteredLayout', 'OnboardingStep', 'StepIndicator']
+    components: ['Banner', 'Button', 'CenteredLayout', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'settings.json corrupt, no copy kept',
     figmaId: '926:154063',
     flow: '0 · Launch',
     page: '↳ Start',
-    components: ['CenteredLayout']
+    components: ['Banner', 'Button', 'CenteredLayout', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'A1 Welcome',
     figmaId: '180:5',
     flow: 'A · Onboarding',
     page: '↳ Start',
-    components: ['CenteredLayout', 'OnboardingStep', 'StepIndicator']
+    components: ['Button', 'CenteredLayout', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'A2 Library location',
     figmaId: '180:90',
     flow: 'A · Onboarding',
     page: '↳ Start',
-    components: ['CenteredLayout', 'OnboardingStep', 'PathField', 'StepIndicator']
+    components: ['Button', 'CenteredLayout', 'OnboardingStep', 'PathField', 'StepIndicator']
   },
   {
     title: 'A4 Privacy consent',
     figmaId: '180:181',
     flow: 'A · Onboarding',
     page: '↳ Start',
-    components: ['CenteredLayout', 'ConsentPanel', 'OnboardingStep', 'StepIndicator']
+    components: [
+      'Button',
+      'CenteredLayout',
+      'ConsentPanel',
+      'OnboardingStep',
+      'StepIndicator',
+      'Switch'
+    ]
   },
   {
     title: 'A5 All set',
     figmaId: '180:272',
     flow: 'A · Onboarding',
     page: '↳ Start',
-    components: ['CenteredLayout', 'OnboardingStep', 'StepIndicator']
+    components: ['Button', 'CenteredLayout', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'Folder not writable',
     figmaId: '180:358',
     flow: 'A · Onboarding',
     page: '↳ Start',
-    components: ['CenteredLayout', 'OnboardingStep', 'PathField', 'StepIndicator']
+    components: ['Button', 'CenteredLayout', 'OnboardingStep', 'PathField', 'StepIndicator']
   },
   {
     title: 'Existing library found',
     figmaId: '180:446',
     flow: 'A · Onboarding',
     page: '↳ Start',
-    components: ['CenteredLayout', 'ChoiceDialog', 'OnboardingStep', 'PathField', 'StepIndicator']
+    components: [
+      'Button',
+      'CenteredLayout',
+      'ChoiceDialog',
+      'OnboardingStep',
+      'PathField',
+      'StepIndicator'
+    ]
   },
   {
     title: 'Folder not found',
     figmaId: '926:163373',
     flow: 'A · Onboarding',
     page: '↳ Start',
-    components: ['CenteredLayout']
+    components: ['Button', 'CenteredLayout', 'OnboardingStep', 'PathField', 'StepIndicator']
   },
   {
     title: 'Checking the folder',
     figmaId: '926:163403',
     flow: 'A · Onboarding',
     page: '↳ Start',
-    components: ['CenteredLayout']
+    components: [
+      'Button',
+      'CenteredLayout',
+      'OnboardingStep',
+      'PathField',
+      'Spinner',
+      'StepIndicator'
+    ]
   },
   {
     title: 'A3a Choose model',
@@ -133,8 +154,11 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'A3 · AI setup',
     page: '↳ Start',
     components: [
+      'Badge',
+      'Button',
       'CenteredLayout',
       'HardwareSummary',
+      'MeaningSearchCard',
       'ModelPicker',
       'ModelRow',
       'OnboardingStep',
@@ -148,10 +172,12 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'A3 · AI setup',
     page: '↳ Start',
     components: [
+      'Badge',
+      'Button',
       'CenteredLayout',
       'HardwareSummary',
+      'MeaningSearchCard',
       'ModelPicker',
-      'ModelRow',
       'OnboardingStep',
       'StepIndicator',
       'Switch'
@@ -163,11 +189,15 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'A3 · AI setup',
     page: '↳ Start',
     components: [
+      'Badge',
+      'Button',
       'CenteredLayout',
       'HardwareSummary',
+      'MeaningSearchCard',
       'ModelPicker',
       'ModelRow',
       'OnboardingStep',
+      'Progress',
       'StepIndicator',
       'Switch'
     ]
@@ -178,11 +208,16 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'A3 · AI setup',
     page: '↳ Start',
     components: [
+      'Badge',
+      'Button',
       'CenteredLayout',
       'HardwareSummary',
+      'MeaningSearchCard',
       'ModelPicker',
       'ModelRow',
       'OnboardingStep',
+      'Progress',
+      'Spinner',
       'StepIndicator',
       'Switch'
     ]
@@ -193,8 +228,11 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'A3 · AI setup',
     page: '↳ Start',
     components: [
+      'Badge',
+      'Button',
       'CenteredLayout',
       'HardwareSummary',
+      'MeaningSearchCard',
       'ModelPicker',
       'ModelRow',
       'OnboardingStep',
@@ -208,8 +246,11 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'A3 · AI setup',
     page: '↳ Start',
     components: [
+      'Badge',
+      'Button',
       'CenteredLayout',
       'HardwareSummary',
+      'MeaningSearchCard',
       'ModelPicker',
       'ModelRow',
       'OnboardingStep',
@@ -223,8 +264,11 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'A3 · AI setup',
     page: '↳ Start',
     components: [
+      'Badge',
+      'Button',
       'CenteredLayout',
       'HardwareSummary',
+      'MeaningSearchCard',
       'ModelPicker',
       'ModelRow',
       'OnboardingStep',
@@ -237,16 +281,10 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '180:711',
     flow: 'A3 · AI setup',
     page: '↳ Start',
-    components: ['CenteredLayout', 'HardwareSummary', 'OnboardingStep', 'StepIndicator']
-  },
-  {
-    title: 'Resume partial download?',
-    figmaId: '180:799',
-    flow: 'A3 · AI setup',
-    page: '↳ Start',
     components: [
+      'Badge',
+      'Button',
       'CenteredLayout',
-      'ChoiceDialog',
       'HardwareSummary',
       'ModelPicker',
       'ModelRow',
@@ -256,11 +294,31 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'Resume partial download?',
+    figmaId: '180:799',
+    flow: 'A3 · AI setup',
+    page: '↳ Start',
+    components: [
+      'Badge',
+      'Button',
+      'CenteredLayout',
+      'ChoiceDialog',
+      'HardwareSummary',
+      'MeaningSearchCard',
+      'ModelPicker',
+      'ModelRow',
+      'OnboardingStep',
+      'Progress',
+      'StepIndicator',
+      'Switch'
+    ]
+  },
+  {
     title: 'Model list empty',
     figmaId: '180:887',
     flow: 'A3 · AI setup',
     page: '↳ Start',
-    components: ['CenteredLayout', 'EmptyState', 'OnboardingStep', 'StepIndicator']
+    components: ['Button', 'CenteredLayout', 'EmptyState', 'OnboardingStep', 'StepIndicator']
   },
   {
     title: 'G1.1 Add menu',
@@ -269,15 +327,25 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Gather',
     components: [
       'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -286,16 +354,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Progress',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -304,15 +382,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -321,16 +409,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Progress',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -339,16 +437,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Progress',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -357,16 +465,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Progress',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -375,14 +493,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropOverlay',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -391,16 +519,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Progress',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -409,15 +547,21 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
-      'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropOverlay',
       'GlobalSearch',
-      'LibraryToolbar',
+      'Input',
+      'KeyboardShortcut',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -426,15 +570,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropHint',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -443,14 +597,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropOverlay',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -459,14 +623,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropOverlay',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -475,15 +649,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Progress',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -492,15 +676,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -509,14 +703,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -525,15 +729,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Progress',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -542,15 +757,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Progress',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -559,15 +785,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CopyFileRow',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -576,14 +812,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -611,7 +857,6 @@ export const SCREENS: ScreenEntry[] = [
       'Select',
       'SidebarNav',
       'SidebarNavItem',
-      'Spinner',
       'TreeBranch'
     ]
   },
@@ -639,7 +884,6 @@ export const SCREENS: ScreenEntry[] = [
       'Select',
       'SidebarNav',
       'SidebarNavItem',
-      'Spinner',
       'TreeBranch'
     ]
   },
@@ -665,7 +909,6 @@ export const SCREENS: ScreenEntry[] = [
       'Select',
       'SidebarNav',
       'SidebarNavItem',
-      'Spinner',
       'Toast',
       'TreeBranch'
     ]
@@ -677,11 +920,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -691,12 +949,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Banner',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -706,11 +979,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -720,11 +1008,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -734,11 +1037,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -748,12 +1066,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -763,11 +1096,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -777,11 +1125,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -791,11 +1154,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -805,11 +1183,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -819,11 +1212,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -833,11 +1241,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -847,11 +1270,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -861,11 +1299,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -875,11 +1328,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -889,11 +1357,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -903,12 +1386,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -918,12 +1416,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -933,12 +1445,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -948,12 +1474,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -963,12 +1504,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -978,12 +1534,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -993,12 +1564,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1008,12 +1594,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1023,11 +1624,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1037,14 +1653,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1054,14 +1685,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1071,14 +1717,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1088,14 +1749,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1105,14 +1781,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1122,14 +1813,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1139,14 +1845,28 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'Separator',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1156,14 +1876,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1173,11 +1908,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1187,12 +1937,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1202,14 +1967,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1219,12 +1999,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1234,12 +2029,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1249,14 +2058,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1266,12 +2090,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1281,14 +2120,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1298,12 +2152,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1313,11 +2182,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1327,11 +2211,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1341,11 +2240,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1355,12 +2269,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1370,11 +2299,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1384,11 +2328,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1398,14 +2357,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1415,14 +2389,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1432,14 +2421,29 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
       'DropdownMenuItem',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'Separator',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1449,12 +2453,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1464,12 +2483,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1479,12 +2512,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1494,12 +2542,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1509,12 +2572,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1522,7 +2599,30 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '931:159799',
     flow: 'B2 · Sort into piles',
     page: '↳ Sort',
-    components: ['AppWindow']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'FlowModal',
+      'GlobalSearch',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Tooltip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'S9.E1 Generic folder name',
@@ -1531,12 +2631,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1546,12 +2660,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1561,13 +2689,27 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1577,12 +2719,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Sort',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1590,42 +2746,174 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '931:160335',
     flow: 'B2 · Sort into piles',
     page: '↳ Sort',
-    components: ['AppWindow']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'ConfirmDialog',
+      'CoverImage',
+      'FavouriteToggle',
+      'FlowModal',
+      'GlobalSearch',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'S10.2 Saving your piles',
     figmaId: '931:160475',
     flow: 'B2 · Sort into piles',
     page: '↳ Sort',
-    components: ['AppWindow']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'ConfirmDialog',
+      'CoverImage',
+      'FavouriteToggle',
+      'FlowModal',
+      'GlobalSearch',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Spinner',
+      'TreeBranch'
+    ]
   },
   {
     title: 'S10.E1 Couldn’t save your piles',
     figmaId: '931:161574',
     flow: 'B2 · Sort into piles',
     page: '↳ Sort',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'FlowModal',
+      'GlobalSearch',
+      'GroupCard',
+      'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'S10.E2 Loading the board',
     figmaId: '931:161636',
     flow: 'B2 · Sort into piles',
     page: '↳ Sort',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Skeleton',
+      'TreeBranch'
+    ]
   },
   {
     title: 'S10.E3 Couldn’t open these',
     figmaId: '931:161698',
     flow: 'B2 · Sort into piles',
     page: '↳ Sort',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'ErrorState',
+      'FavouriteToggle',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'S10.E4 Nothing left to look over',
     figmaId: '931:161760',
     flow: 'B2 · Sort into piles',
     page: '↳ Sort',
-    components: ['AppWindow']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'FlowModal',
+      'GlobalSearch',
+      'GroupCard',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Tooltip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L2.1 Top of the pile',
@@ -1634,15 +2922,32 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
       'PileRail',
       'PileStep',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1652,15 +2957,32 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
       'PileRail',
       'PileStep',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1670,15 +2992,32 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
       'PileRail',
       'PileStep',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1688,12 +3027,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
       'MockupCard',
+      'MockupGrid',
+      'PageHeader',
       'PileRail',
       'PileStep',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1703,16 +3056,33 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
       'PileRail',
       'PileStep',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
       'TagEditor',
-      'Toast'
+      'Textarea',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1720,7 +3090,36 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '932:167337',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'PileRail',
+      'PileStep',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L2.E2 Jump back to the top mockup',
@@ -1729,15 +3128,32 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
       'PileRail',
       'PileStep',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1747,12 +3163,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
       'MockupCard',
+      'MockupGrid',
+      'PageHeader',
       'PileRail',
       'PileStep',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1762,16 +3192,33 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
       'PileRail',
       'PileStep',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1781,13 +3228,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1795,7 +3259,37 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '932:167874',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverDropZone',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'PileRail',
+      'PileStep',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L1.1 Look it over',
@@ -1804,13 +3298,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1820,15 +3331,31 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
-      'ActivityDock',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
       'TagEditor',
-      'Toast'
+      'Textarea',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1836,14 +3363,61 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '926:172134',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: ['AppWindow']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Spinner',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L1.E6 Opening Look it over',
     figmaId: '932:130397',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Skeleton',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L1.E3 Title emptied',
@@ -1852,15 +3426,31 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
       'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
       'TagEditor',
-      'Tooltip'
+      'Textarea',
+      'Tooltip',
+      'TreeBranch'
     ]
   },
   {
@@ -1869,15 +3459,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
     components: [
-      'ActionBar',
+      'AddMockupCard',
       'AppWindow',
-      'CoverPanel',
+      'Badge',
+      'Button',
+      'CoverImage',
       'ErrorState',
+      'FavouriteToggle',
       'FlowModal',
-      'MockupMetaForm',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
       'SidebarNav',
-      'TagChip',
-      'TagEditor'
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -1885,28 +3485,136 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '926:172177',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: ['AppWindow']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'ConfirmDialog',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L1.E8 Couldn’t save your changes',
     figmaId: '932:165771',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L1.E9 Couldn’t stash that',
     figmaId: '932:166335',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L1.E10 Couldn’t undo that',
     figmaId: '932:166836',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L3.1 Click Add tag',
@@ -1915,13 +3623,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1931,13 +3656,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1947,13 +3689,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1963,13 +3722,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1979,13 +3755,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -1995,13 +3788,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2011,13 +3821,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2027,13 +3854,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2043,13 +3887,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2059,15 +3920,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2077,16 +3953,31 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
       'DropOverlay',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2096,15 +3987,31 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Progress',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2114,15 +4021,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2132,15 +4054,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2150,16 +4087,31 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
       'Lightbox',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2169,16 +4121,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
-      'Banner',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2188,17 +4154,32 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverDropZone',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
       'TagEditor',
-      'Tooltip'
+      'Textarea',
+      'Tooltip',
+      'TreeBranch'
     ]
   },
   {
@@ -2208,18 +4189,32 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverDropZone',
       'CoverImage',
       'CoverPanel',
       'DropOverlay',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
       'TagEditor',
-      'Tooltip'
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2229,17 +4224,31 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverDropZone',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
       'TagEditor',
-      'Tooltip'
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2249,16 +4258,31 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Banner',
       'Button',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2268,16 +4292,31 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
       'DropOverlay',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2287,15 +4326,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2305,15 +4359,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Button',
       'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2321,7 +4390,33 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '932:168524',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: ['AppWindow']
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'L5.1 Back inside a pile',
@@ -2330,16 +4425,32 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
       'PileRail',
       'PileStep',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2349,12 +4460,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
       'MockupCard',
+      'MockupGrid',
+      'PageHeader',
       'PileRail',
       'PileStep',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2364,14 +4489,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
       'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagEditor'
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2381,14 +4522,30 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
       'MockupMetaForm',
+      'PageHeader',
+      'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
       'TagEditor',
-      'Toast'
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -2398,11 +4555,26 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Look it over',
     components: [
       'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
-      'SidebarNav'
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2411,16 +4583,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2429,16 +4608,21 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Button',
+      'CoverImage',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2447,15 +4631,19 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Button',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2464,17 +4652,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2483,17 +4679,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
       'Banner',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2502,15 +4705,22 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2519,15 +4729,19 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AppWindow',
+      'Button',
       'EmptyState',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2535,21 +4749,71 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '926:169217',
     flow: 'C · Library',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Button',
+      'ErrorState',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'C1.E5 Waiting to be sorted',
     figmaId: '931:163851',
     flow: 'C · Library',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'C1.E6 Waiting to be sorted · still copying',
     figmaId: '931:163885',
     flow: 'C · Library',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'C2.1 Typing a search',
@@ -2557,16 +4821,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2575,15 +4846,22 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2592,15 +4870,19 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AppWindow',
+      'Button',
       'EmptyState',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2609,16 +4891,21 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AppWindow',
+      'Badge',
+      'Button',
       'EmptyState',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'TagChip'
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
     ]
   },
   {
@@ -2627,20 +4914,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CategoryPill',
       'Checkbox',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
       'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'TagFilterPopover'
+      'SidebarNavItem',
+      'TagFilterPopover',
+      'TreeBranch'
     ]
   },
   {
@@ -2649,20 +4942,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CategoryPill',
       'Checkbox',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
       'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'TagFilterPopover'
+      'SidebarNavItem',
+      'TagFilterPopover',
+      'TreeBranch'
     ]
   },
   {
@@ -2671,20 +4970,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AppWindow',
+      'Badge',
+      'Button',
       'CategoryPill',
       'Checkbox',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
       'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
+      'SidebarNavItem',
       'TagChip',
-      'TagFilterPopover'
+      'TagFilterPopover',
+      'TreeBranch'
     ]
   },
   {
@@ -2693,16 +4998,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'TagChip'
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
     ]
   },
   {
@@ -2710,7 +5022,29 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '933:167435',
     flow: 'C · Library',
     page: '↳ Library',
-    components: ['AppWindow', 'TagFilterPopover', 'Tooltip']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CategoryPill',
+      'Checkbox',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagFilterPopover',
+      'Tooltip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'C3.E1 No tag matches',
@@ -2718,19 +5052,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'CategoryPill',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
       'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'TagFilterPopover'
+      'SidebarNavItem',
+      'TagFilterPopover',
+      'TreeBranch'
     ]
   },
   {
@@ -2739,18 +5079,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'EmptyState',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'TagFilterPopover'
+      'SidebarNavItem',
+      'TagFilterPopover',
+      'TreeBranch'
     ]
   },
   {
@@ -2759,16 +5106,21 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AppWindow',
+      'Badge',
+      'Button',
       'EmptyState',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'TagChip'
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
     ]
   },
   {
@@ -2777,16 +5129,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2795,16 +5154,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2813,16 +5179,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2831,16 +5204,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2849,16 +5229,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2867,16 +5254,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2885,16 +5279,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2903,16 +5304,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2921,17 +5329,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
-      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -2940,16 +5354,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2958,16 +5379,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2976,16 +5404,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -2994,16 +5429,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3012,16 +5454,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3030,16 +5479,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3048,16 +5504,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3066,17 +5529,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -3085,16 +5555,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3103,16 +5580,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3121,17 +5605,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -3140,16 +5631,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3158,16 +5656,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3176,17 +5681,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -3195,17 +5707,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3214,17 +5734,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3233,17 +5761,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3252,17 +5788,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -3271,17 +5814,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3290,17 +5841,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3309,17 +5868,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3328,17 +5895,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -3347,17 +5921,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'C · Library',
     page: '↳ Library',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
       'Select',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3372,224 +5954,812 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '893:133881',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['Button', 'CoverPanel', 'FavouriteToggle', 'Input', 'MockupMetaForm']
+    components: [
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'Input',
+      'MockupMetaForm',
+      'TagChip',
+      'TagEditor',
+      'Textarea'
+    ]
   },
   {
     title: 'details-panel · master · pile',
     figmaId: '893:133896',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['Button', 'MockupCard']
+    components: ['Button', 'CoverImage', 'MockupCard']
   },
   {
     title: 'D1.1 Open a mockup',
     figmaId: '893:134791',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.2 Full screen from the cover',
     figmaId: '894:19055',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Lightbox']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'Lightbox',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.3 Edit details',
     figmaId: '894:19280',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.4 Saved',
     figmaId: '894:19678',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E1 Opening the details',
     figmaId: '894:19806',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E2 Couldn’t open this mockup',
     figmaId: '894:20188',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'ErrorState',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E3 Photoshop didn’t open',
     figmaId: '894:135730',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'ConfirmDialog',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E4 Title emptied',
     figmaId: '894:136231',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E5 Discard your changes?',
     figmaId: '894:136676',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'ConfirmDialog',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E6 Cover file missing',
     figmaId: '894:137128',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E7 Full screen · still loading',
     figmaId: '894:140619',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Lightbox']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'Lightbox',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E8 Full screen · preview missing',
     figmaId: '894:141039',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Lightbox']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'Lightbox',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.5 Replace the cover',
     figmaId: '896:22709',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.6 Drag an image over the cover',
     figmaId: '896:22749',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'DropOverlay',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.7 Replacing the cover',
     figmaId: '896:22789',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Progress',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.8 Cover replaced',
     figmaId: '896:22829',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.9 Use the PSD’s preview',
     figmaId: '896:22869',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.10 Back on the PSD’s preview',
     figmaId: '896:22909',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E9 That image didn’t work',
     figmaId: '896:22949',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Banner',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D1.E10 Couldn’t save your changes',
     figmaId: '931:164899',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D2.1 Open a pile',
     figmaId: '894:137528',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D3.1 The pile page',
     figmaId: '894:137941',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D3.2 Another mockup in the pile',
     figmaId: '894:138520',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D3.3 Edit pile details',
     figmaId: '894:139043',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'CoverPanel',
+      'FavouriteToggle',
+      'Field',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupMetaForm',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D3.4 Card menu on the pile page',
     figmaId: '894:140210',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D3.5 Removed from the pile',
     figmaId: '896:142925',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D3.6 Couldn’t open this pile',
     figmaId: '931:164722',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Button',
+      'ErrorState',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D3.E1 Couldn’t put it on top',
     figmaId: '931:164781',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'D3.E2 Couldn’t remove it from the pile',
     figmaId: '931:164840',
     flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I1.1 To sort',
     figmaId: '378:24064',
     flow: 'I1 · To sort',
     page: '↳ Inboxes & Trash',
-    components: ['ActionBar', 'AppWindow', 'MockupCard', 'MockupGrid', 'PageHeader', 'SidebarNav']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I1.E1 To sort · still copying',
@@ -3597,14 +6767,22 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I1 · To sort',
     page: '↳ Inboxes & Trash',
     components: [
-      'ActionBar',
+      'AddMockupCard',
       'AppWindow',
-      'Banner',
+      'Badge',
+      'Button',
       'CopyWidget',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Progress',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3613,13 +6791,21 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I1 · To sort',
     page: '↳ Inboxes & Trash',
     components: [
-      'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3627,42 +6813,125 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '893:11547',
     flow: 'I1 · To sort',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Button',
+      'EmptyState',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I1.E4 Load failed',
     figmaId: '926:167202',
     flow: 'I1 · To sort',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Button',
+      'ErrorState',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I1.E5 Selected',
     figmaId: '926:167235',
     flow: 'I1 · To sort',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I1.E6 Tossed',
     figmaId: '926:167269',
     flow: 'I1 · To sort',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I2.1 To stash',
     figmaId: '380:31602',
     flow: 'I2 · To stash',
     page: '↳ Inboxes & Trash',
-    components: ['ActionBar', 'AppWindow', 'MockupCard', 'MockupGrid', 'PageHeader', 'SidebarNav']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I2.2 Hover a card',
     figmaId: '769:118810',
     flow: 'I2 · To stash',
     page: '↳ Inboxes & Trash',
-    components: ['ActionBar', 'AppWindow', 'MockupCard', 'MockupGrid', 'PageHeader', 'SidebarNav']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I2.E1 Toss these?',
@@ -3670,13 +6939,21 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I2 · To stash',
     page: '↳ Inboxes & Trash',
     components: [
-      'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3684,14 +6961,39 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '926:167303',
     flow: 'I2 · To stash',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I2.E2 To stash · empty',
     figmaId: '893:11580',
     flow: 'I2 · To stash',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'EmptyState',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'I3.1 Finish later?',
@@ -3699,15 +7001,32 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I3–I5 · Finish later, done & relaunch',
     page: '↳ Inboxes & Trash',
     components: [
+      'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
       'CoverPanel',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'MockupMetaForm',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -3716,13 +7035,23 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I3–I5 · Finish later, done & relaunch',
     page: '↳ Inboxes & Trash',
     components: [
+      'AddMockupCard',
       'AppWindow',
-      'Banner',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3731,15 +7060,32 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I3–I5 · Finish later, done & relaunch',
     page: '↳ Inboxes & Trash',
     components: [
+      'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'CoverPanel',
       'DropHint',
+      'FavouriteToggle',
+      'Field',
       'FlowModal',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'MockupMetaForm',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TagChip',
+      'TagEditor',
+      'Textarea',
+      'TreeBranch'
     ]
   },
   {
@@ -3748,15 +7094,28 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I3–I5 · Finish later, done & relaunch',
     page: '↳ Inboxes & Trash',
     components: [
+      'ActionBar',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
+      'FavouriteToggle',
       'FlowModal',
+      'GlobalSearch',
       'GroupCard',
       'GroupMemberThumb',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3765,13 +7124,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I3–I5 · Finish later, done & relaunch',
     page: '↳ Inboxes & Trash',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -3780,13 +7150,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I3–I5 · Finish later, done & relaunch',
     page: '↳ Inboxes & Trash',
     components: [
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -3795,14 +7176,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'I3–I5 · Finish later, done & relaunch',
     page: '↳ Inboxes & Trash',
     components: [
+      'AddMockupCard',
       'AppWindow',
-      'Banner',
+      'Badge',
+      'Button',
       'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'Progress',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3810,14 +7202,38 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '182:2214',
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
-    components: ['ActionBar', 'AppWindow', 'MockupGrid', 'PageHeader', 'SidebarNav']
+    components: [
+      'AppWindow',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'E2 Trash empty',
     figmaId: '182:2300',
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
-    components: ['AddMenu', 'AppWindow', 'EmptyState', 'GlobalSearch', 'PageHeader', 'SidebarNav']
+    components: [
+      'AppWindow',
+      'Button',
+      'EmptyState',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'E1 Trash list',
@@ -3825,13 +7241,19 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
     components: [
-      'ActionBar',
       'AppWindow',
-      'DropdownMenu',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3840,13 +7262,20 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
     components: [
-      'ActionBar',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3855,13 +7284,20 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
     components: [
-      'ActionBar',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3870,13 +7306,20 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
     components: [
-      'ActionBar',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'MockupCard',
       'MockupGrid',
       'PageHeader',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3884,42 +7327,129 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '926:166976',
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Button',
+      'ErrorState',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'E6 Refresh failed',
     figmaId: '926:167007',
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Badge',
+      'Banner',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'E7 Selected',
     figmaId: '926:167046',
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow']
+    components: [
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'E8 Card menu',
     figmaId: '926:167085',
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow', 'DropdownMenu']
+    components: [
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'DropdownMenu',
+      'DropdownMenuItem',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'E9 Restored',
     figmaId: '926:167124',
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'E10 Emptied',
     figmaId: '926:167163',
     flow: 'E · Trash',
     page: '↳ Inboxes & Trash',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'F1.1 My Stash',
@@ -3927,14 +7457,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -3943,17 +7483,27 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
       'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'ModelCard',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'Switch'
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
     ]
   },
   {
@@ -3962,15 +7512,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -3979,15 +7539,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'Switch'
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
     ]
   },
   {
@@ -3996,14 +7566,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4037,7 +7617,27 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '930:157374',
     flow: 'F · Settings',
     page: '↳ Settings',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
+    ]
   },
   {
     title: 'F2.1 The stash check found something',
@@ -4045,14 +7645,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4061,15 +7671,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'ChoiceDialog',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4078,15 +7698,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Progress',
       'ProgressDialog',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4095,15 +7726,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
-      'ChoiceDialog',
+      'Badge',
+      'Button',
+      'ConfirmDialog',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4112,15 +7753,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4128,7 +7779,26 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '930:157411',
     flow: 'F · Settings',
     page: '↳ Settings',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'F3.1 AI switched off',
@@ -4136,16 +7806,27 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
       'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
+      'ModelCard',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'Switch'
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
     ]
   },
   {
@@ -4154,17 +7835,28 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
       'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'ModelCard',
       'PageHeader',
+      'Progress',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'Switch'
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
     ]
   },
   {
@@ -4173,17 +7865,27 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
       'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'ModelCard',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'Switch'
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
     ]
   },
   {
@@ -4192,18 +7894,28 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
       'ConfirmDialog',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
       'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'ModelCard',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'Switch'
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
     ]
   },
   {
@@ -4211,21 +7923,261 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '930:157448',
     flow: 'F · Settings',
     page: '↳ Settings',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
+    ]
   },
   {
     title: 'F3.6 AI model · Checking the download',
     figmaId: '930:157485',
     flow: 'F · Settings',
     page: '↳ Settings',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'Progress',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
+    ]
   },
   {
     title: 'F3.7 AI model · Download paused',
     figmaId: '930:157522',
     flow: 'F · Settings',
     page: '↳ Settings',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F3.8 AI model · Apple Intelligence off',
+    figmaId: '1009:15405',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Banner',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F3.9 Apple Intelligence off · toast at launch',
+    figmaId: '1014:178017',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F3.10 Meaning search · not downloaded',
+    figmaId: '1009:15442',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F3.11 Meaning search · downloading',
+    figmaId: '1009:15479',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'Progress',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F3.12 Meaning search · couldn’t download',
+    figmaId: '1009:15516',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F3.13 Meaning search · ready',
+    figmaId: '1009:15553',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'HardwareSummary',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'ModelCard',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Switch',
+      'TreeBranch'
+    ]
   },
   {
     title: 'F4.1 Add a tag',
@@ -4233,15 +8185,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -4250,15 +8212,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -4267,15 +8239,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -4284,16 +8266,27 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
       'DropdownMenu',
+      'DropdownMenuItem',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -4302,15 +8295,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -4319,16 +8322,27 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'Field',
       'FormDialog',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -4337,16 +8351,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
+      'SidebarNavItem',
       'TagTree',
-      'Toast'
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -4355,15 +8379,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -4372,16 +8406,26 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'FormDialog',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -4390,15 +8434,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
       'SidebarNav',
-      'TagTree'
+      'SidebarNavItem',
+      'TagTree',
+      'TreeBranch'
     ]
   },
   {
@@ -4406,7 +8460,28 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '930:157559',
     flow: 'F · Settings',
     page: '↳ Settings',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Skeleton',
+      'TagTree',
+      'TreeBranch'
+    ]
   },
   {
     title: 'F5.1 Downloading an update',
@@ -4414,14 +8489,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4430,14 +8515,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'F · Settings',
     page: '↳ Settings',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SettingsLayout',
-      'SidebarNav'
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4445,21 +8540,325 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '884:133481',
     flow: 'F · Settings',
     page: '↳ Settings',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'F5.4 Starting the update download',
     figmaId: '930:157596',
     flow: 'F · Settings',
     page: '↳ Settings',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'F5.5 Licences',
     figmaId: '933:169017',
     flow: 'F · Settings',
     page: '↳ Settings',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'Modal',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F5.6 Update available',
+    figmaId: '1014:178400',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F5.7 What’s new',
+    figmaId: '1014:178436',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'Modal',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F5.8 Couldn’t check for updates',
+    figmaId: '1014:178475',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F5.9 Checking from the menu',
+    figmaId: '1014:178511',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Spinner',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F5.10 New version · toast at launch',
+    figmaId: '1014:178547',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F6.1 Report a problem',
+    figmaId: '1014:178930',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'Modal',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Textarea',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F6.2 Report · what is sent, shown',
+    figmaId: '1014:178969',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'Modal',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Textarea',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F6.3 Report · couldn’t send',
+    figmaId: '1014:179008',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'ActionBar',
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'Modal',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Textarea',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F6.4 Report sent',
+    figmaId: '1014:179047',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'G1.1 Changes found at launch',
@@ -4467,14 +8866,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
       'ReconciliationPanel',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4483,14 +8892,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
       'ReconciliationPanel',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Skeleton',
+      'TreeBranch'
     ]
   },
   {
@@ -4498,21 +8918,79 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '926:173575',
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'ReconciliationPanel',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Skeleton',
+      'TreeBranch'
+    ]
   },
   {
     title: 'G1.6 Adding a row',
     figmaId: '926:173612',
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'ReconciliationPanel',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'G1.8 Removing a row',
     figmaId: '933:17814',
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
-    components: ['AppWindow']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'ReconciliationPanel',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'G1.3 Added to To sort',
@@ -4520,15 +8998,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
       'ReconciliationPanel',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -4537,15 +9025,25 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
       'ReconciliationPanel',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -4554,14 +9052,24 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
     components: [
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -4569,21 +9077,60 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '926:173649',
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'ReconciliationPanel',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'G1.E2 Action failed',
     figmaId: '926:173687',
     flow: 'G · Stash check',
     page: '↳ Integrity & errors',
-    components: ['AppWindow', 'Toast']
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Toast',
+      'TreeBranch'
+    ]
   },
   {
     title: 'X1 Something broke',
     figmaId: '182:5157',
     flow: 'X · Cross-cutting & errors',
     page: '↳ Integrity & errors',
-    components: ['CenteredLayout', 'ErrorState']
+    components: ['Button', 'CenteredLayout', 'ErrorState']
   },
   {
     title: 'X2 Couldn’t load your stash',
@@ -4591,16 +9138,19 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'X · Cross-cutting & errors',
     page: '↳ Integrity & errors',
     components: [
-      'ActivityDock',
-      'AddMenu',
       'AppWindow',
-      'Banner',
+      'Button',
+      'ErrorState',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
       'MockupGrid',
       'PageHeader',
+      'Select',
       'SidebarNav',
-      'Toast'
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4608,7 +9158,19 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '182:5330',
     flow: 'X · Cross-cutting & errors',
     page: '↳ Integrity & errors',
-    components: ['AddMenu', 'AppWindow', 'GlobalSearch', 'PageHeader', 'ProGate', 'SidebarNav']
+    components: [
+      'AppWindow',
+      'Badge',
+      'Button',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'PageHeader',
+      'ProGate',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
   },
   {
     title: 'X4 Upgrade to Pro',
@@ -4617,14 +9179,24 @@ export const SCREENS: ScreenEntry[] = [
     page: '↳ Integrity & errors',
     components: [
       'ActionBar',
-      'AddMenu',
+      'AddMockupCard',
       'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
       'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
       'LibraryToolbar',
+      'MockupCard',
       'MockupGrid',
       'Modal',
       'PageHeader',
-      'SidebarNav'
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
     ]
   },
   {
@@ -4632,13 +9204,20 @@ export const SCREENS: ScreenEntry[] = [
     figmaId: '926:173722',
     flow: 'X · Cross-cutting & errors',
     page: '↳ Integrity & errors',
-    components: ['CenteredLayout', 'Toast']
+    components: ['Button', 'CenteredLayout', 'ErrorState', 'Toast']
   },
   {
     title: 'X1.E1 Report not copied',
     figmaId: '926:173749',
     flow: 'X · Cross-cutting & errors',
     page: '↳ Integrity & errors',
-    components: ['CenteredLayout', 'Toast']
+    components: ['Button', 'CenteredLayout', 'ErrorState', 'Toast']
+  },
+  {
+    title: 'X5 macOS menu bar · reference',
+    figmaId: '1017:185612',
+    flow: 'X · Cross-cutting & errors',
+    page: '↳ Integrity & errors',
+    components: ['DropdownMenu', 'DropdownMenuItem', 'KeyboardShortcut']
   }
 ]
