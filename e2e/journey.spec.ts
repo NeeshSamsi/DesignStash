@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { stubSuggestion } from '../src/main/ai/stub-suggestions'
 import { test, expect } from './fixtures/app'
 import { SMALL_REAL_ZIPS, TEST_SET_MISSING, testSet } from './fixtures/test-set'
 
@@ -6,7 +7,7 @@ import { SMALL_REAL_ZIPS, TEST_SET_MISSING, testSet } from './fixtures/test-set'
  * The core journey: gather mockups, sort them, look them over, find them in My Stash. The imports
  * are real downloads and generated cases from the DesignStash test set, so the journey runs on
  * real PSDs, real embedded previews and real zips. The AI is the stub provider, so suggestions are
- * fast and predictable ("Stub <file name>").
+ * fast and predictable: a believable title for the two real files, "Stub <file name>" for the rest.
  */
 
 test.skip(!testSet.available, TEST_SET_MISSING)
@@ -25,6 +26,7 @@ test('gather, sort, look over, and find the mockups in My Stash', async ({ app }
   const { window } = app
   const zips = [testSet.zip(SMALL_REAL_ZIPS.matteSnackBar), testSet.zip(SMALL_REAL_ZIPS.sticker)]
   const names = ['Matte Snack Bar Mockup', 'Sticker Mockup']
+  const titles = names.map((name) => stubSuggestion(`${name}.psd`).title)
 
   await test.step('gather: the PSDs in two real zips are copied in and wait in To sort', async () => {
     // Starting a copy from the UI (Add menu, ⌘O, dropping files) is WP7.3. The queue itself is real.
@@ -58,7 +60,9 @@ test('gather, sort, look over, and find the mockups in My Stash', async ({ app }
 
   await test.step('look it over: stash each mockup with the AI suggestion', async () => {
     await expect(window.getByText('1 of 2')).toBeVisible()
-    await expect(window.getByRole('textbox', { name: /title/i }).first()).toHaveValue(/^Stub /)
+    await expect(window.getByRole('textbox', { name: /title/i }).first()).toHaveValue(
+      new RegExp(`^(${titles.join('|')})$`)
+    )
     await expect(window.getByRole('group', { name: 'Cover' })).toBeVisible()
 
     for (let step = 1; step <= 2; step++) {
@@ -69,8 +73,8 @@ test('gather, sort, look over, and find the mockups in My Stash', async ({ app }
   await test.step('My Stash: both are there, with the AI titles and their real covers', async () => {
     await window.getByRole('button', { name: /^All/ }).click()
     await expect(window.getByText('2 mockups', { exact: true })).toBeVisible()
-    for (const name of names) {
-      await expect(window.getByText(`Stub ${name}`, { exact: true })).toBeVisible()
+    for (const title of titles) {
+      await expect(window.getByText(title, { exact: true })).toBeVisible()
     }
     await expect.poll(() => decodedCovers(window), { timeout: 15_000 }).toBe(2)
     // Nothing is left waiting, so the inboxes leave the sidebar.

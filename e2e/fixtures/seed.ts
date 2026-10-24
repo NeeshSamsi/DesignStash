@@ -1,5 +1,8 @@
 import { join } from 'node:path'
-import { expect, makePsds, type E2EApp } from './app'
+import { expect, type E2EApp } from './app'
+import { placeMockups, type MockupName } from './real-mockups'
+
+export { CARD_TITLE } from './real-mockups'
 
 /** What the specs need to know about a seeded mockup. */
 export interface Seeded {
@@ -23,18 +26,24 @@ async function ok<T>(app: E2EApp, channel: string, args?: unknown): Promise<T> {
 }
 
 /**
- * Puts real mockups in My Stash through the app's own pipeline, with no clicking: copy the PSDs in,
- * wait for the AI suggestions, leave every one on its own, then stash them. Specs that are about
- * something else (trash, tags, Detail) start from here.
+ * Puts mockups in My Stash through the app's own pipeline, with no clicking: copy the PSDs in, wait
+ * for the AI suggestions, leave every one on its own, then stash them. Specs that are about
+ * something else (trash, tags, Detail) start from here. The mockups are real files from the test
+ * set when it is there (real-mockups.ts), else generated boxes; `synthetic` asks for the boxes.
+ * They come back in the order asked for.
  */
-export async function seedStash(app: E2EApp, names: string[]): Promise<Seeded[]> {
+export async function seedStash(
+  app: E2EApp,
+  names: MockupName[],
+  opts: { synthetic?: boolean } = {}
+): Promise<Seeded[]> {
   const desk = join(app.userData, 'Desktop', `haul-${Date.now()}`)
-  makePsds(desk, names)
+  const placed = placeMockups(desk, names, opts.synthetic)
   await ok(app, 'copy:start', { paths: [desk] })
 
   await expect
     .poll(async () => await ok<{ toSort: number; sniffing: number }>(app, 'inbox:get-counts'), {
-      timeout: 45_000
+      timeout: 90_000
     })
     .toMatchObject({ toSort: names.length, sniffing: 0 })
 
@@ -52,13 +61,15 @@ export async function seedStash(app: E2EApp, names: string[]): Promise<Seeded[]>
   })
   await ok(app, 'look-over:open')
 
-  const seeded: Seeded[] = []
   for (const item of items) {
     const stashed = await ok<{ ok: boolean }>(app, 'mockup:stash', { mockupId: item.id })
     expect(stashed.ok, `${item.title} is stashed`).toBe(true)
-    seeded.push({ name: item.title, id: item.id, title: `Stub ${item.title}` })
   }
-  return seeded
+  return placed.map((p) => {
+    const item = items.find((i) => i.title === p.name)
+    expect(item, `${p.name} landed`).toBeTruthy()
+    return { name: p.name, id: item!.id, title: p.title }
+  })
 }
 
 /**

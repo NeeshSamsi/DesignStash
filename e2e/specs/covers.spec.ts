@@ -29,7 +29,7 @@ for (const [name, opts] of [
   test(`every card shows its cover on ${name}, in a folder with a space, # and %`, async () => {
     const app = await launchLikeReal(opts)
     try {
-      await seedStash(app, ['laptop', 'phone', 'poster'])
+      await seedStash(app, ['laptop', 'can', 'poster'], { synthetic: true })
       await showMyStash(app)
       await expect(app.window.getByText('3 mockups', { exact: true })).toBeVisible()
 
@@ -74,7 +74,7 @@ test('a sidecar cover, an uploaded cover and a missing cover each show what they
     expect(sidecar!.coverSource).toBe('sidecar')
 
     // An embedded one, then replace its cover with an upload from somewhere outside the stash.
-    const [embedded] = await seedStash(app, ['laptop'])
+    const [embedded] = await seedStash(app, ['laptop'], { synthetic: true })
     const upload = join(app.userData, 'Pictures #3', 'my cover.png')
     mkdirSync(join(upload, '..'), { recursive: true })
     await sharp({ create: { width: 900, height: 600, channels: 3, background: '#c97b4a' } }).png().toFile(upload)
@@ -85,7 +85,7 @@ test('a sidecar cover, an uploaded cover and a missing cover each show what they
     expect(replaced.data).toMatchObject({ ok: true, coverSource: 'user-uploaded' })
 
     // A third whose cover file is deleted from the stash.
-    const [gone] = await seedStash(app, ['poster'])
+    const [gone] = await seedStash(app, ['poster'], { synthetic: true })
     const detail = await app.invoke<{ item: { coverPath: string } }>('mockup:detail', { mockupId: gone!.id })
     rmSync(detail.data!.item.coverPath)
 

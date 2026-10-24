@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/app'
-// Synthetic mockups (seedStash): this spec is not about importing, and they are fast.
+// Real mockups from the test set when it is there, else generated ones (seedStash).
 import { seedStash } from '../fixtures/seed'
 
 /** Trash: Restore all (with Undo) and Empty Trash. */
@@ -9,7 +9,7 @@ test.describe('Trash', () => {
 
   test('Restore all puts everything back, and Undo sends it to Trash again', async ({ app }) => {
     const { window } = app
-    const seeded = await seedStash(app, ['phone_front', 'phone_side', 'laptop'])
+    const seeded = await seedStash(app, ['can', 'pouch', 'laptop'])
     expect((await app.invoke('mockup:trash', { ids: seeded.map((s) => s.id) })).success).toBe(true)
 
     // The shell may still be coming up after the boot gate: wait for the navigation before using it.
@@ -34,7 +34,7 @@ test.describe('Trash', () => {
 
   test('Empty Trash asks once, says what it frees, and deletes for good', async ({ app }) => {
     const { window } = app
-    const seeded = await seedStash(app, ['phone_front', 'laptop'])
+    const seeded = await seedStash(app, ['can', 'laptop'])
     expect((await app.invoke('mockup:trash', { ids: seeded.map((s) => s.id) })).success).toBe(true)
 
     // The shell may still be coming up after the boot gate: wait for the navigation before using it.

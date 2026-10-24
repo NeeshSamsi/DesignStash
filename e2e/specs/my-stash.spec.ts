@@ -1,29 +1,28 @@
 import type { Locator } from '@playwright/test'
 import { test, expect } from '../fixtures/app'
-// Synthetic mockups (seedStash): this spec is not about importing, and they are fast.
-import { makeTag, seedStash, showMyStash, tagMockup } from '../fixtures/seed'
+// Real mockups from the test set when it is there, else generated ones (seedStash).
+import { CARD_TITLE, makeTag, seedStash, showMyStash, tagMockup } from '../fixtures/seed'
 import { clickUndo } from '../fixtures/toast'
 
 /**
  * My Stash: selecting, making a pile, trashing with Undo, and filtering by tag.
- * Four mockups are stashed through the real pipeline before each test; the stub AI titles them
- * "Stub <file name>".
+ * Four mockups are stashed through the real pipeline before each test, with the stub AI's titles.
  */
 
 /**
  * A card's title. Clicking the card's middle would hit the hover buttons over its cover (Open in
  * Photoshop, Edit details), so people, and these specs, click the title.
  */
-const title = (card: Locator) => card.getByText(/^Stub /)
+const title = (card: Locator) => card.getByText(CARD_TITLE)
 
-const NAMES = ['phone_front', 'phone_side', 'phone_back', 'laptop']
+const NAMES = ['can', 'pouch', 'leggings', 'laptop'] as const
 
 test.describe('My Stash', () => {
   test.describe.configure({ timeout: 120_000 })
 
   test('selects with a click, ⌘-click and ⇧-click', async ({ app }) => {
     const { window } = app
-    await seedStash(app, NAMES)
+    await seedStash(app, [...NAMES])
     await showMyStash(app)
     const cards = window.locator('[data-mockup-id]')
     await expect(cards).toHaveCount(4)
@@ -55,7 +54,7 @@ test.describe('My Stash', () => {
 
   test('⌘G makes a pile of the selection, and Undo splits it again', async ({ app }) => {
     const { window } = app
-    await seedStash(app, NAMES)
+    await seedStash(app, [...NAMES])
     await showMyStash(app)
     await expect(window.getByText('4 mockups', { exact: true })).toBeVisible()
     const cards = window.locator('[data-mockup-id]')
@@ -76,7 +75,7 @@ test.describe('My Stash', () => {
 
   test('Backspace moves the selection to Trash at once, with Undo', async ({ app }) => {
     const { window } = app
-    const [front, , , laptop] = await seedStash(app, NAMES)
+    const [can, , , laptop] = await seedStash(app, [...NAMES])
     await showMyStash(app)
     const cards = window.locator('[data-mockup-id]')
     await expect(cards).toHaveCount(4)
@@ -94,19 +93,19 @@ test.describe('My Stash', () => {
     await expect(cards).toHaveCount(4)
     // The toast names the mockup too, so look at the page itself.
     await expect(window.getByRole('main').getByText(laptop!.title, { exact: true })).toBeVisible()
-    await expect(window.getByRole('main').getByText(front!.title, { exact: true })).toBeVisible()
+    await expect(window.getByRole('main').getByText(can!.title, { exact: true })).toBeVisible()
   })
 
   test('filters by a tag, and by "All in <category>"', async ({ app }) => {
     const { window } = app
-    const [front, side, back, laptop] = await seedStash(app, NAMES)
+    const [can, pouch, leggings, laptop] = await seedStash(app, [...NAMES])
     const iphone = await makeTag(app, 'Device', 'Zephyr Phone')
     const macbook = await makeTag(app, 'Device', 'Zephyr Book')
     const clay = await makeTag(app, 'Style', 'Zephyr Clay')
-    await tagMockup(app, front!, [iphone, clay])
-    await tagMockup(app, side!, [iphone])
+    await tagMockup(app, can!, [iphone, clay])
+    await tagMockup(app, pouch!, [iphone])
     await tagMockup(app, laptop!, [macbook])
-    await tagMockup(app, back!, [clay])
+    await tagMockup(app, leggings!, [clay])
 
     await showMyStash(app)
     const cards = window.locator('[data-mockup-id]')
@@ -117,8 +116,8 @@ test.describe('My Stash', () => {
       const device = window.getByRole('group', { name: 'Device' })
       await device.getByText('Zephyr Phone', { exact: true }).click()
       await expect(cards).toHaveCount(2)
-      await expect(window.getByText(front!.title, { exact: true })).toBeVisible()
-      await expect(window.getByText(side!.title, { exact: true })).toBeVisible()
+      await expect(window.getByText(can!.title, { exact: true })).toBeVisible()
+      await expect(window.getByText(pouch!.title, { exact: true })).toBeVisible()
     })
 
     await test.step('every picked tag has to match', async () => {
@@ -127,7 +126,7 @@ test.describe('My Stash', () => {
         .getByText('Zephyr Clay', { exact: true })
         .click()
       await expect(cards).toHaveCount(1)
-      await expect(window.getByText(front!.title, { exact: true })).toBeVisible()
+      await expect(window.getByText(can!.title, { exact: true })).toBeVisible()
     })
 
     await test.step('Clear all brings every mockup back', async () => {
@@ -140,9 +139,9 @@ test.describe('My Stash', () => {
         .getByRole('group', { name: 'Device' })
         .getByText('All in Device', { exact: true })
         .click()
-      // phone_front, phone_side and laptop have a Device tag; phone_back only has a Style one.
+      // The can, the pouch and the laptop have a Device tag; the leggings only have a Style one.
       await expect(cards).toHaveCount(3)
-      await expect(window.getByText(back!.title, { exact: true })).toHaveCount(0)
+      await expect(window.getByText(leggings!.title, { exact: true })).toHaveCount(0)
     })
   })
 })
