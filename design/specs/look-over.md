@@ -34,7 +34,11 @@
 
 - **The rail shows what's still coming.** PileStep gets a caption under its label: “Writing suggestions…” on the one in progress, and “Suggestions on the way” on the queued ones. That helps you pick a ready variant to work on next.
 - **AI switched off in Settings** shows no line. The file-name title is expected there, so a notice would never say anything new.
-- **When it counts as slow** (ai-eval rework, in code since 2026-10-24, `run-timing.ts`): about 2.5 times the median of this Mac's last 20 runs of that model, kept within a per-model floor and ceiling (Apple 8 to 30 s, Qwen3-VL 4B 20 to 60 s, Qwen3.5 9B 35 to 90 s; provisional until the 9B's timing run). With fewer than 5 runs on record the ceiling applies. The clock starts when the model begins on this mockup, after any model load, and the mockup on screen goes to the front of the queue. No timer is shown. ai-eval found the wait for a turn and the model load both short, so neither gets a state of its own.
+- **When it counts as slow** (ai-eval, round 3 D in `design/research/ai-round3.md`; in code since 2026-10-24, `run-timing.ts`): about 2.5 times the median of this Mac's last 20 runs of that model, kept within a per-model floor and ceiling: Apple 5 to 10 s, Qwen3-VL 4B 20 to 60 s, Qwen3.5 9B 35 to 100 s. On an M3 Max that comes to about 6 s, 20 s and 35 s; a base M1 or M2, three to five times slower with the Qwen models, gets its own threshold from its own runs. With fewer than 5 runs on record the ceiling applies.
+  - **The clock** starts when the model begins on this mockup (`ai:status` `run.writingSince`); a model load after launch or five idle minutes doesn't count. The mockup on screen goes to the front of the queue, then the rest of its pile. If it still has to wait for another mockup's run to finish, the clock counts from when it came on screen, so a stuck run ahead still brings the line. No timer is shown.
+  - **Normal runs don't see it.** Replayed over 90 covers per model in the order they ran, it would have shown on none of Apple's, on 4 of the 4B's (all during a few minutes when other work slowed the Mac 2 to 3 times, at 26 to 38 s) and on 1 of the 9B's (37 s, while the GPU was busy with other apps).
+  - **The wait for a turn and the model load get no state of their own.** The wait is at most one other run; the load takes under a second for Apple and 1 to 4 s for the Qwen models.
+  - **Proposed (nothing built yet):** at 3 times the threshold the app stops the run and shows L6.E3 (“Couldn't write suggestions…” with **Try again**), so one stuck run can't hold up the queue.
 - **One way out, for this mockup only.** No pile-level or haul-wide stop and no Settings link in the prompt: stopping for the pile meant the same as filling each one in, and changing model or turning AI off is a Settings decision.
 
 ### Edit check (ask 2, coming soon)
@@ -171,7 +175,7 @@ Neesh asked why the focus ring broke: “shouldn't focused variants of buttons b
 ## Open questions for Neesh
 
 1. **The status line in piles:** settled on 2026-10-24. No resting text anywhere, on piles or mockups on their own; the line shows only when it has something to say, and its row is kept for the mockup once shown.
-2. **Threshold:** settled on 2026-10-24 by the ai-eval rework: 2.5 times this Mac's median for the model, within per-model limits, timed from the run's start (provisional until the 9B's timing run).
+2. **Threshold:** settled on 2026-10-24 by the ai-eval rework: 2.5 times this Mac's median for the model, within per-model limits (Apple 5 to 10 s, 4B 20 to 60 s, 9B 35 to 100 s), timed from the run's start. Open: the hard stop at 3 times the threshold.
 3. **Pile-level stop:** settled on 2026-10-24. Only the per-mockup Fill it myself (ghost); Stop for this pile is gone and L6.E2 is superseded.
 4. **Stashing while one still writes:** settled on 2026-10-24. Stash pile waits; each card still writing offers Fill it myself (L6.E4).
 5. **A failed or slow edit check:** settled on 2026-10-24. It falls back to the offer (L7.E4, L7.E5), and the old Apply to all is gone.

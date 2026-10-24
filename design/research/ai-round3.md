@@ -584,3 +584,88 @@ The reasons read well in the design's line:
 One contradicts its own no: "this one shows the menu on a grey ceramic plate" (menu 3, which lies beside the plate).
 
 **Built (2026-10-24):** commits 74131fc, 33cccdc and 00a9f2e. The 9B judges with c4, every model's offer prepares C3's rewrite with changes-only tags, and a copy of the top's description stands in, marked, when a rewrite fails.
+
+## D. When "taking a while" shows (2026-10-24)
+
+Neesh, on L6.4: "on a technical level, how long after a run does it say it's been taking a while, make sure that's been considered." The design said 20 s after the mockup came on screen with no suggestion, twice round 1's 9B time. Three things break that: the clock started in the wrong place (a mockup on screen could be queued behind others, or waiting for the model to load), round 3 made every model slower (A8), and a fixed number tuned on this M3 Max fires too early on a base M1 or M2.
+
+### D1. What the app can know, and when
+
+| What | Where | Told to the renderer before D | Now (7c4e5b1) |
+|---|---|---|---|
+| Queued, and where in the queue | `InferenceQueue`'s list; `aiStatus: pending` on the row | `ai:status` pending, no position | The mockup on screen goes first, so its place is next, or after the run in flight. `look-over:showing` answers a queued mockup with `run.phase: queued` and the threshold. |
+| Its run started | `process()` sets `sniffing` | `ai:status` sniffing, with no time | `ai:status` sniffing with `run`: phase, `writingSince`, `slowAfterMs` |
+| The model is loading (cold start) | `LlamaServer`: spawned, `/health` says 503 until loaded. It happens after launch, after 5 idle minutes and after a model switch. | nothing | `run.phase: starting`, then `writing` once the model answers. `writingSince` is set then, so the load never counts. |
+| A request in flight | `LlamaServer`'s count; a mockup makes 1 to 6 requests (object name, answer, a scene check per thing, redo; the 9B's colour checks and answer again) | nothing | Not passed on. It is inside the run's clock. |
+| A retry | `suggest()` tries twice | nothing | Not passed on. Inside the clock. |
+| Which mockup is on screen | nothing told main. `save-draft` carries the mockup being left, and only when it changed; `set-resume` only on Finish later. | n/a | `look-over:open` puts the step it opens on first; `look-over:showing { mockupId }` (new typed channel through the existing `invoke`, no preload change) does it for every step after and answers with that mockup's status. |
+
+Three waits the queue doesn't see:
+- **`look-over:open` asks the model itself.** For every top and single that has no suggestion yet, `LookOverService.defaults()` calls `provider.analyze` directly, one after another, while the renderer shows skeletons. The queue then asks again later, since nothing marks the mockup done. With ten fresh singles on the 9B that is over two minutes of skeletons with no line at all. I recommend open stops asking: tops and singles wait for the queue like variants do (`waitingForAi`, filled by `look-over:draft`), with the one on screen first. That needs the renderer's waiting state (L6.1) first, so it isn't built.
+- **Pile-edit checks and rewrites** share the one llama-server (`--parallel 1`). A run that starts while they are in flight waits for them inside its clock.
+- **Apple's helper** runs Vision calls (OCR, feature prints) through the same queue as `describe`, so a run during an import can wait behind them.
+
+### D2. Time per mockup on this Mac
+
+`time-all` (the `app` version under its own name: the app's provider and each model's profile) over the 90 unique covers, one model at a time, in run order, and `scripts/ai-eval/cold-start.ts` for three cold starts per model (a fresh llama-server or helper, timed from the first request). M3 Max, 30-core GPU, 36 GB, 2026-10-24.
+
+The machine was busy: other agents, Figma and a browser, WindowServer at 45 to 90% CPU, and swap at 6.8 to 7.4 of 8 GB. The 4B run shows it in three stretches. Answers 2 to 23 ran at about 2.8 s per request. Answers 24 to 35 were a spike of about three and a half minutes, at 2 to 3 times that. From answer 36 to the end it settled about 1.4 times slower than the start (two-request answers: 5.8 s against 8.2 s at the median). The run was stopped at 86 of 90 for a Solo update and the last 4 run later (7.4 to 8.4 s, the busy stretch's level). The 9B ran with the GPU's renderer 58 to 96% busy with graphics from other apps (Figma's canvas, most likely) and WindowServer at about 50% CPU throughout. Its generation speed varied from 6 to 28 tokens a second against 20 to 23 in round 3's quiet timing pair, and its slowest answers were the slowest-running ones. So the 9B row gives its times as measured and as quiet-equivalent: each request scaled to round 3's quiet speeds (288 tokens a second for the prompt and image, 22.6 for generation).
+
+| Model | Answers | p50 | p95 | Longest | Requests per answer | Cold start |
+|---|---|---|---|---|---|---|
+| Apple | 90 | 2.5 s | 3.5 s | 4.2 s | one helper call, plus a scene check per thing | under a second more than warm |
+| 4B, quiet stretch | 22 | 6.1 s | 13.7 s | 15.7 s | median 2, mean 2.4, 11% need 4 to 6 | model ready in 0.9 to 2.4 s; first answer 0 to 0.7 s over warm |
+| 4B, busy stretch | 55 | 8.4 s | 17.8 s | 19.7 s | | |
+| 4B, spike | 12 | 11.7 s | 38.2 s | 38.2 s | | |
+| 4B, all but the spike | 77 | 7.8 s | 15.7 s | 19.7 s | | |
+| 9B, as measured | 90 | 14.3 s | 32.0 s | 43.2 s | median 2, mean 2.3, 18% need 4 to 7 | model ready in 1.4 to 3.9 s; first answer within a second of warm |
+| 9B, quiet-equivalent | 89 | 12.7 s | 27.4 s | 32.7 s | | |
+
+- **The number of requests sets the spread.** For the 4B, a two-request answer took 5.8 s quiet and 8.2 s busy; the covers that need four to six requests (the iMacs, the stationery sets, the Apple set, the smart display) took 11.5 to 19.7 s outside the spike. Its tail is about 2.5 times its median, so a factor of 2.5 alone sits right on its slowest normal answers.
+- **Other work on the Mac moves everything.** The same covers ran 1.4 times slower for most of the 4B run and up to 3 times slower in the spike. A rolling median follows a steady change within about ten answers; a short spike is a real wait, and the notice showing then is honest.
+- **Slower Macs, estimated from published numbers.** llama.cpp's published Apple Silicon benchmark (7B, Q4_0; github.com/ggml-org/llama.cpp/discussions/4167) has this Mac's chip at 568 tokens a second for prompts and 57 for generation. A base M1 does 108 to 118 and 14, about a fifth and a quarter of that; a base M2 does 146 and 22, about a quarter and two fifths. Answers here are mostly prompt (an image of about 800 tokens per request), so a base chip takes about three (M2) to five (M1) times as long with the Qwen models: around 30 s for a typical 4B answer and 50 s for the 9B. Apple's model runs on the Neural Engine, where a base M1 has about two thirds of this Mac's throughput, so perhaps 1.5 to 2 times as long. The 4B is offered from 8 GB and the 9B from 16 GB, so both reach those Macs.
+
+### D3. The rule, replayed
+
+Each answer's threshold is the factor times the median of the answers before it (the last 20), within the floor and ceiling, or the ceiling until 5 are in. Counted: the answers that would have shown the notice, in the order the runs went (`tmp/round3/timing-sim.mts`).
+
+| Model | 2x | 2.5x | 3x | 2.5x with the floor |
+|---|---|---|---|---|
+| Apple | 0 | 0 | 0 | 0 (floor 5 s) |
+| 4B | 11 | 6: five in the spike and one five-request cover at 19.7 s | 4, all in the spike | **4, all in the spike (26 to 38 s; floor 20 s)** |
+| 9B | 7 | 3 | 2 | **1 (floor 35 s): a 37 s answer that ran at 16 tokens a second; none with a 40 s floor** |
+
+### D4. The rule (proposed)
+
+1. **The mockup on screen goes first** in the AI queue, then the rest of its pile in the order Look it over walks it from there (the ones after it, then the ones before). Built.
+2. **The clock.** While its run writes, it counts from `writingSince`. While the model loads (`phase: starting`), it waits. While the mockup is queued, it counts from when the mockup came on screen. With it first in the queue that is at most the rest of one other run, so it seldom matters, but a run ahead that is stuck still brings the notice.
+3. **The threshold** is 2.5 times the median of this Mac's last 20 suggestions with the selected model (kept in settings, so a new launch starts from this Mac's speed), within a floor and a ceiling per model:
+
+   | Model | Floor | Ceiling | On this Mac |
+   |---|---|---|---|
+   | Apple | 5 s | 10 s | about 6 s |
+   | 4B | 20 s | 60 s | 20 s quiet, 21 s busy |
+   | 9B | 35 s | 100 s | 35 s quiet, 36 s busy |
+
+   - The floor is the longest normal answer measured here, rounded up to 5 s (Apple 4.2 s, the 4B 19.7 s outside the spike, the 9B 32.7 s quiet-equivalent). On a Mac as fast as this one or faster, an ordinary slow cover never shows the notice.
+   - The ceiling is about twice what a base-chip Mac takes for a typical mockup. On those Macs the slowest normal covers may show it, which is a real wait there; a stuck run never waits minutes.
+   - Until the model has 5 runs on this Mac, the ceiling stands.
+4. **After the notice, Fill it myself** (L6.E1), for this mockup only.
+5. **A hard stop (proposed; nothing built yet):** at 3 times the threshold the app stops the run, the line says it couldn't write suggestions for this one (L6.E3) with Try again, and the queue moves on. Today nothing stops a stuck run before each request's own timeout (3 minutes for llama-server, 2 for Apple's helper), tried twice, and the whole queue waits behind it. Three times the threshold leaves the notice up twice as long as it took to show, and on this Mac it is about 20 s, 60 s and 105 s for Apple, the 4B and the 9B.
+6. **No new visible states.** Queued and starting both show the same working line ("Writing suggestions…"). Queued lasts at most one other run; starting lasts under a second for Apple, about one to two and a half seconds for the 4B, and one and a half to four seconds for the 9B. Neither gives the person anything to do.
+
+### D5. Built (7c4e5b1, 78e3843, 0f04c63; eval b02a351)
+
+- `InferenceQueue.prioritise(ids)` and `statusOf(id)`; `look-over:open` and the new `look-over:showing` use them.
+- `ai:status` updates for a started run carry `run: { phase: starting | writing, writingSince, slowAfterMs }` (`AiRunSchema`, `src/shared/ipc/ai-status.ts`); `look-over:showing` answers a queued mockup with `phase: queued` and the threshold, for the clock that counts from when it came on screen.
+- `src/main/ai/run-timing.ts`: `slowAfterMs`, `RunTimes` (the last 20 run times per model, in settings as `aiRunTimes`) and the floors and ceilings above (0f04c63).
+- `LlamaServer.start()` and `ready`, passed on by the vision provider as `load()` and `loaded`.
+- The pile edit's 20 s budget (L7.E4) also starts once the model is loaded, so a cold start doesn't use it up.
+- Eval: `scripts/ai-eval/cold-start.ts` and the `time-all` version.
+
+### For Neesh (D)
+
+1. The rule in D4: 2.5 times this Mac's median, the floors and ceilings above, and the clock starting when the model begins on the mockup.
+2. The hard stop at 3 times the threshold, ending in L6.E3's Couldn't write with Try again.
+3. No "waiting" or "starting the model" states: both are short and give nothing to do.
+4. Open stops asking the model itself, so tops and singles wait for the queue like variants (needs the renderer's waiting state first).
