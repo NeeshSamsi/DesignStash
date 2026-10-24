@@ -18,7 +18,8 @@
  * added into one yes/no question; each variant's cover is asked that question, and only on a yes is
  * the variant's own entry given the change. An edit that only takes words out needs no question: it
  * goes to every variant whose entry has those words. `--prompt c3` is c2 with no question: each
- * cover is asked about the edit itself, told the words it added. `--prompt accept` is what happens
+ * cover is asked about the edit itself, told the words it added. `--prompt c4` is the app's own
+ * check (`src/main/ai/pile-edit.ts`): c3 asking for a reason too. `--prompt accept` is what happens
  * when the person accepts the edit on a variant: no check, every case gets c3's change (or the
  * removal) in a text request; `ai-eval:edit-carry-score` scores it against copying the top's entry.
  * `--cases <run>` takes the edits and variants of an earlier run in place of today's piles, so a
@@ -29,6 +30,7 @@ import { join } from 'node:path'
 import { LlamaServer, defaultLlamaServerDeps } from '../../src/main/ai/llama-server'
 import { MODEL_SERVER_ARGS, resolveLlamaServerPath } from '../../src/main/ai/provider-factory'
 import { MODEL_FILE_NAMES } from '../../src/main/ai/registry'
+import { CHECK_SCHEMA, ENTRY_SCHEMA, PILE_EDIT_SYSTEM as SYSTEM, checkPrompt, editDiff, pileEditRequest, readCheck, rewritePrompt } from '../../src/main/ai/pile-edit'
 import { readCoverAsDataUrl } from '../../src/main/ai/vision-provider'
 import { NativeHelper, resolveHelperPath } from '../../src/main/native/helper'
 import { DEV_DIR, argValue, readItems, runDir, writeJson } from './eval-files'
@@ -67,9 +69,6 @@ export function labelFor(edit: Edit, top: GoldItem, variant: GoldItem): Decision
   return same ? 'apply' : 'adapt'
 }
 
-const SYSTEM =
-  "You help keep a designer's mockup library consistent. A pile holds variants of one mockup (other angles, colours or scenes). You decide whether an edit the designer made to the first mockup's catalogue entry should also go to another mockup in the pile. Write in English."
-
 const PROMPTS: Record<string, (e: Edit, draft: { description: string; tags: string[] }) => string> = {
   c1: (e, d) =>
     [
@@ -99,17 +98,6 @@ const SCHEMA = {
   required: ['decision', 'description', 'tags']
 }
 
-const STOP = new Set(['the', 'and', 'with', 'also', 'called', 'its', 'for', 'one', 'two', 'three', 'that', 'whose', 'which', 'from', 'into', 'onto', 'this'])
-const contentWords = (text: string) =>
-  new Set(text.toLowerCase().split(/[^\p{L}\p{N}-]+/u).filter((w) => w.length > 2 && !STOP.has(w)))
-
-/** The content words an edit added and took out, over its description and tags. */
-export function editDiff(e: Pick<Edit, 'before' | 'after'>): { added: string[]; removed: string[] } {
-  const before = contentWords([e.before.description, ...e.before.tags].join(' '))
-  const after = contentWords([e.after.description, ...e.after.tags].join(' '))
-  return { added: [...after].filter((w) => !before.has(w)), removed: [...before].filter((w) => !after.has(w)) }
-}
-
 const editLines = (e: Edit) => [
   "The designer edited the catalogue entry of the first mockup in a pile.",
   `Before: "${e.before.description}" Tags: ${e.before.tags.join(', ')}.`,
@@ -133,31 +121,11 @@ const C2 = {
       'Is what the edit added also true of this image (the same surface, setting, colour, state, name or detail)? Answer yes or no from what the image shows.',
       'Reply with JSON: answer.'
     ].join('\n'),
-  check: (question: string) => `The image above is a design mockup. ${question} Answer yes or no from what the image shows.\nReply with JSON: answer.`,
-  change: (e: Edit, d: { description: string; tags: string[] }) =>
-    [
-      ...editLines(e),
-      '',
-      `Another mockup in the pile has this entry: "${d.description}" Tags: ${d.tags.join(', ')}.`,
-      'Make the same change to that entry and nothing else: keep its own setting, angle and other details, and its own words where the edit did not touch them.',
-      'Reply with JSON: description, tags.'
-    ].join('\n'),
-  remove: (removed: string[], d: { description: string; tags: string[] }) =>
-    [
-      `The designer took these words out of the first mockup's entry in a pile, because they were wrong: ${removed.join(', ')}.`,
-      `Another mockup in the pile has this entry: "${d.description}" Tags: ${d.tags.join(', ')}.`,
-      'Take the same thing out of that entry and change nothing else. Mend any sentence the cut leaves broken.',
-      'Reply with JSON: description, tags.'
-    ].join('\n')
+  check: (question: string) => `The image above is a design mockup. ${question} Answer yes or no from what the image shows.\nReply with JSON: answer.`
 }
 
 const QUESTION_SCHEMA = { type: 'object', properties: { question: { type: 'string' } }, required: ['question'] }
 const ANSWER_SCHEMA = { type: 'object', properties: { answer: { type: 'string', enum: ['yes', 'no'] } }, required: ['answer'] }
-const ENTRY_SCHEMA = {
-  type: 'object',
-  properties: { description: { type: 'string' }, tags: { type: 'array', items: { type: 'string' }, maxItems: 8 } },
-  required: ['description', 'tags']
-}
 
 async function main(): Promise<void> {
   const model = argValue('model')
@@ -166,7 +134,7 @@ async function main(): Promise<void> {
   const mask = argValue('mask') as MaskStyle | undefined
   if (!model || !drafts) throw new Error('Usage: pnpm ai-eval:edit-carry --model <id> --drafts <version> [--mask grey|soft] [--prompt c1]')
   const prompt = PROMPTS[promptId]
-  if (!prompt && !['c2', 'c3', 'accept'].includes(promptId)) throw new Error(`No prompt ${promptId}`)
+  if (!prompt && !['c2', 'c3', 'c4', 'accept'].includes(promptId)) throw new Error(`No prompt ${promptId}`)
   const edits = (JSON.parse(readFileSync(join(import.meta.dirname, 'round3', 'edits.json'), 'utf8')) as { edits: Edit[] }).edits
   const gold: Record<string, GoldItem> = {}
   for (const f of ['gold.json', 'gold-heldout.json', 'gold-signoff.json'])
@@ -211,22 +179,13 @@ async function main(): Promise<void> {
     )
     ask = async (imagePath, text, schema = SCHEMA) => {
       const url = imagePath ? await readCoverAsDataUrl(imagePath) : null
-      const json = (await server.complete({
-        messages: [
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: [...(url ? [{ type: 'image_url', image_url: { url } }] : []), { type: 'text', text }] }
-        ],
-        response_format: { type: 'json_schema', json_schema: { name: 'carry', schema } },
-        temperature: 0,
-        max_tokens: 400,
-        seed: 42
-      })) as { choices: { message: { content: string } }[] }
+      const json = (await server.complete(pileEditRequest(text, schema, url))) as { choices: { message: { content: string } }[] }
       return json.choices[0]!.message.content
     }
     stop = () => server.stop()
   }
 
-  const results: { edit: string; kind: string; variant: string; label: Decision; decision: Decision | null; description?: string; tags?: string[]; question?: string; answer?: string; ms: number; error?: string }[] = []
+  const results: { edit: string; kind: string; variant: string; label: Decision; decision: Decision | null; description?: string; tags?: string[]; question?: string; answer?: string; reason?: string; ms: number; error?: string }[] = []
   // c2: one question per edit, written once and timed apart from the variants.
   const questions = new Map<string, { question: string; ms: number }>()
   const questionFor = async (e: Edit) => {
@@ -237,18 +196,21 @@ async function main(): Promise<void> {
     }
     return questions.get(e.id)!
   }
-  type Said = { decision: Decision; description: string; tags: string[]; question?: string; answer?: string }
-  // The variant's own entry with the edit's change made, or with its removed words taken out.
+  type Said = { decision: Decision; description: string; tags: string[]; question?: string; answer?: string; reason?: string }
+  // The variant's own entry with the edit's change made, or with its removed words taken out (the app's `rewritePrompt`).
   const changed = async (e: Edit, d: { description: string; tags: string[] }): Promise<Said> => {
-    const { added, removed } = editDiff(e)
-    if (added.length > 0) return { decision: 'adapt' as const, ...(JSON.parse(await ask(null, C2.change(e, d), ENTRY_SCHEMA)) as typeof d) }
-    const has = removed.some((w) => new RegExp(`\\b${w}`, 'i').test([d.description, ...d.tags].join(' ')))
-    if (!has) return { decision: 'adapt' as const, ...d }
-    return { decision: 'adapt' as const, ...(JSON.parse(await ask(null, C2.remove(removed, d), ENTRY_SCHEMA)) as typeof d) }
+    const text = rewritePrompt(e, d)
+    if (text === null) return { decision: 'adapt' as const, ...d }
+    return { decision: 'adapt' as const, ...(JSON.parse(await ask(null, text, ENTRY_SCHEMA)) as typeof d) }
   }
   const c2 = async (e: Edit, imagePath: string, d: { description: string; tags: string[] }): Promise<Said> => {
     const { added } = editDiff(e)
     if (added.length === 0) return changed(e, d)
+    if (promptId === 'c4') {
+      const { answer, reason } = readCheck(await ask(imagePath, checkPrompt(e, added), CHECK_SCHEMA))
+      if (answer !== 'yes') return { decision: 'keep' as const, ...d, answer, reason }
+      return { ...(await changed(e, d)), answer }
+    }
     const question = promptId === 'c3' ? `added: ${added.join(', ')}` : (await questionFor(e)).question
     const text = promptId === 'c3' ? C2.checkEdit(e, added) : C2.check(question)
     const answer = (JSON.parse(await ask(imagePath, text, ANSWER_SCHEMA)) as { answer: string }).answer
@@ -268,7 +230,7 @@ async function main(): Promise<void> {
           : promptId === 'accept'
             ? await changed(c.edit, draftOf(c.variant))
             : await c2(c.edit, imagePath, draftOf(c.variant))
-        results.push({ edit: c.edit.id, kind: c.edit.kind, variant: c.variant, label: c.label, decision: parsed.decision, description: parsed.description, tags: parsed.tags, ...(parsed.question !== undefined && { question: parsed.question }), ...(parsed.answer !== undefined && { answer: parsed.answer }), ms: Math.round(performance.now() - begun) })
+        results.push({ edit: c.edit.id, kind: c.edit.kind, variant: c.variant, label: c.label, decision: parsed.decision, description: parsed.description, tags: parsed.tags, ...(parsed.question !== undefined && { question: parsed.question }), ...(parsed.answer !== undefined && { answer: parsed.answer }), ...(parsed.reason !== undefined && { reason: parsed.reason }), ms: Math.round(performance.now() - begun) })
       } catch (err) {
         results.push({ edit: c.edit.id, kind: c.edit.kind, variant: c.variant, label: c.label, decision: null, ms: Math.round(performance.now() - started), error: (err as Error).message })
       }
