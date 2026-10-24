@@ -1,7 +1,7 @@
 # Look it over: AI working and the edit check
 
 **Status:** Proposed (awaiting Neesh), designed 2026-10-23; the edit check reworked 2026-10-24 after experiment C. Nothing here is built.
-**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card. Components: **AiStatus** (new), **PileStep** (new `note` line) and **Popover** (its content is now a real slot).
+**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card, plus _Preview placement for L7.9_ (Option A and Option B, under L7.9). Components: **AiStatus** (new), **PileStep** (new `note` line), **Popover** (its content is now a real slot; `shadow/raised` since 2026-10-24) and **Button**, **Input** and **Textarea** (focus ring rebuilt 2026-10-24).
 **Related:** [piles.md](piles.md) (the pile model these screens sit in), [tags.md](tags.md) (suggested and new chips), [ai.md](ai.md) (models and timings).
 
 ## Proposed (awaiting Neesh)
@@ -49,17 +49,28 @@
 - **Apply here** (or **Apply anyway** after a no) applies the edits to that variant only, with Undo. **×** dismisses it for that variant, and ⌘Z brings it back.
 - An offer nobody answers never blocks Stash pile. The variant is stashed with its own words.
 
-**On accept:** two options are still open (question 8), and the preview works with either.
-- **Rewrite:** the edit is written into the variant's own text, keeping its scene.
-- **Copy:** the fields the top mockup changed are copied as they are.
+**On accept (settled by Neesh, 2026-10-24):** the variant's own description is rewritten with only the change worked in, keeping its scene (L7.9: “warm beige” becomes “terracotta”, and it stays “seen from the side”). Tags take only the changes (Colour Terracotta in, Scene Studio out); the variant's own tags and its AI suggestions otherwise stay. This holds for every model. Copying the top mockup's changed words is only a fallback when a rewrite fails, and the preview marks it as copied.
 
-**Preview before accepting (Neesh, 2026-10-24), for every model.** Hovering Apply here or Apply anyway (after 300 ms), or focusing it, opens a Popover beside the form, 6 px clear of it and right-aligned to the rail column (218 wide), so the Description field and the Tags row stay fully in view. It has three regions, divided by full-width separators (hierarchy reworked 2026-10-24 after Neesh: “cluttered and without proper hierarchy”):
+**Preview before accepting (Neesh, 2026-10-24), for every model.** Hovering Apply here or Apply anyway (after 300 ms), or focusing it, opens a Popover that hangs from that button: right-aligned to the button's right edge, 8 px (spacing/2) below it so it clears the focus ring, at Popover's default width (md, 288) with `shadow/raised`. It may cover the Title and Description fields, since the preview shows the before and after itself (placement option A, recommended; option B is under [Placement](#placement-options-for-the-preview)). It has three regions, divided by full-width separators (hierarchy reworked 2026-10-24 after Neesh: “cluttered and without proper hierarchy”):
 - **Header:** the title “Your top mockup edits” (body/sm/medium), with the reason under it (caption, text/secondary). With the 9B that's “This one is on a white backdrop.”; with 4B or Apple it's “Not checked for this variant, so look before you apply.” The status line then drops its reason (“Left out your top mockup edits.”), so the reason isn't said twice.
 - **Body:** the description as one sentence with an inline word diff. Unchanged words are in text/secondary; removed words are struck and in text/tertiary; added words are in text/brand at medium weight. When most of the sentence changes, it falls back to before and after on two rows, with before muted. Under it, short **Adds** and **Removes** rows of tag chips: `new` chips for added tags, display chips struck and muted for removed ones, with the words carrying the meaning. There are no section labels.
 - **Footer:** real buttons, light to heavy, heaviest at the right: Close (ghost), then Apply here or Apply anyway (primary). No key chips: Return applies and Esc closes, as in every macOS dialog and every other dialog in DesignStash, and the filled button already marks the default.
 - **Keys:** Tab reaches the status line's button and opens the preview. ↵ applies exactly what the preview shows. Esc closes the preview and keeps focus on the button. Tab moves into the footer.
-- **Preparing:** a rewrite (9B, about 7 s) is prepared in the background as soon as the offer shows. If it isn't ready, the body shows the current sentence muted, a spinner with “Preparing this one's version…” and two skeleton lines; the tag changes are already known. Apply works now and applies the moment the version is ready. With copy, the preview is instant.
-- **Popover component:** it now has a header description (`show-description`), dividers tied to the header and footer, and a footer of buttons only. It was extended once and is used the same way on every screen.
+- **Preparing:** the rewrite (any model; about 7 s with the 9B) is prepared in the background as soon as the offer shows. If it isn't ready, the body shows the current sentence muted, a spinner with “Preparing this one's version…” and two skeleton lines; the tag changes are already known. Apply works now and applies the moment the version is ready.
+- **Popover component:** it now has a header description (`show-description`), dividers tied to the header and footer, a footer of buttons only, and `shadow/raised`, the elevation TagEditor's popover already uses in code (the base `PopoverContent` has none yet). It was extended once and is used the same way on every screen.
+
+### Placement options for the preview
+
+Neesh flagged L7.9's popover floating over the rail with no link to its trigger. Two options sit under L7.9.
+
+- **A, anchored popover (recommended):** it opens from Apply here, right-aligned to the button, 8 px below it, and may overlap the form. It keeps the 300 ms hover Neesh approved and one-step apply from the line, and nothing on the page moves when it opens (4.9, 8.12, 8.17).
+- **B, inline panel:** the preview opens in place under the status line, inside the form column, and pushes the fields down about 280 px. It covers nothing, and at the column's full width the sentence reads in two lines (3.5). A hover-opened panel would push the form out from under the pointer, so it opens on click or ↵ only (8.17). That replaces the 300 ms hover, and applying takes two steps: Show changes, then Apply here. The line's button toggles the panel, so the panel's footer holds only Apply here. A long description or many tags would make the column outgrow the body and scroll.
+
+A is recommended. It keeps the approved interaction, the overlap is the one cost, and the preview carries the before and after so nothing hidden is lost.
+
+### Focus ring
+
+Button, Input and Textarea drew focus as a flush 2 px outside stroke, which any clipping parent cut into two side brackets (L7.9's Apply here). Their focus states now keep their own border and add a `focus-ring` layer: 2 px of `border/focus`, 2 px out from the control, `radius/xl`, matching the code's `focus-ring` utility (`outline 2px`, `outline-offset 2px`). Input's focus state also stopped shrinking 2 px, which had shifted the fields below a focused title. AiStatus's actions and the form column no longer clip. Checkbox, Switch, RadioGroup, Select, Tabs Trigger, GlobalSearch, SidebarNav Item, MockupCard, AddMockupCard, FavouriteToggle and TagChip still draw focus the old way, outside these flows.
 
 **Rail notes:** Checking your edits… (9B only), Edits applied, Edits reworded, and Edits offered. A dismissed offer leaves no note.
 
@@ -67,15 +78,15 @@
 |---|---|
 | L7.1 Top mockup edited | You change the top mockup's description or tags. The line says what Next will do. 9B: “When you go on, your edits get checked against the 3 variants.” 4B or Apple: “When you go on, your edits are offered on the 3 variants.” |
 | L7.2 Checking (9B) | After Next, the model checks each untouched variant in the background, one at a time; you can carry on. The line and each untouched variant's rail note say “Checking your edits…”. Variants you edited yourself are left alone. |
-| L7.3 Edits applied (9B, took it) | The edits are applied (tinted as in L6.3). **Undo** puts back the variant's own words. Rail note: Edits applied. |
+| L7.3 Edits applied (9B, took it) | The edits are worked into the variant's own words (“terracotta backdrop”, still “seen from the side”), with only the tag changes; tinted as in L6.3. Line: “Worked your top mockup edits into this one's own words.” **Undo** puts back the variant's own words. Rail note: Edits applied. |
 | L7.4 Edits reworded (9B, took it) | The edits are written into this variant's text, keeping its scene (“since it shows the back”). **Undo**. Rail note: Edits reworded. This is the usual 9B result. |
 | L7.6 Review (9B) | Each card's line gives the result: Edits applied, Edits reworded for this one, or “Edits offered: open it to apply”. |
 | L7.7 Left out, edits offered (9B) | The model said no. The variant keeps its own words, and the line offers the edits (“Left out your top mockup edits.”) with **Apply anyway** · **×**, and the reason sits in the preview's header. Shown with the preview open on hover, with the 9B's rewrite in the diff. Rail note: Edits offered. |
 | L7.8 Offer accepted | The edits are applied to this variant only, tinted, with **Undo**. Rail note: Edits applied. |
-| L7.9 Edits offered, nothing judged (4B, Apple) | Every untouched variant keeps its own words and offers the edits, with no reason line: “Use your top mockup edits here too? New description, Colour Terracotta.” **Apply here** · **×**. There's no waiting. Shown with the keyboard path: Apply here focused and the preview open. The diff shows the copied description changing the scene (“seen from the side” becomes “three-quarter angle”) before anyone accepts. |
+| L7.9 Edits offered, nothing judged (4B, Apple) | Every untouched variant keeps its own words and offers the edits, with no reason line: “Use your top mockup edits here too?” **Apply here** · **×**. There's no waiting. Shown with the keyboard path: Apply here focused and the preview open. The diff is the rewrite: “warm beige” becomes “terracotta” and the variant stays “seen from the side”; Adds Colour Terracotta, Removes Scene Studio. |
 | L7.10 Offer dismissed | The line goes back to its resting text and the rail note goes. Other variants keep their offers. |
 | L7.11 Review (4B, Apple) | Applied, dismissed (its own tags) and unanswered (“Edits offered: open it to apply”) side by side. |
-| L7.12 Preparing the preview (9B rewrite) | Hovering before the rewrite is ready: the same header and footer, and a body with the current sentence muted, “Preparing this one's version…” with a spinner, two skeleton lines and the tag changes. |
+| L7.12 Preparing the preview | Hovering before the rewrite is ready (any model): the same header and footer, and a body with the current sentence muted, “Preparing this one's version…” with a spinner, two skeleton lines and the tag changes. |
 | L7.E3 Undone on one variant | Back to the variant's own words, and the edits stay on offer: **Apply here** · **×**. Rail note: Edits offered. |
 | L7.E4 Slow check (9B) | After 20 s the check stops waiting. Every variant it hasn't judged gets the offer, as in L7.9. Results already in stay, and a late answer for an offered variant is dropped, so nothing changes under the person. |
 | L7.E5 Check failed (9B) | The variants keep their own words and each offers the edits, as in L7.9. |
@@ -109,8 +120,10 @@
 | Added words in text/brand at medium weight, removed words struck and muted | The change gets the most contrast and the unchanged words step back. Strikethrough and weight carry the meaning as well as colour. | 2.4, 2.3, 5.5 |
 | Row labels Adds and Removes; no Description or Tags labels | The sentence and the chips explain themselves, and the remaining labels are words that say what happens. | 1.6, 3.6, 5.5 |
 | Real buttons in the footer, light to heavy, and no key chips | Actions look like actions, with the heavy one at the right. Return and Esc behave as in every macOS dialog. No other DesignStash dialog shows key chips, and the buttons are already the visible route the shortcuts need, so the chips only added clutter. | 2.5, 8.2, 8.9, 8.12, 1.6, action weight |
-| The preview sits beside the form, aligned to the rail column | It never covers the fields it describes, and the rail matters least during the decision. Narrower (218), so the sentence wraps over more lines. | 4.9, 4.3, 8.17 |
-| The preview's “after” is the version that ↵ applies, whichever method ships | What you see is what you get, so question 8 can be settled later without redesigning. | 8.14, 7.12 |
+| The preview hangs from the button that opens it: right-aligned, 8 px below, Popover md with `shadow/raised` | A popover belongs to its trigger, so the eye goes from the button straight to what it does. The old spot over the rail had no link to the button and straddled the rail's header. Covering the fields is fine, since the preview shows the before and after. | 4.9, 8.12, 8.17, 7.5 |
+| Accepting rewrites the variant's own words with only the change, and tags take only the changes (Neesh) | Experiment C showed copying the top's whole description overwrites the variant's scene. Copy survives only as a marked fallback when a rewrite fails. | 8.14, 0.3, 1.5 |
+| The preview's “after” is exactly what ↵ applies | What you see is what you get. | 8.14, 7.12 |
+| One focus ring for Button, Input and Textarea: 2 px of `border/focus`, 2 px out, the control's own border kept | It matches the code's `focus-ring` utility, reads as one outline around the control, and no longer changes the control's size. | 8.2, 7.5, 8.17 |
 | Preparing state with a spinner and skeleton lines, while the button still works | Something visible during the wait, and the person never has to wait to act. | 8.3, 7.2 |
 | Popover's content became a real slot | The preview lives inside the popover, so the layer structure stays nested; nothing used the old placeholder. | 7.3, layer structure |
 | The 9B gives a reason when it leaves the edits out; 4B and Apple show none | A reason only when one exists, so no line ever says something empty. | 1.6, 8.4 |
@@ -128,6 +141,8 @@
 5. **A failed or slow edit check:** settled on 2026-10-24. It falls back to the offer (L7.E4, L7.E5), and the old Apply to all is gone.
 6. **The title in the edit check:** ask 2 names description and tags. Should an edited title go through the check too, reworded per variant ("· side")?
 7. **The existing `thinking` state** (MockupMetaForm skeleton, L3.E3) can't be typed into. Retire it in favour of L6.1's editable placeholders?
-8. **Accepting:** rewrite the variant's text keeping its scene (9B, about 7 s, prepared ahead), or copy the top mockup's changed fields as they are? Still open. The preview and the preparing state work either way.
+8. **Accepting:** settled on 2026-10-24. Rewrite the variant's own text with only the change, tags take only the changes, and copy is a marked fallback when a rewrite fails.
 9. **The offer's summary:** settled on 2026-10-24. A preview on hover or focus shows the change, for every model.
 10. **A dismissed offer:** settled on 2026-10-24. ⌘Z brings it back, with no rail note.
+11. **Preview placement:** A, the anchored popover (recommended), or B, the inline panel that opens on click and drops the hover?
+12. **A suggestion next to an applied tag of the same kind:** after accepting, the variant can show an AI suggestion “Colour Beige” beside the applied “Colour Terracotta” (L7.3, L7.4, L7.8). Should accepting drop suggestions in a category the edit just set?
