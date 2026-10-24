@@ -1,18 +1,18 @@
 # Look it over: AI working and the edit check
 
-**Status:** Proposed (awaiting Neesh), designed 2026-10-23. Nothing here is built.
-**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4) and _Edit check (L7)_ (L7.1–L7.6, L7.E1–E3), each screen with a Notes card. Components: **AiStatus** (new) and **PileStep** (new `note` line).
+**Status:** Proposed (awaiting Neesh), designed 2026-10-23; the edit check reworked 2026-10-24 after experiment C. Nothing here is built.
+**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4) and _Edit check (L7)_ (L7.1–L7.11, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card. Components: **AiStatus** (new) and **PileStep** (new `note` line).
 **Related:** [piles.md](piles.md) (the pile model these screens sit in), [tags.md](tags.md) (suggested and new chips), [ai.md](ai.md) (models and timings).
 
 ## Proposed (awaiting Neesh)
 
 ### The status line (AiStatus)
 
-- **One line above the form, on every Look it over screen,** in the same place and at the same height. It says where the values came from or what the AI is doing for the mockup on screen, with up to two small actions. Today's hint row ("AI suggested the title, description and tags…") is that line's resting state. It's hidden in piles today; this proposal shows it there too, so the fields never jump when the AI's state changes.
+- **One line above the form, on every Look it over screen,** in the same place and at the same height. It says where the values came from or what the AI is doing for the mockup on screen, with up to two small actions and, for the edit offer, a × to dismiss. Today's hint row ("AI suggested the title, description and tags…") is that line's resting state. It's hidden in piles today; this proposal shows it there too, so the fields never jump when the AI's state changes.
 - **Kinds:**
   - **working:** a spinner. Writing suggestions, checking edits, or taking a while (with the opt-outs).
   - **done:** a sparkle. Filled in, applied, reworded.
-  - **off:** an info icon. You're filling it in, stopped for the pile, kept its own.
+  - **off:** an info icon. You’re filling it in, stopped for the pile, edits offered.
   - **failed:** an alert in `text/warning`. Couldn't write, couldn't check.
 - **Actions** are xs buttons on the right: a ghost (lighter) on the left, a secondary on the right, no icons. They never compete with Next, the screen's primary action.
 - **Copy stays one line** (about 75 characters with one action), so the line never grows.
@@ -37,17 +37,42 @@
 
 ### Edit check (ask 2, coming soon)
 
+**Updated 2026-10-24, after experiment C.**
+- **Today's rule is wrong for most variants.** `carriedEdit` copies the top mockup's whole description and tags over every untouched variant. That overwrote the scene of all 23 variants that needed the edit adapted, and gave the edit to all 14 that shouldn't get it.
+- **What's likely to ship:**
+  - **9B:** the model checks whether what the edit added is true of each untouched variant's cover. On a yes it rewrites the variant's own text with the edit, keeping its scene. On a no it leaves the variant alone. It takes about 7 s per variant, in the background.
+  - **4B and Apple:** nothing is judged.
+- **Neesh's decision:** when the edit doesn't reach a variant, the variant **offers the edit**. The design covers both models, since the split isn't confirmed yet.
+
+**The offer:** one quiet, dismissable line per variant, in the status line (AiStatus `off`, with an action and `dismissible`).
+- It shows when you reach the variant. Nothing changes until you accept.
+- **Apply here** (or **Apply anyway** after a no) applies the edits to that variant only, with Undo. **×** dismisses it for that variant, and ⌘Z brings it back.
+- An offer nobody answers never blocks Stash pile. The variant is stashed with its own words.
+
+**On accept:** with the 9B, the edit is written into the variant's own text, keeping its scene (about 7 s, shown as “working”). With 4B or Apple, the fields the top mockup changed are copied.
+
+**Rail notes:** Checking your edits… (9B only), Edits applied, Edits reworded, and Edits offered. A dismissed offer leaves no note.
+
 | Screen | What happens |
 |---|---|
-| L7.1 Top mockup edited | You change the top mockup's description or tags. The line says “When you go on, your edits get checked against the 3 variants.” |
-| L7.2 Checking | After Next, the model checks each untouched variant in the background, one at a time; you can carry on. The line and each untouched variant's rail note say “Checking your edits…”. Variants you edited yourself are left alone. |
-| L7.3 Edits applied | The edits fit as they are, so they're applied (tinted as in L6.3). **Undo** puts back the variant's own values. Rail note: Edits applied. |
-| L7.4 Edits reworded | The edits apply, reworded for this variant, with a short reason (“since it shows the back”). **Undo**. Rail note: Edits reworded. |
-| L7.5 Kept its own | The variant differs enough that the edits would be wrong, so it keeps its own values, with the reason. **Apply anyway**. Rail note: Kept its own. |
-| L7.6 Review | Each card's line gives the result. Open a card to change it. |
-| L7.E1 Taking a while | After 20 s: **Leave them** (ghost: variants keep their own values) and **Apply to all** (secondary: the edits go to every untouched variant, as today). Results that already landed stay. |
-| L7.E2 Couldn't check | The edits go to every untouched variant, as today, so the outcome is predictable. The line says so, with **Undo**. |
-| L7.E3 Undone on one variant | Back to the variant's own values, with **Apply edits** to redo. Rail note: Kept its own. |
+| L7.1 Top mockup edited | You change the top mockup's description or tags. The line says what Next will do. 9B: “When you go on, your edits get checked against the 3 variants.” 4B or Apple: “When you go on, your edits are offered on the 3 variants.” |
+| L7.2 Checking (9B) | After Next, the model checks each untouched variant in the background, one at a time; you can carry on. The line and each untouched variant's rail note say “Checking your edits…”. Variants you edited yourself are left alone. |
+| L7.3 Edits applied (9B, took it) | The edits are applied (tinted as in L6.3). **Undo** puts back the variant's own words. Rail note: Edits applied. |
+| L7.4 Edits reworded (9B, took it) | The edits are written into this variant's text, keeping its scene (“since it shows the back”). **Undo**. Rail note: Edits reworded. This is the usual 9B result. |
+| L7.6 Review (9B) | Each card's line gives the result: Edits applied, Edits reworded for this one, or “Edits offered: open it to apply”. |
+| L7.7 Left out, edits offered (9B) | The model said no. The variant keeps its own words, and the line offers the edits with the reason: “Left out your top mockup edits: this one is on a white backdrop.” **Apply anyway** · **×**. Rail note: Edits offered. |
+| L7.8 Offer accepted | The edits are applied to this variant only, tinted, with **Undo**. Rail note: Edits applied. |
+| L7.9 Edits offered, nothing judged (4B, Apple) | Every untouched variant keeps its own words and offers the edits, with no reason line: “Use your top mockup edits here too? New description, Colour Terracotta.” **Apply here** · **×**. There's no waiting. |
+| L7.10 Offer dismissed | The line goes back to its resting text and the rail note goes. Other variants keep their offers. |
+| L7.11 Review (4B, Apple) | Applied, dismissed (its own tags) and unanswered (“Edits offered: open it to apply”) side by side. |
+| L7.E3 Undone on one variant | Back to the variant's own words, and the edits stay on offer: **Apply here** · **×**. Rail note: Edits offered. |
+| L7.E4 Slow check (9B) | After 20 s the check stops waiting. Every variant it hasn't judged gets the offer, as in L7.9. Results already in stay, and a late answer for an offered variant is dropped, so nothing changes under the person. |
+| L7.E5 Check failed (9B) | The variants keep their own words and each offers the edits, as in L7.9. |
+
+**Superseded (2026-10-24), and marked so in Figma:**
+- L7.5 Kept its own, by L7.7: the offer now has a ×, and the rail reads Edits offered.
+- L7.E1's Leave them · Apply to all, by L7.E4.
+- L7.E2's copy-to-all, by L7.E5. Copying the edits to every variant is gone from the design.
 
 ## Design decisions
 
@@ -64,7 +89,12 @@
 | Stash pile stays enabled while one is still writing, and the late fill keeps working after stash | Waiting on a slow model shouldn't block the person, and nothing they typed is ever overwritten. | 8.5, 8.7 |
 | The edit check runs in the background after Next | It never blocks the flow. Progress shows where the person already looks (the line and the rail). | 8.3, 8.17 |
 | Every check result names what happened and why, with Undo or Apply anyway | No silent changes; every result can be reversed in place. | 8.4, 8.14, reversible actions |
-| A failed check falls back to today's behaviour | It's a sensible default that matches what people already know. | 8.7, 0.3 |
+| When the edit doesn't reach a variant, it's offered there: one line, in the status line, dismissable | The person decides per variant, next to what it changes. One quiet line keeps the screen's primary action (Next) the strongest thing on it. | 4.9, 2.3, 2.5 |
+| Nothing changes until you accept, and accepting touches that variant only | Experiment C showed blanket copying is wrong for most variants. A variant's own words are the safe default. | 8.7, 8.14, 0.3 |
+| × to dismiss, after Banner's dismiss, with ⌘Z to bring the offer back | A familiar control for a quiet offer, and the same look as other dismissable messages. | 8.10, 7.5 |
+| The 9B gives a reason when it leaves the edits out; 4B and Apple show none | A reason only when one exists, so no line ever says something empty. | 1.6, 8.4 |
+| A slow or failed check falls back to the offer | The person still gets the edits, by hand, and no late answer changes a variant under them. Copy-to-all is gone. | 8.17, 8.7 |
+| Rail notes: Edits offered, Edits applied, Edits reworded | The rail shows at a glance which variants still have an answer waiting. | 8.20, 5.5 |
 | A new AiStatus component, plus a `note` on PileStep | The form's hint row can't change state or hold actions, and a Banner is heavier and would push the fields. Two small additions cover every state in both asks. | 7.3, 7.5 |
 | Labels say what happens: Fill it in myself, Write suggestions, Turn back on, Apply anyway | The button tells you the next thing. | 1.7, 8.9 |
 
@@ -74,6 +104,9 @@
 2. **Threshold:** a flat 20 s, or scaled per model (about twice its typical time)?
 3. **Pile-level stop:** keep Stop for this pile next to Fill it in myself, or only the per-mockup option?
 4. **Stashing while one still writes:** let the late suggestion fill in after stashing (proposed), or hold Stash pile until it lands?
-5. **A failed edit check:** apply to all as today (proposed), or leave the variants alone?
+5. **A failed or slow edit check:** settled on 2026-10-24. It falls back to the offer (L7.E4, L7.E5), and the old Apply to all is gone.
 6. **The title in the edit check:** ask 2 names description and tags. Should an edited title go through the check too, reworded per variant ("· side")?
 7. **The existing `thinking` state** (MockupMetaForm skeleton, L3.E3) can't be typed into. Retire it in favour of L6.1's editable placeholders?
+8. **Accepting with the 9B:** rewrite the variant's text keeping its scene (proposed, about 7 s), or copy the top mockup's changed fields straight away, as with 4B and Apple?
+9. **The offer's summary with 4B and Apple:** “New description, Colour Terracotta” names what changed without showing it. Is that enough, or should hovering Apply here preview the new description?
+10. **A dismissed offer:** ⌘Z brings it back (proposed). Should the rail also keep a way back, such as a muted “Offer dismissed” note?
