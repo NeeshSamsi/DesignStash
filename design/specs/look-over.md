@@ -1,7 +1,7 @@
 # Look it over: AI working and the edit check
 
 **Status:** Proposed (awaiting Neesh), designed 2026-10-23; the edit check reworked 2026-10-24 after experiment C. Nothing here is built.
-**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card, plus _Preview placement for L7.9_ (Option A and Option B, under L7.9). Components: **AiStatus** (new), **PileStep** (new `note` line), **Popover** (its content is now a real slot; `shadow/raised` since 2026-10-24) and **Button**, **Input** and **Textarea** (focus ring rebuilt 2026-10-24).
+**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card, plus _Preview placement for L7.9_ (Option A chosen, Option B superseded, under L7.9). Components: **AiStatus** (new), **PileStep** (new `note` line), **Popover** (its content is now a real slot; `shadow/raised` since 2026-10-24) and **Button**, **Input** and **Textarea** (focus ring rebuilt 2026-10-24).
 **Related:** [piles.md](piles.md) (the pile model these screens sit in), [tags.md](tags.md) (suggested and new chips), [ai.md](ai.md) (models and timings).
 
 ## Proposed (awaiting Neesh)
@@ -51,7 +51,7 @@
 
 **On accept (settled by Neesh, 2026-10-24):** the variant's own description is rewritten with only the change worked in, keeping its scene (L7.9: “warm beige” becomes “terracotta”, and it stays “seen from the side”). Tags take only the changes (Colour Terracotta in, Scene Studio out); the variant's own tags and its AI suggestions otherwise stay. This holds for every model. Copying the top mockup's changed words is only a fallback when a rewrite fails, and the preview marks it as copied.
 
-**Preview before accepting (Neesh, 2026-10-24), for every model.** Hovering Apply here or Apply anyway (after 300 ms), or focusing it, opens a Popover that hangs from that button: right-aligned to the button's right edge, 8 px (spacing/2) below it so it clears the focus ring, at Popover's `lg` width (384, `w-96`) with `shadow/raised`. It may cover the Title and Description fields, since the preview shows the before and after itself, but it ends at least 8 px above the Tags row so no chip is ever half hidden; a longer diff scrolls inside the body (placement option A, recommended; option B is under [Placement](#placement-options-for-the-preview)). It has three regions, divided by full-width separators (hierarchy reworked 2026-10-24 after Neesh: “cluttered and without proper hierarchy”):
+**Preview before accepting (Neesh, 2026-10-24), for every model.** Hovering Apply here or Apply anyway (after 300 ms), or focusing it, opens a Popover that hangs from that button: right-aligned to the button's right edge, 8 px (spacing/2) below it so it clears the focus ring, at Popover's `lg` width (384, `w-96`) with `shadow/raised`. It may cover the Title and Description fields, since the preview shows the before and after itself, but it ends at least 8 px above the Tags row so no chip is ever half hidden; a longer diff scrolls inside the body (placement option A, chosen by Neesh on 2026-10-24; see [Placement](#placement-options-for-the-preview)). It has three regions, divided by full-width separators (hierarchy reworked 2026-10-24 after Neesh: “cluttered and without proper hierarchy”):
 - **Header:** the title “Your top mockup edits” (body/sm/medium), with the reason under it (caption, text/secondary). With the 9B that's “This one is on a white backdrop.”; with 4B or Apple it's “Not checked for this variant, so look before you apply.” The status line then drops its reason (“Left out your top mockup edits.”), so the reason isn't said twice.
 - **Body:** the description as one sentence with an inline word diff. Unchanged words are in text/secondary; removed words are struck and in text/tertiary; added words are in text/brand at medium weight. When most of the sentence changes, it falls back to before and after on two rows, with before muted. Under it, short **Adds** and **Removes** rows of tag chips: `new` chips for added tags, display chips struck and muted for removed ones, with the words carrying the meaning. There are no section labels.
 - **Footer:** real buttons, light to heavy, heaviest at the right: Close (ghost), then Apply here or Apply anyway (primary). No key chips: Return applies and Esc closes, as in every macOS dialog and every other dialog in DesignStash, and the filled button already marks the default.
@@ -61,12 +61,12 @@
 
 ### Placement options for the preview
 
-Neesh flagged L7.9's popover floating over the rail with no link to its trigger. Two options sit under L7.9.
+Neesh flagged L7.9's popover floating over the rail with no link to its trigger. Two options sit under L7.9. **Neesh chose A on 2026-10-24**; L7.7, L7.9 and L7.12 use it.
 
-- **A, anchored popover (recommended):** it opens from Apply here, right-aligned to the button, 8 px below it, and may overlap the form. It keeps the 300 ms hover Neesh approved and one-step apply from the line, and nothing on the page moves when it opens (4.9, 8.12, 8.17).
-- **B, inline panel:** the preview opens in place under the status line, inside the form column, and pushes the fields down about 280 px. It covers nothing, and at the column's full width the sentence reads in two lines (3.5). A hover-opened panel would push the form out from under the pointer, so it opens on click or ↵ only (8.17). That replaces the 300 ms hover, and applying takes two steps: Show changes, then Apply here. The line's button toggles the panel, so the panel's footer holds only Apply here. A long description or many tags would make the column outgrow the body and scroll.
+- **A, anchored popover (chosen):** it opens from Apply here, right-aligned to the button, 8 px below it, and may overlap the form. It keeps the 300 ms hover Neesh approved and one-step apply from the line, and nothing on the page moves when it opens (4.9, 8.12, 8.17).
+- **B, inline panel (superseded, frame kept):** the preview opens in place under the status line, inside the form column, and pushes the fields down about 280 px. It covers nothing, and at the column's full width the sentence reads in two lines (3.5). A hover-opened panel would push the form out from under the pointer, so it opens on click or ↵ only (8.17). That replaces the 300 ms hover, and applying takes two steps: Show changes, then Apply here. The line's button toggles the panel, so the panel's footer holds only Apply here. A long description or many tags would make the column outgrow the body and scroll.
 
-A is recommended. It keeps the approved interaction, the overlap is the one cost, and the preview carries the before and after so nothing hidden is lost.
+A keeps the approved interaction, the overlap is the one cost, and the preview carries the before and after so nothing hidden is lost.
 
 ### Focus ring
 
@@ -97,6 +97,7 @@ Since 2026-10-24 every focusable component uses this ring: Checkbox, Switch, Rad
 - L7.5 Kept its own, by L7.7: the offer now has a ×, and the rail reads Edits offered.
 - L7.E1's Leave them · Apply to all, by L7.E4.
 - L7.E2's copy-to-all, by L7.E5. Copying the edits to every variant is gone from the design.
+- L7.9 · Option B (inline panel), by Option A, the anchored popover.
 
 ## Design decisions
 
@@ -146,5 +147,5 @@ Since 2026-10-24 every focusable component uses this ring: Checkbox, Switch, Rad
 8. **Accepting:** settled on 2026-10-24. Rewrite the variant's own text with only the change, tags take only the changes, and copy is a marked fallback when a rewrite fails.
 9. **The offer's summary:** settled on 2026-10-24. A preview on hover or focus shows the change, for every model.
 10. **A dismissed offer:** settled on 2026-10-24. ⌘Z brings it back, with no rail note.
-11. **Preview placement:** A, the anchored popover (recommended), or B, the inline panel that opens on click and drops the hover?
+11. **Preview placement:** settled on 2026-10-24. Option A, the anchored popover; Option B is superseded.
 12. **A suggestion next to an applied tag of the same kind:** after accepting, the variant can show an AI suggestion “Colour Beige” beside the applied “Colour Terracotta” (L7.3, L7.4, L7.8). Should accepting drop suggestions in a category the edit just set?
