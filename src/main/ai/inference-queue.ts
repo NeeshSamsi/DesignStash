@@ -11,36 +11,16 @@ import type { Mockup } from '../db/schema'
 
 /**
  * What the provider is shown for a mockup: its cover, the file name it came in as, and the folders
- * around it. With `repo`, a variant whose pile's first mockup is already stashed also gets that
- * mockup's approved title, description and tags, so it is described the same way.
+ * around it. A variant in a pile is analysed alone. In round 3 B (design/research/ai-round3.md),
+ * variants given the top's suggestion or approved words copied its scene, and its product names
+ * alone made them no more consistent.
  */
-export function analysisInputFor(m: Mockup, repo?: Repository): AnalysisInput {
+export function analysisInputFor(m: Mockup): AnalysisInput {
   const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
-  const groupContext = repo ? pileContextFor(m, repo) : null
   return {
     imagePath: m.coverPath,
     fileName: ctx?.originalFilename ?? m.title,
-    folderTrail: ctx?.folderTrail ?? [],
-    ...(groupContext && { groupContext })
-  }
-}
-
-/**
- * The one place a variant's reference from its pile is chosen. Today that is only a top already
- * stashed, with its approved words; giving variants the top's suggestion while it is still a draft
- * would be a change here alone.
- */
-function pileContextFor(m: Mockup, repo: Repository): AnalysisInput['groupContext'] | null {
-  if (m.groupId === null) return null
-  const top = repo.mockups.getMockup(m.groupId)
-  if (!top || top.stage !== 'stashed' || top.deletedAt !== null) return null
-  const categories = new Map(repo.tags.getAllCategories().map((c) => [c.id, c.label]))
-  return {
-    originalTitle: top.title,
-    originalDescription: top.description ?? '',
-    originalTags: repo.mockups
-      .getTagsForMockup(top.id)
-      .map((t) => ({ category: categories.get(t.categoryId) ?? '', label: t.label }))
+    folderTrail: ctx?.folderTrail ?? []
   }
 }
 
@@ -181,7 +161,7 @@ export class InferenceQueue {
   private async suggest(provider: InferenceProvider, m: Mockup): Promise<InferenceResult | null> {
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
       try {
-        const parsed = InferenceResultSchema.safeParse(await provider.analyze(analysisInputFor(m, this.deps.repo)))
+        const parsed = InferenceResultSchema.safeParse(await provider.analyze(analysisInputFor(m)))
         if (parsed.success) return parsed.data
       } catch {
         // Fall through to the next attempt.

@@ -380,21 +380,18 @@ describe('pile context', () => {
     return top
   }
 
-  it('shows a variant the approved title, description and tags of its pile’s first mockup', async () => {
+  // Round 3 B (design/research/ai-round3.md): any of the top's words made variants copy its scene.
+  it('analyses a variant alone, even when its pile’s first mockup is stashed', async () => {
     const top = stashedTop()
     const variant = imported('Tape 2', { stage: 'to_stash', groupId: top.id })
     const { provider, calls } = stubProvider(() => result('Tape'))
     const queue = new InferenceQueue({ repo, getProvider: async () => provider, onStatus: () => {} })
     await queue.enqueue([variant.id])
     await queue.idle()
-    expect(calls[0]!.groupContext).toEqual({
-      originalTitle: 'Tape roll on a wall',
-      originalDescription: 'A roll of tape on a white wall.',
-      originalTags: [{ category: 'Device', label: 'tape' }]
-    })
+    expect(calls[0]).toEqual({ imagePath: '/lib/Tape 2.webp', fileName: 'Tape 2.psd', folderTrail: ['Phones'] })
   })
 
-  it('gives no pile context while the first mockup is still waiting to be looked over', async () => {
+  it('analyses a variant alone while its pile’s first mockup is still waiting to be looked over', async () => {
     const top = repo.mockups.createMockup(approvedMockup({ title: 'Top', stage: 'to_stash', isGroup: true }))
     const variant = imported('Tape 2', { stage: 'to_stash', groupId: top.id })
     const single = imported('Alone')
