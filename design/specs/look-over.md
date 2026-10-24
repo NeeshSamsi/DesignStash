@@ -1,7 +1,7 @@
 # Look it over: AI working and the edit check
 
 **Status:** Proposed (awaiting Neesh), designed 2026-10-23; the edit check reworked 2026-10-24 after experiment C. Nothing here is built.
-**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card, plus _Preview placement for L7.9_ (Option A chosen, Option B superseded, under L7.9). Components: **AiStatus** (new), **PileStep** (new `note` line), **Popover** (its content is now a real slot; `shadow/raised` since 2026-10-24) and **Button**, **Input** and **Textarea** (focus ring rebuilt 2026-10-24).
+**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4; L6.E2 superseded) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card, plus _Preview placement for L7.9_ (Option A chosen, Option B superseded, under L7.9). Components: **AiStatus** (new), **PileStep** (new `note` line), **Popover** (its content is now a real slot; `shadow/raised` since 2026-10-24) and **Button**, **Input** and **Textarea** (focus ring rebuilt 2026-10-24).
 **Related:** [piles.md](piles.md) (the pile model these screens sit in), [tags.md](tags.md) (suggested and new chips), [ai.md](ai.md) (models and timings).
 
 ## Proposed (awaiting Neesh)
@@ -24,16 +24,15 @@
 | L6.1 Still writing | Title and Description show “Writing a title…” and “Writing a description…” as placeholders and stay editable. Tags show two thinking chips. The file name doesn't appear while the AI writes. |
 | L6.2 Typing while it writes | Typing wins: a field you type in is yours, and a late suggestion fills only the fields you haven't touched (`landedDraft` already works this way). The line says what's still coming. |
 | L6.3 Suggestions land | The untouched fields fill in. Focus and the caret stay put. Each filled field gets a `background/primary-weak` tint that fades out over 1.2 s (ease out); with reduced motion it shows for 2 s with no fade. The line says what was filled, then goes back to its resting text after 4 s. |
-| L6.4 Taking a while | After **20 s** on screen with nothing back, the line reads “Still writing. This one is taking a while.” with **Stop for this pile** (ghost) and **Fill it in myself** (secondary). For a mockup on its own, only Fill it in myself. |
-| L6.E1 Filling it in myself | Suggestions stop for this mockup. The title starts as the file name, selected so typing replaces it. Description and tags start empty. **Write suggestions** asks again. |
-| L6.E2 Stopped for this pile | The rest of the pile skips the AI: titles start as file names and the rail notes go. **Turn back on** restarts it for the variants you haven't edited. The next pile uses the AI again. |
+| L6.4 Taking a while | After **20 s** on screen with nothing back, the line reads “Still writing. This one is taking a while.” with one ghost button, **Fill it myself**, for this mockup only (Neesh, 2026-10-24: a pile-level stop meant the same thing). When this line shows is being reworked with the ai-eval numbers. |
+| L6.E1 Fill it myself | Suggestions stop for this mockup. The title starts as the file name, selected so typing replaces it. Description and tags start empty. **Write suggestions** asks again. |
 | L6.E3 Couldn't write | “Couldn't write suggestions for this one, so the title is its file name.” with **Try again**. No error codes. |
 | L6.E4 Review while one is still writing | Stash pile stays enabled. The card and the rail say “Writing suggestions…”, and the footer says the mockup fills in when its suggestions arrive, even after stashing (only fields nobody edited). |
 
 - **The rail shows what's still coming.** PileStep gets a caption under its label: “Writing suggestions…” on the one in progress, and “Suggestions on the way” on the queued ones. That helps you pick a ready variant to work on next.
 - **AI switched off in Settings** shows no line. The file-name title is expected there, so a notice would never say anything new.
 - **Why 20 s:** it's twice the slowest model's measured time per mockup (Qwen3.5 9B, 10.1 s on an M3 Max; Qwen3-VL 4B 3.6 s, Apple 2.5 s). Normal runs never see the prompt; base chips and a long queue do. The clock starts when the mockup is on screen, and no timer is shown.
-- **No haul-wide stop and no Settings link in the prompt.** Changing model or turning AI off is a Settings decision. A pile is the unit people work through, so the pile-level stop covers the repetitive case.
+- **One way out, for this mockup only.** No pile-level or haul-wide stop and no Settings link in the prompt: stopping for the pile meant the same as filling each one in, and changing model or turning AI off is a Settings decision.
 
 ### Edit check (ask 2, coming soon)
 
@@ -49,7 +48,7 @@
 - **Apply here** (or **Apply anyway** after a no) applies the edits to that variant only, with Undo. **×** dismisses it for that variant, and ⌘Z brings it back.
 - An offer nobody answers never blocks Stash pile. The variant is stashed with its own words.
 
-**On accept (settled by Neesh, 2026-10-24):** the variant's own description is rewritten with only the change worked in, keeping its scene (L7.9: “warm beige” becomes “terracotta”, and it stays “seen from the side”). Tags take only the changes (Colour Terracotta in, Scene Studio out); the variant's own tags and its AI suggestions otherwise stay. This holds for every model. Copying the top mockup's changed words is only a fallback when a rewrite fails, and the preview marks it as copied.
+**On accept (settled by Neesh, 2026-10-24):** the variant's own description is rewritten with only the change worked in, keeping its scene (L7.9: “warm beige” becomes “terracotta”, and it stays “seen from the side”). Tags take only the changes (Colour Terracotta in, Scene Studio out); the variant's own tags otherwise stay. An AI suggestion nobody approved is dropped when the edit sets its category (Neesh, 2026-10-24): “Colour Beige” goes once “Colour Terracotta” is applied, and other suggestions stay. The preview lists tags only, and Undo brings the suggestion back with the variant's own words (L7.3, L7.4, L7.8). This holds for every model. Copying the top mockup's changed words is only a fallback when a rewrite fails, and the preview marks it as copied.
 
 **Preview before accepting (Neesh, 2026-10-24), for every model.** Hovering Apply here or Apply anyway (after 300 ms), or focusing it, opens a Popover that hangs from that button: right-aligned to the button's right edge, 8 px (spacing/2) below it so it clears the focus ring, at Popover's `lg` width (384, `w-96`) with `shadow/raised`. It may cover the Title and Description fields, since the preview shows the before and after itself, but it ends at least 8 px above the Tags row so no chip is ever half hidden; a longer diff scrolls inside the body (placement option A, chosen by Neesh on 2026-10-24; see [Placement](#placement-options-for-the-preview)). It has three regions, divided by full-width separators (hierarchy reworked 2026-10-24 after Neesh: “cluttered and without proper hierarchy”):
 - **Header:** the title “Your top mockup edits” (body/sm/medium), with the reason under it (caption, text/secondary). With the 9B that's “This one is on a white backdrop.”; with 4B or Apple it's “Not checked for this variant, so look before you apply.” The status line then drops its reason (“Left out your top mockup edits.”), so the reason isn't said twice.
@@ -94,6 +93,7 @@ Since 2026-10-24 every focusable component uses this ring: Checkbox, Switch, Rad
 | L7.E5 Check failed (9B) | The variants keep their own words and each offers the edits, as in L7.9. |
 
 **Superseded (2026-10-24), and marked so in Figma:**
+- L6.E2 Stopped for this pile, by L6.4's single Fill it myself: the pile-level stop and its Turn back on are gone.
 - L7.5 Kept its own, by L7.7: the offer now has a ×, and the rail reads Edits offered.
 - L7.E1's Leave them · Apply to all, by L7.E4.
 - L7.E2's copy-to-all, by L7.E5. Copying the edits to every variant is gone from the design.
@@ -108,7 +108,7 @@ Since 2026-10-24 every focusable component uses this ring: Checkbox, Switch, Rad
 | Typing wins per field, and focus never moves | Overwriting someone's words, or yanking the caret, would break trust. The code's `landedDraft` already keeps edited fields. | 8.14, 8.17 |
 | A 1.2 s fading tint on fields the AI just filled | It shows what changed without taking focus. It fades so it doesn't linger, and has a reduced-motion fallback. | 10.1, 10.5, 10.6, 10.7 |
 | The opt-out after 20 s, tied to measured model times | It never fires on normal runs, and it's there before the wait feels broken. | 0.2, 8.3 |
-| Two opt-outs: Fill it in myself (heavier, right) and Stop for this pile (lighter, left); nothing haul-wide | Each earns its place: one mockup, or the repetitive pile case. Model choice stays in Settings. | 2.5, 9.2, action weight |
+| One opt-out, a ghost Fill it myself, for this mockup only (Neesh) | A pile-level stop did the same job, so two buttons offered one choice twice. A ghost button keeps the quiet line quiet and leaves Next as the strongest thing on screen. Model choice stays in Settings. | 1.6, 2.5, 9.2 |
 | Text notes under rail steps, not icons | Words say exactly what's happening, and the rail is the running view of the pile. | 5.5, 8.20 |
 | An honest fallback line with Try again where it failed; nothing when AI is off by choice | The error sits next to its cause and comes with the fix. A line that can only say one obvious thing is cut. | 8.4, 1.6, no-obvious-status |
 | Stash pile stays enabled while one is still writing, and the late fill keeps working after stash | Waiting on a slow model shouldn't block the person, and nothing they typed is ever overwritten. | 8.5, 8.7 |
@@ -133,13 +133,13 @@ Since 2026-10-24 every focusable component uses this ring: Checkbox, Switch, Rad
 | A slow or failed check falls back to the offer | The person still gets the edits, by hand, and no late answer changes a variant under them. Copy-to-all is gone. | 8.17, 8.7 |
 | Rail notes: Edits offered, Edits applied, Edits reworded | The rail shows at a glance which variants still have an answer waiting. | 8.20, 5.5 |
 | A new AiStatus component, plus a `note` on PileStep | The form's hint row can't change state or hold actions, and a Banner is heavier and would push the fields. Two small additions cover every state in both asks. | 7.3, 7.5 |
-| Labels say what happens: Fill it in myself, Write suggestions, Turn back on, Apply anyway | The button tells you the next thing. | 1.7, 8.9 |
+| Labels say what happens: Fill it myself, Write suggestions, Apply anyway | The button tells you the next thing. | 1.7, 8.9 |
 
 ## Open questions for Neesh
 
 1. **The status line in piles:** show the resting line ("Pre-filled from the top mockup…") on every mockup, which keeps the layout stable? Piles hide it today.
 2. **Threshold:** a flat 20 s, or scaled per model (about twice its typical time)?
-3. **Pile-level stop:** keep Stop for this pile next to Fill it in myself, or only the per-mockup option?
+3. **Pile-level stop:** settled on 2026-10-24. Only the per-mockup Fill it myself (ghost); Stop for this pile is gone and L6.E2 is superseded.
 4. **Stashing while one still writes:** let the late suggestion fill in after stashing (proposed), or hold Stash pile until it lands?
 5. **A failed or slow edit check:** settled on 2026-10-24. It falls back to the offer (L7.E4, L7.E5), and the old Apply to all is gone.
 6. **The title in the edit check:** ask 2 names description and tags. Should an edited title go through the check too, reworded per variant ("· side")?
@@ -148,4 +148,4 @@ Since 2026-10-24 every focusable component uses this ring: Checkbox, Switch, Rad
 9. **The offer's summary:** settled on 2026-10-24. A preview on hover or focus shows the change, for every model.
 10. **A dismissed offer:** settled on 2026-10-24. ⌘Z brings it back, with no rail note.
 11. **Preview placement:** settled on 2026-10-24. Option A, the anchored popover; Option B is superseded.
-12. **A suggestion next to an applied tag of the same kind:** after accepting, the variant can show an AI suggestion “Colour Beige” beside the applied “Colour Terracotta” (L7.3, L7.4, L7.8). Should accepting drop suggestions in a category the edit just set?
+12. **A suggestion next to an applied tag of the same kind:** settled on 2026-10-24. Accepting drops an unapproved suggestion in a category the edit sets (L7.3, L7.4, L7.8).
