@@ -9,6 +9,7 @@ import {
   type PileEditSteps
 } from '@shared/inference'
 import type {
+  AnswerEditRequest,
   LookOverCarry,
   LookOverItem,
   LookOverProgress,
@@ -160,6 +161,14 @@ export class LookOverService {
 
     if (!m.isGroup || !(descriptionChanged || tagsChanged)) return { propagatedIds: [] }
     return { propagatedIds: await this.carryEdit(m, before, req) }
+  }
+
+  /** The person's answer to the top's edit on one variant, from `look-over:answer-edit`. */
+  answerEdit({ mockupId, action }: AnswerEditRequest): Promise<LookOverItem | null> {
+    if (action === 'accept') return this.acceptEdit(mockupId)
+    if (action === 'undo') return this.undoEdit(mockupId)
+    if (action === 'dismiss') return this.dismissEdit(mockupId)
+    return this.restoreEdit(mockupId)
   }
 
   /**

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
-import { LookOverQueueSchema, SaveDraftRequestSchema, SaveDraftResponseSchema } from '../approval'
+import { AnswerEditRequestSchema, LookOverItemSchema, LookOverQueueSchema, SaveDraftRequestSchema, SaveDraftResponseSchema } from '../approval'
 
 /** Look it over. */
 export const approvalContract = {
@@ -21,5 +21,10 @@ export const approvalContract = {
   [IPC_CHANNELS.LOOK_OVER_SET_RESUME]: {
     request: z.object({ unitId: z.number(), mockupId: z.number() }),
     response: z.object({ saved: z.boolean() })
+  },
+  /** The person's answer to the top's edit on one variant. The updated item, or null when nothing was in that state. */
+  [IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT]: {
+    request: AnswerEditRequestSchema,
+    response: LookOverItemSchema.nullable()
   }
 } as const

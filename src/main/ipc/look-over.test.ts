@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
-import type { LookOverQueue } from '@shared/approval'
+import type { LookOverItem, LookOverQueue } from '@shared/approval'
 import type { Repository } from '../db/repository'
 import { seedTaxonomy } from '../db/bootstrap'
 import { ensureSearchIndex } from '../db/search-index'
@@ -123,6 +123,37 @@ describe('look-over channels', () => {
         expect.objectContaining({ mockupId: side.id, carry: expect.objectContaining({ state: 'offered', after: { description: 'Shared', via: 'copy' } }) })
       )
     )
+  })
+})
+
+describe('look-over:answer-edit', () => {
+  /** A pile whose top's edit is on offer on its variant, with the version accepting gives ready. */
+  async function offered() {
+    const [top, side] = [waiting('top'), waiting('side')]
+    repo.piles.createPile([top.id, side.id], top.id)
+    await call(IPC_CHANNELS.LOOK_OVER_OPEN)
+    await call(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, { mockupId: top.id, title: 'Top', description: 'Shared', tagIds: [] })
+    await vi.waitFor(() =>
+      expect(push).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_DRAFT, expect.objectContaining({ mockupId: side.id, carry: expect.objectContaining({ after: expect.anything() }) }))
+    )
+    return side
+  }
+  const answer = (mockupId: number, action: string) => call<LookOverItem | null>(IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT, { mockupId, action })
+
+  it("accepts, undoes, dismisses and restores the offer on one variant, answering with its item", async () => {
+    const side = await offered()
+
+    const accepted = await answer(side.id, 'accept')
+    expect(accepted).toMatchObject({ success: true, data: { mockupId: side.id, description: 'Shared', carry: { state: 'applied' } } })
+    expect(await answer(side.id, 'undo')).toMatchObject({ success: true, data: { description: '', carry: { state: 'offered' } } })
+    expect(await answer(side.id, 'dismiss')).toMatchObject({ success: true, data: { carry: { state: 'dismissed' } } })
+    expect(await answer(side.id, 'restore')).toMatchObject({ success: true, data: { carry: { state: 'offered' } } })
+  })
+
+  it('answers null for a mockup with nothing in that state, and refuses an unknown answer', async () => {
+    const alone = waiting('alone')
+    expect(await answer(alone.id, 'accept')).toEqual({ success: true, data: null })
+    expect(await answer(alone.id, 'copy')).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
   })
 })
 

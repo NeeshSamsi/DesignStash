@@ -132,6 +132,17 @@ export const SaveDraftResponseSchema = z.object({
   propagatedIds: z.array(z.number())
 })
 
+/**
+ * The person's answer to the top's edit on one variant (design/specs/look-over.md, L7): `accept`
+ * an offer (Apply here, Apply anyway), `undo` an edit that reached it, `dismiss` an offer (×), or
+ * `restore` a dismissed one (⌘Z).
+ */
+export const AnswerEditRequestSchema = z.object({
+  mockupId: z.number(),
+  action: z.enum(['accept', 'undo', 'dismiss', 'restore'])
+})
+export type AnswerEditRequest = z.infer<typeof AnswerEditRequestSchema>
+
 /** Reported by the Look it over service while the model judges an edit to a top mockup on the variants that were not touched. */
 export const LookOverProgressSchema = z.object({
   pileId: z.number(),

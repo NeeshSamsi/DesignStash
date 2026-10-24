@@ -666,3 +666,20 @@ describe('look-over:draft push', () => {
     expect(payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'copied' } }).success).toBe(false)
   })
 })
+
+describe('look-over:answer-edit', () => {
+  const { request, response } = IPC_CONTRACT[IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT]
+
+  it("takes one variant and the person's answer to its edit: accept, undo, dismiss or restore", () => {
+    for (const action of ['accept', 'undo', 'dismiss', 'restore'] as const) {
+      expect(request.parse({ mockupId: 3, action })).toEqual({ mockupId: 3, action })
+    }
+    expect(request.safeParse({ mockupId: 3, action: 'copy' }).success).toBe(false)
+    expect(request.safeParse({ action: 'accept' }).success).toBe(false)
+  })
+
+  it('answers with the updated item, or null when that variant had nothing in that state', () => {
+    expect(response.parse(null)).toBeNull()
+    expect(response.safeParse({ mockupId: 3 }).success).toBe(false)
+  })
+})

@@ -26,4 +26,5 @@ export function registerApprovalHandlers(ctx: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SET_RESUME, (args) =>
     lookOver.setResume(args.unitId, args.mockupId)
   )
+  registerIpcHandler(IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT, (args) => lookOver.answerEdit(args))
 }
