@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { pileTitle } from '../../shared/pile-title'
 import { GroupingService, extractStem } from './grouping-service'
 import { COULDNT_SUGGEST_PILES, type GroupMember } from '../../shared/grouping'
 
@@ -11,6 +12,21 @@ describe('extractStem', () => {
     expect(extractStem('MyMockup.psd')).toBe('mymockup')
     expect(extractStem('hero-v10.psd')).toBe('hero')
     expect(extractStem('iphone_mockup_B.psd')).toBe('iphone mockup')
+  })
+
+  it('strips trailing angle words, after a number too, as variant naming', () => {
+    expect(extractStem('Phone Front.psd')).toBe('phone')
+    expect(extractStem('Phone_Back_2.psd')).toBe('phone')
+    expect(extractStem('mug-side.psd')).toBe('mug')
+    expect(extractStem('Cap Left Angle.psd')).toBe('cap')
+    expect(extractStem('Tote Close Up.psd')).toBe('tote')
+    expect(extractStem('front.psd')).toBe('')
+  })
+
+  it('keeps product words that only look like angles', () => {
+    expect(extractStem('Tank Top.psd')).toBe('tank top')
+    expect(extractStem('Backpack.psd')).toBe('backpack')
+    expect(extractStem('Bedside Lamp.psd')).toBe('bedside lamp')
   })
 
   it('handles variants with different casing', () => {
@@ -327,6 +343,112 @@ describe('GroupingService.propose', () => {
         makeLoose(3, 'Cap.psd')
       ])
       expect(proposal.groups.filter((g) => g.reason === 'archive')).toEqual([])
+    })
+
+    describe('a zip of different products', () => {
+      /** A zip's PSDs; a null title is a zip whose name says nothing. */
+      const zip = (names: string[], trail = ['Gym Set'], title: string | null = 'Gym Set') =>
+        names.map((n, i) => fromZip(i + 1, n, trail, 'Gym_Set.zip', title ?? undefined))
+      const piles = (proposal: ReturnType<typeof GroupingService.propose>) =>
+        proposal.groups.map((g) => ({
+          title: pileTitle(
+            g.members.map(({ fileName, folderTrail, archiveTitle }) => ({
+              fileName,
+              folderTrail,
+              ...(archiveTitle ? { archiveTitle } : {})
+            }))
+          ).title,
+          files: g.members.map((m) => m.fileName)
+        }))
+
+      it("leaves each product on its own, and never folds them back together by the zip's folder", () => {
+        // The real female-top-and-leggings-mockup.zip: leggings, a top, and the two as a set.
+        const proposal = GroupingService.propose(
+          'b',
+          zip(
+            ['Leggings_Mockup.psd', 'Top_Mockup.psd', 'Top&Leggings_Mockup.psd'],
+            ['female top and leggings mockup'],
+            'female top and leggings mockup'
+          )
+        )
+        expect(proposal.groups).toEqual([])
+        expect(proposal.singletons.map((m) => m.fileName).sort()).toEqual([
+          'Leggings_Mockup.psd',
+          'Top&Leggings_Mockup.psd',
+          'Top_Mockup.psd'
+        ])
+      })
+
+      it('makes a pile per product: the largest named after the zip, the others after their stem', () => {
+        const proposal = GroupingService.propose(
+          'b',
+          zip([
+            'Leggings_1.psd',
+            'Leggings_2.psd',
+            'Leggings_3.psd',
+            'Tank_Top_1.psd',
+            'Tank_Top_2.psd',
+            'Socks.psd'
+          ])
+        )
+        expect(piles(proposal)).toEqual([
+          { title: 'Gym Set', files: ['Leggings_1.psd', 'Leggings_2.psd', 'Leggings_3.psd'] },
+          { title: 'Tank Top', files: ['Tank_Top_1.psd', 'Tank_Top_2.psd'] }
+        ])
+        expect(proposal.groups.every((g) => g.reason === 'archive')).toBe(true)
+        expect(proposal.singletons.map((m) => m.fileName)).toEqual(['Socks.psd'])
+      })
+
+      it("gives the zip's name to the group whose first file sorts first when two are the same size", () => {
+        const proposal = GroupingService.propose(
+          'b',
+          zip(['Shorts_1.psd', 'Shorts_2.psd', 'Bra_1.psd', 'Bra_2.psd'])
+        )
+        expect(piles(proposal).map((p) => p.title)).toEqual(['Gym Set', 'Shorts'])
+        expect(piles(proposal)[0]!.files).toEqual(['Bra_1.psd', 'Bra_2.psd'])
+      })
+
+      it("names the others after their stem when the zip's own name says nothing", () => {
+        const proposal = GroupingService.propose(
+          'b',
+          zip(['Mug_1.psd', 'Mug_2.psd', 'Cap_A.psd', 'Cap_B.psd'], [], null)
+        )
+        expect(proposal.groups).toHaveLength(2)
+        expect(
+          proposal.groups.find((g) => g.members[0]!.fileName === 'Mug_1.psd')!.members[0]!
+            .archiveTitle
+        ).toBe('Mug')
+        expect(
+          proposal.groups.find((g) => g.members[0]!.fileName === 'Cap_A.psd')!.members[0]!
+            .archiveTitle
+        ).toBeUndefined()
+      })
+
+      it('keeps one pile for variant naming: numbers, letters, angles, copies and versions', () => {
+        for (const names of [
+          ['Mockup_01.psd', 'Mockup_02.psd'],
+          ['Poster A.psd', 'Poster B.psd', 'Poster C.psd'],
+          ['Bottle_Front.psd', 'Bottle_Back.psd', 'Bottle_Side_2.psd'],
+          ['Card.psd', 'Card (copy).psd', 'Card-v2.psd']
+        ]) {
+          expect(
+            GroupingService.propose('b', zip(names)).groups.map((g) => g.members.length)
+          ).toEqual([names.length])
+        }
+      })
+
+      it('keeps one pile when every name shares a start, as a "similar names" pile title does', () => {
+        for (const names of [
+          ['Qubus (EU).psd', 'Qubus (US).psd'],
+          ['Boards Environment.psd', 'Boards Isolated.psd'],
+          ['Free_Notebook_Mockup_EU.psd', 'Free_Notebook_Mockup_US.psd']
+        ]) {
+          const proposal = GroupingService.propose('b', zip(names))
+          expect(piles(proposal)).toEqual([
+            { title: 'Gym Set', files: [...names].sort((a, b) => a.localeCompare(b)) }
+          ])
+        }
+      })
     })
 
     function makeLoose(mockupId: number, fileName: string): GroupMember {
