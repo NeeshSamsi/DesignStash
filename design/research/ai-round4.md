@@ -111,3 +111,58 @@ The blind searches (`gold-blind.json`, 90 written from the covers alone), split 
 The strip leaves the other 83 exactly where they were, so it costs nothing outside the colour searches. Inside them, it costs nearly everything: the 9B goes from finding 6 in 10 of those mockups to 1 in 10, and its one find left ("red gradient bottle") comes through "a red and white gradient finish", a colour the count misses (A4), so with the count fixed it finds none. The gold reaches none of them now, so these seven measure only what the rule gives up. Searches by setting colour ("can on teal", "white background product") aren't in the seven and still work.
 
 This is the trade the rule makes, and it's Neesh's call. A person who remembers "the yellow apron" won't find it by "yellow"; "apron" still finds it. To keep the colour searchable without saying it, the object's colours could go into a hidden field the search reads and the details never show. That's a design question for the spec, and I haven't built it.
+
+## B. Variation words
+
+### B1. The gold (4a25855, d4371b0)
+
+`scripts/ai-eval/round4/variations.json` covers the 41 mockups in the eval's 12 B piles, tops included, written from the covers. For each one it gives what I'd say, the words that make an answer right, `subtle` where only a slight turn or crop sets it apart (so "same" isn't wrong there), and `same` for the two notebook files that look identical.
+
+Three fixes came after the first runs:
+- Accepted words now match from the start of a word. Apple's "open, closed" had counted as "close-up", and "side" matched "inside".
+- The notebook pair accepts "EU" and "US". The files are `..._EU.psd` and `..._US.psd`, the prompt shows the file names, and the 9B read them ("European layout", "US layout"). That's a better answer than my "same".
+- "multiple" joined "two" and "pair", and "indoor" joined "interior".
+
+### B2. Two ways of asking
+
+Each model gets the same prompt on one composite image, because Apple's helper takes one image (`scripts/ai-eval/variation.ts`). Both ways ask for 1 to 3 words about the angle or view, the setting or surface, the state and how many objects. They forbid the object's colour and what's printed on it, and ask for "same" where two look alike.
+- **Pair:** the top beside the mockup: what does 2 show differently from 1? The top is asked beside its first variant. One request per mockup.
+- **Pile:** every mockup in the pile, numbered, in one image (three to a row, 1024 px wide), with one answer each. One request per pile, and the top's variation comes with the rest.
+
+### B3. Results
+
+Right by the gold; "same" calls where only a slight difference sets the mockup apart (fair) and where a clear one does (wrong); the rest read by eye as vague but true, or wrong. "Told apart" counts piles where every mockup got its own words. Times are per mockup, with nothing else running.
+
+| Model · how | Right | Tops right | "Same": fair / wrong | Other: vague but true / wrong | Told apart | Time per mockup |
+|---|---|---|---|---|---|---|
+| Apple · pair | 14 of 41 | 4 of 12 | 0 / 2 | 7 / 17, 1 failed | 9 of 12 | 1.1 s |
+| Apple · pile | 5 of 41 | 2 of 12 | 2 / 9 | 6 / 19 | 12 of 12 | 0.4 s |
+| 4B · pair | 25 of 41 | 8 of 12 | 5 / 6 | 4 / 1 | 6 of 12 | 1.3 s |
+| 4B · pile | 26 of 41 | 8 of 12 | 1 / 0 | 10 / 4 | 11 of 12 | 0.6 s |
+| 9B · pair | 29 of 41 | 9 of 12 | 0 / 0 | 11 / 1 | 7 of 12 | 2.8 s |
+| 9B · pile | **35 of 41** | **11 of 12** | 1 / 0 | 4 / 1 | 11 of 12 | 1.3 s |
+
+- **Apple can't do this.** Most of its answers repeat the prompt's own examples, whatever the image shows ("open, closed, single object" for a mug, "folded" for an apron lying flat, "lit" for a rolled sheet). About half its pair answers and two thirds of its pile answers are false.
+- **The 4B** is right about as often either way. Asked in pairs, it calls clear differences "same" six times and gives two mockups in a pile the same words in half the piles. Asked as a pile, it makes no wrong "same" calls, but makes 4 wrong differences: two on the menus ("open, side view" for a menu lying on a plate), and "side view" for a phone and a book both seen from above.
+- **The 9B** asked as a pile is right on 35 of 41, and on the top in 11 of 12 piles. Its one wrong answer is "floating view" for the rolled sheet lying on white. Its vague ones are true but name something the pile shares, like "with keyboard" for the angled iMac when the top has a keyboard too.
+- **Pairs repeat themselves.** Each pair only sees two mockups, so two variants of one top often get the same words ("angled view", "angled view"). The pile request sees them all and gives each its own words in 11 of 12 piles. For the 4B and the 9B, the one pile left is a pair of identical-looking mockups: the notebooks for the 4B ("same", "same"), and for the 9B, two open lighters that differ only by angle ("open, unlit" twice).
+- **The pile is quicker.** It's one request per pile, which comes to 2.2 s for the 4B and 4.4 s for the 9B, or about half the pair's time per mockup. The 9B's first pile run took three times as long because something else was loading the Mac; a rerun with llama-server's timings gave the same 41 answers in 58 s, mostly spent reading the image (570 to 1,100 prompt tokens, 1.7 to 3.5 s).
+
+### B4. The top's own variation
+
+Ask for it in the pile step, in the same request as the variants. The pile request gets the top right as often as asking beside its first variant (8 of 12 for the 4B both ways) or more often (11 against 9 of 12 for the 9B), and it costs no request of its own. Asked beside one variant, the top's words only say how it differs from that one ("with keyboard and mouse" beside the floating iMac). In the pile, they're chosen against all of them.
+
+### B5. The fallback
+
+`fileMarkers` in `variation-score.ts`: the short part of a file's name that the pile's other names don't share at the same place. That's a letter ("A" in tote-a), a number up to two digits ("2" in mug-2), or a word up to 12 letters ("EU", "clay", "isolated"). Words are lower case unless written all in capitals. Long numbers and codes ("4821", "M003T1513") don't count. When the names give no marker, or the same one twice, every mockup gets its number in the pile.
+
+On the B piles, three piles get words from their names ("realistic" and "clay", "environment" and "isolated", "EU" and "US"), and the other nine get numbers, because their names differ only by a number anyway, or, for the long scrolls, by a code and a letter that both repeat.
+
+It's used when the model says "same", gives no answer, or gives two mockups in a pile the same words. In those cases the mockups take their markers in place of the words ("Lighter · 2", "Lighter · 3").
+
+### For Neesh: B
+
+- Proposal: for the 4B and the 9B, ask for the variations in the pile step, the whole pile in one numbered image and one request, the top included. That's about 2 s a pile on the 4B and 4 s on the 9B.
+- Apple gets file markers only: half to two thirds of its variation words are wrong.
+- When a mockup joins a pile, the pile is asked again, and words a person edited stay. That's for the spec to confirm.
+- The 9B reads file names when the covers look the same ("EU", "US"). That's the behaviour we want, and the fallback does the same from the names.
