@@ -166,3 +166,76 @@ It's used when the model says "same", gives no answer, or gives two mockups in a
 - Apple gets file markers only: half to two thirds of its variation words are wrong.
 - When a mockup joins a pile, the pile is asked again, and words a person edited stay. That's for the spec to confirm.
 - The 9B reads file names when the covers look the same ("EU", "US"). That's the behaviour we want, and the fallback does the same from the names.
+
+## C. 4B speed, quality first
+
+### C1. Where the time goes
+
+The 4B makes three kinds of request per mockup (round 3):
+- **The object hint** names the object from the cover as it is.
+- **The answer** is written from the masked cover.
+- **A yes/no check** runs for each scene word in the answer, on the cover as it is. When one comes back no, the answer is made again.
+
+The baseline (sp-base, three passes, 269 warm mockups) takes 9.7 s a mockup:
+
+| Request | Count | Each | Per mockup | Reads | Writes |
+|---|---|---|---|---|---|
+| Object hint | 251 | 2.37 s | 2.21 s | 809 tokens in 2.1 s | 13 tokens in 0.3 s |
+| Answer, and any redo | 294 | 6.25 s | 6.83 s | 1,343 tokens in 3.1 s | 114 tokens in 3.2 s |
+| First check | 68 | 1.90 s | 0.48 s | 718 tokens in 1.9 s | 1 token |
+| Later checks | 31 | 0.05 s | 0.01 s | 15 tokens, the rest cached | 1 token |
+
+Most of each read is the cover image, and the cover is read three times: by the hint, by the answer (masked) and by the first check. llama-server keeps one prompt cached, and each request's image differs from the one before it. About one mockup in four gets a check: the ones whose answers name scene things.
+
+### C2. What was tried
+
+From the brief's list, plus one:
+- **Batching the yes/no checks:** not run. Only the first check reads the image. Later checks cost 0.05 s because the cover is already cached, so one request for all of them would save under 0.01 s a mockup.
+- **sp-check512:** the checks look at the cover scaled to 512 px.
+- **sp-maskcheck:** the checks look at the image the answer came from, the masked cover, so the first check reuses the answer's cached image.
+- **sp-2slot (caching the image):** two llama-server slots, so the hint's cover stays cached for the checks. A cached image only helps a request that starts with the same tokens, so the hint gets the answer's system prompt.
+- **sp-hint512 (added):** the object hint looks at the cover scaled to 512 px. It only has to name the object.
+
+Each ran one pass (seed 42) over the 90 covers. Two baseline passes, sp-base before the candidates and sp-base-end after, show the Mac's drift. They gave identical answers, at 9.5 s and 9.7 s a mockup.
+
+### C3. The screen
+
+| Version | Per mockup | Against sp-base | Answers as sp-base | Found / right, sign-off | Invented | Placeholder, tuning | By eye |
+|---|---|---|---|---|---|---|---|
+| sp-base | 9.47 s | | | 85.4 / 81.1 | 0% | 5 of 39 | |
+| sp-check512 | 9.23 s | -2% | 90 of 90 | 85.4 / 81.1 | 0% | 5 of 39 | no change |
+| sp-maskcheck | 8.86 s | -6% | 88 of 90 | 85.4 / 81.1 | 0% | 5 of 39 | keeps two "desk"s the full check turned down |
+| sp-2slot | 8.76 s | -7% | 70 of 90 | 85.4 / 82.9 | 0% | 6 of 39 | a different hint, and one more placeholder mention |
+| sp-hint512 | 8.21 s | -13% | 69 of 90 | 85.4 / 81.2 | 0% | 5 of 39 | about as many better as worse |
+
+On tuning and held-out, no version moved found or right by more than 0.2 points.
+
+- **sp-maskcheck costs quality.** On the masked cover, the check accepts a "desk" in two answers that the full cover's check had turned down: the menu cards ("on a warm wooden table", tagged desk) and the postal packages ("on a minimalist gray desk"). The gold has a desk in neither, and the invention count doesn't look for the word.
+- **sp-2slot costs quality and gains little.** With the answer's system prompt, the hint changes for 20 mockups, and their answers change with it. The outdoor banner gets "a blank screen" (a placeholder mention), and the MacBook on the platform becomes a "MacBook 16 Pro". What two slots cache is the first check's image, and sp-check512 gets most of that saving without changing a word.
+- **sp-hint512 is a wash.** It changes the hint for 22 mockups and the answer for 21. Read against the gold, about as many changes help as hurt:
+  - Better: the long-scroll MacBook's hint was "solar panels" and becomes "laptop". The gift card holders, the sticker roll, the single poster and the ID cards are named right.
+  - Worse: both stationery sets become "notebooks" and lose their business cards. The lilac background behind a gift card holder becomes white, and one menu table is tagged "floor". Three covers get no hint at all (the can, the duct tape and the Apple set), though their answers don't suffer for it.
+  - Most of the rest are plurals made singular, which suits covers with one object.
+
+### C4. Three passes
+
+The two versions with no measured cost ran three passes (seeds 42, 43 and 44) against three baseline passes. sp-check512 ran alone, and sp-hc512 has both the hint and the checks at 512 px (the second and third passes are `--seed-base 43 --repeat 2` runs, sp-base-s43 and sp-check512-s43, joined to the first).
+
+| Version | Per mockup | Against baseline | Answers as baseline | Found / right (tuning, held-out, sign-off) | Invented | Placeholder |
+|---|---|---|---|---|---|---|
+| baseline | 9.67 s | | | 87.3 / 85.4, 87.8 / 81.3, 85.3 / 80.8 | 0, 0, 0% | 12.0, 10.0, 0% |
+| sp-check512 | 9.30 s | -4% | 270 of 270 | the same | the same | the same |
+| sp-hc512 | 7.89 s | -18% | 207 of 270 | 87.3 / 85.5, 87.8 / 81.3, 85.3 / 80.8 | 0, 0, 0% | 12.0, 10.0, 0% |
+
+- **sp-check512 changes nothing.** On every seed, all 270 answers and all 100 check verdicts match the baseline's. The first check drops from 1.9 s to 0.6 s. That's 0.4 s a mockup on average, and about 1.3 s on the one mockup in four that gets a check.
+- **sp-hc512 keeps every number** over 270 answers. The hint is greedy, so the same 21 mockups change on every pass, and its first pass is exactly sp-hint512's. It saves 1.8 s a mockup: the hint drops from 2.4 s to 0.8 s and the first check from 1.9 s to 0.6 s. It makes the answer again 8 more times in 270 (302 answers against 294).
+
+### C5. What's left
+
+The answer takes 6.8 s of the 9.7 s, half reading the masked cover and half writing about 114 tokens. Making it quicker means a smaller image for the answer or a shorter answer, and both change what the model says, so neither was tried under this brief. These were 4B runs only. The 9B's colour check (A4) wasn't measured at 512 px.
+
+### For Neesh: C
+
+- Proposal: ship sp-check512 for the 4B, so the scene checks look at the cover scaled to 512 px. It changes no answer and saves about 4%.
+- Your call: the hint at 512 px as well, 18% in all (9.7 s to 7.9 s a mockup). Every measured number holds over three passes, and by eye the changed answers (one in four) are as often better as worse. My lean is yes: on quality it comes out even, and it fixes the "solar panels" hint. It isn't a clear zero-cost change under "quality over speed", though, so it's your decision.
+- Not shipping: checking the masked image (it keeps two wrong "desk"s) and two slots (a placeholder mention, and most of its saving comes from sp-check512 anyway).
