@@ -462,7 +462,7 @@ export class LookOverService {
   /** The edit in a variant's words: its version, and only the edit's tag changes. Marked applied when that is the top's own entry. */
   private take(draft: Draft, carry: DraftCarry, prepared: Prepared, state: Extract<CarryState, 'applied' | 'reworded'> | null): void {
     const own = { description: draft.description, tagIds: draft.tagIds }
-    const tagIds = changedTagIds(own.tagIds, carry.top)
+    const tagIds = this.acceptedTagIds(draft.mockupId, own.tagIds, carry.top)
     const result = { description: prepared.description, tagIds }
     this.repo.drafts.updateDraft(draft.mockupId, {
       ...result,
@@ -548,6 +548,29 @@ export class LookOverService {
     return { before: this.entryOf(top.before), after: this.entryOf(top.after) }
   }
 
+  /**
+   * The tags accepting an edit gives a variant: only the edit's tag changes, and in each category
+   * the edit added a tag to, the variant's own AI suggestions give way, since the edit counts as
+   * approved (accepting Colour Terracotta drops a suggested Colour Beige). Tags the top keeps after
+   * the edit stay, and so does every tag no suggestion gave the variant.
+   */
+  private acceptedTagIds(mockupId: number, own: number[], top: DraftCarry['top']): number[] {
+    const changed = changedTagIds(own, top)
+    const added = top.after.tagIds.filter((id) => !top.before.tagIds.includes(id))
+    const set = new Set(this.repo.tags.getApprovalTagsByIds(added).map((t) => t.categoryId))
+    const m = this.repo.mockups.getMockup(mockupId)
+    const suggestion = set.size > 0 && m ? this.cachedSuggestion(m) : null
+    if (!suggestion) return changed
+    const suggested = new Set(
+      suggestion.tags.flatMap(({ category, label }) => {
+        const c = this.repo.tags.getCategoryByNormalisedLabel(category)
+        const t = c && set.has(c.id) ? this.repo.tags.getTagByNormalisedLabel(c.id, label) : undefined
+        return t ? [t.id] : []
+      })
+    )
+    return changed.filter((id) => !suggested.has(id) || top.after.tagIds.includes(id))
+  }
+
   private entryOf(words: DraftWords): PileEditEntry {
     return { description: words.description, tags: this.repo.tags.getApprovalTagsByIds(words.tagIds).map((t) => t.label) }
   }
@@ -576,7 +599,7 @@ export class LookOverService {
     if (!c) return null
     const took = c.state === 'applied' || c.state === 'reworded'
     const from = took && c.own ? c.own.tagIds : draft.tagIds
-    const to = took ? draft.tagIds : changedTagIds(from, c.top)
+    const to = took ? draft.tagIds : this.acceptedTagIds(draft.mockupId, from, c.top)
     return {
       state: c.state,
       reason: c.reason,

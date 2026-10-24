@@ -756,3 +756,50 @@ describe("the person's answer to an offered edit", () => {
     expect(await svc.dismissEdit(9999)).toBeNull()
   })
 })
+
+describe('an accepted edit and the AI suggestions in a category it set', () => {
+  /** A tag in Colour, a category the AI made. */
+  const colour = (label: string) => {
+    const category = repo.tags.getCategoryByLabel('Colour') ?? repo.tags.createCategory({ label: 'Colour', isCanonical: false })
+    return repo.tags.getTagByNormalisedLabel(category.id, label) ?? repo.tags.createTag({ categoryId: category.id, label })
+  }
+
+  /**
+   * A pile whose top goes from Beige and Black to Terracotta and Black. The variant's own
+   * suggestion gave it Grey, Black and Indoor; it also has Cream, which no suggestion gave it.
+   */
+  async function colourPile(provider: InferenceProvider) {
+    const svc = service(provider)
+    const [top, v] = pile('top', 'v')
+    ready(v!.id, {
+      title: 'v',
+      description: 'A grey mug indoors.',
+      tags: [{ category: 'Colour', label: 'Grey' }, { category: 'Colour', label: 'Black' }, { category: 'Environment', label: 'Indoor' }]
+    })
+    await svc.open()
+    repo.drafts.updateDraft(top!.id, { title: 'top', description: 'A beige mug.', tagIds: [colour('Beige').id, colour('Black').id] })
+    repo.drafts.updateDraft(v!.id, { tagIds: [...repo.drafts.getDraft(v!.id)!.tagIds, colour('Cream').id] })
+    await svc.saveDraft({ mockupId: top!.id, title: 'top', description: 'A terracotta mug.', tagIds: [colour('Terracotta').id, colour('Black').id] })
+    await svc.whenIdle()
+    return { svc, v: v! }
+  }
+
+  it("drops them on accept, as the preview shows, and keeps the top's own, the variant's other tags and other categories", async () => {
+    const { svc, v } = await colourPile(pileModel({ rewrite: () => 'A terracotta mug indoors.' }))
+    const offer = (await itemOf(svc, v.id)).carry!
+    expect(offer.tagsAdded.map((t) => t.label)).toEqual(['Terracotta'])
+    expect(offer.tagsRemoved.map((t) => t.label)).toEqual(['Grey'])
+
+    const item = await svc.acceptEdit(v.id)
+    expect(labels(item!)).toEqual(['Black', 'Indoor', 'Cream', 'Terracotta'])
+    expect(item!.carry!.tagsRemoved.map((t) => t.label)).toEqual(['Grey'])
+    expect(labels((await svc.undoEdit(v.id))!)).toEqual(['Grey', 'Black', 'Indoor', 'Cream'])
+  })
+
+  it('drops them when the model that judges pile edits applies the edit on a yes', async () => {
+    const { svc, v } = await colourPile(pileModel({ check: () => ({ answer: 'yes', reason: '' }), rewrite: () => 'A terracotta mug indoors.' }))
+    const item = await itemOf(svc, v.id)
+    expect(item.carry).toMatchObject({ state: 'reworded' })
+    expect(labels(item)).toEqual(['Black', 'Indoor', 'Cream', 'Terracotta'])
+  })
+})
