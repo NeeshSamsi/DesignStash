@@ -1,7 +1,7 @@
 # Look it over: AI working and the edit check
 
 **Status:** Proposed (awaiting Neesh), designed 2026-10-23; the edit check reworked 2026-10-24 after experiment C. Nothing here is built.
-**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.5, L6.E1–E4; L6.E2 superseded, and L3.E3 superseded by L6.1 and L6.5) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card, plus _Preview placement for L7.9_ (Option A chosen, Option B superseded, under L7.9). Components: **AiStatus** (new; `kind=none` since 2026-10-24), **PileStep** (new `note` line), **Popover** (its content is now a real slot; `shadow/raised` since 2026-10-24), **MockupMetaForm** (resting hint retired 2026-10-24) and every focusable component (focus ring rebuilt 2026-10-24). The component pass is under [Component pass](#component-pass-2026-10-24).
+**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.5, L6.E1–E4; L6.E2 superseded, and L3.E3 superseded by L6.1 and L6.5) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card, plus _Preview placement for L7.9_ (Option A chosen, Option B superseded, under L7.9). Row _Pile titles (L8)_ (L8.1 to L8.3) shows the base title and variations; the rules are in [pile-titles.md](pile-titles.md). Components: **AiStatus** (new; `kind=none` since 2026-10-24), **PileStep** (new `note` line), **Popover** (its content is now a real slot; `shadow/raised` since 2026-10-24), **MockupMetaForm** (resting hint retired 2026-10-24) and every focusable component (focus ring rebuilt 2026-10-24). The component pass is under [Component pass](#component-pass-2026-10-24).
 **Related:** [piles.md](piles.md) (the pile model these screens sit in), [tags.md](tags.md) (suggested and new chips), [ai.md](ai.md) (models and timings).
 
 ## Proposed (awaiting Neesh)
@@ -175,7 +175,7 @@ Neesh asked why the focus ring broke: “shouldn't focused variants of buttons b
 3. **Pile-level stop:** settled on 2026-10-24. Only the per-mockup Fill it myself (ghost); Stop for this pile is gone and L6.E2 is superseded.
 4. **Stashing while one still writes:** settled on 2026-10-24. Stash pile waits; each card still writing offers Fill it myself (L6.E4).
 5. **A failed or slow edit check:** settled on 2026-10-24. It falls back to the offer (L7.E4, L7.E5), and the old Apply to all is gone.
-6. **The title in the edit check:** ask 2 names description and tags. Should an edited title go through the check too, reworded per variant ("· side")?
+6. **The title in the edit check:** settled on 2026-10-24 with pile titles ([pile-titles.md](pile-titles.md#base-title-and-variations-proposed-neesh-2026-10-24)). The base carries exactly to every mockup in the pile, and variations are never carried.
 7. **The existing `thinking` state:** settled on 2026-10-24. Retired in favour of `state=writing` (L6.1, L6.5); MockupMetaForm `state=thinking` and L3.E3 are superseded.
 8. **Accepting:** settled on 2026-10-24. Rewrite the variant's own text with only the change, tags take only the changes, and copy is a marked fallback when a rewrite fails.
 9. **The offer's summary:** settled on 2026-10-24. A preview on hover or focus shows the change, for every model.
