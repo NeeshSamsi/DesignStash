@@ -24,7 +24,9 @@ beforeEach(() => {
   trash = new TrashService(repo, ROOT, {
     rm,
     stat,
-    exists: async (p) => !missingFiles.has(p)
+    exists: async (p) => !missingFiles.has(p),
+    readdir: async () => [],
+    rmdir: async () => {}
   })
 })
 

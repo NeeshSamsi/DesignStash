@@ -1,10 +1,12 @@
 import { promises as fs } from 'node:fs'
 import type { TrashItem, TrashStats } from '@shared/inbox'
 import type { Repository } from '../db/repository'
-import { ensureSizes, removeAppCopies } from './app-files'
+import { defaultAppFileOps, ensureSizes, removeAppCopies, type AppFileOps } from './app-files'
 
 export interface TrashServiceDeps {
-  rm: (path: string) => Promise<void>
+  rm: AppFileOps['rm']
+  readdir: AppFileOps['readdir']
+  rmdir: AppFileOps['rmdir']
   stat: (path: string) => Promise<{ size: number }>
   exists: (path: string) => Promise<boolean>
 }
@@ -26,7 +28,9 @@ export class TrashService {
     deps?: Partial<TrashServiceDeps>
   ) {
     this.deps = {
-      rm: deps?.rm ?? ((p) => fs.rm(p, { force: true })),
+      rm: deps?.rm ?? defaultAppFileOps.rm,
+      readdir: deps?.readdir ?? defaultAppFileOps.readdir,
+      rmdir: deps?.rmdir ?? defaultAppFileOps.rmdir,
       stat: deps?.stat ?? ((p) => fs.stat(p)),
       exists: deps?.exists ?? ((p) => fs.access(p).then(() => true, () => false))
     }
@@ -84,7 +88,7 @@ export class TrashService {
 
   private async removeAll(ids: number[]): Promise<void> {
     const removed = this.repo.trash.deleteMockupsHard(ids)
-    await removeAppCopies(this.libraryRoot, removed, this.deps.rm)
+    await removeAppCopies(this.repo, this.libraryRoot, removed, this.deps)
   }
 
   private async bytesOf(ids: number[]): Promise<number> {

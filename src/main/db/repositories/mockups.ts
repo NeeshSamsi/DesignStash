@@ -74,6 +74,14 @@ export class MockupRepository {
       .all()
   }
 
+  /** Every record's PSD and cover, in Trash too: what deleting another mockup's files must leave alone. */
+  getAllFilePaths(): { libraryPath: string; coverPath: string }[] {
+    return this.db
+      .select({ libraryPath: mockups.libraryPath, coverPath: mockups.coverPath })
+      .from(mockups)
+      .all()
+  }
+
   mockupExistsByHash(hash: string): boolean {
     return !!this.db.select().from(mockups).where(eq(mockups.contentHash, hash)).get()
   }

@@ -5,7 +5,7 @@ import type { Repository } from '../db/repository'
 import { resolveCover } from '../psd'
 import type { ResolveCoverInput, CoverResolution } from '../psd/types'
 import type { DriftReport, FoundFile, GoneRecord, RelinkOutcome } from '@shared/integrity'
-import { isInside } from './app-files'
+import { defaultAppFileOps, isInside, removeAppCopies, type AppFileOps } from './app-files'
 
 export interface IntegrityDeps {
   /** Recursive list of absolute file paths under dir. Default walks the real fs. */
@@ -18,6 +18,10 @@ export interface IntegrityDeps {
   stat: (p: string) => Promise<{ size: number }>
   /** Remove a file. Already gone is fine. */
   rm: (p: string) => Promise<void>
+  /** A folder's names, none when it is missing. */
+  readdir: AppFileOps['readdir']
+  /** Remove a folder once it is empty. */
+  rmdir: AppFileOps['rmdir']
   /** Copy a file to a new place, making its folder first. */
   copyInto: (from: string, to: string) => Promise<void>
   /** Ask the user for a PSD (the file dialog lives in the IPC layer). Null when they cancel. */
@@ -96,6 +100,8 @@ export class IntegrityService {
       resolveCover: deps?.resolveCover ?? resolveCover,
       stat: deps?.stat ?? ((p) => fs.stat(p)),
       rm: deps?.rm ?? ((p) => fs.rm(p, { force: true })),
+      readdir: deps?.readdir ?? defaultAppFileOps.readdir,
+      rmdir: deps?.rmdir ?? defaultAppFileOps.rmdir,
       copyInto:
         deps?.copyInto ??
         (async (from, to) => {
@@ -211,14 +217,14 @@ export class IntegrityService {
     return this.add([...found.keys()])
   }
 
-  /** Undo an add: the records and their covers go. The PSD stays where it was. */
+  /** Undo an add: the records and the app's files for them go. The PSD stays where it was. */
   async undoAdd(mockupIds: number[]): Promise<void> {
     const added = mockupIds.filter((id) => {
       const m = this.repo.mockups.getMockup(id)
       return m !== undefined && m.stage === 'to_sort' && m.deletedAt === null
     })
     const removed = this.repo.trash.deleteMockupsHard(added)
-    await this.removeCovers(removed)
+    await this.removeAppFiles(removed, { keepPsd: true })
   }
 
   /** Remove the records of mockups whose PSD is gone. Anything else in `ids` is skipped. */
@@ -231,7 +237,7 @@ export class IntegrityService {
     // Hard delete reports only the paths it freed, so the ids that really go are read first.
     const existing = mockupIds.filter((id) => this.repo.mockups.getMockup(id) !== undefined)
     const rows = this.repo.trash.deleteMockupsHard(existing)
-    await this.removeCovers(rows)
+    await this.removeAppFiles(rows)
     return { removed: rows.length, mockupIds: existing }
   }
 
@@ -291,19 +297,12 @@ export class IntegrityService {
     this.deps.ignored.set(this.deps.ignored.get().filter((id) => !back.has(id)))
   }
 
-  /** The cover and thumbnail beside it, only when they sit in the stash folder. Never the PSD. */
-  private async removeCovers(rows: { coverPath: string }[]): Promise<void> {
-    for (const { coverPath } of rows) {
-      if (!coverPath) continue
-      for (const path of [coverPath, join(dirname(coverPath), 'thumb.webp')]) {
-        if (!isInside(this.libraryRoot, path)) continue
-        try {
-          await this.deps.rm(path)
-        } catch {
-          // Leaving a stray cover behind is better than failing the action.
-        }
-      }
-    }
+  /** The app's files for deleted records (removeAppCopies). Leaving one behind is better than failing the action. */
+  private async removeAppFiles(
+    rows: { id: number; libraryPath: string; coverPath: string }[],
+    opts: { keepPsd?: boolean } = {}
+  ): Promise<void> {
+    await removeAppCopies(this.repo, this.libraryRoot, rows, this.deps, opts).catch(() => {})
   }
 
   /** Hard-delete a dangling DB row whose file is gone. No file to touch. */

@@ -32,6 +32,11 @@ function fakeDisk(files: Record<string, number>) {
     rm: async (p) => {
       removed.push(p)
     },
+    readdir: async (dir) =>
+      Object.keys(files)
+        .filter((p) => p.startsWith(`${dir}/`) && !p.slice(dir.length + 1).includes('/'))
+        .map((p) => p.slice(dir.length + 1)),
+    rmdir: async () => {},
     copyInto: async (from, to) => {
       copies.push({ from, to })
       files[to] = files[from] ?? 0

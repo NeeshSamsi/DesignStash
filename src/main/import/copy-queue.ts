@@ -42,6 +42,8 @@ export interface CopyQueueDeps {
   /** The names in a folder; empty when it is not there. */
   readdir: (path: string) => Promise<string[]>
   rm: (path: string) => Promise<void>
+  /** Remove a folder once it is empty; fails when it is not. */
+  rmdir: (path: string) => Promise<void>
   mkdir: (path: string) => Promise<void>
   /** Room kept free beyond the file itself, for its cover and thumbnail. */
   reserveBytes: number
@@ -63,6 +65,7 @@ const defaultDeps: CopyQueueDeps = {
   stat: (p) => fs.stat(p),
   readdir: (p) => fs.readdir(p).catch(() => []),
   rm: (p) => fs.rm(p, { force: true, recursive: true }),
+  rmdir: (p) => fs.rmdir(p),
   mkdir: async (p) => {
     await fs.mkdir(p, { recursive: true })
   },
@@ -239,7 +242,7 @@ export class CopyQueue {
 
     const { ids } = this.repo.inbox.collectTossable(this.repo.copyJobs.landedMockupIds(haulId))
     const removed = this.repo.trash.deleteMockupsHard(ids)
-    await removeAppCopies(this.root, removed, this.deps.rm)
+    await removeAppCopies(this.repo, this.root, removed, this.deps)
     this.repo.copyJobs.setHaulState(haulId, { state: 'undone' })
     this.repo.copyJobs.forgetPendingSources(haulId)
     this.emit(haulId, null)
