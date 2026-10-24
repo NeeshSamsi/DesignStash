@@ -563,3 +563,24 @@ No call failed or was refused, for any model. Apple's safety filter, which refus
 Copy stays the fallback for every model when a rewrite fails, is refused or times out, marked so the preview can say so.
 
 The caveats from C still hold: a small set, one pass, and "before" texts that aren't the models' drafts. The fact patterns are strict, too. "A grey tiled floor" doesn't match "floor tiles", which costs the 4B both iPhone cases and Apple one.
+
+### C4. The app's check, with a reason (2026-10-24)
+
+The design gives a variant the 9B leaves out a reason line ("Left out your top mockup edits: this one is on a white backdrop"). So the app's check (`src/main/ai/pile-edit.ts`, eval version c4) is c3 asking for `{answer, reason}`, with the answer first. The reason is a few words starting with "this one", with its only example from outside the library ("this one shows the bike from behind"). The eval now imports the app's prompts for c4 and accept, so it measures what ships.
+
+| 9B | Right | Right and clean | Keep cases left alone | Carried | Time per variant |
+|---|---|---|---|---|---|
+| c3 | 54 | 53 | 12 of 14 | 37 | 6.7 s |
+| c4 | 54 | 53 | **14 of 14** | 30 | 4.1 s |
+
+Asking for a reason makes the 9B say no a little more often. It leaves all 14 keep cases alone, and declines 5 apply or adapt cases it carried before (the MacBook Pro rename on two long-scroll variants, one Zippo, one open book, the tights). Those variants now get the offer, so a person can still take the edit. It's faster, since fewer rewrites follow a yes.
+
+The reasons read well in the design's line:
+- "this one shows the lighter open"
+- "this one shows a plain grey background"
+- "this one shows an open book"
+- "this one shows a generic laptop, not a MacBook Pro"
+
+One contradicts its own no: "this one shows the menu on a grey ceramic plate" (menu 3, which lies beside the plate).
+
+**Built (2026-10-24):** commits 74131fc, 33cccdc and 00a9f2e. The 9B judges with c4, every model's offer prepares C3's rewrite with changes-only tags, and a copy of the top's description stands in, marked, when a rewrite fails.
