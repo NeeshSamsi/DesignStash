@@ -73,7 +73,7 @@ Neesh: “I don't think variants should ever have COMPLETELY different titles.�
 
 | Place | What it shows | Frames |
 |---|---|---|
-| Look it over, a mockup in a pile | Title is two inputs under one label (**TitlePair**): the base with the pile icon, a dot, and the variation (180 px). Editing the base shows “Renames the pile: all 4 mockups.” under the field while it has focus, and the rail header follows as you type. | ↳ Look it over: L8.1, L8.2, L8.3; every pile step in L2, L5, L6, L7 |
+| Look it over, a mockup in a pile | Title is two inputs under one label (**TitlePair**): the base with the pile icon, a 4 px round dot in `text/secondary` (the colour of the field borders), and the variation (180 px). Editing the base shows “Renames the pile: all 4 mockups.” under the field while it has focus, and the rail header follows as you type. | ↳ Look it over: L8.1, L8.2, L8.3; every pile step in L2, L5, L6, L7 |
 | The rail | The header shows the base; each step shows only its variation (“Top · three-quarter”, “Variant · side”). Before the AI has written, a step shows the file name. | every pile step |
 | Review and stash pile | Each card's title is its variation (“Side”); the rail header names the pile. | L2.4, L2.E3, L5.2, L6.E4, L7.6, L7.11 |
 | While the AI writes | In a pile the base is already known, so only the variation says “Writing with AI…”. | L6.1, L6.4 |
@@ -89,6 +89,7 @@ Neesh: “I don't think variants should ever have COMPLETELY different titles.�
 | The base input carries the pile icon, and a hint shows only while it has focus | The icon says the base is shared before anyone types. The hint says what an edit will do at the moment it matters and is gone otherwise, so a quiet screen stays quiet. It appears because the person focused the field, so the small shift is theirs. | 8.12, 1.6, 8.17 |
 | Rail steps and review cards show only the variation | The rail header already names the pile, so repeating the base made every label truncate (“Variant · Clay iPhone…”). The variation is the part that tells the steps apart. | 1.6, 2.2, 3.5 |
 | The base renames exactly, with no AI | Renaming a pile is a direct edit; a model guessing per mockup would bring back the completely different titles Neesh wants to avoid. | 8.14, 0.3 |
+| The separator is a drawn 4 px dot in `text/secondary` | A text “·” at app sizes is 2 to 3 px of ink and vanished at 1x between two bordered fields. A 4 px dot in the borders' colour reads as part of the pair without competing with the text (contrast 7.8:1 on `surface-2`). | 2.4, 5.5 |
 | A variation shown on its own starts with a capital | Card titles and headings read as names; inside a full title the variation reads as part of one phrase. | 3.6, 7.5 |
 
 **Open questions**

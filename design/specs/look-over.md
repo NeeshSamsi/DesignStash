@@ -129,6 +129,7 @@ Neesh asked why the focus ring broke: “shouldn't focused variants of buttons b
 
 **Component checks** (all 156 components and sets on the Components page):
 - **Properties:** every boolean, text, swap and slot property is wired to a layer.
+- **CoverImage's sample device scales with the cover** at every size (2026-10-24). It was a fixed 154 × 259 frame, so in the 340 px details sidebar the phone was cut at the top and bottom (D1.3 to D1.10, D1.E4, D1.E5, D1.E9, D1.E10, D3.3). Every loaded cover on every page now fits.
 - **Raw values fixed:** AiStatus's gap (now `spacing/2`), MeaningSearchCard's title-row gap (`spacing/2`) and its corner radius (`radius/xl`). No raw colours, and no text without a style.
 - **Clipping that is intended:** VariantStrip (a carousel with faded ends), TagFilterPopover's tag list (now marked as a vertical scroll area), SettingsLayout's scrolling body, and MockupCard and GroupMemberThumb's hover zoom inside the cover.
 - **Retired:** MockupMetaForm's resting hint and its two properties (see the status line).
