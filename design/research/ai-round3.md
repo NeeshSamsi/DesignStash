@@ -476,3 +476,90 @@ The set is small: 24 edits written for this test, one pass each, with "before" t
 1. **Should the 9B judge pile edits (c3), and the 4B and Apple leave variants alone?** That would replace today's copy-to-every-variant rule (`carriedEdit`) with a model step for the 9B, about 7 s per variant in the background (Look it over's carry progress already shows "running" and "done"), and plain "leave it" for the other two. I recommend it.
 2. **What should a variant the model declines show?** Today an untouched variant silently takes the edit. With c3 a declined variant keeps its own words; it could also offer the person the edit to accept by hand.
 
+### C3. What accepting the edit does (2026-10-24)
+
+Neesh decided the split on 2026-10-24: the 9B judges pile edits (c3), the 4B and Apple don't, and wherever the edit doesn't reach a variant it is offered there, to accept by hand after a preview. Then he decided what accepting does: the description is rewritten with only the change worked into the variant's own text, and the tags take only the changes. This section checks that per model, against copying the top's entry.
+
+**Method.** Every case of the C set, as if the person had accepted: the 48 that should apply or adapt, and the 14 keep cases, since a person may accept those anyway. `pnpm ai-eval:edit-carry --prompt accept --cases <c3 run>` gives every case c3's text-only rewrite with no check (for an edit that only takes words out, the removal, or the draft as it is when it has none of the words). The other options need no model:
+- **copy:** the top's edited description;
+- **changes-only tags:** the variant's own tags, less those the edit removed, plus those it added;
+- **copied tags:** the top's edited tags.
+
+`pnpm ai-eval:edit-carry-score --tags run|changes|copy` scores each pair. It adds four measures to C's:
+- the edited fact there;
+- the description left as it was;
+- the variant's own details kept: words of its draft that its gold also has and the edit did not remove;
+- cases bringing in the top's words.
+
+(Commit c5ae98d now splits the leggings zip, so the leggings top no longer has those two variants. `--cases` keeps C's 62 cases so the numbers compare.)
+
+**The 48 apply and adapt cases:**
+
+| Model | Accepting gives | Right and clean | Edited fact there | Description as it was | Own details kept | Bringing the top's words in | Time per variant |
+|---|---|---|---|---|---|---|---|
+| Apple | rewrite, changes-only tags | **37** | 47 | 10 | 97% | 10 | 1.0 s |
+| Apple | rewrite, copied tags | 34 | 47 | 10 | 90% | 13 | 1.0 s |
+| Apple | copy, changes-only tags | 26 | 48 | 0 | 92% | 22 | none |
+| Apple | copy, copied tags | 26 | 48 | 0 | 85% | 22 | none |
+| 4B | rewrite, changes-only tags | **42** | 42 | 43 | 100% | 0 | 0.7 s |
+| 4B | rewrite, copied tags | 37 | 40 | 43 | 90% | 5 | 0.7 s |
+| 4B | copy, changes-only tags | 26 | 48 | 0 | 93% | 22 | none |
+| 4B | copy, copied tags | 26 | 48 | 0 | 85% | 22 | none |
+| 9B | rewrite, changes-only tags | **44** | 44 | 26 | 100% | 0 | 1.9 s |
+| 9B | rewrite, copied tags | 39 | 44 | 26 | 97% | 5 | 1.9 s |
+| 9B | copy, changes-only tags | 26 | 48 | 0 | 87% | 22 | none |
+| 9B | copy, copied tags | 26 | 48 | 0 | 81% | 22 | none |
+
+(With the tags the rewrite itself gave, right and clean is 37, 33 and 43: the 4B's own tags often drop the change.)
+
+**The 14 keep cases, accepted anyway** (rewrite and copy, both with changes-only tags):
+- Apple's rewrite changes all 14 descriptions and gives all of them the edited fact, bringing the top's words in on 4. Copy does the same on 14, with the top's words on 7.
+- The 4B leaves 13 descriptions as they were. The fact arrives on 6, nearly all through the tags.
+- The 9B leaves 5 as they were and puts the fact on 10, bringing nothing of the top's in. It keeps 98% of their own details, against 82% for copy.
+
+No call failed or was refused, for any model. Apple's safety filter, which refused the mug cases in C2, refused nothing here, since the rewrite is text only.
+
+**What the numbers say:**
+- **Changes-only tags beat copied tags** for every model and either description. Copied tags replace a variant's own surface and style tags with the top's, and bring the top's words in on 3 to 5 more cases.
+- **Rewrite beats copy on right and clean for every model:** 37, 42 and 44 of 48, against 26. Copy always lands the fact, but it brings the top's scene in on 22 of the 48 (nearly every adapt case).
+- **Each model's rewrite fails its own way:**
+  - **9B:** works the change into the variant's own sentence, keeps all its own details and never brings in the top's words. Its 4 misses are descriptions it left as they were where the fact was missing: "hanging" on one gift card holder, and "sewn open spine" on the three books.
+  - **4B:** hardly ever changes the description (43 of 48 left as they were). It is right on 42 because most drafts already had the fact, or the edit's added tag carries it ("zippo", "round"). It never brings in the top's scene, so accepting on the 4B mostly means the tag changes.
+  - **Apple:** changes the description most often (38 of 48), but its failures are copies of the top. It gives 4 adapt cases the top's entry word for word, and 4 of its 62 rewrites add a sentence about the edit itself. Even so, it is right and clean on 37, against 26 for copy.
+
+**Side by side** (the variant's draft, then what accepting gives):
+
+1. **Boxes, wooden table to small black pedestal** (the isolated boxes, adapt).
+   - Draft (9B): "A minimalist stack of three cubes, including a lime green box and two white ones, resting on a dark grey cylindrical base against a plain light grey background."
+   - 9B rewrite: "… resting on a small black pedestal against a plain light grey background."
+   - Copy: "Three square boxes stacked on a small black pedestal, the top one lime green, in a bright concrete room with stairs." This variant is isolated, so the concrete room is wrong.
+   - Apple's rewrite went wrong the same way as copy: "Three stacked cubes on a small black pedestal, the top one lime green, in a bright concrete room with stairs." It lost its own plain grey background.
+2. **Long-scroll laptop renamed MacBook Pro** (the mesh-floor variant, adapt).
+   - 9B rewrite: "A silver MacBook Pro with a blank screen, also called a notebook computer, resting on a grey perforated metal floor."
+   - Copy puts it "on a white slatted bench against a light grey wall".
+   - Apple kept its own sentence and added "It now features a tag for Website instead of Laptop, reflecting the updated context of showing a full scrolling website."
+3. **Leggings renamed women's leggings, on the tank top** (adapt; before c5ae98d it was in the leggings pile).
+   - Copy and Apple's rewrite both give the tank top "A pair of women's leggings, also called tights, floating on a light grey background."
+   - The 9B's draft already said "A white women's tank top …", and its rewrite left it so.
+4. **Three smartwatches renamed Apple Watch Ultra, on the single clay watch** (adapt).
+   - Apple's rewrite and copy: "Three Apple Watch Ultra smartwatches, one facing front and two turned to the sides, on a light grey background." The variant shows one watch.
+   - 9B: "A white Apple Watch Ultra smartwatch, a type of smartwatch, presented in a clay style against a plain background." Right, with an awkward repeat.
+5. **A pocket lighter renamed Zippo-style** (lighter 3, adapt).
+   - 4B: its own sentence as it was, "A minimalist flip-top metal lighter stands upright on a plain gray surface …". "Zippo" arrives only as a tag.
+   - Copy: "A white flip-top metal lighter, also called a Zippo-style lighter, closed, on a light grey background." That brings in the top's "closed", which other variants are not.
+   - Apple: "A flip top metal lighter, also called a Zippo-style lighter, closed, on a light grey background." It brought in "closed" and the top's background, and lost its own white surface.
+6. **A rewrite that does nothing: book with a sewn open spine** (book 3, apply).
+   - 9B: its draft as it was, "A black sewn book, also called a stationery item, resting on a dark textured surface", so the open spine never lands.
+   - Copy is right here, since this variant's gold is the top's word for word.
+
+### C3, recommendation per model
+
+| Model | On accept | Why |
+|---|---|---|
+| 9B | Rewrite the description, changes-only tags | Right and clean on 44 of 48, keeps every own detail, 1.9 s, prepared in the background when the offer shows. |
+| Apple | Rewrite the description, changes-only tags | Right and clean on 37 against 26 for copy. Its failures are copies of the top, so at worst it does what the copy fallback would, and the preview shows exactly what accepting gives. The 4 sentences about the edit are a flaw the preview also shows. |
+| 4B | Rewrite the description, changes-only tags | Right and clean on 42 against 26 for copy, and it never brings in the top's scene. But its rewrite almost never changes the description, so accepting mostly applies the tag changes. Copy is the alternative: the fact on all 48, with the top's scene on 22. |
+
+Copy stays the fallback for every model when a rewrite fails, is refused or times out, marked so the preview can say so.
+
+The caveats from C still hold: a small set, one pass, and "before" texts that aren't the models' drafts. The fact patterns are strict, too. "A grey tiled floor" doesn't match "floor tiles", which costs the 4B both iPhone cases and Apple one.
