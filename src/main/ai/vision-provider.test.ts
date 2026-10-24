@@ -751,3 +751,67 @@ describe('readCoverAsDataUrl', () => {
     await expect(readCoverAsDataUrl(junk)).resolves.toBeNull()
   })
 })
+
+describe('VisionInferenceProvider pile edits', () => {
+  const EDIT = {
+    before: { description: 'A laptop on a stack of white books.', tags: ['Laptop', 'books'] },
+    after: { description: 'A laptop on a white slatted bench.', tags: ['Laptop', 'bench'] }
+  }
+  const ENTRY = { description: 'A laptop on a grey mesh floor.', tags: ['Laptop', 'floor'] }
+
+  function pileProvider(pileEdits: PromptProfile['pileEdits'], reply: object) {
+    const complete = vi.fn<(req: ChatRequest) => Promise<ChatReply>>(async () => ({ text: JSON.stringify(reply) }))
+    const readImage = vi.fn<(path: string) => Promise<string | null>>(async () => IMAGE)
+    const provider = new VisionInferenceProvider('Qwen3.5 9B', { prompt: { ...SHIPPED, ...(pileEdits && { pileEdits }) }, complete, readImage })
+    return { provider, complete, readImage }
+  }
+
+  it('judges pile edits only when its profile says so, and rewrites unless told to copy', () => {
+    expect(pileProvider({ judge: true }, {}).provider.pileEdits?.check).toBeTypeOf('function')
+    expect(pileProvider(undefined, {}).provider.pileEdits?.check).toBeUndefined()
+    expect(pileProvider(undefined, {}).provider.pileEdits?.rewrite).toBeTypeOf('function')
+    expect(pileProvider({ copy: true }, {}).provider.pileEdits?.rewrite).toBeUndefined()
+  })
+
+  it('asks the cover as it is whether what the edit added is true of it, greedy, and reads the reason on a no', async () => {
+    const { provider, complete, readImage } = pileProvider({ judge: true }, { answer: 'no', reason: 'This one is on a mesh floor.' })
+    const said = await provider.pileEdits!.check!('/lib/side.webp', EDIT, ['slatted', 'bench'])
+    expect(said).toEqual({ answer: 'no', reason: 'This one is on a mesh floor' })
+    expect(readImage).toHaveBeenCalledWith('/lib/side.webp')
+    const req = complete.mock.calls[0]![0]
+    expect(userParts(req)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+    expect(userText(req)).toContain('The edit added: slatted, bench.')
+    expect(req).toMatchObject({ temperature: 0, seed: 42 })
+  })
+
+  it('gives no reason with a yes, and throws on a reply that is neither', async () => {
+    expect(await pileProvider({ judge: true }, { answer: 'yes', reason: 'it has a bench' }).provider.pileEdits!.check!('/c', EDIT, ['bench'])).toEqual({ answer: 'yes', reason: '' })
+    await expect(pileProvider({ judge: true }, { answer: 'maybe', reason: '' }).provider.pileEdits!.check!('/c', EDIT, ['bench'])).rejects.toThrow()
+  })
+
+  it('throws when there is no cover to check, so the edit is offered', async () => {
+    const { provider, readImage } = pileProvider({ judge: true }, { answer: 'yes', reason: '' })
+    readImage.mockResolvedValueOnce(null)
+    await expect(provider.pileEdits!.check!('/c', EDIT, ['bench'])).rejects.toThrow()
+  })
+
+  it("rewrites the variant's own description with the change, in a text request", async () => {
+    const { provider, complete, readImage } = pileProvider(undefined, { description: 'A laptop on a white slatted bench by a grey mesh floor.', tags: ['x'] })
+    expect(await provider.pileEdits!.rewrite!(EDIT, ENTRY)).toBe('A laptop on a white slatted bench by a grey mesh floor.')
+    const req = complete.mock.calls[0]![0]
+    expect(userParts(req).every((p) => p.type === 'text')).toBe(true)
+    expect(userText(req)).toContain('Another mockup in the pile has this entry: "A laptop on a grey mesh floor." Tags: Laptop, floor.')
+    expect(readImage).not.toHaveBeenCalled()
+  })
+
+  it('keeps the description, with no request, when an edit that only takes words out finds none of them', async () => {
+    const { provider, complete } = pileProvider(undefined, { description: 'x', tags: [] })
+    const removal = { before: { description: 'A mug on a saucer.', tags: ['saucer'] }, after: { description: 'A mug.', tags: [] } }
+    expect(await provider.pileEdits!.rewrite!(removal, ENTRY)).toBe(ENTRY.description)
+    expect(complete).not.toHaveBeenCalled()
+  })
+
+  it('throws on an empty rewrite, so the caller falls back to a copy', async () => {
+    await expect(pileProvider(undefined, { description: ' ', tags: [] }).provider.pileEdits!.rewrite!(EDIT, ENTRY)).rejects.toThrow()
+  })
+})

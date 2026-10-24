@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import sharp from 'sharp'
-import type { InferenceProvider, AnalysisInput, InferenceResult } from '../../shared/inference'
+import type { InferenceProvider, AnalysisInput, InferenceResult, PileEdit, PileEditEntry, PileEditSteps } from '../../shared/inference'
 import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
+import { CHECK_SCHEMA, ENTRY_SCHEMA, checkPrompt, pileEditRequest, readCheck, readRewrite, rewritePrompt } from './pile-edit'
 import { objectHintLine, objectHintRequest, readObjectHint } from './object-hint'
 import { draftLine, placeholderQuestion, placeholderWordsIn } from './placeholder-check'
 import type { PromptProfile } from './prompts/profile'
@@ -376,11 +377,33 @@ function yesNoRequest(answerRequest: ChatRequest, text: string, imageUrl?: strin
  */
 export class VisionInferenceProvider implements InferenceProvider {
   readonly id = 'vision'
+  /** As the profile says (`PromptProfile.pileEdits`): the check only for a model that judges, the rewrite unless it copies. */
+  readonly pileEdits: PileEditSteps
 
   constructor(
     readonly name: string,
     private readonly deps: VisionProviderDeps
-  ) {}
+  ) {
+    const how = deps.prompt.pileEdits ?? {}
+    this.pileEdits = {
+      ...(how.judge && { check: (coverPath: string, edit: PileEdit, added: string[]) => this.checkEdit(coverPath, edit, added) }),
+      ...(!how.copy && { rewrite: (edit: PileEdit, entry: PileEditEntry) => this.rewriteForEdit(edit, entry) })
+    }
+  }
+
+  /** Whether what a pile edit added is true of a variant's cover as it is. */
+  private async checkEdit(coverPath: string, edit: PileEdit, added: string[]): Promise<{ answer: 'yes' | 'no'; reason: string }> {
+    const url = await this.deps.readImage(coverPath)
+    if (!url) throw new Error('No cover to check the edit against')
+    return readCheck((await this.deps.complete(pileEditRequest(checkPrompt(edit, added), CHECK_SCHEMA, url))).text)
+  }
+
+  /** The variant's description with the edit's change worked in, from the text alone. */
+  private async rewriteForEdit(edit: PileEdit, entry: PileEditEntry): Promise<string> {
+    const prompt = rewritePrompt(edit, entry)
+    if (prompt === null) return entry.description
+    return readRewrite((await this.deps.complete(pileEditRequest(prompt, ENTRY_SCHEMA))).text)
+  }
 
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
     const { prompt } = this.deps

@@ -1,7 +1,8 @@
-import type { AnalysisInput, InferenceProvider, InferenceResult } from '../../shared/inference'
+import type { AnalysisInput, InferenceProvider, InferenceResult, PileEdit, PileEditEntry, PileEditSteps } from '../../shared/inference'
 import type { DescribeRequest, NativeHelper } from '../native/helper'
 import type { PromptProfile } from './prompts/profile'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
+import { ENTRY_SCHEMA, PILE_EDIT_SYSTEM, readRewrite, rewritePrompt } from './pile-edit'
 import { mentionedThings, refusedNote, sceneQuestion, withoutThing } from './scene-check'
 import { readCoverAsDataUrl, type ChatContentPart } from './vision-provider'
 
@@ -66,8 +67,20 @@ export function appleDescribeRequest(
 export class AppleInferenceProvider implements InferenceProvider {
   readonly id = 'apple'
   readonly name = "Apple's on-device model"
+  /** Apple judges no pile edits (round 3 C); accepting one rewrites, unless the profile copies. */
+  readonly pileEdits: PileEditSteps
 
-  constructor(private readonly deps: AppleProviderDeps) {}
+  constructor(private readonly deps: AppleProviderDeps) {
+    this.pileEdits = deps.prompt.pileEdits?.copy ? {} : { rewrite: (edit, entry) => this.rewriteForEdit(edit, entry) }
+  }
+
+  /** The variant's description with the edit's change worked in, from the text alone. */
+  private async rewriteForEdit(edit: PileEdit, entry: PileEditEntry): Promise<string> {
+    const prompt = rewritePrompt(edit, entry)
+    if (prompt === null) return entry.description
+    const reply = await this.deps.helper.describe({ imagePath: null, instructions: PILE_EDIT_SYSTEM, prompt, schema: ENTRY_SCHEMA, maxTokens: 400 })
+    return readRewrite(reply.text)
+  }
 
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
     const { prompt } = this.deps

@@ -40,4 +40,30 @@ export interface InferenceProvider {
   id: string
   name: string
   analyze(input: AnalysisInput): Promise<InferenceResult>
+  /** What the model does with a person's edit to a pile top (design/specs/look-over.md, L7). */
+  pileEdits?: PileEditSteps
+}
+
+/** A mockup's description and tag labels. */
+export interface PileEditEntry {
+  description: string
+  tags: string[]
+}
+
+/** A person's edit to a pile top: its description and tag labels before and after. */
+export interface PileEdit {
+  before: PileEditEntry
+  after: PileEditEntry
+}
+
+/** The model steps a pile edit can take. A step the model lacks is left out. */
+export interface PileEditSteps {
+  /**
+   * Whether what the edit added (`added`, words found in code) is true of a variant's cover, and
+   * on a no, a few words on why ("this one is on a white backdrop"). Only a model that judges pile
+   * edits has it (round 3 C: the 9B).
+   */
+  check?(coverPath: string, edit: PileEdit, added: string[]): Promise<{ answer: 'yes' | 'no'; reason: string }>
+  /** The variant's description with only the edit's change worked in, in a text request. */
+  rewrite?(edit: PileEdit, entry: PileEditEntry): Promise<string>
 }

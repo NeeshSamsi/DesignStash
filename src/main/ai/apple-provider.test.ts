@@ -265,3 +265,34 @@ describe('withoutPatterns', () => {
     expect(schema.required).toEqual(RESULT_JSON_SCHEMA.required)
   })
 })
+
+describe('AppleInferenceProvider pile edits', () => {
+  const EDIT = {
+    before: { description: 'A mug on a light grey background.', tags: ['Mug'] },
+    after: { description: 'A round mug on a light grey background.', tags: ['Mug', 'round'] }
+  }
+  const ENTRY = { description: 'An oval mug on a white table.', tags: ['Mug', 'table'] }
+
+  function stubHelper(text: string) {
+    const calls: DescribeRequest[] = []
+    return { helper: { describe: async (r: DescribeRequest) => (calls.push(r), { text, json: true, ms: 1 }) }, calls }
+  }
+
+  it('judges no pile edits', () => {
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper: stubHelper('{}').helper })
+    expect(provider.pileEdits.check).toBeUndefined()
+  })
+
+  it("rewrites the variant's own description with the change, from the text alone", async () => {
+    const { helper: stub, calls } = stubHelper(JSON.stringify({ description: 'A round mug on a white table.', tags: [] }))
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper: stub })
+    expect(await provider.pileEdits.rewrite!(EDIT, ENTRY)).toBe('A round mug on a white table.')
+    expect(calls[0]).toMatchObject({ imagePath: null, maxTokens: 400 })
+    expect(calls[0]!.prompt).toContain('Another mockup in the pile has this entry: "An oval mug on a white table."')
+  })
+
+  it('gives no rewrite step for a profile that copies', () => {
+    const provider = new AppleInferenceProvider({ prompt: { ...SHIPPED, pileEdits: { copy: true } }, helper: stubHelper('{}').helper })
+    expect(provider.pileEdits.rewrite).toBeUndefined()
+  })
+})

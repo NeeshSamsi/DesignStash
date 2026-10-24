@@ -48,4 +48,11 @@ export interface PromptProfile {
    * `remask`, given the first answer less those words (`placeholder-check.ts`). Used without `mask`.
    */
   verify?: { check: MaskFill; remask: MaskFill }
+  /**
+   * How the model takes a person's edit to a pile top (design/specs/look-over.md, L7; round 3 C3):
+   * `judge` asks each untouched variant's cover whether what the edit added is true of it, which
+   * only the 9B does well enough; `copy` makes accepting the edit give the top's description in
+   * place of a rewrite. Left out, nothing is judged and accepting rewrites the variant's own text.
+   */
+  pileEdits?: { judge?: boolean; copy?: boolean }
 }
