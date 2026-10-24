@@ -126,6 +126,20 @@ describe('VisionInferenceProvider.analyze', () => {
     expect(dispose).toHaveBeenCalledOnce()
   })
 
+  it("says whether its runtime has the model loaded, and loads it on load()", async () => {
+    let ready = false
+    const load = vi.fn(async () => {
+      ready = true
+    })
+    const provider = new VisionInferenceProvider('m', { prompt: SHIPPED, complete: async () => ({ text: '' }), readImage: async () => null, loaded: () => ready, load })
+    expect(provider.loaded).toBe(false)
+    await provider.load()
+    expect([provider.loaded, load.mock.calls.length]).toEqual([true, 1])
+    // A runtime that can't say is taken as loaded.
+    expect(makeProvider().provider.loaded).toBe(true)
+    await expect(makeProvider().provider.load()).resolves.toBeUndefined()
+  })
+
   it('exposes id "vision" and the model name', () => {
     const { provider } = makeProvider()
     expect(provider.id).toBe('vision')

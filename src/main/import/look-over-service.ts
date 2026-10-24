@@ -229,6 +229,21 @@ export class LookOverService {
     return out
   }
 
+  /**
+   * A mockup and the rest of its pile in the order Look it over walks them from it: it, the ones
+   * after it, then the ones before (the order their suggestions are wanted in). A mockup on its own
+   * is itself, and one that is gone is nothing.
+   */
+  walkFrom(mockupId: number): number[] {
+    const m = this.repo.mockups.getMockup(mockupId)
+    if (!m) return []
+    const pileId = m.isGroup ? m.id : m.groupId
+    if (pileId === null) return [m.id]
+    const walk = [pileId, ...this.members(pileId).map((v) => v.id)]
+    const at = walk.indexOf(m.id)
+    return at === -1 ? [m.id] : [...walk.slice(at), ...walk.slice(0, at)]
+  }
+
   /** Skip for now: a mockup on its own goes to the end of the queue. Piles and their members stay put. */
   async skip(mockupId: number): Promise<{ skipped: boolean }> {
     const m = this.repo.mockups.getMockup(mockupId)
@@ -411,7 +426,10 @@ export class LookOverService {
   private async judgePile(pileId: number, run: number, ids: number[]): Promise<void> {
     const current = () => this.runs.get(pileId) === run
     if (!current()) return
-    const steps = (await this.getProvider())?.pileEdits
+    const provider = await this.getProvider()
+    const steps = provider?.pileEdits
+    // The pile's time starts once the model is loaded: a cold start isn't a slow check.
+    if (current()) await provider?.load?.().catch(() => {})
     const started = Date.now()
     const total = ids.length
     let completed = 0

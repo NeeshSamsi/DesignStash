@@ -40,6 +40,13 @@ export interface InferenceProvider {
   id: string
   name: string
   analyze(input: AnalysisInput): Promise<InferenceResult>
+  /**
+   * Whether the model is loaded and answering now. False while a llama-server is down or still
+   * loading, so the first request would wait for it. Left out, it always is (Apple's model).
+   */
+  readonly loaded?: boolean
+  /** Load the model if it isn't, resolving once it answers. */
+  load?(): Promise<void>
   /** What the model does with a person's edit to a pile top (design/specs/look-over.md, L7). */
   pileEdits?: PileEditSteps
 }

@@ -35,6 +35,8 @@ export interface AppSettings {
   updatesLatest: { version: string; notes: string; releaseUrl: string } | null
   /** Stash check items the user chose to ignore (opaque ids, no paths). */
   ignoredDrift: string[]
+  /** This Mac's recent suggestion times per model (ms), for when one is "taking a while" (`run-timing.ts`). */
+  aiRunTimes: Record<string, number[]>
 }
 
 export interface PendingStash {
@@ -91,7 +93,8 @@ export function createSettingsStore(
     stashCheck: null,
     updatesCheckedAt: null,
     updatesLatest: null,
-    ignoredDrift: []
+    ignoredDrift: [],
+    aiRunTimes: {}
   }
   const now = options.now ?? (() => new Date())
   const copyFile = options.copyFile ?? copyFileSync

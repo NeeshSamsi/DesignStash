@@ -73,7 +73,7 @@ beforeEach(() => {
   registerImportHandlers({
     repo,
     push,
-    settings: { getLibraryRoot: () => join(base, 'Library') },
+    settings: { getLibraryRoot: () => join(base, 'Library'), get: () => ({ activeModelId: null, aiRunTimes: {} }), update: vi.fn() },
     telemetry: { get: () => ({ track: vi.fn() }) },
     ai: { activeProvider: async () => ({ id: 's', name: 's', analyze }) }
   } as unknown as HandlerContext)

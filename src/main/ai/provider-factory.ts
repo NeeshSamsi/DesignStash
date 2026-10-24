@@ -103,7 +103,9 @@ function createVisionProvider(files: VisionModelFiles, pidFile?: LlamaPidFile): 
       return { text, logprobs: choice?.logprobs }
     },
     readImage: readCoverAsDataUrl,
-    dispose: () => server.stop()
+    dispose: () => server.stop(),
+    loaded: () => server.ready,
+    load: () => server.start()
   })
 }
 

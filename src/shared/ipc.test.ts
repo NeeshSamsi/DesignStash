@@ -683,3 +683,32 @@ describe('look-over:answer-edit', () => {
     expect(response.safeParse({ mockupId: 3 }).success).toBe(false)
   })
 })
+
+describe('look-over:showing', () => {
+  const { request, response } = IPC_CONTRACT[IPC_CHANNELS.LOOK_OVER_SHOWING]
+
+  it('takes the mockup now on screen', () => {
+    expect(request.parse({ mockupId: 3 })).toEqual({ mockupId: 3 })
+    expect(request.safeParse({}).success).toBe(false)
+  })
+
+  it('answers with where its suggestion is: waiting its turn, its run, or how it ended; null when it is gone', () => {
+    expect(response.parse({ mockupId: 3, status: 'pending' })).toEqual({ mockupId: 3, status: 'pending' })
+    const run = { phase: 'writing', writingSince: 1_700_000_000_000, slowAfterMs: 35_000 }
+    expect(response.parse({ mockupId: 3, status: 'sniffing', run })).toEqual({ mockupId: 3, status: 'sniffing', run })
+    expect(response.parse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'starting', writingSince: null } })?.run?.phase).toBe('starting')
+    expect(response.safeParse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'loading' } }).success).toBe(false)
+    expect(response.parse(null)).toBeNull()
+  })
+})
+
+describe('ai:status with a run', () => {
+  it("carries a started run's phase, its clock and its threshold", () => {
+    const { payload } = PUSH_CONTRACT[IPC_CHANNELS.AI_STATUS]
+    const event = {
+      updates: [{ mockupId: 1, status: 'sniffing', run: { phase: 'starting', writingSince: null, slowAfterMs: 90_000 } }, { mockupId: 2, status: 'pending' }],
+      totals: { total: 2, remaining: 2 }
+    }
+    expect(payload.parse(event)).toEqual(event)
+  })
+})

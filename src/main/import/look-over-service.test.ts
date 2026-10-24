@@ -475,6 +475,18 @@ describe('a suggestion that lands after the draft was made', () => {
   })
 })
 
+describe('walkFrom', () => {
+  it('walks a pile from any of its mockups: it, the ones after it, then the ones before; a mockup on its own is itself', () => {
+    const [top, a, b] = pile('top', 'a', 'b')
+    const alone = waiting('alone')
+    const svc = service()
+    expect(svc.walkFrom(top!.id)).toEqual([top!.id, a!.id, b!.id])
+    expect(svc.walkFrom(a!.id)).toEqual([a!.id, b!.id, top!.id])
+    expect(svc.walkFrom(alone.id)).toEqual([alone.id])
+    expect(svc.walkFrom(9999)).toEqual([])
+  })
+})
+
 describe('an edit to a pile top', () => {
   /** A pile whose top and variants hold these words, saved as drafts the way Look it over makes them. */
   async function editedPile(svc: LookOverService, variants: { description: string; tags: string[] }[]) {
@@ -669,6 +681,28 @@ describe('an edit to a pile top', () => {
       await svc.whenIdle()
       expect(await itemOf(svc, rows[2]!.id)).toMatchObject({ description: 'Two.', carry: { state: 'offered' } })
       expect(progress.at(-1)).toMatchObject({ phase: 'done' })
+    })
+
+    it("starts the pile's time once the model is loaded, so a cold start doesn't use it up", async () => {
+      let loaded = false
+      const coldStart = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 80))
+        loaded = true
+      }
+      const model = pileModel({
+        // A request to a model that isn't loaded waits for it to load first.
+        check: async (): Promise<Check> => {
+          if (!loaded) await coldStart()
+          return { answer: 'yes', reason: '' }
+        },
+        rewrite: (_e, entry) => `${entry.description} On a bench.`
+      })
+      Object.assign(model, { load: coldStart })
+      const svc = service(model, { judgeMs: 40 })
+      const { rows, save } = await editedPile(svc, [{ description: 'One.', tags: [] }])
+      await save()
+      await svc.whenIdle()
+      expect((await itemOf(svc, rows[1]!.id)).carry).toMatchObject({ state: 'reworded' })
     })
 
     it('takes words out where they are, with no check, for an edit that only takes words out', async () => {

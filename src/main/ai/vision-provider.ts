@@ -117,6 +117,10 @@ export interface VisionProviderDeps {
   readImage(path: string): Promise<string | null>
   /** Release the runtime (stop the server). */
   dispose?(): Promise<void>
+  /** Whether the runtime has the model loaded and answering. Left out, it is taken as loaded. */
+  loaded?(): boolean
+  /** Load the model (start the server and wait for it to be ready). */
+  load?(): Promise<void>
   /** The cover with its design slot painted over, or null without a mask. Default `maskedCoverPath`. */
   maskedCover?(coverPath: string, fill: MaskFill): Promise<string | null>
 }
@@ -389,6 +393,14 @@ export class VisionInferenceProvider implements InferenceProvider {
       ...(how.judge && { check: (coverPath: string, edit: PileEdit, added: string[]) => this.checkEdit(coverPath, edit, added) }),
       ...(!how.copy && { rewrite: (edit: PileEdit, entry: PileEditEntry) => this.rewriteForEdit(edit, entry) })
     }
+  }
+
+  get loaded(): boolean {
+    return this.deps.loaded?.() ?? true
+  }
+
+  async load(): Promise<void> {
+    await this.deps.load?.()
   }
 
   /** Whether what a pile edit added is true of a variant's cover as it is. */

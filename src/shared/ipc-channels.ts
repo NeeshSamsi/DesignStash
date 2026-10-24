@@ -45,6 +45,7 @@ export const IPC_CHANNELS = {
   LOOK_OVER_SKIP: 'look-over:skip',
   LOOK_OVER_SET_RESUME: 'look-over:set-resume',
   LOOK_OVER_ANSWER_EDIT: 'look-over:answer-edit',
+  LOOK_OVER_SHOWING: 'look-over:showing',
   LOOK_OVER_DRAFT: 'look-over:draft',
   TAG_LIST_BY_CATEGORY: 'tag:list-by-category',
   TAG_CREATE: 'tag:create',

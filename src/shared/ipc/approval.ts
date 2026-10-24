@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
+import { AiStatusUpdateSchema } from './ai-status'
 import { AnswerEditRequestSchema, LookOverItemSchema, LookOverQueueSchema, SaveDraftRequestSchema, SaveDraftResponseSchema } from '../approval'
 
 /** Look it over. */
@@ -26,5 +27,13 @@ export const approvalContract = {
   [IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT]: {
     request: AnswerEditRequestSchema,
     response: LookOverItemSchema.nullable()
+  },
+  /**
+   * The mockup now on screen (design L6). Its suggestion goes first in the background queue, then
+   * the rest of its pile; answers with where it is (as `ai:status` says it), or null when it is gone.
+   */
+  [IPC_CHANNELS.LOOK_OVER_SHOWING]: {
+    request: z.object({ mockupId: z.number() }),
+    response: AiStatusUpdateSchema.nullable()
   }
 } as const

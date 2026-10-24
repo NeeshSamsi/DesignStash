@@ -1,6 +1,7 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { AiStatusEvent } from '@shared/ipc/ai-status'
 import { InferenceQueue } from '../ai/inference-queue'
+import { RunTimes } from '../ai/run-timing'
 import { LookOverService } from '../import/look-over-service'
 import { ensureSlotMask } from '../psd/design-slot-worker'
 import { reportFirstSuggestion } from '../telemetry/events'
@@ -23,6 +24,11 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
       repo: ctx.repo,
       getProvider: () => ctx.ai.activeProvider(),
       prepare: ensureSlotMask,
+      model: () => ctx.settings.get().activeModelId,
+      timing: new RunTimes({
+        get: () => ctx.settings.get().aiRunTimes,
+        set: (aiRunTimes) => ctx.settings.update({ aiRunTimes })
+      }),
       onStatus: (event) => {
         ctx.push(IPC_CHANNELS.AI_STATUS, event)
         if (event.updates.some((u) => u.status === 'ready')) {

@@ -5,9 +5,10 @@ import {
   type InferenceResult
 } from '@shared/inference'
 import type { AiStatus } from '@shared/inbox'
-import type { AiStatusEvent } from '@shared/ipc/ai-status'
+import type { AiRun, AiStatusEvent, AiStatusUpdate } from '@shared/ipc/ai-status'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
+import { RunTimes, memoryRunTimes } from './run-timing'
 
 /**
  * What the provider is shown for a mockup: its cover, the file name it came in as, and the folders
@@ -35,6 +36,11 @@ export interface InferenceQueueDeps {
    * before the mask was made at import. A failure only means the provider sees the cover as it is.
    */
   prepare?: (m: Mockup) => Promise<void>
+  /** The active model's catalogue id, which this Mac's run times are kept under. */
+  model?: () => string | null
+  /** This Mac's recent run times, and the threshold for "taking a while" they give. Default: kept for this launch only. */
+  timing?: RunTimes
+  now?: () => number
 }
 
 /** Tries per mockup: the first, and one retry. */
@@ -49,11 +55,19 @@ const ATTEMPTS = 2
 export class InferenceQueue {
   private readonly fifo: number[] = []
   private current: number | null = null
+  /** Where the current mockup's run is. */
+  private run: AiRun | null = null
   /** Cancelled while being read: its answer is thrown away. */
   private readonly cancelled = new Set<number>()
   private pumping: Promise<void> | null = null
 
-  constructor(private readonly deps: InferenceQueueDeps) {}
+  private readonly timing: RunTimes
+  private readonly now: () => number
+
+  constructor(private readonly deps: InferenceQueueDeps) {
+    this.timing = deps.timing ?? new RunTimes(memoryRunTimes())
+    this.now = deps.now ?? Date.now
+  }
 
   /** Queue mockups for a suggestion. Ones that have one already, are in My Stash or Trash, or are gone are left out. */
   async enqueue(ids: number[]): Promise<void> {
@@ -96,6 +110,25 @@ export class InferenceQueue {
     }
   }
 
+  /**
+   * Put these mockups first, in this order: the one on screen in Look it over, then the rest of its
+   * pile. The one being read finishes first, and ones not waiting their turn are left out.
+   */
+  prioritise(ids: number[]): void {
+    const front = [...new Set(ids)].filter((id) => this.fifo.includes(id))
+    if (front.length === 0) return
+    const rest = this.fifo.filter((id) => !front.includes(id))
+    this.fifo.splice(0, this.fifo.length, ...front, ...rest)
+  }
+
+  /** Where one mockup is: waiting its turn, its run, or the status it ended with. Null when it is gone. */
+  statusOf(id: number): AiStatusUpdate | null {
+    if (this.current === id && this.run) return { mockupId: id, status: 'sniffing', run: this.run }
+    if (this.fifo.includes(id)) return { mockupId: id, status: 'pending' }
+    const m = this.deps.repo.mockups.getMockup(id)
+    return m ? { mockupId: id, status: m.aiStatus } : null
+  }
+
   /** Whether a suggestion is being read or waiting its turn. */
   get busy(): boolean {
     return this.pumping !== null || this.fifo.length > 0
@@ -123,6 +156,7 @@ export class InferenceQueue {
         console.error('[AI] Queue error:', err)
       } finally {
         this.current = null
+        this.run = null
         this.cancelled.delete(id)
       }
     }
@@ -138,9 +172,22 @@ export class InferenceQueue {
       return
     }
 
-    this.emit([this.setStatus(id, 'sniffing')])
+    // The clock for "taking a while" starts once the model is loaded: a cold start says so instead.
+    const model = this.deps.model?.() ?? null
+    const slowAfterMs = this.timing.slowAfterMs(model)
+    const cold = provider.loaded === false
+    if (cold) {
+      this.run = { phase: 'starting', writingSince: null, slowAfterMs }
+      this.emit([{ ...this.setStatus(id, 'sniffing'), run: this.run }])
+      // A load that fails leaves it to the request, which fails and is tried again.
+      await provider.load?.().catch(() => {})
+    }
+    const since = this.now()
+    this.run = { phase: 'writing', writingSince: since, slowAfterMs }
+    this.emit([{ ...(cold ? { mockupId: id, status: 'sniffing' as const } : this.setStatus(id, 'sniffing')), run: this.run }])
     await this.deps.prepare?.(m).catch(() => {})
     const result = await this.suggest(provider, m)
+    if (result && model) this.timing.record(model, this.now() - since)
 
     // Tossed or trashed while it was being read: nothing to write to.
     const now = this.deps.repo.mockups.getMockup(id)

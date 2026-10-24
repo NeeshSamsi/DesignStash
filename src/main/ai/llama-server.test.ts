@@ -148,6 +148,29 @@ describe('LlamaServer', () => {
     expect(polls).toBe(3)
   })
 
+  it('loads the model on start() without a request, and says when it answers', async () => {
+    vi.useFakeTimers()
+    let loaded!: () => void
+    const loading = new Promise<void>((resolve) => (loaded = resolve))
+    const h = harness({ idleMs: 1000, health: async () => (await loading, json({ status: 'ok' })) })
+    expect(h.server.ready).toBe(false)
+    const starting = h.server.start()
+    await vi.advanceTimersByTimeAsync(0)
+    expect([h.server.running, h.server.ready]).toEqual([true, false])
+    loaded()
+    await starting
+    expect(h.server.ready).toBe(true)
+    await h.server.chat({})
+    expect(h.spawnArgs).toHaveLength(1)
+
+    // Unused after start, it stops after the idle time like any other.
+    await vi.advanceTimersByTimeAsync(1000)
+    expect([h.server.running, h.server.ready]).toEqual([false, false])
+    await h.server.start()
+    h.processes[1]!.exit(139)
+    expect(h.server.ready).toBe(false)
+  })
+
   it('runs one server for many requests, including ones made while it starts', async () => {
     const h = harness()
     await Promise.all([h.server.chat({}), h.server.chat({}), h.server.chat({})])

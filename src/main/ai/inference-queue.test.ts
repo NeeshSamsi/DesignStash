@@ -6,6 +6,7 @@ import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb, sample } from '../db/repositories/__tests__/setup'
 import { InferenceQueue, analysisInputFor } from './inference-queue'
+import { RunTimes, memoryRunTimes } from './run-timing'
 
 const result = (title: string): InferenceResult => ({
   title,
@@ -146,10 +147,11 @@ describe('InferenceQueue', () => {
       ],
       totals: { total: 2, remaining: 2 }
     })
+    const writing = { run: expect.objectContaining({ phase: 'writing' }) }
     expect(events.slice(1).map((e) => e.updates)).toEqual([
-      [{ mockupId: a.id, status: 'sniffing' }],
+      [{ mockupId: a.id, status: 'sniffing', ...writing }],
       [{ mockupId: a.id, status: 'ready' }],
-      [{ mockupId: b.id, status: 'sniffing' }],
+      [{ mockupId: b.id, status: 'sniffing', ...writing }],
       [{ mockupId: b.id, status: 'ready' }]
     ])
     expect(events.at(-1)!.totals).toEqual({ total: 2, remaining: 0 })
@@ -416,5 +418,116 @@ describe('analysisInputFor', () => {
   it('falls back to the title and no folders when nothing is known about where it came from', () => {
     const m = imported('side', { importContext: null })
     expect(analysisInputFor(m)).toEqual({ imagePath: '/lib/side.webp', fileName: 'side', folderTrail: [] })
+  })
+})
+
+/** A promise to settle by hand. */
+function later<T = void>() {
+  let resolve!: (v: T) => void
+  const promise = new Promise<T>((res) => (resolve = res))
+  return { promise, resolve }
+}
+
+describe('what Look it over is told about a run (design L6)', () => {
+  it('puts the mockups on screen first, in the order given, once the one being read is done', async () => {
+    const gate = later()
+    const stub = stubProvider(async (input, call) => {
+      if (call === 1) await gate.promise
+      return result(input.fileName)
+    })
+    const [a, b, c, d] = [imported('a'), imported('b'), imported('c'), imported('d')]
+    const queue = queueWith(stub.provider)
+    await queue.enqueue([a.id, b.id, c.id, d.id])
+    await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
+
+    queue.prioritise([d.id, 9999, c.id, a.id])
+    gate.resolve()
+    await queue.idle()
+
+    expect(stub.calls.map((i) => i.fileName)).toEqual(['a.psd', 'd.psd', 'c.psd', 'b.psd'])
+  })
+
+  it("starts the clock when the model begins on a mockup, and says how long before it's taking a while", async () => {
+    let now = 1_000
+    const times = memoryRunTimes()
+    times.set({ 'qwen3.5-9b': [12_000, 12_000, 13_000, 14_000, 15_000] })
+    const stub = stubProvider(() => {
+      now += 14_000
+      return result('x')
+    })
+    const a = imported('a')
+    const timing = new RunTimes(times)
+    const expected = timing.slowAfterMs('qwen3.5-9b')
+    const queue = queueWith(stub.provider, { now: () => now, model: () => 'qwen3.5-9b', timing })
+
+    await queue.enqueue([a.id])
+    await queue.idle()
+
+    expect(events.flatMap((e) => e.updates).find((u) => u.status === 'sniffing')).toEqual({
+      mockupId: a.id,
+      status: 'sniffing',
+      run: { phase: 'writing', writingSince: 1_000, slowAfterMs: expected }
+    })
+    expect(times.get()['qwen3.5-9b']!.at(-1)).toBe(14_000)
+  })
+
+  it('says the model is starting while it loads, and starts the clock once it answers', async () => {
+    let now = 0
+    const loading = later()
+    let loaded = false
+    const stub = stubProvider(() => result('x'))
+    const provider: InferenceProvider = {
+      ...stub.provider,
+      get loaded() {
+        return loaded
+      },
+      load: async () => {
+        await loading.promise
+        loaded = true
+      }
+    }
+    const a = imported('a')
+    const queue = queueWith(provider, { now: () => now })
+
+    await queue.enqueue([a.id])
+    await vi.waitFor(() => expect(queue.statusOf(a.id)).toMatchObject({ status: 'sniffing', run: { phase: 'starting', writingSince: null } }))
+    expect(stub.calls).toHaveLength(0)
+    now = 6_000
+    loading.resolve()
+    await queue.idle()
+
+    const runs = events.flatMap((e) => e.updates).filter((u) => u.status === 'sniffing').map((u) => u.run)
+    expect(runs).toEqual([expect.objectContaining({ phase: 'starting', writingSince: null }), expect.objectContaining({ phase: 'writing', writingSince: 6_000 })])
+  })
+
+  it('times only the runs that wrote a suggestion, for the model they ran on', async () => {
+    const times = memoryRunTimes()
+    const stub = stubProvider((input) => {
+      if (input.fileName === 'b.psd') throw new Error('no')
+      return result('x')
+    })
+    const queue = queueWith(stub.provider, { model: () => 'apple', timing: new RunTimes(times) })
+    await queue.enqueue([imported('a').id, imported('b').id])
+    await queue.idle()
+    expect(times.get().apple).toHaveLength(1)
+  })
+
+  it('tells where one mockup is: queued, its run, or how it ended', async () => {
+    const gate = later()
+    const stub = stubProvider(async () => {
+      await gate.promise
+      return result('x')
+    })
+    const [a, b] = [imported('a'), imported('b')]
+    const queue = queueWith(stub.provider)
+    await queue.enqueue([a.id, b.id])
+    await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
+
+    expect(queue.statusOf(a.id)).toMatchObject({ mockupId: a.id, status: 'sniffing', run: { phase: 'writing' } })
+    expect(queue.statusOf(b.id)).toEqual({ mockupId: b.id, status: 'pending' })
+    gate.resolve()
+    await queue.idle()
+    expect(queue.statusOf(a.id)).toEqual({ mockupId: a.id, status: 'ready' })
+    expect(queue.statusOf(9999)).toBeNull()
   })
 })
