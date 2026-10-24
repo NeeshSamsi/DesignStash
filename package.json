@@ -34,6 +34,7 @@
     "db:studio": "drizzle-kit studio",
     "predb:studio": "node scripts/rebuild-better-sqlite3.mjs node",
     "dev:ingest": "tsx --tsconfig tsconfig.node.json scripts/dev-ingest.ts",
+    "seed:dev": "tsx --tsconfig tsconfig.node.json scripts/seed-dev/seed.ts",
     "predev:ingest": "node scripts/rebuild-better-sqlite3.mjs node",
     "dev:reset": "node scripts/dev-reset.mjs",
     "ai-eval:covers": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/covers.ts",
