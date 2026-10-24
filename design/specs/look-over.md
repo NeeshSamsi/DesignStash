@@ -1,7 +1,7 @@
 # Look it over: AI working and the edit check
 
 **Status:** Proposed (awaiting Neesh), designed 2026-10-23; the edit check reworked 2026-10-24 after experiment C. Nothing here is built.
-**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4) and _Edit check (L7)_ (L7.1–L7.11, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card. Components: **AiStatus** (new) and **PileStep** (new `note` line).
+**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.4, L6.E1–E4) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card. Components: **AiStatus** (new), **PileStep** (new `note` line) and **Popover** (its content is now a real slot).
 **Related:** [piles.md](piles.md) (the pile model these screens sit in), [tags.md](tags.md) (suggested and new chips), [ai.md](ai.md) (models and timings).
 
 ## Proposed (awaiting Neesh)
@@ -49,7 +49,16 @@
 - **Apply here** (or **Apply anyway** after a no) applies the edits to that variant only, with Undo. **×** dismisses it for that variant, and ⌘Z brings it back.
 - An offer nobody answers never blocks Stash pile. The variant is stashed with its own words.
 
-**On accept:** with the 9B, the edit is written into the variant's own text, keeping its scene (about 7 s, shown as “working”). With 4B or Apple, the fields the top mockup changed are copied.
+**On accept:** two options are still open (question 8), and the preview works with either.
+- **Rewrite:** the edit is written into the variant's own text, keeping its scene.
+- **Copy:** the fields the top mockup changed are copied as they are.
+
+**Preview before accepting (Neesh, 2026-10-24), for every model:**
+- **Opens on:** hovering Apply here or Apply anyway (after 300 ms), or focusing it.
+- **Shows** what this variant will read: the description before (struck through) and after, then the tags it adds (`new` chips) and removes (`marked` chips, with no ×, since nothing in the preview is clickable).
+- **Keys:** Tab reaches the button and opens the preview at once. ↵ applies exactly what the preview shows. Esc closes the preview and keeps focus on the button. Tab moves on to ×.
+- **Shell:** it's a Popover (lg), anchored under the button and right-aligned to the form column, inside the FlowModal body slot.
+- **Preparing:** a rewrite (9B, about 7 s) is prepared in the background as soon as the offer shows, so the preview is usually ready. If it isn't, the preview shows the before text, a spinner with “Preparing this one's version…” and skeleton lines; the tag changes are already known. The button still works: it shows its loading state and applies the moment the version is ready. With copy, the preview is instant.
 
 **Rail notes:** Checking your edits… (9B only), Edits applied, Edits reworded, and Edits offered. A dismissed offer leaves no note.
 
@@ -60,11 +69,12 @@
 | L7.3 Edits applied (9B, took it) | The edits are applied (tinted as in L6.3). **Undo** puts back the variant's own words. Rail note: Edits applied. |
 | L7.4 Edits reworded (9B, took it) | The edits are written into this variant's text, keeping its scene (“since it shows the back”). **Undo**. Rail note: Edits reworded. This is the usual 9B result. |
 | L7.6 Review (9B) | Each card's line gives the result: Edits applied, Edits reworded for this one, or “Edits offered: open it to apply”. |
-| L7.7 Left out, edits offered (9B) | The model said no. The variant keeps its own words, and the line offers the edits with the reason: “Left out your top mockup edits: this one is on a white backdrop.” **Apply anyway** · **×**. Rail note: Edits offered. |
+| L7.7 Left out, edits offered (9B) | The model said no. The variant keeps its own words, and the line offers the edits with the reason: “Left out your top mockup edits: this one is on a white backdrop.” **Apply anyway** · **×**. Shown with the preview open on hover, with the 9B's rewrite as the after text. Rail note: Edits offered. |
 | L7.8 Offer accepted | The edits are applied to this variant only, tinted, with **Undo**. Rail note: Edits applied. |
-| L7.9 Edits offered, nothing judged (4B, Apple) | Every untouched variant keeps its own words and offers the edits, with no reason line: “Use your top mockup edits here too? New description, Colour Terracotta.” **Apply here** · **×**. There's no waiting. |
+| L7.9 Edits offered, nothing judged (4B, Apple) | Every untouched variant keeps its own words and offers the edits, with no reason line: “Use your top mockup edits here too? New description, Colour Terracotta.” **Apply here** · **×**. There's no waiting. Shown with the keyboard path: Apply here focused and the preview open, with the top mockup's description copied as the after text, so the scene change shows before anyone accepts. |
 | L7.10 Offer dismissed | The line goes back to its resting text and the rail note goes. Other variants keep their offers. |
 | L7.11 Review (4B, Apple) | Applied, dismissed (its own tags) and unanswered (“Edits offered: open it to apply”) side by side. |
+| L7.12 Preparing the preview (9B rewrite) | Hovering before the rewrite is ready: the before text, “Preparing this one's version…” with a spinner, skeleton lines, the tag changes, and “↵ Apply when it's ready”. |
 | L7.E3 Undone on one variant | Back to the variant's own words, and the edits stay on offer: **Apply here** · **×**. Rail note: Edits offered. |
 | L7.E4 Slow check (9B) | After 20 s the check stops waiting. Every variant it hasn't judged gets the offer, as in L7.9. Results already in stay, and a late answer for an offered variant is dropped, so nothing changes under the person. |
 | L7.E5 Check failed (9B) | The variants keep their own words and each offers the edits, as in L7.9. |
@@ -91,7 +101,11 @@
 | Every check result names what happened and why, with Undo or Apply anyway | No silent changes; every result can be reversed in place. | 8.4, 8.14, reversible actions |
 | When the edit doesn't reach a variant, it's offered there: one line, in the status line, dismissable | The person decides per variant, next to what it changes. One quiet line keeps the screen's primary action (Next) the strongest thing on it. | 4.9, 2.3, 2.5 |
 | Nothing changes until you accept, and accepting touches that variant only | Experiment C showed blanket copying is wrong for most variants. A variant's own words are the safe default. | 8.7, 8.14, 0.3 |
-| × to dismiss, after Banner's dismiss, with ⌘Z to bring the offer back | A familiar control for a quiet offer, and the same look as other dismissable messages. | 8.10, 7.5 |
+| × to dismiss, after Banner's dismiss, with ⌘Z to bring the offer back and no rail note (Neesh, 2026-10-24) | A familiar control for a quiet offer, and the same look as other dismissable messages. | 8.10, 7.5 |
+| A preview on hover and focus of the apply button, showing exactly what will change | People see the result before committing, right where they'd click, and the keyboard gets the same route as the mouse. | 8.12, 8.20, 4.9, 8.13 |
+| The preview's “after” is the version that ↵ applies, whichever method ships | What you see is what you get, so question 8 can be settled later without redesigning. | 8.14, 7.12 |
+| Preparing state with a spinner and skeleton lines, while the button still works | Something visible during the wait, and the person never has to wait to act. | 8.3, 7.2 |
+| Popover's content became a real slot | The preview lives inside the popover, so the layer structure stays nested; nothing used the old placeholder. | 7.3, layer structure |
 | The 9B gives a reason when it leaves the edits out; 4B and Apple show none | A reason only when one exists, so no line ever says something empty. | 1.6, 8.4 |
 | A slow or failed check falls back to the offer | The person still gets the edits, by hand, and no late answer changes a variant under them. Copy-to-all is gone. | 8.17, 8.7 |
 | Rail notes: Edits offered, Edits applied, Edits reworded | The rail shows at a glance which variants still have an answer waiting. | 8.20, 5.5 |
@@ -107,6 +121,6 @@
 5. **A failed or slow edit check:** settled on 2026-10-24. It falls back to the offer (L7.E4, L7.E5), and the old Apply to all is gone.
 6. **The title in the edit check:** ask 2 names description and tags. Should an edited title go through the check too, reworded per variant ("· side")?
 7. **The existing `thinking` state** (MockupMetaForm skeleton, L3.E3) can't be typed into. Retire it in favour of L6.1's editable placeholders?
-8. **Accepting with the 9B:** rewrite the variant's text keeping its scene (proposed, about 7 s), or copy the top mockup's changed fields straight away, as with 4B and Apple?
-9. **The offer's summary with 4B and Apple:** “New description, Colour Terracotta” names what changed without showing it. Is that enough, or should hovering Apply here preview the new description?
-10. **A dismissed offer:** ⌘Z brings it back (proposed). Should the rail also keep a way back, such as a muted “Offer dismissed” note?
+8. **Accepting:** rewrite the variant's text keeping its scene (9B, about 7 s, prepared ahead), or copy the top mockup's changed fields as they are? Still open. The preview and the preparing state work either way.
+9. **The offer's summary:** settled on 2026-10-24. A preview on hover or focus shows the change, for every model.
+10. **A dismissed offer:** settled on 2026-10-24. ⌘Z brings it back, with no rail note.
