@@ -20,11 +20,14 @@ export const RECENT_RUNS = 20
 /** With fewer runs than this the median says too little about the Mac, so the ceiling stands. */
 export const MIN_RUNS = 5
 
-/** By catalogue id. Provisional: to be set from round 3 D's timing runs on an M3 Max, the 9B's still to come. */
+/**
+ * By catalogue id, from round 3 D's runs on an M3 Max: the floor is the longest normal answer
+ * there, rounded up to 5 s, and the ceiling about twice what a base M1 or M2 takes for a typical one.
+ */
 export const SLOW_LIMITS: Record<string, SlowLimits> = {
-  apple: { floorMs: 8_000, ceilingMs: 30_000 },
+  apple: { floorMs: 5_000, ceilingMs: 10_000 },
   'qwen3-vl-4b': { floorMs: 20_000, ceilingMs: 60_000 },
-  'qwen3.5-9b': { floorMs: 35_000, ceilingMs: 90_000 }
+  'qwen3.5-9b': { floorMs: 35_000, ceilingMs: 100_000 }
 }
 
 /** A model outside the table, or none: the slowest model's limits. */
