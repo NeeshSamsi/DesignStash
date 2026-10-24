@@ -3,7 +3,7 @@
 export interface GoldVariation {
   /** What I'd say. */
   say: string
-  /** Regex fragments, case-insensitive; any one makes an answer right. */
+  /** Regex fragments, case-insensitive, matched from the start of a word; any one makes an answer right. */
   accept: string[]
   /** Only a slight turn or crop sets it apart, so "same" isn't wrong. */
   subtle?: boolean
@@ -18,21 +18,25 @@ const SAME = /^\s*(?:same|the same|none|no difference|identical|n\/a|nothing)\b/
 /** Right (an accepted word, or "same" where they look the same), a "same" call, or something else. */
 export function judge(said: string, gold: GoldVariation): Verdict {
   if (SAME.test(said)) return gold.same ? 'right' : 'same'
-  if (gold.accept.some((a) => new RegExp(a, 'i').test(said))) return 'right'
+  if (gold.accept.some((a) => new RegExp(`\\b(?:${a})`, 'i').test(said))) return 'right'
   return 'other'
 }
 
 /**
  * The fallback when the model can't tell, for each file in a pile: the short part of its name the
- * others don't share ("A" in tote-a, "2" in mug-2). When the names give none, or two would get the
- * same one, every mockup gets its number in the pile.
+ * others don't share ("A" in tote-a, "2" in mug-2, "EU" in notebook_EU, "clay" in "Watch - Clay").
+ * A letter, a number up to two digits or a word up to 12 letters; long numbers and codes like
+ * "M003T1513" aren't markers. When the names give none, or two would get the same one, every mockup
+ * gets its number in the pile.
  */
 export function fileMarkers(fileNames: string[]): string[] {
-  const words = fileNames.map((n) => n.replace(/\.[^.]+$/, '').split(/[-_\s.]+/).filter(Boolean))
+  const words = fileNames.map((n) => n.replace(/\.[^.]+$/, '').split(/[-_\s.,()]+/).filter(Boolean))
   const markers = words.map((mine, i) => {
     const others = words.filter((_, j) => j !== i)
-    const own = mine.filter((w, k) => others.every((o) => o[k] !== w) && /^(?:[a-z]|\d{1,2})$/i.test(w))
-    return own.length === 1 ? own[0]!.toUpperCase() : null
+    const own = mine.filter((w, k) => others.every((o) => o[k] !== w) && /^(?:\p{L}{1,12}|\d{1,2})$/u.test(w))
+    if (own.length !== 1) return null
+    const word = own[0]!
+    return word.length === 1 || word === word.toUpperCase() ? word.toUpperCase() : word.toLowerCase()
   })
   const unique = markers.every((m) => m !== null) && new Set(markers).size === markers.length
   return unique ? (markers as string[]) : fileNames.map((_, i) => String(i + 1))

@@ -94,6 +94,8 @@ async function main(): Promise<void> {
 
   const scratch = join(tmpdir(), 'designstash-variation')
   mkdirSync(scratch, { recursive: true })
+  /** llama-server's timings for the last request (prompt and output tokens and ms); none for Apple. */
+  let lastTimings: Record<string, number> | undefined
   let ask: (image: Buffer, text: string, schema: object, maxTokens: number) => Promise<string>
   let stop: () => Promise<void>
   if (model === 'apple') {
@@ -124,17 +126,18 @@ async function main(): Promise<void> {
         max_tokens: maxTokens,
         seed: 42
       })
+      lastTimings = json.timings
       return String(json.choices?.[0]?.message?.content ?? '')
     }
     stop = () => server.stop()
   }
 
-  const results: { id: string; pile: string; top: boolean; said: string | null; verdict: Verdict | null; fallback: string; ms: number; error?: string }[] = []
+  const results: { id: string; pile: string; top: boolean; said: string | null; verdict: Verdict | null; fallback: string; ms: number; timings?: Record<string, number>; error?: string }[] = []
   const record = (id: string, pile: string, said: string | null, ms: number, siblings: string[], index: number, error?: string) => {
     const g = gold[id]
     if (!g) throw new Error(`No variation gold for ${id}`)
     const verdict = said === null ? null : judge(said, g)
-    results.push({ id, pile, top: id === pile, said, verdict, fallback: fileMarkers(siblings)[index]!, ms: Math.round(ms), ...(error && { error }) })
+    results.push({ id, pile, top: id === pile, said, verdict, fallback: fileMarkers(siblings)[index]!, ms: Math.round(ms), ...(lastTimings && { timings: lastTimings }), ...(error && { error }) })
     console.log(`${String(Math.round(ms)).padStart(6)}ms  ${id}  ${said ?? `FAILED ${error}`} [${verdict ?? '-'}; I'd say ${g.say}]`)
   }
   try {
