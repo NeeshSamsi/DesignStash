@@ -121,10 +121,16 @@ export class InferenceQueue {
     this.fifo.splice(0, this.fifo.length, ...front, ...rest)
   }
 
-  /** Where one mockup is: waiting its turn, its run, or the status it ended with. Null when it is gone. */
+  /**
+   * Where one mockup is: waiting its turn (with the threshold, since the renderer counts a wait on
+   * screen too), its run, or the status it ended with. Null when it is gone.
+   */
   statusOf(id: number): AiStatusUpdate | null {
     if (this.current === id && this.run) return { mockupId: id, status: 'sniffing', run: this.run }
-    if (this.fifo.includes(id)) return { mockupId: id, status: 'pending' }
+    if (this.fifo.includes(id)) {
+      const slowAfterMs = this.timing.slowAfterMs(this.deps.model?.() ?? null)
+      return { mockupId: id, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs } }
+    }
     const m = this.deps.repo.mockups.getMockup(id)
     return m ? { mockupId: id, status: m.aiStatus } : null
   }

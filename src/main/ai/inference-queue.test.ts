@@ -524,7 +524,8 @@ describe('what Look it over is told about a run (design L6)', () => {
     await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
 
     expect(queue.statusOf(a.id)).toMatchObject({ mockupId: a.id, status: 'sniffing', run: { phase: 'writing' } })
-    expect(queue.statusOf(b.id)).toEqual({ mockupId: b.id, status: 'pending' })
+    // Queued, the renderer counts from when it came on screen, so it gets the threshold too.
+    expect(queue.statusOf(b.id)).toEqual({ mockupId: b.id, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs: expect.any(Number) } })
     gate.resolve()
     await queue.idle()
     expect(queue.statusOf(a.id)).toEqual({ mockupId: a.id, status: 'ready' })

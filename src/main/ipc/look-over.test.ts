@@ -197,7 +197,7 @@ describe('look-over:showing', () => {
     await queue.enqueue([first.id, top.id, a.id, b.id, after.id])
     await vi.waitFor(() => expect(asked).toEqual(['first']))
 
-    expect(await showing(a.id)).toEqual({ success: true, data: { mockupId: a.id, status: 'pending' } })
+    expect(await showing(a.id)).toMatchObject({ success: true, data: { mockupId: a.id, status: 'pending', run: { phase: 'queued' } } })
     expect(await showing(first.id)).toMatchObject({ success: true, data: { mockupId: first.id, status: 'sniffing', run: { phase: 'writing' } } })
     expect(await showing(9999)).toEqual({ success: true, data: null })
     release()

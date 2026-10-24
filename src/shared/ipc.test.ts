@@ -694,6 +694,8 @@ describe('look-over:showing', () => {
 
   it('answers with where its suggestion is: waiting its turn, its run, or how it ended; null when it is gone', () => {
     expect(response.parse({ mockupId: 3, status: 'pending' })).toEqual({ mockupId: 3, status: 'pending' })
+    const queued = { mockupId: 3, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs: 20_000 } }
+    expect(response.parse(queued)).toEqual(queued)
     const run = { phase: 'writing', writingSince: 1_700_000_000_000, slowAfterMs: 35_000 }
     expect(response.parse({ mockupId: 3, status: 'sniffing', run })).toEqual({ mockupId: 3, status: 'sniffing', run })
     expect(response.parse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'starting', writingSince: null } })?.run?.phase).toBe('starting')
