@@ -573,7 +573,7 @@ The design gives a variant the 9B leaves out a reason line ("Left out your top m
 | c3 | 54 | 53 | 12 of 14 | 37 | 6.7 s |
 | c4 | 54 | 53 | **14 of 14** | 30 | 4.1 s |
 
-Asking for a reason makes the 9B say no a little more often. It leaves all 14 keep cases alone, and declines 5 apply or adapt cases it carried before (the MacBook Pro rename on two long-scroll variants, one Zippo, one open book, the tights). Those variants now get the offer, so a person can still take the edit. It's faster, since fewer rewrites follow a yes.
+Asking for a reason makes the 9B say no a little more often. It leaves all 14 keep cases alone, and declines 5 apply or adapt cases it carried before: the MacBook Pro rename on one long-scroll variant, the iMac's grey background, one Zippo, the stationery's white desk and the tights. Only the first and the last end wrong, since the other drafts already had the fact. Those variants now get the offer, so a person can still take the edit. It's faster, since fewer rewrites follow a yes.
 
 The reasons read well in the design's line:
 - "this one shows the lighter open"
