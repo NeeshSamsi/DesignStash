@@ -18,7 +18,11 @@
  * added into one yes/no question; each variant's cover is asked that question, and only on a yes is
  * the variant's own entry given the change. An edit that only takes words out needs no question: it
  * goes to every variant whose entry has those words. `--prompt c3` is c2 with no question: each
- * cover is asked about the edit itself, told the words it added.
+ * cover is asked about the edit itself, told the words it added. `--prompt accept` is what happens
+ * when the person accepts the edit on a variant: no check, every case gets c3's change (or the
+ * removal) in a text request; `ai-eval:edit-carry-score` scores it against copying the top's entry.
+ * `--cases <run>` takes the edits and variants of an earlier run in place of today's piles, so a
+ * change to the app's grouping leaves the set as it was.
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -162,7 +166,7 @@ async function main(): Promise<void> {
   const mask = argValue('mask') as MaskStyle | undefined
   if (!model || !drafts) throw new Error('Usage: pnpm ai-eval:edit-carry --model <id> --drafts <version> [--mask grey|soft] [--prompt c1]')
   const prompt = PROMPTS[promptId]
-  if (!prompt && promptId !== 'c2' && promptId !== 'c3') throw new Error(`No prompt ${promptId}`)
+  if (!prompt && !['c2', 'c3', 'accept'].includes(promptId)) throw new Error(`No prompt ${promptId}`)
   const edits = (JSON.parse(readFileSync(join(import.meta.dirname, 'round3', 'edits.json'), 'utf8')) as { edits: Edit[] }).edits
   const gold: Record<string, GoldItem> = {}
   for (const f of ['gold.json', 'gold-heldout.json', 'gold-signoff.json'])
@@ -175,11 +179,18 @@ async function main(): Promise<void> {
     return { description: r.parsed.description, tags: r.searchTags.map((t) => t.label) }
   }
 
-  const cases = edits.flatMap((edit) => {
-    const pile = piles().find((p) => p.top === edit.pile)
-    if (!pile) throw new Error(`${edit.id}: no pile with top ${edit.pile}`)
-    return pile.variants.map((v) => ({ edit, variant: v, label: labelFor(edit, gold[edit.pile]!, gold[v]!) }))
-  })
+  const casesFrom = argValue('cases')
+  const pairs = casesFrom
+    ? (JSON.parse(readFileSync(join(runDir(model, casesFrom), 'results.json'), 'utf8')) as { edit: string; variant: string }[]).map((r) => ({
+        edit: edits.find((e) => e.id === r.edit)!,
+        variant: r.variant
+      }))
+    : edits.flatMap((edit) => {
+        const pile = piles().find((p) => p.top === edit.pile)
+        if (!pile) throw new Error(`${edit.id}: no pile with top ${edit.pile}`)
+        return pile.variants.map((variant) => ({ edit, variant }))
+      })
+  const cases = pairs.map(({ edit, variant }) => ({ edit, variant, label: labelFor(edit, gold[edit.pile]!, gold[variant]!) }))
   // run.ts's header line, so the progress view (`progress.mjs`) draws this run too.
   console.log(`${model} · edit-carry-${promptId}${mask ? `-${mask}` : ''} · ${cases.length} items × 1`)
 
@@ -227,18 +238,22 @@ async function main(): Promise<void> {
     return questions.get(e.id)!
   }
   type Said = { decision: Decision; description: string; tags: string[]; question?: string; answer?: string }
-  const c2 = async (e: Edit, imagePath: string, d: { description: string; tags: string[] }): Promise<Said> => {
+  // The variant's own entry with the edit's change made, or with its removed words taken out.
+  const changed = async (e: Edit, d: { description: string; tags: string[] }): Promise<Said> => {
     const { added, removed } = editDiff(e)
-    if (added.length === 0) {
-      const has = removed.some((w) => new RegExp(`\\b${w}`, 'i').test([d.description, ...d.tags].join(' ')))
-      if (!has) return { decision: 'adapt' as const, ...d }
-      return { decision: 'adapt' as const, ...(JSON.parse(await ask(null, C2.remove(removed, d), ENTRY_SCHEMA)) as typeof d) }
-    }
+    if (added.length > 0) return { decision: 'adapt' as const, ...(JSON.parse(await ask(null, C2.change(e, d), ENTRY_SCHEMA)) as typeof d) }
+    const has = removed.some((w) => new RegExp(`\\b${w}`, 'i').test([d.description, ...d.tags].join(' ')))
+    if (!has) return { decision: 'adapt' as const, ...d }
+    return { decision: 'adapt' as const, ...(JSON.parse(await ask(null, C2.remove(removed, d), ENTRY_SCHEMA)) as typeof d) }
+  }
+  const c2 = async (e: Edit, imagePath: string, d: { description: string; tags: string[] }): Promise<Said> => {
+    const { added } = editDiff(e)
+    if (added.length === 0) return changed(e, d)
     const question = promptId === 'c3' ? `added: ${added.join(', ')}` : (await questionFor(e)).question
     const text = promptId === 'c3' ? C2.checkEdit(e, added) : C2.check(question)
     const answer = (JSON.parse(await ask(imagePath, text, ANSWER_SCHEMA)) as { answer: string }).answer
     if (answer !== 'yes') return { decision: 'keep' as const, ...d, question, answer }
-    return { decision: 'adapt' as const, ...(JSON.parse(await ask(null, C2.change(e, d), ENTRY_SCHEMA)) as typeof d), question, answer }
+    return { ...(await changed(e, d)), question, answer }
   }
   try {
     for (const c of cases) {
@@ -250,7 +265,9 @@ async function main(): Promise<void> {
         const begun = promptId === 'c2' ? performance.now() : started
         const parsed = prompt
           ? (JSON.parse(await ask(imagePath, prompt(c.edit, draftOf(c.variant)))) as Said)
-          : await c2(c.edit, imagePath, draftOf(c.variant))
+          : promptId === 'accept'
+            ? await changed(c.edit, draftOf(c.variant))
+            : await c2(c.edit, imagePath, draftOf(c.variant))
         results.push({ edit: c.edit.id, kind: c.edit.kind, variant: c.variant, label: c.label, decision: parsed.decision, description: parsed.description, tags: parsed.tags, ...(parsed.question !== undefined && { question: parsed.question }), ...(parsed.answer !== undefined && { answer: parsed.answer }), ms: Math.round(performance.now() - begun) })
       } catch (err) {
         results.push({ edit: c.edit.id, kind: c.edit.kind, variant: c.variant, label: c.label, decision: null, ms: Math.round(performance.now() - started), error: (err as Error).message })
