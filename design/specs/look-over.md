@@ -101,6 +101,36 @@ Since 2026-10-24 every focusable component uses this ring: Checkbox, Switch, Rad
 - L7.E2's copy-to-all, by L7.E5. Copying the edits to every variant is gone from the design.
 - L7.9 · Option B (inline panel), by Option A, the anchored popover.
 
+## Component pass (2026-10-24)
+
+Neesh asked why the focus ring broke: “shouldn't focused variants of buttons be coming from components.”
+
+**Why the ring broke.** It did come from the component. L7.9's Apply here was a real Button instance in `state=focus`, with no hand-drawn ring, detached instance or override. The fault was in the component: every focus variant drew focus as a 2 px stroke flush outside the button, so any parent that clips (AiStatus's `actions` frame, the form column) cut it down to its two sides. The focus states now carry a `focus-ring` layer 2 px out from the control, matching the code's `focus-ring` utility, on every focusable component (see [Focus ring](#focus-ring)).
+
+**Sweep of every page with screens** (Flows, ↳ Start, ↳ Gather, ↳ Sort, ↳ Look it over, ↳ Library, ↳ Inboxes & Trash, ↳ Settings, ↳ Integrity & errors; Archive left alone, and the Marketing and Inspiration pages hold no app screens):
+- **Detached instances:** none.
+- **Hand-built stand-ins for components:** none. The only hand-made frames that look like controls are the details panel masters' `tags` and `title-field` rows, which hold real TagChip and Input instances.
+- **Overrides faking a state,** each moved onto a real component option:
+
+| Was | Now | Where |
+|---|---|---|
+| A Textarea's fill overridden to `background/primary-weak` to show the AI just filled it | Textarea `state=ai-filled` (rows 3 and 4–6) | ↳ Look it over: L6.3, L7.3, L7.4, L7.8, L7.E2 |
+| A display TagChip with its text recoloured and struck to show a tag the change removes | TagChip `variant=removed` | ↳ Look it over: the previews in L7.7, L7.9, L7.12 and both placement options |
+| ModelCard's quality and speed bars lit step by step with fill overrides | A new **StepBar** component (`value` 0 to 5, five 12×4 steps), exposed inside ModelCard as `quality-bar` and `speed-bar`, like the code's `quality` and `speed` props | ↳ Settings: all 52 cards keep their values (4B 4/4, Apple 3/5, 9B 5/3, Meaning search 0/0) |
+| A border stroke added to CoverImage | CoverImage `show-border` (a 1 px `border/base` edge inside the cover, off by default) | ↳ Gather (36 covers), ↳ Inboxes & Trash (15), and CoverPanel (22) |
+| An outline Button's border recoloured to `border/subtle` | Button `variant=outline-subtle`: `border/subtle`, no fill, `border/input` on hover, every size and state | LibraryToolbar's Filter and Toast's Undo and Retry (so every screen that uses them), Sort's Make pile (22 screens), the pile page's Disband pile (7) |
+
+- **Left as they are, on purpose:** icon colours that come with a component (an icon in a primary button takes `text/on-primary`, DropdownMenu Item's destructive icon `text/error`, EmptyState's icons `text/tertiary`); the drag ghost's 0.92 opacity, which is the screen's own composition of a card being dragged; and identical-value overrides left behind on some instances by the fixes above, which change nothing on screen.
+
+**Component checks** (all 156 components and sets on the Components page):
+- **Properties:** every boolean, text, swap and slot property is wired to a layer.
+- **Raw values fixed:** AiStatus's gap (now `spacing/2`), MeaningSearchCard's title-row gap (`spacing/2`) and its corner radius (`radius/xl`). No raw colours, and no text without a style.
+- **Clipping that is intended:** VariantStrip (a carousel with faded ends), TagFilterPopover's tag list (now marked as a vertical scroll area), SettingsLayout's scrolling body, and MockupCard and GroupMemberThumb's hover zoom inside the cover.
+- **Retired:** MockupMetaForm's resting hint and its two properties (see the status line).
+- **Added:** AiStatus `kind=none`, Textarea `state=ai-filled`, TagChip `variant=removed`, CoverImage `show-border`, Button `variant=outline-subtle`, StepBar, and the `radius/card-ring` token (28).
+
+**For the build:** the code sets the quiet outline with the same className in four places (LibraryToolbar, Toast, SortFlow's Make pile, PilePage's Disband pile); one `outline-subtle` Button variant can replace them. Textarea's AI-filled tint, TagChip `removed`, CoverImage `show-border` and the retired MockupMetaForm hint need their code counterparts.
+
 ## Design decisions
 
 | Decision | Why | Principle |
