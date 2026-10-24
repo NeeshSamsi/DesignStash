@@ -53,13 +53,13 @@
 - **Rewrite:** the edit is written into the variant's own text, keeping its scene.
 - **Copy:** the fields the top mockup changed are copied as they are.
 
-**Preview before accepting (Neesh, 2026-10-24), for every model.** Hovering Apply here or Apply anyway (after 300 ms), or focusing it, opens a Popover (lg, 360 wide) under the button. It sits over the rail, so the Description field and the Tags row stay in view. It has three regions, divided by full-width separators (hierarchy reworked 2026-10-24 after Neesh: “cluttered and without proper hierarchy”):
+**Preview before accepting (Neesh, 2026-10-24), for every model.** Hovering Apply here or Apply anyway (after 300 ms), or focusing it, opens a Popover beside the form, 6 px clear of it and right-aligned to the rail column (218 wide), so the Description field and the Tags row stay fully in view. It has three regions, divided by full-width separators (hierarchy reworked 2026-10-24 after Neesh: “cluttered and without proper hierarchy”):
 - **Header:** the title “Your top mockup edits” (body/sm/medium), with the reason under it (caption, text/secondary). With the 9B that's “This one is on a white backdrop.”; with 4B or Apple it's “Not checked for this variant, so look before you apply.” The status line then drops its reason (“Left out your top mockup edits.”), so the reason isn't said twice.
 - **Body:** the description as one sentence with an inline word diff. Unchanged words are in text/secondary; removed words are struck and in text/tertiary; added words are in text/brand at medium weight. When most of the sentence changes, it falls back to before and after on two rows, with before muted. Under it, short **Adds** and **Removes** rows of tag chips: `new` chips for added tags, display chips struck and muted for removed ones, with the words carrying the meaning. There are no section labels.
-- **Footer:** real buttons, light to heavy, heaviest at the right: Close (ghost), then Apply here or Apply anyway (primary). Each has its KeyboardShortcut beside it (esc, ↵).
+- **Footer:** real buttons, light to heavy, heaviest at the right: Close (ghost), then Apply here or Apply anyway (primary). No key chips: Return applies and Esc closes, as in every macOS dialog and every other dialog in DesignStash, and the filled button already marks the default.
 - **Keys:** Tab reaches the status line's button and opens the preview. ↵ applies exactly what the preview shows. Esc closes the preview and keeps focus on the button. Tab moves into the footer.
 - **Preparing:** a rewrite (9B, about 7 s) is prepared in the background as soon as the offer shows. If it isn't ready, the body shows the current sentence muted, a spinner with “Preparing this one's version…” and two skeleton lines; the tag changes are already known. Apply works now and applies the moment the version is ready. With copy, the preview is instant.
-- **Popover component:** it now has a header description (`show-description`), dividers tied to the header and footer, and footer shortcuts (`shortcuts`). It was extended once and is used the same way on every screen.
+- **Popover component:** it now has a header description (`show-description`), dividers tied to the header and footer, and a footer of buttons only. It was extended once and is used the same way on every screen.
 
 **Rail notes:** Checking your edits… (9B only), Edits applied, Edits reworded, and Edits offered. A dismissed offer leaves no note.
 
@@ -108,8 +108,8 @@
 | An inline word diff in one sentence | Only a word or two changes, so showing just those words makes the change readable at a glance. | 1.5, 2.2, 1.6 |
 | Added words in text/brand at medium weight, removed words struck and muted | The change gets the most contrast and the unchanged words step back. Strikethrough and weight carry the meaning as well as colour. | 2.4, 2.3, 5.5 |
 | Row labels Adds and Removes; no Description or Tags labels | The sentence and the chips explain themselves, and the remaining labels are words that say what happens. | 1.6, 3.6, 5.5 |
-| Real buttons in the footer, light to heavy, with the keys as KeyboardShortcut chips beside them | Actions look like actions, the heavy one is at the right, and the keys are discoverable without a sentence about them. | 2.5, 8.2, 8.12, action weight |
-| The preview opens over the rail | The fields it describes stay visible, and the rail matters least during the decision. | 4.9, 8.17 |
+| Real buttons in the footer, light to heavy, and no key chips | Actions look like actions, with the heavy one at the right. Return and Esc behave as in every macOS dialog. No other DesignStash dialog shows key chips, and the buttons are already the visible route the shortcuts need, so the chips only added clutter. | 2.5, 8.2, 8.9, 8.12, 1.6, action weight |
+| The preview sits beside the form, aligned to the rail column | It never covers the fields it describes, and the rail matters least during the decision. Narrower (218), so the sentence wraps over more lines. | 4.9, 4.3, 8.17 |
 | The preview's “after” is the version that ↵ applies, whichever method ships | What you see is what you get, so question 8 can be settled later without redesigning. | 8.14, 7.12 |
 | Preparing state with a spinner and skeleton lines, while the button still works | Something visible during the wait, and the person never has to wait to act. | 8.3, 7.2 |
 | Popover's content became a real slot | The preview lives inside the popover, so the layer structure stays nested; nothing used the old placeholder. | 7.3, layer structure |
