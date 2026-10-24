@@ -104,7 +104,7 @@ describe('look-over channels', () => {
     ).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
   })
 
-  it('saves an edit on the top of a pile', async () => {
+  it("saves an edit on the top of a pile, offers it on the variant, and pushes the variant once accepting's version is ready", async () => {
     const [top, side] = [waiting('top'), waiting('side')]
     repo.piles.createPile([top.id, side.id], top.id)
     await call(IPC_CHANNELS.LOOK_OVER_OPEN)
@@ -115,7 +115,14 @@ describe('look-over channels', () => {
       description: 'Shared',
       tagIds: []
     })
-    expect(saved.success).toBe(true)
+    expect(saved).toEqual({ success: true, data: { propagatedIds: [side.id] } })
+    // With no model, the version is the top's description, marked a copy.
+    await vi.waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        IPC_CHANNELS.LOOK_OVER_DRAFT,
+        expect.objectContaining({ mockupId: side.id, carry: expect.objectContaining({ state: 'offered', after: { description: 'Shared', via: 'copy' } }) })
+      )
+    )
   })
 })
 

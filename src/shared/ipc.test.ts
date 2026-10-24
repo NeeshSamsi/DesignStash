@@ -642,6 +642,7 @@ describe('look-over:draft push', () => {
     touched: false,
     checked: false,
     waitingForAi: false,
+    carry: null,
     cover: { path: '/lib/c.webp', source: 'embedded', missing: false, width: 10, height: 10 }
   }
 
@@ -652,5 +653,16 @@ describe('look-over:draft push', () => {
   it('carries one Look it over item, saying whether it still waits for the AI', () => {
     expect(payload.parse(item)).toEqual(item)
     expect(payload.safeParse({ ...item, waitingForAi: undefined }).success).toBe(false)
+  })
+
+  it("carries a variant's offer of the top's edit: its reason, the version accepting gives and the tag changes", () => {
+    const tag = { tagId: 3, label: 'bench', categoryId: 1, categoryLabel: 'Environment' }
+    const offered = {
+      ...item,
+      carry: { state: 'offered', reason: 'this one is on a mesh floor', after: { description: 'A long page on a bench', via: 'rewrite' }, tagsAdded: [tag], tagsRemoved: [] }
+    }
+    expect(payload.parse(offered)).toEqual(offered)
+    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, after: null } }).success).toBe(true)
+    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'copied' } }).success).toBe(false)
   })
 })

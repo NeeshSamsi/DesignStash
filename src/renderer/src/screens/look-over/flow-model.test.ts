@@ -37,6 +37,7 @@ const item = (
   touched: false,
   checked: false,
   waitingForAi: false,
+  carry: null,
   cover: { path: '/c.png', source: 'embedded', missing: false, width: 1, height: 1 },
   ...over
 })

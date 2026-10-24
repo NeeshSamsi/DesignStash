@@ -32,6 +32,54 @@ const LookOverCoverSchema = z.object({
   height: z.number().nullable()
 })
 
+/** A description and tag ids, as a draft holds them. */
+const DraftWordsSchema = z.object({ description: z.string(), tagIds: z.array(z.number()) })
+export type DraftWords = z.infer<typeof DraftWordsSchema>
+
+/**
+ * Where the last edit to a pile top stands on one untouched variant, as its draft keeps it
+ * (design/specs/look-over.md, L7):
+ * - `checking`: the model (the 9B) is still judging it;
+ * - `applied` or `reworded`: the edit is in the variant's words, as the top's or worked into its own;
+ * - `offered`: the variant kept its own words and offers the edit, to accept by hand;
+ * - `dismissed`: the person waved the offer away (⌘Z brings it back).
+ */
+export const DraftCarrySchema = z.object({
+  state: z.enum(['checking', 'applied', 'reworded', 'offered', 'dismissed']),
+  /** The top's words before and after the edit this is about. */
+  top: z.object({ before: DraftWordsSchema, after: DraftWordsSchema }),
+  /** Why the model left the edit out, in a few words ("this one is on a white backdrop"); null when nothing was judged. */
+  reason: z.string().nullable(),
+  /**
+   * The description accepting gives, once made: the variant's own with the change worked in, or the
+   * top's when the rewrite failed, was refused or timed out. Null while it is being prepared.
+   */
+  prepared: z.object({ description: z.string(), via: z.enum(['rewrite', 'copy']) }).nullable(),
+  /** The variant's own words from before the edit reached it, for Undo. Null while it hasn't. */
+  own: DraftWordsSchema.nullable()
+})
+export type DraftCarry = z.infer<typeof DraftCarrySchema>
+export type CarryState = DraftCarry['state']
+
+/**
+ * The last edit to a pile's top, on an untouched variant, as Look it over shows it: whether the
+ * model is still judging it, took it in, or left the variant's words and offers it.
+ */
+export const LookOverCarrySchema = z.object({
+  state: DraftCarrySchema.shape.state,
+  /** Why the model left the edit out, in a few words ("this one is on a white backdrop"); null when nothing was judged. */
+  reason: z.string().nullable(),
+  /**
+   * The description accepting gives (an offer) or gave (applied, reworded). `copy` when it is the
+   * top's because the rewrite failed, was refused or timed out. Null while it is being prepared.
+   */
+  after: z.object({ description: z.string(), via: z.enum(['rewrite', 'copy']) }).nullable(),
+  /** The tags accepting adds and takes out, or added and took out: only the edit's own tag changes. */
+  tagsAdded: z.array(ApprovalTagSchema),
+  tagsRemoved: z.array(ApprovalTagSchema)
+})
+export type LookOverCarry = z.infer<typeof LookOverCarrySchema>
+
 /** One step in Look it over: a mockup, shown as its draft. */
 export const LookOverItemSchema = z.object({
   mockupId: z.number(),
@@ -47,6 +95,8 @@ export const LookOverItemSchema = z.object({
   checked: z.boolean(),
   /** Filled from its file name (and a variant's top) while the AI is still working on it. */
   waitingForAi: z.boolean(),
+  /** A variant's state after an edit to its pile's top; null when none reached it. */
+  carry: LookOverCarrySchema.nullable(),
   cover: LookOverCoverSchema
 })
 export type LookOverItem = z.infer<typeof LookOverItemSchema>
@@ -78,11 +128,11 @@ export const SaveDraftRequestSchema = z.object({
 export type SaveDraftRequest = z.infer<typeof SaveDraftRequestSchema>
 
 export const SaveDraftResponseSchema = z.object({
-  /** Variants that took on the top mockup's new description and tags. */
+  /** Variants this save changed: their words, or the edit check or offer they now carry. */
   propagatedIds: z.array(z.number())
 })
 
-/** Reported by the Look it over service while an edit to a top mockup carries over to the variants that were not touched. */
+/** Reported by the Look it over service while the model judges an edit to a top mockup on the variants that were not touched. */
 export const LookOverProgressSchema = z.object({
   pileId: z.number(),
   completed: z.number(),
@@ -113,7 +163,8 @@ export const StashSnapshotSchema = z.object({
       tagIds: z.array(z.number()),
       touched: z.boolean(),
       checked: z.boolean(),
-      skippedAt: z.string().nullable()
+      skippedAt: z.string().nullable(),
+      carry: DraftCarrySchema.nullable()
     })
   ),
   resume: z.object({ unitId: z.number(), mockupId: z.number() }).nullable()

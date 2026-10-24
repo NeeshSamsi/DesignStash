@@ -5,8 +5,10 @@ import { LookOverService } from '../import/look-over-service'
 import { registerIpcHandler } from './register'
 
 export function registerApprovalHandlers(ctx: HandlerContext): void {
-  const { repo, ai, telemetry } = ctx
+  const { repo, ai, telemetry, push } = ctx
   const lookOver = new LookOverService(repo, () => ai.activeProvider())
+  // An edit to a pile top, judged or offered on its variants in the background.
+  lookOver.onItem = (item) => push(IPC_CHANNELS.LOOK_OVER_DRAFT, item)
   // Telemetry: which field changed, never what it was changed to.
   lookOver.onEdited = (fields) => {
     for (const field of fields) {

@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   type AnySQLiteColumn
 } from 'drizzle-orm/sqlite-core'
+import type { DraftCarry } from '../../shared/approval'
 
 // Shared timestamp columns (SQLite-native defaults).
 const timestamps = {
@@ -139,6 +140,9 @@ export const sortBoards = sqliteTable('sort_boards', {
 /** A draft's fields, by name. */
 export type DraftField = 'title' | 'description' | 'tags'
 
+// The carry's shape lives with the contract, since Undo of a stash carries it to the renderer and back.
+export type { CarryState, DraftCarry, DraftWords } from '../../shared/approval'
+
 export const drafts = sqliteTable('drafts', {
   mockupId: integer('mockup_id')
     .primaryKey()
@@ -165,6 +169,8 @@ export const drafts = sqliteTable('drafts', {
     .$type<DraftField[]>()
     .notNull()
     .default(sql`'[]'`),
+  /** The last edit to its pile's top, on an untouched variant: judged, offered or taken (`DraftCarry`). */
+  carry: text('carry', { mode: 'json' }).$type<DraftCarry>(),
   ...timestamps
 })
 
