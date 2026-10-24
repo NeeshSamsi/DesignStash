@@ -53,12 +53,13 @@
 - **Rewrite:** the edit is written into the variant's own text, keeping its scene.
 - **Copy:** the fields the top mockup changed are copied as they are.
 
-**Preview before accepting (Neesh, 2026-10-24), for every model:**
-- **Opens on:** hovering Apply here or Apply anyway (after 300 ms), or focusing it.
-- **Shows** what this variant will read: the description before (struck through) and after, then the tags it adds (`new` chips) and removes (`marked` chips, with no ×, since nothing in the preview is clickable).
-- **Keys:** Tab reaches the button and opens the preview at once. ↵ applies exactly what the preview shows. Esc closes the preview and keeps focus on the button. Tab moves on to ×.
-- **Shell:** it's a Popover (lg), anchored under the button and right-aligned to the form column, inside the FlowModal body slot.
-- **Preparing:** a rewrite (9B, about 7 s) is prepared in the background as soon as the offer shows, so the preview is usually ready. If it isn't, the preview shows the before text, a spinner with “Preparing this one's version…” and skeleton lines; the tag changes are already known. The button still works: it shows its loading state and applies the moment the version is ready. With copy, the preview is instant.
+**Preview before accepting (Neesh, 2026-10-24), for every model.** Hovering Apply here or Apply anyway (after 300 ms), or focusing it, opens a Popover (lg, 360 wide) under the button. It sits over the rail, so the Description field and the Tags row stay in view. It has three regions, divided by full-width separators (hierarchy reworked 2026-10-24 after Neesh: “cluttered and without proper hierarchy”):
+- **Header:** the title “Your top mockup edits” (body/sm/medium), with the reason under it (caption, text/secondary). With the 9B that's “This one is on a white backdrop.”; with 4B or Apple it's “Not checked for this variant, so look before you apply.” The status line then drops its reason (“Left out your top mockup edits.”), so the reason isn't said twice.
+- **Body:** the description as one sentence with an inline word diff. Unchanged words are in text/secondary; removed words are struck and in text/tertiary; added words are in text/brand at medium weight. When most of the sentence changes, it falls back to before and after on two rows, with before muted. Under it, short **Adds** and **Removes** rows of tag chips: `new` chips for added tags, display chips struck and muted for removed ones, with the words carrying the meaning. There are no section labels.
+- **Footer:** real buttons, light to heavy, heaviest at the right: Close (ghost), then Apply here or Apply anyway (primary). Each has its KeyboardShortcut beside it (esc, ↵).
+- **Keys:** Tab reaches the status line's button and opens the preview. ↵ applies exactly what the preview shows. Esc closes the preview and keeps focus on the button. Tab moves into the footer.
+- **Preparing:** a rewrite (9B, about 7 s) is prepared in the background as soon as the offer shows. If it isn't ready, the body shows the current sentence muted, a spinner with “Preparing this one's version…” and two skeleton lines; the tag changes are already known. Apply works now and applies the moment the version is ready. With copy, the preview is instant.
+- **Popover component:** it now has a header description (`show-description`), dividers tied to the header and footer, and footer shortcuts (`shortcuts`). It was extended once and is used the same way on every screen.
 
 **Rail notes:** Checking your edits… (9B only), Edits applied, Edits reworded, and Edits offered. A dismissed offer leaves no note.
 
@@ -69,12 +70,12 @@
 | L7.3 Edits applied (9B, took it) | The edits are applied (tinted as in L6.3). **Undo** puts back the variant's own words. Rail note: Edits applied. |
 | L7.4 Edits reworded (9B, took it) | The edits are written into this variant's text, keeping its scene (“since it shows the back”). **Undo**. Rail note: Edits reworded. This is the usual 9B result. |
 | L7.6 Review (9B) | Each card's line gives the result: Edits applied, Edits reworded for this one, or “Edits offered: open it to apply”. |
-| L7.7 Left out, edits offered (9B) | The model said no. The variant keeps its own words, and the line offers the edits with the reason: “Left out your top mockup edits: this one is on a white backdrop.” **Apply anyway** · **×**. Shown with the preview open on hover, with the 9B's rewrite as the after text. Rail note: Edits offered. |
+| L7.7 Left out, edits offered (9B) | The model said no. The variant keeps its own words, and the line offers the edits (“Left out your top mockup edits.”) with **Apply anyway** · **×**, and the reason sits in the preview's header. Shown with the preview open on hover, with the 9B's rewrite in the diff. Rail note: Edits offered. |
 | L7.8 Offer accepted | The edits are applied to this variant only, tinted, with **Undo**. Rail note: Edits applied. |
-| L7.9 Edits offered, nothing judged (4B, Apple) | Every untouched variant keeps its own words and offers the edits, with no reason line: “Use your top mockup edits here too? New description, Colour Terracotta.” **Apply here** · **×**. There's no waiting. Shown with the keyboard path: Apply here focused and the preview open, with the top mockup's description copied as the after text, so the scene change shows before anyone accepts. |
+| L7.9 Edits offered, nothing judged (4B, Apple) | Every untouched variant keeps its own words and offers the edits, with no reason line: “Use your top mockup edits here too? New description, Colour Terracotta.” **Apply here** · **×**. There's no waiting. Shown with the keyboard path: Apply here focused and the preview open. The diff shows the copied description changing the scene (“seen from the side” becomes “three-quarter angle”) before anyone accepts. |
 | L7.10 Offer dismissed | The line goes back to its resting text and the rail note goes. Other variants keep their offers. |
 | L7.11 Review (4B, Apple) | Applied, dismissed (its own tags) and unanswered (“Edits offered: open it to apply”) side by side. |
-| L7.12 Preparing the preview (9B rewrite) | Hovering before the rewrite is ready: the before text, “Preparing this one's version…” with a spinner, skeleton lines, the tag changes, and “↵ Apply when it's ready”. |
+| L7.12 Preparing the preview (9B rewrite) | Hovering before the rewrite is ready: the same header and footer, and a body with the current sentence muted, “Preparing this one's version…” with a spinner, two skeleton lines and the tag changes. |
 | L7.E3 Undone on one variant | Back to the variant's own words, and the edits stay on offer: **Apply here** · **×**. Rail note: Edits offered. |
 | L7.E4 Slow check (9B) | After 20 s the check stops waiting. Every variant it hasn't judged gets the offer, as in L7.9. Results already in stay, and a late answer for an offered variant is dropped, so nothing changes under the person. |
 | L7.E5 Check failed (9B) | The variants keep their own words and each offers the edits, as in L7.9. |
@@ -103,6 +104,12 @@
 | Nothing changes until you accept, and accepting touches that variant only | Experiment C showed blanket copying is wrong for most variants. A variant's own words are the safe default. | 8.7, 8.14, 0.3 |
 | × to dismiss, after Banner's dismiss, with ⌘Z to bring the offer back and no rail note (Neesh, 2026-10-24) | A familiar control for a quiet offer, and the same look as other dismissable messages. | 8.10, 7.5 |
 | A preview on hover and focus of the apply button, showing exactly what will change | People see the result before committing, right where they'd click, and the keyboard gets the same route as the mouse. | 8.12, 8.20, 4.9, 8.13 |
+| The preview splits into header, body and footer, with dividers | Title and reason, the change itself, and the actions are three different jobs. Separate regions give one reading order: what this is, what changes, what to do. | 2.1, 2.6, 4.6 |
+| An inline word diff in one sentence | Only a word or two changes, so showing just those words makes the change readable at a glance. | 1.5, 2.2, 1.6 |
+| Added words in text/brand at medium weight, removed words struck and muted | The change gets the most contrast and the unchanged words step back. Strikethrough and weight carry the meaning as well as colour. | 2.4, 2.3, 5.5 |
+| Row labels Adds and Removes; no Description or Tags labels | The sentence and the chips explain themselves, and the remaining labels are words that say what happens. | 1.6, 3.6, 5.5 |
+| Real buttons in the footer, light to heavy, with the keys as KeyboardShortcut chips beside them | Actions look like actions, the heavy one is at the right, and the keys are discoverable without a sentence about them. | 2.5, 8.2, 8.12, action weight |
+| The preview opens over the rail | The fields it describes stay visible, and the rail matters least during the decision. | 4.9, 8.17 |
 | The preview's “after” is the version that ↵ applies, whichever method ships | What you see is what you get, so question 8 can be settled later without redesigning. | 8.14, 7.12 |
 | Preparing state with a spinner and skeleton lines, while the button still works | Something visible during the wait, and the person never has to wait to act. | 8.3, 7.2 |
 | Popover's content became a real slot | The preview lives inside the popover, so the layer structure stays nested; nothing used the old placeholder. | 7.3, layer structure |
