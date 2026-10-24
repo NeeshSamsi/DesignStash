@@ -44,7 +44,9 @@ Every pile on the Sort board is titled by what its mockups share. The count is a
 
 ## Notes for the grouping service (`src/main/import/grouping-service.ts`)
 
-- **Same zip first:** PSDs that came out of one dropped zip are proposed as one pile (reason `archive`) before the folder and stem passes, whatever folders and names they have inside it. The zip is recorded as `importContext.archiveName` (as dropped) and `archiveTitle` (cleaned, only when it says something).
+- **Same zip first:** PSDs that came out of one dropped zip are proposed as one pile (reason `archive`) before the folder and stem passes, whatever folders they have inside it. The zip is recorded as `importContext.archiveName` (as dropped) and `archiveTitle` (cleaned, only when it says something).
+- **A zip of different products splits by stem** (`splitZip`, 2026-10-24). The zip stays one pile when every file name shares a start (the rule 2 test) or every `extractStem` is the same. Otherwise each stem is its own pile: the largest keeps the zip's name, a tie going to the one whose first file sorts first, and each other pile is named after its stem as written ("Tank Top"), carried in its members' `archiveTitle` so rule 0a titles it. A stem of one file is a mockup on its own, and the zip's mockups never regroup by the zip's folder later. Example: `female-top-and-leggings-mockup.zip` (leggings, a top, a set) gives three mockups on their own.
+- **Variant suffixes** `extractStem` strips, repeatedly: numbers and versions (`_2`, `-v2`, `2b`), a single letter (`-A`), `(copy)`, and angle words (front, back, rear, side, left, right, angle, angled, perspective, overhead, isometric, close up). `Phone_Back_2` and `Phone Front` are both `phone`.
 
 - **Generic folders:** the folder pass groups by the whole `folderTrail`. ~/Downloads or ~/Desktop shouldn't form a pile on their own (S9.E1). Skip generic last segments there too.
 - **Generic stems:** `extractStem('IMG_2041.psd')` returns `img`, so camera dumps become one stem group (S9.E2). Skip generic stems in the stem pass.
