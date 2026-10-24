@@ -84,6 +84,38 @@ describe('IntegrityService.scan', () => {
     expect(report).toEqual({ orphanFiles: 0, orphanRecords: 0 })
   })
 
+  it('never reports a file the app wrote beside a mockup, or any other file that is not a PSD', async () => {
+    const known = `${mockupsDir}/a/original.psd`
+    repo.mockups.createMockup(row({ libraryPath: known }))
+
+    const service = makeService({
+      listFiles: async () => [
+        known,
+        `${mockupsDir}/a/slot-mask.png`,
+        `${mockupsDir}/a/cover-ai-grey.png`,
+        `${mockupsDir}/a/thumb.webp`,
+        `${mockupsDir}/x/notes.txt`,
+        `${mockupsDir}/x/preview.jpg`
+      ],
+      exists: async () => true
+    })
+
+    expect(await service.scan()).toEqual({ orphanFiles: 0, orphanRecords: 0 })
+    expect((await service.report()).found).toEqual([])
+  })
+
+  it('reports a stray PSD whatever the case of its extension', async () => {
+    const service = makeService({
+      listFiles: async () => [`${mockupsDir}/x/LOUD MOCKUP.PSD`, `${mockupsDir}/x/slot-mask.png`],
+      exists: async () => true,
+      stat: async () => ({ size: 10 }),
+      resolveCover: async () => ({ source: 'none' }) as never
+    })
+
+    expect(await service.scan()).toEqual({ orphanFiles: 1, orphanRecords: 0 })
+    expect((await service.report()).found.map((f) => f.name)).toEqual(['LOUD MOCKUP'])
+  })
+
   it('reports nothing for a clean library', async () => {
     const a = `${mockupsDir}/a/original.psd`
     const b = `${mockupsDir}/b/original.psd`

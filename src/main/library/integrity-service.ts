@@ -40,9 +40,6 @@ interface Drift {
   gone: Map<string, { mockupId: number; libraryPath: string }>
 }
 
-/** Generated derivatives (covers/thumbnails) live alongside the stored asset and are NOT tracked as assets. */
-const GENERATED_FILE = /^(cover|thumb)\.[^.]+$/i
-
 async function defaultListFiles(dir: string): Promise<string[]> {
   const out: string[] = []
   let entries: import('node:fs').Dirent[]
@@ -68,6 +65,11 @@ async function defaultExists(p: string): Promise<boolean> {
   }
 }
 
+/**
+ * Only a PSD can turn up: the check looks for PSDs put in the stash folder by hand, which it can add
+ * as mockups. Everything else beside a mockup is the app's own (cover, thumbnail, slot-mask.png, the
+ * AI's masked covers) or not a mockup at all.
+ */
 const PSD = /\.psd$/i
 
 const foundId = (path: string): string =>
@@ -117,8 +119,7 @@ export class IntegrityService {
 
   /**
    * Everything that differs between the records and the disk, ignored or not, so an id can be resolved
-   * whatever its state. Files are everything under mockups/ except generated cover and thumb
-   * derivatives. `skipIgnoredStat` leaves out missing records that are ignored without checking the
+   * whatever its state. Files are the PSDs under mockups/. `skipIgnoredStat` leaves out missing records that are ignored without checking the
    * disk for them, for callers that only want what is visible.
    */
   private async drift(skipIgnoredStat = false): Promise<Drift> {
@@ -126,7 +127,7 @@ export class IntegrityService {
     const known = new Set(rows.map((p) => p.libraryPath))
     const found = new Map<string, string>()
     for (const f of await this.deps.listFiles(this.mockupsDir())) {
-      if (GENERATED_FILE.test(basename(f)) || known.has(f)) continue
+      if (!PSD.test(f) || known.has(f)) continue
       found.set(foundId(f), f)
     }
     const ignored = new Set(this.deps.ignored.get())
