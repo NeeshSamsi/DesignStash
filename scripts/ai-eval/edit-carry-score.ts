@@ -21,7 +21,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { argValue, runDir } from './eval-files'
+import { argValue, goldPath, runDir } from './eval-files'
 import type { ItemResult } from './run'
 
 interface Edit {
@@ -58,7 +58,7 @@ if (!model || !drafts || !run || !['run', 'copy', 'changes'].includes(tagsFrom))
 const read = <T>(path: string) => JSON.parse(readFileSync(path, 'utf8')) as T
 const edits = new Map(read<{ edits: Edit[] }>(join(import.meta.dirname, 'round3', 'edits.json')).edits.map((e) => [e.id, e]))
 const gold: Record<string, GoldItem> = {}
-for (const f of ['gold.json', 'gold-heldout.json', 'gold-signoff.json']) Object.assign(gold, read<{ items: Record<string, GoldItem> }>(join(import.meta.dirname, f)).items)
+for (const f of ['gold.json', 'gold-heldout.json', 'gold-signoff.json'] as const) Object.assign(gold, read<{ items: Record<string, GoldItem> }>(goldPath(f)).items)
 const draftRuns = read<ItemResult[]>(join(runDir(model, drafts), 'results.json'))
 const draftEntry = (id: string) => {
   const r = draftRuns.find((x) => x.id === id && x.repeat === 0)

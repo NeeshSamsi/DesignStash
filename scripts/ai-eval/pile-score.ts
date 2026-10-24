@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { FILLER } from './scoring'
 import { absentWords, compileAbsent, labelSupported, supportWords, type GoldEntry } from './hallucination'
-import { argValue, runDir, writeJson } from './eval-files'
+import { argValue, goldPath, runDir, writeJson } from './eval-files'
 import { placeholderWords, type PlaceholderData } from './placeholder'
 import { piles } from './prompts/pile'
 import type { ItemResult } from './run'
@@ -30,8 +30,8 @@ const withs = process.argv.flatMap((a, i) => (a === '--with' ? [process.argv[i +
 if (!model || !alone || withs.length === 0) throw new Error('Usage: pnpm ai-eval:pile-score --model <id> --alone <version> --with <pile version> [--with …]')
 
 const gold: Record<string, GoldEntry> = {}
-for (const f of ['gold.json', 'gold-heldout.json', 'gold-signoff.json'])
-  Object.assign(gold, (JSON.parse(readFileSync(join(import.meta.dirname, f), 'utf8')) as { items: Record<string, GoldEntry> }).items)
+for (const f of ['gold.json', 'gold-heldout.json', 'gold-signoff.json'] as const)
+  Object.assign(gold, (JSON.parse(readFileSync(goldPath(f), 'utf8')) as { items: Record<string, GoldEntry> }).items)
 const ph = JSON.parse(readFileSync(join(import.meta.dirname, 'placeholders.json'), 'utf8')) as PlaceholderData
 const ps = piles()
 const topOf = new Map(ps.flatMap((p) => p.variants.map((v) => [v, p.top] as const)))

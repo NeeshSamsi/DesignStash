@@ -102,3 +102,13 @@ export function argValue(name: string, argv: string[] = process.argv): string | 
   const i = argv.indexOf(`--${name}`)
   return i === -1 ? undefined : argv[i + 1]
 }
+
+export type GoldFile = 'gold.json' | 'gold-heldout.json' | 'gold-signoff.json'
+
+/**
+ * A gold file in this folder. `--gold r3` picks round 3's (`gold-r3.json` and the rest, kept from
+ * before round 4's colour rule) so round 3's numbers can be reproduced; without it, the current gold.
+ */
+export function goldPath(file: GoldFile, version: string | undefined = argValue('gold')): string {
+  return join(import.meta.dirname, version ? file.replace(/\.json$/, `-${version}.json`) : file)
+}

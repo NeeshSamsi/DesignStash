@@ -16,7 +16,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanArchiveName } from '../../src/main/import/archive-name'
 import { stemOf } from '../../src/main/import/look-over-service'
-import { HELD_OUT_DIR, SIGN_OFF_DIR, argValue, readItems, runDir, writeJson, type EvalItem } from './eval-files'
+import { HELD_OUT_DIR, SIGN_OFF_DIR, argValue, goldPath, readItems, runDir, writeJson, type EvalItem } from './eval-files'
 import {
   checkAnswer,
   compileAbsent,
@@ -53,12 +53,13 @@ import {
   type PlaceholderCheck,
   type PlaceholderData
 } from './placeholder'
+import { objectColourWords, summariseObjectColours, type ObjectColourCheck } from './object-colour'
 import { meaningDocument } from '../../src/main/search/meaning'
 
-const GOLD_PATH = join(import.meta.dirname, 'gold.json')
+const GOLD_PATH = goldPath('gold.json')
 /** What each item's design slot shows, and the words that describe it (`placeholder.ts`). */
 const PLACEHOLDERS_PATH = join(import.meta.dirname, 'placeholders.json')
-const HELD_OUT_GOLD_PATH = join(import.meta.dirname, 'gold-heldout.json')
+const HELD_OUT_GOLD_PATH = goldPath('gold-heldout.json')
 /**
  * `--held-out` is the final check: the held-out items join the search and their reference answers
  * (gold-heldout.json) join gold.json. Without it they are left out, so a run that answered them
@@ -70,7 +71,7 @@ const HELD_OUT_GOLD_PATH = join(import.meta.dirname, 'gold-heldout.json')
  */
 const QUERIES_PATH = argValue('queries')
 const HELD_OUT = process.argv.includes('--held-out') || QUERIES_PATH !== undefined
-const SIGN_OFF_GOLD_PATH = join(import.meta.dirname, 'gold-signoff.json')
+const SIGN_OFF_GOLD_PATH = goldPath('gold-signoff.json')
 /** `--sign-off`: the sign-off items and gold-signoff.json join in, like `--held-out` (and alongside it, if both). */
 const SIGN_OFF = process.argv.includes('--sign-off') || QUERIES_PATH !== undefined
 /**
@@ -89,6 +90,7 @@ const IMAGE_CUT = Number(argValue('image-cut') ?? '0.3')
 const MEANING = [EMBED && `embed-${EMBED}`, IMAGE && 'image'].filter(Boolean).join('-')
 const SCORE_NAME = [
   'score',
+  argValue('gold') && `gold-${argValue('gold')}`,
   HELD_OUT && 'heldout',
   SIGN_OFF && 'signoff',
   QUERIES_PATH && 'userq',
@@ -294,10 +296,16 @@ async function main(): Promise<void> {
           return [{ id: item.id, repeat, words }]
         })
       : []
+    const objectColourChecks: ObjectColourCheck[] = items.flatMap((item) => {
+      const result = byId.get(item.id)
+      if (!result?.parsed) return []
+      return [{ id: item.id, repeat, words: objectColourWords(result.parsed, result.searchTags.map((t) => t.label)) }]
+    })
     const answered = items.flatMap((item) => byId.get(item.id)?.parsed ?? [])
     const badAlternates = answered.flatMap((p) => badAlternate(p.description) ?? [])
     passes.push({
       placeholderChecks,
+      objectColourChecks,
       badAlternates: { answers: answered.length, bad: badAlternates },
       repeat,
       byId,
@@ -333,6 +341,12 @@ async function main(): Promise<void> {
       })
     : []
   const allPlaceholder = passes.flatMap((p) => p.placeholderChecks)
+  const allObjectColour = passes.flatMap((p) => p.objectColourChecks)
+  // A gold entry with an object colour breaks round 4's rule itself.
+  const goldObjectColourConflicts = Object.entries(gold.items).flatMap(([id, entry]) => {
+    const words = objectColourWords(entry, entry.tags.map((t) => t.label))
+    return words.length > 0 ? [{ id, words }] : []
+  })
   const bad = passes.flatMap((p) => p.badAlternates.bad)
   const badAnswers = passes.reduce((t, p) => t + p.badAlternates.answers, 0)
 
@@ -413,6 +427,11 @@ async function main(): Promise<void> {
       .filter((c) => c.words.length > 0)
       .map((c) => ({ id: c.id, repeat: c.repeat, words: c.words })),
     goldPlaceholderConflicts,
+    objectColour: summariseObjectColours(allObjectColour),
+    objectColourFound: allObjectColour
+      .filter((c) => c.words.length > 0)
+      .map((c) => ({ id: c.id, repeat: c.repeat, words: c.words })),
+    goldObjectColourConflicts,
     badAlternates: { answers: badAnswers, rate: badAnswers === 0 ? 0 : bad.length / badAnswers, phrases: bad },
     meanMs: Math.round(results.reduce((t, r) => t + r.elapsedMs, 0) / Math.max(results.length, 1)),
     unsupportedTags: [...unsupportedCounts]
@@ -467,6 +486,10 @@ async function main(): Promise<void> {
     `placeholder mentioned in ${pct(ph.mentioned)} of ${ph.answers} answers (${ph.wordsPerAnswer.toFixed(2)} words each); ` +
       `bad "also called" in ${pct(score.badAlternates.rate)} of ${score.badAlternates.answers}; mean ${score.meanMs} ms per mockup`
   )
+  const oc = score.objectColour
+  console.log(`object colour in ${pct(oc.mentioned)} of ${oc.answers} answers (${oc.wordsPerAnswer.toFixed(2)} each)`)
+  if (goldObjectColourConflicts.length > 0)
+    console.log(`gold entries with an object colour: ${goldObjectColourConflicts.map((c) => `${c.id} (${c.words.join(', ')})`).join('; ')}`)
   if (goldPlaceholderConflicts.length > 0)
     console.log(
       `gold entries describing their placeholder: ${goldPlaceholderConflicts.map((c) => `${c.id} (${c.words.join(', ')})`).join('; ')}`

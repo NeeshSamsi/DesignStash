@@ -33,7 +33,7 @@ import { MODEL_FILE_NAMES } from '../../src/main/ai/registry'
 import { CHECK_SCHEMA, ENTRY_SCHEMA, PILE_EDIT_SYSTEM as SYSTEM, checkPrompt, editDiff, pileEditRequest, readCheck, rewritePrompt } from '../../src/main/ai/pile-edit'
 import { readCoverAsDataUrl } from '../../src/main/ai/vision-provider'
 import { NativeHelper, resolveHelperPath } from '../../src/main/native/helper'
-import { DEV_DIR, argValue, readItems, runDir, writeJson } from './eval-files'
+import { DEV_DIR, argValue, goldPath, readItems, runDir, writeJson } from './eval-files'
 import { maskedCoverPath, type MaskStyle } from './prompts/masked'
 import { piles } from './prompts/pile'
 import type { ItemResult } from './run'
@@ -137,8 +137,8 @@ async function main(): Promise<void> {
   if (!prompt && !['c2', 'c3', 'c4', 'accept'].includes(promptId)) throw new Error(`No prompt ${promptId}`)
   const edits = (JSON.parse(readFileSync(join(import.meta.dirname, 'round3', 'edits.json'), 'utf8')) as { edits: Edit[] }).edits
   const gold: Record<string, GoldItem> = {}
-  for (const f of ['gold.json', 'gold-heldout.json', 'gold-signoff.json'])
-    Object.assign(gold, (JSON.parse(readFileSync(join(import.meta.dirname, f), 'utf8')) as { items: Record<string, GoldItem> }).items)
+  for (const f of ['gold.json', 'gold-heldout.json', 'gold-signoff.json'] as const)
+    Object.assign(gold, (JSON.parse(readFileSync(goldPath(f), 'utf8')) as { items: Record<string, GoldItem> }).items)
   const items = new Map(readItems().map((i) => [i.id, i]))
   const draftResults = JSON.parse(readFileSync(join(runDir(model, drafts), 'results.json'), 'utf8')) as ItemResult[]
   const draftOf = (id: string) => {

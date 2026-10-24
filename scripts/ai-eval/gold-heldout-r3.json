@@ -1,0 +1,921 @@
+{
+ "_note": "Held-out items (test set held-out/), written 2026-10-22 from the covers before any model answered them. ai-eval:score reads them only with --held-out. Items whose embedded cover is a 'Delete/Remove this layer' placeholder get names-only reference answers. 2026-10-22: the 18 former placeholder items were rewritten from their sidecar covers (the import now uses a kit preview beside a placeholder PSD), before any model answered them with an image.",
+ "items": {
+  "office-identity-business-cards-free-psd-mockup": {
+   "title": "Floating business cards with a yellow stapler",
+   "description": "A set of white and grey business cards, also called name cards, floating around a yellow stapler on a light grey background, for a brand identity.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Business card"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Stationery"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Brand identity"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "john doe|graphic designer|manhattan|stapler\\.office",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b"
+   ]
+  },
+  "hand-held-iphone-duo-foldable-smartphone-free": {
+   "title": "Hand holding a foldable iPhone Duo",
+   "description": "A hand holding a foldable iPhone Duo smartphone, also called a folding phone, against a soft pink background.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    },
+    {
+     "category": "Device",
+     "label": "Foldable phone"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "\\bdesk\\b|\\btable\\b|laptop|free mockup",
+    "desert|dunes?|sand|mountain"
+   ]
+  },
+  "apple-set": {
+   "title": "iPhones and iPad Pro with keyboard and pencil",
+   "description": "Two iPhones and an iPad Pro, also called a tablet, on a Magic Keyboard with an Apple Pencil, floating on a white background with colourful screens.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    },
+    {
+     "category": "Device",
+     "label": "iPad"
+    },
+    {
+     "category": "Device",
+     "label": "Keyboard"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|presentation|\\bkit\\b",
+    "macbook|laptop"
+   ]
+  },
+  "scene-02": {
+   "title": "Hand tapping an Apple HomeView smart display",
+   "description": "A hand tapping an Apple HomeView smart display, also called a home hub, on a round silver speaker base against a light grey background.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "Smart display"
+    },
+    {
+     "category": "Device",
+     "label": "HomeView"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "wannathis|explore|made by|off duty",
+    "\\bdesk\\b|\\btable\\b|laptop|ipad"
+   ]
+  },
+  "free-stylish-cosmetic-tube-mockup": {
+   "title": "Red and white cosmetic tube in grey smoke",
+   "description": "A tall red-to-white cosmetic tube, also called a spray bottle, standing in a plume of grey smoke against a grey background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Cosmetic tube"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Environment",
+     "label": "Smoke"
+    },
+    {
+     "category": "Style",
+     "label": "Dark"
+    }
+   ],
+   "absent": [
+    "kaolin|create your own|unique design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bfire\\b|flame"
+   ]
+  },
+  "free-cosmetic-box-and-tube-mockup": {
+   "title": "Blue cosmetic box and tube",
+   "description": "A light blue cosmetic box with a matching squeeze tube, also called cream packaging, standing on a light grey background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Box"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Cosmetic tube"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "\\bpackage\\b(?! design)|30g|packaging mockups",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "metallic-foil-pouch-mockup": {
+   "title": "Silver foil zip pouch on grey",
+   "description": "A silver metallic foil pouch with a zip seal, also called a zip bag, lying flat on a grey surface.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Pouch"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "free download|zip pouch mockup",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "matt-can-mockup": {
+   "title": "Pink and white matte drink can",
+   "description": "A matte drink can, also called a beverage can, with a pink, gold and white design standing on a white background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Can"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "smarty|perfect|smartymockups",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "spray-can-mockup": {
+   "title": "White spray can on teal",
+   "description": "A white spray can, also called an aerosol can, standing on a teal background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Spray can"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "\\bmckp\\b",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|graffiti"
+   ]
+  },
+  "kraft-paper-food-pack-mockup": {
+   "title": "Kraft paper stand-up pouch",
+   "description": "A kraft paper stand-up pouch, also called a food bag, on a white background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Pouch"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "premium quality|high quality|customi[sz]able|favourite",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "leggings-mockup": {
+   "title": "Blue to pink gradient leggings",
+   "description": "A pair of women's leggings, also called tights, in a blue to pink gradient, floating on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Leggings"
+    },
+    {
+     "category": "Style",
+     "label": "Colorful"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "top-mockup": {
+   "title": "Blue to pink gradient tank top",
+   "description": "A women's tank top, also called a crop top, in a blue to pink gradient, floating on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Tank top"
+    },
+    {
+     "category": "Style",
+     "label": "Colorful"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "top-leggings-mockup": {
+   "title": "Gradient top and leggings set",
+   "description": "A women's tank top and leggings, also called sportswear, in a blue to pink gradient, floating on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Tank top"
+    },
+    {
+     "category": "Apparel",
+     "label": "Leggings"
+    },
+    {
+     "category": "Style",
+     "label": "Colorful"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "bus-stop-citylight-mockup": {
+   "title": "Blue poster in a bus shelter on a city street",
+   "description": "A blue citylight poster in a glass bus shelter, also called a bus stop ad, on a tree-lined street, with a person sitting on the bench.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Poster"
+    },
+    {
+     "category": "Environment",
+     "label": "Street"
+    },
+    {
+     "category": "Environment",
+     "label": "Outdoor"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "best ads|shout|mockups-design",
+    "night|\\bsnow"
+   ]
+  },
+  "poster-mockup": {
+   "title": "Blue poster on a graffiti wall",
+   "description": "A blue street poster pasted on a black wall covered in graffiti, with a fly on it.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Poster"
+    },
+    {
+     "category": "Environment",
+     "label": "Wall"
+    },
+    {
+     "category": "Environment",
+     "label": "Street"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "flies stop|even the|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b"
+   ]
+  },
+  "mens-t-shirt-mockup": {
+   "title": "Men's t-shirt with a colourful geometric print",
+   "description": "A men's t-shirt, also called a tee, with a bold multicoloured geometric pattern, floating on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "T-shirt"
+    },
+    {
+     "category": "Style",
+     "label": "Colorful"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|hanger|\\bdesk\\b"
+   ]
+  },
+  "free-imac-mockup-1": {
+   "title": "Silver iMac with keyboard and mouse",
+   "description": "A silver iMac, also called a desktop computer, with a dark screen, a keyboard and a mouse on a light grey background.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iMac"
+    },
+    {
+     "category": "Device",
+     "label": "Keyboard"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "perfect free|md\\.com|\\blaptop|macbook",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b"
+   ]
+  },
+  "free-imac-mockup-2": {
+   "title": "Silver iMac with keyboard and mouse",
+   "description": "A silver iMac, also called a desktop computer, with a dark screen, a keyboard and a mouse on a light grey background.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iMac"
+    },
+    {
+     "category": "Device",
+     "label": "Keyboard"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "perfect free|md\\.com|\\blaptop|macbook",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b"
+   ]
+  },
+  "free-imac-mockup-3": {
+   "title": "Silver iMac with keyboard and mouse",
+   "description": "A silver iMac, also called a desktop computer, with a dark screen, a keyboard and a mouse on a light grey background.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iMac"
+    },
+    {
+     "category": "Device",
+     "label": "Keyboard"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "perfect free|md\\.com|\\blaptop|macbook",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b"
+   ]
+  },
+  "oval-mug-mockup-1": {
+   "title": "Round white mug with a black handle",
+   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Mug"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "mug mockup|\\bmoc",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|saucer|steam"
+   ]
+  },
+  "oval-mug-mockup-2": {
+   "title": "Round white mug with a black handle",
+   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Mug"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "mug mockup|\\bmoc",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|saucer|steam"
+   ]
+  },
+  "oval-mug-mockup-3": {
+   "title": "Round white mug with a black handle",
+   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Mug"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "mug mockup|\\bmoc",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|saucer|steam"
+   ]
+  },
+  "oval-mug-mockup-4": {
+   "title": "Round white mug with a black handle",
+   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Mug"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "mug mockup|\\bmoc",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|saucer|steam"
+   ]
+  },
+  "dl-menu-mockup-1": {
+   "title": "Restaurant menu on a grey plate",
+   "description": "A slim DL restaurant menu, also called a menu card, on a grey ceramic plate on a wooden table, with a green herb sprig and leaf shadows.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Menu"
+    },
+    {
+     "category": "Environment",
+     "label": "Table"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "salt|vine|starters|mains",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|screen|digital"
+   ]
+  },
+  "dl-menu-mockup-2": {
+   "title": "Restaurant menu on a grey plate",
+   "description": "A slim DL restaurant menu, also called a menu card, on a grey ceramic plate on a wooden table, with a green herb sprig and leaf shadows.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Menu"
+    },
+    {
+     "category": "Environment",
+     "label": "Table"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "salt|vine|starters|mains",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|screen|digital"
+   ]
+  },
+  "dl-menu-mockup-3": {
+   "title": "Two restaurant menus on a wooden table",
+   "description": "Two slim DL restaurant menus, also called menu cards, front and back, on a wooden table by a grey plate and a green herb sprig, with leaf shadows.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Menu"
+    },
+    {
+     "category": "Environment",
+     "label": "Table"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "salt|vine|starters|mains",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|screen|digital"
+   ]
+  },
+  "dl-menu-mockup-4": {
+   "title": "Two restaurant menus on a wooden table",
+   "description": "Two slim DL restaurant menus, also called menu cards, front and back, on a wooden table by a grey plate and a green herb sprig, with leaf shadows.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Menu"
+    },
+    {
+     "category": "Environment",
+     "label": "Table"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "salt|vine|starters|mains",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|screen|digital"
+   ]
+  },
+  "iphone-mockup-1": {
+   "title": "iPhone on grey tiles in sunlight",
+   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows, its screen showing a dark blue and purple design.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    },
+    {
+     "category": "Environment",
+     "label": "Floor"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "iphone mockup(?! )|perfect",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bwater\\b"
+   ]
+  },
+  "iphone-mockup-2": {
+   "title": "iPhone on grey tiles in sunlight",
+   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows, its screen showing a dark blue and purple design.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    },
+    {
+     "category": "Environment",
+     "label": "Floor"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "iphone mockup(?! )|perfect",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bwater\\b"
+   ]
+  },
+  "iphone-mockup-3": {
+   "title": "iPhone on grey tiles in sunlight",
+   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows, its screen showing a dark blue and purple design.",
+   "tags": [
+    {
+     "category": "Device",
+     "label": "iPhone"
+    },
+    {
+     "category": "Environment",
+     "label": "Floor"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "iphone mockup(?! )|perfect",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bwater\\b"
+   ]
+  }
+ },
+ "queries": [
+  {
+   "q": "ipad",
+   "relevant": [
+    "apple-set"
+   ]
+  },
+  {
+   "q": "tablet",
+   "relevant": [
+    "apple-set"
+   ]
+  },
+  {
+   "q": "smart display",
+   "relevant": [
+    "scene-02"
+   ]
+  },
+  {
+   "q": "hand",
+   "relevant": [
+    "scene-02",
+    "hand-held-iphone-duo-foldable-smartphone-free"
+   ]
+  },
+  {
+   "q": "cosmetic",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup",
+    "free-cosmetic-box-and-tube-mockup"
+   ]
+  },
+  {
+   "q": "tube",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup",
+    "free-cosmetic-box-and-tube-mockup"
+   ]
+  },
+  {
+   "q": "smoke",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup"
+   ]
+  },
+  {
+   "q": "pouch",
+   "relevant": [
+    "metallic-foil-pouch-mockup",
+    "kraft-paper-food-pack-mockup"
+   ]
+  },
+  {
+   "q": "foil",
+   "relevant": [
+    "metallic-foil-pouch-mockup"
+   ]
+  },
+  {
+   "q": "kraft",
+   "relevant": [
+    "kraft-paper-food-pack-mockup"
+   ]
+  },
+  {
+   "q": "can",
+   "relevant": [
+    "matt-can-mockup",
+    "spray-can-mockup"
+   ]
+  },
+  {
+   "q": "drink can",
+   "relevant": [
+    "matt-can-mockup"
+   ]
+  },
+  {
+   "q": "spray",
+   "relevant": [
+    "spray-can-mockup"
+   ]
+  },
+  {
+   "q": "leggings",
+   "relevant": [
+    "leggings-mockup",
+    "top-leggings-mockup"
+   ]
+  },
+  {
+   "q": "tank top",
+   "relevant": [
+    "top-mockup",
+    "top-leggings-mockup"
+   ]
+  },
+  {
+   "q": "sportswear",
+   "relevant": [
+    "leggings-mockup",
+    "top-mockup",
+    "top-leggings-mockup"
+   ]
+  },
+  {
+   "q": "t-shirt",
+   "relevant": [
+    "mens-t-shirt-mockup"
+   ]
+  },
+  {
+   "q": "tee",
+   "relevant": [
+    "mens-t-shirt-mockup"
+   ]
+  },
+  {
+   "q": "bus stop",
+   "relevant": [
+    "bus-stop-citylight-mockup"
+   ]
+  },
+  {
+   "q": "citylight",
+   "relevant": [
+    "bus-stop-citylight-mockup"
+   ]
+  },
+  {
+   "q": "graffiti",
+   "relevant": [
+    "poster-mockup"
+   ]
+  },
+  {
+   "q": "imac",
+   "relevant": [
+    "free-imac-mockup-1",
+    "free-imac-mockup-2",
+    "free-imac-mockup-3"
+   ]
+  },
+  {
+   "q": "desktop computer",
+   "relevant": [
+    "free-imac-mockup-1",
+    "free-imac-mockup-2",
+    "free-imac-mockup-3"
+   ]
+  },
+  {
+   "q": "mug",
+   "relevant": [
+    "oval-mug-mockup-1",
+    "oval-mug-mockup-2",
+    "oval-mug-mockup-3",
+    "oval-mug-mockup-4"
+   ]
+  },
+  {
+   "q": "menu",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4"
+   ]
+  },
+  {
+   "q": "restaurant menu",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4"
+   ]
+  },
+  {
+   "q": "foldable phone",
+   "relevant": [
+    "hand-held-iphone-duo-foldable-smartphone-free"
+   ]
+  },
+  {
+   "q": "brand identity",
+   "relevant": [
+    "office-identity-business-cards-free-psd-mockup"
+   ]
+  }
+ ],
+ "addToQueries": {
+  "packaging": [
+   "matt-can-mockup",
+   "spray-can-mockup",
+   "metallic-foil-pouch-mockup",
+   "kraft-paper-food-pack-mockup",
+   "free-stylish-cosmetic-tube-mockup",
+   "free-cosmetic-box-and-tube-mockup"
+  ],
+  "iphone": [
+   "apple-set",
+   "hand-held-iphone-duo-foldable-smartphone-free",
+   "iphone-mockup-1",
+   "iphone-mockup-2",
+   "iphone-mockup-3"
+  ],
+  "phone": [
+   "apple-set",
+   "hand-held-iphone-duo-foldable-smartphone-free",
+   "iphone-mockup-1",
+   "iphone-mockup-2",
+   "iphone-mockup-3"
+  ],
+  "iphones": [
+   "apple-set"
+  ],
+  "business card": [
+   "office-identity-business-cards-free-psd-mockup"
+  ],
+  "business cards": [
+   "office-identity-business-cards-free-psd-mockup"
+  ],
+  "stationery": [
+   "office-identity-business-cards-free-psd-mockup"
+  ],
+  "poster": [
+   "bus-stop-citylight-mockup",
+   "poster-mockup"
+  ],
+  "street": [
+   "bus-stop-citylight-mockup"
+  ],
+  "coffee cup": [
+   "oval-mug-mockup-1",
+   "oval-mug-mockup-2",
+   "oval-mug-mockup-3",
+   "oval-mug-mockup-4"
+  ],
+  "box": [
+   "free-cosmetic-box-and-tube-mockup"
+  ]
+ }
+}
