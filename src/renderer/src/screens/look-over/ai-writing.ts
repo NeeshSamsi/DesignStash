@@ -29,6 +29,8 @@ export interface Writing {
   shownAt?: number
   /** The fields the AI just filled, and when (L6.3). */
   landed?: { fields: readonly MetaField[]; at: number }
+  /** The fields taking the landing tint: what a suggestion filled, or an edit the variant took (L7.3, L7.8). */
+  tint?: { fields: readonly MetaField[]; at: number }
 }
 
 export type LineAction = 'fill-myself' | 'write-suggestions' | 'try-again'

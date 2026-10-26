@@ -129,6 +129,48 @@ describe('aiReducer', () => {
   })
 })
 
+describe('aiReducer · the landing tint', () => {
+  const offered = {
+    state: 'offered' as const,
+    reason: null,
+    why: 'unjudged' as const,
+    after: { description: 'Terracotta.', via: 'rewrite' as const },
+    tagsAdded: [],
+    tagsRemoved: []
+  }
+
+  it('tints the fields a suggestion filled on screen, and drops the tint when you move on', () => {
+    let s = aiReducer(start(), {
+      type: 'draft',
+      item: item(11, { waitingForAi: false }),
+      at: 50,
+      onScreen: true
+    })
+    expect(s.writing[11]?.tint).toEqual({ fields: ['title', 'description', 'tags'], at: 50 })
+    s = aiReducer(s, { type: 'left', mockupId: 11 })
+    expect(s.writing[11]?.tint).toBeUndefined()
+  })
+
+  it('tints the description when the check works the edit into the variant on screen (L7.3)', () => {
+    let s = createAiState([
+      item(11, { waitingForAi: false, carry: { ...offered, state: 'checking', why: null } })
+    ])
+    s = aiReducer(s, {
+      type: 'draft',
+      item: item(11, { waitingForAi: false, carry: { ...offered, state: 'reworded', why: null } }),
+      at: 70,
+      onScreen: true
+    })
+    expect(s.writing[11]?.tint).toEqual({ fields: ['description'], at: 70 })
+    expect(s.writing[11]?.landed).toBeUndefined()
+  })
+
+  it('tints on request, for an offer the person applied (L7.8)', () => {
+    const s = aiReducer(start(), { type: 'tint', mockupId: 12, fields: ['description'], at: 9 })
+    expect(s.writing[12]?.tint).toEqual({ fields: ['description'], at: 9 })
+  })
+})
+
 describe('keepOf', () => {
   it('keeps what the person typed, and everything after Fill it myself', () => {
     expect(keepOf(undefined)).toEqual([])

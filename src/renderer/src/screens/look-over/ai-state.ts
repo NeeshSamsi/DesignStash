@@ -35,6 +35,8 @@ export type AiEvent =
   | { type: 'fill-myself'; mockupId: number }
   /** A channel's answer (`look-over:fill-myself`, `look-over:write`): main's item and its AI state. */
   | { type: 'answer'; item: LookOverItem }
+  /** Tint these fields: an offer the person applied (L7.8). */
+  | { type: 'tint'; mockupId: number; fields: readonly MetaField[]; at: number }
   /** The mockup went off screen: what landed has had its say. */
   | { type: 'left'; mockupId: number }
 
@@ -70,8 +72,15 @@ export function aiReducer(s: AiState, e: AiEvent): AiState {
       const filled =
         before && isWriting(before, w) && !e.item.waitingForAi ? writingFields(before, w) : []
       const next = { ...s, live: { ...s.live, [id]: e.item } }
-      return e.onScreen && filled.length > 0
-        ? withWriting(next, id, { landed: { fields: filled, at: e.at } })
+      if (!e.onScreen) return next
+      if (filled.length > 0) {
+        const at = { fields: filled, at: e.at }
+        return withWriting(next, id, { landed: at, tint: at })
+      }
+      // The check worked the top's edit into this variant's words while it was on screen (L7.3, L7.4).
+      const took = (state?: string) => state === 'applied' || state === 'reworded'
+      return !took(before?.carry?.state) && took(e.item.carry?.state)
+        ? withWriting(next, id, { tint: { fields: ['description'], at: e.at } })
         : next
     }
     case 'items':
@@ -99,11 +108,14 @@ export function aiReducer(s: AiState, e: AiEvent): AiState {
       const next = { ...s, live: { ...s.live, [id]: e.item } }
       return withWriting(next, id, { ai: e.item.ai, optedOut: e.item.ai.status === 'opted_out' })
     }
+    case 'tint':
+      return withWriting(s, e.mockupId, { tint: { fields: e.fields, at: e.at } })
     case 'left': {
       const w = s.writing[e.mockupId]
-      if (!w?.landed) return s
+      if (!w?.landed && !w?.tint) return s
       const rest = { ...w }
       delete rest.landed
+      delete rest.tint
       return { ...s, writing: { ...s.writing, [e.mockupId]: rest } }
     }
   }
