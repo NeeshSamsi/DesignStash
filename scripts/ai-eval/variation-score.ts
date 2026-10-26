@@ -22,22 +22,5 @@ export function judge(said: string, gold: GoldVariation): Verdict {
   return 'other'
 }
 
-/**
- * The fallback when the model can't tell, for each file in a pile: the short part of its name the
- * others don't share ("A" in tote-a, "2" in mug-2, "EU" in notebook_EU, "clay" in "Watch - Clay").
- * A letter, a number up to two digits or a word up to 12 letters; long numbers and codes like
- * "M003T1513" aren't markers. When the names give none, or two would get the same one, every mockup
- * gets its number in the pile.
- */
-export function fileMarkers(fileNames: string[]): string[] {
-  const words = fileNames.map((n) => n.replace(/\.[^.]+$/, '').split(/[-_\s.,()]+/).filter(Boolean))
-  const markers = words.map((mine, i) => {
-    const others = words.filter((_, j) => j !== i)
-    const own = mine.filter((w, k) => others.every((o) => o[k] !== w) && /^(?:\p{L}{1,12}|\d{1,2})$/u.test(w))
-    if (own.length !== 1) return null
-    const word = own[0]!
-    return word.length === 1 || word === word.toUpperCase() ? word.toUpperCase() : word.toLowerCase()
-  })
-  const unique = markers.every((m) => m !== null) && new Set(markers).size === markers.length
-  return unique ? (markers as string[]) : fileNames.map((_, i) => String(i + 1))
-}
+// The fallback lives in the app now (src/shared/pile-variation.ts), which this eval proved.
+export { fileMarkers } from '../../src/shared/pile-variation'
