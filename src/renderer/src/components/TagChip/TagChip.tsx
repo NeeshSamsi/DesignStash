@@ -3,6 +3,7 @@ import { useRef, useState, type ComponentProps, type KeyboardEvent, type ReactNo
 import { HugeiconsIcon } from '@hugeicons/react'
 import { AiMagicIcon, Cancel01Icon, PlusSignIcon, Tick02Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@renderer/lib/utils'
+import { WRITING_PLACEHOLDER } from '@renderer/lib/writing-field'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
 import { TAG_CHIP_DEFAULTS, type TagChipContractProps } from './TagChip.types'
 import { tagChipVariants } from './TagChip.variants'
@@ -79,6 +80,8 @@ function RemoveButton({
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1203
  * Rules: design/specs/tags.md. hover / focus are CSS; `highlighted` draws the focus ring by hand.
  * Interactive variants (add, suggested) take focus and answer Enter and Space like a click.
+ * `removed` is a tag an edit takes out, in the edit preview (look-over.md, L7): struck and muted.
+ * A thinking suggestion says “Writing with AI…” while the AI writes the tags (L6.1).
  */
 export function TagChip({
   className,
@@ -99,6 +102,7 @@ export function TagChip({
   const thinking = variant === 'suggested' && state === 'thinking'
   const pressable = variant === 'add' || (variant === 'suggested' && !thinking)
   const press = variant === 'suggested' ? onAccept : undefined
+  const removed = variant === 'removed'
   const categoryText = showCategory && (
     <span className={variant === 'filter' ? 'text-muted-foreground' : 'text-tertiary'}>
       {category}
@@ -106,7 +110,13 @@ export function TagChip({
   )
   const labelClass = cn(
     'type-label-xs-medium',
-    marked ? 'text-error' : variant === 'suggested' ? 'text-muted-foreground' : 'text-foreground'
+    marked
+      ? 'text-error'
+      : variant === 'suggested'
+        ? 'text-muted-foreground'
+        : removed
+          ? 'text-tertiary'
+          : 'text-foreground'
   )
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -156,7 +166,9 @@ export function TagChip({
             className={cn('size-4 shrink-0', thinking ? 'text-tertiary' : 'text-brand')}
           />
           {thinking ? (
-            <span aria-hidden className="h-2 w-12 shrink-0 animate-pulse rounded-sm bg-surface-4" />
+            <span className="animate-pulse type-label-xs-medium text-placeholder motion-reduce:animate-none">
+              {WRITING_PLACEHOLDER}
+            </span>
           ) : (
             <>
               {categoryText}

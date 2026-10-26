@@ -593,22 +593,22 @@ export function TagEditor({
       {editable && (suggestions.length > 0 || thinking) && (
         <span aria-hidden className="h-4 border-l border-base" />
       )}
-      {editable && thinking
-        ? [0, 1].map((n) => (
-            <TagChip key={n} variant="suggested" state="thinking" showCategory={false} />
-          ))
-        : editable &&
-          suggestions.map((tag) => (
-            <TagChip
-              key={tag.tagId}
-              variant="suggested"
-              category={tag.categoryLabel}
-              label={tag.label}
-              data-tag={`suggestion-${tag.tagId}`}
-              onAccept={() => addTag(tag)}
-              onDismiss={() => setSuggestions(suggestions.filter((s) => s.tagId !== tag.tagId))}
-            />
-          ))}
+      {editable && thinking ? (
+        <TagChip variant="suggested" state="thinking" showCategory={false} />
+      ) : (
+        editable &&
+        suggestions.map((tag) => (
+          <TagChip
+            key={tag.tagId}
+            variant="suggested"
+            category={tag.categoryLabel}
+            label={tag.label}
+            data-tag={`suggestion-${tag.tagId}`}
+            onAccept={() => addTag(tag)}
+            onDismiss={() => setSuggestions(suggestions.filter((s) => s.tagId !== tag.tagId))}
+          />
+        ))
+      )}
     </>
   )
 

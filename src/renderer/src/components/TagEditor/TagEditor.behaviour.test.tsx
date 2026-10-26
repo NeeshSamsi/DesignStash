@@ -289,7 +289,8 @@ describe('TagEditor · inline add', () => {
     unmount()
 
     render(<TagEditor thinking />)
-    expect(document.querySelectorAll('[data-state="thinking"]')).toHaveLength(2)
+    expect(document.querySelectorAll('[data-state="thinking"]')).toHaveLength(1)
+    expect(screen.getByText('Writing with AI…')).toBeTruthy()
     expect(openInput()).toBeTruthy()
   })
 
