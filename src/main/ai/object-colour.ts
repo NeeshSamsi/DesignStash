@@ -66,14 +66,39 @@ const FURNITURE = /\b(?:table|desk|counter|shelf|floor|wall|bench|cabinet|workto
 /** A colour given to "one" ("including a lime green one"): the colour and its article go, and "one" stays. */
 const PRONOUN = new RegExp(`\\b(an?\\s+)(${PHRASE})\\s+(ones?)\\b`, 'gi')
 
+/**
+ * A gradient of colours given to the object, after it: "with a blue to purple color gradient", or
+ * "displayed in a gradient of blue and purple". It goes whole, with the word that joined it on. A
+ * gradient that names no colour ("against a soft gradient background") is the setting's.
+ */
+const GRADIENT_WITH = new RegExp(`\\s+with\\s+(?:an?\\s+)?(?:(?:soft|smooth|subtle|bold|vibrant)\\s+)?(${PHRASE}\\s+(?:colou?r\\s+)?gradient)\\b(?!\\s+finish)`, 'gi')
+const GRADIENT_OF = new RegExp(`\\s+(?:(?:displayed|shown|printed|rendered)\\s+)?in\\s+(?:an?\\s+)?(?:(?:soft|smooth|subtle|bold|vibrant)\\s+)?(gradient\\s+of\\s+${PHRASE})\\b`, 'gi')
+
+/** "three white and one cardboard boxes": two counts of one kind of object, told apart by colour, become one count ("four boxes"). */
+const COUNTS = ['a', 'an', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
+const COUNT = `(?:${COUNTS.join('|')})`
+const TWO_COUNTS = new RegExp(`\\b(${COUNT})\\s+${PHRASE}\\s+and\\s+(${COUNT})\\s+(?:(?!${STOP}\\b)[a-z-]+\\s+)?(?=${NOUN}\\b)`, 'gi')
+const countOf = (word: string) => Math.max(1, COUNTS.indexOf(word.toLowerCase()) - 1)
+/** "box" to "boxes", "card" to "cards"; a word already plural stays. */
+const plural = (noun: string) => (/s$/i.test(noun) ? noun : /(x|ch|sh)$/i.test(noun) ? `${noun}es` : `${noun}s`)
+
 /** Between fields, so a phrase can't run from one into the next. */
 const FIELD_BREAK = ' | '
 
 const tidy = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
 
-/** Where each object colour is in a text: the whole phrase, and the part that is the colour. */
-function colourSpans(text: string): { at: number; end: number; cutFrom: number; cutTo: number }[] {
-  const spans: { at: number; end: number; cutFrom: number; cutTo: number }[] = []
+/** Where an object colour is in a text: the whole phrase, the part cut, and any words put in its place. */
+interface Span {
+  at: number
+  end: number
+  cutFrom: number
+  cutTo: number
+  insert?: string
+}
+
+/** Where each object colour is in a text. */
+function colourSpans(text: string): Span[] {
+  const spans: Span[] = []
   for (const m of text.matchAll(BEFORE)) {
     if (SETTING.test(text.slice(Math.max(0, m.index - 40), m.index)) || SETTING_NOUNS.test(m[2] ?? '')) continue
     // The colour and the space or hyphen after it.
@@ -97,7 +122,25 @@ function colourSpans(text: string): { at: number; end: number; cutFrom: number; 
     const oneAt = m.index + m[0].length - m[3]!.length
     spans.push({ at, end: m.index + m[0].length, cutFrom: m.index, cutTo: oneAt })
   }
+  for (const m of [...text.matchAll(GRADIENT_WITH), ...text.matchAll(GRADIENT_OF)]) {
+    const at = m.index + m[0].length - m[1]!.length
+    spans.push({ at, end: m.index + m[0].length, cutFrom: m.index, cutTo: m.index + m[0].length })
+  }
+  for (const m of text.matchAll(TWO_COUNTS)) {
+    const noun = text.slice(m.index + m[0].length).match(new RegExp(`^${NOUN}\\b`, 'i'))?.[0] ?? ''
+    const end = m.index + m[0].length + noun.length
+    const total = countOf(m[1]!) + countOf(m[2]!)
+    spans.push({ at: m.index, end, cutFrom: m.index, cutTo: end, insert: `${COUNTS[total + 1] ?? total} ${plural(noun)}` })
+  }
   return spans.sort((a, b) => a.at - b.at)
+}
+
+/**
+ * A title or description starts with a capital, even after its first words were cut; a name that
+ * starts small and has a capital inside ("iPhone", "iMac", "iPad") stays as it is.
+ */
+export function startWithCapital(text: string): string {
+  return text.replace(/^[a-z](?![A-Z])/, (c) => c.toUpperCase())
 }
 
 /** The object-colour phrases in one answer: title, description and saved tag labels. */
@@ -112,7 +155,7 @@ function withoutColours(text: string): string {
   let from = 0
   for (const s of colourSpans(text)) {
     if (s.cutFrom < from) continue
-    out += text.slice(from, s.cutFrom)
+    out += text.slice(from, s.cutFrom) + (s.insert ?? '')
     from = s.cutTo
     const article = out.match(/\b(a|an)(\s+)$/i)
     if (article) {
@@ -122,7 +165,7 @@ function withoutColours(text: string): string {
     }
   }
   out = (out + text.slice(from)).replace(/ {2,}/g, ' ').replace(/ ([,.])/g, '$1')
-  return /^[A-Z]/.test(text) ? out.charAt(0).toUpperCase() + out.slice(1) : out
+  return /^[A-Z]/.test(text) ? startWithCapital(out) : out
 }
 
 /** An answer with every object colour taken out of its title, description and tag labels. */

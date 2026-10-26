@@ -120,3 +120,32 @@ describe('the phrasings round 4 found missing', () => {
     expect(words('Tote', 'A tote bag on a light-coloured floor.')).toEqual([])
   })
 })
+
+describe('the phrasings the 9B dev seed found missing (2026-10-26)', () => {
+  it('keeps a product name that starts small when a colour before it is cut: iMac, iPhone, iPad', () => {
+    expect(strip('White iMac desktop setup on white background', '').title).toBe('iMac desktop setup on white background')
+    expect(strip('Silver iPhone 15 on a stand', '').title).toBe('iPhone 15 on a stand')
+    expect(strip('Black mug', '').title).toBe('Mug')
+  })
+
+  it('cuts a gradient of colours given to the object, after it, whole', () => {
+    expect(words('Leggings', 'A pair of leggings floating against a plain background with a blue to purple color gradient.')).toEqual(['blue to purple color gradient'])
+    expect(strip('Leggings', 'A pair of leggings floating against a plain background with a blue to purple color gradient.').description).toBe(
+      'A pair of leggings floating against a plain background.'
+    )
+    expect(strip('Set', 'A tank top and leggings, displayed in a gradient of blue and purple against a plain light grey background.').description).toBe(
+      'A tank top and leggings, against a plain light grey background.'
+    )
+  })
+
+  it('leaves a gradient that names no colour, and one that is the background itself', () => {
+    expect(words('Phone', 'A foldable smartphone held in a hand against a soft gradient background.')).toEqual([])
+    expect(words('Phone', 'A phone against a blue gradient background.')).toEqual([])
+  })
+
+  it('counts boxes of two colours as one number of boxes', () => {
+    expect(words('Boxes', 'A stack of three white and one cardboard boxes on a pedestal.')).toEqual(['three white and one cardboard boxes'])
+    expect(strip('Boxes', 'A stack of three white and one cardboard boxes on a pedestal.').description).toBe('A stack of four boxes on a pedestal.')
+    expect(strip('Boxes', 'A stack of three white and one box, sitting on a base.').description).toBe('A stack of four boxes, sitting on a base.')
+  })
+})

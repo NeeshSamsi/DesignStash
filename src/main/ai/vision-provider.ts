@@ -10,7 +10,7 @@ import { askPileVariations } from './pile-variations'
 import { draftLine, placeholderQuestion, placeholderWordsIn } from './placeholder-check'
 import type { PromptProfile } from './prompts/profile'
 import { isPlaceholder } from '../psd/placeholder'
-import { withoutObjectColours } from './object-colour'
+import { startWithCapital, withoutObjectColours } from './object-colour'
 import {
   SCENE_CHECK_THRESHOLD,
   mentionedThings,
@@ -251,7 +251,7 @@ function tidySpacing(text: string): string {
 
 /** A title or description starts with a capital, even after its first words were cut; iPhone stays iPhone. */
 function sentence(text: string): string {
-  return tidySpacing(text).replace(/^[a-z](?![A-Z])/, (c) => c.toUpperCase())
+  return startWithCapital(tidySpacing(text))
 }
 
 /** A sentence whose only news is the printed text ("The text around the sticker reads 'X'"). */
