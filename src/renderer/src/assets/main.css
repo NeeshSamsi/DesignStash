@@ -93,6 +93,36 @@
   /* What the content panel is meant to keep: two cards, their gap and its padding (2×220 + 16 + 2×28). The window
      minimum guarantees it; below that the panel gives way to one column rather than push the sidebar off screen. */
   --size-main-min: 32rem; /* 512 */
+
+  /* A field the AI just filled (look-over.md, L6.3): background/primary-weak fading out over 1.2s, ease out.
+     With reduced motion the tint holds for 2s, then goes at once. */
+  --animate-ai-tint: ai-tint 1.2s var(--ease-out) both;
+  --animate-ai-tint-hold: ai-tint 2s steps(1, jump-end) both;
+}
+
+@keyframes ai-tint {
+  from {
+    background-color: var(--ds-background-primary-weak);
+  }
+}
+
+/* "Writing with AI…" (look-over.md, L6.1): the placeholder pulses like Skeleton (animate-pulse: 2s, 100% to 50%)
+   while the field stays a real field. The pulse runs on the field and its placeholder reads it. */
+@property --placeholder-opacity {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+@keyframes placeholder-pulse {
+  50% {
+    --placeholder-opacity: 0.5;
+  }
+}
+@utility animate-placeholder-pulse {
+  animation: placeholder-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  &::placeholder {
+    opacity: var(--placeholder-opacity);
+  }
 }
 
 /* Responsive card grid: columns come and go with the grid's own width; cards fill each column. */

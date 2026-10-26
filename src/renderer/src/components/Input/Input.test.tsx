@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { variantMatrix } from '@renderer/design-system/matrix'
 import { Input, type InputProps } from './Input'
 import { INPUT_CONTRACT } from './Input.types'
@@ -16,5 +16,43 @@ describe('Input', () => {
     for (const text of Object.values<string>(INPUT_CONTRACT.texts)) {
       expect(screen.getByDisplayValue(text)).not.toBeNull()
     }
+  })
+
+  describe('writing', () => {
+    it('shows an empty field whose “Writing with AI…” placeholder pulses, static with reduced motion', () => {
+      render(<Input writing value="phone_side" onChange={() => {}} aria-label="Title" />)
+      const field = screen.getByRole('textbox', { name: 'Title' })
+      expect((field as HTMLInputElement).value).toBe('')
+      expect(field.getAttribute('placeholder')).toBe('Writing with AI…')
+      expect(field.getAttribute('aria-busy')).toBe('true')
+      expect(field.className).toContain('animate-placeholder-pulse')
+      expect(field.className).toContain('motion-reduce:animate-none')
+    })
+
+    it('stays a real field: it takes focus, and typing reports what was typed', () => {
+      const typed: string[] = []
+      render(
+        <Input
+          writing
+          value="phone_side"
+          aria-label="Title"
+          onChange={(e) => typed.push(e.target.value)}
+        />
+      )
+      const field = screen.getByRole('textbox', { name: 'Title' })
+      field.focus()
+      expect(document.activeElement).toBe(field)
+      fireEvent.change(field, { target: { value: 'S' } })
+      expect(typed).toEqual(['S'])
+    })
+
+    it('becomes a normal field once typed in, when nothing controls it', () => {
+      render(<Input writing aria-label="Title" />)
+      const field = screen.getByRole('textbox', { name: 'Title' })
+      fireEvent.change(field, { target: { value: 'Side' } })
+      expect((field as HTMLInputElement).value).toBe('Side')
+      expect(field.hasAttribute('aria-busy')).toBe(false)
+      expect(field.className).not.toContain('animate-placeholder-pulse')
+    })
   })
 })
