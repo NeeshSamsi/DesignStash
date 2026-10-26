@@ -79,6 +79,8 @@ export const IPC_CHANNELS = {
   PILE_DISBAND: 'pile:disband',
   PILE_REMOVE: 'pile:remove',
   PILE_RESTORE: 'pile:restore',
+  PILE_RENAME: 'pile:rename',
+  PILE_SET_VARIATION: 'pile:set-variation',
   PILE_STASH: 'pile:stash',
   PILE_UNSTASH: 'pile:unstash',
   MOCKUP_STASH: 'mockup:stash',

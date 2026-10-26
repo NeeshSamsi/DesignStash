@@ -205,3 +205,89 @@ describe('mockup detail', () => {
     ])
   })
 })
+
+describe('pile titles: rename and set-variation (design/specs/pile-titles.md)', () => {
+  /** A stashed mockup that came in as `fileName`. */
+  const file = (fileName: string, extra = {}) =>
+    repo.mockups.createMockup(
+      approvedMockup({
+        title: fileName.replace(/\.psd$/, ''),
+        libraryPath: `/lib/${fileName}`,
+        importContext: { batchId: 'b', folderTrail: [], originalFilename: fileName },
+        ...extra
+      })
+    ).id
+  const titles = (ids: number[]) => ids.map((id) => [repo.mockups.getMockup(id)!.title, repo.mockups.getMockup(id)!.variation])
+
+  async function stashedPile() {
+    const [a, b] = [file('tote-a.psd'), file('tote-b.psd')]
+    await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
+    return [a, b] as const
+  }
+
+  it('renames a pile in My Stash: every mockup, exactly, with what it was for Undo', async () => {
+    const [a, b] = await stashedPile()
+    const res = await call(IPC_CHANNELS.PILE_RENAME, { pileId: a, base: 'Canvas tote' })
+    expect(res).toEqual({ success: true, data: { pileId: a, base: 'Canvas tote', previous: 'tote-a', mockupIds: [a, b] } })
+    expect(titles([a, b])).toEqual([
+      ['Canvas tote', 'A'],
+      ['Canvas tote', 'B']
+    ])
+    expect(repo.library.getLibrary({ sort: 'date', query: 'canvas' }).map((r) => r.id)).toEqual([a])
+  })
+
+  it('refuses a blank name at the contract', async () => {
+    const [a] = await stashedPile()
+    expect(await call(IPC_CHANNELS.PILE_RENAME, { pileId: a, base: '   ' })).toMatchObject({
+      success: false,
+      error: { code: 'INVALID_REQUEST' }
+    })
+  })
+
+  it('renames a pile waiting in To stash on its drafts, making them first', async () => {
+    const [a, b] = [file('tote-a.psd', { stage: 'to_stash' }), file('tote-b.psd', { stage: 'to_stash' })]
+    repo.piles.createPile([a, b], a)
+
+    await call(IPC_CHANNELS.PILE_RENAME, { pileId: a, base: 'Canvas tote' })
+
+    expect([repo.drafts.getDraft(a)?.title, repo.drafts.getDraft(b)?.title]).toEqual(['Canvas tote', 'Canvas tote'])
+    expect(repo.drafts.getDraft(b)?.variation).toBe('B')
+    expect(repo.mockups.getMockup(b)?.title).toBe('tote-b')
+  })
+
+  it('sets a variation as typed, and an emptied one takes its marker back', async () => {
+    const [, b] = await stashedPile()
+    expect(await call(IPC_CHANNELS.PILE_SET_VARIATION, { mockupId: b, words: 'on a hook' })).toEqual({
+      success: true,
+      data: { mockupId: b, variation: { words: 'on a hook', source: 'typed' }, previous: { words: 'B', source: 'marker' } }
+    })
+    const emptied = await call<{ variation: unknown }>(IPC_CHANNELS.PILE_SET_VARIATION, { mockupId: b, words: '' })
+    expect(emptied.success && emptied.data.variation).toEqual({ words: 'B', source: 'marker' })
+  })
+
+  it('saves a pile mockup’s details: a new title renames the pile, and the variation is its own', async () => {
+    const [a, b] = await stashedPile()
+    const res = await call(IPC_CHANNELS.MOCKUP_UPDATE, {
+      mockupId: b,
+      title: 'Canvas tote',
+      description: 'On a hook',
+      tagIds: [],
+      variation: 'hanging'
+    })
+    expect(res).toMatchObject({ success: true })
+    expect(titles([a, b])).toEqual([
+      ['Canvas tote', 'A'],
+      ['Canvas tote', 'hanging']
+    ])
+    expect(repo.mockups.getMockup(b)?.description).toBe('On a hook')
+  })
+
+  it('sends the pile and the variation with a mockup’s details', async () => {
+    const [a, b] = await stashedPile()
+    const res = await call<{ item: { pileId: number; variation: unknown }; variants: { variation: unknown }[] }>(
+      IPC_CHANNELS.MOCKUP_DETAIL,
+      { mockupId: b }
+    )
+    expect(res.success && res.data.item).toMatchObject({ title: 'tote-a', pileId: a, variation: { words: 'B', source: 'marker' } })
+  })
+})

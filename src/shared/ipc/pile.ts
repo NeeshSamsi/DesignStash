@@ -1,12 +1,19 @@
 import { z } from 'zod'
 import { StashResultSchema, StashSnapshotSchema } from '../approval'
 import { IPC_CHANNELS } from '../ipc-channels'
+import { VariationSchema, VariationSourceSchema } from '../pile-variation'
 
-/** One mockup's place in a pile. A snapshot of these brings a pile back (Undo). */
+/**
+ * One mockup's place in a pile, and its titles, which joining or leaving a pile changes. A snapshot
+ * of these brings a pile back (Undo). The titles are left out of snapshots from before base titles.
+ */
 export const PileRowSchema = z.object({
   id: z.number(),
   isGroup: z.boolean(),
-  groupId: z.number().nullable()
+  groupId: z.number().nullable(),
+  title: z.string().optional(),
+  variation: z.string().nullable().optional(),
+  variationSource: VariationSourceSchema.nullable().optional()
 })
 export type PileRow = z.infer<typeof PileRowSchema>
 
@@ -60,6 +67,38 @@ export const pileContract = {
   [IPC_CHANNELS.PILE_RESTORE]: {
     request: z.object({ snapshot: PileSnapshotSchema }),
     response: z.object({ restoredIds: z.array(z.number()) })
+  },
+  /**
+   * Rename a pile: its base title, on every mockup in it, exactly, with no AI
+   * (design/specs/pile-titles.md). Works in Look it over (on the drafts) and My Stash (Edit pile
+   * details). The base is trimmed, with runs of spaces folded. Undo: rename to `previous`.
+   */
+  [IPC_CHANNELS.PILE_RENAME]: {
+    request: z.object({ pileId: z.number(), base: z.string().trim().min(1) }),
+    response: z.object({
+      pileId: z.number(),
+      /** The base as saved. */
+      base: z.string(),
+      /** The base before, for Undo. */
+      previous: z.string(),
+      /** Every mockup whose title changed. */
+      mockupIds: z.array(z.number())
+    })
+  },
+  /**
+   * Set one mockup's variation, in Look it over or My Stash. Typed words are kept exactly, even when
+   * another mockup has them; empty words take the file marker or number back (when focus leaves an
+   * emptied field). `source` is only for Undo: it puts `previous` back as it was.
+   */
+  [IPC_CHANNELS.PILE_SET_VARIATION]: {
+    request: z.object({ mockupId: z.number(), words: z.string(), source: VariationSourceSchema.optional() }),
+    response: z.object({
+      mockupId: z.number(),
+      /** The variation as saved. */
+      variation: VariationSchema,
+      /** The variation before, for Undo. */
+      previous: VariationSchema.nullable()
+    })
   },
   /** Look it over: commit a whole pile from its drafts, all or nothing. */
   [IPC_CHANNELS.PILE_STASH]: {

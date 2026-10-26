@@ -1,10 +1,12 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { CoverService } from '../library/cover-service'
+import { PileTitles } from '../library/pile-titles'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
 export function registerMockupHandlers({ repo, library, settings }: HandlerContext): void {
   const covers = new CoverService(repo, settings.getLibraryRoot())
+  const titles = new PileTitles(repo)
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_DETAIL, (args) => {
     const detail = repo.library.getMockupDetail(args.mockupId)
@@ -23,8 +25,15 @@ export function registerMockupHandlers({ repo, library, settings }: HandlerConte
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_UPDATE, (args) => {
+    // In a pile the title is the pile's base (Edit pile details renames the pile), and the variation is this mockup's.
+    const m = repo.mockups.getMockup(args.mockupId)
+    const pileId = m ? (m.isGroup ? m.id : m.groupId) : null
+    if (pileId !== null) {
+      if (m!.title !== args.title) titles.renameBase(pileId, args.title)
+      if (args.variation !== undefined) titles.setVariation(args.mockupId, args.variation)
+    }
     repo.mockups.updateMockupMeta(args.mockupId, {
-      title: args.title,
+      title: pileId !== null ? repo.mockups.getMockup(args.mockupId)!.title : args.title,
       description: args.description,
       tagIds: args.tagIds
     })

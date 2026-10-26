@@ -56,7 +56,9 @@ function referenceRows(ids: number[]): LibraryRow[] {
         id: t.id,
         label: t.label,
         categoryLabel: categories.get(t.categoryId) ?? ''
-      }))
+      })),
+      pileId: m.isGroup ? m.id : m.groupId,
+      variation: m.variation ? { words: m.variation, source: m.variationSource ?? 'ai' } : null
     }
   })
 }

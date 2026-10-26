@@ -15,9 +15,12 @@ export const mockupContract = {
   [IPC_CHANNELS.MOCKUP_UPDATE]: {
     request: z.object({
       mockupId: z.number(),
+      /** In a pile, the pile's base (Edit pile details, D3.3): a new one renames every mockup in it. */
       title: z.string().min(1),
       description: z.string(),
-      tagIds: z.array(z.number())
+      tagIds: z.array(z.number()),
+      /** In a pile, this mockup's variation (as `pile:set-variation`). Left out, it stays as it is. */
+      variation: z.string().optional()
     }),
     response: z.object({ updated: z.boolean() })
   },

@@ -303,8 +303,8 @@ describe('getDetailVariants', () => {
       )
 
       expect(repo.library.getDetailVariants(top.id)).toEqual([
-        { id: top.id, title: 'front', coverPath, coverMissing: false, coverSource: 'embedded', isTop: true },
-        { id: side.id, title: 'side', coverPath: '/c.png', coverMissing: true, coverSource: 'embedded', isTop: false }
+        { id: top.id, title: 'front', coverPath, coverMissing: false, coverSource: 'embedded', isTop: true, variation: null },
+        { id: side.id, title: 'side', coverPath: '/c.png', coverMissing: true, coverSource: 'embedded', isTop: false, variation: null }
       ])
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -341,5 +341,54 @@ describe('getLibraryStats', () => {
     expect(stats.favourites).toBe(1) // a
     expect(stats.groups).toBe(1) // b
     expect(stats.trashed).toBe(1) // t
+  })
+})
+
+describe('base titles and variations in My Stash (design/specs/pile-titles.md)', () => {
+  beforeEach(() => {
+    seedTaxonomy(db)
+    ensureSearchIndex(db)
+  })
+
+  /** The long scroll pile from the dev library: a base, and "wavy surface" on its last mockup. */
+  function longScrolls() {
+    const make = (title: string, path: string, extra = {}) =>
+      repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/${path}.psd`, description: 'A laptop on books', ...extra }))
+    const top = make('Long scroll MacBook', 'a', { isGroup: true, variation: 'front', variationSource: 'ai' })
+    const side = make('Long scroll MacBook', 'b', { groupId: top.id, variation: 'side view', variationSource: 'ai' })
+    const wavy = make('Long scroll MacBook', 'c', { groupId: top.id, variation: 'wavy surface', variationSource: 'typed' })
+    const other = make('Clay iPhone', 'd')
+    for (const m of [top, side, wavy, other]) repo.search.upsertSearchIndex(m.id)
+    return { top, side, wavy, other }
+  }
+
+  it('finds a pile by a word only one of its mockups’ variations has, by keyword', () => {
+    const { top } = longScrolls()
+    expect(repo.library.getLibrary({ sort: 'date', query: 'wavy' }).map((r) => r.id)).toEqual([top.id])
+  })
+
+  it('embeds the full title for meaning search, and a close mockup in a pile brings up its pile', () => {
+    const { top, wavy, other } = longScrolls()
+    expect(repo.search.meaningDocuments().find((d) => d.id === wavy.id)?.text).toContain('Long scroll MacBook · wavy surface')
+
+    // "rippled" matches no word, so only meaning search can find it: the wavy mockup is the closest.
+    const meaning = new Map([
+      [wavy.id, 0.9],
+      [other.id, 0.1]
+    ])
+    const { rows, meaningHit } = repo.library.queryLibrary({ sort: 'date', query: 'rippled', meaning })
+    expect(rows.map((r) => r.id)).toEqual([top.id])
+    expect(meaningHit).toBe(true)
+  })
+
+  it('sends the pile and the variation with every row', () => {
+    const { top, wavy, other } = longScrolls()
+    const rows = repo.library.toRows([top, wavy, other].map((m) => repo.mockups.getMockup(m.id)!))
+    expect(rows.map((r) => [r.title, r.pileId, r.variation])).toEqual([
+      ['Long scroll MacBook', top.id, { words: 'front', source: 'ai' }],
+      ['Long scroll MacBook', top.id, { words: 'wavy surface', source: 'typed' }],
+      ['Clay iPhone', null, null]
+    ])
+    expect(repo.library.getDetailVariants(top.id).map((v) => v.variation?.words)).toEqual(['front', 'side view', 'wavy surface'])
   })
 })

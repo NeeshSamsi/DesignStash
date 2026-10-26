@@ -9,6 +9,10 @@ import { isStashed } from './stashed'
 import type { PileRepository } from './piles'
 import type { SearchRepository } from './search'
 import { MEANING_FLOOR, MEANING_TOP, meaningHits } from '../../search/meaning'
+import type { Variation } from '@shared/pile-variation'
+
+const variationOf = (m: Mockup): Variation | null =>
+  m.variation ? { words: m.variation, source: m.variationSource ?? 'ai' } : null
 
 export interface LibraryQueryOptions {
   tagIds?: number[]
@@ -33,6 +37,10 @@ export interface LibraryRow {
   /** Set when this row is a pile's top: `memberCount` counts the top too. Null for a mockup on its own. */
   pile: { memberCount: number } | null
   tags: { id: number; label: string; categoryLabel: string }[]
+  /** The pile it's in (its top's id), or null on its own. In a pile `title` is the pile's base. */
+  pileId: number | null
+  /** Its own part of its title in a pile. */
+  variation: Variation | null
 }
 
 type LabelledTag = { id: number; label: string; categoryLabel: string }
@@ -84,16 +92,19 @@ export class LibraryQueryRepository {
       )
       .all()
 
-    // FTS filter + rank map
-    const ftsRankMap = rawQuery ? this.search.rankMatches(rawQuery) : null
+    // FTS filter + rank map. A hit on a mockup in a pile finds the pile: its top shows, ranked by
+    // the best of its mockups, so a word only one variation has ("wavy") still finds it.
+    const piles = rawQuery ? this.pileOfMembers() : new Map<number, number>()
+    const ftsRankMap = rawQuery ? rollUp(this.search.rankMatches(rawQuery), piles, Math.min) : null
+    const meaning = rollUp(opts.meaning ?? null, piles, Math.max)
     // The closest meaning hit among the mockups shown (a pile member is not one; its top is), then
     // dropped if keyword search found it already.
     const meaningIds =
-      ftsRankMap && opts.meaning
+      ftsRankMap && meaning
         ? meaningHits(
             new Map(
               candidates.flatMap((c) => {
-                const sim = opts.meaning!.get(c.id)
+                const sim = meaning.get(c.id)
                 return sim === undefined ? [] : [[c.id, sim] as const]
               })
             ),
@@ -124,7 +135,7 @@ export class LibraryQueryRepository {
         const ra = ftsRankMap.get(a.id)
         const rb = ftsRankMap.get(b.id)
         if (ra === undefined && rb === undefined) {
-          return (opts.meaning?.get(b.id) ?? 0) - (opts.meaning?.get(a.id) ?? 0)
+          return (meaning?.get(b.id) ?? 0) - (meaning?.get(a.id) ?? 0)
         }
         if (ra === undefined) return 1
         if (rb === undefined) return -1
@@ -186,6 +197,18 @@ export class LibraryQueryRepository {
     return { tags: tagMap, members }
   }
 
+  /** Each stashed mockup in a pile, by id, with its pile's top. */
+  private pileOfMembers(): Map<number, number> {
+    return new Map(
+      this.db
+        .select({ id: mockups.id, groupId: mockups.groupId })
+        .from(mockups)
+        .where(and(isStashed, isNull(mockups.deletedAt), isNotNull(mockups.groupId)))
+        .all()
+        .map((r) => [r.id, r.groupId!])
+    )
+  }
+
   /** Assemble grid rows with variant counts and labelled tags. */
   toRows(list: Mockup[], lookups = this.loadLookups(list.map((m) => m.id))): LibraryRow[] {
     return list.map((m) => ({
@@ -203,7 +226,9 @@ export class LibraryQueryRepository {
         id,
         label,
         categoryLabel
-      }))
+      })),
+      pileId: m.isGroup ? m.id : m.groupId,
+      variation: variationOf(m)
     }))
   }
 
@@ -231,6 +256,7 @@ export class LibraryQueryRepository {
     coverMissing: boolean
     coverSource: Mockup['coverSource']
     isTop: boolean
+    variation: Variation | null
   }[] {
     const top = this.mockups.getMockup(id)
     if (!top || pileRole(top) !== 'top') return []
@@ -241,7 +267,8 @@ export class LibraryQueryRepository {
       coverPath: m.coverPath,
       coverMissing: !this.fileExists(m.coverPath),
       coverSource: m.coverSource,
-      isTop: m.id === top.id
+      isTop: m.id === top.id,
+      variation: variationOf(m)
     }))
   }
 
@@ -277,4 +304,21 @@ export class LibraryQueryRepository {
         .get()?.c ?? 0
     return { total, favourites, groups, trashed }
   }
+}
+
+/** Scores by mockup with each pile's top given the best score of any mockup in it. */
+function rollUp(
+  scores: ReadonlyMap<number, number> | null,
+  piles: ReadonlyMap<number, number>,
+  best: (a: number, b: number) => number
+): Map<number, number> | null {
+  if (!scores) return null
+  const out = new Map(scores)
+  for (const [member, top] of piles) {
+    const score = scores.get(member)
+    if (score === undefined) continue
+    const now = out.get(top)
+    out.set(top, now === undefined ? score : best(now, score))
+  }
+  return out
 }

@@ -3,6 +3,7 @@ import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { LookOverService } from '../import/look-over-service'
 import { StashService } from '../import/stash-service'
 import { PileService } from '../library/pile-service'
+import { PileTitles } from '../library/pile-titles'
 import type { HandlerContext } from './context'
 import { countsChanged } from './library-effects'
 import { registerIpcHandler } from './register'
@@ -17,7 +18,13 @@ export function registerPileHandlers(ctx: HandlerContext): void {
     })
   }
   const piles = new PileService(repo)
-  const stash = new StashService(repo, new LookOverService(repo, () => ai.activeProvider()))
+  const lookOver = new LookOverService(repo, () => ai.activeProvider())
+  const stash = new StashService(repo, lookOver)
+  const titles = new PileTitles(repo)
+  // A pile waiting in To stash keeps its titles in its drafts: they are made before a title changes.
+  const draftsReady = async (pileId: number | null) => {
+    if (pileId !== null && repo.mockups.getMockup(pileId)?.stage === 'to_stash') await lookOver.draftsFor(pileId)
+  }
 
   registerIpcHandler(IPC_CHANNELS.PILE_CREATE, (args) => piles.create(args.memberIds, args.topId))
   registerIpcHandler(IPC_CHANNELS.PILE_ADD, (args) => piles.add(args.pileId, args.memberIds))
@@ -28,6 +35,17 @@ export function registerPileHandlers(ctx: HandlerContext): void {
     piles.removeFromPile(args.pileId, args.mockupId)
   )
   registerIpcHandler(IPC_CHANNELS.PILE_RESTORE, (args) => piles.restore(args.snapshot))
+
+  registerIpcHandler(IPC_CHANNELS.PILE_RENAME, async (args) => {
+    await draftsReady(args.pileId)
+    return titles.renameBase(args.pileId, args.base)
+  })
+
+  registerIpcHandler(IPC_CHANNELS.PILE_SET_VARIATION, async (args) => {
+    const m = repo.mockups.getMockup(args.mockupId)
+    await draftsReady(m ? (m.isGroup ? m.id : m.groupId) : null)
+    return titles.setVariation(args.mockupId, args.words, args.source)
+  })
 
   registerIpcHandler(IPC_CHANNELS.PILE_STASH, async (args) => {
     const result = await stash.stashPile(args.pileId)
