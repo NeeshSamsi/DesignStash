@@ -9,6 +9,7 @@ import { objectHintLine, objectHintRequest, readObjectHint } from './object-hint
 import { draftLine, placeholderQuestion, placeholderWordsIn } from './placeholder-check'
 import type { PromptProfile } from './prompts/profile'
 import { isPlaceholder } from '../psd/placeholder'
+import { withoutObjectColours } from './object-colour'
 import {
   SCENE_CHECK_THRESHOLD,
   mentionedThings,
@@ -349,6 +350,20 @@ export async function readCoverAsDataUrl(path: string): Promise<string | null> {
 }
 
 /**
+ * A data-URL image scaled to fit `edge` pixels, as a JPEG: the 4B's scene checks (`checkEdge`). The
+ * image as it was when it can't be read.
+ */
+export async function scaledDataUrl(url: string, edge: number): Promise<string> {
+  try {
+    const bytes = Buffer.from(url.slice(url.indexOf(',') + 1), 'base64')
+    const jpeg = await sharp(bytes).resize(edge, edge, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer()
+    return `data:image/jpeg;base64,${jpeg.toString('base64')}`
+  } catch {
+    return url
+  }
+}
+
+/**
  * One scene-thing question on the answer's own image (llama-server reuses it from its cache): one
  * greedy token held to "yes" or "no", with logprobs, so `pYes` can read how sure the model is.
  */
@@ -417,7 +432,20 @@ export class VisionInferenceProvider implements InferenceProvider {
     return readRewrite((await this.deps.complete(pileEditRequest(prompt, ENTRY_SCHEMA))).text)
   }
 
+  /** Stop the runtime mid-run (the hard stop). The next request starts it again. */
+  async stop(): Promise<void> {
+    await this.deps.dispose?.()
+  }
+
+  /**
+   * The suggestion, with the object's colours taken out last, after every check: the designer sets
+   * those in the PSD (round 4, design/research/ai-round4.md).
+   */
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
+    return withoutObjectColours(await this.answer(input))
+  }
+
+  private async answer(input: AnalysisInput): Promise<InferenceResult> {
     const { prompt } = this.deps
     const masked = prompt.mask ? await (this.deps.maskedCover ?? maskedCoverPath)(input.imagePath, prompt.mask) : null
     let imageUrl = await this.deps.readImage(masked ?? input.imagePath)
@@ -435,7 +463,7 @@ export class VisionInferenceProvider implements InferenceProvider {
     let answer = prompt.parseResult((await this.deps.complete(request)).text)
     if (!imageUrl) return answer
     // The check looks at the cover as it is, so a thing read into the painted slot is checked against the real scene.
-    const checkUrl = coverUrl ?? undefined
+    const checkUrl = prompt.checkEdge ? await scaledDataUrl(coverUrl ?? imageUrl, prompt.checkEdge) : (coverUrl ?? undefined)
     const refused: string[] = []
     for (const thing of mentionedThings(answer, prompt.sceneThings ?? [])) {
       const p = await this.deps

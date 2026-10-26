@@ -98,6 +98,12 @@ describe('prompt profiles', () => {
     expect(textOf(qwen35.buildRequest(INPUT, IMAGE))).not.toContain(MASK_RULE)
   })
 
+  it("checks the 4B's scene things on the cover scaled to 512 px, and every other model's at full size (round 4)", () => {
+    expect(qwen3vl.checkEdge).toBe(512)
+    expect(PROMPT_PROFILES.apple.checkEdge).toBeUndefined()
+    expect(PROMPT_PROFILES['qwen3.5-9b'].checkEdge).toBeUndefined()
+  })
+
   it('looks a profile up by id, and has none for an unknown id', () => {
     expect(promptProfile('qwen3.5-9b')).toBe(qwen35)
     expect(promptProfile('qwen2.5-vl-3b')).toBeUndefined()

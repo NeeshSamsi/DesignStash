@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import sharp from 'sharp'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AnalysisInput } from '../../shared/inference'
 import { HelperError, NativeHelper, type DescribeRequest } from '../native/helper'
 import { SCENE_THINGS } from './scene-check'
@@ -114,6 +114,20 @@ describe('AppleInferenceProvider', () => {
       hasUsableCover: async () => true
     })
     await expect(provider.analyze(INPUT)).rejects.toBeInstanceOf(HelperError)
+  })
+
+  it("takes the object's colours out of its answers and leaves the setting's (round 4)", async () => {
+    const coloured = { title: 'White mug on a grey table', description: 'A white mug with a black handle on a grey table.', tags: [{ category: 'Print & Branding', label: 'mug' }] }
+    const describe = async () => ({ text: JSON.stringify(coloured), json: true, ms: 1 })
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper: { describe }, hasUsableCover: async () => true })
+    expect(await provider.analyze(INPUT)).toMatchObject({ title: 'Mug on a grey table', description: 'A mug with a handle on a grey table.' })
+  })
+
+  it('stops the helper on stop(), for a run that hit the hard stop', async () => {
+    const stop = vi.fn(async () => {})
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper: { describe: async () => ({ text: '{}', json: true, ms: 1 }), stop } })
+    await provider.stop()
+    expect(stop).toHaveBeenCalledOnce()
   })
 
   it('exposes id "apple" and a name', () => {

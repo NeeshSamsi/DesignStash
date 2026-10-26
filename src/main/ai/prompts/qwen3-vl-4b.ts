@@ -10,9 +10,9 @@ import { MASK_RULE, NAMES_ONLY, SHIPPED, requestFrom } from './request'
  * told what that area is (`MASK_RULE`), so it never describes the placeholder. Masked, it lost the
  * product's name (it had named products from their sample art), so it is first asked what kind of
  * object the cover as it is shows, and told that name. The scene check looks at the cover as it is,
- * and a refusal asks once more. Where the label leaves a cover too blank to send (leggings that fill
- * the slot, on a grey ground), the slot is blurred grey instead (eval ck-7e), so the answer still has
- * an image.
+ * scaled to 512 px (round 4: the same answers, 4% quicker), and a refusal asks once more. Where the
+ * label leaves a cover too blank to send (leggings that fill the slot, on a grey ground), the slot is
+ * blurred grey instead (eval ck-7e), so the answer still has an image.
  */
 export const profile: PromptProfile = {
   buildRequest: requestFrom({ ...SHIPPED, noImage: NAMES_ONLY, maskRule: MASK_RULE }),
@@ -21,5 +21,6 @@ export const profile: PromptProfile = {
   mask: 'label',
   blankFallback: 'soft',
   objectHint: true,
+  checkEdge: 512,
   redo: true
 }

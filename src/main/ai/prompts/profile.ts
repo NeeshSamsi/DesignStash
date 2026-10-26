@@ -42,6 +42,12 @@ export interface PromptProfile {
    */
   objectHint?: boolean
   /**
+   * The scene checks look at their image scaled to fit this many pixels (the 4B: 512). Left out,
+   * they see it at the size the answer did. Round 4's sp-check512 gave the 4B the same 270 answers
+   * and check verdicts at 512 px, 4% quicker (design/research/ai-round4.md, C).
+   */
+  checkEdge?: number
+  /**
    * The reverse two looks, for a model that names products from their sample art (the 9B): it answers
    * from the cover as it is; each colour or pattern word is asked about on the cover masked with
    * `check`, and when one is only on the slot the answer is made again from the cover masked with

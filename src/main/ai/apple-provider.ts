@@ -3,13 +3,15 @@ import type { DescribeRequest, NativeHelper } from '../native/helper'
 import type { PromptProfile } from './prompts/profile'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
 import { ENTRY_SCHEMA, PILE_EDIT_SYSTEM, readRewrite, rewritePrompt } from './pile-edit'
+import { withoutObjectColours } from './object-colour'
 import { mentionedThings, refusedNote, sceneQuestion, withoutThing } from './scene-check'
 import { readCoverAsDataUrl, type ChatContentPart } from './vision-provider'
 
 export interface AppleProviderDeps {
   /** The model's own prompt (prompts/apple.ts), converted for the helper by `appleDescribeRequest`. */
   prompt: PromptProfile
-  helper: Pick<NativeHelper, 'describe'>
+  /** `stop` ends a run that hit the hard stop; the helper starts again on the next request. */
+  helper: Pick<NativeHelper, 'describe'> & Partial<Pick<NativeHelper, 'stop'>>
   /**
    * Whether the cover is worth showing the model. Defaults to the vision provider's own test (a
    * missing, unreadable or near-blank placeholder cover is not), so both describe the same covers
@@ -82,7 +84,17 @@ export class AppleInferenceProvider implements InferenceProvider {
     return readRewrite(reply.text)
   }
 
+  /** Stop the helper mid-run (the hard stop). It starts again on the next request. */
+  async stop(): Promise<void> {
+    await this.deps.helper.stop?.()
+  }
+
+  /** The suggestion, with the object's colours taken out last, after the check (round 4). */
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
+    return withoutObjectColours(await this.answer(input))
+  }
+
+  private async answer(input: AnalysisInput): Promise<InferenceResult> {
     const { prompt } = this.deps
     const usable = await (this.deps.hasUsableCover ?? hasUsableCover)(input.imagePath)
     const masked = usable && prompt.mask ? await (this.deps.maskedCover ?? maskedCoverPath)(input.imagePath, prompt.mask) : null
