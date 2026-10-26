@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import type { LookOverItem, LookOverQueue } from '@shared/approval'
+import { useEffect, useReducer, useRef, useState } from 'react'
+import type { AnswerEditRequest, LookOverItem, LookOverQueue } from '@shared/approval'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { AiStatus } from '@renderer/components/AiStatus'
 import { Button } from '@renderer/components/Button'
@@ -30,6 +30,8 @@ import {
   stashWait,
   writingFields
 } from './ai-writing'
+import { cardNote, headsUp, offerLine, offerPreview, railCarryNote } from './edit-offer'
+import { EditOffer } from './EditOffer'
 import {
   afterStash,
   back,
@@ -275,12 +277,40 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     return () => clearTimeout(timer)
   }, [due])
 
-  // The status row is decided when the mockup opens (each item says where its AI is) and kept while it is on screen.
+  // -- The edit to the top (design L7) ---------------------------------------------------------
+
+  const checksEdits = queue.checksEdits
+  /** Variants the person applied the edit to in this session (L7.8's line). */
+  const [accepted, setAccepted] = useState<ReadonlySet<number>>(new Set())
+  /** The variant whose offer is being applied (it waits for a version still being prepared). */
+  const [applying, setApplying] = useState<number | null>(null)
+  /** Tops whose description or tags differ from what main has: L7.1's heads-up. */
+  const [editedTops, setEditedTops] = useState<ReadonlySet<number>>(new Set())
+  const pileItems = unit.items.map((i) => ai.live[i.mockupId] ?? i)
+  const reached = pileItems.filter((i) => i.carry !== null).length
+  const untouched = pileItems.filter((i) => i.role === 'variant' && !i.touched).length
+  const offer = here
+    ? offerLine(here.carry, { reached, acceptedHere: accepted.has(here.mockupId) })
+    : null
+  const heads =
+    here?.role === 'top'
+      ? headsUp({ edited: editedTops.has(here.mockupId), untouched, checksEdits })
+      : null
+
+  // The status row is decided when the mockup opens (each item says where its AI is and what an
+  // edit did to it) and kept while it is on screen. A top with untouched variants always has one,
+  // so L7.1's heads-up never pushes the fields down.
   if (here && visit?.id !== here.mockupId) {
-    setVisit({ id: here.mockupId, row: opensWithRow(here, hereWriting, now) })
+    setVisit({
+      id: here.mockupId,
+      row:
+        opensWithRow(here, hereWriting, now) ||
+        offer !== null ||
+        (here.role === 'top' && untouched > 0)
+    })
   }
   const row = here !== null && visit?.id === here.mockupId && visit.row
-  const line = here ? aiLine(here, hereWriting, now) : null
+  const line = (here ? aiLine(here, hereWriting, now) : null) ?? offer ?? heads
 
   /** A channel's answer is main's word on the mockup and its AI. */
   const answered = (res: { success: boolean; data?: LookOverItem | null } | null) => {
@@ -355,8 +385,70 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     answered(res)
   }
 
+  /**
+   * The person's answer to the top's edit on a variant (`look-over:answer-edit`): accept (Apply here,
+   * Apply anyway), undo, dismiss (×) or restore (⌘Z). Accepting and undoing change its words, which
+   * the form takes in every field the person hasn't changed.
+   */
+  const answerEdit = async (id: number, action: AnswerEditRequest['action']) => {
+    if (action === 'accept') setApplying(id)
+    const res = await window.api
+      .invoke(IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT, { mockupId: id, action })
+      .catch(() => null)
+    if (action === 'accept') setApplying(null)
+    if (!res?.success) {
+      toast({
+        variant: 'error',
+        message: 'Couldn’t change that',
+        description: 'Nothing was changed. Try again.'
+      })
+      return
+    }
+    const it = res.data
+    if (!it) return
+    dispatch({ type: 'items', items: [it] })
+    if (action === 'accept' || action === 'undo') {
+      const was = saved.current[id]
+      saved.current = { ...saved.current, [id]: formOf(it) }
+      setForms((current) => ({
+        ...current,
+        [id]: was ? landedDraft(current[id] ?? was, was, it).form : formOf(it)
+      }))
+    }
+    if (action === 'accept') {
+      setAccepted((ids) => new Set([...ids, id]))
+      dispatch({ type: 'tint', mockupId: id, fields: ['description'], at: Date.now() })
+    }
+    if (action === 'undo') setAccepted((ids) => new Set([...ids].filter((x) => x !== id)))
+  }
+
+  // ⌘Z brings back an offer dismissed on screen (L7.10). Outside a text field only, so typing keeps its own undo.
+  const restorable = row && here?.carry?.state === 'dismissed' ? here.mockupId : null
+  useEffect(() => {
+    if (restorable === null) return
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      const z = event.key.toLowerCase() === 'z' && (event.metaKey || event.ctrlKey)
+      if (!z || event.shiftKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      if (
+        target?.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')
+      )
+        return
+      event.preventDefault()
+      void window.api
+        .invoke(IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT, { mockupId: restorable, action: 'restore' })
+        .then((res) => {
+          if (res.success && res.data) dispatch({ type: 'items', items: [res.data] })
+        })
+        .catch(() => {})
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [restorable])
+
   /** Saves the open mockup's draft when it changed or hasn't been recorded as looked at. */
-  const saveCurrent = useCallback(async (): Promise<boolean> => {
+  const saveCurrent = async (): Promise<boolean> => {
     if (!item || !form) return true
     const unchanged = sameForm(form, saved.current[item.mockupId]!)
     if (unchanged && savedChecked.current.has(item.mockupId)) return true
@@ -379,6 +471,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     }
     saved.current = { ...saved.current, [item.mockupId]: form }
     savedChecked.current.add(item.mockupId)
+    setEditedTops((ids) => new Set([...ids].filter((id) => id !== item.mockupId)))
     if (res.data.propagatedIds.length > 0) {
       // The top mockup's edit carried over to variants that were not touched: show what they now hold.
       const fresh = await window.api
@@ -400,7 +493,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
       }
     }
     return true
-  }, [item, form])
+  }
 
   const go = async (move: (s: FlowState) => FlowState) => {
     if (!(await saveCurrent())) return
@@ -409,7 +502,20 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
 
   const edit = (patch: Partial<Form>) => {
     if (!item || !form) return
-    setForms((current) => ({ ...current, [item.mockupId]: { ...form, ...patch } }))
+    const next = { ...form, ...patch }
+    setForms((current) => ({ ...current, [item.mockupId]: next }))
+    if (item.role === 'top') {
+      // L7.1: an edit to the top's description or tags reaches its untouched variants on Next.
+      const was = saved.current[item.mockupId]
+      const edited =
+        !!was &&
+        (next.description !== was.description || tagIds(next).join() !== tagIds(was).join())
+      setEditedTops((ids) =>
+        edited
+          ? new Set([...ids, item.mockupId])
+          : new Set([...ids].filter((id) => id !== item.mockupId))
+      )
+    }
     // Typing in a field the AI is writing makes it the person's (L6.2).
     dispatch({ type: 'typed', mockupId: item.mockupId, fields: Object.keys(patch) as MetaField[] })
   }
@@ -644,7 +750,9 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
             const writes = isWriting(ai.live[it.mockupId] ?? it, ai.writing[it.mockupId])
             const note = writes
               ? WRITING_PLACEHOLDER
-              : (cards.find((c) => c.mockupId === it.mockupId)?.note ?? null)
+              : (cardNote((ai.live[it.mockupId] ?? it).carry) ??
+                cards.find((c) => c.mockupId === it.mockupId)?.note ??
+                null)
             const c = covers[it.mockupId]
             return (
               <div key={it.mockupId} className="flex min-w-0 flex-col gap-2">
@@ -702,6 +810,8 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
               kind={line?.kind ?? 'none'}
               message={line?.message ?? ''}
               showAction={line?.action !== undefined}
+              dismissible={line !== null && 'dismissible' in line && line.dismissible === true}
+              onDismiss={() => void answerEdit(here.mockupId, 'dismiss')}
               action={
                 line?.action === 'fill-myself' ? (
                   <Button
@@ -710,14 +820,32 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
                     label="Fill it myself"
                     onClick={() => fillMyself(here.mockupId, true)}
                   />
-                ) : (
+                ) : line?.action === 'try-again' || line?.action === 'write-suggestions' ? (
                   <Button
                     variant="secondary"
                     size="xs"
-                    label={line?.action === 'try-again' ? 'Try again' : 'Write suggestions'}
+                    label={line.action === 'try-again' ? 'Try again' : 'Write suggestions'}
                     onClick={() => void writeAgain(here.mockupId)}
                   />
-                )
+                ) : line?.action === 'undo' ? (
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    label="Undo"
+                    onClick={() => void answerEdit(here.mockupId, 'undo')}
+                  />
+                ) : (line?.action === 'apply-here' || line?.action === 'apply-anyway') &&
+                  here.carry ? (
+                  <EditOffer
+                    preview={offerPreview(here.carry, here.description, checksEdits)}
+                    applying={applying === here.mockupId}
+                    onApply={() => void answerEdit(here.mockupId, 'accept')}
+                    tagsRow={() =>
+                      formColumn.current?.querySelector<HTMLElement>('[data-ds="TagEditor"]') ??
+                      null
+                    }
+                  />
+                ) : null
               }
             />
           )}
@@ -726,7 +854,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
               variant="approval"
               state={blocked ? 'invalid' : 'pristine'}
               writingFields={here ? writingFields(here, hereWriting) : []}
-              filledFields={hereWriting?.landed?.fields ?? []}
+              filledFields={hereWriting?.tint?.fields ?? []}
               title={form.title}
               onTitleChange={(title) => edit({ title })}
               description={form.description}
@@ -750,7 +878,9 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   function railSteps() {
     return theRail?.steps.map((step) => {
       const live = step.mockupId === null ? undefined : ai.live[step.mockupId]
-      const note = live ? railNote(live, ai.writing[live.mockupId]) : null
+      const note = live
+        ? (railNote(live, ai.writing[live.mockupId]) ?? railCarryNote(live.carry))
+        : null
       return (
         <PileStep
           key={step.key}
