@@ -84,7 +84,7 @@ Neesh: “I don't think variants should ever have COMPLETELY different titles.�
 | Review and stash pile | Each card's title is its variation (“Side”); the rail header names the pile. | L2.4, L2.E3, L5.2, L6.E4, L7.6, L7.11 |
 | While the AI writes | In a pile the base is already known, so only the variation says “Writing with AI…”. | L6.1, L6.4 |
 | My Stash | The pile card shows the base. | ↳ Library: C1.1 |
-| The opened pile | The header shows the base; each card shows its variation. | ↳ Library: D3.1 to D3.E2 |
+| The opened pile | The header shows the base; each card shows its variation. The header isn't editable: Edit pile details renames the pile (D3.3). | ↳ Library: D3.1 to D3.E2 |
 | Details sidebar, a mockup in a pile | Read: the heading is the variation, and the line under it names the pile (“Variant in Clay iPhone 15 Pro · added 12 Oct”, “Top of …”). Edit: TitlePair `size=compact` (variation 120 px). | D3.2 (read), D3.3 (edit) |
 
 **Decisions**
@@ -99,9 +99,10 @@ Neesh: “I don't think variants should ever have COMPLETELY different titles.�
 | 1 to 3 words shows only as an empty variation's placeholder | The AI and the fallback always fill the field with 1 to 3 words, so the field teaches the length by example, and its width (180 px, 120 in the sidebar) says short before anyone types. A hint under the field or a word count would say the same thing on every mockup, and would make a longer variation look wrong when it's allowed. The placeholder shows only when someone clears the field to write their own, the moment it helps. | 8.15, 8.11, 1.6, no-obvious-status |
 | A variation left empty takes its file marker or number back when focus leaves | Every mockup in a pile keeps a variation, as Neesh's model has it, so no two titles fall back to the bare base, and nobody meets an error for an empty field. | 8.5, 8.7 |
 | Same words the app wrote get a number (“side 2”); same words a person typed stay as typed | The rail and the review cards show only the variation, so two “Side” cards would read as a mistake; numbering what the app wrote keeps every step distinct. Rewriting what someone typed would change their words without asking, and two mockups with the same words is their call. The number is added once, when the words land, so nothing changes under someone typing. | 8.14, 8.17, 2.2, 7.12 |
+| Edit pile details is the one way to rename a pile from My Stash; the pile page header stays plain text (Neesh) | One route to one action, in the place that already edits the pile's other details. | 8.9, 9.2 |
 | A variation shown on its own starts with a capital | Card titles and headings read as names; inside a full title the variation reads as part of one phrase. | 3.6, 7.5 |
 
 **Open questions**
 1. **Length:** settled on 2026-10-26. Suggest 1 to 3 words and never block longer ones; the suggestion shows only as an empty field's placeholder.
 2. **Two mockups with the same variation:** settled on 2026-10-26. The second gets a number (“side 2”) when the app wrote the words; words a person typed stay as typed (L8.4).
-3. **Renaming the base** where the pile lives in My Stash (the pile page header, D3) as well as from a mockup: should the page header itself be editable, or is Edit pile details enough?
+3. **Renaming the base from the pile page header:** settled on 2026-10-26. No; Edit pile details (D3.3) is the one way to rename a pile from My Stash, and a mockup's base field renames it in Look it over.
