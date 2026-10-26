@@ -62,7 +62,7 @@
       "name": "Input",
       "figmaId": "212:190",
       "section": "2 · Primitives (shadcn)",
-      "description": "Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.\nstate=writing (2026-10-24): the AI is writing this field. The placeholder “Writing with AI…” pulses like Skeleton (animate-pulse; static with reduced motion). It stays a real, focusable field: typing makes it a normal field that belongs to the person.",
+      "description": "Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.\nstate=writing (2026-10-24): the AI is writing this field. The placeholder “Writing with AI…” pulses like Skeleton (animate-pulse; static with reduced motion). It stays a real, focusable field: typing makes it a normal field that belongs to the person. state=ai-filled (2026-10-26): as Textarea’s, the background/primary-weak tint on a field the AI just filled; it fades after 1.2s.",
       "code": "ui/input.tsx + input-group",
       "variants": {
         "variant": [
@@ -76,7 +76,8 @@
           "focus",
           "invalid",
           "disabled",
-          "writing"
+          "writing",
+          "ai-filled"
         ]
       },
       "booleans": {
