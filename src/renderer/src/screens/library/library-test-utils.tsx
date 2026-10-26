@@ -21,11 +21,13 @@ export const item = (id: number, over: Partial<LibraryItem> = {}): LibraryItem =
   createdAt: `2026-10-${String(10 + id).padStart(2, '0')}`,
   pile: null,
   tags: [],
+  pileId: null,
+  variation: null,
   ...over
 })
 
 export const pile = (id: number, variants = 2, over: Partial<LibraryItem> = {}) =>
-  item(id, { pile: { memberCount: variants + 1 }, ...over })
+  item(id, { pile: { memberCount: variants + 1 }, pileId: id, ...over })
 
 type Handler = (request: unknown) => unknown
 

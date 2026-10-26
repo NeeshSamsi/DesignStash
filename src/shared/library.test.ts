@@ -27,7 +27,9 @@ describe('LibraryItemSchema pile', () => {
     coverMissing: false,
     favourite: false,
     createdAt: '2026-01-01',
-    tags: []
+    tags: [],
+    pileId: null,
+    variation: null
   }
 
   it('is null for a mockup on its own and a size for a pile', () => {

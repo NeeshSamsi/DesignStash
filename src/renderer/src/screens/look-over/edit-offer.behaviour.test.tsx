@@ -36,6 +36,7 @@ const item = (id: number, role: string, over: Record<string, unknown> = {}) => (
   checked: role === 'top',
   waitingForAi: false,
   carry: null,
+  variation: role === 'single' ? null : { words: `phone ${id}`, source: 'marker' },
   ai: { status: 'ready' },
   cover,
   ...over

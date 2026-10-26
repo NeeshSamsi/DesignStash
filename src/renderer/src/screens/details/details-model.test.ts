@@ -28,6 +28,7 @@ describe('details model', () => {
     const v = (id: number, isTop: boolean): Variant => ({
       id,
       title: `V${id}`,
+      variation: null,
       coverPath: '',
       coverMissing: false,
       coverSource: 'embedded',

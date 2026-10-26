@@ -14,6 +14,7 @@ const item = (mockupId: number, over: Partial<LookOverItem> = {}): LookOverItem 
   checked: false,
   waitingForAi: true,
   carry: null,
+  variation: null,
   ai: { status: 'pending' },
   cover: { path: '/c.png', source: 'embedded', missing: false, width: 1, height: 1 },
   ...over

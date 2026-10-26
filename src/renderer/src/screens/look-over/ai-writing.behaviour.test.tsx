@@ -23,6 +23,7 @@ const item = (id: number, role: string, over: Record<string, unknown> = {}) => (
   checked: false,
   waitingForAi: false,
   carry: null,
+  variation: role === 'single' ? null : { words: `phone ${id}`, source: 'marker' },
   // Where its suggestion is, as main reports it (ignored by schemas that don't have it yet).
   ai: { status: over.waitingForAi ? 'pending' : 'ready' },
   cover,

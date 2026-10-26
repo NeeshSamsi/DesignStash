@@ -28,11 +28,10 @@ export const LibraryItemSchema = z.object({
    * The pile it's in (its top's id, the row's own id on a top), or null on its own. In a pile
    * `title` is the pile's base: the pile card shows it, and the line under the sidebar's heading
    * names the pile with it ("Variant in …" when `pileId` isn't the row's id, "Top of …" when it is).
-   * Always sent; optional only so rows made before base titles still type.
    */
-  pileId: z.number().nullable().optional(),
+  pileId: z.number().nullable(),
   /** In a pile, its own part of its title: the opened pile's card title and the sidebar heading. Null on its own. */
-  variation: VariationSchema.nullable().optional()
+  variation: VariationSchema.nullable()
 })
 export type LibraryItem = z.infer<typeof LibraryItemSchema>
 
@@ -60,8 +59,8 @@ export const VariantSchema = z.object({
   id: z.number(),
   /** The pile's base. */
   title: z.string(),
-  /** Its own part of its title. Always sent; optional only so strips made before base titles still type. */
-  variation: VariationSchema.nullable().optional(),
+  /** Its own part of its title. */
+  variation: VariationSchema.nullable(),
   coverPath: z.string(),
   coverMissing: z.boolean(),
   coverSource: CoverSourceSchema,

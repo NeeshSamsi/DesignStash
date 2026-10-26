@@ -21,9 +21,11 @@ const item = (id: number, over: Partial<LibraryItem> = {}): LibraryItem => ({
   createdAt: '2026-10-01',
   pile: null,
   tags: [],
+  pileId: null,
+  variation: null,
   ...over
 })
-const pile = (id: number) => item(id, { pile: { memberCount: 3 } })
+const pile = (id: number) => item(id, { pile: { memberCount: 3 }, pileId: id })
 
 describe('mergeLingering', () => {
   it('is the fresh list when nothing lingers', () => {

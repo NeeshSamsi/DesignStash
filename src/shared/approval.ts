@@ -111,9 +111,9 @@ export const LookOverItemSchema = z.object({
   /**
    * In a pile, this mockup's own part of its title (`base · variation`), with where it came from:
    * `ai`, its file name's `marker`, its `number` in the pile, or `typed` by the person. Null on a
-   * mockup on its own. Always sent; optional only so items made before base titles still type.
+   * mockup on its own.
    */
-  variation: VariationSchema.nullable().optional(),
+  variation: VariationSchema.nullable(),
   description: z.string(),
   tags: z.array(ApprovalTagSchema),
   /** The user changed this variant, so edits to the top mockup no longer overwrite it. */

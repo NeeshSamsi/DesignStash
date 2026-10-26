@@ -555,7 +555,9 @@ describe('IPC Contract', () => {
             favourite: false,
             createdAt: '2025-01-01T00:00:00',
             pile: null,
-            tags: []
+            tags: [],
+            pileId: null,
+            variation: null
           }
         ]
       }
@@ -637,6 +639,7 @@ describe('look-over:draft push', () => {
     pileId: 13,
     role: 'variant',
     title: 'Blue scroll Macbook',
+    variation: { words: 'side', source: 'marker' },
     description: 'A long page',
     tags: [],
     touched: false,
