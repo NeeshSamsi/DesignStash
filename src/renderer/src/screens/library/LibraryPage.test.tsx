@@ -121,11 +121,13 @@ describe('LibraryPage grid', () => {
     setupApi([item(1)])
     render(<LibraryPage />)
     await ready()
-    const sticky = document.querySelector('[data-slot="library-toolbar-sticky"]')!
-    expect(sticky.contains(document.querySelector('[data-ds="LibraryToolbar"]'))).toBe(true)
-    for (const name of ['sticky', '-top-2', 'z-20', 'bg-surface-1', 'pt-2']) {
-      expect(sticky.className).toContain(name)
+    const bar = document.querySelector('[data-slot="page-bar"]')!
+    expect(bar.contains(document.querySelector('[data-ds="LibraryToolbar"]'))).toBe(true)
+    for (const name of ['sticky', 'top-0', 'z-20', 'bg-surface-1']) {
+      expect(bar.className).toContain(name)
     }
+    // The soft scroll edge hangs under the toolbar.
+    expect(bar.querySelector('[data-slot="scroll-edge"]')).not.toBeNull()
   })
 
   it('selects with a click and reports it in the toolbar', async () => {

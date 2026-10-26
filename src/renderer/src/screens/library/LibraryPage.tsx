@@ -11,6 +11,7 @@ import {
 } from '@dnd-kit/core'
 import { ArrowLeft01Icon, Cancel01Icon, Search02Icon, StarIcon } from '@hugeicons/core-free-icons'
 import { coverDisplay, type LibraryItem } from '@shared/library'
+import { PageBar } from '@renderer/components/AppWindow/PageBar'
 import { Banner } from '@renderer/components/Banner'
 import { Badge } from '@renderer/ui/badge'
 import { EmptyState } from '@renderer/components/EmptyState'
@@ -336,14 +337,8 @@ export default function LibraryPage({
   return (
     <div className="flex min-h-full flex-col gap-4">
       {onSortWaiting && showAdd && <WaitingToSortStrip onSort={onSortWaiting} />}
-      {/*
-        Stays put while the grid scrolls. The wrapper paints the panel colour and reaches over the
-        scroller's 8px padding (-top-2, -mx-2), so cards slide under it and nothing shows above it.
-      */}
-      <div
-        data-slot="library-toolbar-sticky"
-        className="sticky -top-2 z-20 -mx-2 bg-surface-1 px-2 pt-2 pb-2"
-      >
+      {/* Stays put while the grid scrolls under it, with the soft scroll edge below it. */}
+      <PageBar className="pb-2">
         <LibraryToolbar
           className="flex-wrap"
           stats={statsText}
@@ -362,7 +357,7 @@ export default function LibraryPage({
             onManageTags: () => openSettings('tags')
           }}
         />
-      </div>
+      </PageBar>
       {failed && items.length > 0 && (
         <Banner
           tone="error"
