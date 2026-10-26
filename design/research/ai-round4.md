@@ -239,3 +239,26 @@ The answer takes 6.8 s of the 9.7 s, half reading the masked cover and half writ
 - Proposal: ship sp-check512 for the 4B, so the scene checks look at the cover scaled to 512 px. It changes no answer and saves about 4%.
 - Your call: the hint at 512 px as well, 18% in all (9.7 s to 7.9 s a mockup). Every measured number holds over three passes, and by eye the changed answers (one in four) are as often better as worse. My lean is yes: on quality it comes out even, and it fixes the "solar panels" hint. It isn't a clear zero-cost change under "quality over speed", though, so it's your decision.
 - Not shipping: checking the masked image (it keeps two wrong "desk"s) and two slots (a placeholder mention, and most of its saving comes from sp-check512 anyway).
+
+## D. Apple's "also called" names (for the record)
+
+**Decided (Neesh, 2026-10-26): keep them exactly as today.** Apple is still asked for other names, with no rule and no cut: "let's keep it because it might be useful sometimes, I'd rather have you search for something and see the wrong thing a few times than have it be buried because it's not very accessible."
+
+Measured before the decision, on today's profile with the colour strip applied:
+- **No other names (ac-1):** the description lines stop asking for other words. One greedy Apple pass.
+- **Code cut:** keep asking, then cut the "also called" clause when its name is one of `badAlternate`'s vague words, with its commas. "A laptop, also called a computer, resting on…" becomes "A laptop resting on…". It's measured on today's answers (`withoutBadAlternate` in `placeholder.ts`, `cut-alternates.ts`).
+- Both are compared with round 3's rule (ap-9, real names only). ap-9 ran on ap-8, which differs from today in two descriptions.
+
+| Version | Found / right (tuning, held-out, sign-off) | Invented | Bad "also called" | Good other names | Blind, the 83 not by colour |
+|---|---|---|---|---|---|
+| today (ap-10s) | 83.7 / 84.5, 85.0 / 80.9, 82.7 / 81.9 | 2.6, 0, 4.8% | 17.8% (16) | 62 | 41.4 / 47.4 |
+| code cut | the same | the same | 0% | 62 | the same |
+| no other names (ac-1) | 83.0 / 82.4, 84.3 / 80.0, 81.9 / 79.3 | 7.7, 3.3, 0% | 0% | 0 | 42.3 / 51.2 |
+| ap-8 (round 3) | 82.0 / 83.6, 83.8 / 80.2, 81.3 / 81.0 | 2.6, 0, 4.8% | 17.8% (16) | 62 | 41.4 / 47.4 |
+| ap-9, the rule (round 3) | 79.9 / 81.0, 83.5 / 80.0, 79.6 / 79.0 | 0, 0, 4.8% | 8.9% (8) | 79 | 45.7 / 52.4 |
+
+- **The code cut** moved no number. The words it cut ("design" 6 times, "computer" 3, "container" 3, "screen device" 2, "packaging item", "prop") won no search.
+- **No other names** cost 0.7 to 2.6 points on the gold sets. It added three inventions ("an orange cushion", "sand and sky", "outdoor") and lost all 62 good names ("an iMac, also called a desktop computer", "an apron, also called a bib").
+- **The rule** gave more and better names ("a cosmetic bottle", "a flame lighter", "a bus stop") and the best blind searches. It cost 0.3 to 2.6 points on the gold sets against ap-8.
+
+**What the strip misses.** Two object colours turned up that the count doesn't know: "a pump bottle… with dark brown accents" and an apron "in bright yellow and black". Today's oval mugs have the same "with black accents". "Accents" can belong to the setting too (a notebook "with green accents and red accents" from the props around it).
