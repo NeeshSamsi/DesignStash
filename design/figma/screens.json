@@ -6053,6 +6053,31 @@
       ]
     },
     {
+      "title": "C1.5 Scrolled under the toolbar",
+      "figmaId": "1202:137785",
+      "page": "↳ Library",
+      "flow": "C · Library",
+      "components": [
+        "AddMockupCard",
+        "AppWindow",
+        "Badge",
+        "Button",
+        "CoverImage",
+        "FavouriteToggle",
+        "GlobalSearch",
+        "Input",
+        "KeyboardShortcut",
+        "LibraryToolbar",
+        "MockupCard",
+        "MockupGrid",
+        "PageHeader",
+        "Select",
+        "SidebarNav",
+        "SidebarNav Item",
+        "TreeBranch"
+      ]
+    },
+    {
       "title": "C1.E1 Library load failed",
       "figmaId": "182:704",
       "flow": "C · Library",
