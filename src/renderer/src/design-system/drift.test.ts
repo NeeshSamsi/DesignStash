@@ -54,7 +54,12 @@ describe('design-system drift', () => {
         const figmaName = AXIS_NAMES[name]?.[axis] ?? axis
         const figmaAxis = Object.entries(c.variants).find(([k]) => pascal(k) === pascal(figmaName))
         expect(figmaAxis, `${name}.${axis}`).toBeDefined()
-        for (const option of options) expect(figmaAxis?.[1]).toContain(option)
+        for (const option of options) {
+          // A state axis's `default` stands for the options derived from data (empty, filled), as
+          // scripts/ds/contract.mjs makes it, so Figma has no option of that name.
+          if (axis === 'state' && option === 'default') continue
+          expect(figmaAxis?.[1]).toContain(option)
+        }
       }
     }
   )
