@@ -433,6 +433,15 @@ describe('LibraryPage details sidebar', () => {
     }
   })
 
+  it('takes a click on a pile’s count badge as a click on the pile', async () => {
+    setupApi([item(1), pile(3)])
+    render(<LibraryPage />)
+    await ready()
+    fireEvent.click(cards()[0]!)
+    fireEvent.click(within(cards()[1]!).getByLabelText(/mockups in this pile$/))
+    expect(useDetailsStore.getState().target?.id).toBe(3)
+  })
+
   it('takes a click on a pile’s stacked edges as a click on the pile', async () => {
     setupApi([item(1), pile(3)])
     render(<LibraryPage />)
