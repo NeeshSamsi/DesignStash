@@ -619,6 +619,35 @@ describe('details sidebar · cover', () => {
     )
   })
 
+  it('says why main kept the cover when the PSD’s own preview is only the kit’s notice', async () => {
+    setup({
+      [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(uploaded),
+      [IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER]: () => ok({ ok: false, reason: 'placeholder' })
+    })
+    await editing()
+    fireEvent.click(button('Use the PSD’s preview')!)
+    const banner = await waitFor(() => {
+      const found = document.querySelector('[data-ds="Banner"]')
+      expect(found).not.toBeNull()
+      return found!
+    })
+    expect(banner.textContent).toContain(
+      'The PSD’s own preview is only the kit’s “Delete this layer” notice, so this cover stays.'
+    )
+    expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png'))
+    expect(toasts.undoToast).not.toHaveBeenCalled()
+  })
+
+  it('never offers the PSD’s preview on a sidecar cover', async () => {
+    setup({
+      [IPC_CHANNELS.MOCKUP_DETAIL]: () =>
+        ok({ ...single, item: { ...single.item, coverSource: 'sidecar' } })
+    })
+    await editing()
+    expect(button('Replace')).not.toBeNull()
+    expect(button('Use the PSD’s preview')).toBeNull()
+  })
+
   it('Esc while a cover is being replaced cancels that and leaves the sidebar open', async () => {
     let finish: (value: unknown) => void = () => {}
     setup({

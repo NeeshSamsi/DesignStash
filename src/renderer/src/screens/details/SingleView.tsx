@@ -123,6 +123,7 @@ export function SingleView({ data, edit, kind }: SingleViewProps) {
           coverSource={item.coverSource}
           missing={item.coverMissing}
           ui={data.coverUi}
+          errorMessage={data.coverError}
           imageSize={data.imageSize}
           onCover={data.replaceCover}
           onUsePsdPreview={data.useEmbeddedCover}

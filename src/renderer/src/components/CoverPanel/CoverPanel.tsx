@@ -30,7 +30,10 @@ export interface CoverPanelProps
   onCover?: (file: File) => void
   /** Zoom, or Space on the cover, opens the Lightbox. */
   onZoom?: () => void
-  /** "Use the PSD’s preview", offered when the cover isn't the embedded preview. */
+  /**
+   * "Use the PSD’s preview", offered on an uploaded cover. A sidecar only stands in when the PSD has
+   * no preview of its own or its own is the kit's notice, so it is never offered there.
+   */
   onUsePsdPreview?: () => void
   /** Esc while replacing. The old cover stays. */
   onCancelReplace?: () => void
@@ -43,7 +46,8 @@ export interface CoverPanelProps
 
 /**
  * The source tag. The PSD's own preview is the normal case and says nothing; a chosen cover says so.
- * A sidecar image is used automatically, only when the PSD has no embedded preview, so it is always the cover.
+ * A sidecar image is used automatically when the PSD has no preview of its own, or when its own is
+ * only the kit's notice ("Delete this layer"), so it is always the cover.
  */
 const SOURCE_TAG = {
   embedded: '',
@@ -233,7 +237,7 @@ export function CoverPanel({
                 className="w-full"
                 onClick={intake.openPicker}
               />
-              {source !== 'embedded' && (
+              {source === 'uploaded' && (
                 <Button
                   variant="secondary"
                   size="sm"

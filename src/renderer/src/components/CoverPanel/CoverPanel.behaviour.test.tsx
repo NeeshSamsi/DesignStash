@@ -58,14 +58,16 @@ describe('CoverPanel · cover image', () => {
     expect(screen.queryByText('Cropped to 4:3')).toBeNull()
   })
 
-  it('reveals Replace on hover, plus "Use the PSD’s preview" only when the cover is not the embedded preview', () => {
+  it('reveals Replace on hover, plus "Use the PSD’s preview" only on an uploaded cover', () => {
     const { rerender } = renderPanel()
     expect(screen.getByRole('button', { name: 'Replace' })).not.toBeNull()
     expect(screen.queryByRole('button', { name: 'Use the PSD’s preview' })).toBeNull()
     rerender(<CoverPanel source="uploaded" />)
     expect(screen.getByRole('button', { name: 'Use the PSD’s preview' })).not.toBeNull()
+    // A sidecar stands in for a PSD preview that is missing or only the kit's notice: main refuses it.
     rerender(<CoverPanel source="sidecar" />)
-    expect(screen.getByRole('button', { name: 'Use the PSD’s preview' })).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Replace' })).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Use the PSD’s preview' })).toBeNull()
   })
 
   it('uses the PSD’s preview instantly from its button', () => {

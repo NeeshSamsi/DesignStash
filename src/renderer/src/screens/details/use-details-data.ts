@@ -3,6 +3,7 @@ import type { ApprovalTag } from '@shared/approval'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { CoverChange, MockupDetail } from '@shared/library'
 import type { TagTree } from '@shared/tags'
+import { coverRefusal } from '@renderer/components/CoverPanel/cover-refusal'
 import type { NewTagRequest, TagVocabularyCategory } from '@renderer/components/TagEditor'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
@@ -71,6 +72,8 @@ export function useDetailsData(id: number) {
   /** Bumps when a cover changed, so the <img> asks for the new file. */
   const [coverVersion, setCoverVersion] = useState(0)
   const [coverUi, setCoverUi] = useState<CoverUi>('default')
+  /** Why main kept the cover (a PSD preview that is only the kit's notice, or none); the panel's error line. */
+  const [coverError, setCoverError] = useState<string | undefined>(undefined)
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | undefined>()
   // A replace the person cancelled with Esc: its result must not touch the screen.
   const replaceToken = useRef(0)
@@ -253,9 +256,11 @@ export function useDetailsData(id: number) {
 
   const applyCover = (change: CoverChange) => {
     if (!change.ok) {
+      setCoverError(coverRefusal(change.reason))
       setCoverUi('error')
       return
     }
+    setCoverError(undefined)
     setCoverUi('default')
     setImageSize({ width: change.width, height: change.height })
     setCoverVersion((version) => version + 1)
@@ -288,6 +293,7 @@ export function useDetailsData(id: number) {
       return
     }
     if (!change) {
+      setCoverError(undefined)
       setCoverUi('error')
       return
     }
@@ -395,6 +401,7 @@ export function useDetailsData(id: number) {
     dismissPhotoshop: () => setPhotoshop(null),
     coverVersion,
     coverUi,
+    coverError,
     imageSize,
     replaceCover,
     useEmbeddedCover,

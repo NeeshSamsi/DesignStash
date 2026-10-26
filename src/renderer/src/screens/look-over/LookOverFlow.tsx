@@ -5,6 +5,7 @@ import { AiStatus } from '@renderer/components/AiStatus'
 import { Button } from '@renderer/components/Button'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { CoverPanel } from '@renderer/components/CoverPanel'
+import { coverRefusal } from '@renderer/components/CoverPanel/cover-refusal'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { FlowModal } from '@renderer/components/FlowModal'
 import { Lightbox } from '@renderer/components/Lightbox'
@@ -193,6 +194,8 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const [busy, setBusy] = useState(false)
   const [asking, setAsking] = useState(false)
   const [coverState, setCoverState] = useState<'default' | 'replacing' | 'error'>('default')
+  /** Why main kept the cover when the PSD's own preview was asked for; the panel's error line. */
+  const [coverError, setCoverError] = useState<string | undefined>(undefined)
   const [zooming, setZooming] = useState(false)
   const { vocabulary, createTag } = useTagVocabulary()
   // The AI's side of each mockup (design L6): main's latest items and runs, and what the person did.
@@ -706,6 +709,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
 
   const replaceCover = (file: File) => {
     if (!item) return
+    setCoverError(undefined)
     setCoverState('replacing')
     void window.api
       .invoke(IPC_CHANNELS.MOCKUP_SET_COVER, {
@@ -732,15 +736,23 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     void window.api
       .invoke(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: item.mockupId })
       .then((res) => {
-        if (res.success && res.data.ok) {
-          setCover(item.mockupId, {
-            path: res.data.coverPath,
-            source: res.data.coverSource,
-            missing: false,
-            width: res.data.width,
-            height: res.data.height
-          })
+        if (!res.success) return
+        const change = res.data
+        if (!change.ok) {
+          // Main kept the cover: say why, where the cover's errors show.
+          setCoverError(coverRefusal(change.reason))
+          setCoverState('error')
+          return
         }
+        setCoverError(undefined)
+        setCoverState('default')
+        setCover(item.mockupId, {
+          path: change.coverPath,
+          source: change.coverSource,
+          missing: false,
+          width: change.width,
+          height: change.height
+        })
       })
   }
 
@@ -841,6 +853,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
           <CoverPanel
             source={panelSource(cover)}
             state={coverState}
+            {...(coverError ? { errorMessage: coverError } : {})}
             coverMissing={cover.missing}
             showDeck={theDeck.showDeck}
             deckMore={theDeck.deckMore}
