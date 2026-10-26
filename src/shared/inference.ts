@@ -51,6 +51,12 @@ export interface InferenceProvider {
   stop?(): Promise<void>
   /** What the model does with a person's edit to a pile top (design/specs/look-over.md, L7). */
   pileEdits?: PileEditSteps
+  /**
+   * A pile's variations (design/specs/pile-titles.md, L8): the model's words for each mockup, in
+   * pile order (the top first), from one request; null where it gave none or said "same". Left out
+   * by a model whose piles take the fallback (Apple).
+   */
+  pileVariations?(pile: { coverPath: string; fileName: string }[]): Promise<(string | null)[]>
 }
 
 /** A mockup's description and tag labels. */

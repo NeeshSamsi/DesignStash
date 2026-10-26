@@ -5,19 +5,11 @@ import sharp from 'sharp'
  * top included, that follow the pile's base title ("Long scroll MacBook · side view"). The 4B and
  * the 9B name them in one request for the whole pile: its covers numbered in one image, with their
  * file names (round 4 B, design/research/ai-round4.md). On the eval's 12 piles that got the 9B 35 of
- * 41 right (11 of 12 tops) at about 4 s a pile, and the 4B 26 of 41 at about 2 s. Apple is never
- * asked, since half to two thirds of its words were wrong. A mockup the model calls "same", or gives
- * nothing for, gets no words here, and takes the fallback (its file marker or number) where the
- * pile's titles are kept.
+ * 41 right (11 of 12 tops) at about 4 s a pile, and the 4B 26 of 41 at about 2 s. Their profiles
+ * say so (`PromptProfile.variations`); Apple is never asked, since half to two thirds of its words
+ * were wrong. A mockup the model calls "same", or gives nothing for, gets no words here, and
+ * `PileTitles.landAi` gives it the fallback (its file marker or number).
  */
-
-/** The models that name a pile's variations; every other one leaves them to the fallback. */
-const ASKS = new Set(['qwen3-vl-4b', 'qwen3.5-9b'])
-
-/** Whether the active model is asked for a pile's variations. */
-export function asksForVariations(model: string | null): boolean {
-  return model !== null && ASKS.has(model)
-}
 
 export const PILE_VARIATION_SYSTEM =
   "You help keep a designer's mockup library tidy. A pile holds variants of one mockup: other angles, scenes or states of the same product. Each mockup in a pile gets a short variation after the pile's title, such as \"side view\", \"on gravel\" or \"folded\" for a bike, so the person can tell them apart. Write in English."

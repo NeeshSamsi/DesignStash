@@ -44,6 +44,12 @@ describe('prompt profiles', () => {
     }
   })
 
+  it("names a pile's variations with the 4B and the 9B, and leaves Apple's piles to the fallback (round 4 B)", () => {
+    expect(qwen3vl.variations).toBe(true)
+    expect(qwen35.variations).toBe(true)
+    expect(apple.variations).toBeUndefined()
+  })
+
   it('checks the scene things from the tuning, for every model', () => {
     for (const profile of [qwen3vl, qwen35, apple]) expect(profile.sceneThings).toBe(SCENE_THINGS)
   })

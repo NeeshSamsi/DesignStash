@@ -42,6 +42,11 @@ export interface PromptProfile {
    */
   objectHint?: boolean
   /**
+   * Names a pile's variations, the whole pile in one request (`pile-variations.ts`; the 4B and the
+   * 9B, round 4 B). Left out, the pile's mockups take the fallback: their file markers or numbers.
+   */
+  variations?: boolean
+  /**
    * The scene checks look at their image scaled to fit this many pixels (the 4B: 512). Left out,
    * they see it at the size the answer did. Round 4's sp-check512 gave the 4B the same 270 answers
    * and check verdicts at 512 px, 4% quicker (design/research/ai-round4.md, C).

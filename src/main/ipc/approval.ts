@@ -26,6 +26,8 @@ export function registerApprovalHandlers(ctx: HandlerContext): void {
     const queue = await lookOver.open()
     const opensOn = queue.resume?.mockupId ?? queue.units[0]?.items[0]?.mockupId
     if (opensOn !== undefined) showFirst(opensOn)
+    // A pile whose own suggestions came in while Look it over was shut is named now that its drafts are made (L8).
+    for (const unit of queue.units) if (unit.kind === 'pile') void inferenceQueueFor(ctx).askPile(unit.unitId)
     return queue
   })
   registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, (args) => lookOver.saveDraft(args))

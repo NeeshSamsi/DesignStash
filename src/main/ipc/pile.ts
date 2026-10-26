@@ -5,7 +5,7 @@ import { StashService } from '../import/stash-service'
 import { PileService } from '../library/pile-service'
 import { PileTitles } from '../library/pile-titles'
 import type { HandlerContext } from './context'
-import { countsChanged } from './library-effects'
+import { countsChanged, inferenceQueueFor } from './library-effects'
 import { registerIpcHandler } from './register'
 
 export function registerPileHandlers(ctx: HandlerContext): void {
@@ -26,9 +26,15 @@ export function registerPileHandlers(ctx: HandlerContext): void {
     if (pileId !== null && repo.mockups.getMockup(pileId)?.stage === 'to_stash') await lookOver.draftsFor(pileId)
   }
 
-  registerIpcHandler(IPC_CHANNELS.PILE_CREATE, (args) => piles.create(args.memberIds, args.topId))
-  registerIpcHandler(IPC_CHANNELS.PILE_ADD, (args) => piles.add(args.pileId, args.memberIds))
-  registerIpcHandler(IPC_CHANNELS.PILE_MERGE, (args) => piles.merge(args.sourceIds, args.targetId))
+  // A mockup that joins takes its file marker or number at once; the model then names the pile again (L8).
+  const joined = <T extends { pileId: number }>(result: T): T => {
+    void inferenceQueueFor(ctx).askPile(result.pileId)
+    return result
+  }
+
+  registerIpcHandler(IPC_CHANNELS.PILE_CREATE, (args) => joined(piles.create(args.memberIds, args.topId)))
+  registerIpcHandler(IPC_CHANNELS.PILE_ADD, (args) => joined(piles.add(args.pileId, args.memberIds)))
+  registerIpcHandler(IPC_CHANNELS.PILE_MERGE, (args) => joined(piles.merge(args.sourceIds, args.targetId)))
   registerIpcHandler(IPC_CHANNELS.PILE_SET_TOP, (args) => piles.setTop(args.pileId, args.topId))
   registerIpcHandler(IPC_CHANNELS.PILE_DISBAND, (args) => piles.disband(args.pileId))
   registerIpcHandler(IPC_CHANNELS.PILE_REMOVE, (args) =>

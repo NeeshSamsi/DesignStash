@@ -707,4 +707,166 @@ describe('what Look it over is told about a run (design L6)', () => {
       expect(events.flatMap((e) => e.updates).filter((u) => u.mockupId === a.id).map((u) => u.status)).toEqual(['pending', 'sniffing', 'ready'])
     })
   })
+
+  describe("a pile's variations (L8)", () => {
+    /** A pile waiting in To stash, its drafts made as Look it over makes them. */
+    const waitingPile = (...names: string[]) => {
+      const rows = names.map((n) => imported(n))
+      repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+      repo.mockups.setStage(rows.map((r) => r.id), 'to_stash')
+      for (const r of rows) repo.drafts.ensureDraft(r.id, { title: 'Phone', description: '', tagIds: [] })
+      return rows
+    }
+    const variation = (id: number) => {
+      const d = repo.drafts.getDraft(id)!
+      return d.variation === null ? null : { words: d.variation, source: d.variationSource }
+    }
+    /** A provider that writes suggestions and names a pile's variations as told, noting how many suggestions came first. */
+    const namer = (answer: (pile: { coverPath: string; fileName: string }[]) => Promise<(string | null)[]> | (string | null)[]) => {
+      const stub = stubProvider((input) => result(input.fileName))
+      const before: number[] = []
+      const pileVariations = vi.fn(async (pile: { coverPath: string; fileName: string }[]) => {
+        before.push(stub.calls.length)
+        return answer(pile)
+      })
+      return { ...stub, provider: { ...stub.provider, pileVariations }, pileVariations, before }
+    }
+
+    it("asks a pile for every mockup's variation once its own suggestions are done, and lands them", async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      const named = namer(() => ['front', 'side view'])
+      const landed: [number, number[]][] = []
+      const queue = queueWith(named.provider, { onVariations: (pileId, ids) => landed.push([pileId, ids]) })
+
+      await queue.enqueue([top!.id, side!.id])
+      await queue.idle()
+
+      expect(named.before).toEqual([2])
+      expect(named.pileVariations.mock.calls[0]![0]).toEqual([
+        { coverPath: top!.coverPath, fileName: 'phone_front.psd' },
+        { coverPath: side!.coverPath, fileName: 'phone_side.psd' }
+      ])
+      expect([variation(top!.id), variation(side!.id)]).toEqual([
+        { words: 'front', source: 'ai' },
+        { words: 'side view', source: 'ai' }
+      ])
+      expect(landed).toEqual([[top!.id, [top!.id, side!.id]]])
+    })
+
+    it('numbers words the app gives twice, gives "same" or no answer the fallback, and keeps words a person typed', async () => {
+      const [a, b, c, d] = waitingPile('tote-a', 'tote-b', 'tote-c', 'tote-d')
+      repo.drafts.updateDraft(d!.id, { variation: 'my favourite', variationSource: 'typed' })
+      const queue = queueWith(namer(() => ['side', 'side', null, 'front']).provider)
+
+      await queue.enqueue([a!.id, b!.id, c!.id, d!.id])
+      await queue.idle()
+
+      expect([a, b, c, d].map((m) => variation(m!.id))).toEqual([
+        { words: 'side', source: 'ai' },
+        { words: 'side 2', source: 'ai' },
+        { words: 'C', source: 'marker' },
+        { words: 'my favourite', source: 'typed' }
+      ])
+    })
+
+    it('waits while any mockup in the pile is still waiting for its own suggestion', async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+      const named = namer(() => ['front', 'side'])
+      const queue = queueWith(named.provider)
+
+      await queue.enqueue([top!.id])
+      await queue.idle()
+      expect(named.pileVariations).not.toHaveBeenCalled()
+
+      await queue.enqueue([side!.id])
+      await queue.idle()
+      expect(named.pileVariations).toHaveBeenCalledOnce()
+    })
+
+    it("asks nothing until Look it over has made the pile's drafts, then asks when told to", async () => {
+      const rows = [imported('phone_front'), imported('phone_side')]
+      repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+      repo.mockups.setStage(rows.map((r) => r.id), 'to_stash')
+      const named = namer(() => ['front', 'side'])
+      const queue = queueWith(named.provider)
+
+      await queue.enqueue(rows.map((r) => r.id))
+      await queue.idle()
+      expect(named.pileVariations).not.toHaveBeenCalled()
+
+      for (const r of rows) repo.drafts.ensureDraft(r.id, { title: 'Phone', description: '', tagIds: [] })
+      await queue.askPile(rows[0]!.id)
+      await queue.idle()
+      expect(named.pileVariations).toHaveBeenCalledOnce()
+    })
+
+    it('asks a pile again when a mockup joins it, and not while it stays the same', async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      const named = namer((pile) => pile.map((m) => m.fileName.replace('.psd', '')))
+      const queue = queueWith(named.provider)
+      await queue.enqueue([top!.id, side!.id])
+      await queue.idle()
+
+      await queue.askPile(top!.id)
+      await queue.idle()
+      expect(named.pileVariations).toHaveBeenCalledTimes(1)
+
+      const back = imported('phone_back', { aiStatus: 'ready', aiResult: result('back') })
+      repo.piles.addToPile(top!.id, [back.id])
+      repo.mockups.setStage([back.id], 'to_stash')
+      repo.drafts.ensureDraft(back.id, { title: 'Phone', description: '', tagIds: [] })
+      await queue.askPile(top!.id)
+      await queue.idle()
+
+      expect(named.pileVariations).toHaveBeenCalledTimes(2)
+      expect(named.pileVariations.mock.calls[1]![0]).toHaveLength(3)
+      expect(variation(back.id)).toEqual({ words: 'phone_back', source: 'ai' })
+    })
+
+    it('names a pile in My Stash, on its mockups, when a mockup joins it there', async () => {
+      const rows = ['clay', 'realistic'].map((n) => imported(`watch-${n}`, { aiStatus: 'ready', aiResult: result(n) }))
+      repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+      repo.mockups.setStage(rows.map((r) => r.id), 'stashed')
+      const queue = queueWith(namer(() => ['clay render', 'realistic']).provider)
+
+      await queue.askPile(rows[0]!.id)
+      await queue.idle()
+
+      expect(rows.map((r) => repo.mockups.getMockup(r.id)!.variation)).toEqual(['clay render', 'realistic'])
+    })
+
+    it("leaves a model that doesn't name variations (Apple) to the fallback", async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      const queue = queueWith(stubProvider((input) => result(input.fileName)).provider)
+      await queue.enqueue([top!.id, side!.id])
+      await queue.askPile(top!.id)
+      await queue.idle()
+      expect([variation(top!.id), variation(side!.id)]).toEqual([null, null])
+    })
+
+    it('keeps the fallback when the request fails or gets stuck, and the queue moves on', async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      const stuck = later<(string | null)[]>()
+      const named = namer(() => stuck.promise)
+      const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
+      const timers: (() => void)[] = []
+      const queue = queueWith({ ...named.provider, stop }, {
+        timer: (_ms, fire) => {
+          timers.push(fire)
+          return () => {}
+        }
+      })
+      const other = imported('other')
+
+      await queue.enqueue([top!.id, side!.id, other.id])
+      await vi.waitFor(() => expect(named.pileVariations).toHaveBeenCalledOnce())
+      timers.at(-1)!()
+      await queue.idle()
+
+      expect(stop).toHaveBeenCalledOnce()
+      expect(variation(top!.id)).toBeNull()
+      expect(status(other.id)).toBe('ready')
+    })
+  })
 })

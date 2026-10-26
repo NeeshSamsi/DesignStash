@@ -12,7 +12,8 @@ import { MASK_RULE, NAMES_ONLY, SHIPPED, requestFrom } from './request'
  * object the cover as it is shows, and told that name. The scene check looks at the cover as it is,
  * scaled to 512 px (round 4: the same answers, 4% quicker), and a refusal asks once more. Where the
  * label leaves a cover too blank to send (leggings that fill the slot, on a grey ground), the slot is
- * blurred grey instead (eval ck-7e), so the answer still has an image.
+ * blurred grey instead (eval ck-7e), so the answer still has an image. It names a pile's variations
+ * in one request (26 of 41 right on round 4's piles, about 2 s a pile).
  */
 export const profile: PromptProfile = {
   buildRequest: requestFrom({ ...SHIPPED, noImage: NAMES_ONLY, maskRule: MASK_RULE }),
@@ -22,5 +23,6 @@ export const profile: PromptProfile = {
   blankFallback: 'soft',
   objectHint: true,
   checkEdge: 512,
-  redo: true
+  redo: true,
+  variations: true
 }

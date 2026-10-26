@@ -295,6 +295,8 @@ describe('AppleInferenceProvider pile edits', () => {
   it('judges no pile edits', () => {
     const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper: stubHelper('{}').helper })
     expect(provider.pileEdits.check).toBeUndefined()
+    // Apple's variation words were mostly wrong (round 4 B): its piles take the fallback.
+    expect('pileVariations' in provider).toBe(false)
   })
 
   it("rewrites the variant's own description with the change, from the text alone", async () => {

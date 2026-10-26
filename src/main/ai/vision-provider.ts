@@ -6,6 +6,7 @@ import { normaliseTagLabel } from '../../shared/tags'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
 import { CHECK_SCHEMA, ENTRY_SCHEMA, checkPrompt, pileEditRequest, readCheck, readRewrite, rewritePrompt } from './pile-edit'
 import { objectHintLine, objectHintRequest, readObjectHint } from './object-hint'
+import { askPileVariations } from './pile-variations'
 import { draftLine, placeholderQuestion, placeholderWordsIn } from './placeholder-check'
 import type { PromptProfile } from './prompts/profile'
 import { isPlaceholder } from '../psd/placeholder'
@@ -398,6 +399,8 @@ export class VisionInferenceProvider implements InferenceProvider {
   readonly id = 'vision'
   /** As the profile says (`PromptProfile.pileEdits`): the check only for a model that judges, the rewrite unless it copies. */
   readonly pileEdits: PileEditSteps
+  /** A pile's variations in one request, for a profile that names them (`PromptProfile.variations`). */
+  readonly pileVariations?: NonNullable<InferenceProvider['pileVariations']>
 
   constructor(
     readonly name: string,
@@ -407,6 +410,9 @@ export class VisionInferenceProvider implements InferenceProvider {
     this.pileEdits = {
       ...(how.judge && { check: (coverPath: string, edit: PileEdit, added: string[]) => this.checkEdit(coverPath, edit, added) }),
       ...(!how.copy && { rewrite: (edit: PileEdit, entry: PileEditEntry) => this.rewriteForEdit(edit, entry) })
+    }
+    if (deps.prompt.variations) {
+      this.pileVariations = (pile) => askPileVariations(pile, async (request) => (await this.deps.complete(request)).text)
     }
   }
 

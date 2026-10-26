@@ -153,6 +153,26 @@ describe('VisionInferenceProvider.analyze', () => {
     expect(dispose).toHaveBeenCalledOnce()
   })
 
+  it("names a pile's variations in one request when its profile asks (the 4B, the 9B), and has no way to otherwise", async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'vision-pile-'))
+    const covers = await Promise.all(
+      ['front', 'side'].map(async (name) => {
+        const path = join(dir, `${name}.png`)
+        await sharp({ create: { width: 400, height: 300, channels: 3, background: '#808080' } }).png().toFile(path)
+        return path
+      })
+    )
+    const complete = vi.fn<(req: ChatRequest) => Promise<ChatReply>>(async () => ({ text: JSON.stringify({ variations: ['front view', 'same'] }) }))
+    const provider = new VisionInferenceProvider('m', { prompt: { ...SHIPPED, variations: true }, complete, readImage: async () => IMAGE })
+    const pile = covers.map((coverPath, i) => ({ coverPath, fileName: `phone_${i}.psd` }))
+
+    expect(await provider.pileVariations!(pile)).toEqual(['front view', null])
+    expect(complete).toHaveBeenCalledOnce()
+    expect(userText(complete.mock.calls[0]![0])).toContain('1 = phone_0.psd, 2 = phone_1.psd')
+    expect(makeProvider().provider.pileVariations).toBeUndefined()
+    await rm(dir, { recursive: true, force: true })
+  })
+
   it("says whether its runtime has the model loaded, and loads it on load()", async () => {
     let ready = false
     const load = vi.fn(async () => {

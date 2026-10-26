@@ -37,7 +37,8 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
         // "Still sniffing" also rides on the inbox counts.
         countsChanged(ctx)
         settleDrafts(ctx, event.updates)
-      }
+      },
+      onVariations: (_pileId, mockupIds) => pushDrafts(ctx, mockupIds)
     })
     queues.set(ctx, queue)
   }
@@ -56,6 +57,18 @@ function settleDrafts(ctx: HandlerContext, updates: AiStatusEvent['updates']): v
       .settle(mockupId)
       .then((item) => item && ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item))
       .catch((err: unknown) => console.error('[AI] Could not fill in a draft:', err))
+  }
+}
+
+/** A pile's variations landed (design L8): Look it over shows each changed mockup's new words. */
+function pushDrafts(ctx: HandlerContext, mockupIds: number[]): void {
+  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider(), { aiStatusOf: (id) => inferenceQueueFor(ctx).statusOf(id) })
+  for (const id of mockupIds) {
+    if (ctx.repo.mockups.getMockup(id)?.stage !== 'to_stash') continue
+    lookOver
+      .item(id)
+      .then((item) => item && ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item))
+      .catch((err: unknown) => console.error('[AI] Could not show a pile variation:', err))
   }
 }
 

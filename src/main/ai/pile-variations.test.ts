@@ -5,7 +5,6 @@ import sharp from 'sharp'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   PILE_VARIATION_SYSTEM,
-  asksForVariations,
   askPileVariations,
   pileSheet,
   pileVariationsRequest,
@@ -32,15 +31,6 @@ type Request = {
   temperature: number
   max_tokens: number
 }
-
-describe('asksForVariations', () => {
-  it('asks the 4B and the 9B, and never Apple, whose words were mostly wrong (round 4 B)', () => {
-    expect(asksForVariations('qwen3-vl-4b')).toBe(true)
-    expect(asksForVariations('qwen3.5-9b')).toBe(true)
-    expect(asksForVariations('apple')).toBe(false)
-    expect(asksForVariations(null)).toBe(false)
-  })
-})
 
 describe('pileSheet', () => {
   it('lays the covers out numbered, three to a row, 1024 px wide, as the eval measured', async () => {
