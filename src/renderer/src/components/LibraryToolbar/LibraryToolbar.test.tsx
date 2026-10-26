@@ -74,8 +74,9 @@ describe('LibraryToolbar', () => {
   it('draws Filter and the sort as hairline controls with smaller text', () => {
     render(<LibraryToolbar />)
     const filter = screen.getByRole('button', { name: /Filter/ })
+    expect(filter.getAttribute('data-variant')).toBe('outline-subtle')
     expect(filter.className).toContain('border-subtle')
-    expect(filter.className).toContain('bg-transparent')
+    expect(filter.className).not.toMatch(/(^|\s)bg-/)
     expect(filter.className).toContain('type-label-xs-medium')
     const sort = screen.getByRole('combobox', { name: 'Sort order' })
     expect(sort.className).toContain('border-subtle')

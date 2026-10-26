@@ -189,9 +189,8 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
             <p className="type-body-sm-regular text-muted-foreground">{SORT_GUIDANCE}</p>
             {state.selectedTiles.length >= 2 && (
               <Button
-                variant="outline"
+                variant="outline-subtle"
                 size="sm"
-                className="border-subtle hover:border-input"
                 disabled={!canNewPile(state)}
                 onClick={() => send({ type: 'new-pile' })}
               >

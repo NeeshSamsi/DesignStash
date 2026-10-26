@@ -8,6 +8,7 @@ export const buttonVariants = cva('', {
       primary: '',
       secondary: '',
       outline: '',
+      'outline-subtle': '',
       ghost: '',
       destructive: '',
       link: ''

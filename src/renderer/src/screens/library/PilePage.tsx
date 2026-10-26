@@ -172,10 +172,9 @@ export function PilePage({ pile }: { pile: OpenPile }) {
     <div className="flex min-h-full flex-col gap-4">
       <HeaderActions>
         <Button
-          variant="outline"
+          variant="outline-subtle"
           size="sm"
           label="Disband pile"
-          className="border-subtle bg-transparent hover:border-input hover:bg-transparent"
           onClick={() => void disband()}
         />
         <Button variant="secondary" size="sm" label="Edit pile details" onClick={editPile} />

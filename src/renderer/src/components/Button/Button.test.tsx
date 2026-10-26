@@ -17,6 +17,14 @@ describe('Button', () => {
     }
   })
 
+  it('draws outline-subtle as the quiet outline: a subtle edge, no fill, the input edge on hover', () => {
+    render(<Button variant="outline-subtle" label="Filter" />)
+    const button = screen.getByRole('button', { name: 'Filter' })
+    expect(button.className).toContain('border-subtle')
+    expect(button.className).toContain('hover:border-input')
+    expect(button.className).not.toMatch(/(^|\s)bg-/)
+  })
+
   it('draws the two small icon sizes at the ui sizes', () => {
     for (const size of ['icon-xs', 'icon-sm'] as const) {
       const { container, unmount } = render(<Button size={size} aria-label="Dismiss" />)

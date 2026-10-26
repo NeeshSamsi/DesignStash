@@ -15,6 +15,7 @@ const VARIANT = {
   primary: 'default',
   secondary: 'secondary',
   outline: 'outline',
+  'outline-subtle': 'outline-subtle',
   ghost: 'ghost',
   destructive: 'destructive',
   link: 'link'
