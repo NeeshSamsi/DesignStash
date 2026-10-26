@@ -3,14 +3,14 @@
   "source": {
     "fileKey": "fB8PHTrzz89lAQOhXbsHMK",
     "componentsPage": "189:343",
-    "exportedAt": "2026-10-23"
+    "exportedAt": "2026-10-26"
   },
   "components": [
     {
       "name": "Button",
       "figmaId": "211:2091",
       "section": "2 · Primitives (shadcn)",
-      "description": "Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = 2px border/focus ring outside.\nSync 2026-10: sizes icon-xs (24px, 16px icon: Toast and Banner dismiss, TagTree row menu) and icon-sm (32px, 16px icon) match ui/button.tsx.",
+      "description": "Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = the shared focus ring (below).\nSync 2026-10: sizes icon-xs (24px, 16px icon: Toast and Banner dismiss, TagTree row menu) and icon-sm (32px, 16px icon) match ui/button.tsx.\nvariant=outline-subtle (2026-10-24): the quiet outline, border/subtle with no fill, border/input on hover. Used for toolbar and toast actions (Filter, Make pile, Disband pile, Undo, Retry); code sets it today with a className on LibraryToolbar and Toast.\nFocus ring (2026-10-24), on every focusable component: the focus state keeps the resting border and adds a separate 2px border/focus ring 2px outside the control (radius = the control’s + 4; radius/card-ring for cards), matching the code’s focus-ring utility. It never changes the control’s size.",
       "code": "ui/button.tsx (variant=\"default\" ↔ primary, size=\"default\" ↔ base)",
       "variants": {
         "variant": [
@@ -19,7 +19,8 @@
           "outline",
           "ghost",
           "destructive",
-          "link"
+          "link",
+          "outline-subtle"
         ],
         "size": [
           "xs",
@@ -61,7 +62,7 @@
       "name": "Input",
       "figmaId": "212:190",
       "section": "2 · Primitives (shadcn)",
-      "description": "Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.",
+      "description": "Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.\nstate=writing (2026-10-24): the AI is writing this field. The placeholder “Writing with AI…” pulses like Skeleton (animate-pulse; static with reduced motion). It stays a real, focusable field: typing makes it a normal field that belongs to the person.",
       "code": "ui/input.tsx + input-group",
       "variants": {
         "variant": [
@@ -74,7 +75,8 @@
           "filled",
           "focus",
           "invalid",
-          "disabled"
+          "disabled",
+          "writing"
         ]
       },
       "booleans": {
@@ -95,7 +97,7 @@
       "name": "Textarea",
       "figmaId": "212:205",
       "section": "2 · Primitives (shadcn)",
-      "description": "Multi-line description field (auto-grow is behaviour).",
+      "description": "Multi-line description field (auto-grow is behaviour).\nstate=ai-filled (2026-10-24): the background/primary-weak tint on a field the AI just filled; it fades after 1.2s. state=writing (2026-10-24): as Input’s writing state.",
       "code": "ui/textarea.tsx",
       "variants": {
         "state": [
@@ -103,7 +105,9 @@
           "filled",
           "focus",
           "invalid",
-          "disabled"
+          "disabled",
+          "ai-filled",
+          "writing"
         ],
         "rows": [
           "3",
@@ -145,6 +149,26 @@
       },
       "swaps": {},
       "exposed": []
+    },
+    {
+      "name": "TitlePair",
+      "figmaId": "1160:26996",
+      "section": "2 · Primitives (shadcn)",
+      "description": "The Title control for a mockup in a pile (Neesh, 2026-10-24): the pile’s base title, shared by every mockup in it (pile icon), then this mockup’s variation of 1 to 3 words, joined by a dot. Editing the base renames it on every mockup in the pile; the variation belongs to this mockup. Both Inputs are exposed, so each takes its own state (filled, focus, writing). Mockups on their own keep the single Title Input. size=compact gives the variation 120px, for narrow panels such as the details sidebar. The separator is a 4px round dot in text/secondary (in code: a span, size-1 rounded-full, filled with the text/secondary colour). Rules: design/specs/pile-titles.md.",
+      "code": null,
+      "variants": {
+        "size": [
+          "default",
+          "compact"
+        ]
+      },
+      "booleans": {},
+      "texts": {},
+      "swaps": {},
+      "exposed": [
+        "base:Input",
+        "variation:Input"
+      ]
     },
     {
       "name": "Checkbox",
@@ -406,7 +430,7 @@
       "name": "Popover",
       "figmaId": "213:341",
       "section": "2 · Primitives (shadcn)",
-      "description": "Anchored panel (tag filter, tag suggestions).",
+      "description": "Anchored panel (tag filter, tag suggestions).\n2026-10-24: content is a real slot, so screens put their content inside the popover. Three regions, separated by dividers. Header: title, an optional description line (show-description) and the link button. Content: the slot. Footer: buttons ordered light to heavy, right-aligned (secondary, primary). No key chips: Return and Esc work as in any macOS dialog. Elevation: shadow/raised.",
       "code": "ui/popover.tsx",
       "variants": {
         "size": [
@@ -416,13 +440,19 @@
       },
       "booleans": {
         "header": true,
-        "footer": false
+        "footer": false,
+        "show-description": false
       },
       "texts": {
-        "title": "Tags"
+        "title": "Tags",
+        "description": "A short line under the title."
       },
       "swaps": {},
-      "exposed": []
+      "exposed": [
+        "content:content",
+        "secondary:Button",
+        "primary:Button"
+      ]
     },
     {
       "name": "Command",
@@ -1198,7 +1228,7 @@
       "name": "CoverImage",
       "figmaId": "217:1121",
       "section": "6 · Library",
-      "description": "The one way to render a mockup cover (4:3, squircle mask). loading is a plain skeleton block in background/surface-3, never a spinner.",
+      "description": "The one way to render a mockup cover (4:3, a plain rounded rectangle with no squircle mask). loading is a plain skeleton block in background/surface-3, never a spinner.\nshow-border (2026-10-24): a 1px border/base edge inside the cover, for covers that overlap or sit on the same surface (stacked thumbnails). The sample device scales with the cover at every size (2026-10-24).",
       "code": "components/CoverImage/CoverImage.tsx",
       "variants": {
         "size": [
@@ -1214,7 +1244,9 @@
           "missing-file"
         ]
       },
-      "booleans": {},
+      "booleans": {
+        "show-border": false
+      },
       "texts": {},
       "swaps": {},
       "exposed": []
@@ -1526,7 +1558,7 @@
       "name": "MockupMetaForm",
       "figmaId": "222:3346",
       "section": "8 · Approval & editing",
-      "description": "One title / description / tags editor for approval and detail (detail edits the title in the modal header). No status of its own: in Detail an enabled Save means unsaved changes, and a failed save is an error toast. Dirty state drives the unsaved-changes guard. Code: extract from ApprovalStepper ItemEditor + DetailModal.",
+      "description": "One title / description / tags editor for approval and detail (detail edits the title in the modal header). No status of its own: in Detail an enabled Save means unsaved changes, and a failed save is an error toast. Dirty state drives the unsaved-changes guard. Code: extract from ApprovalStepper ItemEditor + DetailModal.\nNo resting hint (retired 2026-10-24): show-hint and hint are gone; AI status lives in AiStatus above the form. state=writing (2026-10-24) replaces state=thinking: every field stays editable and says “Writing with AI…” while the AI writes; typing in one makes that field the person’s. state=thinking (a non-editable skeleton) is superseded, kept only for the superseded L3.E3.",
       "code": null,
       "variants": {
         "variant": [
@@ -1538,15 +1570,12 @@
           "invalid",
           "edited",
           "saving",
-          "thinking"
+          "thinking",
+          "writing"
         ]
       },
-      "booleans": {
-        "show-hint": true
-      },
-      "texts": {
-        "hint": "AI suggested the title, description and tags. Give them a quick check before you stash it."
-      },
+      "booleans": {},
+      "texts": {},
       "swaps": {},
       "exposed": []
     },
@@ -1582,7 +1611,7 @@
       "name": "TagChip",
       "figmaId": "217:1203",
       "section": "8 · Approval & editing",
-      "description": "Tag pill. Solid = your tag, dashed = not a tag yet. removable: × on hover; focus = keyboard ring; marked = selected by ⌫. suggested = AI suggestion (faint dashed outline, orange sparkle only; hover fills like a tag with ✓/×; clicking accepts); thinking = AI still working. new = just added (brand outline). add = the inline “+ Add tag” chip (stronger, longer dash), always first; input = that chip while typing. Rules: design/specs/tags.md.",
+      "description": "Tag pill. Solid = your tag, dashed = not a tag yet. removable: × on hover; focus = keyboard ring; marked = selected by ⌫. suggested = AI suggestion (faint dashed outline, orange sparkle only; hover fills like a tag with ✓/×; clicking accepts); thinking = AI still working. new = just added (brand outline). add = the inline “+ Add tag” chip (stronger, longer dash), always first; input = that chip while typing. Rules: design/specs/tags.md.\nvariant=removed (2026-10-24): a tag a change takes away, muted and struck, used in the edit preview. variant=suggested, state=thinking reads “Writing with AI…” (the label, pulsing) in place of the grey bar (2026-10-24).",
       "code": null,
       "variants": {
         "variant": [
@@ -1592,7 +1621,8 @@
           "suggested",
           "new",
           "add",
-          "input"
+          "input",
+          "removed"
         ],
         "state": [
           "default",
@@ -1833,7 +1863,7 @@
       "name": "ModelCard",
       "figmaId": "795:9758",
       "section": "9 · Onboarding & AI models",
-      "description": "One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.\nSync 2026-10-22: catalogue is Qwen3-VL 4B, Qwen3.5 9B and Apple’s on-device model. Apple’s card has no Delete and sits under “Built into macOS”. The Meaning search row reuses this card with the bars, the globe and Use this model hidden (MeaningSearchRow).",
+      "description": "One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.\nSync 2026-10-22: catalogue is Qwen3-VL 4B, Qwen3.5 9B and Apple’s on-device model. Apple’s card has no Delete and sits under “Built into macOS”. The Meaning search row reuses this card with the bars, the globe and Use this model hidden (MeaningSearchRow).\nQuality and speed are exposed StepBar instances (value 0 to 5) since 2026-10-24.",
       "code": "screens/settings/AiModelPane.tsx",
       "variants": {
         "state": [
@@ -1856,6 +1886,30 @@
         "size": "3.0 GB",
         "resume-note": "1.2 GB of 3.0 GB downloaded"
       },
+      "swaps": {},
+      "exposed": [
+        "quality-bar:StepBar",
+        "speed-bar:StepBar"
+      ]
+    },
+    {
+      "name": "StepBar",
+      "figmaId": "1151:270293",
+      "section": "9 · Onboarding & AI models",
+      "description": "A five-step rating bar (quality, speed). value = how many of the five 12×4 steps are filled in background/primary; the rest are background/surface-3.",
+      "code": "components/ModelCard/ModelCard.tsx (the inline Bar, 0 to 5)",
+      "variants": {
+        "value": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ]
+      },
+      "booleans": {},
+      "texts": {},
       "swaps": {},
       "exposed": []
     },
@@ -2085,7 +2139,7 @@
       "name": "PileStep",
       "figmaId": "566:15523",
       "section": "8 · Approval & editing",
-      "description": "One mockup in a pile, in PileRail: done (draft ready) · current · todo · skipped. show-connector draws the line to the next step. Rules: design/specs/piles.md.",
+      "description": "One mockup in a pile, in PileRail: done (draft ready) · current · todo · skipped. show-connector draws the line to the next step. Rules: design/specs/piles.md.\nshow-note (2026-10-23, Look it over): a caption under the label for what the AI is doing on that step: “Writing with AI…” on the one being written, “Suggestions on the way” on queued ones, “Checking your edits…”, “Edits applied”, “Edits reworded”. The connector stretches with the step. Rules: design/specs/look-over.md.",
       "variants": {
         "status": [
           "done",
@@ -2095,10 +2149,12 @@
         ]
       },
       "booleans": {
-        "show-connector": true
+        "show-connector": true,
+        "show-note": false
       },
       "texts": {
-        "label": "Variant · phone_side"
+        "label": "Variant · phone_side",
+        "note": "Writing with AI…"
       },
       "swaps": {},
       "exposed": []
@@ -2121,6 +2177,35 @@
       "swaps": {},
       "exposed": [
         "steps:content"
+      ]
+    },
+    {
+      "name": "AiStatus",
+      "figmaId": "1075:201549",
+      "section": "8 · Approval & editing",
+      "description": "What the AI is doing for the mockup on screen in Look it over: one line above the form, with up to two small actions (secondary = ghost, lighter, on the left; action = secondary button on the right). kind: working (spinner), done (sparkle), off (info), failed (alert, warning colour), none (an empty row of the same height, for a mockup whose line has had its say; the row is never added or removed while the mockup is on screen). dismissible adds Banner’s × after the actions, for the edit offer. It replaces MockupMetaForm’s hint row, in the same place, so the fields never move. Rules: design/specs/look-over.md.",
+      "code": null,
+      "variants": {
+        "kind": [
+          "working",
+          "done",
+          "off",
+          "failed",
+          "none"
+        ]
+      },
+      "booleans": {
+        "action": true,
+        "secondary-action": false,
+        "dismissible": false
+      },
+      "texts": {
+        "message": "Writing with AI…"
+      },
+      "swaps": {},
+      "exposed": [
+        "secondary:Button",
+        "action:Button"
       ]
     },
     {
