@@ -10,6 +10,7 @@ import {
   pileRequests,
   repeatedWords,
   seedDrops,
+  withOwnDrops,
   stashCall,
   type RecordedEvent
 } from './plan'
@@ -49,6 +50,21 @@ describe('seedDrops', () => {
     expect(
       seedDrops('/set', (dir) => (dir === '/set/psds' ? [] : readdir(dir))).map((d) => d.category)
     ).toEqual(['zips', 'folders', 'held-out', 'sign-off'])
+  })
+})
+
+describe('withOwnDrops: downloads that arrive as their own haul, first', () => {
+  it('drops each one alone before the categories, and keeps it out of its category\'s haul', () => {
+    const drops = withOwnDrops(seedDrops('/set', readdir), ['/set/folders/Long Website Mockup'])
+    expect(drops.slice(0, 2)).toEqual([
+      { category: 'own', paths: ['/set/folders/Long Website Mockup'] },
+      { category: 'zips', paths: ['/set/zips/a.zip', '/set/zips/b.zip'] }
+    ])
+    expect(drops.map((d) => d.category)).not.toContain('folders')
+  })
+
+  it('changes nothing without any', () => {
+    expect(withOwnDrops(seedDrops('/set', readdir), [])).toEqual(seedDrops('/set', readdir))
   })
 })
 

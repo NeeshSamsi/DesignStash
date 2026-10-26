@@ -7,8 +7,10 @@
  *                                   mockups take no room) to tmp/dev-backup-<date>[-label], and check it.
  *   pnpm seed:dev empty <backup>    empty the library, once that backup still holds it.
  *   pnpm seed:dev model <id>        make an installed model the dev app's model.
- *   pnpm seed:dev import            back up the database, then copy in, covers, masks and Sort's piles.
- *                                   No model runs.
+ *   pnpm seed:dev import [--own <path>]...
+ *                                   back up the database, then copy in, covers, masks and Sort's piles.
+ *                                   No model runs. Each --own download is dropped first, as its own
+ *                                   haul: a person's own mockups, kept through a seed from nothing.
  *   pnpm seed:dev suggest           the dev app's model writes every suggestion and names every pile's
  *                                   variations; then every pile and single is stashed with them,
  *                                   unedited, and meaning search's vectors are waited for. Writes the
@@ -63,6 +65,7 @@ import {
   repeatedWords,
   seedDrops,
   stashCall,
+  withOwnDrops,
   type LibraryShape,
   type RecordedEvent
 } from './plan'
@@ -293,10 +296,15 @@ function backUp(): string {
   return dir
 }
 
-async function runImport(): Promise<void> {
+/** `own`: downloads to drop first, each as its own haul (`--own <path>`, as many as wanted). */
+async function runImport(own: string[]): Promise<void> {
   if (!existsSync(join(TEST_SET, 'MANIFEST.md'))) throw new Error(`No test set at ${TEST_SET}.`)
   assertAppClosed()
-  const drops = seedDrops(TEST_SET, (dir) => (existsSync(dir) ? readdirSync(dir) : []))
+  const drops = withOwnDrops(
+    seedDrops(TEST_SET, (dir) => (existsSync(dir) ? readdirSync(dir) : [])),
+    own
+  )
+  for (const path of own) if (!existsSync(path)) throw new Error(`Nothing at ${path} to drop.`)
 
   const needed = drops.flatMap((d) => d.paths).reduce((sum, p) => sum + sizeOf(p), 0)
   const st = statfsSync(libraryRoot())
@@ -646,11 +654,16 @@ function runRestore(dir: string | undefined): void {
 }
 
 const [command, arg] = process.argv.slice(2)
+
+/** The paths after each `--own`. */
+function ownPaths(args: string[]): string[] {
+  return args.flatMap((a, i) => (args[i - 1] === '--own' ? [a] : []))
+}
 const commands: Record<string, () => Promise<void> | void> = {
   backup: () => runBackup(arg),
   empty: () => runEmpty(arg),
   model: () => runModel(arg),
-  import: runImport,
+  import: () => runImport(ownPaths(process.argv.slice(3))),
   suggest: runSuggest,
   report: () => runReport(arg ?? eventsFile()),
   restore: () => runRestore(arg)
@@ -658,7 +671,7 @@ const commands: Record<string, () => Promise<void> | void> = {
 const chosen = command ? commands[command] : undefined
 const run = chosen
   ? Promise.resolve().then(chosen)
-  : Promise.reject(new Error('Use: pnpm seed:dev backup [label] | empty <backup> | model <id> | import | suggest | report [events] | restore <backup>'))
+  : Promise.reject(new Error('Use: pnpm seed:dev backup [label] | empty <backup> | model <id> | import [--own <path>]... | suggest | report [events] | restore <backup>'))
 run.catch((err: unknown) => {
   console.error(`[seed] ${err instanceof Error ? err.message : String(err)}`)
   process.exit(1)

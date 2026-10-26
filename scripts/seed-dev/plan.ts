@@ -16,7 +16,8 @@ export const SEED_CATEGORIES = ['zips', 'psds', 'folders', 'held-out', 'sign-off
 const GENERATED = new Set(['folders/Mixed Drop'])
 
 export interface SeedDrop {
-  category: (typeof SEED_CATEGORIES)[number]
+  /** `own`: a download dropped as a haul of its own (`withOwnDrops`). */
+  category: (typeof SEED_CATEGORIES)[number] | 'own'
   /** Each download as dropped: a zip, a PSD or a folder, by its full path. */
   paths: string[]
 }
@@ -30,6 +31,19 @@ export function seedDrops(root: string, readdir: (dir: string) => string[]): See
       .map((name) => join(root, category, name))
     return paths.length > 0 ? [{ category, paths }] : []
   })
+}
+
+/**
+ * Downloads that come in as hauls of their own before the categories, each alone (a person's own
+ * mockups, kept through a seed from nothing), and out of the category hauls they sit in. A category
+ * left with nothing is dropped.
+ */
+export function withOwnDrops(drops: SeedDrop[], own: string[]): SeedDrop[] {
+  const mine = new Set(own)
+  const rest = drops
+    .map((d) => ({ ...d, paths: d.paths.filter((p) => !mine.has(p)) }))
+    .filter((d) => d.paths.length > 0)
+  return [...own.map((path): SeedDrop => ({ category: 'own', paths: [path] })), ...rest]
 }
 
 /** The piles as proposed, each with its top first, the way the Sort board confirms them (boardFromProposal). */
