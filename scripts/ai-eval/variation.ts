@@ -8,8 +8,12 @@
  *         beside its first variant: what sets the top apart?
  *   pile  every mockup in the pile, numbered, in one request: a variation for each. Its system
  *         prompt and question are the app's own (`src/main/ai/pile-variations.ts`).
+ *   pilebase, pilebase2, pilebase3  the pile request, also asked for the pile's base title: what
+ *         every mockup shares, the setting only if they all have it (2 also says what to leave out;
+ *         3 starts from the top's own title, from `--top-titles <run>`). The bases go to bases.json
+ *         beside the results, for `base-table.ts`.
  *
- *   pnpm exec tsx --tsconfig tsconfig.node.json scripts/ai-eval/variation.ts --model qwen3.5-9b --how pair|pile
+ *   pnpm exec tsx --tsconfig tsconfig.node.json scripts/ai-eval/variation.ts --model qwen3.5-9b --how pair|pile|pilebase
  *
  * Writes runs/<model>/variation-<how>/results.json and one log line per mockup in run.ts's format.
  */
@@ -35,11 +39,35 @@ function pairText(left: string, right: string, aboutLeft: boolean): string {
   ].join('\n')
 }
 
+/** The base's line in the pile request: 1 is the first try, 2 says what to leave out. */
+const BASE_LINES: Record<string, string> = {
+  pilebase:
+    "Also give the pile's title, at most 60 characters: a name that fits every mockup in the pile, with the main object and its product name if known, and the setting only if every mockup in the pile has it. Never describe what is printed or shown on the object.",
+  pilebase2:
+    "Also give the pile's title, at most 60 characters, written like a catalogue title for any one of them: the main object, its product name if known, and the setting only if every mockup in the pile has it. Leave out how the mockups differ, the words mockup, variant and variation, and anything printed on the object."
+}
+
+/** 3: the top's own suggested title, less what not every mockup in the pile has. */
+const fromTopTitle = (title: string) =>
+  `The first mockup's own title is "${title}". Also give the pile's title, at most 60 characters: that title with anything taken out that not every mockup in the pile has, such as a setting, a surface, a state or the design on a screen or label. Keep the object's name and product name as they are. Leave out the words mockup, variant and variation, and anything printed on the object.`
+
+/** The pile request, also asked for a base title every mockup in the pile shares (round 4 B, the base). */
+function pileBaseText(names: string[], how: string, topTitle?: string): string {
+  return [
+    pileText(names).replace(/\nReply with JSON:.*$/, ''),
+    how === 'pilebase3' ? fromTopTitle(topTitle ?? names[0]!) : BASE_LINES[how]!,
+    `Reply with JSON: variations, a list of ${names.length} answers in order, then title.`
+  ].join('\n')
+}
+
 const PAIR_SCHEMA = { type: 'object', properties: { difference: { type: 'string' } }, required: ['difference'] }
-const pileSchema = (n: number) => ({
+const pileSchema = (n: number, withBase = false) => ({
   type: 'object',
-  properties: { variations: { type: 'array', items: { type: 'string' }, minItems: n, maxItems: n } },
-  required: ['variations']
+  properties: {
+    variations: { type: 'array', items: { type: 'string' }, minItems: n, maxItems: n },
+    ...(withBase && { title: { type: 'string', maxLength: 80 } })
+  },
+  required: ['variations', ...(withBase ? ['title'] : [])]
 })
 
 /** The covers side by side, numbered, at most 1024 px wide: three to a row. */
@@ -73,7 +101,18 @@ async function composite(ids: string[]): Promise<Buffer> {
 async function main(): Promise<void> {
   const model = argValue('model')
   const how = argValue('how') ?? 'pair'
-  if (!model || !['pair', 'pile'].includes(how)) throw new Error('Usage: variation.ts --model <id> --how pair|pile')
+  if (!model || !['pair', 'pile', 'pilebase', 'pilebase2', 'pilebase3'].includes(how)) {
+    throw new Error('Usage: variation.ts --model <id> --how pair|pile|pilebase|pilebase2|pilebase3 [--top-titles <run>]')
+  }
+  // pilebase3 starts from each top's own suggested title, from the model's run of the app (`--top-titles`).
+  const titlesRun = argValue('top-titles')
+  const topTitles = new Map(
+    titlesRun
+      ? (JSON.parse(readFileSync(join(runDir(model, titlesRun), 'results.json'), 'utf8')) as { id: string; repeat?: number; parsed: { title: string } | null }[])
+          .filter((r) => (r.repeat ?? 0) === 0)
+          .map((r) => [r.id, r.parsed?.title ?? ''])
+      : []
+  )
   const gold = (JSON.parse(readFileSync(join(import.meta.dirname, 'round4', 'variations.json'), 'utf8')) as { items: Record<string, GoldVariation> }).items
   const names = new Map(readItems().map((i) => [i.id, i.fileName]))
   const ps = piles()
@@ -128,14 +167,21 @@ async function main(): Promise<void> {
     results.push({ id, pile, top: id === pile, said, verdict, fallback: fileMarkers(siblings)[index]!, ms: Math.round(ms), ...(lastTimings && { timings: lastTimings }), ...(error && { error }) })
     console.log(`${String(Math.round(ms)).padStart(6)}ms  ${id}  ${said ?? `FAILED ${error}`} [${verdict ?? '-'}; I'd say ${g.say}]`)
   }
+  const bases: Record<string, string | null> = {}
   try {
     for (const p of ps) {
       const ids = [p.top, ...p.variants]
       const siblings = ids.map((id) => names.get(id) ?? id)
-      if (how === 'pile') {
+      if (how.startsWith('pile')) {
         const started = performance.now()
+        const withBase = how !== 'pile'
         try {
-          const reply = JSON.parse(await ask(await composite(ids), pileText(siblings), pileSchema(ids.length), 60 + 30 * ids.length)) as { variations?: unknown }
+          const text = withBase ? pileBaseText(siblings, how, topTitles.get(p.top)) : pileText(siblings)
+          const reply = JSON.parse(await ask(await composite(ids), text, pileSchema(ids.length, withBase), 60 + 30 * ids.length + (withBase ? 30 : 0))) as { variations?: unknown; title?: unknown }
+          if (withBase) {
+            bases[p.top] = typeof reply.title === 'string' ? reply.title.trim() : null
+            console.log(`        base  ${p.top}  ${bases[p.top]}`)
+          }
           const said = Array.isArray(reply.variations) ? reply.variations.map(String) : []
           const each = (performance.now() - started) / ids.length
           ids.forEach((id, i) => record(id, p.top, said[i] ?? null, each, siblings, i, said[i] === undefined ? 'no answer for it' : undefined))
@@ -163,6 +209,7 @@ async function main(): Promise<void> {
 
   const out = join(runDir(model, `variation-${how}`), 'results.json')
   writeJson(out, results)
+  if (how !== 'pile' && how !== 'pair') writeJson(join(runDir(model, `variation-${how}`), 'bases.json'), bases)
   const n = results.length
   const count = (v: Verdict, top?: boolean) => results.filter((r) => r.verdict === v && (top === undefined || r.top === top)).length
   const tops = results.filter((r) => r.top).length

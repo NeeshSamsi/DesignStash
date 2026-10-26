@@ -12,7 +12,7 @@ import { runDir } from './eval-files'
 import { judge, type GoldVariation } from './variation-score'
 
 const MODELS = ['apple', 'qwen3-vl-4b', 'qwen3.5-9b']
-const HOWS = ['pair', 'pile']
+const HOWS = ['pair', 'pile', 'pilebase', 'pilebase2', 'pilebase3']
 
 interface Result {
   id: string

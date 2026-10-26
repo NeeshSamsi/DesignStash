@@ -1,0 +1,168 @@
+{
+  "_note": "Round 4 B, the pile's base title (design/specs/pile-titles.md): what every mockup in the pile shares. Keyed by the pile's top. `say` is the base I'd write from the covers; `object` are regex fragments, case-insensitive, of which one must be in the base; `absent` are regex fragments for what only some of the pile's mockups have, or what the placeholder shows, none of which may be in it. A base that names the object and nothing in `absent` fits. Every base is first cleaned as the app cleans a title (quoted print, stock words, object colours), and none may say \"variant\" or \"variation\" (`base-table.ts`).",
+  "items": {
+    "free-imac-mockup-1": {
+      "say": "iMac with keyboard and mouse",
+      "object": [
+        "imac",
+        "desktop",
+        "computer"
+      ],
+      "absent": [
+        "desk\\b",
+        "wooden",
+        "table"
+      ]
+    },
+    "oval-mug-mockup-1": {
+      "say": "Round-bellied mug on grey",
+      "object": [
+        "mug",
+        "cup"
+      ],
+      "absent": [
+        "table",
+        "desk",
+        "wooden"
+      ]
+    },
+    "dl-menu-mockup-1": {
+      "say": "Slim DL restaurant menu on a wooden table",
+      "object": [
+        "menu"
+      ],
+      "absent": [
+        "plate",
+        "ceramic",
+        "napkin",
+        "salt",
+        "vine"
+      ]
+    },
+    "iphone-mockup-1": {
+      "say": "iPhone on grey tiles in sunlight",
+      "object": [
+        "iphone",
+        "phone"
+      ],
+      "absent": [
+        "hand",
+        "desk",
+        "table"
+      ]
+    },
+    "lighter-mockup-1": {
+      "say": "Flip-top lighter",
+      "object": [
+        "lighter"
+      ],
+      "absent": [
+        "\\bopen",
+        "closed",
+        "flame",
+        "\\blid",
+        "\\bbox"
+      ]
+    },
+    "gift-card-holder-mockup-1": {
+      "say": "Hanging gift card holder",
+      "object": [
+        "card"
+      ],
+      "absent": [
+        "white background",
+        "wallet",
+        "\\bhook"
+      ]
+    },
+    "free-apron-mockup-1": {
+      "say": "Bib apron",
+      "object": [
+        "apron"
+      ],
+      "absent": [
+        "kitchen counter",
+        "hook",
+        "hanger"
+      ]
+    },
+    "open-spine-book-mockup-1": {
+      "say": "Sewn open-spine book",
+      "object": [
+        "book"
+      ],
+      "absent": [
+        "printed pages",
+        "\\bopen book",
+        "text"
+      ]
+    },
+    "apple-watch-ultra-realistic-psd": {
+      "say": "Apple Watch Ultra, three views",
+      "object": [
+        "watch"
+      ],
+      "absent": [
+        "clay",
+        "trail",
+        "ocean",
+        "\\bloop",
+        "titanium",
+        "realistic"
+      ]
+    },
+    "boards-environment": {
+      "say": "Stacked cube boxes",
+      "object": [
+        "box",
+        "cube"
+      ],
+      "absent": [
+        "concrete",
+        "\\bhall",
+        "room",
+        "floor",
+        "stairs",
+        "isolated",
+        "studio"
+      ]
+    },
+    "free-notebook-envelope-and-business-card-mockup": {
+      "say": "Stationery set: notebook, envelope and business cards",
+      "object": [
+        "stationery",
+        "notebook"
+      ],
+      "absent": [
+        "\\bEU\\b",
+        "\\bUS\\b",
+        "europe",
+        "american",
+        "letter"
+      ]
+    },
+    "m003t1513-a-long-scroll-macbook-mockup-08agu25": {
+      "say": "Long scroll MacBook",
+      "object": [
+        "macbook",
+        "laptop"
+      ],
+      "absent": [
+        "bench",
+        "floor",
+        "mesh",
+        "block",
+        "concrete",
+        "ledge",
+        "window",
+        "floating",
+        "rolled",
+        "shelf",
+        "\\bgrid",
+        "desk",
+        "website",
+        "paper"
+      ]
+    }
+  }
+}
