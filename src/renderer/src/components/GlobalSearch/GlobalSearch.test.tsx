@@ -35,6 +35,42 @@ describe('GlobalSearch', () => {
       expect(onQueryChange).toHaveBeenCalledWith('phone')
     })
 
+    it('focuses the field from anywhere it shows its hover: the border and padding, and the ⌘F hint', () => {
+      render(<GlobalSearch defaultQuery="clay" />)
+      const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'Search' })
+      const field = input.closest<HTMLElement>('[data-slot="input-group"]')!
+      const hint = field.querySelector<HTMLElement>('[data-ds="KeyboardShortcut"]')!
+      for (const [name, part] of [
+        ['the border and padding', field],
+        ['the ⌘F hint', hint]
+      ] as const) {
+        input.blur()
+        const press = fireEvent.mouseDown(part, { button: 0, clientX: 300 })
+        expect(document.activeElement, name).toBe(input)
+        // The caret goes after the text, and the press does not pull focus back out to the box.
+        expect(input.selectionStart, name).toBe('clay'.length)
+        expect(press, name).toBe(false)
+      }
+    })
+
+    it('puts the caret at the start when the press is left of the text', () => {
+      render(<GlobalSearch defaultQuery="clay" />)
+      const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'Search' })
+      input.getBoundingClientRect = () => ({ left: 40, right: 260, top: 0, bottom: 20 }) as DOMRect
+      fireEvent.mouseDown(input.closest('[data-slot="input-group"]')!, { button: 0, clientX: 12 })
+      expect(document.activeElement).toBe(input)
+      expect(input.selectionStart).toBe(0)
+    })
+
+    it('leaves the clear button its own press', () => {
+      const onQueryChange = vi.fn()
+      render(<GlobalSearch defaultQuery="clay" onQueryChange={onQueryChange} />)
+      const clear = screen.getByRole('button', { name: 'Clear search' })
+      expect(fireEvent.mouseDown(clear, { button: 0 })).toBe(true)
+      fireEvent.click(clear)
+      expect(onQueryChange).toHaveBeenCalledWith('')
+    })
+
     it('uses 250 ms', () => {
       expect(SEARCH_DEBOUNCE_MS).toBe(250)
     })
