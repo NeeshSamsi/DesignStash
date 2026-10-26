@@ -151,30 +151,27 @@ describe('open', () => {
     expect(item.tags.map((t) => t.label)).toEqual(['Phone'])
   })
 
-  it('asks the provider when nothing is cached, and falls back to the file name without one', async () => {
-    waiting('my_phone-mockup')
+  it("never asks the provider: a mockup without a suggestion starts from its file name and waits for the queue's", async () => {
+    const m = waiting('my_phone-mockup')
+    repo.mockups.updateMockup(m.id, { aiStatus: 'pending' })
     const analyze = vi.fn(async () => ({ title: 'Live title', description: 'd', tags: [] }))
 
-    const live = (await service({ id: 's', name: 's', analyze }).open()).units[0]!.items[0]!
-    expect(live.title).toBe('Live title')
+    const item = (await service({ id: 's', name: 's', analyze }).open()).units[0]!.items[0]!
 
-    const m = repo.drafts.getQueueRoots()[0]!
-    repo.drafts.deleteDrafts([m.id])
-    const plain = (await service(null).open()).units[0]!.items[0]!
-    expect(plain.title).toBe('my phone mockup')
+    expect(analyze).not.toHaveBeenCalled()
+    expect(item).toMatchObject({ title: 'my phone mockup', description: '', waitingForAi: true })
   })
 
   it('keeps drafts between opens, so a title is not suggested twice', async () => {
-    waiting('a')
-    let n = 0
-    const analyze = vi.fn(async () => ({ title: `Title ${++n}`, description: '', tags: [] }))
-    const svc = service({ id: 's', name: 's', analyze })
+    const m = waiting('a')
+    ready(m.id, { title: 'Title 1', description: '', tags: [] })
+    const svc = service()
 
     const first = (await svc.open()).units[0]!.items[0]!.title
+    ready(m.id, { title: 'Title 2', description: '', tags: [] })
     const second = (await svc.open()).units[0]!.items[0]!.title
 
-    expect(second).toBe(first)
-    expect(analyze).toHaveBeenCalledTimes(1)
+    expect([first, second]).toEqual(['Title 1', 'Title 1'])
   })
 
   it('starts each variant with its own cached suggestion, tags snapped like the top\'s', async () => {
@@ -200,17 +197,43 @@ describe('open', () => {
     expect(items[1]!.tags.map((t) => t.label)).toEqual(['Phone'])
   })
 
-  it('never asks the provider for a variant: the background queue reads those', async () => {
+  it('never asks the provider for a top, a variant or a mockup on its own: the background queue reads them all', async () => {
     const [top, side, back] = pile('top', 'side', 'back')
-    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
-    repo.mockups.updateMockup(back!.id, { aiStatus: 'sniffing' })
+    const alone = waiting('alone')
+    for (const m of [top!, side!, back!, alone]) repo.mockups.updateMockup(m.id, { aiStatus: 'pending' })
     const analyze = vi.fn<InferenceProvider['analyze']>(async () => ({ title: 'Live', description: '', tags: [] }))
 
-    await service({ id: 's', name: 's', analyze }).open()
+    const items = (await service({ id: 's', name: 's', analyze }).open()).units.flatMap((u) => u.items)
 
-    expect(analyze).toHaveBeenCalledTimes(1)
-    expect(analyze.mock.calls[0]![0]).toMatchObject({ fileName: 'top.psd' })
-    expect(top).toBeDefined()
+    expect(analyze).not.toHaveBeenCalled()
+    expect(items.map((i) => i.waitingForAi)).toEqual([true, true, true, true])
+  })
+
+  it("says where each mockup's suggestion is, as the queue says it, so the rail is right from the first frame", async () => {
+    const [top, side] = pile('top', 'side')
+    ready(top!.id, { title: 'Top', description: '', tags: [] })
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+    const run = { phase: 'queued' as const, writingSince: null, slowAfterMs: 20_000 }
+    const svc = service(null, { aiStatusOf: (id) => (id === side!.id ? { mockupId: id, status: 'pending', run } : null) })
+
+    const items = (await svc.open()).units[0]!.items
+
+    expect(items.map((i) => i.ai)).toEqual([{ status: 'ready' }, { status: 'pending', run }])
+  })
+
+  it('says whether the active model checks an edit to a pile top against each variant (L7.1)', async () => {
+    waiting('a')
+    expect((await service(pileModel({ check: () => ({ answer: 'yes', reason: '' }), rewrite: () => '' })).open()).checksEdits).toBe(true)
+    expect((await service(pileModel({ rewrite: () => '' })).open()).checksEdits).toBe(false)
+    expect((await service(null).open()).checksEdits).toBe(false)
+  })
+
+  it('lists the mockups it shows that the AI was never asked about, for the queue', async () => {
+    const [top, side] = pile('top', 'side')
+    const alone = waiting('alone')
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(alone.id, { aiStatus: 'failed' })
+    expect(service().unasked()).toEqual([top!.id])
   })
 
   it('reports the cover with its size, whether it is missing, and the sidecar it came from', async () => {
@@ -430,13 +453,10 @@ describe('a suggestion that lands after the draft was made', () => {
     expect((await itemOf(svc, side!.id)).carry).toMatchObject({ state: 'offered', after: { description: 'A long page, edited', via: 'rewrite' } })
   })
 
-  it('upgrades a top or a mockup on its own whose provider call failed when it opened', async () => {
+  it('fills in a top or a mockup on its own once the queue writes its suggestion', async () => {
     const alone = waiting('my_mockup')
     repo.mockups.updateMockup(alone.id, { aiStatus: 'pending' })
-    const analyze = vi.fn(async () => {
-      throw new Error('busy')
-    })
-    const svc = service({ id: 's', name: 's', analyze })
+    const svc = service()
     expect((await svc.open()).units[0]!.items[0]).toMatchObject({ title: 'my mockup', waitingForAi: true })
 
     ready(alone.id, landed)
@@ -472,6 +492,51 @@ describe('a suggestion that lands after the draft was made', () => {
     ready(side!.id, landed)
     expect(await service().settle(side!.id)).toBeNull()
     expect(await service().settle(9999)).toBeNull()
+  })
+})
+
+describe('Fill it myself and Write suggestions (L6.E1, L6.E3)', () => {
+  const landed = { title: 'Blue scroll Macbook', description: 'On a bench', tags: [] }
+
+  it('stops waiting for the AI and keeps every field as it is, so a late suggestion never lands', async () => {
+    const [, side] = pile('top', 'side')
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+    const svc = service()
+    const before = await itemOf(svc, side!.id)
+
+    const item = await svc.fillMyself(side!.id)
+    repo.mockups.updateMockup(side!.id, { aiStatus: 'opted_out' })
+
+    expect(item).toMatchObject({ title: before.title, description: before.description, waitingForAi: false })
+    ready(side!.id, landed)
+    expect(await svc.settle(side!.id)).toBeNull()
+    expect((await itemOf(svc, side!.id)).title).toBe('side')
+  })
+
+  it('makes the draft of one not opened yet, from its file name', async () => {
+    const alone = waiting('my_mockup')
+    repo.mockups.updateMockup(alone.id, { aiStatus: 'pending' })
+    expect(await service().fillMyself(alone.id)).toMatchObject({ title: 'my mockup', waitingForAi: false })
+  })
+
+  it('waits for the AI again on Write suggestions, and the answer fills only the fields the person left alone', async () => {
+    const alone = waiting('my_mockup')
+    repo.mockups.updateMockup(alone.id, { aiStatus: 'opted_out' })
+    const svc = service()
+    await svc.fillMyself(alone.id)
+    await svc.saveDraft({ mockupId: alone.id, title: 'My own title', description: '', tagIds: [] })
+
+    expect(await svc.waitForAi(alone.id)).toMatchObject({ title: 'My own title', waitingForAi: true })
+    ready(alone.id, landed)
+    expect(await svc.settle(alone.id)).toMatchObject({ title: 'My own title', description: 'On a bench', waitingForAi: false })
+  })
+
+  it('has nothing to do for a mockup not waiting in To stash', async () => {
+    const m = waiting('a')
+    repo.mockups.setStage([m.id], 'stashed')
+    const svc = service()
+    expect(await svc.fillMyself(m.id)).toBeNull()
+    expect(await svc.waitForAi(m.id)).toBeNull()
   })
 })
 
@@ -731,6 +796,77 @@ describe('an edit to a pile top', () => {
       // The app restarted: a new service, with no check running.
       expect((await itemOf(service(pileModel({ rewrite: () => 'x' })), rows[1]!.id)).carry).toMatchObject({ state: 'offered', reason: null })
       hung.reject(new Error('the old app is gone'))
+    })
+  })
+
+  describe('why an edit is on offer (L7.E3 to L7.E5, L7.7, L7.9)', () => {
+    const whyOf = async (svc: LookOverService, id: number) => (await itemOf(svc, id)).carry?.why
+
+    it("is `unjudged` with a model that doesn't check edits", async () => {
+      const svc = service(pileModel({ rewrite: (_e, entry) => entry.description }))
+      const { rows, save } = await editedPile(svc, [{ description: 'One.', tags: [] }])
+      await save()
+      await svc.whenIdle()
+      expect(await whyOf(svc, rows[1]!.id)).toBe('unjudged')
+    })
+
+    it('is `refused` when the model says no, and null while it checks and once the edit is in', async () => {
+      const hold = later<Check>()
+      const svc = service(pileModel({ check: (cover) => (cover.includes('v1') ? hold.promise : { answer: 'yes', reason: '' }), rewrite: (_e, entry) => `${entry.description} On a bench.` }))
+      const { rows, save } = await editedPile(svc, [{ description: 'One.', tags: [] }, { description: 'Two.', tags: [] }])
+      await save()
+      expect(await whyOf(svc, rows[1]!.id)).toBeNull()
+      hold.resolve({ answer: 'no', reason: 'this one is on a mesh floor' })
+      await svc.whenIdle()
+      expect((await itemOf(svc, rows[1]!.id)).carry).toMatchObject({ why: 'refused', reason: 'this one is on a mesh floor' })
+      expect((await itemOf(svc, rows[2]!.id)).carry).toMatchObject({ state: 'reworded', why: null })
+    })
+
+    it('is `failed` when the check fails, or the rewrite after its yes does', async () => {
+      const svc = service(pileModel({
+        check: (cover) => (cover.includes('v1') ? Promise.reject(new Error('busy')) : { answer: 'yes', reason: '' }),
+        rewrite: () => Promise.reject(new Error('refused'))
+      }))
+      const { rows, save } = await editedPile(svc, [{ description: 'One.', tags: [] }, { description: 'Two.', tags: [] }])
+      await save()
+      await svc.whenIdle()
+      expect([await whyOf(svc, rows[1]!.id), await whyOf(svc, rows[2]!.id)]).toEqual(['failed', 'failed'])
+    })
+
+    it("is `slow` when the check runs out of time, for the one it was on and the ones it didn't reach", async () => {
+      const slow = later<Check>()
+      const svc = service(pileModel({ check: () => slow.promise, rewrite: (_e, entry) => entry.description }), { judgeMs: 30 })
+      const { rows, save } = await editedPile(svc, [{ description: 'One.', tags: [] }, { description: 'Two.', tags: [] }])
+      await save()
+      await svc.whenIdle()
+      expect([await whyOf(svc, rows[1]!.id), await whyOf(svc, rows[2]!.id)]).toEqual(['slow', 'slow'])
+      slow.resolve({ answer: 'yes', reason: '' })
+    })
+
+    it('is `slow` when Look it over closed before the check reached it', async () => {
+      const hung = later<Check>()
+      const svc = service(pileModel({ check: () => hung.promise, rewrite: () => 'x' }))
+      const { rows, save } = await editedPile(svc, [{ description: 'One.', tags: [] }])
+      await save()
+      expect(await whyOf(service(pileModel({ rewrite: () => 'x' })), rows[1]!.id)).toBe('slow')
+      hung.reject(new Error('the old app is gone'))
+    })
+
+    it('is `undone` once the person undoes an edit that reached it', async () => {
+      const svc = service(pileModel({ check: () => ({ answer: 'yes', reason: '' }), rewrite: (_e, entry) => `${entry.description} On a bench.` }))
+      const { rows, save } = await editedPile(svc, [{ description: 'One.', tags: [] }])
+      await save()
+      await svc.whenIdle()
+      expect((await svc.answerEdit({ mockupId: rows[1]!.id, action: 'undo' }))?.carry).toMatchObject({ state: 'offered', why: 'undone' })
+    })
+
+    it('keeps its why when an offer is dismissed and brought back', async () => {
+      const svc = service(pileModel({ rewrite: (_e, entry) => entry.description }))
+      const { rows, save } = await editedPile(svc, [{ description: 'One.', tags: [] }])
+      await save()
+      await svc.whenIdle()
+      expect((await svc.answerEdit({ mockupId: rows[1]!.id, action: 'dismiss' }))?.carry).toMatchObject({ state: 'dismissed', why: 'unjudged' })
+      expect((await svc.answerEdit({ mockupId: rows[1]!.id, action: 'restore' }))?.carry).toMatchObject({ state: 'offered', why: 'unjudged' })
     })
   })
 })

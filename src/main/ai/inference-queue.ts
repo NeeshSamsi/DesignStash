@@ -66,6 +66,8 @@ export class InferenceQueue {
   private run: AiRun | null = null
   /** Cancelled while being read: its answer is thrown away. */
   private readonly cancelled = new Set<number>()
+  /** Stops the current run now, as the hard stop does (Fill it myself on the mockup being written). */
+  private stopRun: (() => void) | null = null
   private pumping: Promise<void> | null = null
 
   private readonly timing: RunTimes
@@ -78,14 +80,40 @@ export class InferenceQueue {
     this.timer = deps.timer ?? realTimer
   }
 
-  /** Queue mockups for a suggestion. Ones that have one already, are in My Stash or Trash, or are gone are left out. */
+  /**
+   * Queue mockups for a suggestion. Ones that have one already, that the person is filling in
+   * themselves, that are in My Stash or Trash, or that are gone are left out.
+   */
   async enqueue(ids: number[]): Promise<void> {
+    await this.add(ids, false)
+  }
+
+  /**
+   * Fill it myself (design L6.E1): no suggestion for this mockup, now or later, until Write
+   * suggestions asks again. It leaves the queue, and a run on it now is stopped, so the queue moves
+   * on. One whose suggestion already landed is left as it is.
+   */
+  optOut(id: number): void {
+    const m = this.deps.repo.mockups.getMockup(id)
+    if (!m || m.aiStatus === 'ready' || m.aiStatus === 'opted_out') return
+    const at = this.fifo.indexOf(id)
+    if (at !== -1) this.fifo.splice(at, 1)
+    this.emit([this.setStatus(id, 'opted_out')])
+    if (this.current === id) this.stopRun?.()
+  }
+
+  /** Write suggestions or Try again (L6.E1, L6.E3): queue again one the person filled in themselves or that couldn't be written. */
+  async askAgain(id: number): Promise<void> {
+    await this.add([id], true)
+  }
+
+  private async add(ids: number[], optedOutToo: boolean): Promise<void> {
     const provider = await this.deps.getProvider()
     const updates: AiStatusEvent['updates'] = []
 
     for (const id of new Set(ids)) {
       const m = this.deps.repo.mockups.getMockup(id)
-      if (!m || !this.inInbox(m) || m.aiStatus === 'ready') continue
+      if (!m || !this.inInbox(m) || m.aiStatus === 'ready' || (m.aiStatus === 'opted_out' && !optedOutToo)) continue
       if (!provider) {
         if (m.aiStatus !== 'off') updates.push(this.setStatus(id, 'off'))
         continue
@@ -201,12 +229,14 @@ export class InferenceQueue {
     this.run = { phase: 'writing', writingSince: since, slowAfterMs }
     this.emit([{ ...(cold ? { mockupId: id, status: 'sniffing' as const } : this.setStatus(id, 'sniffing')), run: this.run }])
     await this.deps.prepare?.(m).catch(() => {})
+    // Filled in by the person while the model loaded or the files were readied: nothing to ask.
+    if (this.deps.repo.mockups.getMockup(id)?.aiStatus === 'opted_out') return
     const result = await this.suggestBy(provider, m, since + HARD_STOP_FACTOR * slowAfterMs)
-    if (result && model) this.timing.record(model, this.now() - since)
 
-    // Tossed or trashed while it was being read: nothing to write to.
+    // Tossed or trashed while it was being read: nothing to write to. Filled in by the person: theirs.
     const now = this.deps.repo.mockups.getMockup(id)
-    if (!now || now.deletedAt !== null) return
+    if (!now || now.deletedAt !== null || now.aiStatus === 'opted_out') return
+    if (result && model) this.timing.record(model, this.now() - since)
     if (this.cancelled.has(id)) {
       this.emit([this.setStatus(id, 'pending')])
       return
@@ -228,13 +258,16 @@ export class InferenceQueue {
     const run = { stopped: false }
     let clear = () => {}
     const stopped = new Promise<null>((resolve) => {
-      clear = this.timer(Math.max(0, stopAt - this.now()), () => {
+      const stop = () => {
         run.stopped = true
         resolve(null)
-      })
+      }
+      this.stopRun = stop
+      clear = this.timer(Math.max(0, stopAt - this.now()), stop)
     })
     const result = await Promise.race([this.suggest(provider, m, run), stopped])
     clear()
+    this.stopRun = null
     if (run.stopped) await provider.stop?.().catch(() => {})
     return run.stopped ? null : result
   }

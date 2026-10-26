@@ -28,6 +28,7 @@ const item = (over: Partial<LookOverItem> = {}): LookOverItem => ({
   checked: false,
   waitingForAi: true,
   carry: null,
+  ai: { status: 'pending' },
   cover: { path: '/c.png', source: 'embedded', missing: false, width: 1600, height: 1200 },
   ...over
 })

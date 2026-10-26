@@ -5,8 +5,13 @@ import { LibraryItemSchema } from './library'
 export const InboxStageSchema = z.enum(['to_sort', 'to_stash'])
 export type InboxStage = z.infer<typeof InboxStageSchema>
 
-/** How far the AI suggestion has got for a mockup. `off` when the AI is not in use. */
-export const AiStatusSchema = z.enum(['pending', 'sniffing', 'ready', 'failed', 'off'])
+/**
+ * How far the AI suggestion has got for a mockup. `pending` is queued and `sniffing` is being
+ * written; `failed` couldn't be written (two tries, or the hard stop at 3 times the slow threshold);
+ * `opted_out` is one the person chose to fill in themselves (Fill it myself), which the queue never
+ * asks about again until Write suggestions; `off` when the AI is not in use.
+ */
+export const AiStatusSchema = z.enum(['pending', 'sniffing', 'ready', 'failed', 'opted_out', 'off'])
 export type AiStatus = z.infer<typeof AiStatusSchema>
 
 /** A card in To sort or To stash. To sort holds mockups on their own; To stash holds piles and singles. */

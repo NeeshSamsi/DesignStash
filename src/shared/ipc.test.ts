@@ -643,11 +643,20 @@ describe('look-over:draft push', () => {
     checked: false,
     waitingForAi: false,
     carry: null,
+    ai: { status: 'ready' },
     cover: { path: '/lib/c.webp', source: 'embedded', missing: false, width: 10, height: 10 }
   }
 
   it('is a push channel the preload relays', () => {
     expect(isPushChannel(IPC_CHANNELS.LOOK_OVER_DRAFT)).toBe(true)
+  })
+
+  it("says where the item's suggestion is: writing with its run, couldn't write, or filled in by the person (L6)", () => {
+    const run = { phase: 'writing', writingSince: 1_000, slowAfterMs: 20_000 }
+    expect(payload.parse({ ...item, ai: { status: 'sniffing', run } })).toMatchObject({ ai: { status: 'sniffing', run } })
+    for (const status of ['pending', 'failed', 'opted_out', 'off']) expect(payload.safeParse({ ...item, ai: { status } }).success).toBe(true)
+    expect(payload.safeParse({ ...item, ai: undefined }).success).toBe(false)
+    expect(payload.safeParse({ ...item, ai: { status: 'stopped' } }).success).toBe(false)
   })
 
   it('carries one Look it over item, saying whether it still waits for the AI', () => {
@@ -659,11 +668,39 @@ describe('look-over:draft push', () => {
     const tag = { tagId: 3, label: 'bench', categoryId: 1, categoryLabel: 'Environment' }
     const offered = {
       ...item,
-      carry: { state: 'offered', reason: 'this one is on a mesh floor', after: { description: 'A long page on a bench', via: 'rewrite' }, tagsAdded: [tag], tagsRemoved: [] }
+      carry: { state: 'offered', reason: 'this one is on a mesh floor', why: 'refused', after: { description: 'A long page on a bench', via: 'rewrite' }, tagsAdded: [tag], tagsRemoved: [] }
     }
     expect(payload.parse(offered)).toEqual(offered)
     expect(payload.safeParse({ ...offered, carry: { ...offered.carry, after: null } }).success).toBe(true)
     expect(payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'copied' } }).success).toBe(false)
+  })
+
+  it('says why an edit is on offer: not judged, refused, slow, failed or undone, and null while checking or once in (L7)', () => {
+    const offered = { ...item, carry: { state: 'offered', reason: null, why: 'unjudged', after: null, tagsAdded: [], tagsRemoved: [] } }
+    for (const why of ['unjudged', 'refused', 'slow', 'failed', 'undone']) expect(payload.safeParse({ ...offered, carry: { ...offered.carry, why } }).success).toBe(true)
+    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'checking', why: null } }).success).toBe(true)
+    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, why: 'timeout' } }).success).toBe(false)
+  })
+})
+
+describe('look-over:open', () => {
+  const { response } = IPC_CONTRACT[IPC_CHANNELS.LOOK_OVER_OPEN]
+
+  it('says whether the active model checks an edit to a pile top (L7.1)', () => {
+    expect(response.safeParse({ units: [], checksEdits: true, resume: null }).success).toBe(true)
+    expect(response.safeParse({ units: [], resume: null }).success).toBe(false)
+  })
+})
+
+describe('look-over:fill-myself and look-over:write', () => {
+  it('take one mockup and answer with its item, or null when it is not waiting in To stash (L6.E1, L6.E3)', () => {
+    for (const channel of [IPC_CHANNELS.LOOK_OVER_FILL_MYSELF, IPC_CHANNELS.LOOK_OVER_WRITE] as const) {
+      const { request, response } = IPC_CONTRACT[channel]
+      expect(request.parse({ mockupId: 4 })).toEqual({ mockupId: 4 })
+      expect(request.safeParse({}).success).toBe(false)
+      expect(response.safeParse(null).success).toBe(true)
+      expect(isPushChannel(channel)).toBe(false)
+    }
   })
 })
 

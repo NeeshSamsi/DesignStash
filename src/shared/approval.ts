@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AiStatusUpdateSchema } from './ipc/ai-status'
 
 // A tag attached to an item in the approval queue
 export const ApprovalTagSchema = z.object({
@@ -37,6 +38,17 @@ const DraftWordsSchema = z.object({ description: z.string(), tagIds: z.array(z.n
 export type DraftWords = z.infer<typeof DraftWordsSchema>
 
 /**
+ * Why an edit is on offer on a variant (design L7), so the line and the preview can say so:
+ * - `unjudged`: the model doesn't check edits (the 4B, Apple), so every untouched variant is offered it (L7.9);
+ * - `refused`: the model (the 9B) checked and said no, with its reason for the preview's header (L7.7);
+ * - `slow`: the check ran out of time before it reached this one, or Look it over closed first (L7.E4);
+ * - `failed`: the check, or the rewrite after its yes, failed (L7.E5);
+ * - `undone`: the edit reached it and the person undid it (L7.E3).
+ */
+export const OfferWhySchema = z.enum(['unjudged', 'refused', 'slow', 'failed', 'undone'])
+export type OfferWhy = z.infer<typeof OfferWhySchema>
+
+/**
  * Where the last edit to a pile top stands on one untouched variant, as its draft keeps it
  * (design/specs/look-over.md, L7):
  * - `checking`: the model (the 9B) is still judging it;
@@ -56,7 +68,9 @@ export const DraftCarrySchema = z.object({
    */
   prepared: z.object({ description: z.string(), via: z.enum(['rewrite', 'copy']) }).nullable(),
   /** The variant's own words from before the edit reached it, for Undo. Null while it hasn't. */
-  own: DraftWordsSchema.nullable()
+  own: DraftWordsSchema.nullable(),
+  /** Why it's on offer, once it is. Left out on drafts from before it was kept. */
+  why: OfferWhySchema.optional()
 })
 export type DraftCarry = z.infer<typeof DraftCarrySchema>
 export type CarryState = DraftCarry['state']
@@ -69,6 +83,8 @@ export const LookOverCarrySchema = z.object({
   state: DraftCarrySchema.shape.state,
   /** Why the model left the edit out, in a few words ("this one is on a white backdrop"); null when nothing was judged. */
   reason: z.string().nullable(),
+  /** Why the edit is on offer (`offered`, `dismissed`); null while it's being checked or once it's in. */
+  why: OfferWhySchema.nullable(),
   /**
    * The description accepting gives (an offer) or gave (applied, reworded). `copy` when it is the
    * top's because the rewrite failed, was refused or timed out. Null while it is being prepared.
@@ -97,6 +113,12 @@ export const LookOverItemSchema = z.object({
   waitingForAi: z.boolean(),
   /** A variant's state after an edit to its pile's top; null when none reached it. */
   carry: LookOverCarrySchema.nullable(),
+  /**
+   * Where its AI suggestion is, as `ai:status` says it (design L6): writing (`pending` with
+   * `run.phase` `queued`, or `sniffing`), couldn't write (`failed`), filled in by the person
+   * (`opted_out`), done (`ready`) or the AI off (`off`). Later changes come on `ai:status`.
+   */
+  ai: AiStatusUpdateSchema.omit({ mockupId: true }),
   cover: LookOverCoverSchema
 })
 export type LookOverItem = z.infer<typeof LookOverItemSchema>
@@ -112,6 +134,8 @@ export type LookOverUnit = z.infer<typeof LookOverUnitSchema>
 /** Piles first, then mockups on their own. */
 export const LookOverQueueSchema = z.object({
   units: z.array(LookOverUnitSchema),
+  /** The active model checks an edit to a pile top against each variant (the 9B), for L7.1's line. */
+  checksEdits: z.boolean(),
   /** Where Finish later left off, if it did. */
   resume: z.object({ unitId: z.number(), mockupId: z.number() }).nullable()
 })

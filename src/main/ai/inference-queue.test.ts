@@ -624,4 +624,87 @@ describe('what Look it over is told about a run (design L6)', () => {
       expect(hand.set[0]!.ms).toBe(3 * timing.slowAfterMs('apple') - 1_000)
     })
   })
+
+  describe('Fill it myself and Write suggestions (design L6.E1, L6.E3)', () => {
+    it('drops a queued mockup the person fills in themselves, and never asks about it again', async () => {
+      const gate = later()
+      const stub = stubProvider(async (input) => {
+        if (input.fileName === 'a.psd') await gate.promise
+        return result(input.fileName)
+      })
+      const queue = queueWith(stub.provider)
+      const [a, b] = [imported('a'), imported('b')]
+      await queue.enqueue([a.id, b.id])
+      await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
+
+      queue.optOut(b.id)
+      gate.resolve()
+      await queue.idle()
+      await queue.enqueue([b.id])
+      await queue.idle()
+
+      expect(stub.calls.map((i) => i.fileName)).toEqual(['a.psd'])
+      expect(status(b.id)).toBe('opted_out')
+      expect(queue.statusOf(b.id)).toEqual({ mockupId: b.id, status: 'opted_out' })
+      expect(events.flatMap((e) => e.updates)).toContainEqual({ mockupId: b.id, status: 'opted_out' })
+    })
+
+    it("stops the run on a mockup the person fills in themselves while it's being written, and moves on", async () => {
+      const stuck = later<InferenceResult>()
+      const stub = stubProvider((input) => (input.fileName === 'a.psd' ? stuck.promise : result('b')))
+      const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
+      const queue = queueWith({ ...stub.provider, stop })
+      const [a, b] = [imported('a'), imported('b')]
+      await queue.enqueue([a.id, b.id])
+      await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
+
+      queue.optOut(a.id)
+      await queue.idle()
+
+      expect(stop).toHaveBeenCalledTimes(1)
+      expect(status(a.id)).toBe('opted_out')
+      expect(status(b.id)).toBe('ready')
+      expect(stub.calls.map((i) => i.fileName)).toEqual(['a.psd', 'b.psd'])
+    })
+
+    it('never writes an answer that lands after the person chose to fill it in', async () => {
+      const slow = later<InferenceResult>()
+      const stub = stubProvider(() => slow.promise)
+      const queue = queueWith(stub.provider)
+      const a = imported('a')
+      await queue.enqueue([a.id])
+      await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
+
+      queue.optOut(a.id)
+      slow.resolve(result('late'))
+      await queue.idle()
+
+      expect(status(a.id)).toBe('opted_out')
+      expect(repo.mockups.getMockup(a.id)?.aiResult).toBeNull()
+    })
+
+    it('leaves alone a mockup whose suggestion already landed', async () => {
+      const queue = queueWith(stubProvider(() => result('a')).provider)
+      const a = imported('a')
+      await queue.enqueue([a.id])
+      await queue.idle()
+      queue.optOut(a.id)
+      expect(status(a.id)).toBe('ready')
+    })
+
+    it('asks again for one the person filled in themselves, or one that could not be written', async () => {
+      const stub = stubProvider((input) => result(input.fileName))
+      const queue = queueWith(stub.provider)
+      const [a, b] = [imported('a'), imported('b')]
+      repo.mockups.updateMockup(a.id, { aiStatus: 'opted_out' })
+      repo.mockups.updateMockup(b.id, { aiStatus: 'failed' })
+
+      await queue.askAgain(a.id)
+      await queue.askAgain(b.id)
+      await queue.idle()
+
+      expect([status(a.id), status(b.id)]).toEqual(['ready', 'ready'])
+      expect(events.flatMap((e) => e.updates).filter((u) => u.mockupId === a.id).map((u) => u.status)).toEqual(['pending', 'sniffing', 'ready'])
+    })
+  })
 })

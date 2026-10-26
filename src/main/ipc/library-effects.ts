@@ -48,7 +48,7 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
 function settleDrafts(ctx: HandlerContext, updates: AiStatusEvent['updates']): void {
   const done = updates.filter((u) => u.status === 'ready' || u.status === 'failed' || u.status === 'off')
   if (done.length === 0) return
-  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider())
+  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider(), { aiStatusOf: (id) => inferenceQueueFor(ctx).statusOf(id) })
   // A suggestion that replaced an offered variant's words makes its offer's version again.
   lookOver.onItem = (item) => ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item)
   for (const { mockupId } of done) {

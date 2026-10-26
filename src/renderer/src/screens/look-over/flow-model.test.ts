@@ -38,6 +38,7 @@ const item = (
   checked: false,
   waitingForAi: false,
   carry: null,
+  ai: { status: 'ready' },
   cover: { path: '/c.png', source: 'embedded', missing: false, width: 1, height: 1 },
   ...over
 })
@@ -56,6 +57,7 @@ const single = (id: number): LookOverUnit => ({
 /** Two piles (3 and 2 mockups), then two on their own: 7 mockups. */
 const queue = (over: Partial<LookOverQueue> = {}): LookOverQueue => ({
   units: [pile(1, [10, 11, 12]), pile(2, [20, 21]), single(30), single(31)],
+  checksEdits: false,
   resume: null,
   ...over
 })
@@ -223,7 +225,7 @@ describe('Back', () => {
     const reopened = back(s)
     expect(onReview(reopened)).toBe(true)
     expect(primary(reopened)).toEqual({ kind: 'stash-pile', label: 'Save & next' })
-    const only = createFlow({ units: [pile(1, [10, 11])], resume: null })
+    const only = createFlow({ units: [pile(1, [10, 11])], checksEdits: false, resume: null })
     const lastReview = jumpTo(only, 2)
     expect(primary(lastReview).label).toBe('Stash pile (2)')
     expect(primary({ ...lastReview, stashed: new Set([1]) })).toEqual({
@@ -241,7 +243,7 @@ describe('Back', () => {
   })
 
   it('goes back to Sort from a first mockup on its own when there are no piles', () => {
-    const s = createFlow({ units: [single(1), single(2)], resume: null })
+    const s = createFlow({ units: [single(1), single(2)], checksEdits: false, resume: null })
     expect(backTarget(s)).toEqual({ kind: 'sort' })
   })
 })
@@ -263,7 +265,7 @@ describe('Header badge', () => {
 
   it('uses the haul count from the start when nothing is in a pile', () => {
     expect(
-      headerBadge(createFlow({ units: [single(1), single(2), single(3)], resume: null }))
+      headerBadge(createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null }))
     ).toBe('1 of 3')
   })
 })
@@ -291,16 +293,16 @@ describe('Deck', () => {
     expect(deck(s).showDeck).toBe(false)
     s = jumpTo(s, 3)
     expect(deck(s)).toMatchObject({ remaining: 0, showDeck: false })
-    expect(deck(createFlow({ units: [single(1)], resume: null })).showDeck).toBe(false)
+    expect(deck(createFlow({ units: [single(1)], checksEdits: false, resume: null })).showDeck).toBe(false)
   })
 
   it('peeks one card for a pile of two', () => {
-    const s = createFlow({ units: [pile(1, [10, 11])], resume: null })
+    const s = createFlow({ units: [pile(1, [10, 11])], checksEdits: false, resume: null })
     expect(deck(s)).toMatchObject({ remaining: 1, showDeck: true, deckMore: false })
   })
 
   it('does not count mockups already looked at', () => {
-    const s = createFlow({ units: [pile(1, [10, 11, 12])], resume: null })
+    const s = createFlow({ units: [pile(1, [10, 11, 12])], checksEdits: false, resume: null })
     const looked = { ...s, checked: new Set([11]) }
     expect(deck(looked).remaining).toBe(1)
   })
@@ -338,7 +340,7 @@ describe('Rail', () => {
   })
 
   it('has no rail for a mockup on its own', () => {
-    expect(rail(createFlow({ units: [single(1)], resume: null }))).toBeNull()
+    expect(rail(createFlow({ units: [single(1)], checksEdits: false, resume: null }))).toBeNull()
   })
 
   it('gives every step the index to jump to', () => {
@@ -352,7 +354,7 @@ describe('Primary button', () => {
   })
 
   it('is Stash & next on a single, and Stash on the last', () => {
-    const s = createFlow({ units: [single(1), single(2)], resume: null })
+    const s = createFlow({ units: [single(1), single(2)], checksEdits: false, resume: null })
     expect(primary(s)).toEqual({ kind: 'stash', label: 'Stash & next' })
     const last = afterStash(s)
     expect(primary(last)).toEqual({ kind: 'stash', label: 'Stash' })
@@ -360,7 +362,7 @@ describe('Primary button', () => {
 })
 
 describe('Skip', () => {
-  const singles = () => createFlow({ units: [single(1), single(2), single(3)], resume: null })
+  const singles = () => createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null })
 
   it('is only for mockups on their own', () => {
     expect(canSkip(start())).toBe(false)
@@ -378,7 +380,7 @@ describe('Skip', () => {
     let s = singles()
     s = skip(skip(s))
     expect(s.units.map((u) => u.unitId)).toEqual([3, 1, 2])
-    const lastOne = createFlow({ units: [single(1)], resume: null })
+    const lastOne = createFlow({ units: [single(1)], checksEdits: false, resume: null })
     expect(canSkip(lastOne)).toBe(false)
     const rest = { ...singles(), stashed: new Set([2, 3]) }
     expect(canSkip(rest)).toBe(false)
@@ -415,16 +417,16 @@ describe('Progress', () => {
   })
 
   it('moves when a single is skipped, since the next one is opened', () => {
-    const s = createFlow({ units: [single(1), single(2), single(3)], resume: null })
+    const s = createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null })
     expect(progress(s)).toBeCloseTo(1 / 3)
     expect(progress(skip(s))).toBeCloseTo(2 / 3)
   })
 
   it('is 1 once everything is stashed, and 0 for an empty queue', () => {
-    let s = createFlow({ units: [single(1), single(2)], resume: null })
+    let s = createFlow({ units: [single(1), single(2)], checksEdits: false, resume: null })
     s = afterStash(afterStash(s))
     expect(progress(s)).toBe(1)
-    expect(progress(createFlow({ units: [], resume: null }))).toBe(0)
+    expect(progress(createFlow({ units: [], checksEdits: false, resume: null }))).toBe(0)
   })
 })
 

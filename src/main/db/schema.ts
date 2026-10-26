@@ -56,7 +56,7 @@ export const mockups = sqliteTable(
     /** Size of the PSD in the stash folder, in bytes. Null until measured. */
     sizeBytes: integer('size_bytes'),
     /** The AI suggestion's progress. `off` when the AI is not in use. */
-    aiStatus: text('ai_status', { enum: ['pending', 'sniffing', 'ready', 'failed', 'off'] })
+    aiStatus: text('ai_status', { enum: ['pending', 'sniffing', 'ready', 'failed', 'opted_out', 'off'] })
       .notNull()
       .default('off'),
     /** The AI's suggestions for this mockup (title, tags). Written by the background queue. */

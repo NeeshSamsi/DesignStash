@@ -7,7 +7,7 @@ import { registerIpcHandler } from './register'
 
 export function registerApprovalHandlers(ctx: HandlerContext): void {
   const { repo, ai, telemetry, push } = ctx
-  const lookOver = new LookOverService(repo, () => ai.activeProvider())
+  const lookOver = new LookOverService(repo, () => ai.activeProvider(), { aiStatusOf: (id) => inferenceQueueFor(ctx).statusOf(id) })
   // An edit to a pile top, judged or offered on its variants in the background.
   lookOver.onItem = (item) => push(IPC_CHANNELS.LOOK_OVER_DRAFT, item)
   // Telemetry: which field changed, never what it was changed to.
@@ -21,6 +21,8 @@ export function registerApprovalHandlers(ctx: HandlerContext): void {
   const showFirst = (mockupId: number) => inferenceQueueFor(ctx).prioritise(lookOver.walkFrom(mockupId))
 
   registerIpcHandler(IPC_CHANNELS.LOOK_OVER_OPEN, async () => {
+    // Every mockup waits in the one queue (design L6): any the AI was never asked about joins it before its draft is made.
+    await inferenceQueueFor(ctx).enqueue(lookOver.unasked())
     const queue = await lookOver.open()
     const opensOn = queue.resume?.mockupId ?? queue.units[0]?.items[0]?.mockupId
     if (opensOn !== undefined) showFirst(opensOn)
@@ -39,5 +41,18 @@ export function registerApprovalHandlers(ctx: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SHOWING, async ({ mockupId }) => {
     showFirst(mockupId)
     return inferenceQueueFor(ctx).statusOf(mockupId)
+  })
+  // Fill it myself (L6.E1): the draft stops waiting first, so an answer landing meanwhile can't fill it.
+  registerIpcHandler(IPC_CHANNELS.LOOK_OVER_FILL_MYSELF, async ({ mockupId }) => {
+    if (!(await lookOver.fillMyself(mockupId))) return null
+    inferenceQueueFor(ctx).optOut(mockupId)
+    return lookOver.item(mockupId)
+  })
+  // Write suggestions or Try again (L6.E1, L6.E3): the draft waits again, and the mockup on screen goes first.
+  registerIpcHandler(IPC_CHANNELS.LOOK_OVER_WRITE, async ({ mockupId }) => {
+    if (!(await lookOver.waitForAi(mockupId))) return null
+    await inferenceQueueFor(ctx).askAgain(mockupId)
+    showFirst(mockupId)
+    return lookOver.item(mockupId)
   })
 }
