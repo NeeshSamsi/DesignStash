@@ -64,6 +64,7 @@ const APP_FOLDER = [
   'cover.webp',
   'thumb.webp',
   'slot-mask.png',
+  'slot-mask.none',
   'cover-ai-soft.png',
   'cover-ai-grey.png'
 ]

@@ -190,7 +190,7 @@ describe('skipping', () => {
 
   it('writes the design slot mask beside the cover, for the AI', async () => {
     psd('a.psd')
-    const writeSlotMask = vi.fn(async () => true)
+    const writeSlotMask = vi.fn(async () => 'written' as const)
     const q = queue({ writeSlotMask })
     await q.start([join(drop, 'a.psd')])
     await q.idle()

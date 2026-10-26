@@ -23,9 +23,9 @@ export const defaultAppFileOps: AppFileOps = {
 }
 
 /** What the app writes beside a cover: its thumbnail, the design slot mask and the AI's masked covers. */
-const BESIDE_COVER = /^(thumb\.webp|slot-mask\.png|cover-ai-[\w-]+\.png)$/i
+const BESIDE_COVER = /^(thumb\.webp|slot-mask\.(?:png|none)|cover-ai-[\w-]+\.png)$/i
 /** Every name the app gives a file in a folder of its own: the PSD's copy, covers and the files beside them. */
-const APP_FILE = /^(original\.psd|cover\.\w+|thumb\.webp|slot-mask\.png|cover-ai-[\w-]+\.png)$/i
+const APP_FILE = /^(original\.psd|cover\.\w+|thumb\.webp|slot-mask\.(?:png|none)|cover-ai-[\w-]+\.png)$/i
 
 /**
  * Remove the app's own files for mockups deleted for good: the PSD's copy in the stash folder, its

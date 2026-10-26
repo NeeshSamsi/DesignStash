@@ -7,6 +7,7 @@ import type { Repository } from '../db/repository'
 import type { CopyJob } from '../db/schema'
 import { removeAppCopies } from '../library/app-files'
 import { SLOT_MASK_FILE, resolveCover, writeDesignSlotMask } from '../psd'
+import type { SlotMaskRun } from '../psd/design-slot-worker'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
 import {
   entryPath,
@@ -23,9 +24,10 @@ export interface CopyQueueDeps {
   resolveCover: (input: ResolveCoverInput) => Promise<CoverResolution>
   /**
    * Writes the PSD's design slot mask beside its cover (`writeDesignSlotMask`), so the AI never sees
-   * the placeholder. Says whether it wrote one; a failure only means the AI sees the cover as it is.
+   * the placeholder, or remembers why there is none. Says what it came to; a failure only means the
+   * AI sees the cover as it is.
    */
-  writeSlotMask: (psdPath: string, coverPath: string, outPath: string) => Promise<boolean>
+  writeSlotMask: (psdPath: string, coverPath: string, outPath: string) => Promise<SlotMaskRun>
   freeBytes: (path: string) => Promise<number>
   /** Copy a file (or a stream of one) by streaming it, telling `onBytes` how much is written, and return its SHA-256. */
   copyHashed: (
