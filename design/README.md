@@ -101,7 +101,7 @@ shadcn stays standard.
 | Content swap / exposed nested instance    | `ReactNode` slot prop                                                                |
 | `ContentSlot`, `ModalLayer`               | Figma-only helpers: a plain `ReactNode` / the Dialog overlay in code                 |
 
-Per-component exceptions live in `OVERRIDES` (keep it tiny): `Switch` → `checked`, `FavouriteToggle` → `pressed`, Input/Textarea `empty|filled` derived from the value, Button/Input `icon` → `iconStart`.
+Per-component exceptions live in `OVERRIDES` (keep it tiny): `Switch` → `checked`, `FavouriteToggle` → `pressed`, Input/Textarea `empty|filled` derived from the value and `invalid` from `aria-invalid` (derived options count as the rest state, `default`, so Textarea's `state` is `default|ai-filled|writing` and Input's `writing` is a boolean), Button/Input `icon` → `iconStart`.
 
 ## Files in a component folder
 

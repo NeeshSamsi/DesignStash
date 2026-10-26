@@ -43,9 +43,10 @@ export const figmaUrl = (nodeId) =>
  */
 export const OVERRIDES = {
   Button: { swapNames: { icon: 'iconStart' } },
-  Input: { derive: ['empty', 'filled'], swapNames: { icon: 'iconStart' } },
+  // empty and filled come from the value, invalid from aria-invalid.
+  Input: { derive: ['empty', 'filled', 'invalid'], swapNames: { icon: 'iconStart' } },
   // `rows` is also the HTML attribute, so the axis is `rowRange` in code.
-  Textarea: { derive: ['empty', 'filled'], axisNames: { rows: 'rowRange' } },
+  Textarea: { derive: ['empty', 'filled', 'invalid'], axisNames: { rows: 'rowRange' } },
   Switch: { stateFlag: 'checked' },
   FavouriteToggle: { stateFlag: 'pressed' },
   // The sidebar axis is the details sidebar's open state; `sidebar` is already the nav slot.
@@ -77,6 +78,7 @@ const pickDefault = (options) => ['base', 'md'].find((o) => options.includes(o))
  * - `state` axis:
  *     hover/focus/pressed      → CSS interaction states (ds-hover / ds-focus variants)
  *     disabled                 → `disabled` boolean
+ *     derived (OVERRIDES)      → not a prop; they count as the rest state, `default`
  *     two options left         → a boolean named after the second one (default|active → active)
  *     three or more left       → a `state` union prop
  * - booleans / text props → camelCase props with the Figma default
@@ -103,12 +105,12 @@ export function toContract(c) {
       )
       hasDisabled = options.includes('disabled')
       const derive = override.derive ?? []
-      const data = options.filter(
-        (o) =>
-          o === 'default' ||
-          (!INTERACTION_STATES.includes(o) && o !== 'disabled' && !derive.includes(o))
+      const real = options.filter(
+        (o) => !INTERACTION_STATES.includes(o) && o !== 'disabled' && !derive.includes(o)
       )
-      const real = data.filter((o) => o !== 'default')
+      // Derived options (empty, filled) are how the rest state looks, so they stand in for `default`.
+      const rest = options.includes('default') || options.some((o) => derive.includes(o))
+      const data = [...(rest ? ['default'] : []), ...real]
       if (real.length === 0) continue
       if (data.length === 2)
         flags[override.stateFlag ?? camel(data[1])] = { on: data[1], off: data[0] }
