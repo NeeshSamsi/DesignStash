@@ -47,6 +47,8 @@ export interface InferenceProvider {
   readonly loaded?: boolean
   /** Load the model if it isn't, resolving once it answers. */
   load?(): Promise<void>
+  /** Stop whatever the model is working on (a run that hit the hard stop). The next request starts it again. */
+  stop?(): Promise<void>
   /** What the model does with a person's edit to a pile top (design/specs/look-over.md, L7). */
   pileEdits?: PileEditSteps
 }

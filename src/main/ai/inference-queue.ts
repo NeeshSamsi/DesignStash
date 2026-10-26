@@ -8,7 +8,7 @@ import type { AiStatus } from '@shared/inbox'
 import type { AiRun, AiStatusEvent, AiStatusUpdate } from '@shared/ipc/ai-status'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
-import { RunTimes, memoryRunTimes } from './run-timing'
+import { HARD_STOP_FACTOR, RunTimes, memoryRunTimes } from './run-timing'
 
 /**
  * What the provider is shown for a mockup: its cover, the file name it came in as, and the folders
@@ -41,6 +41,13 @@ export interface InferenceQueueDeps {
   /** This Mac's recent run times, and the threshold for "taking a while" they give. Default: kept for this launch only. */
   timing?: RunTimes
   now?: () => number
+  /** Calls `fire` after `ms`, and returns what clears it. Default: `setTimeout`. */
+  timer?: (ms: number, fire: () => void) => () => void
+}
+
+const realTimer = (ms: number, fire: () => void) => {
+  const t = setTimeout(fire, ms)
+  return () => clearTimeout(t)
 }
 
 /** Tries per mockup: the first, and one retry. */
@@ -63,10 +70,12 @@ export class InferenceQueue {
 
   private readonly timing: RunTimes
   private readonly now: () => number
+  private readonly timer: NonNullable<InferenceQueueDeps['timer']>
 
   constructor(private readonly deps: InferenceQueueDeps) {
     this.timing = deps.timing ?? new RunTimes(memoryRunTimes())
     this.now = deps.now ?? Date.now
+    this.timer = deps.timer ?? realTimer
   }
 
   /** Queue mockups for a suggestion. Ones that have one already, are in My Stash or Trash, or are gone are left out. */
@@ -192,7 +201,7 @@ export class InferenceQueue {
     this.run = { phase: 'writing', writingSince: since, slowAfterMs }
     this.emit([{ ...(cold ? { mockupId: id, status: 'sniffing' as const } : this.setStatus(id, 'sniffing')), run: this.run }])
     await this.deps.prepare?.(m).catch(() => {})
-    const result = await this.suggest(provider, m)
+    const result = await this.suggestBy(provider, m, since + HARD_STOP_FACTOR * slowAfterMs)
     if (result && model) this.timing.record(model, this.now() - since)
 
     // Tossed or trashed while it was being read: nothing to write to.
@@ -211,8 +220,27 @@ export class InferenceQueue {
     }
   }
 
-  private async suggest(provider: InferenceProvider, m: Mockup): Promise<InferenceResult | null> {
-    for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+  /**
+   * The suggestion, or null when there is none by `stopAt` (the hard stop): the model is stopped so
+   * the next mockup doesn't wait behind it, it isn't tried again, and its late answer goes nowhere.
+   */
+  private async suggestBy(provider: InferenceProvider, m: Mockup, stopAt: number): Promise<InferenceResult | null> {
+    const run = { stopped: false }
+    let clear = () => {}
+    const stopped = new Promise<null>((resolve) => {
+      clear = this.timer(Math.max(0, stopAt - this.now()), () => {
+        run.stopped = true
+        resolve(null)
+      })
+    })
+    const result = await Promise.race([this.suggest(provider, m, run), stopped])
+    clear()
+    if (run.stopped) await provider.stop?.().catch(() => {})
+    return run.stopped ? null : result
+  }
+
+  private async suggest(provider: InferenceProvider, m: Mockup, run: { stopped: boolean }): Promise<InferenceResult | null> {
+    for (let attempt = 1; attempt <= ATTEMPTS && !run.stopped; attempt++) {
       try {
         const parsed = InferenceResultSchema.safeParse(await provider.analyze(analysisInputFor(m)))
         if (parsed.success) return parsed.data

@@ -531,4 +531,97 @@ describe('what Look it over is told about a run (design L6)', () => {
     expect(queue.statusOf(a.id)).toEqual({ mockupId: a.id, status: 'ready' })
     expect(queue.statusOf(9999)).toBeNull()
   })
+
+  describe('the hard stop (design L6.E3)', () => {
+    /** A timer the test fires by hand, recording what it was set for and whether it was cleared. */
+    function handTimer() {
+      const set: { ms: number; fire: () => void; cleared: boolean }[] = []
+      return {
+        set,
+        timer: (ms: number, fire: () => void) => {
+          const t = { ms, fire, cleared: false }
+          set.push(t)
+          return () => {
+            t.cleared = true
+          }
+        }
+      }
+    }
+
+    it("stops a run at 3 times the slow threshold: the mockup can't be written, the model is stopped, and the queue moves on", async () => {
+      const stuck = later<InferenceResult>()
+      const stub = stubProvider((input) => (input.fileName === 'a.psd' ? stuck.promise : result('b')))
+      const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
+      const timing = new RunTimes(memoryRunTimes())
+      const hand = handTimer()
+      const queue = queueWith({ ...stub.provider, stop }, { model: () => 'qwen3-vl-4b', timing, timer: hand.timer, now: () => 0 })
+      const [a, b] = [imported('a'), imported('b')]
+
+      await queue.enqueue([a.id, b.id])
+      await vi.waitFor(() => expect(hand.set).toHaveLength(1))
+      expect(hand.set[0]!.ms).toBe(3 * timing.slowAfterMs('qwen3-vl-4b'))
+      hand.set[0]!.fire()
+      await queue.idle()
+
+      expect(stop).toHaveBeenCalledTimes(1)
+      expect(status(a.id)).toBe('failed')
+      expect(status(b.id)).toBe('ready')
+      // Stopped, so it isn't tried again.
+      expect(stub.calls.map((i) => i.fileName)).toEqual(['a.psd', 'b.psd'])
+    })
+
+    it('clears the stop when the run ends in time', async () => {
+      const stop = vi.fn(async () => {})
+      const stub = stubProvider(() => result('a'))
+      const hand = handTimer()
+      const queue = queueWith({ ...stub.provider, stop }, { timer: hand.timer })
+      const a = imported('a')
+
+      await queue.enqueue([a.id])
+      await queue.idle()
+
+      expect(status(a.id)).toBe('ready')
+      expect(hand.set.map((t) => t.cleared)).toEqual([true])
+      expect(stop).not.toHaveBeenCalled()
+    })
+
+    it('never writes the answer a stopped run sends late', async () => {
+      const stuck = later<InferenceResult>()
+      const stub = stubProvider(() => stuck.promise)
+      const hand = handTimer()
+      const queue = queueWith(stub.provider, { timer: hand.timer })
+      const a = imported('a')
+
+      await queue.enqueue([a.id])
+      await vi.waitFor(() => expect(hand.set).toHaveLength(1))
+      hand.set[0]!.fire()
+      await queue.idle()
+      stuck.resolve(result('late'))
+      await Promise.resolve()
+
+      expect(status(a.id)).toBe('failed')
+      expect(repo.mockups.getMockup(a.id)?.aiResult).toBeNull()
+    })
+
+    it('counts the time spent readying the files towards the stop', async () => {
+      let now = 0
+      const hand = handTimer()
+      const stub = stubProvider(() => result('a'))
+      const timing = new RunTimes(memoryRunTimes())
+      const queue = queueWith(stub.provider, {
+        model: () => 'apple',
+        timing,
+        timer: hand.timer,
+        now: () => now,
+        prepare: async () => {
+          now += 1_000
+        }
+      })
+
+      await queue.enqueue([imported('a').id])
+      await queue.idle()
+
+      expect(hand.set[0]!.ms).toBe(3 * timing.slowAfterMs('apple') - 1_000)
+    })
+  })
 })
