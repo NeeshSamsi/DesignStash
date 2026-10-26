@@ -34,13 +34,13 @@
 
 - **The rail shows what's still coming.** PileStep gets a caption under its label: “Writing with AI…” on the one being written, and “Suggestions on the way” on the queued ones. That helps you pick a ready variant to work on next.
 - **“Writing with AI…” everywhere** for the one being written (Neesh, 2026-10-26): the status line, the fields' placeholder, the rail caption and the review cards. It's Neesh's wording. Queued steps keep “Suggestions on the way”, and the L6.E4 footer keeps “Stash pile waits until phone_top's suggestions arrive.”
-- **One queue from the moment Look it over opens** (Neesh, 2026-10-26; still to build): opening doesn't ask the model itself. Every mockup without suggestions, tops and mockups on their own included, waits in the one AI queue, with the one on screen first and then the rest of its pile, and shows the writing state (L6.1 in a pile, L6.5 on its own) with **Fill it myself** while it waits. The skeleton on open (L1.E6) covers only reading the queue. Today `look-over:open` asks the model for every top and single itself, one after another behind skeletons, and the queue then asks again (round 3 D in `design/research/ai-round3.md`); that goes.
+- **One queue from the moment Look it over opens** (Neesh, 2026-10-26; built, see [Contracts](#contracts-main-and-shared-for-l6-and-l7)): opening doesn't ask the model itself. Every mockup without suggestions, tops and mockups on their own included, waits in the one AI queue, with the one on screen first and then the rest of its pile, and shows the writing state (L6.1 in a pile, L6.5 on its own) with **Fill it myself** while it waits. The skeleton on open (L1.E6) covers only reading the queue. Until 2026-10-26 `look-over:open` asked the model for every top and single itself, one after another behind skeletons, and the queue then asked again (round 3 D in `design/research/ai-round3.md`).
 - **AI switched off in Settings** shows no line. The file-name title is expected there, so a notice would never say anything new.
 - **When it counts as slow** (ai-eval, round 3 D in `design/research/ai-round3.md`; in code since 2026-10-24, `run-timing.ts`): about 2.5 times the median of this Mac's last 20 runs of that model, kept within a per-model floor and ceiling: Apple 5 to 10 s, Qwen3-VL 4B 20 to 60 s, Qwen3.5 9B 35 to 100 s. On an M3 Max that comes to about 6 s, 20 s and 35 s; a base M1 or M2, three to five times slower with the Qwen models, gets its own threshold from its own runs. With fewer than 5 runs on record the ceiling applies.
   - **The clock** starts when the model begins on this mockup (`ai:status` `run.writingSince`); a model load after launch or five idle minutes doesn't count. The mockup on screen goes to the front of the queue, then the rest of its pile. If it still has to wait for another mockup's run to finish, the clock counts from when it came on screen, so a stuck run ahead still brings the line. No timer is shown.
   - **Normal runs don't see it.** Replayed over 90 covers per model in the order they ran, it would have shown on none of Apple's, on 4 of the 4B's (all during a few minutes when other work slowed the Mac 2 to 3 times, at 26 to 38 s) and on 1 of the 9B's (37 s, while the GPU was busy with other apps).
   - **The wait for a turn and the model load get no state of their own.** The wait is at most one other run; the load takes under a second for Apple and 1 to 4 s for the Qwen models.
-  - **The hard stop** (decided by Neesh, 2026-10-26; still to build): at 3 times the threshold the app stops the run and shows L6.E3 (“Couldn't write suggestions…” with **Try again**), and the queue moves on to the next mockup, so one stuck run can't hold up the rest. On an M3 Max that's about 18 s for Apple, 60 s for the 4B and 105 s for the 9B; at the ceilings it's 30 s, 180 s and 300 s.
+  - **The hard stop** (decided by Neesh, 2026-10-26; built in `14b8a18`): at 3 times the threshold the app stops the run and shows L6.E3 (“Couldn't write suggestions…” with **Try again**), and the queue moves on to the next mockup, so one stuck run can't hold up the rest. On an M3 Max that's about 18 s for Apple, 60 s for the 4B and 105 s for the 9B; at the ceilings it's 30 s, 180 s and 300 s.
 - **One way out, for this mockup only.** No pile-level or haul-wide stop and no Settings link in the prompt: stopping for the pile meant the same as filling each one in, and changing model or turning AI off is a Settings decision.
 
 ### Edit check (ask 2, coming soon)
@@ -176,6 +176,41 @@ Neesh asked why the focus ring broke: “shouldn't focused variants of buttons b
 | Rail notes: Edits offered, Edits applied, Edits reworded | The rail shows at a glance which variants still have an answer waiting. | 8.20, 5.5 |
 | A new AiStatus component, plus a `note` on PileStep | The form's hint row can't change state or hold actions, and a Banner is heavier and would push the fields. Two small additions cover every state in both asks. | 7.3, 7.5 |
 | Labels say what happens: Fill it myself, Write suggestions, Apply anyway | The button tells you the next thing. | 1.7, 8.9 |
+
+## Contracts (main and shared, for L6 and L7)
+
+Built by ai-eval on 2026-10-26, through the existing typed invoke and pushes, with no preload changes. The shapes are in `src/shared/approval.ts`, `src/shared/ipc/approval.ts`, `src/shared/ipc/ai-status.ts` and `src/shared/inbox.ts`.
+
+**Every item's AI state** (L6). Each `LookOverItem` has `ai: { status, run? }`, as `ai:status` says it, so the rail captions are right from the first frame:
+
+| `ai.status` | `ai.run` | Means | Shows |
+|---|---|---|---|
+| `pending` | `{ phase: 'queued', writingSince: null, slowAfterMs }` while it waits its turn | queued | "Suggestions on the way" on the rail; the writing state (L6.1, L6.5) |
+| `sniffing` | `{ phase: 'starting' or 'writing', writingSince, slowAfterMs }` | being written | "Writing with AI…"; L6.4 once `writingSince + slowAfterMs` passes |
+| `failed` | none | couldn't write: two failed tries, or the hard stop | L6.E3 with Try again |
+| `opted_out` | none | the person chose Fill it myself | Write suggestions (L6.E1) |
+| `ready` | none | the suggestion landed | |
+| `off` | none | the AI isn't in use | no line |
+
+A `pending` item reloaded before the queue picks it up again can come without `run`. Later changes come on the `ai:status` push (`updates: [{ mockupId, status, run? }]`), and a draft that a landing filled in comes on `look-over:draft`. `waitingForAi` stays as it was: true while the draft holds fallback fields until a suggestion lands.
+
+**The hard stop** (L6.E3, `14b8a18`). A run that reaches 3 times `slowAfterMs`, counted from `writingSince`, is stopped. `ai:status` pushes `{ mockupId, status: 'failed' }`, the draft stops waiting with its file-name title (`look-over:draft`), and the queue moves on. Still writing is `pending` or `sniffing`, couldn't write is `failed`, and filled in by the person is `opted_out`.
+
+**`look-over:open`** answers `{ units, checksEdits, resume }`. `checksEdits` is true when the active model checks an edit to a pile top against each variant (the 9B), for L7.1: "your edits get checked" when true, "your edits are offered" when false. Opening no longer asks the model itself. Tops and mockups on their own wait in the queue like variants (`waitingForAi`), with the one opened on first, and any the AI was never asked about join the queue before their drafts are made.
+
+**`look-over:fill-myself`** `{ mockupId }` answers `LookOverItem | null` (L6.E1). The mockup leaves the queue, a run on it now is stopped, `ai.status` becomes `opted_out`, the draft stops waiting, and every field stays as it is. The queue never asks about it again until Write suggestions. Null when it isn't waiting in To stash.
+
+**`look-over:write`** `{ mockupId }` answers `LookOverItem | null` (Write suggestions in L6.E1, Try again in L6.E3). It asks again for an `opted_out` or `failed` mockup, first in line with the rest of its pile after it. `ai.status` becomes `pending`, the draft waits again, and the answer fills only the fields the person hasn't typed in. A `ready` one is left as it is.
+
+**Why an offer was made** (L7). `carry.why` is set while `carry.state` is `offered` or `dismissed`, and null while `checking` or once `applied` or `reworded`. Dismissing and restoring keep it.
+
+| `carry.why` | When | Screen |
+|---|---|---|
+| `unjudged` | the model doesn't check edits (the 4B, Apple) | L7.9 |
+| `refused` | the 9B checked and said no; `carry.reason` holds its reason for the preview's header | L7.7 |
+| `slow` | the check ran out of its 20 s before it reached this one, or Look it over closed first | L7.E4 |
+| `failed` | the check failed, or the rewrite after its yes did | L7.E5 |
+| `undone` | the edit reached it and the person undid it | L7.E3 |
 
 ## Open questions for Neesh
 
