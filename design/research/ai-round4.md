@@ -112,6 +112,13 @@ The strip leaves the other 83 exactly where they were, so it costs nothing outsi
 
 This is the trade the rule makes, and it's Neesh's call. A person who remembers "the yellow apron" won't find it by "yellow"; "apron" still finds it. To keep the colour searchable without saying it, the object's colours could go into a hidden field the search reads and the details never show. That's a design question for the spec, and I haven't built it.
 
+### For Neesh: A
+
+**Decided (Neesh, 2026-10-26):**
+- Ship the strip for every model and keep today's prompts: "Sure". Built in `fd3436f` and `a458f3a`. The strip runs last, after every check, including the 9B's placeholder check. It covers the phrasings the count missed (A4): "a silver finish", "a gold wire bail closure", "a white Apple HomePod mini", "colored lanyards" and "a lime green one". On round 3's and cr-1's answers it changes only those phrases, 15 fields in 1,260 answers.
+- Searches by an object's colour stop working: accepted ("Sure"), with no hidden colour field.
+- Not yet: the 9B's strip before its placeholder check, which needs its own run.
+
 ## B. Variation words
 
 ### B1. The gold (4a25855, d4371b0)
@@ -166,6 +173,12 @@ It's used when the model says "same", gives no answer, or gives two mockups in a
 - Apple gets file markers only: half to two thirds of its variation words are wrong.
 - When a mockup joins a pile, the pile is asked again, and words a person edited stay. That's for the spec to confirm.
 - The 9B reads file names when the covers look the same ("EU", "US"). That's the behaviour we want, and the fallback does the same from the names.
+
+**Decided (Neesh, 2026-10-26):**
+- Apple gets file-name markers or numbers only: "Sure".
+- Suggest 1 to 3 words, and never block longer ones.
+- Duplicate variations: the spec (`design/specs/pile-titles.md`) replaces "both take their file markers". The app's words get a number ("side 2"), and words a person typed are never changed.
+- Variation words go into the app with the base and variation data model, which comes next.
 
 ## C. 4B speed, quality first
 
@@ -238,6 +251,10 @@ The answer takes 6.8 s of the 9.7 s, half reading the masked cover and half writ
 
 - Proposal: ship sp-check512 for the 4B, so the scene checks look at the cover scaled to 512 px. It changes no answer and saves about 4%.
 - Your call: the hint at 512 px as well, 18% in all (9.7 s to 7.9 s a mockup). Every measured number holds over three passes, and by eye the changed answers (one in four) are as often better as worse. My lean is yes: on quality it comes out even, and it fixes the "solar panels" hint. It isn't a clear zero-cost change under "quality over speed", though, so it's your decision.
+
+**Decided (Neesh, 2026-10-26):**
+- sp-check512: "Sure". Built in `a458f3a`: the 4B's profile sets `checkEdge: 512`, and the check image is made with the eval's own scaling, so it's byte for byte what sp-check512 sent.
+- The 512 px hint: not shipped. "I like the pros a lot but the cons are unacceptable. Is there another way to solve for this?" The pros are the better names (the Apple set's iPad Pro and iPhones, the iMac, the sticker roll, the long scroll's "laptop" in place of "solar panels"). The cons are the lilac background called white, the stationery sets losing their business cards, and a menu table tagged "floor". Section E tries the other ways.
 - Not shipping: checking the masked image (it keeps two wrong "desk"s) and two slots (a placeholder mention, and most of its saving comes from sp-check512 anyway).
 
 ## D. Apple's "also called" names (for the record)
@@ -262,3 +279,52 @@ Measured before the decision, on today's profile with the colour strip applied:
 - **The rule** gave more and better names ("a cosmetic bottle", "a flame lighter", "a bus stop") and the best blind searches. It cost 0.3 to 2.6 points on the gold sets against ap-8.
 
 **What the strip misses.** Two object colours turned up that the count doesn't know: "a pump bottle… with dark brown accents" and an apron "in bright yellow and black". Today's oval mugs have the same "with black accents". "Accents" can belong to the setting too (a notebook "with green accents and red accents" from the props around it).
+
+## E. The 512 px hint, with its downside fixed
+
+Neesh's bar (2026-10-26): none of the cons, and as many of the pros as possible. One pass each (seed 42) over the 90 covers, every changed answer read against the baseline and the gold.
+
+### E1. Where the cons come from
+
+The hint only names the object, and the answer is still written from the full-size masked cover. Each con follows the hint's new name, on every pass (sp-hc512's three):
+- "gift cards" became "gift card holders", and the lilac background is called white in 2 of 3 passes (lavender in 3 of 3 at full size).
+- "menu cards" became "menus", and that table is tagged "floor" in 3 of 3 (never at full size).
+- "stationery items" became "notebooks", and the two sets lose their business cards in 5 of 6 answers (none at full size).
+
+The answer is sensitive to the hint's exact words, down to a capital. "t-shirt" became "T-shirt" or "shirt" in every version, and each time the answer says "showcasing its design area". "menu cards" became "menu" in every version, and that answer loses its second menu.
+
+### E2. What was tried
+
+- **sp-hcset:** sp-hc512, plus a setting check. Each background or surface colour in the answer ("white background", "lavender surface") is asked about on the 512 px cover as it is, the way the scene things are, and a "no" redoes the answer.
+- **sp-hcall:** every object at 512 px. The hint names each kind of object in a set ("notebook and business cards").
+- **sp-h768:** the hint at 768 px.
+- **sp-h768all:** every object at 768 px, the one combination worth a pass.
+
+### E3. Results
+
+| Version | Changed | Better | Worse | Mixed | Same | Lilac called white | Stationery loses its cards | Menu "floor" | Hint, each | Per mockup |
+|---|---|---|---|---|---|---|---|---|---|---|
+| sp-hc512 (C4) | 21 | about half | about half | | | yes | yes | yes | 0.8 s | 7.9 s |
+| sp-hcset | 22 | 7 | 6 | 1 | 8 | yes | yes | yes | 1.0 s | about 8.6 s |
+| sp-hcall | 42 | 14 | 9 | 2 | 17 | yes | no | no | 1.0 s | 7.9 s |
+| sp-h768 | 11 | 4 | 3 | 0 | 4 | no | no | no | 1.7 s | about 8.6 s |
+| sp-h768all | 35 | 11 | 7 | 2 | 15 | yes | no | no | 1.6 s | 8.25 s |
+
+The baseline is 9.5 s a mockup, with a 2.4 s hint. Other apps kept the Mac busy during sp-hcset and sp-h768 (load average 15 to 21), and the answer step, which none of them changes, read 3.6 to 3.7 s against its usual 3.0 s. Their times are estimated with that step held at 3.0 s.
+
+- **sp-hcset doesn't catch the lilac.** The 4B says yes to "Is there a white background in this image?" on the lilac cover, so the yes/no form can't fix that con. It did correct the lightbox's wall to "textured concrete", as in the gold.
+- **sp-hcall fixes the sets and invents.** The stationery sets name the notebook, the envelope and the business cards, and the menu table loses its "floor". But the hint brings in objects that aren't there:
+  - "laptop and solar panels" gives the long scroll "a curved solar panel display";
+  - "lighter and box" gives a lighter a box tag;
+  - "box and stand" turns three stacked boxes into "a white box stand";
+  - "envelopes and packaging" gives the mailers "brown handles";
+  - the laptop's velvet armchair becomes "leather".
+- **sp-h768 changes the fewest answers** and has none of the three cons. It keeps only one pro, the iMac, and makes three new worse answers: the cosmetic tube becomes "a red spray can" that "emits dark smoke", the t-shirt gets its design area, and one menu table loses its second menu.
+- **sp-h768all** fixes the sets and the "floor", keeps the iMac, the stickers and "a tablet and smartphones" for the Apple set, and still calls the lilac background white. Its worse answers are the spray can, "a glass bottle" for a plastic pump bottle, "a box pedestal", a white background for a mug on grey, the t-shirt and the menu.
+
+None has no worse change, so none ran three passes.
+
+### For Neesh: E
+
+- No version meets the bar. Any change to the hint's words reshuffles a handful of answers, and some come out worse. Of the three cons, only "the hint names every object" fixes two, and it brings in objects that aren't there.
+- Proposal: keep today's full-size hint, with the 512 px scene checks that shipped (C). The better names would need a different approach, and I haven't tested one.
