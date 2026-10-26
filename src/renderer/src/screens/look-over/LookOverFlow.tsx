@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { LookOverItem, LookOverQueue } from '@shared/approval'
 import { IPC_CHANNELS } from '@shared/ipc'
+import { AiStatus } from '@renderer/components/AiStatus'
 import { Button } from '@renderer/components/Button'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { CoverPanel } from '@renderer/components/CoverPanel'
@@ -8,7 +9,7 @@ import { ErrorState } from '@renderer/components/ErrorState'
 import { FlowModal } from '@renderer/components/FlowModal'
 import { Lightbox } from '@renderer/components/Lightbox'
 import { MockupCard } from '@renderer/components/MockupCard'
-import { MockupMetaForm } from '@renderer/components/MockupMetaForm'
+import { MockupMetaForm, type MetaField } from '@renderer/components/MockupMetaForm'
 import { PileRail } from '@renderer/components/PileRail'
 import { PileStep } from '@renderer/components/PileStep'
 import { Tooltip } from '@renderer/components/Tooltip'
@@ -19,6 +20,17 @@ import { toast, undoToast } from '@renderer/stores/toastStore'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { Skeleton } from '@renderer/ui/skeleton'
 import { checkLibrary } from '../details/check-library'
+import { aiReducer, createAiState, keepOf } from './ai-state'
+import {
+  aiLine,
+  isWriting,
+  nextLineChange,
+  opensWithRow,
+  railNote,
+  stashWait,
+  writingFields,
+  type LineAction
+} from './ai-writing'
 import {
   afterStash,
   back,
@@ -52,6 +64,7 @@ import {
   stashRefusal
 } from './look-over-copy'
 import { coverUrl } from '@shared/cover-url'
+import { WRITING_PLACEHOLDER } from '@renderer/lib/writing-field'
 
 interface LookOverFlowProps {
   open: boolean
@@ -176,19 +189,46 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const [coverState, setCoverState] = useState<'default' | 'replacing' | 'error'>('default')
   const [zooming, setZooming] = useState(false)
   const { vocabulary, createTag } = useTagVocabulary()
+  // The AI's side of each mockup (design L6): main's latest items and runs, and what the person did.
+  const [ai, dispatch] = useReducer(aiReducer, queue, (q) =>
+    createAiState(q.units.flatMap((u) => u.items))
+  )
+  /** The latest AI state and the mockup on screen, for push handlers that subscribe once. */
+  const aiRef = useRef(ai)
+  const onScreen = useRef<number | null>(null)
+  useEffect(() => {
+    aiRef.current = ai
+  }, [ai])
+  /** The clock the status line reads; it moves when the line is due to change (nextLineChange). */
+  const [now, setNow] = useState(() => Date.now())
+  const formColumn = useRef<HTMLDivElement>(null)
 
-  // A late AI suggestion filled in a draft: show it, keeping any field the user is editing.
+  // A late AI suggestion filled in a draft: show it, keeping any field the person made theirs.
   useEffect(
     () =>
       subscribePush(IPC_CHANNELS.LOOK_OVER_DRAFT, (item) => {
         const was = saved.current[item.mockupId]
         if (!was) return
+        const keep = keepOf(aiRef.current.writing[item.mockupId])
         saved.current = { ...saved.current, [item.mockupId]: formOf(item) }
         setForms((current) => ({
           ...current,
-          [item.mockupId]: landedDraft(current[item.mockupId] ?? was, was, item).form
+          [item.mockupId]: landedDraft(current[item.mockupId] ?? was, was, item, keep).form
         }))
+        dispatch({
+          type: 'draft',
+          item,
+          at: Date.now(),
+          onScreen: onScreen.current === item.mockupId
+        })
       }),
+    []
+  )
+  useEffect(
+    () =>
+      subscribePush(IPC_CHANNELS.AI_STATUS, (event) =>
+        dispatch({ type: 'status', updates: event.updates })
+      ),
     []
   )
 
@@ -206,6 +246,86 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   )
   const blocked = item && form ? form.title.trim() === '' : false
   const noCover = item && cover ? panelSource(cover) === 'none' : false
+
+  // -- The AI writing (design L6) ----------------------------------------------------------------
+
+  const here = item ? (ai.live[item.mockupId] ?? item) : null
+  const hereWriting = here ? ai.writing[here.mockupId] : undefined
+  const hereId = here?.mockupId
+  /** Whether the mockup on screen has a status row: decided as it opens, kept until you move on. */
+  const [visit, setVisit] = useState<{ id: number; row: boolean; settled: boolean } | null>(null)
+
+  // The mockup on screen goes first in the AI queue; its answer starts the slow clock and says where its run is.
+  useEffect(() => {
+    onScreen.current = hereId ?? null
+    if (hereId === undefined) return
+    const at = Date.now()
+    void window.api
+      .invoke(IPC_CHANNELS.LOOK_OVER_SHOWING, { mockupId: hereId })
+      .then((res) => {
+        if (!res.success) return
+        dispatch({ type: 'showing', mockupId: hereId, update: res.data, at })
+        // A run that failed before it came on screen still gets its line, as it opens.
+        if (res.data?.status === 'failed') {
+          setVisit((v) => (v?.id === hereId && !v.settled ? { ...v, row: true, settled: true } : v))
+        }
+      })
+      .catch(() => {})
+    return () => dispatch({ type: 'left', mockupId: hereId })
+  }, [hereId])
+
+  const due = here ? nextLineChange(here, hereWriting, now) : null
+  useEffect(() => {
+    if (due === null) return
+    const timer = setTimeout(() => setNow(Date.now()), Math.max(0, due - Date.now()))
+    return () => clearTimeout(timer)
+  }, [due])
+
+  // The status row is decided when the mockup opens and kept while it is on screen.
+  if (here && visit?.id !== here.mockupId) {
+    setVisit({ id: here.mockupId, row: opensWithRow(here, hereWriting, now), settled: false })
+  }
+  const row = here !== null && visit?.id === here.mockupId && visit.row
+  const line = here ? aiLine(here, hereWriting, now) : null
+
+  /** Fill it myself: the AI stops for this mockup; the title starts from the file name, the rest empty. */
+  const fillMyself = (id: number, selectTitle: boolean) => {
+    const it = ai.live[id]
+    if (!it) return
+    const fields = writingFields(it, ai.writing[id])
+    setForms((current) => {
+      const was = current[id]
+      if (!was) return current
+      return {
+        ...current,
+        [id]: {
+          title: was.title,
+          description: fields.includes('description') ? '' : was.description,
+          tags: fields.includes('tags') ? [] : was.tags
+        }
+      }
+    })
+    dispatch({ type: 'fill-myself', mockupId: id })
+    if (selectTitle && fields.includes('title')) {
+      // After the field stops writing and shows the file name, select it so typing replaces it.
+      setTimeout(() => {
+        const title = formColumn.current?.querySelector<HTMLInputElement>('input')
+        title?.focus()
+        title?.select()
+      }, 0)
+    }
+  }
+
+  /** The line's button. Write suggestions and Try again wait for their channel (look-over brief). */
+  const lineButton = (action: LineAction | undefined) =>
+    action === 'fill-myself' && here ? (
+      <Button
+        variant="ghost"
+        size="xs"
+        label="Fill it myself"
+        onClick={() => fillMyself(here.mockupId, true)}
+      />
+    ) : null
 
   /** Saves the open mockup's draft when it changed or hasn't been recorded as looked at. */
   const saveCurrent = useCallback(async (): Promise<boolean> => {
@@ -240,6 +360,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
         const updated = fresh.data.units
           .flatMap((u) => u.items)
           .filter((i) => res.data.propagatedIds.includes(i.mockupId))
+        dispatch({ type: 'items', items: updated })
         setForms((current) => ({
           ...current,
           ...Object.fromEntries(updated.map((i) => [i.mockupId, formOf(i)]))
@@ -261,6 +382,8 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const edit = (patch: Partial<Form>) => {
     if (!item || !form) return
     setForms((current) => ({ ...current, [item.mockupId]: { ...form, ...patch } }))
+    // Typing in a field the AI is writing makes it the person's (L6.2).
+    dispatch({ type: 'typed', mockupId: item.mockupId, fields: Object.keys(patch) as MetaField[] })
   }
 
   // -- Stash -----------------------------------------------------------------------------------
@@ -291,6 +414,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     stashedCount.current -= count
     const fresh = await window.api.invoke(IPC_CHANNELS.LOOK_OVER_OPEN, undefined).catch(() => null)
     if (!fresh?.success) return
+    dispatch({ type: 'items', items: fresh.data.units.flatMap((u) => u.items) })
     setFlow((current) => {
       const index = current.units.findIndex((u) => u.unitId === unitId)
       const stashed = new Set([...current.stashed].filter((id) => id !== unitId))
@@ -438,13 +562,27 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
 
   // -- Render ----------------------------------------------------------------------------------
 
+  const titles = Object.fromEntries(Object.entries(forms).map(([id, f]) => [id, f.title]))
+  // Stash pile waits until nothing in the pile is still writing (L6.E4).
+  const wait = review
+    ? stashWait(
+        unit.items.map((i) => ai.live[i.mockupId] ?? i),
+        ai.writing,
+        titles
+      )
+    : null
+
   const footerPrimary = (
-    <Tooltip label={blocked ? NO_TITLE_REASON : NO_COVER_REASON} arrow="bottom-right">
-      <span tabIndex={blocked || noCover ? 0 : -1} className="inline-flex">
+    <Tooltip label={wait ?? (blocked ? NO_TITLE_REASON : NO_COVER_REASON)} arrow="bottom-right">
+      <span tabIndex={blocked || noCover || wait ? 0 : -1} className="inline-flex">
         <Button
           label={model.label}
           loading={busy}
-          disabled={busy || (!review && (blocked || (noCover && model.kind !== 'next')))}
+          disabled={
+            busy ||
+            (review && wait !== null) ||
+            (!review && (blocked || (noCover && model.kind !== 'next')))
+          }
           onClick={primaryAction}
         />
       </span>
@@ -462,6 +600,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
         </Tooltip>
       )}
       <div className="flex-1" />
+      {wait && <p className="type-caption-xs-regular text-muted-foreground">{wait}</p>}
       <Button variant="ghost" label="Finish later" onClick={() => setAsking(true)} />
       {footerPrimary}
     </div>
@@ -473,20 +612,34 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
       <div className="flex min-h-0 flex-1 gap-6">
         <div className="grid min-h-0 flex-1 grid-cols-4 content-start gap-4 overflow-y-auto">
           {unit.items.map((it, step) => {
-            const note = cards.find((c) => c.mockupId === it.mockupId)?.note ?? null
+            // A card still writing says so, with its way out under it, outside the card (L6.E4).
+            const writes = isWriting(ai.live[it.mockupId] ?? it, ai.writing[it.mockupId])
+            const note = writes
+              ? WRITING_PLACEHOLDER
+              : (cards.find((c) => c.mockupId === it.mockupId)?.note ?? null)
             const c = covers[it.mockupId]
             return (
-              <MockupCard
-                key={it.mockupId}
-                variant="pending-review"
-                mockupId={String(it.mockupId)}
-                title={forms[it.mockupId]?.title ?? it.title}
-                tags={note ?? forms[it.mockupId]?.tags.map((t) => t.label).join(' · ') ?? ''}
-                favourite={false}
-                {...(c?.path ? { coverSrc: coverUrl(c.path) } : {})}
-                onClick={() => void go((s) => jumpTo(s, step))}
-                onLookItOver={() => void go((s) => jumpTo(s, step))}
-              />
+              <div key={it.mockupId} className="flex min-w-0 flex-col gap-2">
+                <MockupCard
+                  variant="pending-review"
+                  mockupId={String(it.mockupId)}
+                  title={forms[it.mockupId]?.title ?? it.title}
+                  tags={note ?? forms[it.mockupId]?.tags.map((t) => t.label).join(' · ') ?? ''}
+                  favourite={false}
+                  {...(c?.path ? { coverSrc: coverUrl(c.path) } : {})}
+                  onClick={() => void go((s) => jumpTo(s, step))}
+                  onLookItOver={() => void go((s) => jumpTo(s, step))}
+                />
+                {writes && (
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    label="Fill it myself"
+                    className="self-start"
+                    onClick={() => fillMyself(it.mockupId, false)}
+                  />
+                )}
+              </div>
             )
           })}
         </div>
@@ -514,11 +667,22 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
             onZoom={() => setZooming(true)}
           />
         )}
-        <div className="min-w-0 flex-1">
+        <div ref={formColumn} className="flex min-w-0 flex-1 flex-col gap-5">
+          {row && here && (
+            <AiStatus
+              key={here.mockupId}
+              kind={line?.kind ?? 'none'}
+              message={line?.message ?? ''}
+              showAction={lineButton(line?.action) !== null}
+              action={lineButton(line?.action)}
+            />
+          )}
           {form && (
             <MockupMetaForm
               variant="approval"
               state={blocked ? 'invalid' : 'pristine'}
+              writingFields={here ? writingFields(here, hereWriting) : []}
+              filledFields={hereWriting?.landed?.fields ?? []}
               title={form.title}
               onTitleChange={(title) => edit({ title })}
               description={form.description}
@@ -540,15 +704,21 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   )
 
   function railSteps() {
-    return theRail?.steps.map((step) => (
-      <PileStep
-        key={step.key}
-        status={step.status}
-        label={step.label}
-        showConnector={step.showConnector}
-        onClick={() => void go((s) => jumpTo(s, step.step))}
-      />
-    ))
+    return theRail?.steps.map((step) => {
+      const live = step.mockupId === null ? undefined : ai.live[step.mockupId]
+      const note = live ? railNote(live, ai.writing[live.mockupId]) : null
+      return (
+        <PileStep
+          key={step.key}
+          status={step.status}
+          label={step.label}
+          showConnector={step.showConnector}
+          showNote={note !== null}
+          {...(note !== null ? { note } : {})}
+          onClick={() => void go((s) => jumpTo(s, step.step))}
+        />
+      )
+    })
   }
 
   return (
