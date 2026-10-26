@@ -44,6 +44,8 @@
   --max-height-tag-filter: 15rem; /* 240 */
   --height-card-cover: 10.5rem; /* 168 */
   --height-card-cover-compact: 6.75rem; /* 108 */
+  /* The soft edge under a page's fixed header, where scrolling content blurs and fades into the panel. */
+  --spacing-scroll-edge: 6rem; /* 96 */
 
   /* Same value as background/overlay; a colour token so gradients can use it (to-scrim). */
   --color-scrim: var(--ds-color-black-alpha-60);
@@ -132,6 +134,20 @@
   column-gap: var(--gap-card-x);
   row-gap: var(--gap-card-y);
   align-items: start;
+}
+
+/*
+ * The page's scroll area (AppWindow). A page's sticky bar (PageBar) reports its height as --page-bar-height, so a
+ * card scrolled into view stops clear of the bar and its scroll edge, and the scrollbar starts below the bar.
+ */
+@utility page-scroll {
+  scroll-padding-top: calc(var(--page-bar-height, 0px) + var(--spacing-scroll-edge));
+  --scrollbar-inset-top: var(--page-bar-height, 0px);
+}
+
+/* A sticky bar its contents can ask whether it is stuck (`@container scroll-state(stuck: top)`). */
+@utility scroll-state-container {
+  container-type: scroll-state;
 }
 
 /* Continuous (squircle) corners where the engine supports corner-shape; a plain radius elsewhere. */
@@ -307,6 +323,89 @@
   .ds-scrollbar-track,
   .ds-scrollbar-thumb {
     transition: none;
+  }
+}
+
+/*
+ * The scroll edge under a page's fixed header (components/AppWindow/PageBar.tsx). Content passing under it fades
+ * into the panel along an eased curve, many stops of a sine ease-in-out, since a linear ramp shows a hard top and a
+ * visible slope. It also blurs progressively: eight layers, each blurring a little more and reaching less far down,
+ * so the blur thins out toward the content and peaks at only 4px. It shows only while its bar is stuck, so at the
+ * top of the scroll the first row is never dimmed. Reduce transparency keeps the fade alone.
+ */
+.ds-scroll-edge {
+  --scroll-edge-ease:
+    #000 0%, rgb(0 0 0 / 0.989) 6.667%, rgb(0 0 0 / 0.957) 13.33%, rgb(0 0 0 / 0.905) 20%,
+    rgb(0 0 0 / 0.835) 26.67%, rgb(0 0 0 / 0.75) 33.33%, rgb(0 0 0 / 0.655) 40%, rgb(0 0 0 / 0.552) 46.67%,
+    rgb(0 0 0 / 0.448) 53.33%, rgb(0 0 0 / 0.345) 60%, rgb(0 0 0 / 0.25) 66.67%, rgb(0 0 0 / 0.165) 73.33%,
+    rgb(0 0 0 / 0.095) 80%, rgb(0 0 0 / 0.043) 86.67%, rgb(0 0 0 / 0.011) 93.33%, transparent 100%;
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: var(--spacing-scroll-edge);
+  pointer-events: none;
+}
+/* Each layer fades in on its own: a fading parent would cut the blur off from what is behind it. */
+.ds-scroll-edge > * {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  mask-image: linear-gradient(to bottom, var(--scroll-edge-ease));
+  mask-repeat: no-repeat;
+}
+@container scroll-state(stuck: top) {
+  .ds-scroll-edge > * {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ds-scroll-edge > * {
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
+}
+.ds-scroll-edge-fade {
+  background: var(--ds-background-surface-1);
+}
+/* Blur as a share of the peak (blur-xs, 4px), and how far down the band each layer reaches. */
+.ds-scroll-edge-blur {
+  backdrop-filter: blur(calc(--theme(--blur-xs inline) * var(--share)));
+  mask-size: 100% var(--reach);
+}
+.ds-scroll-edge-blur:nth-child(1) {
+  --share: 0.0625;
+  --reach: 100%;
+}
+.ds-scroll-edge-blur:nth-child(2) {
+  --share: 0.125;
+  --reach: 90%;
+}
+.ds-scroll-edge-blur:nth-child(3) {
+  --share: 0.1875;
+  --reach: 80%;
+}
+.ds-scroll-edge-blur:nth-child(4) {
+  --share: 0.25;
+  --reach: 70%;
+}
+.ds-scroll-edge-blur:nth-child(5) {
+  --share: 0.375;
+  --reach: 58%;
+}
+.ds-scroll-edge-blur:nth-child(6) {
+  --share: 0.5;
+  --reach: 46%;
+}
+.ds-scroll-edge-blur:nth-child(7) {
+  --share: 0.75;
+  --reach: 34%;
+}
+.ds-scroll-edge-blur:nth-child(8) {
+  --share: 1;
+  --reach: 22%;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ds-scroll-edge-blur {
+    display: none;
   }
 }
 
