@@ -11,8 +11,30 @@ describe('details model', () => {
     expect(addedOn('nonsense', now)).toBe('')
   })
 
+  it('names the pile under a mockup in it: Top of … or Variant in … (D3.2)', () => {
+    const inPile = {
+      id: 2,
+      title: 'Clay iPhone 15 Pro',
+      createdAt: '2026-10-12T09:00:00',
+      pile: null,
+      pileId: 1
+    }
+    expect(detailsCaption(inPile, 'mockup', now)).toBe(
+      'Variant in Clay iPhone 15 Pro · added 12 Oct'
+    )
+    expect(detailsCaption({ ...inPile, id: 1 }, 'top', now)).toBe(
+      'Top of Clay iPhone 15 Pro · added 12 Oct'
+    )
+  })
+
   it('captions a mockup, a pile and the top mockup of a pile', () => {
-    const item = { createdAt: '2026-10-12T09:00:00', pile: { memberCount: 4 } }
+    const item = {
+      id: 1,
+      title: 'a',
+      pileId: null,
+      createdAt: '2026-10-12T09:00:00',
+      pile: { memberCount: 4 }
+    }
     expect(detailsCaption(item, 'mockup', now)).toBe('Mockup · added 12 Oct')
     expect(detailsCaption(item, 'top', now)).toBe('Top mockup · added 12 Oct')
     expect(detailsCaption(item, 'pile', now)).toBe('Pile · 4 mockups')

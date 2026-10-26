@@ -9,7 +9,7 @@ import {
   saveBlockedReason
 } from './detail-edits'
 
-const saved = { title: 'Mug', description: 'A mug', tagIds: [1, 2] }
+const saved = { title: 'Mug', variation: null, description: 'A mug', tagIds: [1, 2] }
 
 describe('isDirty', () => {
   it('is clean when nothing changed, whatever the tag order', () => {
@@ -23,6 +23,12 @@ describe('isDirty', () => {
     expect(isDirty(saved, { ...saved, tagIds: [1] })).toBe(true)
     expect(isDirty(saved, { ...saved, tagIds: [1, 2, 3] })).toBe(true)
     expect(isDirty(saved, { ...saved, tagIds: [1, 3] })).toBe(true)
+  })
+
+  it('is dirty after a change to a pile mockup’s variation', () => {
+    const inPile = { ...saved, variation: 'side' }
+    expect(isDirty(inPile, { ...inPile })).toBe(false)
+    expect(isDirty(inPile, { ...inPile, variation: 'side view' })).toBe(true)
   })
 
   it('is clean again when an edit is undone', () => {
@@ -54,10 +60,19 @@ describe('formFromDetail', () => {
     ])
     expect(form).toEqual({
       title: 'Mug',
+      variation: null,
       description: '',
       tags: [{ tagId: 7, label: 'Clay', categoryId: 3, categoryLabel: 'Style' }]
     })
-    expect(draftOf(form)).toEqual({ title: 'Mug', description: '', tagIds: [7] })
+    expect(draftOf(form)).toEqual({ title: 'Mug', variation: null, description: '', tagIds: [7] })
+  })
+
+  it('reads a pile mockup’s base into the title and its own words into the variation (D3.3)', () => {
+    const inPile = {
+      ...detail,
+      item: { ...detail.item, title: 'Clay iPhone 15 Pro', variation: { words: 'side', source: 'ai' } }
+    } as unknown as MockupDetail
+    expect(formFromDetail(inPile, [])).toMatchObject({ title: 'Clay iPhone 15 Pro', variation: 'side' })
   })
 })
 

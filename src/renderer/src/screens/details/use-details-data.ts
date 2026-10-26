@@ -54,8 +54,18 @@ export function useDetailsData(id: number) {
   const [detail, setDetail] = useState<MockupDetail | null>(null)
   const tagTree = useTagTreeStore((s) => s.tree)
   const vocabulary = useMemo(() => toVocabulary(tagTree ?? []), [tagTree])
-  const [form, setForm] = useState<DetailForm>({ title: '', description: '', tags: [] })
-  const [saved, setSaved] = useState<DetailDraft>({ title: '', description: '', tagIds: [] })
+  const [form, setForm] = useState<DetailForm>({
+    title: '',
+    variation: null,
+    description: '',
+    tags: []
+  })
+  const [saved, setSaved] = useState<DetailDraft>({
+    title: '',
+    variation: null,
+    description: '',
+    tagIds: []
+  })
   const [saving, setSaving] = useState(false)
   const [photoshop, setPhotoshop] = useState<PhotoshopFailure | null>(null)
   /** Bumps when a cover changed, so the <img> asks for the new file. */
@@ -134,22 +144,38 @@ export function useDetailsData(id: number) {
       if (!detail) return current
       return {
         title: saved.title,
+        variation: saved.variation,
         description: saved.description,
         tags: current.tags.filter((tag) => saved.tagIds.includes(tag.tagId))
       }
     })
   }, [detail, saved])
 
+  /**
+   * A pile mockup's variation left empty: when focus leaves it takes its last saved words back, so
+   * every mockup in a pile keeps one (pile-titles.md). Nothing saves until Save.
+   */
+  const restoreVariation = () =>
+    setForm((current) =>
+      current.variation !== null && current.variation.trim() === ''
+        ? { ...current, variation: saved.variation }
+        : current
+    )
+
   /** Saves the form. True once it is saved; on failure the edits stay and Save is the retry. */
   const save = async (): Promise<boolean> => {
     const item = detail?.item
     if (!item || saving || !dirty || blocked !== null) return false
     setSaving(true)
-    const next = { ...draft, title: draft.title.trim() }
+    // In a pile the title is the base (renaming every mockup in it) and the variation its own words,
+    // never saved empty.
+    const variation = draft.variation === null ? null : draft.variation.trim() || saved.variation
+    const next = { ...draft, title: draft.title.trim(), variation }
     const res = await window.api
       .invoke(IPC_CHANNELS.MOCKUP_UPDATE, {
         mockupId: item.id,
         title: next.title,
+        ...(variation !== null ? { variation } : {}),
         description: next.description,
         tagIds: next.tagIds
       })
@@ -157,7 +183,7 @@ export function useDetailsData(id: number) {
     setSaving(false)
     if (res?.success) {
       setSaved(next)
-      setForm((current) => ({ ...current, title: next.title }))
+      setForm((current) => ({ ...current, title: next.title, variation }))
       setDetail((current) =>
         current
           ? {
@@ -165,6 +191,12 @@ export function useDetailsData(id: number) {
               item: {
                 ...current.item,
                 title: next.title,
+                variation:
+                  variation === null
+                    ? null
+                    : variation === saved.variation && current.item.variation
+                      ? current.item.variation
+                      : { words: variation, source: 'typed' },
                 description: next.description,
                 tags: form.tags.map((tag) => ({
                   id: tag.tagId,
@@ -355,6 +387,7 @@ export function useDetailsData(id: number) {
     vocabulary,
     form,
     setForm,
+    restoreVariation,
     dirty,
     blocked,
     saving,

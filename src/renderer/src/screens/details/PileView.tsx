@@ -1,5 +1,6 @@
 import { ArrowDiagonalIcon } from '@hugeicons/core-free-icons'
 import { coverUrl } from '@shared/cover-url'
+import { itemName } from '@renderer/lib/item-title'
 import { Button } from '@renderer/components/Button'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { MockupCard } from '@renderer/components/MockupCard'
@@ -65,7 +66,7 @@ export function PileView({ data }: { data: Data }) {
           <MockupCard
             key={variant.id}
             variant="compact"
-            title={variant.title}
+            title={itemName(variant)}
             // A blank line keeps every card the same height.
             tags={variant.isTop ? 'Top' : '\u00a0'}
             showFavourite={false}

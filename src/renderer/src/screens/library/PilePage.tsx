@@ -12,6 +12,7 @@ import { useDetailsStore, type OpenPile } from '@renderer/stores/detailsStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { syncLibrary } from '../details/library-sync'
 import { disbandPile, putOnTop, removeFromPile } from '../details/pile-actions'
+import { itemName } from '@renderer/lib/item-title'
 import { useGuardedSelection } from '../details/use-guarded-selection'
 import { CardMenu, type MenuTarget } from './CardMenu'
 import { openInPhotoshop } from './open-in-photoshop'
@@ -111,19 +112,19 @@ export function PilePage({ pile }: { pile: OpenPile }) {
           .invoke(IPC_CHANNELS.MOCKUP_RESTORE, { ids: [item.id] })
           .then(() => Promise.all([reload(), syncLibrary()]))
       },
-      item.title
+      itemName(item)
     )
   }
 
   const makeTop = async (item: LibraryItem) => {
-    const next = await putOnTop(pile.id, item.id, item.title)
+    const next = await putOnTop(pile.id, item.id, itemName(item))
     if (next === null) return
     // The pile is now the new top's row: carry on with that id.
     useDetailsStore.getState().openPile({ ...pile, id: next, select: item.id, edit: false })
   }
 
   const removeItem = async (item: LibraryItem) => {
-    const result = await removeFromPile(pile.id, item.id, item.title)
+    const result = await removeFromPile(pile.id, item.id, itemName(item))
     if (!result) return
     // A pile left with one mockup is gone: back to My Stash. A new top carries on as the pile.
     if (result.pileId === null) useDetailsStore.getState().closePile()
@@ -204,7 +205,7 @@ export function PilePage({ pile }: { pile: OpenPile }) {
               <MockupCard
                 key={item.id}
                 mockupId={key}
-                title={item.title}
+                title={itemName(item)}
                 tags={cardTags(item, item.id === topId)}
                 {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
                 favourite={item.favourite}

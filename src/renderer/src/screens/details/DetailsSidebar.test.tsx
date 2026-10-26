@@ -320,6 +320,55 @@ describe('details sidebar · editing', () => {
   })
 })
 
+describe('details sidebar · a mockup in a pile (pile-titles.md)', () => {
+  const inPile = {
+    item: {
+      ...single.item,
+      id: 100,
+      title: 'Clay iPhone 15 Pro',
+      pileId: 99,
+      variation: { words: 'side', source: 'ai' }
+    },
+    variants: []
+  }
+  const shown = () => setup({ [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(inPile) })
+
+  it('D3.2: is headed by its variation, and the line under it names the pile', async () => {
+    shown()
+    await show(100)
+    expect(screen.getByRole('heading', { name: 'Side' })).toBeTruthy()
+    expect(screen.getByText(/^Variant in Clay iPhone 15 Pro · added /)).toBeTruthy()
+  })
+
+  it('D3.3: edits the title as the compact base and variation, and Save sends both', async () => {
+    shown()
+    useDetailsStore
+      .getState()
+      .openPile({ id: 99, title: 'Clay iPhone 15 Pro', count: 4, select: 100, edit: false })
+    await show(100)
+    fireEvent.click(button('Edit')!)
+    const base = screen.getByRole('textbox', { name: 'Base title' }) as HTMLInputElement
+    const variation = screen.getByRole('textbox', { name: 'Variation' }) as HTMLInputElement
+    expect(base.value).toBe('Clay iPhone 15 Pro')
+    expect(variation.value).toBe('side')
+    expect(variation.className).toContain('w-30')
+    fireEvent.focus(base)
+    expect(screen.getByText('Renames the pile: all 4 mockups.')).toBeTruthy()
+    // An emptied variation takes its words back when focus leaves.
+    fireEvent.change(variation, { target: { value: '' } })
+    fireEvent.blur(variation)
+    expect(variation.value).toBe('side')
+    fireEvent.change(variation, { target: { value: 'side view' } })
+    fireEvent.click(button('Save')!)
+    await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_UPDATE)).toHaveLength(1))
+    expect(calls(IPC_CHANNELS.MOCKUP_UPDATE)[0]![1]).toMatchObject({
+      mockupId: 100,
+      title: 'Clay iPhone 15 Pro',
+      variation: 'side view'
+    })
+  })
+})
+
 describe('details sidebar · a pile', () => {
   it('lists the mockups, the top one first, under the pile’s title and count', async () => {
     await show(99)
@@ -330,6 +379,25 @@ describe('details sidebar · a pile', () => {
     expect(cards[0]!.textContent).toContain('front')
     expect(cards[0]!.textContent).toContain('Top')
     expect(screen.queryByRole('tab')).toBeNull()
+  })
+
+  it('names each mockup in the pile by its variation, with a capital', async () => {
+    const titled = {
+      ...pile,
+      variants: pile.variants.map((v) => ({
+        ...v,
+        title: 'Login Pile',
+        variation: { words: v.title, source: 'ai' }
+      }))
+    }
+    setup({ [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(titled) })
+    await show(99)
+    await screen.findByText('Login Pile')
+    const names = [...document.querySelectorAll('[data-ds="MockupCard"] p')].map(
+      (p) => p.textContent
+    )
+    expect(names).toEqual(expect.arrayContaining(['Front', 'Side', 'Back']))
+    expect(names).not.toContain('Login Pile')
   })
 
   it('has the expand icon before ✕, and Disband pile above Edit pile details', async () => {

@@ -2,9 +2,11 @@ import type { ApprovalTag } from '@shared/approval'
 import type { CoverSource, MockupDetail } from '@shared/library'
 import type { TagTree } from '@shared/tags'
 
-/** The three things Detail edits. */
+/** What Detail edits. In a pile `title` is the pile's base and `variation` this mockup's own words. */
 export interface DetailDraft {
   title: string
+  /** Null on a mockup on its own. */
+  variation: string | null
   description: string
   tagIds: number[]
 }
@@ -12,6 +14,7 @@ export interface DetailDraft {
 /** What the person has typed, with the tags as the editor holds them. */
 export interface DetailForm {
   title: string
+  variation: string | null
   description: string
   tags: ApprovalTag[]
 }
@@ -20,6 +23,7 @@ export const EMPTY_TITLE_REASON = 'Add a title to save'
 
 export const draftOf = (form: DetailForm): DetailDraft => ({
   title: form.title,
+  variation: form.variation,
   description: form.description,
   tagIds: form.tags.map((tag) => tag.tagId)
 })
@@ -34,6 +38,7 @@ const sameTagIds = (a: readonly number[], b: readonly number[]) => {
 export function isDirty(saved: DetailDraft, current: DetailDraft): boolean {
   return (
     saved.title !== current.title ||
+    saved.variation !== current.variation ||
     saved.description !== current.description ||
     !sameTagIds(saved.tagIds, current.tagIds)
   )
@@ -49,6 +54,7 @@ export function formFromDetail(detail: MockupDetail, tree: TagTree): DetailForm 
   const categoryIds = new Map(tree.map((category) => [category.categoryLabel, category.categoryId]))
   return {
     title: detail.item.title,
+    variation: detail.item.variation?.words ?? null,
     description: detail.item.description ?? '',
     tags: detail.item.tags.map((tag) => ({
       tagId: tag.id,

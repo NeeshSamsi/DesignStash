@@ -66,6 +66,35 @@ describe('PilePage', () => {
     expect(cards()[1]!.textContent).not.toContain('Top')
   })
 
+  it('titles each card by its variation, with a capital, under the pile’s base (D3.1)', async () => {
+    const words: Record<number, string> = { 1: 'three-quarter', 2: 'side', 3: 'flat lay' }
+    setupApi([], {
+      ...handlers,
+      [IPC_CHANNELS.MOCKUP_DETAIL]: (request: unknown) => {
+        const id = (request as { mockupId: number }).mockupId
+        const base = item(id, {
+          title: 'Clay iPhone 15 Pro',
+          pileId: 1,
+          variation: { words: words[id]!, source: 'ai' }
+        })
+        return ok({
+          item: id === 1 ? { ...base, pile: { memberCount: 3 } } : base,
+          variants: id === 1 ? variants : []
+        })
+      }
+    })
+    useDetailsStore
+      .getState()
+      .openPile({ id: 1, title: 'Clay iPhone 15 Pro', count: 3, select: 1, edit: false })
+    render(<Host />)
+    await ready()
+    expect(cards().map((c) => c.querySelector('p')?.textContent)).toEqual([
+      'Three-quarter',
+      'Side',
+      'Flat lay'
+    ])
+  })
+
   it('arrives with the top mockup selected and showing in the sidebar', async () => {
     setupApi([], handlers)
     useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })

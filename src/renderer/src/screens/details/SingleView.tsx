@@ -5,8 +5,10 @@ import { Field } from '@renderer/components/Field'
 import { Input } from '@renderer/components/Input'
 import { MockupMetaForm } from '@renderer/components/MockupMetaForm'
 import { TagChip } from '@renderer/components/TagChip'
+import { TitlePair } from '@renderer/components/TitlePair'
 import { Tooltip } from '@renderer/components/Tooltip'
 import { ErrorState } from '@renderer/components/ErrorState'
+import { itemFullTitle, itemName } from '@renderer/lib/item-title'
 import { useShortcut } from '@renderer/lib/shortcuts'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { detailsCaption, type DetailsKind } from './details-model'
@@ -36,6 +38,8 @@ export function SingleView({ data, edit, kind }: SingleViewProps) {
   const { detail, form, setForm } = data
   const item = detail?.item
   const setDirty = useDetailsStore((s) => s.setDirty)
+  /** For the base's hint: how many mockups renaming the pile renames. */
+  const pileCount = useDetailsStore((s) => s.pile?.count)
 
   // The store holds "unsaved edits" for the guard around every way out.
   const dirty = edit && data.dirty
@@ -80,11 +84,18 @@ export function SingleView({ data, edit, kind }: SingleViewProps) {
 
   const src = item.coverPath ? coverUrl(item.coverPath, data.coverVersion) : undefined
   const caption = detailsCaption(item, kind)
+  // In a pile the heading is its variation (the line under it names the pile); alone, its title.
+  const name = itemName(item)
+  const full = itemFullTitle(item)
+  const editingFull = itemFullTitle({
+    title: form.title.trim() || item.title,
+    variation: form.variation?.trim() ? { words: form.variation.trim() } : item.variation
+  })
   const star = (
     <FavouriteToggle
       variant="inline"
       pressed={item.favourite}
-      aria-label={item.favourite ? `Remove star from ${item.title}` : `Star ${item.title}`}
+      aria-label={item.favourite ? `Remove star from ${full}` : `Star ${full}`}
       onPressedChange={(favourite) => void data.toggleFavourite(favourite)}
     />
   )
@@ -101,12 +112,12 @@ export function SingleView({ data, edit, kind }: SingleViewProps) {
 
   return (
     <>
-      <SidebarHeader {...(edit ? {} : { title: item.title })} caption={caption}>
+      <SidebarHeader {...(edit ? {} : { title: name })} caption={caption}>
         {star}
       </SidebarHeader>
       {edit ? (
         <EditableCover
-          title={form.title.trim() || item.title}
+          title={editingFull}
           src={src}
           coverPath={item.coverPath}
           coverSource={item.coverSource}
@@ -120,7 +131,7 @@ export function SingleView({ data, edit, kind }: SingleViewProps) {
       ) : (
         <SidebarCover
           src={src}
-          title={item.title}
+          title={full}
           coverSource={item.coverSource}
           missing={item.coverMissing}
         />
@@ -136,15 +147,29 @@ export function SingleView({ data, edit, kind }: SingleViewProps) {
             error={data.blocked ?? ''}
             htmlFor="details-title"
           >
-            <Input
-              id="details-title"
-              value={form.title}
-              readOnly={data.saving}
-              aria-invalid={data.blocked !== null || undefined}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, title: event.target.value }))
-              }
-            />
+            {form.variation !== null ? (
+              // A mockup in a pile (D3.3): the pile's base, which renames every mockup in it, and its own variation.
+              <TitlePair
+                size="compact"
+                baseId="details-title"
+                baseValue={form.title}
+                onBaseChange={(title) => setForm((current) => ({ ...current, title }))}
+                variationValue={form.variation}
+                onVariationChange={(variation) => setForm((current) => ({ ...current, variation }))}
+                onVariationBlur={data.restoreVariation}
+                pileCount={pileCount ?? item.pile?.memberCount ?? 2}
+              />
+            ) : (
+              <Input
+                id="details-title"
+                value={form.title}
+                readOnly={data.saving}
+                aria-invalid={data.blocked !== null || undefined}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, title: event.target.value }))
+                }
+              />
+            )}
           </Field>
           <MockupMetaForm
             variant="detail"
