@@ -266,7 +266,9 @@ describe('Header badge', () => {
 
   it('uses the haul count from the start when nothing is in a pile', () => {
     expect(
-      headerBadge(createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null }))
+      headerBadge(
+        createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null })
+      )
     ).toBe('1 of 3')
   })
 })
@@ -294,7 +296,9 @@ describe('Deck', () => {
     expect(deck(s).showDeck).toBe(false)
     s = jumpTo(s, 3)
     expect(deck(s)).toMatchObject({ remaining: 0, showDeck: false })
-    expect(deck(createFlow({ units: [single(1)], checksEdits: false, resume: null })).showDeck).toBe(false)
+    expect(
+      deck(createFlow({ units: [single(1)], checksEdits: false, resume: null })).showDeck
+    ).toBe(false)
   })
 
   it('peeks one card for a pile of two', () => {
@@ -347,6 +351,33 @@ describe('Rail', () => {
   it('gives every step the index to jump to', () => {
     expect(rail(start())!.steps.map((x) => x.step)).toEqual([0, 1, 2, 3])
   })
+
+  it('names the pile by its base and each step by its variation, following the typing (L8)', () => {
+    const v = (words: string) => ({ words, source: 'ai' as const })
+    const s = createFlow({
+      units: [
+        {
+          unitId: 1,
+          kind: 'pile',
+          items: [
+            item(10, 'top', { title: 'Clay iPhone 15 Pro', variation: v('three-quarter') }),
+            item(11, 'variant', { title: 'Clay iPhone 15 Pro', variation: v('side') }),
+            item(12, 'variant', { title: 'Clay iPhone 15 Pro', variation: v('side 2') })
+          ]
+        }
+      ],
+      checksEdits: false,
+      resume: null
+    })
+    const r = rail(s, { 10: 'Matte clay iPhone' }, { 11: 'side view', 12: '  ' })!
+    expect(r.title).toBe('Matte clay iPhone')
+    expect(r.steps.map((x) => x.label)).toEqual([
+      'Top · three-quarter',
+      'Variant · side view',
+      'Variant · side 2',
+      'Review & stash pile'
+    ])
+  })
 })
 
 describe('Primary button', () => {
@@ -363,7 +394,8 @@ describe('Primary button', () => {
 })
 
 describe('Skip', () => {
-  const singles = () => createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null })
+  const singles = () =>
+    createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null })
 
   it('is only for mockups on their own', () => {
     expect(canSkip(start())).toBe(false)
@@ -418,7 +450,11 @@ describe('Progress', () => {
   })
 
   it('moves when a single is skipped, since the next one is opened', () => {
-    const s = createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null })
+    const s = createFlow({
+      units: [single(1), single(2), single(3)],
+      checksEdits: false,
+      resume: null
+    })
     expect(progress(s)).toBeCloseTo(1 / 3)
     expect(progress(skip(s))).toBeCloseTo(2 / 3)
   })
@@ -434,7 +470,12 @@ describe('Progress', () => {
 describe('landedDraft', () => {
   const phone = { tagId: 1, label: 'Phone', categoryId: 1, categoryLabel: 'Device' }
   const laptop = { tagId: 2, label: 'Laptop', categoryId: 1, categoryLabel: 'Device' }
-  const fallback = { title: 'phone side', description: 'On a stand', tags: [phone] }
+  const fallback = {
+    title: 'phone side',
+    variation: null,
+    description: 'On a stand',
+    tags: [phone]
+  }
   const landed = item(2, 'variant', {
     title: 'Blue scroll Macbook',
     description: 'A long page',
@@ -445,6 +486,7 @@ describe('landedDraft', () => {
     const { form, saved } = landedDraft(fallback, fallback, landed)
     expect(form).toEqual({
       title: 'Blue scroll Macbook',
+      variation: null,
       description: 'A long page',
       tags: [laptop]
     })
@@ -454,14 +496,39 @@ describe('landedDraft', () => {
   it('keeps a field the user is still editing, and records what main now has', () => {
     const typing = { ...fallback, title: 'My side' }
     const { form, saved } = landedDraft(typing, fallback, landed)
-    expect(form).toEqual({ title: 'My side', description: 'A long page', tags: [laptop] })
+    expect(form).toEqual({
+      title: 'My side',
+      variation: null,
+      description: 'A long page',
+      tags: [laptop]
+    })
     // Saving then counts only the title as the user's edit.
     expect(saved.title).toBe('Blue scroll Macbook')
   })
 
+  it('in a pile, fills an untyped variation and follows a new base, but keeps typed words', () => {
+    const base = { title: 'Clay phone', variation: 'B', description: '', tags: [] }
+    const fresh = item(2, 'variant', {
+      title: 'Clay iPhone 15 Pro',
+      variation: { words: 'side', source: 'ai' }
+    })
+    expect(landedDraft(base, base, fresh).form).toMatchObject({
+      title: 'Clay iPhone 15 Pro',
+      variation: 'side'
+    })
+    // A typed variation stays; the base still takes the top's suggestion.
+    const typed = { ...base, variation: 'my side' }
+    expect(landedDraft(typed, base, fresh, ['title']).form).toMatchObject({
+      title: 'Clay iPhone 15 Pro',
+      variation: 'my side'
+    })
+    // A base the person renamed stays theirs.
+    expect(landedDraft({ ...base, title: 'Matte clay' }, base, fresh).form.title).toBe('Matte clay')
+  })
+
   it('keeps the fields the person took over even when they still read as main had them', () => {
     // Fill it myself: the title stays the file name, and the cleared description and tags stay clear.
-    const mine = { title: 'phone side', description: '', tags: [] }
+    const mine = { title: 'phone side', variation: null, description: '', tags: [] }
     const { form } = landedDraft(mine, fallback, landed, ['title', 'description', 'tags'])
     expect(form).toEqual(mine)
     expect(landedDraft(fallback, fallback, landed, ['title']).form.title).toBe('phone side')

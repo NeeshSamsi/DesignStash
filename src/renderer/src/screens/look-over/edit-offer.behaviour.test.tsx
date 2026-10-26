@@ -96,7 +96,7 @@ const answered = (action: string) =>
 
 async function start() {
   render(<LookOverFlow open onClose={vi.fn()} />)
-  await screen.findByRole('textbox', { name: /Title/ })
+  await screen.findByRole('textbox', { name: /title/i })
 }
 
 beforeEach(() => toasts.toast.mockClear())

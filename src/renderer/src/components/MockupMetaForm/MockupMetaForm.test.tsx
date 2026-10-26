@@ -125,4 +125,43 @@ describe('MockupMetaForm · behaviour', () => {
       'Writing with AI…'
     )
   })
+
+  it('a mockup in a pile: the Title is its base and its variation, under one label (L8)', () => {
+    render(
+      <MockupMetaForm
+        titlePair={{ baseValue: 'Clay iPhone 15 Pro', variationValue: 'side', pileCount: 4 }}
+      />
+    )
+    const base = screen.getByRole('textbox', { name: 'Base title' }) as HTMLInputElement
+    expect(base.value).toBe('Clay iPhone 15 Pro')
+    expect((screen.getByRole('textbox', { name: 'Variation' }) as HTMLInputElement).value).toBe(
+      'side'
+    )
+    // The Title label points at the base.
+    expect(screen.getByText('Title').closest('label')?.getAttribute('for')).toBe(base.id)
+  })
+
+  it('in a pile only the variation writes and takes the tint; the base is already known', () => {
+    const { rerender } = render(
+      <MockupMetaForm
+        state="writing"
+        titlePair={{
+          baseValue: 'Clay iPhone 15 Pro',
+          variationValue: 'B',
+          onVariationChange: () => {}
+        }}
+      />
+    )
+    const base = () => screen.getByRole('textbox', { name: 'Base title' }) as HTMLInputElement
+    const variation = () => screen.getByRole('textbox', { name: 'Variation' }) as HTMLInputElement
+    expect(base().value).toBe('Clay iPhone 15 Pro')
+    expect(variation().getAttribute('placeholder')).toBe('Writing with AI…')
+    rerender(
+      <MockupMetaForm
+        filledFields={['title']}
+        titlePair={{ baseValue: 'Clay iPhone 15 Pro', variationValue: 'side' }}
+      />
+    )
+    expect(variation().className).toContain('motion-safe:animate-ai-tint')
+  })
 })

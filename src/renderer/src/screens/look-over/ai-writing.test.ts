@@ -185,6 +185,20 @@ describe('aiLine: the status line', () => {
     ).toBe('Couldn’t write suggestions for this one.')
   })
 
+  it('in a pile, says it of the variation, which comes from the file name', () => {
+    const inPile = item({ variation: { words: 'side', source: 'marker' } })
+    expect(aiLine(inPile, { optedOut: true }, NOW)?.message).toBe(
+      'You’re filling this one in. Its variation starts from the file name.'
+    )
+    expect(
+      aiLine(
+        { ...inPile, waitingForAi: false },
+        { ai: ai({ status: 'failed', run: undefined }) },
+        NOW
+      )?.message
+    ).toBe('Couldn’t write suggestions for this one, so its variation is from the file name.')
+  })
+
   it('says nothing when AI is off in Settings or the suggestion was already in', () => {
     expect(
       aiLine(item({ waitingForAi: false }), { ai: ai({ status: 'off', run: undefined }) }, NOW)

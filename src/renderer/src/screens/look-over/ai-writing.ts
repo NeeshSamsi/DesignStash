@@ -112,18 +112,31 @@ export function aiLine(item: LookOverItem, w: Writing = {}, now: number): AiLine
         : `Writing the ${list(left)} with AI. ${yours(typed)}`
     return { kind: 'working', message, action: 'fill-myself' }
   }
+  // Where the title came from, unless the person typed it. In a pile the title is the pile's base,
+  // and the file name gives this one's variation.
   const fromFileName = !typed.includes('title')
+  const inPile = item.variation !== null && item.variation !== undefined
+  const startsFrom = !fromFileName
+    ? ''
+    : inPile
+      ? ' Its variation starts from the file name.'
+      : ' Its title starts from the file name.'
+  const cameFrom = !fromFileName
+    ? ''
+    : inPile
+      ? ', so its variation is from the file name'
+      : ', so the title is its file name'
   if (filledByHand(item, w)) {
     return {
       kind: 'off',
-      message: `You’re filling this one in.${fromFileName ? ' Its title starts from the file name.' : ''}`,
+      message: `You’re filling this one in.${startsFrom}`,
       action: 'write-suggestions'
     }
   }
   if (couldNotWrite(item, w)) {
     return {
       kind: 'failed',
-      message: `Couldn’t write suggestions for this one${fromFileName ? ', so the title is its file name' : ''}.`,
+      message: `Couldn’t write suggestions for this one${cameFrom}.`,
       action: 'try-again'
     }
   }

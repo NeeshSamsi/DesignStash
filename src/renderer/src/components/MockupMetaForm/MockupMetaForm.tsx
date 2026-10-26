@@ -2,6 +2,7 @@ import { useId, type ComponentProps } from 'react'
 import { Field } from '@renderer/components/Field'
 import { Input } from '@renderer/components/Input'
 import { TagEditor, type TagEditorProps } from '@renderer/components/TagEditor'
+import { TitlePair, type TitlePairProps } from '@renderer/components/TitlePair'
 import { Textarea } from '@renderer/components/Textarea'
 import { cn } from '@renderer/lib/utils'
 import { FieldTitle, Field as UiField } from '@renderer/ui/field'
@@ -32,6 +33,11 @@ export interface MockupMetaFormProps
   writingFields?: readonly MetaField[]
   /** The fields the AI just filled: they take the fading tint (L6.3). */
   filledFields?: readonly MetaField[]
+  /**
+   * A mockup in a pile (pile-titles.md): the Title is its base and its variation (TitlePair). The AI
+   * writes the variation, so the title's writing state and tint go to it; the base is already known.
+   */
+  titlePair?: Omit<TitlePairProps, 'baseId' | 'baseState' | 'variationState'>
 }
 
 const SAMPLE_TITLE = 'Mockup title'
@@ -56,6 +62,7 @@ export function MockupMetaForm({
   tagEditor,
   writingFields,
   filledFields = [],
+  titlePair,
   ...rest
 }: MockupMetaFormProps) {
   const { variant, state, ...props } = { ...MOCKUP_META_FORM_DEFAULTS, ...rest }
@@ -67,6 +74,7 @@ export function MockupMetaForm({
   const filled = (field: MetaField) => !writes(field) && filledFields.includes(field)
   const saving = state === 'saving'
   const titleText = title ?? (state === 'invalid' ? '' : SAMPLE_TITLE)
+  const titleState = writes('title') ? 'writing' : filled('title') ? 'ai-filled' : 'default'
 
   return (
     <div
@@ -86,14 +94,18 @@ export function MockupMetaForm({
           error="Title can't be empty."
           htmlFor={`${id}-title`}
         >
-          <Input
-            id={`${id}-title`}
-            value={titleText}
-            state={writes('title') ? 'writing' : filled('title') ? 'ai-filled' : 'default'}
-            readOnly={saving}
-            aria-invalid={state === 'invalid' || undefined}
-            {...(onTitleChange && { onChange: (event) => onTitleChange(event.target.value) })}
-          />
+          {titlePair ? (
+            <TitlePair {...titlePair} baseId={`${id}-title`} variationState={titleState} />
+          ) : (
+            <Input
+              id={`${id}-title`}
+              value={titleText}
+              state={titleState}
+              readOnly={saving}
+              aria-invalid={state === 'invalid' || undefined}
+              {...(onTitleChange && { onChange: (event) => onTitleChange(event.target.value) })}
+            />
+          )}
         </Field>
       )}
       <Field

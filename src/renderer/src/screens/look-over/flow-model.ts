@@ -1,4 +1,5 @@
 import type { LookOverItem, LookOverQueue, LookOverUnit } from '@shared/approval'
+import { variationHeading } from '@shared/pile-variation'
 
 /**
  * The pure model of Look it over (design/specs/piles.md): where you are, what Back and Next do,
@@ -218,10 +219,16 @@ export interface Rail {
 
 /**
  * The rail for the current pile: the top mockup, the variants, then Review & stash pile. Null for a
- * single. `titles` are the drafts as edited (by mockup id), so the labels follow the typing; a
- * blank draft keeps the title the mockup opened with.
+ * single. The header names the pile by its base; each step by its variation alone ("Top ·
+ * three-quarter", "Variant · side", pile-titles.md). `titles` (the base) and `variations` are the
+ * drafts as edited (by mockup id), so the labels follow the typing; a blank one keeps what the
+ * mockup opened with. An item from before base titles has no variation and is named by its title.
  */
-export function rail(s: FlowState, titles: Readonly<Record<number, string>> = {}): Rail | null {
+export function rail(
+  s: FlowState,
+  titles: Readonly<Record<number, string>> = {},
+  variations: Readonly<Record<number, string | null>> = {}
+): Rail | null {
   const unit = currentUnit(s)
   if (!isPile(unit)) return null
   const n = piles(s).findIndex((p) => p.unitId === unit.unitId) + 1
@@ -234,10 +241,17 @@ export function rail(s: FlowState, titles: Readonly<Record<number, string>> = {}
           ? 'skipped'
           : 'todo'
   const titleOf = (item: LookOverItem) => titles[item.mockupId]?.trim() || item.title
+  const variationOf = (item: LookOverItem) =>
+    variations[item.mockupId]?.trim() || item.variation?.words || null
+  const labelOf = (item: LookOverItem, step: number) => {
+    const variation = variationOf(item)
+    if (variation) return `${item.role === 'top' ? 'Top' : 'Variant'} · ${variation}`
+    return item.role === 'top' ? `Top · ${titleOf(item)}` : `Variant · ${titleOf(item)} · ${step}`
+  }
   const steps: RailStep[] = unit.items.map((item, step) => ({
     key: String(item.mockupId),
     mockupId: item.mockupId,
-    label: item.role === 'top' ? `Top · ${titleOf(item)}` : `Variant · ${titleOf(item)} · ${step}`,
+    label: labelOf(item, step),
     status: statusOf(item.mockupId, step),
     showConnector: true,
     step
@@ -330,18 +344,25 @@ export function progress(s: FlowState): number {
   return Math.min(1, seen.size / total)
 }
 
-/** What the form shows for one mockup. */
+/** What the form shows for one mockup. In a pile `title` is the pile's base and `variation` its own words. */
 export interface DraftForm {
   title: string
+  /** Null on a mockup on its own. */
+  variation: string | null
   description: string
   tags: LookOverItem['tags']
 }
 
 export const formOf = (item: LookOverItem): DraftForm => ({
   title: item.title,
+  variation: item.variation?.words ?? null,
   description: item.description,
   tags: item.tags
 })
+
+/** A review card's title: a pile mockup's variation on its own, with a capital ("Side"); else its title. */
+export const cardTitle = (form: Pick<DraftForm, 'title' | 'variation'>): string =>
+  form.variation?.trim() ? variationHeading(form.variation.trim()) : form.title
 
 const tagKey = (form: DraftForm) => form.tags.map((t) => t.tagId).join()
 
@@ -361,9 +382,18 @@ export function landedDraft(
   const fresh = formOf(item)
   const theirs = (field: 'title' | 'description' | 'tags', same: boolean) =>
     keep.includes(field) || !same
+  // In a pile the AI writes the variation, so typing there is what `keep` means by the title; the
+  // base follows the top's suggestion unless the person renamed the pile.
+  const inPile = fresh.variation !== null
+  const base = inPile ? form.title !== saved.title : theirs('title', form.title === saved.title)
   return {
     form: {
-      title: theirs('title', form.title === saved.title) ? form.title : fresh.title,
+      title: base ? form.title : fresh.title,
+      variation: inPile
+        ? theirs('title', form.variation === saved.variation)
+          ? form.variation
+          : fresh.variation
+        : null,
       description: theirs('description', form.description === saved.description)
         ? form.description
         : fresh.description,

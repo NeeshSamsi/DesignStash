@@ -23,7 +23,7 @@ const item = (id: number, role: string, over: Record<string, unknown> = {}) => (
   checked: false,
   waitingForAi: false,
   carry: null,
-  variation: role === 'single' ? null : { words: `phone ${id}`, source: 'marker' },
+  variation: role === 'single' ? null : { words: `marker ${id}`, source: 'marker' },
   // Where its suggestion is, as main reports it (ignored by schemas that don't have it yet).
   ai: { status: over.waitingForAi ? 'pending' : 'ready' },
   cover,
@@ -81,7 +81,10 @@ function setup(overrides: Record<string, Handler> = {}, queue: unknown = pileQue
 }
 
 const push = (channel: string, payload: unknown) => act(() => listeners[channel]?.(payload))
-const titleField = () => screen.getByRole('textbox', { name: /Title/ }) as HTMLInputElement
+/** The field the AI writes the title into: in a pile its variation (the base is the pile's), else the Title. */
+const titleField = () =>
+  (screen.queryByRole('textbox', { name: 'Variation' }) ??
+    screen.getByRole('textbox', { name: /Title/ })) as HTMLInputElement
 const description = () =>
   screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement
 const line = () => document.querySelector('[data-ds="AiStatus"]')
@@ -89,7 +92,7 @@ const rail = () => screen.getByRole('navigation', { name: /PILE/ })
 
 async function start() {
   render(<LookOverFlow open onClose={vi.fn()} />)
-  await screen.findByRole('textbox', { name: /Title/ })
+  await screen.findByRole('textbox', { name: /title/i })
   await waitFor(() =>
     expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_SHOWING, expect.anything())
   )
@@ -144,7 +147,7 @@ describe('Look it over · AI writing (L6)', () => {
     })
     expect(
       within(rail())
-        .getByRole('button', { name: /phone side/ })
+        .getByRole('button', { name: /marker 11/ })
         .getAttribute('aria-describedby')
     ).toBeTruthy()
     expect(within(rail()).getByText('Writing with AI…')).toBeTruthy()
@@ -197,13 +200,13 @@ describe('Look it over · AI writing (L6)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Fill it myself' }))
     expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_FILL_MYSELF, { mockupId: 11 })
     expect(line()?.textContent).toContain(
-      'You’re filling this one in. Its title starts from the file name.'
+      'You’re filling this one in. Its variation starts from the file name.'
     )
-    expect(titleField().value).toBe('phone side')
+    expect(titleField().value).toBe('marker 11')
     await waitFor(() => expect(document.activeElement).toBe(titleField()))
     expect([titleField().selectionStart, titleField().selectionEnd]).toEqual([
       0,
-      'phone side'.length
+      'marker 11'.length
     ])
     expect(description().value).toBe('')
     expect(document.querySelectorAll('[data-state="thinking"]')).toHaveLength(0)
@@ -212,7 +215,7 @@ describe('Look it over · AI writing (L6)', () => {
       ...item(11, 'variant', { title: 'AI title' }),
       waitingForAi: false
     })
-    expect(titleField().value).toBe('phone side')
+    expect(titleField().value).toBe('marker 11')
     expect(description().value).toBe('')
   })
 
@@ -282,9 +285,9 @@ describe('Look it over · AI writing (L6)', () => {
       item(11, 'variant', { title: 'phone side', ai: { status: 'failed' } })
     )
     expect(line()?.textContent).toContain(
-      'Couldn’t write suggestions for this one, so the title is its file name.'
+      'Couldn’t write suggestions for this one, so its variation is from the file name.'
     )
-    expect(titleField().value).toBe('phone side')
+    expect(titleField().value).toBe('marker 11')
   })
 
   it('shows no line when AI is off, or when the suggestion was already in', async () => {
@@ -327,7 +330,7 @@ describe('Look it over · AI writing (L6)', () => {
     const fills = screen.getAllByRole('button', { name: 'Fill it myself' })
     expect(fills).toHaveLength(2)
     fireEvent.click(fills[0]!)
-    expect(screen.getByText('Stash pile waits until phone back’s suggestions arrive.')).toBeTruthy()
+    expect(screen.getByText('Stash pile waits until Marker 12’s suggestions arrive.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Fill it myself' }))
     expect(
       (screen.getByRole('button', { name: 'Stash pile (3)' }) as HTMLButtonElement).disabled

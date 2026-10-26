@@ -40,6 +40,7 @@ import {
   createFlow,
   currentItem,
   currentUnit,
+  cardTitle,
   deck,
   finished,
   headerBadge,
@@ -65,6 +66,7 @@ import {
   stashRefusal
 } from './look-over-copy'
 import { coverUrl } from '@shared/cover-url'
+import { fullTitle } from '@shared/pile-variation'
 import { WRITING_PLACEHOLDER } from '@renderer/lib/writing-field'
 
 interface LookOverFlowProps {
@@ -92,7 +94,10 @@ type Loaded =
 
 const tagIds = (form: Form) => form.tags.map((t) => t.tagId)
 const sameForm = (a: Form, b: Form) =>
-  a.title === b.title && a.description === b.description && tagIds(a).join() === tagIds(b).join()
+  a.title === b.title &&
+  a.variation === b.variation &&
+  a.description === b.description &&
+  tagIds(a).join() === tagIds(b).join()
 
 const panelSource = (cover: Cover): 'embedded' | 'sidecar' | 'uploaded' | 'none' =>
   cover.path === '' || cover.source === 'none'
@@ -243,7 +248,8 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const theDeck = deck(flow)
   const theRail = rail(
     flow,
-    Object.fromEntries(Object.entries(forms).map(([id, f]) => [id, f.title]))
+    Object.fromEntries(Object.entries(forms).map(([id, f]) => [id, f.title])),
+    Object.fromEntries(Object.entries(forms).map(([id, f]) => [id, f.variation]))
   )
   const blocked = item && form ? form.title.trim() === '' : false
   const noCover = item && cover ? panelSource(cover) === 'none' : false
@@ -332,6 +338,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
         ...current,
         [id]: {
           title: was.title,
+          variation: was.variation,
           description: fields.includes('description') ? '' : was.description,
           tags: fields.includes('tags') ? [] : was.tags
         }
@@ -345,7 +352,10 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     if (selectTitle && fields.includes('title')) {
       // After the field stops writing and shows the file name, select it so typing replaces it.
       setTimeout(() => {
-        const title = formColumn.current?.querySelector<HTMLInputElement>('input')
+        // In a pile the AI writes the variation, which starts from the file name.
+        const title = formColumn.current?.querySelector<HTMLInputElement>(
+          it.variation ? 'input[aria-label="Variation"]' : 'input'
+        )
         title?.focus()
         title?.select()
       }, 0)
@@ -376,7 +386,9 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
       return {
         ...current,
         [id]: {
-          title: typed.includes('title') ? was.title : fresh.title,
+          // In a pile the title is the base, which the AI doesn't write again; the variation is.
+          title: fresh.variation !== null || typed.includes('title') ? was.title : fresh.title,
+          variation: typed.includes('title') ? was.variation : fresh.variation,
           description: typed.includes('description') ? was.description : fresh.description,
           tags: typed.includes('tags') ? was.tags : fresh.tags
         }
@@ -457,6 +469,8 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
       .invoke(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, {
         mockupId: item.mockupId,
         title: form.title.trim(),
+        // In a pile the title is the base (renaming every draft in it) and this is its own part.
+        ...(form.variation !== null ? { variation: form.variation } : {}),
         description: form.description,
         tagIds: tagIds(form)
       })
@@ -516,8 +530,44 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
           : new Set([...ids].filter((id) => id !== item.mockupId))
       )
     }
-    // Typing in a field the AI is writing makes it the person's (L6.2).
-    dispatch({ type: 'typed', mockupId: item.mockupId, fields: Object.keys(patch) as MetaField[] })
+    // Typing in a field the AI is writing makes it the person's (L6.2). In a pile the AI writes the
+    // variation, so that is the title it means; the base is the pile's.
+    const fields = (Object.keys(patch) as (keyof Form)[]).flatMap((key): MetaField[] =>
+      key === 'variation' ? ['title'] : key === 'title' && form.variation !== null ? [] : [key]
+    )
+    dispatch({ type: 'typed', mockupId: item.mockupId, fields })
+  }
+
+  /**
+   * The base renames the pile from any of its mockups (L8.1): every draft in it takes the new base
+   * as it is typed, so the rail header follows. Saving sends it, and main renames them exactly.
+   */
+  const editBase = (base: string) => {
+    const ids = new Set(unit.items.map((i) => i.mockupId))
+    setForms((current) =>
+      Object.fromEntries(
+        Object.entries(current).map(([id, f]) => [
+          id,
+          ids.has(Number(id)) ? { ...f, title: base } : f
+        ])
+      )
+    )
+  }
+
+  /** A variation left empty takes its file marker or number back when focus leaves (L8.2). */
+  const restoreVariation = async () => {
+    if (!item || form?.variation?.trim() !== '') return
+    const id = item.mockupId
+    const res = await window.api
+      .invoke(IPC_CHANNELS.PILE_SET_VARIATION, { mockupId: id, words: '' })
+      .catch(() => null)
+    if (!res?.success) return
+    const words = res.data.variation.words
+    setForms((current) =>
+      current[id] ? { ...current, [id]: { ...current[id], variation: words } } : current
+    )
+    const was = saved.current[id]
+    if (was) saved.current = { ...saved.current, [id]: { ...was, variation: words } }
   }
 
   // -- Stash -----------------------------------------------------------------------------------
@@ -696,7 +746,8 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
 
   // -- Render ----------------------------------------------------------------------------------
 
-  const titles = Object.fromEntries(Object.entries(forms).map(([id, f]) => [id, f.title]))
+  // A pile's mockups share the base, so the wait names each by its card's title.
+  const titles = Object.fromEntries(Object.entries(forms).map(([id, f]) => [id, cardTitle(f)]))
   // Stash pile waits until nothing in the pile is still writing (L6.E4).
   const wait = review
     ? stashWait(
@@ -759,7 +810,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
                 <MockupCard
                   variant="pending-review"
                   mockupId={String(it.mockupId)}
-                  title={forms[it.mockupId]?.title ?? it.title}
+                  title={cardTitle(forms[it.mockupId] ?? formOf(it))}
                   tags={note ?? forms[it.mockupId]?.tags.map((t) => t.label).join(' · ') ?? ''}
                   favourite={false}
                   {...(c?.path ? { coverSrc: coverUrl(c.path) } : {})}
@@ -857,6 +908,16 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
               filledFields={hereWriting?.tint?.fields ?? []}
               title={form.title}
               onTitleChange={(title) => edit({ title })}
+              {...(form.variation !== null && {
+                titlePair: {
+                  baseValue: form.title,
+                  onBaseChange: editBase,
+                  variationValue: form.variation,
+                  onVariationChange: (variation: string) => edit({ variation }),
+                  onVariationBlur: () => void restoreVariation(),
+                  pileCount: unit.items.length
+                }
+              })}
               description={form.description}
               onDescriptionChange={(description) => edit({ description })}
               tagEditor={{
@@ -909,7 +970,14 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
         open={zooming && cover !== undefined}
         mode="single"
         state={cover?.missing ? 'missing' : 'loaded'}
-        caption={form?.title.trim() || item?.title || ''}
+        caption={
+          form
+            ? fullTitle(
+                form.title.trim() || item?.title || '',
+                form.variation?.trim() ? { words: form.variation.trim() } : null
+              )
+            : ''
+        }
         {...(cover?.path ? { src: coverUrl(cover.path) } : {})}
         onClose={() => setZooming(false)}
         onCheckLibrary={() => {
