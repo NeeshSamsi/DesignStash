@@ -5,7 +5,6 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { CategoryPill } from '@renderer/components/CategoryPill'
 import { Checkbox } from '@renderer/components/Checkbox'
 import { EmptyState } from '@renderer/components/EmptyState'
-import { Popover } from '@renderer/components/Popover'
 import { Tooltip } from '@renderer/components/Tooltip'
 import {
   categoryCounts,
@@ -21,6 +20,14 @@ import {
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/ui/button'
 import { InputGroup, InputGroupInput } from '@renderer/ui/input'
+import {
+  Popover,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+  popoverPanelVariants
+} from '@renderer/ui/popover'
 import {
   TAG_FILTER_POPOVER_DEFAULTS,
   type TagFilterPopoverContractProps,
@@ -319,18 +326,29 @@ export function TagFilterPopover({
     </>
   )
 
-  return (
-    <Popover
-      title="Tags"
-      headerAction={clearAll}
-      {...(trigger !== undefined ? { trigger } : {})}
-      {...(open !== undefined ? { open } : {})}
-      {...(onOpenChange ? { onOpenChange } : {})}
-      className={cn(tagFilterPopoverVariants({ state: props.state }), className)}
-    >
+  // Its own panel in Figma (one padded column, no regions), so it sits on the ui primitives directly.
+  const panel = (
+    <>
+      <PopoverHeader>
+        <PopoverTitle>Tags</PopoverTitle>
+        {clearAll}
+      </PopoverHeader>
       <div data-ds="TagFilterPopover" data-state={props.state} className="contents">
         {body}
       </div>
+    </>
+  )
+  const classes = cn(tagFilterPopoverVariants({ state: props.state }), className)
+
+  if (trigger === undefined) {
+    return <div className={cn(popoverPanelVariants({ size: 'default' }), classes)}>{panel}</div>
+  }
+  return (
+    <Popover {...(open !== undefined ? { open } : {})} {...(onOpenChange ? { onOpenChange } : {})}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent size="default" className={classes}>
+        {panel}
+      </PopoverContent>
     </Popover>
   )
 }
