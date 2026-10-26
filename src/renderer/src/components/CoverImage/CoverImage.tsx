@@ -5,7 +5,12 @@ import { Image01Icon, ImageNotFound01Icon } from '@hugeicons/core-free-icons'
 import { Button } from '@renderer/components/Button'
 import { cn } from '@renderer/lib/utils'
 import { COVER_IMAGE_DEFAULTS, type CoverImageContractProps } from './CoverImage.types'
-import { coverDeviceVariants, coverIconVariants, coverImageVariants } from './CoverImage.variants'
+import {
+  coverBorderVariants,
+  coverDeviceVariants,
+  coverIconVariants,
+  coverImageVariants
+} from './CoverImage.variants'
 
 export interface CoverImageProps
   extends CoverImageContractProps, Omit<ComponentProps<'div'>, keyof CoverImageContractProps> {
@@ -23,7 +28,8 @@ export interface CoverImageProps
  * CoverImage — The one way to render a mockup cover (4:3, plain rounded rectangle). loading is a plain
  * skeleton block in surface-3, never a spinner.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1121
- * Used wherever a cover shows. The text labels show at md and lg only, as in Figma.
+ * Used wherever a cover shows. The text labels show at md and lg only, as in Figma. `showBorder`
+ * draws a 1px edge inside the cover, for covers that overlap or sit on the same surface.
  */
 export function CoverImage({
   className,
@@ -33,7 +39,7 @@ export function CoverImage({
   onReplace,
   ...rest
 }: CoverImageProps) {
-  const { size, state, ...props } = { ...COVER_IMAGE_DEFAULTS, ...rest }
+  const { size, state, showBorder, ...props } = { ...COVER_IMAGE_DEFAULTS, ...rest }
   const showLabel = size === 'md' || size === 'lg'
   const missing = state === 'missing-file'
 
@@ -76,6 +82,9 @@ export function CoverImage({
       )}
       {missing && size === 'lg' && onReplace && (
         <Button variant="secondary" size="xs" label="Replace cover" onClick={onReplace} />
+      )}
+      {showBorder && (
+        <span aria-hidden data-slot="cover-border" className={coverBorderVariants({ size })} />
       )}
     </div>
   )

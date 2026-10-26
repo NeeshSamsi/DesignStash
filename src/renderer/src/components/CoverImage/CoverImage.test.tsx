@@ -49,4 +49,15 @@ describe('CoverImage', () => {
       expect(cover.className).toMatch(/rounded-/)
     }
   )
+
+  it('show-border draws a 1px border/base edge inside the cover, off by default', () => {
+    const { container, rerender } = render(<CoverImage size="sm" />)
+    expect(container.querySelector('[data-slot="cover-border"]')).toBeNull()
+    rerender(<CoverImage size="sm" showBorder />)
+    const edge = container.querySelector('[data-slot="cover-border"]')!
+    expect(edge.className).toContain('border-base')
+    expect(edge.className).toContain('inset-0')
+    expect(edge.className).toContain('rounded-lg')
+    expect(edge.getAttribute('aria-hidden')).toBe('true')
+  })
 })

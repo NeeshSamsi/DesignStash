@@ -45,3 +45,11 @@ export const coverDeviceVariants = cva(
     defaultVariants: { size: 'md' }
   }
 )
+
+/** show-border: a 1px border/base edge inside the cover, on the cover's own radius. */
+export const coverBorderVariants = cva('pointer-events-none absolute inset-0 border border-base', {
+  variants: {
+    size: { xs: 'rounded-lg', sm: 'rounded-lg', md: 'rounded-xl', lg: 'rounded-xl' }
+  },
+  defaultVariants: { size: 'md' }
+})
