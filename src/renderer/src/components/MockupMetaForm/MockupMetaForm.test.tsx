@@ -20,18 +20,20 @@ describe('MockupMetaForm', () => {
 })
 
 describe('MockupMetaForm · behaviour', () => {
-  it('approval shows the hint, title, description and tags', () => {
-    render(<MockupMetaForm />)
+  it('approval shows the title, description and tags, with no resting hint', () => {
+    const { container } = render(<MockupMetaForm />)
     expect(screen.getByLabelText(/Title/)).toBeTruthy()
     expect(screen.getByLabelText('Description')).toBeTruthy()
     expect(screen.getByRole('group', { name: 'Tags' })).toBeTruthy()
-    expect(screen.getByText(/AI suggested the title/)).toBeTruthy()
+    expect(screen.queryByText(/AI suggested the title/)).toBeNull()
+    expect(
+      container.querySelector('[data-ds="MockupMetaForm"]')!.firstElementChild!.textContent
+    ).toMatch(/^Title/)
   })
 
-  it('detail leaves the title to the modal header and shows no hint', () => {
+  it('detail leaves the title to the modal header', () => {
     render(<MockupMetaForm variant="detail" />)
     expect(screen.queryByLabelText(/Title/)).toBeNull()
-    expect(screen.queryByText(/AI suggested the title/)).toBeNull()
     expect(screen.getByLabelText('Description')).toBeTruthy()
   })
 
@@ -64,11 +66,47 @@ describe('MockupMetaForm · behaviour', () => {
     expect(container.querySelector('[inert]')).not.toBeNull()
   })
 
-  it('shows skeleton fields and shimmering tags while the AI is thinking', () => {
-    const { container } = render(<MockupMetaForm state="thinking" />)
-    expect(screen.getByText('Sniffing out a title… this one’s still with the AI.')).toBeTruthy()
-    expect(screen.queryByLabelText('Description')).toBeNull()
-    expect(container.querySelectorAll('[data-ds="TagChip"][data-state="thinking"]')).toHaveLength(2)
+  it('writing: every field says “Writing with AI…” and stays a real field', () => {
+    const { container } = render(
+      <MockupMetaForm state="writing" title="phone_side" onTitleChange={() => {}} />
+    )
+    const title = screen.getByLabelText(/Title/) as HTMLInputElement
+    const description = screen.getByLabelText('Description') as HTMLTextAreaElement
+    for (const field of [title, description]) {
+      expect(field.value).toBe('')
+      expect(field.getAttribute('placeholder')).toBe('Writing with AI…')
+      expect(field.readOnly).toBe(false)
+    }
+    expect(container.querySelectorAll('[data-ds="TagChip"][data-state="thinking"]')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Add tag' })).toBeTruthy()
+  })
+
+  it('writes only the fields still listed, so a field someone typed in is theirs', () => {
+    const { container } = render(
+      <MockupMetaForm
+        state="writing"
+        writingFields={['description', 'tags']}
+        title="Side"
+        onTitleChange={() => {}}
+      />
+    )
+    expect((screen.getByLabelText(/Title/) as HTMLInputElement).value).toBe('Side')
+    expect(screen.getByLabelText('Description').getAttribute('placeholder')).toBe(
+      'Writing with AI…'
+    )
+    expect(container.querySelectorAll('[data-state="thinking"]')).toHaveLength(1)
+  })
+
+  it('thinking is superseded by writing and draws the same', () => {
+    render(<MockupMetaForm state="thinking" />)
+    expect(screen.queryByText(/Sniffing out a title/)).toBeNull()
+    expect(screen.getByLabelText('Description').getAttribute('placeholder')).toBe(
+      'Writing with AI…'
+    )
+  })
+
+  it('tints a description the AI just filled', () => {
+    render(<MockupMetaForm descriptionFilled />)
+    expect(screen.getByLabelText('Description').getAttribute('data-state')).toBe('ai-filled')
   })
 })

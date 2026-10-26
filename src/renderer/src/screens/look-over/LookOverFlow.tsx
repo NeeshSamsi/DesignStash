@@ -519,7 +519,6 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
             <MockupMetaForm
               variant="approval"
               state={blocked ? 'invalid' : 'pristine'}
-              showHint={false}
               title={form.title}
               onTitleChange={(title) => edit({ title })}
               description={form.description}
