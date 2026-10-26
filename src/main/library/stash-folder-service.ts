@@ -2,6 +2,7 @@ import { existsSync, readdirSync, rmSync, rmdirSync } from 'node:fs'
 import { promises as fs } from 'node:fs'
 import { dirname, join, sep } from 'node:path'
 import Database from 'better-sqlite3'
+import { nativeBinding } from '../db/native-binding'
 import type { StashChangeMode, StashChangeResult, StashInfo, StashMoveProgress } from '@shared/stash'
 import { getSqlite } from '../db/connection'
 import type { Repository } from '../db/repository'
@@ -39,7 +40,7 @@ const defaultDeps: StashFolderDeps = {
     await getSqlite().backup(dest)
   },
   rewritePaths: (dbPath, from, to) => {
-    const db = new Database(dbPath)
+    const db = new Database(dbPath, { nativeBinding: nativeBinding() })
     try {
       const prefix = from.endsWith(sep) ? from : from + sep
       const next = to.endsWith(sep) ? to : to + sep

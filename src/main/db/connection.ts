@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import * as schema from './schema'
+import { nativeBinding } from './native-binding'
 
 export type AppDatabase = BetterSQLite3Database<typeof schema>
 
@@ -10,7 +11,7 @@ let db: AppDatabase | null = null
 export function initDb(dbPath: string): AppDatabase {
   if (db) return db
 
-  sqlite = new Database(dbPath)
+  sqlite = new Database(dbPath, { nativeBinding: nativeBinding() })
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
   db = drizzle(sqlite, { schema })
