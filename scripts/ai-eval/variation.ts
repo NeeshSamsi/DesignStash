@@ -6,7 +6,8 @@
  * image):
  *   pair  the top beside the mockup: what does this one show differently? For the top, the top
  *         beside its first variant: what sets the top apart?
- *   pile  every mockup in the pile, numbered, in one request: a variation for each.
+ *   pile  every mockup in the pile, numbered, in one request: a variation for each. Its system
+ *         prompt and question are the app's own (`src/main/ai/pile-variations.ts`).
  *
  *   pnpm exec tsx --tsconfig tsconfig.node.json scripts/ai-eval/variation.ts --model qwen3.5-9b --how pair|pile
  *
@@ -20,15 +21,10 @@ import { LlamaServer, defaultLlamaServerDeps } from '../../src/main/ai/llama-ser
 import { MODEL_SERVER_ARGS, resolveLlamaServerPath } from '../../src/main/ai/provider-factory'
 import { MODEL_FILE_NAMES } from '../../src/main/ai/registry'
 import { NativeHelper, resolveHelperPath } from '../../src/main/native/helper'
+import { PILE_VARIATION_SYSTEM as SYSTEM, VARIATION_RULES as RULES, pileVariationsText as pileText } from '../../src/main/ai/pile-variations'
 import { COVERS_DIR, DEV_DIR, argValue, readItems, runDir, writeJson } from './eval-files'
 import { piles } from './prompts/pile'
 import { fileMarkers, judge, type GoldVariation, type Verdict } from './variation-score'
-
-const SYSTEM =
-  "You help keep a designer's mockup library tidy. A pile holds variants of one mockup: other angles, scenes or states of the same product. Each mockup in a pile gets a short variation after the pile's title, such as \"side view\", \"on gravel\" or \"folded\" for a bike, so the person can tell them apart. Write in English."
-
-const RULES =
-  'Look at the angle or view, the setting or surface, the state (open, closed, lit) and how many objects it shows. Never name a colour of the object itself, and never describe what is printed or shown on it.'
 
 function pairText(left: string, right: string, aboutLeft: boolean): string {
   const which = aboutLeft ? '1 shows differently from 2' : '2 shows differently from 1'
@@ -36,14 +32,6 @@ function pairText(left: string, right: string, aboutLeft: boolean): string {
     `The image shows two mockups from one pile side by side: 1 on the left (file ${left}) and 2 on the right (file ${right}).`,
     `In 1 to 3 words, say what ${which}. ${RULES} If the two look the same, answer "same".`,
     'Reply with JSON: difference.'
-  ].join('\n')
-}
-
-function pileText(names: string[]): string {
-  return [
-    `The image shows ${names.length} mockups from one pile, numbered 1 to ${names.length} from left to right and top to bottom. Files: ${names.map((n, i) => `${i + 1} = ${n}`).join(', ')}.`,
-    `For each one, in 1 to 3 words, say what sets it apart from the others. ${RULES} Give each a different answer where you can, and answer "same" for one that looks the same as another.`,
-    `Reply with JSON: variations, a list of ${names.length} answers in order.`
   ].join('\n')
 }
 
