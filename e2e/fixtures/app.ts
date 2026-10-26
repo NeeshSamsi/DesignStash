@@ -9,6 +9,25 @@ import { buildPsdWithComposite } from '../../src/main/psd/__fixtures__/build'
 /** The catalogue model the seeded settings point at. Its files are empty: the stub provider answers instead. */
 export const STUB_MODEL_ID = 'qwen3-vl-4b'
 
+/**
+ * Set to a packaged DesignStash.app (`pnpm package` writes dist/mac-arm64/DesignStash.app) to run
+ * the suite against the installed build instead of `out/`.
+ */
+export const PACKAGED_APP_ENV = 'DESIGNSTASH_E2E_APP'
+
+/** How to start the app: the packaged binary when PACKAGED_APP_ENV is set, else `electron .`. */
+function launchTarget(userData: string): { executablePath?: string; args: string[] } {
+  const packaged = process.env[PACKAGED_APP_ENV]
+  if (!packaged) {
+    // "." is the project folder, so the app finds its drizzle migrations the way `pnpm start` does.
+    return { args: ['.', `--user-data-dir=${userData}`] }
+  }
+  return {
+    executablePath: join(packaged, 'Contents', 'MacOS', 'DesignStash'),
+    args: [`--user-data-dir=${userData}`]
+  }
+}
+
 export interface LaunchOptions {
   /** Skip onboarding by seeding settings as a finished first run. Default true. */
   onboarded?: boolean
@@ -85,8 +104,7 @@ export async function launchApp(
   }
 
   const app = await electron.launch({
-    // "." is the project folder, so the app finds its drizzle migrations the way `pnpm start` does.
-    args: ['.', `--user-data-dir=${userData}`],
+    ...launchTarget(userData),
     env: { ...process.env, NODE_ENV: 'test', DESIGNSTASH_E2E_STUB_AI: '1', ...env }
   })
   const window = await app.firstWindow()
