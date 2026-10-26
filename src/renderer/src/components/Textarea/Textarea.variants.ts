@@ -1,5 +1,5 @@
 import { cva } from 'class-variance-authority'
-import { WRITING_CLASS } from '@renderer/lib/writing-field'
+import { AI_FILLED_CLASS, WRITING_CLASS } from '@renderer/lib/writing-field'
 
 // Styles live in ui/textarea.tsx (shadcn, restyled from Figma); Textarea.tsx maps the Figma props onto it.
 export const textareaVariants = cva('', {
@@ -9,7 +9,7 @@ export const textareaVariants = cva('', {
     state: {
       default: '',
       // A field the AI just filled: the tint fades out (look-over.md, L6.3).
-      'ai-filled': 'motion-safe:animate-ai-tint motion-reduce:animate-ai-tint-hold',
+      'ai-filled': AI_FILLED_CLASS,
       writing: WRITING_CLASS
     }
   },

@@ -26,12 +26,12 @@ export interface MockupMetaFormProps
   /** The tags field: pass the tags, suggestions and handlers here. */
   tagEditor?: Omit<TagEditorProps, 'variant' | 'state' | 'thinking' | 'aria-labelledby'>
   /**
-   * `writing`: the fields the AI is still writing (all three when left out). Typing in one makes it
-   * the person's, so the caller drops it from the list (look-over.md, L6.2).
+   * The fields the AI is still writing, in any state (`writing` alone means all three). Typing in
+   * one makes it the person's, so the caller drops it from the list (look-over.md, L6.2).
    */
   writingFields?: readonly MetaField[]
-  /** The AI just filled the description: it takes the fading tint (L6.3). */
-  descriptionFilled?: boolean
+  /** The fields the AI just filled: they take the fading tint (L6.3). */
+  filledFields?: readonly MetaField[]
 }
 
 const SAMPLE_TITLE = 'Mockup title'
@@ -44,7 +44,8 @@ const SAMPLE_DESCRIPTION =
  * The form shows no status of its own: what the AI is doing lives in AiStatus above it. In Detail
  * an enabled Save means unsaved changes, and a failed save is a toast, so `edited` looks like
  * `pristine` here. `saving` locks the fields; `invalid` is the empty title; `writing` is the AI
- * still writing, with every field still typeable. `thinking` (a skeleton) is superseded by writing.
+ * still writing, with every field still typeable (or only `writingFields`, in any state).
+ * `thinking` (a skeleton) is superseded by writing.
  */
 export function MockupMetaForm({
   className,
@@ -54,14 +55,16 @@ export function MockupMetaForm({
   onDescriptionChange,
   tagEditor,
   writingFields,
-  descriptionFilled = false,
+  filledFields = [],
   ...rest
 }: MockupMetaFormProps) {
   const { variant, state, ...props } = { ...MOCKUP_META_FORM_DEFAULTS, ...rest }
   const id = useId()
   const approval = variant === 'approval'
   const writing = state === 'writing' || state === 'thinking'
-  const writes = (field: MetaField) => writing && (writingFields ?? ALL_FIELDS).includes(field)
+  const writes = (field: MetaField) =>
+    (writingFields ?? (writing ? ALL_FIELDS : [])).includes(field)
+  const filled = (field: MetaField) => !writes(field) && filledFields.includes(field)
   const saving = state === 'saving'
   const titleText = title ?? (state === 'invalid' ? '' : SAMPLE_TITLE)
 
@@ -86,7 +89,7 @@ export function MockupMetaForm({
           <Input
             id={`${id}-title`}
             value={titleText}
-            writing={writes('title')}
+            state={writes('title') ? 'writing' : filled('title') ? 'ai-filled' : 'default'}
             readOnly={saving}
             aria-invalid={state === 'invalid' || undefined}
             {...(onTitleChange && { onChange: (event) => onTitleChange(event.target.value) })}
@@ -102,7 +105,9 @@ export function MockupMetaForm({
         <Textarea
           id={`${id}-description`}
           rowRange={approval ? '4-6' : '3'}
-          state={writes('description') ? 'writing' : descriptionFilled ? 'ai-filled' : 'default'}
+          state={
+            writes('description') ? 'writing' : filled('description') ? 'ai-filled' : 'default'
+          }
           className="resize-none"
           readOnly={saving}
           value={description}

@@ -105,8 +105,24 @@ describe('MockupMetaForm · behaviour', () => {
     )
   })
 
-  it('tints a description the AI just filled', () => {
-    render(<MockupMetaForm descriptionFilled />)
+  it('tints the fields the AI just filled, the title included', () => {
+    render(<MockupMetaForm filledFields={['title', 'description']} />)
     expect(screen.getByLabelText('Description').getAttribute('data-state')).toBe('ai-filled')
+    expect(screen.getByLabelText(/Title/).getAttribute('data-state')).toBe('ai-filled')
+  })
+
+  it('writes the listed fields in any state, so an emptied title still says why', () => {
+    render(
+      <MockupMetaForm
+        state="invalid"
+        writingFields={['description']}
+        title=""
+        onTitleChange={() => {}}
+      />
+    )
+    expect(screen.getByText("Title can't be empty.")).toBeTruthy()
+    expect(screen.getByLabelText('Description').getAttribute('placeholder')).toBe(
+      'Writing with AI…'
+    )
   })
 })
