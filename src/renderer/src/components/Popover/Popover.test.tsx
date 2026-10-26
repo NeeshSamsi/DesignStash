@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { variantMatrix } from '@renderer/design-system/matrix'
 import { Button } from '@renderer/components/Button'
 import { Popover, type PopoverProps } from './Popover'
@@ -61,5 +61,29 @@ describe('Popover', () => {
     expect(panel.querySelector('[data-slot="popover-footer"]')).toBeNull()
     expect(panel.querySelectorAll('[data-slot="separator"]')).toHaveLength(1)
     expect(screen.queryByText('A short line under the title.')).toBeNull()
+  })
+
+  it('anchored: hangs from its trigger without the trigger opening or closing it', () => {
+    const { rerender } = render(
+      <Popover
+        anchored
+        open={false}
+        trigger={<button type="button">Apply here</button>}
+        title="Edits"
+      >
+        <p>Body</p>
+      </Popover>
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Apply here' }))
+    expect(screen.queryByText('Body')).toBeNull()
+    rerender(
+      <Popover anchored open trigger={<button type="button">Apply here</button>} title="Edits">
+        <p>Body</p>
+      </Popover>
+    )
+    expect(screen.getByText('Body')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Apply here' }).hasAttribute('aria-expanded')).toBe(
+      false
+    )
   })
 })

@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
 import {
   Popover as UiPopover,
+  PopoverAnchor,
   PopoverContent,
   PopoverFooter,
   PopoverHeader,
@@ -20,6 +21,11 @@ export interface PopoverProps extends PopoverContractProps {
   headerAction?: ReactNode
   /** The element that opens it. Without it the panel renders in place (catalog). */
   trigger?: ReactNode
+  /**
+   * The trigger only anchors the panel: clicking it neither opens nor closes it, and `open` says
+   * when it shows (a preview that opens on hover or focus of a button that does something else).
+   */
+  anchored?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
   align?: 'start' | 'center' | 'end'
@@ -49,6 +55,7 @@ export function Popover({
   children,
   headerAction,
   trigger,
+  anchored = false,
   open,
   onOpenChange,
   align,
@@ -99,7 +106,11 @@ export function Popover({
         {...(open !== undefined ? { open } : {})}
         {...(onOpenChange ? { onOpenChange } : {})}
       >
-        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        {anchored ? (
+          <PopoverAnchor asChild>{trigger}</PopoverAnchor>
+        ) : (
+          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        )}
         <PopoverContent
           data-ds="Popover"
           size={UI_SIZE[props.size]}
