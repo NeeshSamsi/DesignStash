@@ -9,7 +9,7 @@ export const COVER_IMAGE_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1121',
   section: '6 · Library',
   description:
-    'The one way to render a mockup cover (4:3, squircle mask). loading is a plain skeleton block in background/surface-3, never a spinner.',
+    'The one way to render a mockup cover (4:3, a plain rounded rectangle with no squircle mask). loading is a plain skeleton block in background/surface-3, never a spinner.\nshow-border (2026-10-24): a 1px border/base edge inside the cover, for covers that overlap or sit on the same surface (stacked thumbnails). The sample device scales with the cover at every size (2026-10-24).',
   code: 'components/CoverImage/CoverImage.tsx',
   axes: {
     size: ['xs', 'sm', 'md', 'lg'],
@@ -22,7 +22,9 @@ export const COVER_IMAGE_CONTRACT = {
   flags: {},
   interactionStates: [],
   disabled: false,
-  booleans: {},
+  booleans: {
+    showBorder: false
+  },
   texts: {},
   icons: {},
   slots: {}
@@ -36,10 +38,13 @@ export interface CoverImageContractProps {
   size?: CoverImageSize
   /** Figma `state` (4 options). Default `loaded`. */
   state?: CoverImageState
+  /** Figma boolean. Default `false`. */
+  showBorder?: boolean
 }
 
 /** Figma defaults. Slots have none. */
 export const COVER_IMAGE_DEFAULTS = {
   size: 'md',
-  state: 'loaded'
+  state: 'loaded',
+  showBorder: false
 } satisfies CoverImageContractProps

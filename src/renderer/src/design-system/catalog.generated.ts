@@ -5,6 +5,7 @@ import { Button, BUTTON_CONTRACT } from '@renderer/components/Button'
 import { Input, INPUT_CONTRACT } from '@renderer/components/Input'
 import { Textarea, TEXTAREA_CONTRACT } from '@renderer/components/Textarea'
 import { Field, FIELD_CONTRACT } from '@renderer/components/Field'
+import { TitlePair, TITLE_PAIR_CONTRACT } from '@renderer/components/TitlePair'
 import { Checkbox, CHECKBOX_CONTRACT } from '@renderer/components/Checkbox'
 import { Switch, SWITCH_CONTRACT } from '@renderer/components/Switch'
 import { RadioGroup, RADIO_GROUP_CONTRACT } from '@renderer/components/RadioGroup'
@@ -84,6 +85,7 @@ import {
   MEANING_SEARCH_CARD_CONTRACT
 } from '@renderer/components/MeaningSearchCard'
 import { ModelCard, MODEL_CARD_CONTRACT } from '@renderer/components/ModelCard'
+import { StepBar, STEP_BAR_CONTRACT } from '@renderer/components/StepBar'
 import { ModelPicker, MODEL_PICKER_CONTRACT } from '@renderer/components/ModelPicker'
 import { ConsentPanel, CONSENT_PANEL_CONTRACT } from '@renderer/components/ConsentPanel'
 import { SettingsLayout, SETTINGS_LAYOUT_CONTRACT } from '@renderer/components/SettingsLayout'
@@ -98,6 +100,7 @@ import {
 import { ProGate, PRO_GATE_CONTRACT } from '@renderer/components/ProGate'
 import { PileStep, PILE_STEP_CONTRACT } from '@renderer/components/PileStep'
 import { PileRail, PILE_RAIL_CONTRACT } from '@renderer/components/PileRail'
+import { AiStatus, AI_STATUS_CONTRACT } from '@renderer/components/AiStatus'
 import { AddMockupCard, ADD_MOCKUP_CARD_CONTRACT } from '@renderer/components/AddMockupCard'
 import { CategoryPill, CATEGORY_PILL_CONTRACT } from '@renderer/components/CategoryPill'
 
@@ -116,6 +119,7 @@ export const CATALOG: CatalogEntry[] = [
   entry(INPUT_CONTRACT, Input),
   entry(TEXTAREA_CONTRACT, Textarea),
   entry(FIELD_CONTRACT, Field),
+  entry(TITLE_PAIR_CONTRACT, TitlePair),
   entry(CHECKBOX_CONTRACT, Checkbox),
   entry(SWITCH_CONTRACT, Switch),
   entry(RADIO_GROUP_CONTRACT, RadioGroup),
@@ -183,6 +187,7 @@ export const CATALOG: CatalogEntry[] = [
   entry(MODEL_ROW_CONTRACT, ModelRow),
   entry(MEANING_SEARCH_CARD_CONTRACT, MeaningSearchCard),
   entry(MODEL_CARD_CONTRACT, ModelCard),
+  entry(STEP_BAR_CONTRACT, StepBar),
   entry(MODEL_PICKER_CONTRACT, ModelPicker),
   entry(CONSENT_PANEL_CONTRACT, ConsentPanel),
   entry(SETTINGS_LAYOUT_CONTRACT, SettingsLayout),
@@ -194,6 +199,7 @@ export const CATALOG: CatalogEntry[] = [
   entry(PRO_GATE_CONTRACT, ProGate),
   entry(PILE_STEP_CONTRACT, PileStep),
   entry(PILE_RAIL_CONTRACT, PileRail),
+  entry(AI_STATUS_CONTRACT, AiStatus),
   entry(ADD_MOCKUP_CARD_CONTRACT, AddMockupCard),
   entry(CATEGORY_PILL_CONTRACT, CategoryPill)
 ]

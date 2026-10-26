@@ -11,7 +11,7 @@ export const INPUT_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=212-190',
   section: '2 · Primitives (shadcn)',
   description:
-    'Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.',
+    'Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.\nstate=writing (2026-10-24): the AI is writing this field. The placeholder “Writing with AI…” pulses like Skeleton (animate-pulse; static with reduced motion). It stays a real, focusable field: typing makes it a normal field that belongs to the person.',
   code: 'ui/input.tsx + input-group',
   axes: {
     variant: ['text', 'search', 'inline-title']
@@ -19,7 +19,12 @@ export const INPUT_CONTRACT = {
   axisDefaults: {
     variant: 'text'
   },
-  flags: {},
+  flags: {
+    writing: {
+      on: 'writing',
+      off: 'default'
+    }
+  },
   interactionStates: ['focus'],
   disabled: true,
   booleans: {
@@ -39,6 +44,8 @@ export type InputVariant = 'text' | 'search' | 'inline-title'
 export interface InputContractProps {
   /** Figma `variant` (3 options). Default `text`. */
   variant?: InputVariant
+  /** Figma `state=writing` (false = `state=default`). */
+  writing?: boolean
   /** Figma `state=disabled`. */
   disabled?: boolean
   /** Figma boolean. Default `false`. */
@@ -52,6 +59,7 @@ export interface InputContractProps {
 /** Figma defaults. Slots have none. */
 export const INPUT_DEFAULTS = {
   variant: 'text',
+  writing: false,
   disabled: false,
   showIconStart: false,
   value: 'Mockup title',

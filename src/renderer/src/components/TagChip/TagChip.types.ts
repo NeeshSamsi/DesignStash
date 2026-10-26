@@ -9,10 +9,10 @@ export const TAG_CHIP_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1203',
   section: '8 · Approval & editing',
   description:
-    'Tag pill. Solid = your tag, dashed = not a tag yet. removable: × on hover; focus = keyboard ring; marked = selected by ⌫. suggested = AI suggestion (faint dashed outline, orange sparkle only; hover fills like a tag with ✓/×; clicking accepts); thinking = AI still working. new = just added (brand outline). add = the inline “+ Add tag” chip (stronger, longer dash), always first; input = that chip while typing. Rules: design/specs/tags.md.',
+    'Tag pill. Solid = your tag, dashed = not a tag yet. removable: × on hover; focus = keyboard ring; marked = selected by ⌫. suggested = AI suggestion (faint dashed outline, orange sparkle only; hover fills like a tag with ✓/×; clicking accepts); thinking = AI still working. new = just added (brand outline). add = the inline “+ Add tag” chip (stronger, longer dash), always first; input = that chip while typing. Rules: design/specs/tags.md.\nvariant=removed (2026-10-24): a tag a change takes away, muted and struck, used in the edit preview. variant=suggested, state=thinking reads “Writing with AI…” (the label, pulsing) in place of the grey bar (2026-10-24).',
   code: null,
   axes: {
-    variant: ['display', 'removable', 'filter', 'suggested', 'new', 'add', 'input'],
+    variant: ['display', 'removable', 'filter', 'suggested', 'new', 'add', 'input', 'removed'],
     state: ['default', 'marked', 'thinking', 'typing', 'invalid']
   },
   axisDefaults: {
@@ -41,10 +41,11 @@ export type TagChipVariant =
   | 'new'
   | 'add'
   | 'input'
+  | 'removed'
 export type TagChipState = 'default' | 'marked' | 'thinking' | 'typing' | 'invalid'
 
 export interface TagChipContractProps {
-  /** Figma `variant` (7 options). Default `display`. */
+  /** Figma `variant` (8 options). Default `display`. */
   variant?: TagChipVariant
   /** Figma `state` (5 options). Default `default`. */
   state?: TagChipState
