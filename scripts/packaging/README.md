@@ -7,7 +7,10 @@ pnpm package        # package:stage, build, then package:mac
 ```
 
 That stages llama-server and the Swift helper into `build/`, builds the app, and writes
-`dist/DesignStash-<version>-arm64.dmg`. Signing is skipped (`CSC_IDENTITY_AUTO_DISCOVERY=false`).
+`dist/DesignStash-<version>-arm64.dmg`. The app is ad-hoc signed (identity `-`, no certificate), so
+`codesign --verify --deep --strict` passes and a downloaded copy gets macOS's Open Anyway. electron-builder
+rebuilds better-sqlite3 for Electron inside `node_modules`, so `postpackage:mac` puts the Node build
+back for the unit tests.
 The migrations, llama-server and the helper are shipped in `<resources>/drizzle`, `/llama-server`
 and `/helper`. The helper needs the macOS 27 SDK (Command Line Tools 27 or Xcode 27).
 
