@@ -27,6 +27,7 @@ beforeEach(() => {
     makeCover: vi.fn(async (_src: string, outDir: string) => `${outDir}/cover.webp`),
     makeCoverFromRaw: vi.fn(async (_raw, outDir: string) => `${outDir}/cover.webp`),
     readEmbedded: vi.fn(async () => ({ data: Buffer.alloc(4), width: 800, height: 600 })),
+    isPlaceholder: vi.fn(async () => false),
     newId: vi.fn(() => 'abc')
   } as typeof deps
 })
@@ -156,6 +157,16 @@ describe('useEmbeddedCover', () => {
 
     expect(await service().useEmbeddedCover(m.id)).toEqual({ ok: false, reason: 'no-embedded' })
     expect(repo.mockups.getMockup(m.id)?.coverSource).toBe('sidecar')
+  })
+
+  it('refuses a PSD preview that is only the kit\'s notice ("Delete this layer"), and keeps the cover', async () => {
+    // A sidecar replaced the notice at import; making the notice the cover would undo that.
+    const m = make({ coverSource: 'sidecar' })
+    deps.isPlaceholder.mockResolvedValueOnce(true)
+
+    expect(await service().useEmbeddedCover(m.id)).toEqual({ ok: false, reason: 'placeholder' })
+    expect(deps.makeCoverFromRaw).not.toHaveBeenCalled()
+    expect(repo.mockups.getMockup(m.id)).toMatchObject({ coverSource: 'sidecar', coverPath: '/lib/mockups/u1/cover.webp' })
   })
 
   it('reports an unreadable PSD', async () => {

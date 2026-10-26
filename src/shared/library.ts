@@ -103,7 +103,12 @@ export const CoverChangeSchema = z.discriminatedUnion('ok', [
   }),
   z.object({
     ok: z.literal(false),
-    reason: z.enum(['not-image', 'too-large', 'unreadable', 'no-embedded'])
+    /**
+     * `no-embedded`: the PSD has no preview of its own (or one too small). `placeholder`: its own
+     * preview is only the kit's notice ("Delete this layer"), which import already replaced with
+     * the image shipped beside it, so the cover stays.
+     */
+    reason: z.enum(['not-image', 'too-large', 'unreadable', 'no-embedded', 'placeholder'])
   })
 ])
 export type CoverChange = z.infer<typeof CoverChangeSchema>

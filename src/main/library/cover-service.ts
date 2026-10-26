@@ -7,6 +7,7 @@ import type { CoverChange } from '@shared/library'
 import type { Repository } from '../db/repository'
 import { readEmbeddedPreview } from '../psd/embedded'
 import { generateCoverFromFile, generateCoverFromRaw } from '../psd/image'
+import { isPlaceholder } from '../psd/placeholder'
 import type { RawImage } from '../psd/types'
 
 export interface CoverServiceDeps {
@@ -18,6 +19,8 @@ export interface CoverServiceDeps {
   makeCover: (srcPath: string, outDir: string) => Promise<string>
   makeCoverFromRaw: (raw: RawImage, outDir: string) => Promise<string>
   readEmbedded: (psdPath: string) => Promise<RawImage | null>
+  /** The PSD's own preview is a stand-in (a kit's "Delete this layer" notice): the test `resolveCover` uses. */
+  isPlaceholder: (raw: RawImage) => Promise<boolean>
   newId: () => string
 }
 
@@ -41,6 +44,7 @@ const defaultDeps: CoverServiceDeps = {
   makeCover: async (srcPath, outDir) => (await generateCoverFromFile(srcPath, outDir)).coverPath,
   makeCoverFromRaw: async (raw, outDir) => (await generateCoverFromRaw(raw, outDir)).coverPath,
   readEmbedded: readEmbeddedPreview,
+  isPlaceholder: (raw) => isPlaceholder(raw),
   newId: randomUUID
 }
 
@@ -103,6 +107,8 @@ export class CoverService {
     try {
       const raw = await this.deps.readEmbedded(mockup.libraryPath)
       if (!raw) return { ok: false, reason: 'no-embedded' }
+      // Import chose a sidecar over this notice; it never becomes the cover.
+      if (await this.deps.isPlaceholder(raw)) return { ok: false, reason: 'placeholder' }
       const coverPath = await this.deps.makeCoverFromRaw(raw, this.newCoverDir(mockupId))
       return this.apply(mockupId, coverPath, 'embedded', raw.width, raw.height)
     } catch {
