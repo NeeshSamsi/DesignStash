@@ -27,9 +27,11 @@ async function settled(box: Locator) {
 type Part = (card: Locator) => Promise<void>
 
 const PARTS: Record<string, Part> = {
-  'the top of the cover': async (card) => {
+  // Clear of the corner controls (a pile's count badge, the star and ⋯) and of the hover buttons below.
+  'a clear spot on the cover': async (card) => {
     const cover = card.locator('[data-ds="CoverImage"]')
-    await cover.click({ position: { x: 40, y: 16 } })
+    const box = (await cover.boundingBox())!
+    await cover.click({ position: { x: box.width / 2, y: box.height / 4 } })
   },
   'the cover just above the hover buttons': async (card) => {
     await card.hover()
@@ -76,14 +78,33 @@ test.describe('Card clicks', () => {
     }
 
     await test.step('a second card clicked while the sidebar is still opening', async () => {
-      // Where the second card's title sits once the sidebar is open.
-      const second = (await cards.nth(2).getByText(CARD_TITLE).boundingBox())!
+      // Where another card shows once the sidebar is open, from the top of the scroll so it is clear of the
+      // toolbar. A raw click has no auto-scroll, so aim at the clear spot on a cover that is inside the window
+      // (with the sidebar open the second row can start near the bottom edge).
+      await cards.first().evaluate((el) => {
+        let area = el.parentElement
+        while (area && getComputedStyle(area).overflowY !== 'auto') area = area.parentElement
+        if (area) area.scrollTop = 0
+      })
+      const height = await window.evaluate(() => innerHeight)
+      let index = 0
+      let second = null as { x: number; y: number } | null
+      for (const i of [1, 2, 3]) {
+        const box = await cards.nth(i).locator('[data-ds="CoverImage"]').boundingBox()
+        const spot = box && { x: box.x + box.width / 2, y: box.y + box.height / 4 }
+        if (spot && spot.y < height - 8) {
+          index = i
+          second = spot
+          break
+        }
+      }
+      expect(second, 'another card shows with the sidebar open').not.toBeNull()
       await window.keyboard.press('Escape')
       await expect(panel(window)).toHaveCount(0)
       await PARTS['the title']!(cards.nth(0))
       // Straight away, by coordinates: a locator click would wait for the morph to end first.
-      await window.mouse.click(second.x + 10, second.y + second.height / 2)
-      await opensFor(cards.nth(2), 'the second card, mid-morph')
+      await window.mouse.click(second!.x, second!.y)
+      await opensFor(cards.nth(index), 'the second card, mid-morph')
     })
 
     await test.step('the hover buttons keep their own action', async () => {
@@ -94,7 +115,9 @@ test.describe('Card clicks', () => {
     })
   })
 
-  test('a pile opens from its cover, its title and its stacked edges', async ({ app }) => {
+  test('a pile opens from its cover, its count badge, its title and its stacked edges', async ({
+    app
+  }) => {
     const { window } = app
     await seedStash(app, [...NAMES])
     await showMyStash(app)
@@ -121,12 +144,16 @@ test.describe('Card clicks', () => {
       ).toBeVisible()
 
     const ways: Record<string, () => Promise<void>> = {
-      'its cover': () => PARTS['the top of the cover']!(pile),
+      'its cover': () => PARTS['a clear spot on the cover']!(pile),
+      // The badge is part of the card: only buttons keep their own clicks.
+      'its count badge': () => pile.getByLabel(/mockups in this pile$/).click(),
       'its cover above the hover buttons': () =>
         PARTS['the cover just above the hover buttons']!(pile),
       'its title': () => PARTS['the title']!(pile),
       'its stacked edges': async () => {
         // The edges hang below the card's box; a press there used to land on the grid and close the sidebar.
+        // A raw click has no auto-scroll, and with the sidebar open the pile can sit below the window.
+        await pile.evaluate((el) => el.scrollIntoView({ block: 'center' }))
         const box = (await pile.boundingBox())!
         await window.mouse.click(box.x + box.width / 2, box.y + box.height + 5)
       }
