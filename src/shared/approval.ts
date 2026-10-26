@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { AiStatusUpdateSchema } from './ipc/ai-status'
+import { VariationSchema, VariationSourceSchema } from './pile-variation'
 
 // A tag attached to an item in the approval queue
 export const ApprovalTagSchema = z.object({
@@ -102,7 +103,17 @@ export const LookOverItemSchema = z.object({
   /** The pile it belongs to (its top mockup's id), or null for a mockup on its own. */
   pileId: z.number().nullable(),
   role: z.enum(['top', 'variant', 'single']),
+  /**
+   * The Title field. In a pile it is the pile's base, the same on every item in it; a mockup on its
+   * own has only this (design/specs/pile-titles.md).
+   */
   title: z.string(),
+  /**
+   * In a pile, this mockup's own part of its title (`base · variation`), with where it came from:
+   * `ai`, its file name's `marker`, its `number` in the pile, or `typed` by the person. Null on a
+   * mockup on its own. Always sent; optional only so items made before base titles still type.
+   */
+  variation: VariationSchema.nullable().optional(),
   description: z.string(),
   tags: z.array(ApprovalTagSchema),
   /** The user changed this variant, so edits to the top mockup no longer overwrite it. */
@@ -143,7 +154,13 @@ export type LookOverQueue = z.infer<typeof LookOverQueueSchema>
 
 export const SaveDraftRequestSchema = z.object({
   mockupId: z.number(),
+  /** In a pile, the pile's base: a new one renames every mockup in the pile, exactly. */
   title: z.string().min(1),
+  /**
+   * In a pile, this mockup's variation as the person left it. Left out, it stays as it is; empty,
+   * it takes its file marker or number back. Ignored on a mockup on its own.
+   */
+  variation: z.string().optional(),
   description: z.string(),
   tagIds: z.array(z.number()),
   /** Defaults to true: saving means the user looked at it. */
@@ -152,7 +169,7 @@ export const SaveDraftRequestSchema = z.object({
 export type SaveDraftRequest = z.infer<typeof SaveDraftRequestSchema>
 
 export const SaveDraftResponseSchema = z.object({
-  /** Variants this save changed: their words, or the edit check or offer they now carry. */
+  /** Other mockups this save changed: their base, their words, or the edit check or offer they now carry. */
   propagatedIds: z.array(z.number())
 })
 
@@ -187,7 +204,10 @@ export const StashSnapshotSchema = z.object({
       description: z.string().nullable(),
       tagIds: z.array(z.number()),
       stage: z.enum(['to_sort', 'to_stash', 'stashed']),
-      sortedAt: z.string().nullable()
+      sortedAt: z.string().nullable(),
+      /** Left out by snapshots from before base titles. */
+      variation: z.string().nullable().optional(),
+      variationSource: VariationSourceSchema.nullable().optional()
     })
   ),
   drafts: z.array(
@@ -199,7 +219,10 @@ export const StashSnapshotSchema = z.object({
       touched: z.boolean(),
       checked: z.boolean(),
       skippedAt: z.string().nullable(),
-      carry: DraftCarrySchema.nullable()
+      carry: DraftCarrySchema.nullable(),
+      /** Left out by snapshots from before base titles. */
+      variation: z.string().nullable().optional(),
+      variationSource: VariationSourceSchema.nullable().optional()
     })
   ),
   resume: z.object({ unitId: z.number(), mockupId: z.number() }).nullable()

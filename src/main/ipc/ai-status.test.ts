@@ -144,7 +144,7 @@ describe('ai:status push', () => {
     await vi.waitFor(() =>
       expect(push).toHaveBeenCalledWith(
         IPC_CHANNELS.LOOK_OVER_DRAFT,
-        expect.objectContaining({ mockupId: side.id, role: 'variant', title: 'Suggested', waitingForAi: false })
+        expect.objectContaining({ mockupId: side.id, role: 'variant', description: 'd', waitingForAi: false })
       )
     )
     const drafts = push.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.LOOK_OVER_DRAFT)

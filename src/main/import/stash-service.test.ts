@@ -68,10 +68,30 @@ describe('stash a pile', () => {
       stage: 'stashed'
     })
     // The top's edit was only offered on the variant, and nobody took it: it is stashed with its own words.
-    expect(repo.mockups.getMockup(side!.id)).toMatchObject({ title: 'phone side', description: '', stage: 'stashed' })
+    expect(repo.mockups.getMockup(side!.id)).toMatchObject({ title: 'Clay phone', variation: 'side', variationSource: 'marker', description: '', stage: 'stashed' })
+    expect(repo.mockups.getMockup(top!.id)).toMatchObject({ variation: 'front', variationSource: 'marker' })
     expect(repo.mockups.getTagsForMockup(side!.id)).toEqual([])
     expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([top!.id])
     expect(repo.inbox.getCounts()).toMatchObject({ toStash: 0 })
+  })
+
+  it('stashes the base and every variation, finds the pile by a variation, and Undo puts the drafts back', async () => {
+    const [top, side] = pile('scroll_front', 'scroll_side')
+    await lookOver.open()
+    await lookOver.saveDraft({ mockupId: side!.id, title: 'Long scroll MacBook', variation: 'wavy surface', description: '', tagIds: [] })
+
+    const res = await stash.stashPile(top!.id)
+
+    expect([top!.id, side!.id].map((id) => repo.mockups.getMockup(id)).map((m) => [m!.title, m!.variation])).toEqual([
+      ['Long scroll MacBook', 'front'],
+      ['Long scroll MacBook', 'wavy surface']
+    ])
+    expect(search('wavy')).toEqual([top!.id])
+
+    await stash.unstash(res.ok ? res.snapshot : (null as never))
+    expect(repo.mockups.getMockup(side!.id)).toMatchObject({ stage: 'to_stash', variation: null })
+    expect(repo.drafts.getDraft(side!.id)).toMatchObject({ title: 'Long scroll MacBook', variation: 'wavy surface', variationSource: 'typed' })
+    expect(search('wavy')).toEqual([])
   })
 
   it('makes the pile searchable and keeps no drafts', async () => {

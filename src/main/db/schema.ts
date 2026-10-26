@@ -10,6 +10,7 @@ import {
   type AnySQLiteColumn
 } from 'drizzle-orm/sqlite-core'
 import type { DraftCarry } from '../../shared/approval'
+import type { VariationSource } from '../../shared/pile-variation'
 
 // Shared timestamp columns (SQLite-native defaults).
 const timestamps = {
@@ -23,6 +24,15 @@ const timestamps = {
 
 const coverSource = (name: string) =>
   text(name, { enum: ['embedded', 'sidecar', 'user-uploaded', 'default', 'none'] })
+
+/**
+ * A mockup's variation in a pile (design/specs/pile-titles.md): its 1 to 3 words, and where they came
+ * from. Null on a mockup on its own. In a pile, `title` is the pile's base, the same on every row.
+ */
+const variationColumns = {
+  variation: text('variation'),
+  variationSource: text('variation_source').$type<VariationSource>()
+}
 
 /** Mockups — the primary library entity (spec §5.4). No `source_path`: originals are untracked once copied in. */
 export const mockups = sqliteTable(
@@ -61,6 +71,7 @@ export const mockups = sqliteTable(
       .default('off'),
     /** The AI's suggestions for this mockup (title, tags). Written by the background queue. */
     aiResult: text('ai_result', { mode: 'json' }),
+    ...variationColumns,
     ...timestamps
   },
   (table) => [
@@ -171,6 +182,8 @@ export const drafts = sqliteTable('drafts', {
     .default(sql`'[]'`),
   /** The last edit to its pile's top, on an untouched variant: judged, offered or taken (`DraftCarry`). */
   carry: text('carry', { mode: 'json' }).$type<DraftCarry>(),
+  /** In a pile, `title` is the pile's base, the same on every draft, and this is the mockup's own part. */
+  ...variationColumns,
   ...timestamps
 })
 

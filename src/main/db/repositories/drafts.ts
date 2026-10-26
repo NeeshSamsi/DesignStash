@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { drafts, lookOverResume, mockupTags, mockups } from '../schema'
 import type { StashSnapshot } from '@shared/approval'
+import type { VariationSource } from '@shared/pile-variation'
 import type { Draft, DraftCarry, DraftField, Mockup } from '../schema'
 
 export interface DraftFields {
@@ -13,6 +14,9 @@ export interface DraftFields {
   awaitingAi?: boolean
   keptFields?: DraftField[]
   carry?: DraftCarry | null
+  /** In a pile: the mockup's own part of its title, and where it came from. */
+  variation?: string | null
+  variationSource?: VariationSource | null
 }
 
 /** Look it over: the drafts kept until a pile or a mockup is stashed, and where Finish later left off. */
@@ -140,7 +144,9 @@ export class DraftRepository {
           description: m.description,
           tagIds: tagRows.filter((t) => t.mockupId === m.id).map((t) => t.tagId),
           stage: m.stage,
-          sortedAt: m.sortedAt
+          sortedAt: m.sortedAt,
+          variation: m.variation,
+          variationSource: m.variationSource
         })),
         drafts: draftRows.map((d) => ({
           mockupId: d.mockupId,
@@ -150,7 +156,9 @@ export class DraftRepository {
           touched: d.touched,
           checked: d.checked,
           skippedAt: d.skippedAt,
-          carry: d.carry ?? null
+          carry: d.carry ?? null,
+          variation: d.variation,
+          variationSource: d.variationSource
         })),
         resume: resume ? { unitId: resume.unitId, mockupId: resume.mockupId } : null
       }
@@ -163,6 +171,8 @@ export class DraftRepository {
           .set({
             title: draft.title,
             description: draft.description,
+            variation: draft.variation,
+            variationSource: draft.variationSource,
             stage: 'stashed',
             sortedAt: m.sortedAt ?? now
           })
@@ -190,8 +200,9 @@ export class DraftRepository {
           .set({
             title: m.title,
             description: m.description,
-              stage: m.stage,
-            sortedAt: m.sortedAt
+            stage: m.stage,
+            sortedAt: m.sortedAt,
+            ...(m.variation !== undefined && { variation: m.variation, variationSource: m.variationSource ?? null })
           })
           .where(eq(mockups.id, m.id))
           .run()

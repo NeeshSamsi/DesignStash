@@ -174,14 +174,18 @@ describe('open', () => {
     expect([first, second]).toEqual(['Title 1', 'Title 1'])
   })
 
-  it('starts each variant with its own cached suggestion, tags snapped like the top\'s', async () => {
+  it('starts each variant with its own cached description and tags, snapped like the top\'s, under the pile\'s base', async () => {
     const [top, side] = pile('phone_front', 'phone_side')
     ready(top!.id, { title: 'Clay phone', description: 'On a stand', tags: [{ category: 'Device', label: 'Phone' }] })
     ready(side!.id, { title: 'Clay phone, side', description: 'Edge on', tags: [{ category: 'Device', label: 'Laptop' }] })
 
     const items = (await service().open()).units[0]!.items
 
-    expect(items[1]).toMatchObject({ mockupId: side!.id, title: 'Clay phone, side', description: 'Edge on', waitingForAi: false })
+    expect(items[1]).toMatchObject({ mockupId: side!.id, title: 'Clay phone', description: 'Edge on', waitingForAi: false })
+    expect(items.map((i) => i.variation)).toEqual([
+      { words: 'front', source: 'marker' },
+      { words: 'side', source: 'marker' }
+    ])
     expect(items[1]!.tags.map((t) => t.label)).toEqual(['Laptop'])
   })
 
@@ -193,7 +197,7 @@ describe('open', () => {
     const items = (await service().open()).units[0]!.items
 
     expect(items[0]!.waitingForAi).toBe(false)
-    expect(items[1]).toMatchObject({ title: 'phone side', description: 'On a stand', waitingForAi: true })
+    expect(items[1]).toMatchObject({ title: 'Clay phone', variation: { words: 'side', source: 'marker' }, description: 'On a stand', waitingForAi: true })
     expect(items[1]!.tags.map((t) => t.label)).toEqual(['Phone'])
   })
 
@@ -286,7 +290,7 @@ describe('saveDraft', () => {
     expect((await service().open()).units[0]!.items[0]!.checked).toBe(false)
   })
 
-  it('marks a variant touched when the user changes it, but not when nothing changed', async () => {
+  it('marks a variant touched when the user changes its words, but not when nothing changed', async () => {
     const [, side] = pile('top', 'side')
     const svc = service()
     const before = (await svc.open()).units[0]!.items[1]!
@@ -294,11 +298,15 @@ describe('saveDraft', () => {
     await svc.saveDraft({ mockupId: side!.id, title: before.title, description: before.description, tagIds: before.tags.map((t) => t.tagId) })
     expect((await svc.open()).units[0]!.items[1]!.touched).toBe(false)
 
-    await svc.saveDraft({ mockupId: side!.id, title: 'Side, retitled', description: before.description, tagIds: [] })
-    expect((await svc.open()).units[0]!.items[1]!).toMatchObject({ touched: true, title: 'Side, retitled' })
+    // The base is the pile's and the variation the mockup's own name: neither is the variant's words.
+    await svc.saveDraft({ mockupId: side!.id, title: 'Retitled', variation: 'edge on', description: before.description, tagIds: before.tags.map((t) => t.tagId) })
+    expect((await svc.open()).units[0]!.items[1]!).toMatchObject({ touched: false, title: 'Retitled', variation: { words: 'edge on', source: 'typed' } })
+
+    await svc.saveDraft({ mockupId: side!.id, title: 'Retitled', description: 'Mine now', tagIds: [] })
+    expect((await svc.open()).units[0]!.items[1]!.touched).toBe(true)
   })
 
-  it('does not carry anything over when only the top\'s title changed', async () => {
+  it('carries only the base, exactly, when only the top\'s title changed', async () => {
     const [top, a] = pile('top', 'a')
     const svc = service()
     const first = (await svc.open()).units[0]!.items[0]!
@@ -310,9 +318,20 @@ describe('saveDraft', () => {
       tagIds: first.tags.map((t) => t.tagId)
     })
 
-    expect(res.propagatedIds).toEqual([])
+    expect(res.propagatedIds).toEqual([a!.id])
+    expect(await itemOf(svc, a!.id)).toMatchObject({ title: 'Only the title', variation: { words: 'A', source: 'marker' }, carry: null })
     expect(progress).toEqual([])
-    expect(a).toBeDefined()
+  })
+
+  it('renames the pile from a variant\'s base too, and never carries a variation', async () => {
+    const [top, side] = pile('top', 'side')
+    const svc = service()
+    await svc.open()
+
+    const res = await svc.saveDraft({ mockupId: side!.id, title: 'Clay phone', variation: 'edge on', description: '', tagIds: [] })
+
+    expect(res.propagatedIds).toEqual([top!.id])
+    expect(await itemOf(svc, top!.id)).toMatchObject({ title: 'Clay phone', variation: { words: 'top', source: 'marker' } })
   })
 
   it('does not carry anything from a variant or a mockup on its own', async () => {
@@ -320,7 +339,7 @@ describe('saveDraft', () => {
     const alone = waiting('alone')
     const svc = service()
     await svc.open()
-    expect((await svc.saveDraft({ mockupId: side!.id, title: 's', description: 'x', tagIds: [] })).propagatedIds).toEqual([])
+    expect((await svc.saveDraft({ mockupId: side!.id, title: 'top', description: 'x', tagIds: [] })).propagatedIds).toEqual([])
     expect((await svc.saveDraft({ mockupId: alone.id, title: 'a', description: 'x', tagIds: [] })).propagatedIds).toEqual([])
   })
 
@@ -392,7 +411,7 @@ describe('resume pointer', () => {
 describe('a suggestion that lands after the draft was made', () => {
   const landed = { title: 'Blue scroll Macbook', description: 'A long page', tags: [{ category: 'Device', label: 'Laptop' }] }
 
-  it('replaces a waiting variant\'s fallback and stops waiting, once', async () => {
+  it('replaces a waiting variant\'s fallback words and stops waiting, once, keeping the pile\'s base', async () => {
     const [, side] = pile('top', 'side')
     repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
     const svc = service()
@@ -402,10 +421,10 @@ describe('a suggestion that lands after the draft was made', () => {
     ready(side!.id, landed)
     const item = await svc.settle(side!.id)
 
-    expect(item).toMatchObject({ mockupId: side!.id, role: 'variant', title: 'Blue scroll Macbook', description: 'A long page', waitingForAi: false })
+    expect(item).toMatchObject({ mockupId: side!.id, role: 'variant', title: 'top', description: 'A long page', waitingForAi: false })
     expect(item!.tags.map((t) => t.label)).toEqual(['Laptop'])
     expect(await svc.settle(side!.id)).toBeNull()
-    expect((await svc.open()).units[0]!.items[1]).toMatchObject({ title: 'Blue scroll Macbook', waitingForAi: false })
+    expect((await svc.open()).units[0]!.items[1]).toMatchObject({ title: 'top', waitingForAi: false })
   })
 
   it('keeps every field the user edited', async () => {
@@ -422,7 +441,7 @@ describe('a suggestion that lands after the draft was made', () => {
     expect(item!.tags.map((t) => t.label)).toEqual(['Laptop'])
   })
 
-  it('keeps the description and tags an accepted edit set, and still takes the title', async () => {
+  it('keeps the description and tags an accepted edit set, and the pile\'s base', async () => {
     const [top, side] = pile('top', 'side')
     repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
     const svc = service(pileModel({ rewrite: () => 'Shared words, on the side' }))
@@ -433,7 +452,7 @@ describe('a suggestion that lands after the draft was made', () => {
     ready(side!.id, landed)
     const item = await svc.settle(side!.id)
 
-    expect(item).toMatchObject({ title: 'Blue scroll Macbook', description: 'Shared words, on the side', waitingForAi: false })
+    expect(item).toMatchObject({ title: 'top', description: 'Shared words, on the side', waitingForAi: false })
     expect(item!.tags.map((t) => t.label)).toEqual(['Phone'])
   })
 
@@ -473,8 +492,8 @@ describe('a suggestion that lands after the draft was made', () => {
     repo.mockups.updateMockup(side!.id, { aiStatus: 'failed' })
     repo.mockups.updateMockup(back!.id, { aiStatus: 'off' })
 
-    expect(await svc.settle(side!.id)).toMatchObject({ title: 'side', waitingForAi: false })
-    expect(await svc.settle(back!.id)).toMatchObject({ title: 'back', waitingForAi: false })
+    expect(await svc.settle(side!.id)).toMatchObject({ title: 'top', variation: { words: 'side' }, waitingForAi: false })
+    expect(await svc.settle(back!.id)).toMatchObject({ title: 'top', variation: { words: 'back' }, waitingForAi: false })
   })
 
   it('catches up on open when the suggestion landed while Look it over was shut', async () => {
@@ -484,7 +503,34 @@ describe('a suggestion that lands after the draft was made', () => {
 
     ready(side!.id, landed)
 
-    expect((await service().open()).units[0]!.items[1]).toMatchObject({ title: 'Blue scroll Macbook', waitingForAi: false })
+    expect((await service().open()).units[0]!.items[1]).toMatchObject({ title: 'top', description: 'A long page', waitingForAi: false })
+  })
+
+  it('names the pile from the top\'s suggestion: every mockup takes the base, each told on look-over:draft', async () => {
+    const [top, side] = pile('top', 'side')
+    repo.mockups.updateMockup(top!.id, { aiStatus: 'pending' })
+    const svc = service()
+    const pushed: LookOverItem[] = []
+    svc.onItem = (item) => pushed.push(item)
+    await svc.open()
+
+    ready(top!.id, landed)
+    expect(await svc.settle(top!.id)).toMatchObject({ title: 'Blue scroll Macbook', variation: { words: 'top' } })
+
+    expect(pushed.map((i) => [i.mockupId, i.title])).toEqual([[side!.id, 'Blue scroll Macbook']])
+  })
+
+  it('keeps a base the person typed from the top\'s late suggestion', async () => {
+    const [top, side] = pile('top', 'side')
+    repo.mockups.updateMockup(top!.id, { aiStatus: 'pending' })
+    const svc = service()
+    await svc.open()
+    await svc.saveDraft({ mockupId: side!.id, title: 'My pile', description: '', tagIds: [] })
+
+    ready(top!.id, landed)
+    await svc.settle(top!.id)
+
+    expect((await svc.open()).units[0]!.items.map((i) => i.title)).toEqual(['My pile', 'My pile'])
   })
 
   it('has nothing to say for a mockup with no draft or not in To stash', async () => {
@@ -510,7 +556,7 @@ describe('Fill it myself and Write suggestions (L6.E1, L6.E3)', () => {
     expect(item).toMatchObject({ title: before.title, description: before.description, waitingForAi: false })
     ready(side!.id, landed)
     expect(await svc.settle(side!.id)).toBeNull()
-    expect((await itemOf(svc, side!.id)).title).toBe('side')
+    expect((await itemOf(svc, side!.id)).title).toBe('top')
   })
 
   it('makes the draft of one not opened yet, from its file name', async () => {
@@ -631,8 +677,9 @@ describe('an edit to a pile top', () => {
     const alone = waiting('alone')
     const svc = service(pileModel({ rewrite: () => 'x' }))
     const first = (await svc.open()).units[0]!.items[0]!
-    expect((await svc.saveDraft({ mockupId: top!.id, title: 'Only the title', description: first.description, tagIds: first.tags.map((t) => t.tagId) })).propagatedIds).toEqual([])
-    expect((await svc.saveDraft({ mockupId: side!.id, title: 's', description: 'x', tagIds: [] })).propagatedIds).toEqual([])
+    // A new title is the pile's base, which carries exactly: nothing is judged or offered.
+    expect((await svc.saveDraft({ mockupId: top!.id, title: 'Only the title', description: first.description, tagIds: first.tags.map((t) => t.tagId) })).propagatedIds).toEqual([side!.id])
+    expect((await svc.saveDraft({ mockupId: side!.id, title: 'Only the title', description: 'x', tagIds: [] })).propagatedIds).toEqual([])
     expect((await svc.saveDraft({ mockupId: alone.id, title: 'a', description: 'x', tagIds: [] })).propagatedIds).toEqual([])
     expect((await itemOf(svc, side!.id)).carry).toBeNull()
   })

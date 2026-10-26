@@ -1,14 +1,22 @@
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { mockups } from '../schema'
 import type { Mockup } from '../schema'
 import type { ConfirmedGroup } from '@shared/grouping'
+import type { VariationSource } from '@shared/pile-variation'
 
-/** A row's place in a pile. Restoring these rows undoes any pile change. */
+/**
+ * A row's place in a pile, with its titles, since joining and leaving a pile changes them (the base
+ * and the variation). Restoring these rows undoes any pile change. Snapshots made before base
+ * titles have no titles, and restoring one leaves the titles as they are.
+ */
 export interface PileRow {
   id: number
   isGroup: boolean
   groupId: number | null
+  title?: string | undefined
+  variation?: string | null | undefined
+  variationSource?: VariationSource | null | undefined
 }
 
 /** Where a row sits: a pile's top, a member under a top, or on its own. */
@@ -70,6 +78,21 @@ export class PileRepository {
     })
   }
 
+  /** Every pile's id (its top), in Trash or not, at any stage. */
+  getPileTopIds(): number[] {
+    return this.db.select({ id: mockups.id }).from(mockups).where(eq(mockups.isGroup, true)).all().map((r) => r.id)
+  }
+
+  /** Mockups on their own that still hold a variation from a pile they left. */
+  getLoneIdsWithVariation(): number[] {
+    return this.db
+      .select({ id: mockups.id })
+      .from(mockups)
+      .where(and(eq(mockups.isGroup, false), isNull(mockups.groupId), isNotNull(mockups.variation)))
+      .all()
+      .map((r) => r.id)
+  }
+
   collectGroupIds(leaderId: number): number[] {
     const members = this.getMockupsByGroupId(leaderId)
     return [leaderId, ...members.map((m) => m.id)]
@@ -79,7 +102,14 @@ export class PileRepository {
   getPileRows(ids: number[]): PileRow[] {
     const found = new Map(
       this.db
-        .select({ id: mockups.id, isGroup: mockups.isGroup, groupId: mockups.groupId })
+        .select({
+          id: mockups.id,
+          isGroup: mockups.isGroup,
+          groupId: mockups.groupId,
+          title: mockups.title,
+          variation: mockups.variation,
+          variationSource: mockups.variationSource
+        })
         .from(mockups)
         .where(inArray(mockups.id, ids))
         .all()
@@ -93,7 +123,15 @@ export class PileRepository {
     this.db.transaction((tx) => {
       for (const row of rows) {
         tx.update(mockups)
-          .set({ isGroup: row.isGroup, groupId: row.groupId })
+          .set({
+            isGroup: row.isGroup,
+            groupId: row.groupId,
+            ...(row.title !== undefined && {
+              title: row.title,
+              variation: row.variation ?? null,
+              variationSource: row.variationSource ?? null
+            })
+          })
           .where(eq(mockups.id, row.id))
           .run()
       }

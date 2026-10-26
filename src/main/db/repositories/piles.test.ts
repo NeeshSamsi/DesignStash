@@ -101,12 +101,12 @@ describe('pile operations', () => {
       ])
     })
 
-    it('returns the earlier state of every row it touched', () => {
+    it('returns the earlier state of every row it touched, titles included', () => {
       const [a, b] = [standalone('a'), standalone('b')]
       const { before } = repo.piles.createPile([a!.id, b!.id], a!.id)
       expect(before).toEqual([
-        { id: a!.id, isGroup: false, groupId: null },
-        { id: b!.id, isGroup: false, groupId: null }
+        { id: a!.id, isGroup: false, groupId: null, title: a!.title, variation: null, variationSource: null },
+        { id: b!.id, isGroup: false, groupId: null, title: b!.title, variation: null, variationSource: null }
       ])
     })
 
@@ -144,7 +144,7 @@ describe('pile operations', () => {
           .map((m) => m.id)
           .sort()
       ).toEqual([b!.id, c!.id, d!.id].sort())
-      expect(result.before).toEqual([
+      expect(result.before).toMatchObject([
         { id: c!.id, isGroup: false, groupId: null },
         { id: d!.id, isGroup: false, groupId: null }
       ])

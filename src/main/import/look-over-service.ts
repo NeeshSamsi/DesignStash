@@ -24,6 +24,7 @@ import { editDiff, editReaches } from '../ai/pile-edit'
 import type { Repository } from '../db/repository'
 import type { CarryState, Draft, DraftCarry, DraftField, DraftWords, Mockup } from '../db/schema'
 import { TagService } from '../db/tag-service'
+import { PileTitles } from '../library/pile-titles'
 
 export interface LookOverDeps {
   exists: (path: string) => Promise<boolean>
@@ -104,6 +105,8 @@ export const stemOf = (fileName: string) => fileName.replace(/\.[^/.]+$/, '').re
 export class LookOverService {
   private readonly deps: LookOverDeps
   private readonly tagService: TagService
+  /** A pile's base title and each mockup's variation (design/specs/pile-titles.md). */
+  private readonly titles: PileTitles
   /** Told which parts of a suggestion a save changed (names only, never the text). Set by the IPC layer for telemetry. */
   onEdited: (fields: ('title' | 'description' | 'tags')[]) => void = () => {}
   /** Told when background work changes a variant (judged, offered, a version prepared). Set by the IPC layer for the `look-over:draft` push. */
@@ -125,6 +128,7 @@ export class LookOverService {
   ) {
     this.deps = { ...defaultDeps, ...deps }
     this.tagService = new TagService(repo)
+    this.titles = new PileTitles(repo)
   }
 
   async open(): Promise<LookOverQueue> {
@@ -134,11 +138,10 @@ export class LookOverService {
     for (const root of this.repo.drafts.getQueueRoots()) {
       const members = root.isGroup ? this.members(root.id) : []
       const top = await this.draftFor(root, null)
-      const items = [await this.toItem(root, top, root.isGroup ? 'top' : 'single', root.isGroup ? root.id : null)]
-      for (const member of members) {
-        const draft = this.unstuck(root.id, await this.draftFor(member, top))
-        items.push(await this.toItem(member, draft, 'variant', root.id))
-      }
+      for (const member of members) this.unstuck(root.id, await this.draftFor(member, top))
+      if (root.isGroup) this.titles.fill(root.id)
+      const items = [await this.toItem(root, this.repo.drafts.getDraft(root.id)!, root.isGroup ? 'top' : 'single', root.isGroup ? root.id : null)]
+      for (const member of members) items.push(await this.toItem(member, this.repo.drafts.getDraft(member.id)!, 'variant', root.id))
       units.push({ unitId: root.id, kind: root.isGroup ? 'pile' : 'single', items })
     }
     return { units, checksEdits: !!provider?.pileEdits?.check, resume: this.validResume(units) }
@@ -185,6 +188,11 @@ export class LookOverService {
     const descriptionChanged = before.description !== req.description
     const tagsChanged = !sameIds(before.tagIds, req.tagIds)
     const changed = before.title !== req.title || descriptionChanged || tagsChanged
+    // In a pile the title is the pile's base: a new one renames every mockup in it, exactly, and
+    // the variation is this mockup's own (design/specs/pile-titles.md).
+    const pileId = m.isGroup ? m.id : m.groupId
+    const renamed = pileId !== null && before.title !== req.title ? this.titles.renameBase(pileId, req.title).mockupIds : []
+    if (pileId !== null && req.variation !== undefined) this.titles.setVariation(m.id, req.variation)
 
     const edited: DraftField[] = [
       ...(before.title !== req.title ? (['title'] as const) : []),
@@ -194,17 +202,18 @@ export class LookOverService {
     if (changed) this.onEdited(edited)
 
     this.repo.drafts.updateDraft(m.id, {
-      title: req.title,
+      ...(pileId === null && { title: req.title }),
       description: req.description,
       tagIds: req.tagIds,
       checked: req.checked ?? true,
-      keptFields: keep(before, edited),
-      // A variant the person edits is theirs: edits to the top leave it alone from now on.
-      ...(m.groupId !== null && changed ? { touched: true, carry: null } : {})
+      keptFields: keep(this.repo.drafts.getDraft(m.id)!, edited),
+      // A variant whose words the person edits is theirs: edits to the top leave it alone from now on.
+      ...(m.groupId !== null && (descriptionChanged || tagsChanged) ? { touched: true, carry: null } : {})
     })
 
-    if (!m.isGroup || !(descriptionChanged || tagsChanged)) return { propagatedIds: [] }
-    return { propagatedIds: await this.carryEdit(m, before, req) }
+    const others = renamed.filter((id) => id !== m.id)
+    if (!m.isGroup || !(descriptionChanged || tagsChanged)) return { propagatedIds: others }
+    return { propagatedIds: [...new Set([...others, ...(await this.carryEdit(m, before, req))])] }
   }
 
   /** The person's answer to the top's edit on one variant, from `look-over:answer-edit`. */
@@ -263,13 +272,10 @@ export class LookOverService {
   async draftsFor(unitId: number): Promise<{ mockup: Mockup; draft: Draft }[]> {
     const root = this.requireWaiting(unitId)
     const top = await this.draftFor(root, null)
-    const out = [{ mockup: root, draft: top }]
-    if (root.isGroup) {
-      for (const member of this.members(root.id)) {
-        out.push({ mockup: member, draft: await this.draftFor(member, top) })
-      }
-    }
-    return out
+    const mockups = [root, ...(root.isGroup ? this.members(root.id) : [])]
+    for (const member of mockups.slice(1)) await this.draftFor(member, top)
+    if (root.isGroup) this.titles.fill(root.id)
+    return mockups.map((mockup) => ({ mockup, draft: this.repo.drafts.getDraft(mockup.id)! }))
   }
 
   /**
@@ -357,18 +363,20 @@ export class LookOverService {
   }
 
   /**
-   * A new draft's fields: the mockup's own suggestion, title, description and snapped tags alike.
-   * Nothing is asked of the model here: the background queue writes every suggestion, tops and
-   * mockups on their own too (design L6), so opening never waits on a slow model. Without a
-   * suggestion it falls back to the file name, and a variant to its top's description and tags,
-   * and it waits for the AI if the queue is still on it.
+   * A new draft's fields: the mockup's own suggestion, title, description and snapped tags alike,
+   * except that a variant's title is its pile's base, its top's. Nothing is asked of the model here:
+   * the background queue writes every suggestion, tops and mockups on their own too (design L6), so
+   * opening never waits on a slow model. Without a suggestion it falls back to the file name (a top
+   * to what the Sort board named its pile), and a variant to its top's description and tags, and it
+   * waits for the AI if the queue is still on it.
    */
   private async defaults(m: Mockup, top: Draft | null): Promise<Defaults> {
     const input = analysisInputFor(m)
     const result = this.cachedSuggestion(m)
-    if (result) return { ...(await this.fieldsFrom(result)), awaitingAi: false }
+    // A variant's title is its pile's base: its top's.
+    if (result) return { ...(await this.fieldsFrom(result)), ...(top && { title: top.title }), awaitingAi: false }
     return {
-      title: stemOf(input.fileName) || m.title,
+      title: top ? top.title : m.isGroup ? this.titles.provisionalBase(m.id) : stemOf(input.fileName) || m.title,
       description: top?.description ?? '',
       tagIds: top ? [...top.tagIds] : [],
       awaitingAi: aiWorking(m)
@@ -383,7 +391,8 @@ export class LookOverService {
     if (result) {
       const fields = await this.fieldsFrom(result)
       const kept = new Set(draft.keptFields)
-      if (!kept.has('title')) patch.title = fields.title
+      // A variant's title is its pile's base, which only the top's suggestion writes.
+      if (!kept.has('title') && m.groupId === null) patch.title = fields.title
       if (!kept.has('description')) patch.description = fields.description
       if (!kept.has('tags')) patch.tagIds = fields.tagIds
     }
@@ -396,6 +405,11 @@ export class LookOverService {
         (patch.tagIds !== undefined && !sameIds(patch.tagIds, draft.tagIds)))
     this.repo.drafts.updateDraft(m.id, { ...patch, awaitingAi: false, ...(stale && { carry: { ...carry, prepared: null } }) })
     if (stale) this.queue(() => this.prepare(m.id))
+    if (m.isGroup && patch.title !== undefined && patch.title !== draft.title) {
+      // The top's suggestion names the pile: every mockup in it takes the base.
+      const { mockupIds } = this.titles.renameBase(m.id, patch.title, 'ai')
+      for (const id of mockupIds) if (id !== m.id) await this.pushItem(id)
+    }
     return this.repo.drafts.getDraft(m.id)!
   }
 
@@ -694,6 +708,7 @@ export class LookOverService {
       pileId,
       role,
       title: draft.title,
+      variation: pileId !== null && draft.variation ? { words: draft.variation, source: draft.variationSource ?? 'ai' } : null,
       description: draft.description,
       tags: this.repo.tags.getApprovalTagsByIds(draft.tagIds),
       touched: draft.touched,

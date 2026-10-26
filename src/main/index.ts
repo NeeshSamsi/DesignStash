@@ -18,6 +18,7 @@ import { createLogFile } from './log-file'
 import { Repository } from './db/repository'
 import { createIntegrityService, createStashCheck } from './ipc/integrity'
 import { applyPendingStash } from './library/stash-folder-service'
+import { PileTitles } from './library/pile-titles'
 import { createTelemetry, scrubText, type Telemetry } from './telemetry'
 import { telemetryBuildConfig } from './telemetry/build-config'
 import { noteProcessGone, recentCrashLine, takeNewCrashes } from './telemetry/crash'
@@ -110,6 +111,12 @@ app.whenReady().then(() => {
       runMigrations(db, migrationsFolder())
       ensureSearchIndex(db)
       seedTaxonomy(db)
+      try {
+        // Piles from before base titles get their base and variations (design/specs/pile-titles.md).
+        new PileTitles(new Repository(db)).settleAll()
+      } catch (err) {
+        logger.error('Settling pile titles failed:', err)
+      }
       try {
         new Repository(db).search.rebuildSearchIndex()
       } catch (err) {
