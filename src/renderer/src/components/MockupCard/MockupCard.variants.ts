@@ -41,9 +41,10 @@ export const mockupCardFaceVariants = cva(
 /**
  * The pile's two card edges below the face (Figma D2.3 A2): 8px narrower each side and 6px lower per step.
  * Hover staggers them 50ms a layer (face, middle edge, back edge) and reverses on leave (back first).
+ * They take the pointer: they hang below the card's box, so a press on them would otherwise land on the grid.
  */
 export const PILE_EDGE_BASE =
-  'pointer-events-none absolute inset-y-0 rounded-card corner-squircle border border-base transition-[scale,translate] duration-(--duration-card-out) ease-card-out group-hover/card:duration-(--duration-card-in) group-hover/card:ease-card-in motion-reduce:transition-none motion-reduce:group-hover/card:scale-100 motion-reduce:group-hover/card:translate-y-1.5'
+  'absolute inset-y-0 rounded-card corner-squircle border border-base transition-[scale,translate] duration-(--duration-card-out) ease-card-out group-hover/card:duration-(--duration-card-in) group-hover/card:ease-card-in motion-reduce:transition-none motion-reduce:group-hover/card:scale-100 motion-reduce:group-hover/card:translate-y-1.5'
 export const PILE_EDGE_FRONT =
   'inset-x-2 translate-y-1.5 bg-surface-3/80 delay-50 group-hover/card:scale-105 group-hover/card:translate-y-2'
 export const PILE_EDGE_BACK =

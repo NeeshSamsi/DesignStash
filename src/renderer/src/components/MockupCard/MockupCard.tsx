@@ -1,6 +1,6 @@
 import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useRef, useState } from 'react'
-import type { ComponentProps, KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import type { ComponentProps, MouseEvent, ReactNode, SyntheticEvent } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Layers01Icon, MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { Badge } from '@renderer/ui/badge'
@@ -53,11 +53,17 @@ export interface MockupCardProps
   onDeleteForever?: () => void
 }
 
-/** Card body is selection: clicks, double-clicks and keys from the action controls never reach it. */
+/**
+ * Card body is selection: clicks, double-clicks and keys on the action buttons never reach it. Only the buttons
+ * keep them: the scrim under the hover buttons and the gaps between controls are the card like the rest of it.
+ */
+const stopAtButton = (event: SyntheticEvent) => {
+  if (event.target instanceof Element && event.target.closest('button')) event.stopPropagation()
+}
 const keepToControl = {
-  onClick: (event: MouseEvent) => event.stopPropagation(),
-  onDoubleClick: (event: MouseEvent) => event.stopPropagation(),
-  onKeyDown: (event: KeyboardEvent) => event.stopPropagation()
+  onClick: stopAtButton,
+  onDoubleClick: stopAtButton,
+  onKeyDown: stopAtButton
 }
 
 const COVER_STATE: Record<MockupCardState, 'loaded' | 'loading' | 'no-preview' | 'missing-file'> = {

@@ -405,6 +405,50 @@ describe('LibraryPage details sidebar', () => {
     expect(useDetailsStore.getState().target).toBeNull()
   })
 
+  it('opens from every part of a card and switches with each click, the cover under the hover buttons too', async () => {
+    setupApi([item(1), item(2)])
+    render(<LibraryPage />)
+    await ready()
+    // Everything on a card that is not one of its buttons.
+    const parts: Record<string, (card: HTMLElement) => Element> = {
+      face: (card) => card.firstElementChild!,
+      cover: (card) => card.querySelector('[data-ds="CoverImage"]')!,
+      'scrim over the cover': (card) =>
+        within(card).getByRole('button', { name: 'Edit details' }).parentElement!
+          .previousElementSibling!,
+      'gap between the hover buttons': (card) =>
+        within(card).getByRole('button', { name: 'Edit details' }).parentElement!,
+      'gap between the star and ⋯': (card) =>
+        within(card).getByRole('button', { name: /^More actions/ }).parentElement!,
+      title: (card) => within(card).getByText(/^Mockup \d$/),
+      'tag line': (card) => card.querySelector('p.type-caption-xs-regular')!
+    }
+    for (const [name, part] of Object.entries(parts)) {
+      for (const card of [cards()[0]!, cards()[1]!]) {
+        fireEvent.click(part(card))
+        expect(useDetailsStore.getState().target?.id, `${name} of ${card.dataset.mockupId}`).toBe(
+          Number(card.dataset.mockupId)
+        )
+      }
+    }
+  })
+
+  it('takes a click on a pile’s stacked edges as a click on the pile', async () => {
+    setupApi([item(1), pile(3)])
+    render(<LibraryPage />)
+    await ready()
+    fireEvent.click(cards()[0]!)
+    const edges = cards()[1]!.querySelectorAll<HTMLElement>('[data-pile-edge]')
+    expect(edges).toHaveLength(2)
+    for (const edge of edges) {
+      // The edges hang below the card's box, so they must take the pointer themselves or the press lands on the grid.
+      expect(edge.className).not.toContain('pointer-events-none')
+      fireEvent.click(cards()[0]!)
+      fireEvent.click(edge)
+      expect(useDetailsStore.getState().target?.id).toBe(3)
+    }
+  })
+
   it('shows nothing for several selected mockups, and the sidebar closes', async () => {
     setupApi([item(1), item(2)])
     render(<LibraryPage />)
