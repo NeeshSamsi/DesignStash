@@ -142,6 +142,10 @@ export function smallerHint(hintEdge: number, hintText?: string): NonNullable<R4
   }
 }
 
+/** The hint's question, naming each kind of object in a set ("notebook and business cards"), so a set stays a set. */
+export const EVERY_OBJECT_HINT =
+  'What kind of object is this mockup of? Give its everyday name in one to three words, plural if there are several of it. When it shows a set of different objects, name each kind, joined by "and" (notebook and business cards). No colours, brands, printed words or setting.'
+
 /** Whether a data-URL image already fits in `edge` pixels. */
 async function fits(url: string, edge: number): Promise<boolean> {
   const { default: sharp } = await import('sharp')
