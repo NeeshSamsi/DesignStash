@@ -196,6 +196,7 @@
   --ds-duration-base: 200ms;
   --ds-duration-slow: 280ms;
   --ds-radius-card-ring: 28px;
+  --ds-spacing-scroll-edge: 96px;
 
   /* font families (from the Figma text styles) */
   --ds-font-display: 'Unbounded Variable', 'Unbounded', ui-sans-serif, system-ui, sans-serif;

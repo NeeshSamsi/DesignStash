@@ -1318,6 +1318,12 @@ export const TOKENS = {
       value: 28,
       unit: 'px',
       cssVar: '--ds-radius-card-ring'
+    },
+    {
+      name: 'spacing/scroll-edge',
+      value: 96,
+      unit: 'px',
+      cssVar: '--ds-spacing-scroll-edge'
     }
   ],
   textStyles: [

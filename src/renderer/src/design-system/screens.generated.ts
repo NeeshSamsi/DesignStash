@@ -5849,6 +5849,31 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'C1.5 Scrolled under the toolbar',
+    figmaId: '1202:137785',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
+  },
+  {
     title: 'C1.E1 Library load failed',
     figmaId: '182:704',
     flow: 'C · Library',

@@ -45,7 +45,7 @@
   --height-card-cover: 10.5rem; /* 168 */
   --height-card-cover-compact: 6.75rem; /* 108 */
   /* The soft edge under a page's fixed header, where scrolling content blurs and fades into the panel. */
-  --spacing-scroll-edge: 6rem; /* 96 */
+  --spacing-scroll-edge: var(--ds-spacing-scroll-edge); /* 96, Figma spacing/scroll-edge */
 
   /* Same value as background/overlay; a colour token so gradients can use it (to-scrim). */
   --color-scrim: var(--ds-color-black-alpha-60);
