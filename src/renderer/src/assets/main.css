@@ -248,24 +248,19 @@
   inset: 0;
   background: var(--ds-background-surface-3);
   opacity: 0;
-  /* Out is faster than in. */
-  transition:
-    transform var(--duration-fast) var(--ease-in),
-    opacity var(--duration-fast) var(--ease-in);
-}
-.ds-scrollbar[data-axis='vertical'] .ds-scrollbar-track {
-  transform: translateX(100%);
-}
-.ds-scrollbar[data-axis='horizontal'] .ds-scrollbar-track {
-  transform: translateY(100%);
 }
 .ds-scrollbar[data-state='open'] .ds-scrollbar-track {
   opacity: 1;
-  transform: none;
   pointer-events: auto;
-  transition:
-    transform var(--duration-fast) var(--ease-out),
-    opacity var(--duration-fast) var(--ease-out);
+}
+/* The gutter fades where it stands and never slides, in with the thumb and out faster. Reduced motion: at once. */
+@media (prefers-reduced-motion: no-preference) {
+  .ds-scrollbar-track {
+    transition: opacity var(--duration-fast) var(--ease-in);
+  }
+  .ds-scrollbar[data-state='open'] .ds-scrollbar-track {
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
 }
 .ds-scrollbar-thumb {
   position: absolute;

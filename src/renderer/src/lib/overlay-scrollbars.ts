@@ -5,10 +5,11 @@
  *
  *  - Pointer away, not scrolling: nothing on screen.
  *  - Scrolling without the pointer over the area: the thin thumb only, gone 800ms after the last scroll.
- *  - Pointer over the area: the gutter slides in from the edge with the thumb in it. The thumb grows
+ *  - Pointer over the area: the gutter fades in where it stands, with the thumb in it. The thumb grows
  *    under the pointer and fills more while dragging.
  *
- * The bars sit in one fixed layer above the content, so they never reflow anything.
+ * The bars sit in one fixed layer above the content, so they never reflow anything. A scroll area can
+ * start its vertical bar lower with `--scrollbar-inset-top` (the page's fixed bar, see `page-scroll`).
  */
 
 type Axis = 'vertical' | 'horizontal'
@@ -127,7 +128,8 @@ export function installOverlayScrollbars(): () => void {
     if (!el.isConnected) return untrack(t)
     const rect = el.getBoundingClientRect()
     const both = overflows(el, 'vertical') && overflows(el, 'horizontal')
-    const radius = getComputedStyle(el)
+    const computed = getComputedStyle(el)
+    const insetTop = parseFloat(computed.getPropertyValue('--scrollbar-inset-top')) || 0
 
     for (const bar of Object.values(t.bars)) {
       const vertical = bar.axis === 'vertical'
@@ -142,7 +144,7 @@ export function installOverlayScrollbars(): () => void {
       const viewport = vertical ? el.clientHeight : el.clientWidth
       const content = vertical ? el.scrollHeight : el.scrollWidth
       const offset = vertical ? el.scrollTop : el.scrollLeft
-      const trackLength = viewport - (both ? GUTTER : 0)
+      const trackLength = viewport - (both ? GUTTER : 0) - (vertical ? insetTop : 0)
       const thumbLength = Math.min(
         trackLength,
         Math.max(MIN_THUMB, (trackLength * viewport) / content)
@@ -155,20 +157,20 @@ export function installOverlayScrollbars(): () => void {
       const { style } = bar.lane
       if (vertical) {
         style.left = `${left + el.clientWidth - GUTTER}px`
-        style.top = `${top}px`
+        style.top = `${top + insetTop}px`
         style.height = `${trackLength}px`
         bar.thumb.style.height = `${thumbLength}px`
         bar.thumb.style.transform = `translate(-50%, ${thumbOffset}px)`
-        bar.track.style.borderTopRightRadius = radius.borderTopRightRadius
-        bar.track.style.borderBottomRightRadius = both ? '0' : radius.borderBottomRightRadius
+        bar.track.style.borderTopRightRadius = insetTop > 0 ? '0' : computed.borderTopRightRadius
+        bar.track.style.borderBottomRightRadius = both ? '0' : computed.borderBottomRightRadius
       } else {
         style.left = `${left}px`
         style.top = `${top + el.clientHeight - GUTTER}px`
         style.width = `${trackLength}px`
         bar.thumb.style.width = `${thumbLength}px`
         bar.thumb.style.transform = `translate(${thumbOffset}px, -50%)`
-        bar.track.style.borderBottomLeftRadius = radius.borderBottomLeftRadius
-        bar.track.style.borderBottomRightRadius = both ? '0' : radius.borderBottomRightRadius
+        bar.track.style.borderBottomLeftRadius = computed.borderBottomLeftRadius
+        bar.track.style.borderBottomRightRadius = both ? '0' : computed.borderBottomRightRadius
       }
     }
   }
