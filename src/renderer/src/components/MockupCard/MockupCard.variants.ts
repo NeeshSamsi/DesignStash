@@ -17,10 +17,10 @@ export const mockupCardVariants = cva('group/card relative flex min-w-0 flex-col
 })
 
 // Radius card (24) with 10px padding at the sides and top; hover scales the face with the card springs.
-// Selected and group-target use the border/selected ring; hover and focus are plain CSS in MockupCard.tsx.
-// Rings are inset so selecting never moves the grid. Reduced motion keeps the fades and drops the scale.
+// Selected and group-target use the border/selected ring, inset so selecting never moves the grid. Focus
+// is the shared focus-ring 2px outside the face; on the face's 24px radius its outer edge is radius/card-ring (28). Reduced motion keeps the fades and drops the scale.
 export const mockupCardFaceVariants = cva(
-  'relative z-10 flex flex-col gap-2 rounded-card corner-squircle bg-surface-2 px-2.5 pt-2.5 pb-3 transition-[color,background-color,scale,translate] duration-(--duration-card-out) ease-card-out group-hover/card:scale-104 group-hover/card:duration-(--duration-card-in) group-hover/card:ease-card-in group-focus-visible/card:ring-2 group-focus-visible/card:ring-inset group-focus-visible/card:ring-ring motion-reduce:transition-colors motion-reduce:group-hover/card:scale-100',
+  'relative z-10 flex flex-col gap-2 rounded-card corner-squircle bg-surface-2 px-2.5 pt-2.5 pb-3 transition-[color,background-color,scale,translate] duration-(--duration-card-out) ease-card-out group-hover/card:scale-104 group-hover/card:duration-(--duration-card-in) group-hover/card:ease-card-in group-focus-visible/card:focus-ring motion-reduce:transition-colors motion-reduce:group-hover/card:scale-100',
   {
     variants: {
       state: {
@@ -67,4 +67,4 @@ export const REVEAL_ON_HOVER =
 
 /** Square 28px control on a cover (⋯, compact Open in Photoshop). */
 export const OVERLAY_ICON_BUTTON =
-  'inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-overlay text-foreground outline-none transition-colors hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-5'
+  'inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-overlay text-foreground outline-none transition-colors hover:bg-surface-3 focus-visible:focus-ring [&_svg]:size-5'

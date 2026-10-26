@@ -5,11 +5,12 @@ import { GLOBAL_SEARCH_DEFAULTS, type GlobalSearchContractProps } from './Global
 import { globalSearchVariants } from './GlobalSearch.variants'
 
 /**
- * The hairline field: no fill, a subtle edge at rest and the input edge on hover; focus keeps the ring.
+ * The hairline field: no fill, a subtle edge at rest and the input edge on hover. Focus keeps that
+ * edge and adds Input's shared focus ring outside it.
  * The value and placeholder drop to body/sm/regular, with padding raised so the field stays 42px tall.
  */
 const SEARCH_HAIRLINE =
-  'border-subtle bg-transparent py-2.5 hover:border-input has-focus-visible:hover:border-ring *:data-[slot=input-group-control]:type-body-sm-regular'
+  'border-subtle bg-transparent py-2.5 hover:border-input *:data-[slot=input-group-control]:type-body-sm-regular'
 
 /** Delay between the last keystroke and `onQueryChange`. */
 export const SEARCH_DEBOUNCE_MS = 250

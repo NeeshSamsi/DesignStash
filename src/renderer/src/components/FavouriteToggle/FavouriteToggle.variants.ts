@@ -2,7 +2,7 @@ import { cva } from 'class-variance-authority'
 
 // Figma FavouriteToggle 217:1150. 28px squircle; overlay sits on a cover scrim, inline in the detail header.
 export const favouriteToggleVariants = cva(
-  'inline-flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  'inline-flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors outline-none focus-visible:focus-ring',
   {
     variants: {
       variant: {
