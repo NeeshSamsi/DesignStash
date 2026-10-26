@@ -49,9 +49,12 @@ export const PILE_EDGE_FRONT =
 export const PILE_EDGE_BACK =
   'inset-x-4 translate-y-3 bg-surface-3/45 delay-0 group-hover/card:scale-106 group-hover/card:translate-y-4 group-hover/card:delay-100'
 
-/** The cover well: 4:3 (220×165 in a 240 card), clipped to the cover radius. */
+/**
+ * The cover well: 4:3 (220×165 in a 240 card), clipped to the cover radius. min-h-0 holds the ratio:
+ * overflow-clip isn't a scroll container, so without it a portrait cover stretches the well to its own height.
+ */
 export const mockupCardCoverVariants = cva(
-  'relative aspect-card w-full shrink-0 overflow-clip rounded-card-cover',
+  'relative aspect-card min-h-0 w-full shrink-0 overflow-clip rounded-card-cover',
   {
     variants: { hidden: { true: 'opacity-0', false: '' } },
     defaultVariants: { hidden: false }

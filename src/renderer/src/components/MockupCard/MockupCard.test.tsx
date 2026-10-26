@@ -196,6 +196,14 @@ describe('MockupCard', () => {
       expect(html).toContain('aspect-card')
       expect(html).toContain('rounded-card-cover')
     })
+
+    it('keeps a portrait cover inside the 4:3 well', () => {
+      // jsdom has no layout; min-h-0 is what stops a tall image stretching an overflow-clip aspect box.
+      const { container } = render(<MockupCard />)
+      const well = container.querySelector('[data-ds="CoverImage"]')!.parentElement!
+      expect(well.className).toContain('aspect-card')
+      expect(well.className).toContain('min-h-0')
+    })
   })
 
   describe('selection', () => {

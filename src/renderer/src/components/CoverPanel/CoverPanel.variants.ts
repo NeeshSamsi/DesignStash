@@ -14,9 +14,12 @@ export const coverPanelVariants = cva(
   }
 )
 
-/** The cover well. It is a hover group, so Replace shows on pointer hover or keyboard focus. */
+/**
+ * The cover well. It is a hover group, so Replace shows on pointer hover or keyboard focus. min-h-0 holds 4:3
+ * when a portrait cover is cropped (see mockupCardCoverVariants).
+ */
 export const COVER_WELL =
-  'group/cover relative aspect-card w-full overflow-clip rounded-xl bg-surface-3 outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  'group/cover relative aspect-card min-h-0 w-full overflow-clip rounded-xl bg-surface-3 outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export const COVER_HOVER =
   'absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 transition-opacity group-hover/cover:opacity-100 group-has-focus-visible/cover:opacity-100'
