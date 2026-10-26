@@ -168,6 +168,40 @@ describe('clicks while the panel morphs', () => {
     expect(got.elsewhere).toEqual([])
   })
 
+  it('waits for the new layout when a click lands before the morph has applied it', async () => {
+    // The browser runs the update a frame after the transition starts; a click can come first.
+    const before = document.createElement('div')
+    const after = document.createElement('div')
+    const got = { before: 0, after: 0 }
+    before.addEventListener('click', () => got.before++)
+    after.addEventListener('click', () => got.after++)
+    let update: () => void = () => {}
+    let finish: () => void = () => {}
+    let applied = false
+    const doc = {
+      documentElement: document.createElement('html'),
+      querySelectorAll: () => [] as never,
+      elementFromPoint: () => (applied ? after : before),
+      startViewTransition: (run: () => void) => {
+        update = () => {
+          run()
+          applied = true
+        }
+        return {
+          finished: new Promise<void>((resolve) => (finish = resolve)),
+          skipTransition: vi.fn()
+        }
+      }
+    } as unknown as TransitionDocument
+    panelTransition(vi.fn(), 'open', { doc })
+    press(doc, 1)
+    expect(got).toEqual({ before: 0, after: 0 })
+    update()
+    finish()
+    await nextTask()
+    expect(got).toEqual({ before: 0, after: 1 })
+  })
+
   it('finishes a press that began during the morph, then lets go of the page', async () => {
     const button = document.createElement('button')
     const clicked = vi.fn()

@@ -90,7 +90,8 @@ const holds = (box: DOMRect, x: number, y: number) =>
  * second click of a double-click on a pile. This hands those clicks on. A press ends the morph at once,
  * and its click goes to what is under the pointer then. The second click of a double-click goes to the
  * card that sat under the pointer when the morph began, where the first click landed, since the morph
- * has moved it since.
+ * has moved it since. A click that comes before the browser has applied the new layout (within a frame
+ * of the transition starting) waits for it, so it lands in the layout that is about to show.
  *
  * It listens until the morph is over and a press made during it has let go (`end`), or until another
  * transition takes over (`remove`).
@@ -98,7 +99,9 @@ const holds = (box: DOMRect, x: number, y: number) =>
 function keepClicks(
   doc: TransitionDocument,
   before: PlacedCard[],
-  skip: () => void
+  skip: () => void,
+  applied: () => boolean,
+  settled: Promise<unknown>
 ): { end: () => void; remove: () => void } {
   const root = doc.documentElement
   let pressing = false
@@ -119,13 +122,17 @@ function keepClicks(
   }
   const onClick = (event: MouseEvent) => {
     if (event.target !== root) return
-    const { clientX: x, clientY: y } = event
-    const target =
-      (event.detail >= 2 ? before.find(({ box }) => holds(box, x, y))?.card : undefined) ??
-      doc.elementFromPoint(x, y)
-    if (!target || target === root) return
     event.stopPropagation()
-    target.dispatchEvent(new MouseEvent(event.type, event))
+    const { clientX: x, clientY: y } = event
+    const replay = new MouseEvent(event.type, event)
+    const deliver = () => {
+      const target =
+        (event.detail >= 2 ? before.find(({ box }) => holds(box, x, y))?.card : undefined) ??
+        doc.elementFromPoint(x, y)
+      if (target && target !== root) target.dispatchEvent(replay)
+    }
+    if (applied()) deliver()
+    else settled.then(deliver, deliver)
   }
 
   const remove = () => {
@@ -228,9 +235,19 @@ export function panelTransition(
     forgetLayers()
   }
 
-  const transition = doc.startViewTransition(() => flushSync(apply))
+  let applied = false
+  const transition = doc.startViewTransition(() => {
+    flushSync(apply)
+    applied = true
+  })
   running = transition
-  const clicks = keepClicks(doc, cards, () => transition.skipTransition())
+  const clicks = keepClicks(
+    doc,
+    cards,
+    () => transition.skipTransition(),
+    () => applied,
+    transition.finished
+  )
   forwarding = clicks
   const done = () => {
     if (running === transition) {
