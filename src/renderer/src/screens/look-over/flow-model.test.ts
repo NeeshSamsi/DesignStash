@@ -440,7 +440,11 @@ describe('landedDraft', () => {
 
   it('shows the suggestion that landed when the form holds what main had', () => {
     const { form, saved } = landedDraft(fallback, fallback, landed)
-    expect(form).toEqual({ title: 'Blue scroll Macbook', description: 'A long page', tags: [laptop] })
+    expect(form).toEqual({
+      title: 'Blue scroll Macbook',
+      description: 'A long page',
+      tags: [laptop]
+    })
     expect(saved).toEqual(form)
   })
 
@@ -450,5 +454,13 @@ describe('landedDraft', () => {
     expect(form).toEqual({ title: 'My side', description: 'A long page', tags: [laptop] })
     // Saving then counts only the title as the user's edit.
     expect(saved.title).toBe('Blue scroll Macbook')
+  })
+
+  it('keeps the fields the person took over even when they still read as main had them', () => {
+    // Fill it myself: the title stays the file name, and the cleared description and tags stay clear.
+    const mine = { title: 'phone side', description: '', tags: [] }
+    const { form } = landedDraft(mine, fallback, landed, ['title', 'description', 'tags'])
+    expect(form).toEqual(mine)
+    expect(landedDraft(fallback, fallback, landed, ['title']).form.title).toBe('phone side')
   })
 })

@@ -29,8 +29,7 @@ export const isPile = (unit: LookOverUnit) => unit.kind === 'pile'
 
 /** Steps in a unit: every item, then a pile's review. */
 const stepCount = (unit: LookOverUnit) => unit.items.length + (isPile(unit) ? 1 : 0)
-const isReview = (unit: LookOverUnit, step: number) =>
-  isPile(unit) && step === unit.items.length
+const isReview = (unit: LookOverUnit, step: number) => isPile(unit) && step === unit.items.length
 
 /** A fresh flow from the queue main sent, resuming where Finish later left off. */
 export function createFlow(queue: LookOverQueue): FlowState {
@@ -238,8 +237,7 @@ export function rail(s: FlowState, titles: Readonly<Record<number, string>> = {}
   const steps: RailStep[] = unit.items.map((item, step) => ({
     key: String(item.mockupId),
     mockupId: item.mockupId,
-    label:
-      item.role === 'top' ? `Top · ${titleOf(item)}` : `Variant · ${titleOf(item)} · ${step}`,
+    label: item.role === 'top' ? `Top · ${titleOf(item)}` : `Variant · ${titleOf(item)} · ${step}`,
     status: statusOf(item.mockupId, step),
     showConnector: true,
     step
@@ -349,20 +347,27 @@ const tagKey = (form: DraftForm) => form.tags.map((t) => t.tagId).join()
 
 /**
  * A draft main filled in after the flow opened (a late AI suggestion). Each field the user hasn't
- * changed since the last save takes main's value; one they are editing keeps their words. `saved`
- * becomes what main now holds, so the next save counts only their edits.
+ * changed since the last save takes main's value; one they are editing keeps their words, and so
+ * does every field in `keep` (typed in while the AI wrote, or all three after Fill it myself), even
+ * when it still reads as main had it. `saved` becomes what main now holds, so the next save counts
+ * only their edits.
  */
 export function landedDraft(
   form: DraftForm,
   saved: DraftForm,
-  item: LookOverItem
+  item: LookOverItem,
+  keep: readonly ('title' | 'description' | 'tags')[] = []
 ): { form: DraftForm; saved: DraftForm } {
   const fresh = formOf(item)
+  const theirs = (field: 'title' | 'description' | 'tags', same: boolean) =>
+    keep.includes(field) || !same
   return {
     form: {
-      title: form.title === saved.title ? fresh.title : form.title,
-      description: form.description === saved.description ? fresh.description : form.description,
-      tags: tagKey(form) === tagKey(saved) ? fresh.tags : form.tags
+      title: theirs('title', form.title === saved.title) ? form.title : fresh.title,
+      description: theirs('description', form.description === saved.description)
+        ? form.description
+        : fresh.description,
+      tags: theirs('tags', tagKey(form) === tagKey(saved)) ? form.tags : fresh.tags
     },
     saved: fresh
   }
