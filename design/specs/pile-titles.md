@@ -106,3 +106,44 @@ Neesh: “I don't think variants should ever have COMPLETELY different titles.�
 1. **Length:** settled on 2026-10-26. Suggest 1 to 3 words and never block longer ones; the suggestion shows only as an empty field's placeholder.
 2. **Two mockups with the same variation:** settled on 2026-10-26. The second gets a number (“side 2”) when the app wrote the words; words a person typed stay as typed (L8.4).
 3. **Renaming the base from the pile page header:** settled on 2026-10-26. No; Edit pile details (D3.3) is the one way to rename a pile from My Stash, and a mockup's base field renames it in Look it over.
+
+## Contracts (main and shared, for L8)
+
+Built on 2026-10-26, through the existing typed invoke and pushes, with no preload changes. The shapes are in `src/shared/pile-variation.ts`, `src/shared/approval.ts`, `src/shared/ipc/pile.ts`, `src/shared/ipc/mockup.ts` and `src/shared/library.ts`; the rules in `src/main/library/pile-titles.ts`.
+
+**The data** (migration 0016). In a pile, every mockup's `title` is the pile's base, the same on each. Each mockup in a pile also has a `variation`: `{ words, source }`, where `source` is `ai`, `marker` (the file name's own marker), `number` (its number in the pile) or `typed` (the person's, never rewritten). A mockup on its own has a `title` and no variation. While a pile waits in To stash, both live in its drafts; Stash pile writes them to the mockups.
+
+**Shared helpers** (`pile-variation.ts`): `fullTitle(base, variation)` gives `Long scroll MacBook · wavy surface`, or the title alone on its own; `variationHeading(words)` starts a variation shown on its own with a capital (“Side view”); `fileMarkers` and `fallbackVariations` are the fallback; `numberRepeats` is the duplicate rule; `VariationSchema` and `VariationSourceSchema` are the zod shapes.
+
+**What each place reads**
+
+| Place | Fields |
+|---|---|
+| Look it over, the Title field | `LookOverItem.title`: the base in a pile, the title on its own |
+| Look it over, the variation field | `LookOverItem.variation`: null on its own |
+| Rail header | the pile's base: any of its items' `title` |
+| Rail step, review card | `variationHeading(item.variation.words)` |
+| My Stash pile card | `LibraryItem.title`: the base (as before) |
+| Opened pile, each card | `mockup:detail` per mockup: `item.variation` (the strip: `variants[].variation`) |
+| Details sidebar, read (D3.2) | heading `variationHeading(item.variation.words)`; the line under it names the pile with `item.title`, and says “Top of” when `item.pileId === item.id`, “Variant in” otherwise |
+| Details sidebar, edit (D3.3) | `item.title` in the base input, `item.variation.words` in the variation input |
+
+`variation` (and `pileId` on `LibraryItem`) is on every item main sends; the zod fields are optional only so renderer fixtures from before base titles still type.
+
+**Saving and renaming**
+- `look-over:save-draft` takes `variation?: string`. On a pile item `title` is the base: a new one renames every draft in the pile, exactly, and is kept from a late AI suggestion. `variation` left out stays as it is; empty, it takes its file marker or number back. `propagatedIds` now also lists the other mockups a rename changed.
+- `pile:rename` `{ pileId, base }` answers `{ pileId, base, previous, mockupIds }`. It renames the pile in Look it over (its drafts) or My Stash (its mockups). The base is trimmed and must say something. Undo: rename to `previous`.
+- `pile:set-variation` `{ mockupId, words, source? }` answers `{ mockupId, variation, previous }`. Typed words are kept exactly, even when another mockup has them. Empty words take the file marker or number back, for when focus leaves an emptied field. `source` is for Undo only: it puts `previous` back as it was.
+- `mockup:update` takes `variation?: string`. On a mockup in a pile, `title` is the base: a new one renames the pile (Edit pile details, D3.3).
+- `look-over:draft`: when the top's suggestion lands and names the pile, every other item in it is pushed with the new base.
+- Undo snapshots: the pile actions' snapshots (`PileRow`) carry each row's title and variation, and a stash snapshot carries the variations.
+
+**For the AI variation step (ai-eval).** `new PileTitles(repo).landAi(pileId, answers)`, with `answers` a `Map` of mockup id to the model's words (or null). Each answer lands as `ai` unless the person typed there; “same” or no answer takes the fallback; words another mockup already has get a number. It writes the drafts while the pile waits in To stash, and the mockups once stashed, and returns the mockups it changed, for `look-over:draft`. Apple needs no call: the fallback fills every variation when Look it over makes a pile's drafts.
+
+**Rules as built**
+- **The fallback fills in** when Look it over makes a pile's drafts, on the mockups that join a pile in My Stash (create, add, merge; typed words kept), and at launch for piles from before base titles, whose base is the top's title.
+- **The base** is the top's AI title once it lands, unless a person has renamed the pile. A variant's own AI title isn't used. Until the AI writes one, the base is what the Sort board named the pile: the zip or folder name as it is, otherwise the shared start of the names or the top's file name, without separators, ellipsis or extension (“oval mug”, “poster a3”).
+- **Leaving a pile** (taken out, or the pile disbanded): the mockup keeps its full title as its own, “Long scroll MacBook · wavy surface”, and has no variation. Undo puts the pile's back.
+- **Put on top** changes no titles: every mockup already holds the base.
+- **Touched:** renaming the base or editing a variation doesn't mark a variant touched. Only its description and tags do, as before.
+- **Search** indexes the full title, by keyword and meaning, and a hit on a mockup in a pile brings up its pile in My Stash: “wavy” finds Long scroll MacBook.
