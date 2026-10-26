@@ -63,6 +63,7 @@ import {
   leftoverFolders,
   pileRequests,
   repeatedWords,
+  RESTART,
   seedDrops,
   stashCall,
   withOwnDrops,
@@ -165,7 +166,19 @@ async function launch(command: string, env: Record<string, string> = {}): Promis
   const keep = (chunk: Buffer | string) => appendFileSync(appLog, chunk)
   app.process().stdout?.on('data', keep)
   app.process().stderr?.on('data', keep)
+  // How the app ends, said wherever it ends: a signal means something outside the app stopped it.
+  const said = (line: string) => {
+    log(line)
+    keep(`[seed ${new Date().toISOString()}] ${line}\n`)
+  }
+  app.process().on('exit', (code, signal) => said(`The app's process ended: code ${code}, signal ${signal}.`))
   const window = await app.firstWindow()
+  window.on('crash', () => said('The window\'s renderer crashed.'))
+  window.on('close', () => said('The window closed.'))
+  window.on('pageerror', (err) => said(`Page error: ${err.message}`))
+  window.on('console', (msg) => {
+    if (msg.type() === 'error') keep(`[renderer ${new Date().toISOString()}] ${msg.text()}\n`)
+  })
   await window.waitForLoadState('domcontentloaded')
   await window.waitForFunction(() => 'api' in window)
   await window.evaluate((channels) => {
@@ -450,7 +463,11 @@ async function runSuggest(): Promise<void> {
   log(`${ids.length} mockups queued for ${model ?? 'no model'}.`)
 
   const { app, ok, drain } = await launch('suggest')
-  const record: EventsFile = { model, startedAt: Date.now(), idleAt: null, events: [] }
+  // A second suggest the same day carries on today's record, marking where the app came back.
+  const record: EventsFile = existsSync(eventsFile())
+    ? { ...(JSON.parse(readFileSync(eventsFile(), 'utf8')) as EventsFile), idleAt: null }
+    : { model, startedAt: Date.now(), idleAt: null, events: [] }
+  record.events.push({ at: Date.now(), channel: RESTART, payload: null })
   const save = async () => {
     record.events.push(...(await drain()))
     writeFileSync(eventsFile(), JSON.stringify(record))
@@ -565,7 +582,8 @@ function runReport(file: string | undefined): void {
   const runOf = new Map(runs.map((r) => [r.mockupId, r]))
   const tops = rows.filter((r) => r.is_group)
   const piles = new Map(tops.map((t) => [t.id, [t.id, ...rows.filter((r) => r.group_id === t.id).map((r) => r.id)]]))
-  const requests = new Map(pileRequests(runs, piles, recorded.idleAt).map((p) => [p.pileId, p.ms]))
+  const restarts = recorded.events.filter((e) => e.channel === RESTART).map((e) => e.at)
+  const requests = new Map(pileRequests(runs, piles, recorded.idleAt, restarts).map((p) => [p.pileId, p.ms]))
   const byId = new Map(rows.map((r) => [r.id, r]))
 
   const flagsOf = (r: Row): string[] => {
@@ -584,6 +602,8 @@ function runReport(file: string | undefined): void {
   const pileMs = [...requests.values()].filter((v): v is number => v !== null)
   out.push(`# Dev seed run, ${today()}`, '')
   out.push(`Model: ${recorded.model ?? 'unknown'}. ${rows.length} mockups: ${tops.length} piles and ${rows.filter((r) => !r.is_group && r.group_id === null).length} on their own.`, '')
+  const relaunches = restarts.filter((at) => at - recorded.startedAt > 5_000).length
+  if (relaunches > 0) out.push(`The app was launched again ${relaunches} time${relaunches === 1 ? '' : 's'} during the run; a run or pile request cut off by that isn't timed.`, '')
   out.push('## Counts', '')
   out.push(`- Suggestions timed: ${runs.length}; ready ${runMs.length}.`)
   out.push(`- Taking a while (past the slow threshold): ${slow.length}${slow.length ? ` (${slow.map((r) => `#${r.mockupId}`).join(', ')})` : ''}.`)

@@ -196,6 +196,14 @@ describe('aiRuns: each mockup\'s run, from the ai:status pushes', () => {
   })
 })
 
+describe('aiRuns across a restart of the app', () => {
+  it('drops a run the restart cut off, and times the one after it from its own start', () => {
+    const restart: RecordedEvent = { at: 60_000, channel: 'seed:restart', payload: null }
+    const runs = aiRuns([status(0, 1, 'sniffing', writing(0)), restart, status(70_000, 1, 'sniffing', writing(70_000)), status(85_000, 1, 'ready')])
+    expect(runs.map((r) => [r.mockupId, r.startedAt, r.ms])).toEqual([[1, 70_000, 15_000]])
+  })
+})
+
 describe('pileRequests: about how long each pile\'s variation request took', () => {
   const run = (mockupId: number, startedAt: number, endedAt: number) => ({
     mockupId,
@@ -218,6 +226,11 @@ describe('pileRequests: about how long each pile\'s variation request took', () 
       { pileId: 1, ms: 4_500 },
       { pileId: 4, ms: 6_000 }
     ])
+  })
+
+  it('has no time when the app restarted between the pile\'s last landing and the next run', () => {
+    const runs = [run(1, 0, 10_000), run(2, 60_000, 70_000)]
+    expect(pileRequests(runs, new Map([[1, [1]]]), null, [30_000])).toEqual([{ pileId: 1, ms: null }])
   })
 
   it('has no time for a pile with a mockup that never ran, or when nothing came after it', () => {

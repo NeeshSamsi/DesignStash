@@ -135,6 +135,9 @@ export interface AiRun {
   hardStop: boolean
 }
 
+/** The seed's own mark in the recorded pushes: the app was launched again here (a second `suggest`). */
+export const RESTART = 'seed:restart'
+
 const ENDS = new Set(['ready', 'failed', 'off', 'opted_out'])
 /** The hard stop's timer and the push's arrival aren't one clock: a failure within 5% of the stop counts. */
 const HARD_STOP_SLACK = 0.95
@@ -144,6 +147,8 @@ export function aiRuns(events: RecordedEvent[]): AiRun[] {
   const open = new Map<number, { startedAt: number | null; seenAt: number; slowAfterMs: number | null }>()
   const runs: AiRun[] = []
   for (const { at, channel, payload } of events) {
+    // The app went down and came back: a run it was on never finished.
+    if (channel === RESTART) open.clear()
     if (channel !== 'ai:status') continue
     for (const u of (payload as AiStatusEvent).updates) {
       if (u.status === 'sniffing') {
@@ -180,9 +185,14 @@ export function aiRuns(events: RecordedEvent[]): AiRun[] {
  * About how long each pile's variation request took. The queue asks a pile as soon as its last
  * suggestion lands, ahead of the next mockup, so the request is the gap from that landing to the
  * next run's start (or to `idleAt`, when the model went quiet, for the last one). Null when one of
- * its mockups never ran, or nothing came after it.
+ * its mockups never ran, nothing came after it, or the app was launched again in the gap (`restarts`).
  */
-export function pileRequests(runs: AiRun[], piles: ReadonlyMap<number, number[]>, idleAt: number | null): { pileId: number; ms: number | null }[] {
+export function pileRequests(
+  runs: AiRun[],
+  piles: ReadonlyMap<number, number[]>,
+  idleAt: number | null,
+  restarts: number[] = []
+): { pileId: number; ms: number | null }[] {
   const last = new Map<number, AiRun>()
   for (const r of runs) last.set(r.mockupId, r)
   return [...piles].map(([pileId, ids]) => {
@@ -191,7 +201,9 @@ export function pileRequests(runs: AiRun[], piles: ReadonlyMap<number, number[]>
     const landed = Math.max(...mine.map((r) => r!.endedAt))
     const next = runs.filter((r) => r.startedAt >= landed && !ids.includes(r.mockupId)).map((r) => r.startedAt)
     const until = next.length > 0 ? Math.min(...next) : idleAt
-    return { pileId, ms: until === null ? null : until - landed }
+    // A restart in the gap means the gap isn't the request.
+    if (until === null || restarts.some((at) => at > landed && at <= until)) return { pileId, ms: null }
+    return { pileId, ms: until - landed }
   })
 }
 
