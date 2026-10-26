@@ -11,10 +11,16 @@ import { WRITING_PLACEHOLDER } from '@renderer/lib/writing-field'
  * from `look-over:showing`, `ai:status` and what the person does, and asks these.
  */
 
+/** Where a mockup's suggestion is: `pending`, `sniffing`, `failed`, `opted_out`, `ready` or `off`, with its run. */
+export type AiRunState = Pick<AiStatusUpdate, 'status' | 'run'>
+
 /** What the renderer has learned about one mockup's suggestion since Look it over opened. */
 export interface Writing {
-  /** Main's last word on its run: the `look-over:showing` answer or an `ai:status` push. */
-  ai?: AiStatusUpdate
+  /**
+   * Main's latest word on its run since the item arrived: the `look-over:showing` answer, an
+   * `ai:status` push or a channel's answer. Until there is one, the item's own `ai` stands.
+   */
+  ai?: AiRunState
   /** Fields the person typed in while the AI wrote: theirs from then on (L6.2). */
   typed?: readonly MetaField[]
   /** Fill it myself (L6.E1): the whole mockup is theirs. */
@@ -41,23 +47,33 @@ export const LANDED_FOR_MS = 4000
 export const QUEUED_NOTE = 'Suggestions on the way'
 const SLOW = 'Still writing with AI. This one is taking a while.'
 
-/** Still waiting for the AI, and not opted out, failed or switched off. Tops and singles included. */
-export const isWriting = (item: LookOverItem, w: Writing = {}): boolean =>
-  item.waitingForAi && !w.optedOut && w.ai?.status !== 'failed' && w.ai?.status !== 'off'
+/** Main's latest word on the run: a later push or answer, or the item's own. */
+const aiOf = (w: Writing, item?: LookOverItem): AiRunState | undefined => w.ai ?? item?.ai
+
+/** Fill it myself, as the person just asked or as main has it (`opted_out`). */
+export const filledByHand = (item: LookOverItem, w: Writing = {}) =>
+  !!w.optedOut || aiOf(w, item)?.status === 'opted_out'
+
+/** Still waiting for the AI, and not filled in by hand, failed or switched off. Tops and singles included. */
+export function isWriting(item: LookOverItem, w: Writing = {}): boolean {
+  const status = aiOf(w, item)?.status
+  return item.waitingForAi && !filledByHand(item, w) && status !== 'failed' && status !== 'off'
+}
 
 /** The fields that still say "Writing with AI…": all of them, less the ones the person typed in. */
 export const writingFields = (item: LookOverItem, w: Writing = {}): MetaField[] =>
   isWriting(item, w) ? FIELDS.filter((f) => !(w.typed ?? []).includes(f)) : []
 
-/** The AI couldn't write this one (L6.E3): its run failed, and the person hasn't taken it over. */
-export const couldNotWrite = (w: Writing = {}): boolean => !w.optedOut && w.ai?.status === 'failed'
+/** The AI couldn't write this one (L6.E3): two failed tries or the hard stop, and the person hasn't taken it over. */
+export const couldNotWrite = (item: LookOverItem, w: Writing = {}): boolean =>
+  !filledByHand(item, w) && aiOf(w, item)?.status === 'failed'
 
 /**
  * When the run counts as slow (epoch ms): from when the model began on this mockup, or from when
  * it came on screen while it waits its turn. A model load doesn't count, so `starting` has no clock.
  */
-export function slowAt(w: Writing = {}): number | null {
-  const run = w.ai?.run
+export function slowAt(w: Writing = {}, item?: LookOverItem): number | null {
+  const run = aiOf(w, item)?.run
   if (!run) return null
   if (run.phase === 'writing' && run.writingSince !== null)
     return run.writingSince + run.slowAfterMs
@@ -84,7 +100,7 @@ const ordered = (fields: readonly MetaField[]) => FIELDS.filter((f) => fields.in
 export function aiLine(item: LookOverItem, w: Writing = {}, now: number): AiLine | null {
   const typed = ordered(w.typed ?? [])
   if (isWriting(item, w)) {
-    const slow = slowAt(w)
+    const slow = slowAt(w, item)
     if (slow !== null && now >= slow)
       return { kind: 'working', message: SLOW, action: 'fill-myself' }
     const left = writingFields(item, w)
@@ -95,14 +111,14 @@ export function aiLine(item: LookOverItem, w: Writing = {}, now: number): AiLine
     return { kind: 'working', message, action: 'fill-myself' }
   }
   const fromFileName = !typed.includes('title')
-  if (w.optedOut) {
+  if (filledByHand(item, w)) {
     return {
       kind: 'off',
       message: `You’re filling this one in.${fromFileName ? ' Its title starts from the file name.' : ''}`,
       action: 'write-suggestions'
     }
   }
-  if (couldNotWrite(w)) {
+  if (couldNotWrite(item, w)) {
     return {
       kind: 'failed',
       message: `Couldn’t write suggestions for this one${fromFileName ? ', so the title is its file name' : ''}.`,
@@ -123,7 +139,7 @@ export const opensWithRow = (item: LookOverItem, w: Writing = {}, now: number): 
 /** When the line next changes without anyone doing anything: the slow threshold, or the end of "filled in". */
 export function nextLineChange(item: LookOverItem, w: Writing = {}, now: number): number | null {
   if (isWriting(item, w)) {
-    const slow = slowAt(w)
+    const slow = slowAt(w, item)
     return slow !== null && slow > now ? slow : null
   }
   const ends = w.landed ? w.landed.at + LANDED_FOR_MS : null
@@ -133,7 +149,7 @@ export function nextLineChange(item: LookOverItem, w: Writing = {}, now: number)
 /** The rail's note on a step still waiting for the AI (PileStep `note`). */
 export function railNote(item: LookOverItem, w: Writing = {}): string | null {
   if (!isWriting(item, w)) return null
-  return w.ai?.status === 'sniffing' ? WRITING_PLACEHOLDER : QUEUED_NOTE
+  return aiOf(w, item)?.status === 'sniffing' ? WRITING_PLACEHOLDER : QUEUED_NOTE
 }
 
 /**

@@ -28,8 +28,7 @@ import {
   opensWithRow,
   railNote,
   stashWait,
-  writingFields,
-  type LineAction
+  writingFields
 } from './ai-writing'
 import {
   afterStash,
@@ -253,7 +252,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const hereWriting = here ? ai.writing[here.mockupId] : undefined
   const hereId = here?.mockupId
   /** Whether the mockup on screen has a status row: decided as it opens, kept until you move on. */
-  const [visit, setVisit] = useState<{ id: number; row: boolean; settled: boolean } | null>(null)
+  const [visit, setVisit] = useState<{ id: number; row: boolean } | null>(null)
 
   // The mockup on screen goes first in the AI queue; its answer starts the slow clock and says where its run is.
   useEffect(() => {
@@ -263,12 +262,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     void window.api
       .invoke(IPC_CHANNELS.LOOK_OVER_SHOWING, { mockupId: hereId })
       .then((res) => {
-        if (!res.success) return
-        dispatch({ type: 'showing', mockupId: hereId, update: res.data, at })
-        // A run that failed before it came on screen still gets its line, as it opens.
-        if (res.data?.status === 'failed') {
-          setVisit((v) => (v?.id === hereId && !v.settled ? { ...v, row: true, settled: true } : v))
-        }
+        if (res.success) dispatch({ type: 'showing', mockupId: hereId, update: res.data, at })
       })
       .catch(() => {})
     return () => dispatch({ type: 'left', mockupId: hereId })
@@ -281,14 +275,22 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     return () => clearTimeout(timer)
   }, [due])
 
-  // The status row is decided when the mockup opens and kept while it is on screen.
+  // The status row is decided when the mockup opens (each item says where its AI is) and kept while it is on screen.
   if (here && visit?.id !== here.mockupId) {
-    setVisit({ id: here.mockupId, row: opensWithRow(here, hereWriting, now), settled: false })
+    setVisit({ id: here.mockupId, row: opensWithRow(here, hereWriting, now) })
   }
   const row = here !== null && visit?.id === here.mockupId && visit.row
   const line = here ? aiLine(here, hereWriting, now) : null
 
-  /** Fill it myself: the AI stops for this mockup; the title starts from the file name, the rest empty. */
+  /** A channel's answer is main's word on the mockup and its AI. */
+  const answered = (res: { success: boolean; data?: LookOverItem | null } | null) => {
+    if (res?.success && res.data) dispatch({ type: 'answer', item: res.data })
+  }
+
+  /**
+   * Fill it myself (L6.E1): the AI stops for this mockup, for good (`look-over:fill-myself`). The
+   * title starts from the file name, selected so typing replaces it, and the rest starts empty.
+   */
   const fillMyself = (id: number, selectTitle: boolean) => {
     const it = ai.live[id]
     if (!it) return
@@ -306,6 +308,10 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
       }
     })
     dispatch({ type: 'fill-myself', mockupId: id })
+    void window.api
+      .invoke(IPC_CHANNELS.LOOK_OVER_FILL_MYSELF, { mockupId: id })
+      .then(answered)
+      .catch(() => {})
     if (selectTitle && fields.includes('title')) {
       // After the field stops writing and shows the file name, select it so typing replaces it.
       setTimeout(() => {
@@ -316,16 +322,38 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     }
   }
 
-  /** The line's button. Write suggestions and Try again wait for their channel (look-over brief). */
-  const lineButton = (action: LineAction | undefined) =>
-    action === 'fill-myself' && here ? (
-      <Button
-        variant="ghost"
-        size="xs"
-        label="Fill it myself"
-        onClick={() => fillMyself(here.mockupId, true)}
-      />
-    ) : null
+  /**
+   * Write suggestions (L6.E1) and Try again (L6.E3): ask the AI again (`look-over:write`). The fields
+   * the person typed in stay theirs; the rest go back to main's and say “Writing with AI…” again.
+   */
+  const writeAgain = async (id: number) => {
+    const res = await window.api
+      .invoke(IPC_CHANNELS.LOOK_OVER_WRITE, { mockupId: id })
+      .catch(() => null)
+    if (!res?.success || !res.data) {
+      toast({
+        variant: 'error',
+        message: 'Couldn’t ask the AI again',
+        description: 'Your words are still here. Try again in a moment.'
+      })
+      return
+    }
+    const fresh = formOf(res.data)
+    const typed = ai.writing[id]?.typed ?? []
+    saved.current = { ...saved.current, [id]: fresh }
+    setForms((current) => {
+      const was = current[id] ?? fresh
+      return {
+        ...current,
+        [id]: {
+          title: typed.includes('title') ? was.title : fresh.title,
+          description: typed.includes('description') ? was.description : fresh.description,
+          tags: typed.includes('tags') ? was.tags : fresh.tags
+        }
+      }
+    })
+    answered(res)
+  }
 
   /** Saves the open mockup's draft when it changed or hasn't been recorded as looked at. */
   const saveCurrent = useCallback(async (): Promise<boolean> => {
@@ -673,8 +701,24 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
               key={here.mockupId}
               kind={line?.kind ?? 'none'}
               message={line?.message ?? ''}
-              showAction={lineButton(line?.action) !== null}
-              action={lineButton(line?.action)}
+              showAction={line?.action !== undefined}
+              action={
+                line?.action === 'fill-myself' ? (
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    label="Fill it myself"
+                    onClick={() => fillMyself(here.mockupId, true)}
+                  />
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    label={line?.action === 'try-again' ? 'Try again' : 'Write suggestions'}
+                    onClick={() => void writeAgain(here.mockupId)}
+                  />
+                )
+              }
             />
           )}
           {form && (

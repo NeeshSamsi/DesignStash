@@ -64,9 +64,31 @@ describe('isWriting and writingFields', () => {
 
   it('counts a failed run as couldn’t write, unless the person filled it in themselves', () => {
     const failed = { ai: ai({ status: 'failed', run: undefined }) }
-    expect(couldNotWrite(failed)).toBe(true)
-    expect(couldNotWrite({ ...failed, optedOut: true })).toBe(false)
-    expect(couldNotWrite({ ai: ai() })).toBe(false)
+    expect(couldNotWrite(item(), failed)).toBe(true)
+    expect(couldNotWrite(item(), { ...failed, optedOut: true })).toBe(false)
+    expect(couldNotWrite(item(), { ai: ai() })).toBe(false)
+  })
+
+  it('starts from the item’s own AI state, and takes main’s later word over it', () => {
+    const failedAtOpen = item({ waitingForAi: false, ai: { status: 'failed' } })
+    expect(couldNotWrite(failedAtOpen)).toBe(true)
+    expect(aiLine(failedAtOpen, {}, NOW)?.kind).toBe('failed')
+    expect(railNote(item({ ai: { status: 'sniffing' } }))).toBe('Writing with AI…')
+    expect(
+      railNote(item({ ai: { status: 'sniffing' } }), {
+        ai: ai({ status: 'pending', run: undefined })
+      })
+    ).toBe('Suggestions on the way')
+    const queued = item({
+      ai: { status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs: 20_000 } }
+    })
+    expect(slowAt({ shownAt: 3_000 }, queued)).toBe(23_000)
+  })
+
+  it('treats main’s opted_out as filled in by hand, with Write suggestions', () => {
+    const mine = item({ waitingForAi: false, ai: { status: 'opted_out' } })
+    expect(isWriting(mine)).toBe(false)
+    expect(aiLine(mine, {}, NOW)).toMatchObject({ kind: 'off', action: 'write-suggestions' })
   })
 })
 

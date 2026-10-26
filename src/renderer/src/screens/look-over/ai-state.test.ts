@@ -88,17 +88,38 @@ describe('aiReducer', () => {
     expect(s.writing[12]?.landed).toBeUndefined()
   })
 
-  it('counts a field as typed only while the AI was writing it', () => {
+  it('counts a field as the person’s while the AI writes it, and once they fill it in or it fails', () => {
     let s = aiReducer(start(), { type: 'typed', mockupId: 11, fields: ['title', 'title'] })
     expect(s.writing[11]?.typed).toEqual(['title'])
-    s = aiReducer(s, {
+    s = aiReducer(s, { type: 'fill-myself', mockupId: 11 })
+    s = aiReducer(s, { type: 'typed', mockupId: 11, fields: ['description'] })
+    expect(s.writing[11]?.typed).toEqual(['title', 'description'])
+    s = aiReducer(s, { type: 'status', updates: [{ mockupId: 12, status: 'failed' }] })
+    s = aiReducer(s, { type: 'typed', mockupId: 12, fields: ['tags'] })
+    expect(s.writing[12]?.typed).toEqual(['tags'])
+  })
+
+  it('leaves typing alone once the suggestion is in: that is an ordinary edit', () => {
+    let s = aiReducer(start(), {
       type: 'draft',
-      item: item(11, { waitingForAi: false }),
+      item: item(11, { waitingForAi: false, ai: { status: 'ready' } }),
       at: 1,
       onScreen: false
     })
     s = aiReducer(s, { type: 'typed', mockupId: 11, fields: ['description'] })
-    expect(s.writing[11]?.typed).toEqual(['title'])
+    expect(s.writing[11]?.typed).toBeUndefined()
+  })
+
+  it('takes a channel’s answer as main’s word: Fill it myself, then Write suggestions', () => {
+    let s = aiReducer(start(), { type: 'fill-myself', mockupId: 11 })
+    s = aiReducer(s, {
+      type: 'answer',
+      item: item(11, { waitingForAi: false, ai: { status: 'opted_out' } })
+    })
+    expect(s.writing[11]).toMatchObject({ optedOut: true, ai: { status: 'opted_out' } })
+    s = aiReducer(s, { type: 'answer', item: item(11, { ai: { status: 'pending' } }) })
+    expect(s.writing[11]).toMatchObject({ optedOut: false, ai: { status: 'pending' } })
+    expect(s.live[11]?.waitingForAi).toBe(true)
   })
 
   it('takes fresh items without marking anything as landed', () => {

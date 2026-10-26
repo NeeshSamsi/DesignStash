@@ -59,6 +59,8 @@ function setup(overrides: Record<string, Handler> = {}, queue: unknown = pileQue
     [IPC_CHANNELS.LOOK_OVER_OPEN]: () => ok(queue),
     [IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT]: () => ok({ propagatedIds: [] }),
     [IPC_CHANNELS.LOOK_OVER_SHOWING]: (p) => ok(writing((p as { mockupId: number }).mockupId)),
+    [IPC_CHANNELS.LOOK_OVER_FILL_MYSELF]: () => ok(null),
+    [IPC_CHANNELS.LOOK_OVER_WRITE]: () => ok(null),
     [IPC_CHANNELS.TAG_TREE]: () => ok({ tree: [] }),
     ...overrides
   }
@@ -110,7 +112,30 @@ describe('Look it over · AI writing (L6)', () => {
     expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_SHOWING, { mockupId: 11 })
   })
 
-  it('the rail says which one is being written and which are on the way', async () => {
+  it('the rail is right from the first frame, from each item’s own AI state', async () => {
+    setup(
+      {},
+      {
+        ...pileQueue(10),
+        units: [
+          {
+            unitId: 10,
+            kind: 'pile',
+            items: [
+              item(10, 'top', { title: 'Clay iPhone 15 Pro' }),
+              item(11, 'variant', { waitingForAi: true, ai: writing(11) }),
+              item(12, 'variant', { waitingForAi: true })
+            ]
+          }
+        ]
+      }
+    )
+    await start()
+    expect(within(rail()).getByText('Writing with AI…')).toBeTruthy()
+    expect(within(rail()).getByText('Suggestions on the way')).toBeTruthy()
+  })
+
+  it('the rail follows ai:status: which one is being written and which are on the way', async () => {
     await start()
     push(IPC_CHANNELS.AI_STATUS, {
       updates: [writing(11), { mockupId: 12, status: 'pending' }],
@@ -169,6 +194,7 @@ describe('Look it over · AI writing (L6)', () => {
   it('L6.E1: Fill it myself starts the title from the file name, selected, and empties the rest', async () => {
     await start()
     fireEvent.click(screen.getByRole('button', { name: 'Fill it myself' }))
+    expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_FILL_MYSELF, { mockupId: 11 })
     expect(line()?.textContent).toContain(
       'You’re filling this one in. Its title starts from the file name.'
     )
@@ -189,6 +215,31 @@ describe('Look it over · AI writing (L6)', () => {
     expect(description().value).toBe('')
   })
 
+  it('L6.E1: Write suggestions asks again, and the fields the person didn’t type in write again', async () => {
+    setup({
+      [IPC_CHANNELS.LOOK_OVER_FILL_MYSELF]: () =>
+        ok(item(11, 'variant', { title: 'phone side', ai: { status: 'opted_out' } })),
+      [IPC_CHANNELS.LOOK_OVER_WRITE]: () =>
+        ok(
+          item(11, 'variant', {
+            title: 'phone side',
+            waitingForAi: true,
+            ai: { status: 'pending' }
+          })
+        )
+    })
+    await start()
+    fireEvent.click(screen.getByRole('button', { name: 'Fill it myself' }))
+    fireEvent.change(titleField(), { target: { value: 'Side' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Write suggestions' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_WRITE, { mockupId: 11 })
+    )
+    await waitFor(() => expect(description().getAttribute('placeholder')).toBe('Writing with AI…'))
+    expect(titleField().value).toBe('Side')
+    expect(line()?.textContent).toContain('Writing the description and tags with AI.')
+  })
+
   it('L6.E3: says plainly that it couldn’t write, and where the title came from', async () => {
     setup(
       {
@@ -197,7 +248,11 @@ describe('Look it over · AI writing (L6)', () => {
       },
       {
         units: [
-          { unitId: 30, kind: 'single', items: [item(30, 'single', { title: 'poster a3' })] }
+          {
+            unitId: 30,
+            kind: 'single',
+            items: [item(30, 'single', { title: 'poster a3', ai: { status: 'failed' } })]
+          }
         ],
         resume: null
       }
@@ -209,6 +264,26 @@ describe('Look it over · AI writing (L6)', () => {
       )
     )
     expect(document.querySelector('[data-ds="AiStatus"][data-kind="failed"]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_WRITE, { mockupId: 30 })
+    )
+  })
+
+  it('the hard stop ends the run as couldn’t write, in the row it already has', async () => {
+    await start()
+    push(IPC_CHANNELS.AI_STATUS, {
+      updates: [{ mockupId: 11, status: 'failed' }],
+      totals: { total: 2, remaining: 1 }
+    })
+    push(
+      IPC_CHANNELS.LOOK_OVER_DRAFT,
+      item(11, 'variant', { title: 'phone side', ai: { status: 'failed' } })
+    )
+    expect(line()?.textContent).toContain(
+      'Couldn’t write suggestions for this one, so the title is its file name.'
+    )
+    expect(titleField().value).toBe('phone side')
   })
 
   it('shows no line when AI is off, or when the suggestion was already in', async () => {

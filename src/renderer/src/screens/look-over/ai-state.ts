@@ -1,7 +1,14 @@
 import type { LookOverItem } from '@shared/approval'
 import type { AiStatusUpdate } from '@shared/ipc/ai-status'
 import type { MetaField } from '@renderer/components/MockupMetaForm'
-import { FIELDS, isWriting, writingFields, type Writing } from './ai-writing'
+import {
+  FIELDS,
+  couldNotWrite,
+  filledByHand,
+  isWriting,
+  writingFields,
+  type Writing
+} from './ai-writing'
 
 /**
  * What Look it over has learned about the AI since it opened: each mockup as main last sent it
@@ -24,8 +31,10 @@ export type AiEvent =
   | { type: 'items'; items: readonly LookOverItem[] }
   /** The person typed in these fields. */
   | { type: 'typed'; mockupId: number; fields: readonly MetaField[] }
-  /** Fill it myself. */
+  /** Fill it myself, as the person asks (before main answers). */
   | { type: 'fill-myself'; mockupId: number }
+  /** A channel's answer (`look-over:fill-myself`, `look-over:write`): main's item and its AI state. */
+  | { type: 'answer'; item: LookOverItem }
   /** The mockup went off screen: what landed has had its say. */
   | { type: 'left'; mockupId: number }
 
@@ -74,12 +83,22 @@ export function aiReducer(s: AiState, e: AiEvent): AiState {
       const item = s.live[e.mockupId]
       const w = s.writing[e.mockupId]
       if (!item) return s
-      const open = writingFields(item, w)
+      // While the AI writes, only the fields still writing; once filled in by hand or failed, any field.
+      const open = isWriting(item, w)
+        ? writingFields(item, w)
+        : filledByHand(item, w) || couldNotWrite(item, w)
+          ? FIELDS
+          : []
       const typed = [...new Set([...(w?.typed ?? []), ...e.fields.filter((f) => open.includes(f))])]
       return typed.length === (w?.typed ?? []).length ? s : withWriting(s, e.mockupId, { typed })
     }
     case 'fill-myself':
       return withWriting(s, e.mockupId, { optedOut: true })
+    case 'answer': {
+      const id = e.item.mockupId
+      const next = { ...s, live: { ...s.live, [id]: e.item } }
+      return withWriting(next, id, { ai: e.item.ai, optedOut: e.item.ai.status === 'opted_out' })
+    }
     case 'left': {
       const w = s.writing[e.mockupId]
       if (!w?.landed) return s
