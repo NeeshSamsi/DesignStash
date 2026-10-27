@@ -296,7 +296,7 @@ function runModel(id: string | undefined): void {
   if (!entry) throw new Error('Give a model id from the catalog, such as qwen3.5-9b.')
   assertAppClosed()
   if (entry.files) {
-    const dir = join(libraryRoot(), '..', 'models', entry.id)
+    const dir = join(USER_DATA, 'models', entry.id)
     for (const [key, file] of Object.entries(entry.files) as [keyof typeof MODEL_FILE_NAMES, { sizeBytes: number }][]) {
       const path = join(dir, MODEL_FILE_NAMES[key])
       if (!existsSync(path) || statSync(path).size !== file.sizeBytes) throw new Error(`${entry.name} isn't installed: ${path} is missing or not ${file.sizeBytes} bytes.`)

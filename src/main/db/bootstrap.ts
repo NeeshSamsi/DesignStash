@@ -4,11 +4,10 @@ import { sql } from 'drizzle-orm'
 import type { AppDatabase } from './connection'
 import { tagCategories, tags } from './schema'
 
-/** Create the managed library folders + config (spec §5.3). */
+/** Create the managed library folders + config (spec §5.3). Models live in app data. */
 export function bootstrapLibrary(libraryRoot: string): void {
-  for (const folder of [join(libraryRoot, 'mockups'), join(libraryRoot, 'models')]) {
-    if (!existsSync(folder)) mkdirSync(folder, { recursive: true })
-  }
+  const mockups = join(libraryRoot, 'mockups')
+  if (!existsSync(mockups)) mkdirSync(mockups, { recursive: true })
   const configPath = join(libraryRoot, 'config.json')
   if (!existsSync(configPath)) {
     writeFileSync(configPath, JSON.stringify({ version: 1 }, null, 2), 'utf-8')

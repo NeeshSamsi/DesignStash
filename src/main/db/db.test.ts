@@ -356,11 +356,11 @@ describe('seedTaxonomy', () => {
 })
 
 describe('bootstrapLibrary', () => {
-  it('creates mockups/ and models/ directories', () => {
+  it('creates mockups/, and no models/ (models live in app data)', () => {
     const root = tempDir()
     bootstrapLibrary(root)
     expect(existsSync(join(root, 'mockups'))).toBe(true)
-    expect(existsSync(join(root, 'models'))).toBe(true)
+    expect(existsSync(join(root, 'models'))).toBe(false)
   })
 
   it('creates a config.json version marker', () => {

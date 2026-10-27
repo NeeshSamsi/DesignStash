@@ -23,7 +23,6 @@ export function registerDebugHandlers(settings: SettingsStore): void {
     const userData = app.getPath('userData')
     const home = app.getPath('home')
     const libraryRoot = settings.getLibraryRoot()
-    const modelsDir = join(libraryRoot, '..', 'models')
 
     for (const p of [userData, libraryRoot]) {
       if (!p || p === home || p === '/' || p.split('/').filter(Boolean).length < 2) {
@@ -34,7 +33,6 @@ export function registerDebugHandlers(settings: SettingsStore): void {
     const ARTIFACTS = ['designstash.db', 'designstash.db-shm', 'designstash.db-wal', 'config.json', 'mockups', 'models']
     await Promise.all([
       ...ARTIFACTS.map((a) => fs.rm(join(libraryRoot, a), { recursive: true, force: true })),
-      fs.rm(modelsDir, { recursive: true, force: true }),
       fs.rm(join(userData, 'settings.json'), { recursive: true, force: true }),
       fs.rm(join(userData, 'Library'), { recursive: true, force: true }),
       fs.rm(join(userData, 'models'), { recursive: true, force: true }),

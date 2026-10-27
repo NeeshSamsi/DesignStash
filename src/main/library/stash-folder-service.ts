@@ -329,8 +329,8 @@ export function applyPendingStash(settings: SettingsStore): void {
   settings.update({ libraryRoot: pending.path, pendingStash: null })
   for (const entry of STASH_ENTRIES) rmSync(join(pending.oldRoot, entry), { recursive: true, force: true })
   try {
-    // Launch makes an empty models folder in every stash, unused since models live in app data.
-    // One with anything in it is someone's own, and stays.
+    // Earlier versions made an empty models folder in every stash. One with anything in it is
+    // someone's own, and stays.
     rmdirSync(join(pending.oldRoot, 'models'))
   } catch {
     // Not there, or not empty.
