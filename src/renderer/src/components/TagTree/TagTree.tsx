@@ -264,10 +264,17 @@ export function TagTree({
     }
   }
 
+  /** Another category already called this, whatever its casing. */
+  const findCategory = (label: string, exceptCategoryId: number) =>
+    tree.find((c) => c.categoryId !== exceptCategoryId && norm(c.categoryLabel) === norm(label))
+
   const saveRename = async () => {
     if (!renaming) return
     const label = renaming.draft.trim()
-    if (!label || findTag(label, renaming.kind === 'tag' ? renaming.id : undefined)) return
+    // A tag's name is checked against tags, a category's against categories.
+    const taken =
+      renaming.kind === 'tag' ? findTag(label, renaming.id) : findCategory(label, renaming.id)
+    if (!label || taken) return
     const run =
       renaming.kind === 'tag'
         ? () => onRenameTag?.(renaming.id, label)
@@ -579,11 +586,7 @@ export function TagTree({
               onChange={(draft) => setRenaming({ ...renaming, draft })}
               onSubmit={() => void saveRename()}
               onCancel={() => setRenaming(null)}
-              invalid={tree.some(
-                (c) =>
-                  c.categoryId !== category.categoryId &&
-                  norm(c.categoryLabel) === norm(renaming.draft)
-              )}
+              invalid={!!findCategory(renaming.draft, category.categoryId)}
               hint="↵ to save · Esc to cancel"
             />
           ) : (
