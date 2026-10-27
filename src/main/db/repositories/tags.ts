@@ -31,7 +31,12 @@ export class TagRepository {
     return this.db.select().from(tagCategories).orderBy(tagCategories.sortOrder).all()
   }
 
+  /** Refuses a name another category reads the same as, whatever its casing. */
   renameCategory(categoryId: number, label: string): void {
+    const clash = this.getCategoryByNormalisedLabel(label)
+    if (clash && clash.id !== categoryId) {
+      throw new Error(`There’s already a category called “${clash.label}”`)
+    }
     this.db.update(tagCategories).set({ label }).where(eq(tagCategories.id, categoryId)).run()
   }
 
@@ -84,8 +89,14 @@ export class TagRepository {
     )
   }
 
-  /** Rename a tag and re-index FTS for every mockup carrying it (tag label lives in mockups_fts). */
+  /**
+   * Rename a tag and re-index FTS for every mockup carrying it (tag label lives in mockups_fts).
+   * Refuses a name another tag in its category reads the same as.
+   */
   renameTag(tagId: number, label: string): void {
+    const tag = this.db.select().from(tags).where(eq(tags.id, tagId)).get()
+    if (!tag) throw new Error(`Tag ${tagId} not found`)
+    this.assertTagNameFree(tag.categoryId, label, tagId)
     this.db.update(tags).set({ label }).where(eq(tags.id, tagId)).run()
     const affected = this.db
       .select({ mockupId: mockupTags.mockupId })
@@ -95,9 +106,30 @@ export class TagRepository {
     for (const { mockupId } of affected) this.search.upsertSearchIndex(mockupId)
   }
 
-  /** Move a tag to a different category. (No FTS change — category label isn't indexed.) */
+  /**
+   * Move a tag to a different category. Search doesn't index category labels, so it stays as it is.
+   * Refuses a category that already has a tag reading the same.
+   */
   reassignTagCategory(tagId: number, categoryId: number): void {
+    const tag = this.db.select().from(tags).where(eq(tags.id, tagId)).get()
+    if (!tag) throw new Error(`Tag ${tagId} not found`)
+    this.assertTagNameFree(categoryId, tag.label, tagId)
     this.db.update(tags).set({ categoryId }).where(eq(tags.id, tagId)).run()
+  }
+
+  /**
+   * Two tags in one category never read the same (the unique index only catches an exact match,
+   * so "iphone" next to "iPhone" would pass it). Throws in plain words when `label` is taken.
+   */
+  private assertTagNameFree(categoryId: number, label: string, tagId: number): void {
+    const clash = this.getTagByNormalisedLabel(categoryId, label)
+    if (!clash || clash.id === tagId) return
+    const category = this.db
+      .select({ label: tagCategories.label })
+      .from(tagCategories)
+      .where(eq(tagCategories.id, categoryId))
+      .get()
+    throw new Error(`“${clash.label}” is already a tag in ${category?.label ?? 'this category'}`)
   }
 
   /** Mockups carrying a tag. */

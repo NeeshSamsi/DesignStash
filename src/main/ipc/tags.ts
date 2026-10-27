@@ -19,8 +19,11 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
     return { categories }
   })
 
+  // A name the category already has, whatever its casing, answers with that tag (as AI tags snap to it).
   registerIpcHandler(IPC_CHANNELS.TAG_CREATE, (args) => {
-    const tag = repo.tags.createTag({ label: args.label, categoryId: args.categoryId })
+    const tag =
+      repo.tags.getTagByNormalisedLabel(args.categoryId, args.label) ??
+      repo.tags.createTag({ label: args.label, categoryId: args.categoryId })
     return { tagId: tag.id, label: tag.label, categoryId: tag.categoryId }
   })
 
@@ -48,7 +51,9 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
   })
 
   registerIpcHandler(IPC_CHANNELS.CATEGORY_CREATE, (args) => {
-    const cat = repo.tags.createCategory({ label: args.label })
+    const cat =
+      repo.tags.getCategoryByNormalisedLabel(args.label) ??
+      repo.tags.createCategory({ label: args.label })
     return { categoryId: cat.id, label: cat.label }
   })
 
