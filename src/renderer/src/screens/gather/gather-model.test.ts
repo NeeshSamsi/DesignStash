@@ -212,11 +212,11 @@ describe('widget', () => {
     expect(rowState(restored)).toBe('done')
   })
 
-  it('words the undo toast', () => {
+  it('words the undo toast: the import went to Trash, so it can come back', () => {
     expect(undoneMessage(12).description).toBe(
-      '12 mockups removed from To sort. Your originals weren’t touched.'
+      '12 mockups moved to Trash. Your originals weren’t touched.'
     )
-    expect(undoneMessage(1).description).toContain('1 mockup removed')
+    expect(undoneMessage(1).description).toContain('1 mockup moved to Trash')
   })
 })
 

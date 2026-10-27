@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { subscribePush } from '@renderer/lib/subscribe'
 import { useCopyStore } from '@renderer/stores/copyStore'
 import { toast } from '@renderer/stores/toastStore'
+import { afterUndo, CHANGED_SINCE } from '@renderer/lib/undo-router'
 import { undoneMessage } from './gather-model'
 
 const FAILED = { variant: 'error', message: 'Couldn’t start copying. Try again.' } as const
@@ -63,13 +64,29 @@ export function useGather() {
   /** Keep what landed. */
   const keep = useCallback(() => useCopyStore.getState().dismiss(), [])
 
+  /**
+   * Undo all undoes the import's own entry in the app's history (undo:entry): what it brought in
+   * goes to Trash, so Redo, or Restore in Trash, brings it back. One a newer change has touched
+   * says to use ⌘Z, which walks back through that change first.
+   */
   const undoAll = useCallback(async () => {
     const current = useCopyStore.getState().haul
     if (!current) return
-    const res = await window.api.invoke(IPC_CHANNELS.COPY_UNDO_ALL, { haulId: current.haulId })
+    if (current.undoEntryId === undefined) return useCopyStore.getState().dismiss()
+    const res = await window.api
+      .invoke(IPC_CHANNELS.UNDO_ENTRY, { id: current.undoEntryId })
+      .catch(() => null)
+    if (res?.success && res.data.status === 'blocked') {
+      toast({ variant: 'error', message: CHANGED_SINCE })
+      return
+    }
     useCopyStore.getState().dismiss()
-    if (res.success) toast({ variant: 'success', ...undoneMessage(res.data.tossedIds.length) })
-    else toast({ variant: 'error', message: 'Couldn’t undo the copy. Try again.' })
+    if (res?.success && res.data.status === 'done') {
+      afterUndo(res.data, 'undo')
+      toast({ variant: 'success', ...undoneMessage(current.landed) })
+    } else if (!res?.success) {
+      toast({ variant: 'error', message: 'Couldn’t undo the copy. Try again.' })
+    }
   }, [])
 
   return {

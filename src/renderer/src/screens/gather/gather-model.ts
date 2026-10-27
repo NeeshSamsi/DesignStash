@@ -159,11 +159,11 @@ export function rowState(file: CopyFile): CopyFileRowState {
   return file.status
 }
 
-/** The toast after Undo all. */
+/** The toast after Undo all: the import went to Trash, where Restore (or Redo) brings it back. */
 export function undoneMessage(removed: number): { message: string; description: string } {
   return {
     message: 'Copy undone',
-    description: `${mockups(removed)} removed from To sort. Your originals weren’t touched.`
+    description: `${mockups(removed)} moved to Trash. Your originals weren’t touched.`
   }
 }
 

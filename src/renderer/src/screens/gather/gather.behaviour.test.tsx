@@ -247,20 +247,44 @@ describe('the widget', () => {
     expect(api.sent(IPC_CHANNELS.COPY_UNDO_ALL)).toEqual([])
   })
 
-  it('Undo all removes the haul and says so in a toast', async () => {
+  it('Undo all undoes the import’s own entry, so it goes to Trash and Redo can bring it back (undo.md)', async () => {
     const api = installApi(
-      base({ [IPC_CHANNELS.COPY_UNDO_ALL]: () => ok({ tossedIds: [1, 2, 3] }) })
+      base({
+        [IPC_CHANNELS.UNDO_ENTRY]: () => ok({ status: 'done', label: 'Import of 12 mockups' })
+      })
     )
     render(<Harness />)
-    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled' }))
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled', undoEntryId: 21 }))
     fireEvent.click(await screen.findByRole('button', { name: 'Undo all' }))
-    await waitFor(() => expect(api.sent(IPC_CHANNELS.COPY_UNDO_ALL)).toEqual([{ haulId: 'h1' }]))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.UNDO_ENTRY)).toEqual([{ id: 21 }]))
+    expect(api.sent(IPC_CHANNELS.COPY_UNDO_ALL)).toEqual([])
     await waitFor(() =>
-      expect(toasts.toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'success', message: 'Copy undone' })
-      )
+      expect(toasts.toast).toHaveBeenCalledWith({
+        variant: 'success',
+        message: 'Copy undone',
+        description: '12 mockups moved to Trash. Your originals weren’t touched.'
+      })
     )
     expect(screen.queryByText(/Copying stopped/)).toBeNull()
+  })
+
+  it('Undo all a newer change has touched says to use ⌘Z, and keeps the widget', async () => {
+    const api = installApi(
+      base({
+        [IPC_CHANNELS.UNDO_ENTRY]: () =>
+          ok({ status: 'blocked', label: 'Import of 12 mockups', blockedBy: 30 })
+      })
+    )
+    render(<Harness />)
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled', undoEntryId: 21 }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo all' }))
+    await waitFor(() =>
+      expect(toasts.toast).toHaveBeenCalledWith({
+        variant: 'error',
+        message: 'Changed since. Use ⌘Z'
+      })
+    )
+    expect(screen.getByText(/Copying stopped/)).toBeTruthy()
   })
 
   it('a paused copy says why and Retry carries on', async () => {
