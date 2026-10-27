@@ -100,7 +100,7 @@ export function PileView({ data }: { data: Data }) {
       <PhotoshopAsk
         failure={data.photoshop}
         onCancel={data.dismissPhotoshop}
-        onRetry={() => data.dismissPhotoshop()}
+        onRetry={data.retryPhotoshop}
       />
     </>
   )

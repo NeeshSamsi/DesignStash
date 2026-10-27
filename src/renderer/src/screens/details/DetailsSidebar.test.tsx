@@ -157,6 +157,7 @@ describe('details sidebar · one mockup, read-only', () => {
     expect(within(ask).getByText('Photoshop isn’t installed')).not.toBeNull()
     fireEvent.click(within(ask).getByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toHaveLength(2))
+    expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)[1]![1]).toEqual({ mockupId: 42 })
   })
 
   it('opens the full-screen viewer from the cover', async () => {
@@ -448,6 +449,25 @@ describe('details sidebar · a pile', () => {
     await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toHaveLength(1))
     expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)[0]![1]).toEqual({ mockupId: 100 })
     expect(useDetailsStore.getState().pile).toBeNull()
+  })
+
+  it('Try again after Photoshop didn’t open retries the mockup in the pile that failed', async () => {
+    setup({ [IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL]: () => ok({ opened: false, reason: 'failed' }) })
+    await show(99)
+    await screen.findByText('Login Pile')
+    const side = [...document.querySelectorAll('[data-ds="MockupCard"]')].find((c) =>
+      c.textContent?.includes('side')
+    )!
+    fireEvent.click(within(side as HTMLElement).getByRole('button', { name: /Photoshop/ }))
+    const ask = await screen.findByRole('alertdialog')
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Try again' }))
+
+    await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toHaveLength(2))
+    expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL).map(([, r]) => r)).toEqual([
+      { mockupId: 100 },
+      { mockupId: 100 }
+    ])
   })
 
   it('disbands instantly with an Undo toast', async () => {

@@ -245,10 +245,7 @@ export function SingleView({ data, edit, kind }: SingleViewProps) {
       <PhotoshopAsk
         failure={data.photoshop}
         onCancel={data.dismissPhotoshop}
-        onRetry={() => {
-          data.dismissPhotoshop()
-          void data.openInPhotoshop()
-        }}
+        onRetry={data.retryPhotoshop}
       />
     </>
   )

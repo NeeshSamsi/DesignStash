@@ -68,7 +68,10 @@ export function useDetailsData(id: number) {
     tagIds: []
   })
   const [saving, setSaving] = useState(false)
-  const [photoshop, setPhotoshop] = useState<PhotoshopFailure | null>(null)
+  /** Photoshop didn't open: why, and which mockup, so Try again opens the same one. */
+  const [photoshop, setPhotoshop] = useState<{ reason: PhotoshopFailure; mockupId: number } | null>(
+    null
+  )
   /** Bumps when a cover changed, so the <img> asks for the new file. */
   const [coverVersion, setCoverVersion] = useState(0)
   const [coverUi, setCoverUi] = useState<CoverUi>('default')
@@ -244,8 +247,8 @@ export function useDetailsData(id: number) {
     const res = await window.api
       .invoke(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, { mockupId: target })
       .catch(() => null)
-    if (!res?.success) setPhotoshop('failed')
-    else if (!res.data.opened) setPhotoshop(res.data.reason)
+    if (!res?.success) setPhotoshop({ reason: 'failed', mockupId: target })
+    else if (!res.data.opened) setPhotoshop({ reason: res.data.reason, mockupId: target })
   }
 
   /** Breaks the pile up into its mockups, with an Undo toast. True once it is done. */
@@ -397,8 +400,14 @@ export function useDetailsData(id: number) {
     dirty,
     blocked,
     saving,
-    photoshop,
+    photoshop: photoshop?.reason ?? null,
     dismissPhotoshop: () => setPhotoshop(null),
+    /** Try again: opens the mockup that didn't open, in a pile too. */
+    retryPhotoshop: () => {
+      const failed = photoshop
+      setPhotoshop(null)
+      if (failed) void openInPhotoshop(failed.mockupId)
+    },
     coverVersion,
     coverUi,
     coverError,
