@@ -2,6 +2,7 @@ import { app, net, protocol, session, shell } from 'electron'
 import { join } from 'node:path'
 import { createHandlerContext, type TelemetryRef } from './ipc/context'
 import { registerAllHandlers, registerPreAppHandlers } from './ipc'
+import { registerIpcHandler } from './ipc/register'
 import { initDb, getDb, getSqlite, closeDb } from './db/connection'
 import { runMigrations } from './db/migrate'
 import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
@@ -20,6 +21,7 @@ import { telemetryBuildConfig } from './telemetry/build-config'
 import { noteProcessGone, recentCrashLine, takeNewCrashes } from './telemetry/crash'
 import { ProblemReporter } from './telemetry/problem-reporter'
 import { TELEMETRY_EVENTS, sizeBucket } from '@shared/telemetry'
+import { IPC_CHANNELS } from '@shared/ipc'
 import { installAppMenu } from './menu'
 import type { LaunchSteps } from './create-app'
 
@@ -183,12 +185,13 @@ export function launchSteps(opts: { devUrl: string | undefined }): LaunchSteps {
       )
     },
 
-    installMenu(send) {
+    installMenu(send, takePending) {
       installAppMenu({
         send,
         openExternal: (url) => void shell.openExternal(url),
         dev: !app.isPackaged
       })
+      registerIpcHandler(IPC_CHANNELS.MENU_PENDING, takePending)
     },
 
     closeLibrary: closeDb

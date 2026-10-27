@@ -58,17 +58,29 @@ export function runMenuCommand(command: MenuCommand, actions: MenuActions): void
   }
 }
 
-/** Listens for the macOS menu's commands while the app is on screen. */
+/**
+ * Listens for the macOS menu's commands while the app is on screen. Once listening, it runs the
+ * item that brought the window back, if one was chosen while every window was closed.
+ */
 export function useMenuCommands(actions: MenuActions): void {
   const latest = useRef(actions)
   useEffect(() => {
     latest.current = actions
   })
-  useEffect(
-    () =>
-      subscribePush(IPC_CHANNELS.MENU_COMMAND, (command) =>
-        runMenuCommand(command, latest.current)
-      ),
-    []
-  )
+  useEffect(() => {
+    let live = true
+    const stop = subscribePush(IPC_CHANNELS.MENU_COMMAND, (command) =>
+      runMenuCommand(command, latest.current)
+    )
+    void window.api
+      .invoke(IPC_CHANNELS.MENU_PENDING, undefined)
+      .then((res) => {
+        if (live && res.success && res.data) runMenuCommand(res.data, latest.current)
+      })
+      .catch(() => {})
+    return () => {
+      live = false
+      stop()
+    }
+  }, [])
 }

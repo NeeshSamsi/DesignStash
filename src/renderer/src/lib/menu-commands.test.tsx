@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { MenuCommand } from '@shared/ipc/menu'
 import { useUiStore } from '@renderer/stores/uiStore'
@@ -130,14 +130,37 @@ describe('useMenuCommands', () => {
   let relay: (payload: unknown) => void
   const off = vi.fn()
 
+  let pending: unknown
+
   beforeEach(() => {
     off.mockClear()
+    pending = null
     window.api = {
       subscribe: vi.fn((_channel: string, cb: (payload: unknown) => void) => {
         relay = cb
         return off
-      })
+      }),
+      invoke: vi.fn(async (channel: string) =>
+        channel === IPC_CHANNELS.MENU_PENDING
+          ? { success: true, data: pending }
+          : { success: false, error: { code: 'X', message: '' } }
+      )
     } as unknown as typeof window.api
+  })
+
+  it('once listening, runs a menu item chosen while no window was open', async () => {
+    pending = 'settings'
+    renderHook(() => useMenuCommands(actions()))
+    await waitFor(() => expect(useUiStore.getState().settingsOpen).toBe(true))
+    expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.MENU_PENDING, undefined)
+  })
+
+  it('runs nothing when no menu item is waiting', async () => {
+    const a = actions()
+    renderHook(() => useMenuCommands(a))
+    await waitFor(() => expect(window.api.invoke).toHaveBeenCalled())
+    expect(useUiStore.getState().settingsOpen).toBe(false)
+    expect(a.addFiles).not.toHaveBeenCalled()
   })
 
   it('runs each menu:command push with the latest actions, and stops on unmount', () => {

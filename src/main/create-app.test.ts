@@ -317,6 +317,35 @@ describe('the window', () => {
     const send = steps.installMenu.mock.calls[0]![0] as (command: string) => void
     send('settings')
     expect(lastWindow().webContents.send).toHaveBeenCalledWith(IPC_CHANNELS.MENU_COMMAND, 'settings')
+    const takePending = steps.installMenu.mock.calls[0]![1] as () => string | null
+    expect(takePending()).toBeNull()
+  })
+
+  it('a menu item chosen with every window closed opens one, which takes it once', async () => {
+    await launch()
+    const [send, takePending] = steps.installMenu.mock.calls[0]! as [
+      (command: string) => void,
+      () => string | null
+    ]
+    lastWindow().close()
+    send('settings')
+    expect(windows).toHaveLength(2)
+    expect(lastWindow().webContents.send).not.toHaveBeenCalled()
+    expect(takePending()).toBe('settings')
+    expect(takePending()).toBeNull()
+  })
+
+  it('keeps only the latest item chosen before the new window asks', async () => {
+    await launch()
+    const [send, takePending] = steps.installMenu.mock.calls[0]! as [
+      (command: string) => void,
+      () => string | null
+    ]
+    lastWindow().close()
+    send('settings')
+    lastWindow().close()
+    send('import-files')
+    expect(takePending()).toBe('import-files')
   })
 })
 

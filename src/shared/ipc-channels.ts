@@ -111,7 +111,8 @@ export const IPC_CHANNELS = {
   ENTITLEMENTS_SNAPSHOT: 'entitlements:snapshot',
   DEBUG_RESET_APP: 'debug:reset-app',
   DEBUG_READ_SETTINGS: 'debug:read-settings',
-  MENU_COMMAND: 'menu:command'
+  MENU_COMMAND: 'menu:command',
+  MENU_PENDING: 'menu:pending'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

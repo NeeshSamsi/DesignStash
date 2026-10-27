@@ -50,7 +50,11 @@ export interface LaunchSteps {
     services: LaunchServices,
     getWindow: () => BrowserWindow | null
   ): void
-  installMenu(send: (command: MenuCommand) => void): void
+  /**
+   * The app menu. `send` takes a chosen item; `takePending` answers menu:pending with an item
+   * chosen while no window was open, once.
+   */
+  installMenu(send: (command: MenuCommand) => void, takePending: () => MenuCommand | null): void
   closeLibrary(): void
 }
 
@@ -251,12 +255,23 @@ export function createApp(deps: AppDeps): void {
 
     openWindow()
     // Menu items reach whichever window is open, through the menu:command push. With every window
-    // closed, a menu item brings the window back instead of doing nothing.
-    steps.installMenu((command) => {
-      if (!mainWindow) openWindow()
-      else if (!mainWindow.isDestroyed())
-        mainWindow.webContents.send(IPC_CHANNELS.MENU_COMMAND, command)
-    })
+    // closed, a menu item brings the window back and waits for it: the window asks for it once it
+    // listens (menu:pending), since a push sent while it loads would reach no one.
+    let pendingMenu: MenuCommand | null = null
+    steps.installMenu(
+      (command) => {
+        if (!mainWindow) {
+          pendingMenu = command
+          openWindow()
+        } else if (!mainWindow.isDestroyed())
+          mainWindow.webContents.send(IPC_CHANNELS.MENU_COMMAND, command)
+      },
+      () => {
+        const command = pendingMenu
+        pendingMenu = null
+        return command
+      }
+    )
 
     app.on('activate', () => {
       if (!mainWindow) openWindow()
