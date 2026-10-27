@@ -260,8 +260,8 @@ export function MockupGrid({
     cursor ? (cellIndex.get(cursor) ?? null) : null,
     (mockupId) => cellIndex.get(mockupId)
   )
-  const mounted = parts
-    ? parts.flatMap((part) =>
+  const mounted: ReactNode[] = parts
+    ? parts.flatMap<ReactNode>((part) =>
         part.kind === 'cells'
           ? cells.slice(part.from, part.to)
           : [
