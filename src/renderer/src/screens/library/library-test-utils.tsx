@@ -35,6 +35,8 @@ export interface Api {
   invoke: ReturnType<typeof vi.fn>
   /** Every request sent on a channel, in order. */
   calls: (channel: string) => unknown[]
+  /** Pushes a main → window event to whatever listens for it. */
+  push: (channel: string, payload: unknown) => void
 }
 
 /** `window.api.invoke` answering from `handlers`; unlisted channels succeed with `{}`. */
@@ -60,14 +62,22 @@ export function setupApi(
     if (channel === IPC_CHANNELS.TAG_TREE) return { success: true, data: { tree: [] } }
     return { success: true, data: {} }
   })
+  const listeners = new Map<string, Set<(payload: unknown) => void>>()
   window.api = {
     appName: 'DesignStash',
     invoke,
+    subscribe: vi.fn((channel: string, fn: (payload: unknown) => void) => {
+      const set = listeners.get(channel) ?? new Set()
+      set.add(fn)
+      listeners.set(channel, set)
+      return () => set.delete(fn)
+    }),
     getPathForFile: vi.fn()
   } as unknown as typeof window.api
   return {
     invoke,
-    calls: (channel) => invoke.mock.calls.filter(([c]) => c === channel).map(([, r]) => r)
+    calls: (channel) => invoke.mock.calls.filter(([c]) => c === channel).map(([, r]) => r),
+    push: (channel, payload) => listeners.get(channel)?.forEach((fn) => fn(payload))
   }
 }
 

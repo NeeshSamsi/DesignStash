@@ -32,6 +32,7 @@ import {
 } from '@renderer/lib/library-list'
 import { filterChips, toggleCategory } from '@renderer/lib/tag-filter'
 import { useShortcut } from '@renderer/lib/shortcuts'
+import { ipcUndoRoutes, useUndoLabels } from '@renderer/lib/undo-router'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
@@ -166,6 +167,13 @@ export default function LibraryPage({
     clearSelection: rawSelection.clear
   })
   const { openInPhotoshop } = actions
+  // The empty-space menu's Undo is the app's, as Edit › Undo is, once main has named its last
+  // action; until then, the page's own last change.
+  const { undoLabel } = useUndoLabels()
+  const lastUndo =
+    undoLabel !== undefined
+      ? { name: undoLabel, run: () => ipcUndoRoutes.app('undo') }
+      : actions.lastUndo
 
   const itemById = (id: string) => items.find((item) => String(item.id) === id)
   const selectedItems = selection.selectedIds
@@ -306,7 +314,7 @@ export default function LibraryPage({
     newPile,
     disband: (item: LibraryItem) => void piles.disband([item]),
     selectAll: selection.selectAll,
-    undo: () => void actions.undoLast(),
+    undo: () => void lastUndo?.run(),
     ...(onAddFiles ? { addFiles: onAddFiles } : {}),
     ...(onAddFolder ? { addFolder: onAddFolder } : {})
   }
@@ -471,7 +479,7 @@ export default function LibraryPage({
         at={menu?.at ?? { x: 0, y: 0 }}
         onClose={() => setMenu(null)}
         actions={menuActions}
-        lastUndo={actions.lastUndo}
+        lastUndo={lastUndo}
       />
     </div>
   )

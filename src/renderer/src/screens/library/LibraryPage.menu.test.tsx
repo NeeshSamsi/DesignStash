@@ -262,6 +262,18 @@ describe('trash', () => {
     expect(cards()).toHaveLength(1)
   })
 
+  it('once main names its last action, the empty-space menu undoes that, as Edit › Undo would (undo.md)', async () => {
+    const api = setupApi([item(1)], {
+      [IPC_CHANNELS.UNDO_RUN]: () => ({ success: true, data: { status: 'done', label: 'Star' } })
+    })
+    page()
+    await ready()
+    act(() => api.push(IPC_CHANNELS.UNDO_STATE, { undoLabel: 'Star', entries: [{ id: 3 }] }))
+    fireEvent.contextMenu(document.querySelector('[data-ds="MockupGrid"]')!)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Undo Star⌘Z' }))
+    await waitFor(() => expect(api.calls(IPC_CHANNELS.UNDO_RUN)).toHaveLength(1))
+  })
+
   it('the empty-space menu names the last change and can undo it', async () => {
     const api = setupApi([item(1)], trashOk)
     page()

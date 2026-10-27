@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { RendererUndoOp, UndoContext, UndoRunResult } from '@shared/ipc/undo'
 import { toast } from '@renderer/stores/toastStore'
+import { subscribePush } from './subscribe'
 
 /**
  * Where ⌘Z and Edit › Undo go (design/specs/undo.md, The rule): the innermost context. A focused
@@ -200,4 +201,20 @@ export function useUndoContextReport(): void {
       document.removeEventListener('focusout', later)
     }
   }, [])
+}
+
+/** What the app's next undo and redo are, by name ("Move to Trash"), from the undo:state push. */
+export function useUndoLabels(): { undoLabel?: string; redoLabel?: string } {
+  const [labels, setLabels] = useState<{ undoLabel?: string; redoLabel?: string }>({})
+  useEffect(
+    () =>
+      subscribePush(IPC_CHANNELS.UNDO_STATE, (state) =>
+        setLabels({
+          ...(state.undoLabel !== undefined ? { undoLabel: state.undoLabel } : {}),
+          ...(state.redoLabel !== undefined ? { redoLabel: state.redoLabel } : {})
+        })
+      ),
+    []
+  )
+  return labels
 }
