@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { AiModelInfo } from '@shared/ipc/ai'
 import { Banner } from '../../components/Banner'
-import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { HardwareSummary } from '../../components/HardwareSummary'
 import { ModelCard, type ModelCardProps } from '../../components/ModelCard'
 import { SettingsGroup } from '../../components/SettingsLayout'
@@ -10,6 +9,7 @@ import { Switch } from '../../components/Switch'
 import { activeProblemCopy } from '../../lib/model-notice'
 import { cn } from '../../lib/utils'
 import { toast, undoToast } from '../../stores/toastStore'
+import { useUndoRan } from '../../lib/undo-router'
 import { BUILT_IN_SIZE } from '../onboarding/ai-setup'
 import { modelPhase } from '../onboarding/model-phase'
 import { useModelCatalogue } from '../onboarding/useModelCatalogue'
@@ -23,17 +23,13 @@ const languagesText = (languages: string[]) =>
 export function AiModelPane() {
   const { loaded, hardware, models, meaning, activeProblem, events, reload: load, setEvent } =
     useModelCatalogue()
-  const [on, setOn] = useState(false)
-  const started = useRef(false)
-  const [deleting, setDeleting] = useState<AiModelInfo | null>(null)
-
+  // ⌘Z or a toast's Undo can bring a deleted model back.
+  useUndoRan(() => void load())
   // The switch starts on when a model is in use (even one that can't run right now); after that
-  // only the person changes it.
-  useEffect(() => {
-    if (!loaded || started.current) return
-    started.current = true
-    setOn(models.some((m) => m.active) || activeProblem !== null)
-  }, [loaded, models, activeProblem])
+  // only the person changes it. It's settled in the render that first has the models, so they
+  // never show beside a switch that's still off.
+  const [on, setOn] = useState<boolean | null>(null)
+  if (loaded && on === null) setOn(models.some((m) => m.active) || activeProblem !== null)
 
   const toggle = async (next: boolean) => {
     setOn(next)
@@ -75,12 +71,17 @@ export function AiModelPane() {
     void load()
   }
 
-  const remove = async (model: AiModelInfo, confirmed: boolean) => {
+  /**
+   * Deletes a model at once, with Undo (undo.md): its files stay until quit, so Undo brings it back,
+   * in use again if it was. The model in use says what its going stops.
+   */
+  const remove = async (model: AiModelInfo) => {
+    const inUse = model.active
     const res = await window.api.invoke(IPC_CHANNELS.AI_DELETE_MODEL, {
       id: model.id,
-      ...(confirmed ? { confirmed: true } : {})
+      ...(inUse ? { confirmed: true } : {})
     })
-    if (!res.success) {
+    if (!res.success || !res.data.deleted) {
       toast({
         variant: 'error',
         message: 'Couldn’t delete the model',
@@ -88,20 +89,21 @@ export function AiModelPane() {
       })
       return
     }
-    if (res.data.inUse && !res.data.deleted) {
-      setDeleting(model)
-      return
-    }
     void load()
     if (res.data.undoable) {
-      undoToast(`${model.name} deleted`, () => {
-        void window.api
-          .invoke(IPC_CHANNELS.AI_RESTORE_MODEL, {
-            id: model.id,
-            ...(confirmed ? { makeActive: true } : {})
-          })
-          .then(() => load())
-      })
+      undoToast(
+        `${model.name} deleted`,
+        () => {
+          void window.api
+            .invoke(IPC_CHANNELS.AI_RESTORE_MODEL, {
+              id: model.id,
+              ...(inUse ? { makeActive: true } : {})
+            })
+            .then(() => load())
+        },
+        inUse ? 'AI titles and tags stop until you pick another model.' : undefined,
+        res.data.undoEntryId
+      )
     }
   }
 
@@ -118,9 +120,16 @@ export function AiModelPane() {
     }
     void load()
     if (res.data.undoable) {
-      undoToast('Meaning search deleted', () => {
-        void window.api.invoke(IPC_CHANNELS.AI_RESTORE_MODEL, { id: meaning.id }).then(() => load())
-      })
+      undoToast(
+        'Meaning search deleted',
+        () => {
+          void window.api
+            .invoke(IPC_CHANNELS.AI_RESTORE_MODEL, { id: meaning.id })
+            .then(() => load())
+        },
+        undefined,
+        res.data.undoEntryId
+      )
     }
   }
 
@@ -166,7 +175,7 @@ export function AiModelPane() {
         onDownload={() => void download(model.id)}
         onCancel={() => void cancel(model.id)}
         onRetry={() => void download(model.id)}
-        onDelete={() => (model.active ? setDeleting(model) : void remove(model, false))}
+        onDelete={() => void remove(model)}
       />
     )
   }
@@ -211,7 +220,7 @@ export function AiModelPane() {
           <Switch
             showLabel={false}
             aria-label="Use on-device AI"
-            checked={on}
+            checked={on ?? false}
             disabled={!supported}
             onCheckedChange={(next) => void toggle(next)}
           />
@@ -266,21 +275,6 @@ export function AiModelPane() {
           </div>
         )}
       </SettingsGroup>
-      <ConfirmDialog
-        open={deleting !== null}
-        variant="destructive"
-        detail={false}
-        title={`Delete ${deleting?.name ?? 'this model'}?`}
-        description="It’s the model in use. AI titles and tags stop until you pick another model."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        onCancel={() => setDeleting(null)}
-        onConfirm={() => {
-          const model = deleting
-          setDeleting(null)
-          if (model) void remove(model, true)
-        }}
-      />
     </>
   )
 }

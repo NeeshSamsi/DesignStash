@@ -473,7 +473,10 @@ describe('Settings · AI model', () => {
   it('keeps the models listed when on-device AI is off, with Use disabled and a reason', async () => {
     open()
     goto('AI model')
-    const toggle = await screen.findByRole('switch', { name: 'Use on-device AI' })
+    // The switch is on once the models have loaded and one is in use: turn it off from there.
+    await screen.findByText('Your models')
+    const toggle = screen.getByRole('switch', { name: 'Use on-device AI' })
+    await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'))
     fireEvent.click(toggle)
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: null })
@@ -580,22 +583,30 @@ describe('Settings · AI model', () => {
     )
   })
 
-  it('asks before deleting the model in use, and says AI titles and tags stop', async () => {
+  it('deletes the model in use at once, saying AI titles and tags stop, and Undo puts it back in use (undo.md)', async () => {
     open()
     goto('AI model')
     await screen.findByText('Your models')
     const inUse = document.querySelector('[data-state="in-use"]') as HTMLElement
     fireEvent.click(within(inUse).getByRole('button', { name: 'Delete' }))
-    const dialog = await screen.findByRole('alertdialog')
-    expect(
-      within(dialog).getByText(/AI titles and tags stop until you pick another model/)
-    ).not.toBeNull()
-    expect(calls(IPC_CHANNELS.AI_DELETE_MODEL)).toHaveLength(0)
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, {
         id: 'qwen3b',
         confirmed: true
+      })
+    )
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(toasts.undoToast).toHaveBeenCalledWith(
+      'Qwen 2.5 VL 3B deleted',
+      expect.any(Function),
+      'AI titles and tags stop until you pick another model.',
+      undefined
+    )
+    toasts.undoToast.mock.calls[0]![1]()
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_RESTORE_MODEL, {
+        id: 'qwen3b',
+        makeActive: true
       })
     )
   })
@@ -611,7 +622,12 @@ describe('Settings · AI model', () => {
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen7b' })
     )
     expect(screen.queryByRole('alertdialog')).toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Qwen 2.5 VL 7B deleted', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith(
+      'Qwen 2.5 VL 7B deleted',
+      expect.any(Function),
+      undefined,
+      undefined
+    )
     toasts.undoToast.mock.calls[0]![1]()
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen7b' })
@@ -1041,7 +1057,12 @@ describe('Meaning search row', () => {
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'nomic-embed-v1.5' })
     )
     await waitFor(() =>
-      expect(toasts.undoToast).toHaveBeenCalledWith('Meaning search deleted', expect.any(Function))
+      expect(toasts.undoToast).toHaveBeenCalledWith(
+        'Meaning search deleted',
+        expect.any(Function),
+        undefined,
+        undefined
+      )
     )
   })
 })
