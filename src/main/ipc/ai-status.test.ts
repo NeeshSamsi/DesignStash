@@ -10,6 +10,7 @@ import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, sample } from '../db/repositories/__tests__/setup'
 import { LookOverService } from '../import/look-over-service'
 import { LibraryService } from '../library/library-service'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -60,7 +61,8 @@ beforeEach(() => {
       update: (patch: Partial<typeof settingsState>) => Object.assign(settingsState, patch)
     },
     telemetry: { get: () => ({ track }), rebuild: () => {} },
-    library: new LibraryService(repo, root)
+    library: new LibraryService(repo, root),
+    ...undoForTests(repo, test.db)
   } as unknown as HandlerContext
   registerInboxHandlers(ctx)
   registerTrashHandlers(ctx)
@@ -201,7 +203,8 @@ describe('cancelling and requeueing', () => {
 
     await call(IPC_CHANNELS.INBOX_TOSS, { ids: [b.id] })
 
-    expect(repo.mockups.getMockup(b.id)).toBeUndefined()
+    // Toss goes to Trash.
+    expect(repo.mockups.getMockup(b.id)?.deletedAt).not.toBeNull()
     expect(analyze).toHaveBeenCalledTimes(1)
   })
 

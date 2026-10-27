@@ -9,7 +9,6 @@ const ROOT = '/Users/me/Library/DesignStash'
 
 let sqlite: Database.Database
 let repo: Repository
-let rm: ReturnType<typeof vi.fn<(p: string) => Promise<void>>>
 let stat: ReturnType<typeof vi.fn<(p: string) => Promise<{ size: number }>>>
 let inbox: InboxService
 
@@ -17,9 +16,8 @@ beforeEach(() => {
   const test = createTestDb()
   ;({ sqlite, repo } = test)
   ensureSearchIndex(test.db)
-  rm = vi.fn(async () => {})
   stat = vi.fn(async () => ({ size: 4096 }))
-  inbox = new InboxService(repo, ROOT, { rm, stat })
+  inbox = new InboxService(repo, { stat })
 })
 
 afterEach(() => sqlite.close())
@@ -54,52 +52,24 @@ describe('list', () => {
 })
 
 describe('toss', () => {
-  it('removes the records and the app copies of a pile and its members', async () => {
+  it('moves a pile to Trash, marked with the inbox it came from', async () => {
     const a = imported('a')
     const b = imported('b')
     repo.piles.createPile([a.id, b.id], a.id)
     repo.mockups.setStage([a.id, b.id], 'to_stash')
 
-    // Each folder holds what the app writes for a mockup.
-    const names = ['original.psd', 'cover.webp', 'thumb.webp', 'slot-mask.png', 'cover-ai-soft.png']
-    const readdir = vi.fn(async (dir: string) => (dir.includes('/mockups/') ? names : []))
-    const rmdir = vi.fn<(dir: string) => Promise<void>>(async () => {})
-    inbox = new InboxService(repo, ROOT, { rm, stat, readdir, rmdir })
-
     const result = await inbox.toss([a.id])
 
     expect(result.tossedIds.sort()).toEqual([a.id, b.id].sort())
-    expect(repo.mockups.getMockup(a.id)).toBeUndefined()
-    expect(repo.mockups.getMockup(b.id)).toBeUndefined()
-    expect(rm.mock.calls.map((c) => c[0]).sort()).toEqual(
-      ['a', 'b'].flatMap((folder) => names.map((n) => `${ROOT}/mockups/${folder}/${n}`)).sort()
-    )
-    expect(rmdir.mock.calls.map((c) => c[0]).sort()).toEqual([
-      `${ROOT}/mockups/a`,
-      `${ROOT}/mockups/b`
-    ])
+    expect(repo.mockups.getMockup(a.id)).toMatchObject({ trashOrigin: 'to-stash' })
+    expect(repo.mockups.getMockup(a.id)?.deletedAt).not.toBeNull()
+    expect(repo.trash.getTrashEntries().map((e) => e.ids.sort())).toEqual([[a.id, b.id].sort()])
   })
 
-  it('never removes anything outside the stash folder, whatever a record points at', async () => {
-    const stray = imported('stray', {
-      libraryPath: '/Users/me/Desktop/original.psd',
-      coverPath: '/Users/me/Desktop/cover.png'
-    })
-    const sneaky = imported('sneaky', {
-      libraryPath: `${ROOT}/../Desktop/original.psd`,
-      coverPath: `${ROOT}/mockups/sneaky/cover.webp`
-    })
-
-    await inbox.toss([stray.id, sneaky.id])
-
-    const removed = rm.mock.calls.map((c) => c[0])
-    expect(removed).not.toContain('/Users/me/Desktop/original.psd')
-    expect(removed).not.toContain('/Users/me/Desktop/cover.png')
-    expect(removed).not.toContain('/Users/me/Desktop/thumb.webp')
-    expect(removed.every((p) => p.startsWith(`${ROOT}/`) && !p.includes('..'))).toBe(true)
-    // The records still go.
-    expect(repo.mockups.getMockup(stray.id)).toBeUndefined()
-    expect(repo.mockups.getMockup(sneaky.id)).toBeUndefined()
+  it('marks a mockup tossed from To sort as from To sort', async () => {
+    const fresh = imported('fresh')
+    await inbox.toss([fresh.id])
+    expect(repo.mockups.getMockup(fresh.id)).toMatchObject({ trashOrigin: 'to-sort' })
   })
 
   it('skips mockups already in My Stash or Trash and leaves them whole', async () => {
@@ -109,23 +79,13 @@ describe('toss', () => {
     )
     const trashed = imported('t')
     repo.trash.moveToTrash(trashed.id)
+    const trashedAt = repo.mockups.getMockup(trashed.id)?.deletedAt
 
     const result = await inbox.toss([fresh.id, stashed.id, trashed.id, 9999])
 
     expect(result.tossedIds).toEqual([fresh.id])
     expect(result.skippedIds.sort()).toEqual([stashed.id, trashed.id, 9999].sort())
-    expect(repo.mockups.getMockup(stashed.id)).toBeDefined()
-    expect(repo.mockups.getMockup(trashed.id)).toBeDefined()
-    expect(rm.mock.calls.map((c) => c[0]).every((p) => p.includes('/mockups/fresh/'))).toBe(true)
-  })
-
-  it('takes the tossed mockups out of the counts and the search index', async () => {
-    const a = imported('a')
-    imported('b')
-    expect(inbox.counts().toSort).toBe(2)
-
-    await inbox.toss([a.id])
-
-    expect(inbox.counts().toSort).toBe(1)
+    expect(repo.mockups.getMockup(stashed.id)?.deletedAt).toBeNull()
+    expect(repo.mockups.getMockup(trashed.id)?.deletedAt).toBe(trashedAt)
   })
 })
