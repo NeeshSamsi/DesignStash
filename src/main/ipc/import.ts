@@ -25,7 +25,15 @@ export function registerImportHandlers(ctx: HandlerContext): void {
     onLanded: (ids) => {
       mockupsArrived(ctx, ids)
       countsChanged(ctx)
-    }
+    },
+    // "Undo import of 12 mockups": its undo moves what came in to Trash, redo brings it back.
+    onStopped: (ids) =>
+      ctx.undo.record(
+        ctx.dataOps.importRecord(
+          `Import of ${ids.length} mockup${ids.length === 1 ? '' : 's'}`,
+          ids
+        )
+      )
   })
   // Carry on a haul that was running when the app last closed.
   void copyQueue.resume().catch((err: unknown) => console.error('[Copy] Could not resume:', err))
@@ -40,6 +48,8 @@ export function registerImportHandlers(ctx: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.COPY_RETRY, (args) => copyQueue.retry(args.haulId))
   registerIpcHandler(IPC_CHANNELS.COPY_UNDO_ALL, async (args) => {
     const result = await copyQueue.undoAll(args.haulId)
+    // Undo all deletes for good, so the entries that point at what it removed go too.
+    ctx.undo.history.forget(result.tossedIds.map((id) => ({ kind: 'mockup' as const, id })))
     mockupsLeft(ctx, result.tossedIds)
     countsChanged(ctx)
     return result

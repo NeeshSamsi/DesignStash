@@ -93,6 +93,11 @@ export interface CopyQueueOptions {
   onProgress?: (progress: CopyProgress) => void
   /** Called with the mockups that just landed in To sort, so the AI queue can pick them up. */
   onLanded?: (ids: number[]) => void
+  /**
+   * Called once when a haul stops (done or cancelled) having landed something, with what it
+   * brought in. Returns the undo entry for it, which the haul's figures then carry.
+   */
+  onStopped?: (landedIds: number[]) => number | undefined
   deps?: Partial<CopyQueueDeps>
 }
 
@@ -127,6 +132,8 @@ export class CopyQueue {
   private lastPush = 0
   /** Staging folders of drops still being read, which cleanup must leave alone. */
   private readonly scanning = new Set<string>()
+  /** By haul, the undo entry for what it brought in (`onStopped`). */
+  private readonly undoEntries = new Map<string, number>()
   /** By haul, the jobs whose file brought its mockup back from Trash: read from the records once, then kept up to date. */
   private readonly restoredJobs = new Map<string, Set<number>>()
   private rate: { haulId: string; samples: { at: number; bytes: number }[] } = {
@@ -202,6 +209,7 @@ export class CopyQueue {
 
     if (!active && !this.repo.copyJobs.nextQueued(haulId)) {
       this.repo.copyJobs.setHaulState(haulId, { state: 'done' })
+      this.stopped(haulId)
       void this.cleanStaging()
     }
     this.emit(haulId, null)
@@ -223,10 +231,18 @@ export class CopyQueue {
     if (haul.state === 'running' || haul.state === 'paused') {
       this.repo.copyJobs.setHaulState(haulId, { state: 'cancelled' })
       this.repo.copyJobs.forgetPendingSources(haulId)
+      this.stopped(haulId)
       this.emit(haulId, null)
-      // A file in flight may still be reading from staging; clear it once that is done.
+      // A file in flight may still be reading from staging; clear it once that is done. It may land
+      // too, so the undo entry is made then if nothing had landed before.
       if (this.inFlight?.haulId === haulId)
-        void this.inFlight.settled.then(() => this.cleanStaging())
+        void this.inFlight.settled.then(() => {
+          if (!this.undoEntries.has(haulId)) {
+            this.stopped(haulId)
+            this.emit(haulId, null)
+          }
+          return this.cleanStaging()
+        })
       else await this.cleanStaging()
     }
     return { landedIds: this.repo.copyJobs.landedMockupIds(haulId) }
@@ -280,7 +296,8 @@ export class CopyQueue {
     for (const name of await this.deps.readdir(mockups)) {
       const dir = join(mockups, name)
       const files = await this.deps.readdir(dir)
-      if (files.includes(PART_FILE) && !files.includes(PSD_FILE)) await this.deps.rm(dir).catch(() => {})
+      if (files.includes(PART_FILE) && !files.includes(PSD_FILE))
+        await this.deps.rm(dir).catch(() => {})
     }
   }
 
@@ -306,6 +323,7 @@ export class CopyQueue {
       const job = this.repo.copyJobs.nextQueued(haul.id)
       if (!job) {
         this.repo.copyJobs.setHaulState(haul.id, { state: 'done' })
+        this.stopped(haul.id)
         this.emit(haul.id, null)
         await this.cleanStaging()
         return
@@ -395,7 +413,8 @@ export class CopyQueue {
 
       // The preview is read from the stash's copy; sidecars are matched against where the PSD came from.
       // A kit's preview image is often packed beside the PSD, so a zip's own images are offered too.
-      const zipImages = entry === null ? new Map<string, string>() : await this.zipImages(job.sourcePath)
+      const zipImages =
+        entry === null ? new Map<string, string>() : await this.zipImages(job.sourcePath)
       const cover = await this.deps.resolveCover({
         psdPath: libraryPath,
         sidecarFor: entry === null ? job.sourcePath : entryPath(job.sourcePath, entry),
@@ -472,7 +491,10 @@ export class CopyQueue {
 
   /** The images in a zip that could be a PSD's preview (`previewImages`); none when it can't be listed. */
   private async zipImages(zipPath: string): Promise<Map<string, string>> {
-    return previewImages(zipPath, await this.deps.listArchive(zipPath).catch((): ArchiveEntry[] => []))
+    return previewImages(
+      zipPath,
+      await this.deps.listArchive(zipPath).catch((): ArchiveEntry[] => [])
+    )
   }
 
   private async sourceStillThere(path: string): Promise<boolean> {
@@ -503,6 +525,15 @@ export class CopyQueue {
       else await this.deps.rm(dir).catch(() => left++)
     }
     if (left === 0) await this.deps.rm(stagingRoot).catch(() => {})
+  }
+
+  /** A haul that stopped having landed something is one entry in the undo history. */
+  private stopped(haulId: string): void {
+    if (this.undoEntries.has(haulId)) return
+    const landed = this.repo.copyJobs.landedMockupIds(haulId)
+    if (landed.length === 0) return
+    const entry = this.opts.onStopped?.(landed)
+    if (entry !== undefined) this.undoEntries.set(haulId, entry)
   }
 
   // ---- reporting ----
@@ -544,6 +575,7 @@ export class CopyQueue {
         archiveUnsupported: jobs.filter((j) => j.skipReason === 'archive-unsupported').length,
         noPsdInArchive: jobs.filter((j) => j.skipReason === 'no-psd-in-archive').length
       },
+      ...(this.undoEntries.has(haulId) ? { undoEntryId: this.undoEntries.get(haulId)! } : {}),
       files: jobs.map((j) => toFile(j, live, restored.has(j.id)))
     }
   }
@@ -556,7 +588,8 @@ export class CopyQueue {
     let known = this.restoredJobs.get(haulId)
     if (!known) {
       const batchOf = (mockupId: number) =>
-        (this.repo.mockups.getMockup(mockupId)?.importContext as { batchId?: string } | null)?.batchId
+        (this.repo.mockups.getMockup(mockupId)?.importContext as { batchId?: string } | null)
+          ?.batchId
       known = new Set(
         jobs.filter((j) => j.mockupId !== null && batchOf(j.mockupId) !== haulId).map((j) => j.id)
       )
@@ -617,7 +650,11 @@ function archiveContext(archiveName: string): { archiveName: string; archiveTitl
   return archiveTitle ? { archiveName, archiveTitle } : { archiveName }
 }
 
-function toFile(j: CopyJob, live: { jobId: number; bytes: number } | null, restored: boolean): CopyFile {
+function toFile(
+  j: CopyJob,
+  live: { jobId: number; bytes: number } | null,
+  restored: boolean
+): CopyFile {
   return {
     jobId: j.id,
     name: j.fileName,

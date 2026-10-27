@@ -8,6 +8,7 @@ import type { CopyStatus } from '@shared/ipc/import'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb } from '../db/repositories/__tests__/setup'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -36,7 +37,10 @@ vi.mock('../psd', () => ({
   SLOT_MASK_FILE: 'slot-mask.png'
 }))
 // The slot mask runs in a worker thread, which needs the built app.
-vi.mock('../psd/design-slot-worker', () => ({ writeDesignSlotMaskInWorker: async () => false, ensureSlotMask: async () => {} }))
+vi.mock('../psd/design-slot-worker', () => ({
+  writeDesignSlotMaskInWorker: async () => false,
+  ensureSlotMask: async () => {}
+}))
 
 import { registerImportHandlers } from './import'
 
@@ -73,9 +77,14 @@ beforeEach(() => {
   registerImportHandlers({
     repo,
     push,
-    settings: { getLibraryRoot: () => join(base, 'Library'), get: () => ({ activeModelId: null, aiRunTimes: {} }), update: vi.fn() },
+    settings: {
+      getLibraryRoot: () => join(base, 'Library'),
+      get: () => ({ activeModelId: null, aiRunTimes: {} }),
+      update: vi.fn()
+    },
     telemetry: { get: () => ({ track: vi.fn() }) },
-    ai: { activeProvider: async () => ({ id: 's', name: 's', analyze }) }
+    ai: { activeProvider: async () => ({ id: 's', name: 's', analyze }) },
+    ...undoForTests(repo, test.db)
   } as unknown as HandlerContext)
 })
 
@@ -158,7 +167,13 @@ describe('copy channels', () => {
         bytesCopied: 100,
         bytesPerSecond: 0,
         secondsLeft: null,
-        skipped: { notPsd: 0, duplicate: 1, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 },
+        skipped: {
+          notPsd: 0,
+          duplicate: 1,
+          unreadable: 0,
+          archiveUnsupported: 0,
+          noPsdInArchive: 0
+        },
         file: null
       }).success
     ).toBe(true)
