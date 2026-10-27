@@ -36,7 +36,7 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.TAG_CREATE, (args) => {
     const tag =
       repo.tags.getTagByNormalisedLabel(args.categoryId, args.label) ??
-      repo.tags.createTag({ label: args.label, categoryId: args.categoryId })
+      repo.tags.createTag({ label: args.label, categoryId: args.categoryId, createdBy: 'user' })
     return { tagId: tag.id, label: tag.label, categoryId: tag.categoryId }
   })
 

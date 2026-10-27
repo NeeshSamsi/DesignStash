@@ -55,6 +55,12 @@ describe('tag:create', () => {
     expect(repo.tags.getTagByLabel(device, 'Foldable')).toBeDefined()
   })
 
+  it('records a tag a person makes as made by a person', async () => {
+    const device = category('Device').id
+    await call(IPC_CHANNELS.TAG_CREATE, { label: 'Foldable', categoryId: device })
+    expect(repo.tags.getTagByLabel(device, 'Foldable')?.createdBy).toBe('user')
+  })
+
   it('a name the category already has, whatever its casing, answers with that tag and adds none', async () => {
     const device = category('Device').id
     const before = tagCount()
