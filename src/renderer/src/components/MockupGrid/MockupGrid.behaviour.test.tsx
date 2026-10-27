@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MockupCard } from '@renderer/components/MockupCard'
 import { TagFilterPopover } from '@renderer/components/TagFilterPopover'
 import { matchesFilter, type FilterCategory } from '@renderer/lib/tag-filter'
@@ -43,6 +43,30 @@ function Harness(props: MockupGridProps) {
   )
 }
 
+/** Counts the grid's live marquee updates. */
+function CountingHarness({ onMarquee }: { onMarquee: () => void }) {
+  const selection = useGridSelection(IDS)
+  const counted = {
+    ...selection,
+    marquee: (...args: Parameters<typeof selection.marquee>) => {
+      onMarquee()
+      selection.marquee(...args)
+    }
+  }
+  return (
+    <MockupGrid selection={counted}>
+      {IDS.map((id) => (
+        <MockupCard
+          key={id}
+          mockupId={id}
+          title={`Mockup ${id}`}
+          state={selection.isSelected(id) ? 'selected' : 'default'}
+        />
+      ))}
+    </MockupGrid>
+  )
+}
+
 const card = (container: HTMLElement, id: string) =>
   container.querySelector<HTMLElement>(`[data-mockup-id="${id}"]`)!
 const selected = (container: HTMLElement) =>
@@ -55,6 +79,7 @@ describe('Library · grid, selection, loading and empty', () => {
     stubLayout()
   })
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 
@@ -128,6 +153,35 @@ describe('Library · grid, selection, loading and empty', () => {
     expect(selected(container)).toEqual(IDS)
     expect(add.closest('[data-mockup-id]')).toBeNull()
     expect(within(add).queryByText(/selected/i)).toBeNull()
+  })
+
+  it('measures the cards once a drag and moves the selection at most once a frame', () => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+    const onMarquee = vi.fn()
+    const { container } = render(<CountingHarness onMarquee={onMarquee} />)
+    const root = container.querySelector<HTMLElement>('[data-ds="MockupGrid"]')!
+    const measure = vi.mocked(HTMLElement.prototype.getBoundingClientRect)
+    const cardMeasures = () =>
+      measure.mock.contexts.filter((el) => (el as HTMLElement).dataset.mockupId).length
+    measure.mockClear()
+
+    fireEvent.mouseDown(root, { clientX: 400, clientY: 400, button: 0 })
+    for (let i = 0; i < 100; i++) {
+      fireEvent.mouseMove(window, { clientX: 400 - i * 4, clientY: 400 - i * 4 })
+    }
+    expect(onMarquee).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersToNextFrame())
+    expect(onMarquee).toHaveBeenCalledOnce()
+    expect(cardMeasures()).toBe(IDS.length)
+    expect(selected(container)).toEqual(IDS)
+
+    // A scroll moves the cards under the box: they are measured again and the box re-applied.
+    fireEvent.scroll(window)
+    act(() => vi.advanceTimersToNextFrame())
+    expect(cardMeasures()).toBe(IDS.length * 2)
+    expect(onMarquee).toHaveBeenCalledTimes(2)
+
+    fireEvent.mouseUp(window)
   })
 
   it('does not change the selection from a card button', () => {

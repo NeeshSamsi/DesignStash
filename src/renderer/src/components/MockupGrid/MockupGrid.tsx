@@ -15,6 +15,7 @@ import {
   marqueeHits,
   marqueeRect,
   type HitTarget,
+  type Point,
   type Rect
 } from '@renderer/lib/marquee'
 import { cn } from '@renderer/lib/utils'
@@ -153,24 +154,52 @@ export function MockupGrid({
     const additive = event.metaKey || event.ctrlKey
     const base = additive ? selection.selectedIds : []
     let dragging = false
+    // The cards are measured once a drag, and again only when they move under the box.
+    let rects: HitTarget[] | null = null
+    let to: Point = start
+    let frame: number | null = null
 
-    const move = (e: MouseEvent) => {
-      const to = { x: e.clientX, y: e.clientY }
-      if (!dragging && !exceedsDragThreshold(start, to)) return
-      dragging = true
+    // At most once a frame, however fast the pointer reports.
+    const apply = () => {
+      frame = null
       const next = marqueeRect(start, to)
+      rects ??= cardRects(root)
       setBox(next)
-      selectionRef.current?.marquee(marqueeHits(next, cardRects(root)), base, additive)
+      selectionRef.current?.marquee(marqueeHits(next, rects), base, additive)
+    }
+    const schedule = () => {
+      frame ??= requestAnimationFrame(apply)
+    }
+    const move = (e: MouseEvent) => {
+      const point = { x: e.clientX, y: e.clientY }
+      if (!dragging && !exceedsDragThreshold(start, point)) return
+      dragging = true
+      to = point
+      schedule()
+    }
+    // A scroll or resize moves the cards under the box.
+    const remeasure = () => {
+      rects = null
+      if (dragging) schedule()
     }
     const up = () => {
       window.removeEventListener('mousemove', move)
       window.removeEventListener('mouseup', up)
+      window.removeEventListener('scroll', remeasure, true)
+      window.removeEventListener('resize', remeasure)
+      // The last position still counts when the button comes up before its frame.
+      if (frame !== null) {
+        cancelAnimationFrame(frame)
+        apply()
+      }
       setBox(null)
       // A press on empty space that never became a drag deselects, as in Finder.
       if (!dragging && !additive) selectionRef.current?.clear()
     }
     window.addEventListener('mousemove', move)
     window.addEventListener('mouseup', up)
+    window.addEventListener('scroll', remeasure, true)
+    window.addEventListener('resize', remeasure)
   }
 
   const add = addCard ?? <AddMockupCard onClick={onAdd} />
