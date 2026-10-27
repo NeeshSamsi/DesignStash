@@ -4,6 +4,7 @@ import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, sample } from '../db/repositories/__tests__/setup'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -35,7 +36,8 @@ beforeEach(() => {
     repo,
     push,
     telemetry: { get: () => ({ track: vi.fn() }) },
-    settings: { getLibraryRoot: () => '/library' }
+    settings: { getLibraryRoot: () => '/library' },
+    ...undoForTests(repo, test.db)
   } as unknown as HandlerContext
   registerGroupingHandlers(ctx)
 })

@@ -2,6 +2,8 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { NameChange } from '@shared/ipc/tags'
 import { NameTakenError } from '../db/repositories/tags'
 import { TagService } from '../db/tag-service'
+import type { StateScope } from '../undo/ops'
+import { undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
@@ -16,8 +18,14 @@ function nameChange(run: () => void): NameChange {
   }
 }
 
-export function registerTagHandlers({ repo }: HandlerContext): void {
+export function registerTagHandlers(ctx: HandlerContext): void {
+  const { repo } = ctx
   const tagService = new TagService(repo)
+  /** A rename, recorded only when it happened (a taken name changes nothing). */
+  const renamed = async (label: string, scope: StateScope, run: () => void) => {
+    const { result, record } = await ctx.dataOps.track(label, scope, () => nameChange(run))
+    return result.ok ? { ...result, ...undoEntry(ctx.undo.record(record)) } : result
+  }
 
   registerIpcHandler(IPC_CHANNELS.TAG_LIST_BY_CATEGORY, () => {
     // AI suggestions aren't tags yet (F-034).
@@ -46,7 +54,9 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.TAG_TREE, () => ({ tree: repo.tags.getTagTree() }))
 
   registerIpcHandler(IPC_CHANNELS.TAG_RENAME, (args) =>
-    nameChange(() => repo.tags.renameTag(args.tagId, args.label))
+    renamed('Rename tag', { tagIds: [args.tagId] }, () =>
+      repo.tags.renameTag(args.tagId, args.label)
+    )
   )
 
   registerIpcHandler(IPC_CHANNELS.TAG_MERGE, (args) =>
@@ -55,10 +65,17 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
 
   registerIpcHandler(IPC_CHANNELS.TAG_MERGE_PREVIEW, tagService.previewMergeTags)
 
-  registerIpcHandler(IPC_CHANNELS.TAG_DELETE, tagService.deleteTag)
+  // Its undo puts the tag back on every mockup that carried it.
+  registerIpcHandler(IPC_CHANNELS.TAG_DELETE, async (args) => {
+    const { result, record } = await ctx.dataOps.track(
+      'Delete tag',
+      { tagIds: [args.tagId], mockupIds: ctx.dataOps.scopes.taggedWith([args.tagId]) },
+      () => tagService.deleteTag(args)
+    )
+    return { ...result, ...undoEntry(ctx.undo.record(record)) }
+  })
 
   registerIpcHandler(IPC_CHANNELS.TAG_RESTORE, tagService.restoreTag)
-
 
   registerIpcHandler(IPC_CHANNELS.TAG_SET_CATEGORY, (args) =>
     nameChange(() => repo.tags.reassignTagCategory(args.tagId, args.categoryId))
@@ -72,10 +89,26 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
   })
 
   registerIpcHandler(IPC_CHANNELS.CATEGORY_RENAME, (args) =>
-    nameChange(() => repo.tags.renameCategory(args.categoryId, args.label))
+    renamed('Rename category', { categoryIds: [args.categoryId] }, () =>
+      repo.tags.renameCategory(args.categoryId, args.label)
+    )
   )
 
-  registerIpcHandler(IPC_CHANNELS.CATEGORY_DELETE, tagService.deleteCategory)
+  // Its undo puts the category back, with the tags it moved.
+  registerIpcHandler(IPC_CHANNELS.CATEGORY_DELETE, async (args) => {
+    const { scopes } = ctx.dataOps
+    const tagIds = scopes.tagsIn(args.categoryId)
+    const { result, record } = await ctx.dataOps.track(
+      'Delete category',
+      {
+        categoryIds: [args.categoryId, ...(args.moveTagsTo === undefined ? [] : [args.moveTagsTo])],
+        tagIds,
+        mockupIds: scopes.taggedWith(tagIds)
+      },
+      () => tagService.deleteCategory(args)
+    )
+    return { ...result, ...undoEntry(ctx.undo.record(record)) }
+  })
 
   registerIpcHandler(IPC_CHANNELS.CATEGORY_RESTORE, tagService.restoreCategory)
 }

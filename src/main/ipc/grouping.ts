@@ -2,6 +2,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { TO_SORT_BOARD, type GroupMember } from '@shared/grouping'
 import { GroupingService } from '../import/grouping-service'
+import { undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { countsChanged } from './library-effects'
 import { registerIpcHandler } from './register'
@@ -33,22 +34,26 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
     return GroupingService.proposeOrFallback(TO_SORT_BOARD, members)
   })
 
-  registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
+  // One entry in the undo history ("Undo Sort"): its undo puts back the stage, the piles and the
+  // saved board's remainder.
+  registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, async (args) => {
     // One transaction: piles laid out but still in To sort would hide from its list. A board opened
     // on a few ("Sort 3") confirms only those, and the rest of the saved board stays.
     const ids = [...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds]
-    repo.transaction(() => {
-      repo.piles.confirmGroupings(args.groups, args.singletonIds)
-      repo.sortBoards.remove(ids)
-      repo.mockups.setStage(ids, 'to_stash')
-    })
+    const { record } = await ctx.dataOps.track('Sort', { mockupIds: ids, sortBoard: true }, () =>
+      repo.transaction(() => {
+        repo.piles.confirmGroupings(args.groups, args.singletonIds)
+        repo.sortBoards.remove(ids)
+        repo.mockups.setStage(ids, 'to_stash')
+      })
+    )
     countsChanged(ctx)
     // Telemetry: counts only — never group contents.
     telemetry.get().track(TELEMETRY_EVENTS.GROUP_CONFIRMED, {
       groups: args.groups.length,
       singletons: args.singletonIds.length
     })
-    return { confirmed: true }
+    return { confirmed: true, ...undoEntry(ctx.undo.record(record)) }
   })
 
   registerIpcHandler(IPC_CHANNELS.SORT_BOARD_SAVE, (board) => {

@@ -5,6 +5,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { TO_SORT_BOARD, type SortBoard } from '@shared/grouping'
 import type { Repository } from '../db/repository'
 import { batchSample, createTestDb } from '../db/repositories/__tests__/setup'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -44,7 +45,8 @@ beforeEach(() => {
   const ctx = {
     repo,
     push: vi.fn(),
-    telemetry: { get: () => ({ track: vi.fn() }) }
+    telemetry: { get: () => ({ track: vi.fn() }) },
+    ...undoForTests(repo, test.db)
   } as unknown as HandlerContext
   registerGroupingHandlers(ctx)
 })

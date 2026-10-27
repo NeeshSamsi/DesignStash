@@ -23,7 +23,9 @@ vi.mock('electron', () => ({
   shell: { openPath: vi.fn() }
 }))
 
+import { registerGroupingHandlers } from './grouping'
 import { registerMockupHandlers } from './mockup'
+import { registerTagHandlers } from './tags'
 import { registerPileHandlers } from './pile'
 import { registerTrashHandlers } from './trash'
 
@@ -95,6 +97,8 @@ beforeEach(() => {
   })
   registerPileHandlers(ctx)
   registerTrashHandlers(ctx)
+  registerGroupingHandlers(ctx)
+  registerTagHandlers(ctx)
 })
 
 afterEach(() => {
@@ -307,5 +311,81 @@ describe('permanent deletes', () => {
     await call(IPC_CHANNELS.TRASH_DELETE_ENTRY, { ids: [a] })
 
     expect(undo.history.state().entries).toEqual([{ id: kept }])
+  })
+})
+
+describe('Sort and the tags', () => {
+  it('Sort is one entry: its undo puts the stage, the piles and the saved board back', async () => {
+    const [a, b, c, d] = [make('a'), make('b'), make('c'), make('d')]
+    repo.mockups.setStage([a, b, c, d], 'to_sort')
+    const board = {
+      batchId: 'to-sort',
+      groups: [{ id: 'g1', memberIds: [a, b] }],
+      singletonIds: [c, d]
+    }
+    repo.sortBoards.save(board)
+
+    // "Sort 3": the pile and one single; d stays on the saved board.
+    await recorded('Sort', [a, b, c, d], () =>
+      call(IPC_CHANNELS.GROUPING_CONFIRM, {
+        batchId: 'to-sort',
+        groups: [{ id: 'g1', memberIds: [a, b] }],
+        singletonIds: [c]
+      })
+    )
+    await undo.history.undo()
+    expect(repo.sortBoards.load()).toEqual(board)
+  })
+
+  it('Rename tag and Delete tag, with the mockups that carry it', async () => {
+    const a = make('a')
+    const category = repo.tags.createCategory({ label: 'Material' })
+    const tag = repo.tags.createTag({ label: 'Clay', categoryId: category.id })
+    repo.mockups.addTagToMockup(a, tag.id)
+
+    // A rename changes the tag, never the mockups' rows.
+    const label = () => repo.tags.getAllTags().find((t) => t.id === tag.id)?.label
+    expect(await call(IPC_CHANNELS.TAG_RENAME, { tagId: tag.id, label: 'Ceramic' })).toEqual({
+      ok: true,
+      undoEntryId: expect.any(Number)
+    })
+    expect(undo.history.state().undo).toMatchObject({ label: 'Rename tag' })
+    await undo.history.undo()
+    expect(label()).toBe('Clay')
+    await undo.history.redo()
+    expect(label()).toBe('Ceramic')
+    await recorded('Delete tag', [a], () => call(IPC_CHANNELS.TAG_DELETE, { tagId: tag.id }))
+    await undo.history.undo()
+    expect(repo.mockups.getTagsForMockup(a).map((t) => t.label)).toEqual(['Ceramic'])
+  })
+
+  it('a rename refused because the name is taken records nothing', async () => {
+    const category = repo.tags.createCategory({ label: 'Material' })
+    const one = repo.tags.createTag({ label: 'Clay', categoryId: category.id })
+    repo.tags.createTag({ label: 'Glass', categoryId: category.id })
+    expect(await call(IPC_CHANNELS.TAG_RENAME, { tagId: one.id, label: 'Glass' })).toMatchObject({
+      ok: false,
+      reason: 'taken'
+    })
+    expect(undo.history.state().undo).toBeNull()
+  })
+
+  it('Rename category and Delete category, with the tags it moves', async () => {
+    const a = make('a')
+    const from = repo.tags.createCategory({ label: 'Material' })
+    const to = repo.tags.createCategory({ label: 'Surface' })
+    const tag = repo.tags.createTag({ label: 'Clay', categoryId: from.id })
+    repo.mockups.addTagToMockup(a, tag.id)
+
+    await call(IPC_CHANNELS.CATEGORY_RENAME, { categoryId: from.id, label: 'Materials' })
+    expect(undo.history.state().undo).toMatchObject({ label: 'Rename category' })
+    await call(IPC_CHANNELS.CATEGORY_DELETE, { categoryId: from.id, moveTagsTo: to.id })
+    expect(undo.history.state().undo).toMatchObject({ label: 'Delete category' })
+
+    await undo.history.undo()
+    expect(repo.tags.getAllCategories().find((c) => c.id === from.id)?.label).toBe('Materials')
+    expect(repo.tags.getAllTags().find((t) => t.id === tag.id)?.categoryId).toBe(from.id)
+    await undo.history.undo()
+    expect(repo.tags.getAllCategories().find((c) => c.id === from.id)?.label).toBe('Material')
   })
 })
