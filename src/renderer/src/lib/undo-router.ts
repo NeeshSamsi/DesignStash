@@ -141,6 +141,23 @@ export function afterUndo(result: UndoRunResult, direction: UndoDirection): void
   }
 }
 
+/** Why a toast's Undo is disabled: a newer action touched the same things. */
+export const CHANGED_SINCE = 'Changed since. Use ⌘Z'
+
+/**
+ * Undoes one action's own entry (a toast's Undo, the library's "Undo …"): main undoes it, out of
+ * order when nothing newer touched the same things, and the screens reload.
+ */
+export async function undoEntry(entryId: number): Promise<void> {
+  const res = await window.api.invoke(IPC_CHANNELS.UNDO_ENTRY, { id: entryId }).catch(() => null)
+  if (!res?.success) {
+    toast({ variant: 'error', message: 'Couldn’t undo that', description: 'Try ⌘Z.' })
+    return
+  }
+  if (res.data.status === 'blocked') toast({ variant: 'error', message: CHANGED_SINCE })
+  else afterUndo(res.data, 'undo')
+}
+
 /** The routes through main: undo:run and redo:run, and undo:field for a field. */
 export const ipcUndoRoutes: UndoRoutes = {
   app: async (direction) => {

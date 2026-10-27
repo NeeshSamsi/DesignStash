@@ -4,7 +4,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { Toast } from '@renderer/components/Toast'
 import type { ToastVariant } from '@renderer/components/Toast/Toast.types'
 import { subscribePush } from '@renderer/lib/subscribe'
-import { afterUndo } from '@renderer/lib/undo-router'
+import { CHANGED_SINCE, undoEntry } from '@renderer/lib/undo-router'
 
 export type ToastKind = 'info' | 'success' | 'error'
 
@@ -21,9 +21,6 @@ export interface ToastOptions {
   /** The app-history entry its Undo acts on: the toast follows whether that's still allowed. */
   entryId?: number | undefined
 }
-
-/** Why a toast's Undo is disabled: a newer action touched the same things (design/specs/undo.md). */
-export const CHANGED_SINCE = 'Changed since. Use ⌘Z'
 
 /**
  * A toast whose Undo acts on an entry in the app's history. It follows the undo:state push: a newer
@@ -58,17 +55,6 @@ function EntryToast({
     showDescription: blocked || (showDescription ?? false),
     ...(blocked ? { description: CHANGED_SINCE } : description !== undefined ? { description } : {})
   })
-}
-
-/** A toast's Undo for its own entry: main undoes it, out of order when nothing newer touched it. */
-async function undoOwnEntry(entryId: number) {
-  const res = await window.api.invoke(IPC_CHANNELS.UNDO_ENTRY, { id: entryId }).catch(() => null)
-  if (!res?.success) {
-    toast({ variant: 'error', message: 'Couldn’t undo that', description: 'Try ⌘Z.' })
-    return
-  }
-  if (res.data.status === 'blocked') toast({ variant: 'error', message: CHANGED_SINCE })
-  else afterUndo(res.data, 'undo')
 }
 
 /** Toasts that carry an action stay up a little longer so the action can be reached. */
@@ -186,7 +172,7 @@ export function undoToast(
     ...(description !== undefined ? { description } : {}),
     action: {
       label: 'Undo',
-      onClick: entryId === undefined ? onUndo : () => void undoOwnEntry(entryId)
+      onClick: entryId === undefined ? onUndo : () => void undoEntry(entryId)
     },
     entryId
   })

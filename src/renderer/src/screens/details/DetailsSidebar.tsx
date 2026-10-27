@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
+import { useUndoRan } from '@renderer/lib/undo-router'
 import { useDetailsStore, type DetailsTarget } from '@renderer/stores/detailsStore'
+import { syncLibrary } from './library-sync'
 import { PanelSurface } from './PanelSurface'
 import { PileView } from './PileView'
 import { SingleView } from './SingleView'
@@ -26,6 +28,9 @@ export function DetailsSidebar({ open }: { open?: boolean } = {}) {
   const [shown, setShown] = useState<DetailsTarget | null>(target)
   if (target && target !== shown) setShown(target)
   const current = target ?? shown
+  // An undo from the app's history (⌘Z, a toast's Undo) can change anything in the library: My
+  // Stash, the pile page and this panel reload from the revision, and the counts refresh.
+  useUndoRan(() => void syncLibrary())
   return (
     <PanelSurface open={open ?? target !== null}>
       {current && <Content key={`${current.id}-${onPile}`} target={current} onPile={onPile} />}

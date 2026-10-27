@@ -155,7 +155,8 @@ describe('piles by shortcut', () => {
     expect(undoToast).toHaveBeenCalledWith(
       'Pile disbanded',
       expect.any(Function),
-      '2 mockups are on their own'
+      '2 mockups are on their own',
+      undefined
     )
     await act(async () => vi.mocked(undoToast).mock.calls[0]![1]())
     expect(api.calls(IPC_CHANNELS.PILE_RESTORE)).toEqual([{ snapshot: snapshot(1, 11) }])

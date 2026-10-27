@@ -4,6 +4,7 @@ import type { DriftReport } from '@shared/integrity'
 import type { ReconciliationPanelProps } from '@renderer/components/ReconciliationPanel'
 import { formatBytes } from '@renderer/lib/inbox-list'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { useUndoRan } from '@renderer/lib/undo-router'
 import { stashCheckCopy as copy } from './stash-check-copy'
 import { coverUrl } from '@shared/cover-url'
 
@@ -125,6 +126,9 @@ export function useStashCheck(opts: {
     if (report && mine === latest.current) apply(report)
   }
 
+  // An add or ignore undone from the app's history brings its files back to the lists.
+  useUndoRan(() => void load())
+
   const without = (ids: string[]) =>
     setLists((l) => ({
       found: l.found.filter((i) => !ids.includes(i.id)),
@@ -153,9 +157,14 @@ export function useStashCheck(opts: {
         ).catch(() => null)
         if (!res?.success) return toast({ variant: 'error', message: copy.couldNotAdd })
         without(targets)
-        const { mockupIds } = res.data
+        const { mockupIds, undoEntryId } = res.data
         if (mockupIds.length === 0) return
-        undoToast(copy.added(mockupIds.length), () => undoWith('add', { mockupIds }))
+        undoToast(
+          copy.added(mockupIds.length),
+          () => undoWith('add', { mockupIds }),
+          undefined,
+          undoEntryId
+        )
       })
     )
 
@@ -168,10 +177,15 @@ export function useStashCheck(opts: {
             : window.api.invoke(IPC_CHANNELS.INTEGRITY_IGNORE, { ids })
         ).catch(() => null)
         if (!res?.success) return toast({ variant: 'error', message: copy.couldNotIgnore })
-        const { ignoredIds } = res.data
+        const { ignoredIds, undoEntryId } = res.data
         without(ignoredIds)
         if (ignoredIds.length === 0) return
-        undoToast(copy.ignored(ignoredIds.length), () => undoWith('ignore', { ids: ignoredIds }))
+        undoToast(
+          copy.ignored(ignoredIds.length),
+          () => undoWith('ignore', { ids: ignoredIds }),
+          undefined,
+          undoEntryId
+        )
       })
     )
 

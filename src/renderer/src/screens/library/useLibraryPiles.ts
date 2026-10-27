@@ -9,7 +9,13 @@ import { toast } from '@renderer/stores/toastStore'
 
 export interface LibraryPilesInput {
   refresh: () => Promise<void>
-  offerUndo: (name: string, message: string, run: () => Promise<void>, description?: string) => void
+  offerUndo: (
+    name: string,
+    message: string,
+    run: () => Promise<void>,
+    description?: string,
+    entryId?: number
+  ) => void
 }
 
 
@@ -68,7 +74,8 @@ export function useLibraryPiles({ refresh, offerUndo }: LibraryPilesInput) {
         COPY[intent.kind].name,
         COPY[intent.kind].message,
         () => restore([snapshot]),
-        mockups(count)
+        mockups(count),
+        res.data.undoEntryId
       )
     },
     [refresh, offerUndo, restore]
@@ -81,6 +88,7 @@ export function useLibraryPiles({ refresh, offerUndo }: LibraryPilesInput) {
       if (piles.length === 0) return
       const snapshots: PileSnapshot[] = []
       const freed: number[] = []
+      const entries: (number | undefined)[] = []
       for (const pile of piles) {
         const res = await window.api.invoke(IPC_CHANNELS.PILE_DISBAND, { pileId: pile.id })
         if (!res.success) {
@@ -89,6 +97,7 @@ export function useLibraryPiles({ refresh, offerUndo }: LibraryPilesInput) {
         }
         snapshots.push(res.data.snapshot)
         freed.push(...res.data.freedIds)
+        entries.push(res.data.undoEntryId)
       }
       if (snapshots.length === 0) return
       useDetailEffects.getState().selectAfterReload(freed)
@@ -97,7 +106,9 @@ export function useLibraryPiles({ refresh, offerUndo }: LibraryPilesInput) {
         'disband pile',
         snapshots.length === 1 ? 'Pile disbanded' : 'Piles disbanded',
         () => restore(snapshots),
-        `${mockups(freed.length)} ${freed.length === 1 ? 'is' : 'are'} on ${freed.length === 1 ? 'its' : 'their'} own`
+        `${mockups(freed.length)} ${freed.length === 1 ? 'is' : 'are'} on ${freed.length === 1 ? 'its' : 'their'} own`,
+        // Several piles are several entries, which one toast can't undo together yet.
+        entries.length === 1 ? entries[0] : undefined
       )
     },
     [refresh, offerUndo, restore]

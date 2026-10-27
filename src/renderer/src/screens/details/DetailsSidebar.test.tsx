@@ -543,7 +543,12 @@ describe('details sidebar · cover', () => {
     await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/new.png')))
     expect(screen.getByText('Uploaded')).not.toBeNull()
     expect(screen.getByText('Cropped to 4:3')).not.toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Cover replaced', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith(
+      'Cover replaced',
+      expect.any(Function),
+      undefined,
+      undefined
+    )
     // A cover change is not a form edit.
     expect((button('Save') as HTMLButtonElement).disabled).toBe(true)
     expect(useDetailsStore.getState().dirty).toBe(false)
@@ -629,7 +634,12 @@ describe('details sidebar · cover', () => {
     )
     await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/psd.png')))
     expect(button('Use the PSD’s preview')).toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Using the PSD’s preview', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith(
+      'Using the PSD’s preview',
+      expect.any(Function),
+      undefined,
+      undefined
+    )
     toasts.undoToast.mock.calls[0]![1]()
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_SET_COVER, {

@@ -89,7 +89,12 @@ describe('stash check modal', () => {
     await waitFor(() => expect(screen.queryByText('poster_new')).toBeNull())
     expect(api.sent(IPC_CHANNELS.INTEGRITY_ADD)).toEqual([{ ids: ['f1'] }])
     expect(screen.getByText('2 left')).toBeTruthy()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Added 1 file to To sort', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith(
+      'Added 1 file to To sort',
+      expect.any(Function),
+      undefined,
+      undefined
+    )
   })
 
   it('Undo on an add undoes it in main, then checks again with skeleton rows', async () => {
@@ -111,7 +116,12 @@ describe('stash check modal', () => {
     fireEvent.click(button('Add all'))
     await waitFor(() => expect(screen.queryByText('mug_v2')).toBeNull())
     expect(screen.getByText('Glass iPhone 14')).toBeTruthy()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Added 2 files to To sort', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith(
+      'Added 2 files to To sort',
+      expect.any(Function),
+      undefined,
+      undefined
+    )
   })
 
   it('Ignore all is instant with Undo, and Done is on at 0 left', async () => {
@@ -119,7 +129,12 @@ describe('stash check modal', () => {
     fireEvent.click(button('Ignore all'))
     expect(await screen.findByText('All sorted')).toBeTruthy()
     expect(button('Done').disabled).toBe(false)
-    expect(toasts.undoToast).toHaveBeenCalledWith('Ignored 3 changes', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith(
+      'Ignored 3 changes',
+      expect.any(Function),
+      undefined,
+      undefined
+    )
 
     toasts.undoToast.mock.calls[0]![1]()
     await waitFor(() =>

@@ -329,7 +329,12 @@ describe('LibraryPage stars', () => {
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: /Remove star from Mockup 1/ }))
     await waitFor(() => expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toHaveLength(1))
-    expect(undoToast).toHaveBeenCalledWith('Removed from Starred', expect.any(Function), undefined)
+    expect(undoToast).toHaveBeenCalledWith(
+      'Removed from Starred',
+      expect.any(Function),
+      undefined,
+      undefined
+    )
     // The list is refetched (say, a sort change): the card is still there, unstarred.
     act(() => useLibraryStore.getState().setSort('name'))
     await ready()

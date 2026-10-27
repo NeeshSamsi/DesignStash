@@ -7,6 +7,7 @@ import { Select } from '../../components/Select'
 import { TagTree } from '../../components/TagTree'
 import { useTagTreeStore } from '../../stores/tagTreeStore'
 import { toast, undoToast } from '../../stores/toastStore'
+import { useUndoRan } from '../../lib/undo-router'
 import { mockups } from '@renderer/lib/plural'
 
 type Category = TagTreeData[number]
@@ -20,6 +21,8 @@ interface Merge {
 export function TagsPane() {
   const tree = useTagTreeStore((s) => s.tree)
   const load = useTagTreeStore((s) => s.load)
+  // ⌘Z or a toast's Undo can bring back a tag or category, or rename one back.
+  useUndoRan(() => void load())
   const [merge, setMerge] = useState<Merge | null>(null)
   const [dropping, setDropping] = useState<{ category: Category; to: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -83,7 +86,8 @@ export function TagsPane() {
     undoToast(
       `Deleted “${tag.label}”`,
       () => void ipc(IPC_CHANNELS.TAG_RESTORE, { snapshot: data.snapshot }).then(() => load()),
-      `Removed from ${mockups(data.affectedMockups)}`
+      `Removed from ${mockups(data.affectedMockups)}`,
+      data.undoEntryId
     )
   }
   const createCategory = async (label: string) => {
@@ -139,9 +143,14 @@ export function TagsPane() {
       ipc(IPC_CHANNELS.CATEGORY_DELETE, { categoryId: category.categoryId })
     )
     await load()
-    undoToast(`Deleted “${category.categoryLabel}”`, () => {
-      void ipc(IPC_CHANNELS.CATEGORY_RESTORE, { snapshot: data.snapshot }).then(() => load())
-    })
+    undoToast(
+      `Deleted “${category.categoryLabel}”`,
+      () => {
+        void ipc(IPC_CHANNELS.CATEGORY_RESTORE, { snapshot: data.snapshot }).then(() => load())
+      },
+      undefined,
+      data.undoEntryId
+    )
   }
   const confirmDropping = async () => {
     if (!dropping || dropping.to === '') return

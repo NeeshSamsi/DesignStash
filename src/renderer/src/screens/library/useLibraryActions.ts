@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem } from '@shared/library'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { undoEntry } from '@renderer/lib/undo-router'
 import { openInPhotoshop } from './open-in-photoshop'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
 
@@ -33,10 +34,17 @@ export function useLibraryActions({
 
   /**
    * Shows the Undo toast and remembers the change for the menu. Undo runs once, from whichever
-   * of the two is used first.
+   * of the two is used first. With the entry the change recorded in the app's history, both undo
+   * that entry (undo:entry); without one, they run `run`.
    */
   const offerUndo = useCallback(
-    (name: string, message: string, run: () => Promise<void>, description?: string) => {
+    (
+      name: string,
+      message: string,
+      run: () => Promise<void>,
+      description?: string,
+      entryId?: number
+    ) => {
       let used = false
       const entry: UndoEntry = {
         name,
@@ -47,12 +55,12 @@ export function useLibraryActions({
             latest.current = null
             setLastUndo(null)
           }
-          await run()
+          await (entryId === undefined ? run() : undoEntry(entryId))
         }
       }
       latest.current = entry
       setLastUndo(entry)
-      undoToast(message, () => void entry.run(), description)
+      undoToast(message, () => void entry.run(), description, entryId)
     },
     []
   )
@@ -126,7 +134,8 @@ export function useLibraryActions({
           await window.api.invoke(IPC_CHANNELS.MOCKUP_RESTORE, { ids })
           await refresh()
         },
-        description
+        description,
+        res.data.undoEntryId
       )
     },
     [clearSelection, refresh, offerUndo]

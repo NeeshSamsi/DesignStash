@@ -6,6 +6,7 @@ import { coverDisplay } from '@shared/library'
 import { ActionBar } from '@renderer/components/ActionBar'
 import { Banner } from '@renderer/components/Banner'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
+import { useUndoRan } from '@renderer/lib/undo-router'
 import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import { EmptyState } from '@renderer/components/EmptyState'
@@ -49,6 +50,8 @@ export default function TrashPage() {
     } else setFailed('trash', true)
   }, [setTrash, setFailed])
   useEffect(() => void refresh(), [refresh])
+  // ⌘Z or a toast's Undo can send things back to Trash, or take them out again.
+  useUndoRan(() => void refresh())
 
   const ids = useMemo(() => (items ?? []).map((item) => String(item.id)), [items])
   const selection = useGridSelection(ids)
@@ -77,7 +80,7 @@ export default function TrashPage() {
       toast({ variant: 'error', message: 'Couldn’t restore that. Try again.' })
       return
     }
-    const { restoredIds, missing } = res.data
+    const { restoredIds, missing, undoEntryId } = res.data
     selection.clear()
     await refresh()
     if (restoredIds.length > 0) {
@@ -88,7 +91,8 @@ export default function TrashPage() {
             await window.api.invoke(IPC_CHANNELS.MOCKUP_TRASH, { ids: restoredIds })
             await refresh()
           })(),
-        pluralise(restoredIds.length, 'item')
+        pluralise(restoredIds.length, 'item'),
+        undoEntryId
       )
     }
     if (missing.length > 0) {
