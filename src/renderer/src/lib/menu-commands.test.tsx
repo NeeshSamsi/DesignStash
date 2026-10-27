@@ -4,6 +4,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { MenuCommand } from '@shared/ipc/menu'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { runMenuCommand, useMenuCommands, type MenuActions } from './menu-commands'
+import { useFlowUndo } from './undo-router'
 
 const actions = (): MenuActions => ({
   addFiles: vi.fn(),
@@ -104,6 +105,18 @@ describe('runMenuCommand', () => {
     }
   )
 
+  it('Edit › Undo and Redo go to the innermost context, even with a flow’s dialog open', async () => {
+    const hide = showModal()
+    const steps = { undo: vi.fn(), redo: vi.fn() }
+    const { unmount } = renderHook(() => useFlowUndo(steps))
+    runMenuCommand('undo', actions())
+    runMenuCommand('redo', actions())
+    await waitFor(() => expect(steps.undo).toHaveBeenCalledTimes(1))
+    expect(steps.redo).toHaveBeenCalledTimes(1)
+    unmount()
+    hide()
+  })
+
   it('while another dialog is open, nothing runs, not even Settings', () => {
     const hide = showModal()
     const a = actions()
@@ -153,6 +166,19 @@ describe('useMenuCommands', () => {
     renderHook(() => useMenuCommands(actions()))
     await waitFor(() => expect(useUiStore.getState().settingsOpen).toBe(true))
     expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.MENU_PENDING, undefined)
+  })
+
+  it('never replays an Undo chosen with no window: a fresh window has nothing to undo', async () => {
+    pending = 'undo'
+    const steps = { undo: vi.fn(), redo: vi.fn() }
+    const flowHook = renderHook(() => useFlowUndo(steps))
+    renderHook(() => useMenuCommands(actions()))
+    await waitFor(() =>
+      expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.MENU_PENDING, undefined)
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(steps.undo).not.toHaveBeenCalled()
+    flowHook.unmount()
   })
 
   it('runs nothing when no menu item is waiting', async () => {

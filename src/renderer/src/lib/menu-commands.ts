@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { MenuCommand } from '@shared/ipc/menu'
 import { useUiStore, type AppView } from '@renderer/stores/uiStore'
 import { subscribePush } from './subscribe'
+import { ipcUndoRoutes, routeUndo, useUndoContextReport } from './undo-router'
 
 export interface MenuActions {
   addFiles?: (() => void) | undefined
@@ -25,8 +26,13 @@ const VIEWS: Partial<Record<MenuCommand, AppView>> = {
  * Runs a menu item the way its in-app control would. A menu item can't reach what a dialog
  * covers, just as a click can't: with Settings open only the Settings items work (they switch
  * its pane, or raise Report a problem over it), and with any other dialog open nothing does.
+ * Edit › Undo and Redo go first: they act on the innermost context, an open flow's dialog included.
  */
 export function runMenuCommand(command: MenuCommand, actions: MenuActions): void {
+  if (command === 'undo' || command === 'redo') {
+    void routeUndo(command, ipcUndoRoutes)
+    return
+  }
   const ui = useUiStore.getState()
   const overlays = document.querySelectorAll(MODAL_OVERLAY).length
   const otherDialogOpen = overlays > (ui.settingsOpen ? 1 : 0)
@@ -67,6 +73,7 @@ export function useMenuCommands(actions: MenuActions): void {
   useEffect(() => {
     latest.current = actions
   })
+  useUndoContextReport()
   useEffect(() => {
     let live = true
     const stop = subscribePush(IPC_CHANNELS.MENU_COMMAND, (command) =>
@@ -75,7 +82,10 @@ export function useMenuCommands(actions: MenuActions): void {
     void window.api
       .invoke(IPC_CHANNELS.MENU_PENDING, undefined)
       .then((res) => {
-        if (live && res.success && res.data) runMenuCommand(res.data, latest.current)
+        // A fresh window has nothing to undo, so a waiting Undo or Redo is never replayed.
+        const command = live && res.success ? res.data : null
+        if (command && command !== 'undo' && command !== 'redo')
+          runMenuCommand(command, latest.current)
       })
       .catch(() => {})
     return () => {
