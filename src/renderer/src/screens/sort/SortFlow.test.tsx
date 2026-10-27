@@ -392,7 +392,22 @@ describe('selection and menus', () => {
     await ready()
     fireEvent.contextMenu(board())
     const rows = (await screen.findAllByRole('menuitem')).map((r) => r.textContent ?? '')
-    expect(rows.map((r) => r.replace(/[⌘A-Z]+$/, ''))).toEqual(['Select all', 'Undo'])
+    expect(rows.map((r) => r.replace(/[⌘A-Z]+$/, ''))).toEqual([
+      'Select all',
+      'Undo · nothing to undo'
+    ])
+  })
+
+  it('a greyed-out row says why, in its own words (F-047)', async () => {
+    setupApi()
+    mount()
+    await ready()
+    fireEvent.contextMenu(tile(3))
+    const newPile = await screen.findByRole('menuitem', { name: /New pile/ })
+    expect(
+      newPile.getAttribute('aria-disabled') ?? newPile.getAttribute('data-disabled')
+    ).not.toBeNull()
+    expect(newPile.textContent).toContain('New pile · needs 2 or more')
   })
 
   it('the ⋯ on a tile opens the same menu (S4.E1)', async () => {
