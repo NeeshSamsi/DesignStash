@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
 import { TagsByCategorySchema } from '../approval'
-import { TagTreeSchema, TagSnapshotSchema, CategorySnapshotSchema } from '../tags'
+import { TagTreeSchema } from '../tags'
 import { withUndoEntry } from './undo'
 
 /**
@@ -49,7 +49,7 @@ export const tagsContract = {
   },
   [IPC_CHANNELS.TAG_DELETE]: {
     request: z.object({ tagId: z.number() }),
-    response: withUndoEntry(z.object({ affectedMockups: z.number(), snapshot: TagSnapshotSchema }))
+    response: withUndoEntry(z.object({ affectedMockups: z.number() }))
   },
   [IPC_CHANNELS.TAG_SET_CATEGORY]: {
     request: z.object({ tagId: z.number(), categoryId: z.number() }),
@@ -66,12 +66,6 @@ export const tagsContract = {
   [IPC_CHANNELS.CATEGORY_DELETE]: {
     // moveTagsTo: where a category's tags go (mockups keep them). Required unless it's empty.
     request: z.object({ categoryId: z.number(), moveTagsTo: z.number().optional() }),
-    response: withUndoEntry(
-      z.object({
-        deleted: z.boolean(),
-        movedTags: z.number(),
-        snapshot: CategorySnapshotSchema
-      })
-    )
+    response: withUndoEntry(z.object({ deleted: z.boolean(), movedTags: z.number() }))
   }
 } as const

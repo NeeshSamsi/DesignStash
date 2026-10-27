@@ -48,11 +48,16 @@ export class TagService {
 
   // TagTree operations. Each method is the IPC handler body for its channel.
 
-  deleteTag: Handler<Channels['TAG_DELETE']> = ({ tagId }) => this.repo.tags.deleteTag(tagId)
+  deleteTag: Handler<Channels['TAG_DELETE']> = ({ tagId }) => {
+    const { affectedMockups } = this.repo.tags.deleteTag(tagId)
+    return { affectedMockups }
+  }
 
   previewMergeTags: Handler<Channels['TAG_MERGE_PREVIEW']> = ({ sourceTagId, targetTagId }) =>
     this.repo.tags.previewMergeTags(sourceTagId, targetTagId)
 
-  deleteCategory: Handler<Channels['CATEGORY_DELETE']> = ({ categoryId, moveTagsTo }) =>
-    this.repo.tags.deleteCategory(categoryId, moveTagsTo)
+  deleteCategory: Handler<Channels['CATEGORY_DELETE']> = ({ categoryId, moveTagsTo }) => {
+    const { deleted, movedTags } = this.repo.tags.deleteCategory(categoryId, moveTagsTo)
+    return { deleted, movedTags }
+  }
 }

@@ -432,18 +432,13 @@ describe('IPC Contract', () => {
   })
 
   describe('TagTree operation channels', () => {
-    const snapshot = {
-      tag: { id: 7, label: 'laptop', categoryId: 1, isCanonical: true, createdBy: 'seed' as const },
-      mockupIds: [3, 4]
-    }
-
-    it('TAG_DELETE returns the affected count and an undo snapshot', () => {
+    it('TAG_DELETE returns the affected count and its undo entry', () => {
       const { response } = IPC_CONTRACT[IPC_CHANNELS.TAG_DELETE]
-      expect(response.parse({ affectedMockups: 2, snapshot })).toEqual({
+      expect(response.parse({ affectedMockups: 2, undoEntryId: 4 })).toEqual({
         affectedMockups: 2,
-        snapshot
+        undoEntryId: 4
       })
-      expect(() => response.parse({ affectedMockups: 2 })).toThrow()
+      expect(() => response.parse({ undoEntryId: 4 })).toThrow()
     })
 
     it('TAG_MERGE_PREVIEW mirrors TAG_MERGE', () => {
@@ -455,18 +450,14 @@ describe('IPC Contract', () => {
       expect(response.parse({ affectedMockups: 5 })).toEqual({ affectedMockups: 5 })
     })
 
-    it('CATEGORY_DELETE takes an optional move target and returns a snapshot', () => {
+    it('CATEGORY_DELETE takes an optional move target and returns what moved', () => {
       const { request, response } = IPC_CONTRACT[IPC_CHANNELS.CATEGORY_DELETE]
       expect(request.parse({ categoryId: 1 })).toEqual({ categoryId: 1 })
       expect(request.parse({ categoryId: 1, moveTagsTo: 2 })).toEqual({
         categoryId: 1,
         moveTagsTo: 2
       })
-      const valid = {
-        deleted: true,
-        movedTags: 3,
-        snapshot: { id: 1, label: 'Angle', sortOrder: 5, isCanonical: true }
-      }
+      const valid = { deleted: true, movedTags: 3, undoEntryId: 4 }
       expect(response.parse(valid)).toEqual(valid)
     })
   })

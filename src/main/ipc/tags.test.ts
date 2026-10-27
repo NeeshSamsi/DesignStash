@@ -291,3 +291,24 @@ describe('category:rename', () => {
     expect(repo.tags.getAllCategories().find((c) => c.id === style)?.label).toBe('Style')
   })
 })
+
+describe('tag:delete and category:delete', () => {
+  it('a tag delete replies with how many mockups carried it and its undo entry, and nothing else', async () => {
+    const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
+    expect(await call(IPC_CHANNELS.TAG_DELETE, { tagId: laptop.id })).toEqual({
+      success: true,
+      data: { affectedMockups: 0, undoEntryId: expect.any(Number) }
+    })
+  })
+
+  it('a category delete replies with the tags it moved and its undo entry, and nothing else', async () => {
+    const res = await call(IPC_CHANNELS.CATEGORY_DELETE, {
+      categoryId: category('Angle').id,
+      moveTagsTo: category('Environment').id
+    })
+    expect(res).toEqual({
+      success: true,
+      data: { deleted: true, movedTags: expect.any(Number), undoEntryId: expect.any(Number) }
+    })
+  })
+})
