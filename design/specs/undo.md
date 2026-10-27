@@ -12,7 +12,7 @@ Neesh: "I want the undo to be contextual and powerful. If inside an input, undo 
 | Where the person is | ⌘Z undoes |
 |---|---|
 | A text field (title, description, a tag being typed, search) | Typing in that field. This is the browser's own field undo, unchanged. |
-| An open Sort board or Look it over, focus outside a field | The flow's last step. Both flows already have their own steps. |
+| An open Sort board or Look it over, focus outside a field | The flow's last step. Sort already has its own steps; Look it over gets its own (settled point 3). |
 | Anywhere else | The app's last action this session, however long ago, whether or not its toast is still up. |
 
 - **Redo:** a new action clears what's waiting to be redone, as in every Mac app.
@@ -36,7 +36,7 @@ Every action a person takes that changes the library, including the ones that as
 | Pile base rename, variation set | Toast | App history |
 | An import (a haul) | Cancel, then Undo all (`COPY_UNDO_ALL`) | App history: "Undo import of 12 mockups" moves what it brought in to Trash, so redo can bring it back (Neesh, 2026-10-27) |
 | Sort's result (piles confirmed, mockups to To stash) | In-flow steps only | One app entry, "Undo Sort", when the board commits |
-| Look it over: Stash & next, Stash pile | `StashSnapshot` | One app entry per stash. Its undo puts the mockups back in To stash with their drafts. |
+| Look it over: Stash & next, Stash pile | `StashSnapshot` | One app entry per stash. Its undo puts the mockups back in To stash with their drafts. While the flow is open, the same stash is also the flow's last step: it's one action, so undoing or redoing it in either place updates both, and ⌘Z after the flow closes never undoes it twice. |
 | Toss (To sort, To stash) | Confirm, then a hard delete | **Becomes Move to Trash** (below), with no confirm |
 | Delete a tag or category (Settings › Tags) | `TagSnapshot` and `CategorySnapshot`, toast | App history |
 | Rename a tag or category | None | App history |
@@ -118,4 +118,4 @@ Everything else that asks for a confirm today, and can now be undone, loses the 
 
 1. **Undoing an import** moves what it brought in to Trash, so redo can bring it back (the app doesn't keep the person's original paths). Empty Trash is the only final step.
 2. **An older toast's Undo** keeps working out of order when nothing newer touched the same things; otherwise it's disabled with a reason (see "The rule").
-3. **⌘Z inside Look it over** undoes the flow's own last step: accepting or dismissing a suggestion or an edit offer, or the last Stash & next. Look it over keeps its own step list for this, as Sort does.
+3. **⌘Z inside Look it over** undoes the flow's own last step: accepting or dismissing a suggestion or an edit offer, or the last Stash & next or Stash pile. Look it over keeps its own step list for this, as Sort does. A stash in that list and its app-history entry are one action (see the table).
