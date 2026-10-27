@@ -1,13 +1,14 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '../schema'
 import type { Repository } from '../repository'
 import { seedTaxonomy } from '../bootstrap'
 import { ensureSearchIndex } from '../search-index'
+import { LibraryQueryRepository } from './library-query'
 import { approvedMockup, createTestDb, sample } from './__tests__/setup'
 
 let sqlite: Database.Database
@@ -315,6 +316,69 @@ describe('getDetailVariants', () => {
     const m = repo.mockups.createMockup(approvedMockup({ title: 'Solo', libraryPath: '/lib/so2.psd' }))
     expect(repo.library.getDetailVariants(m.id)).toEqual([])
     expect(repo.library.getDetailVariants(9999)).toEqual([])
+  })
+})
+
+describe('a big library', () => {
+  beforeEach(() => {
+    seedTaxonomy(db)
+    ensureSearchIndex(db)
+  })
+
+  /** My Stash's list with a counted check for each cover file. */
+  const withCoverCheck = (present: (path: string) => boolean = () => true) => {
+    const fileExists = vi.fn(present)
+    const library = new LibraryQueryRepository(db, repo.mockups, repo.piles, repo.search, fileExists)
+    return { fileExists, library }
+  }
+
+  it('checks each cover on disk once, however often the list is asked for', () => {
+    for (let i = 0; i < 1000; i++) {
+      const m = repo.mockups.createMockup(
+        approvedMockup({ title: `Mug ${i}`, libraryPath: `/lib/big${i}.psd`, coverPath: `/c/big${i}.png` })
+      )
+      if (i < 20) repo.search.upsertSearchIndex(m.id)
+    }
+    const { fileExists, library } = withCoverCheck()
+
+    expect(library.getLibrary({ sort: 'date' })).toHaveLength(1000)
+    expect(fileExists).toHaveBeenCalledTimes(1000)
+
+    fileExists.mockClear()
+    expect(library.getLibrary({ sort: 'name' })).toHaveLength(1000)
+    expect(library.getLibrary({ sort: 'date', query: 'mug' })).toHaveLength(20)
+    expect(fileExists).not.toHaveBeenCalled()
+  })
+
+  it('checks a missing cover again each time, so it shows as soon as it is back', () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Gone', coverPath: '/c/gone.png' }))
+    let back = false
+    const { library } = withCoverCheck(() => back)
+
+    expect(library.getLibrary({ sort: 'date' })).toMatchObject([{ id: m.id, coverMissing: true }])
+    back = true
+    expect(library.getLibrary({ sort: 'date' })).toMatchObject([{ id: m.id, coverMissing: false }])
+  })
+
+  it('filters by tag and category in the query, so only the matches are read further', () => {
+    const tags = repo.tags.getAllTags()
+    const laptop = tags.find((t) => t.label === 'Laptop')!
+    const minimal = tags.find((t) => t.label === 'Minimal')!
+    const style = repo.tags.getAllCategories().find((c) => c.label === 'Style')!
+    const ids = Array.from({ length: 20 }, (_, i) =>
+      repo.mockups.createMockup(approvedMockup({ title: `T${i}`, libraryPath: `/lib/t${i}.psd` })).id
+    )
+    repo.mockups.addTagToMockup(ids[3]!, laptop.id)
+    repo.mockups.addTagToMockup(ids[3]!, minimal.id)
+    repo.mockups.addTagToMockup(ids[7]!, laptop.id)
+    const { fileExists, library } = withCoverCheck()
+    const lookups = vi.spyOn(library, 'loadLookups')
+
+    expect(library.getLibrary({ tagIds: [laptop.id], categoryIds: [style.id], sort: 'date' }).map((r) => r.id)).toEqual([
+      ids[3]
+    ])
+    expect(lookups.mock.calls).toEqual([[[ids[3]]]])
+    expect(fileExists).toHaveBeenCalledTimes(1)
   })
 })
 

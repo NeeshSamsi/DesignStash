@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, exists, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags, tagCategories } from '../schema'
 import type { Mockup } from '../schema'
@@ -58,6 +58,13 @@ const LOOKUP_CHUNK = 500
 
 /** Read models for My Stash: the filtered grid, the detail view and the counts. */
 export class LibraryQueryRepository {
+  /**
+   * Covers found on disk. The app writes each cover to a path of its own and never removes one a
+   * record still uses, so a found cover is checked once per launch instead of on every list. One
+   * deleted by hand in the stash folder shows as missing from the next launch.
+   */
+  private readonly coversFound = new Set<string>()
+
   constructor(
     private readonly db: AppDatabase,
     private readonly mockups: MockupRepository,
@@ -65,6 +72,14 @@ export class LibraryQueryRepository {
     private readonly search: SearchRepository,
     private readonly fileExists: (path: string) => boolean = existsSync
   ) {}
+
+  /** Whether a cover file is gone. A missing one is checked again each time, so it shows once it's back. */
+  private coverMissing(path: string): boolean {
+    if (this.coversFound.has(path)) return false
+    if (!this.fileExists(path)) return true
+    this.coversFound.add(path)
+    return false
+  }
 
   getLibrary(opts: LibraryQueryOptions): LibraryRow[] {
     return this.queryLibrary(opts).rows
@@ -79,6 +94,23 @@ export class LibraryQueryRepository {
     const { tagIds = [], categoryIds = [], sort } = opts
     const rawQuery = opts.query?.trim() ?? ''
 
+    // Every picked tag must match (AND); a category rolls up to every tag in it, and categories AND too.
+    const hasTag = (tagId: number) =>
+      exists(
+        this.db
+          .select({ one: sql`1` })
+          .from(mockupTags)
+          .where(and(eq(mockupTags.mockupId, mockups.id), eq(mockupTags.tagId, tagId)))
+      )
+    const hasCategory = (categoryId: number) =>
+      exists(
+        this.db
+          .select({ one: sql`1` })
+          .from(mockupTags)
+          .innerJoin(tags, eq(tags.id, mockupTags.tagId))
+          .where(and(eq(mockupTags.mockupId, mockups.id), eq(tags.categoryId, categoryId)))
+      )
+
     let candidates = this.db
       .select()
       .from(mockups)
@@ -87,7 +119,9 @@ export class LibraryQueryRepository {
           isStashed,
           isNull(mockups.deletedAt),
           isNull(mockups.groupId),
-          ...(opts.starredOnly ? [eq(mockups.favourite, true)] : [])
+          ...(opts.starredOnly ? [eq(mockups.favourite, true)] : []),
+          ...[...new Set(tagIds)].map(hasTag),
+          ...[...new Set(categoryIds)].map(hasCategory)
         )
       )
       .all()
@@ -115,18 +149,6 @@ export class LibraryQueryRepository {
     if (ftsRankMap) candidates = candidates.filter((c) => ftsRankMap.has(c.id) || meaningSet.has(c.id))
 
     const lookups = this.loadLookups(candidates.map((c) => c.id))
-
-    // Tag filter: every picked tag must match (AND).
-    for (const tagId of new Set(tagIds)) {
-      candidates = candidates.filter((c) => lookups.tags.get(c.id)?.some((t) => t.id === tagId))
-    }
-
-    // Category filter: rolls up to every tag in the category; categories AND together.
-    for (const categoryId of new Set(categoryIds)) {
-      candidates = candidates.filter((c) =>
-        lookups.tags.get(c.id)?.some((t) => t.categoryId === categoryId)
-      )
-    }
 
     // Sort: FTS rank when searching, else name / date. Favourites don't jump the queue (Starred is its own view).
     candidates.sort((a, b) => {
@@ -217,7 +239,7 @@ export class LibraryQueryRepository {
       description: m.description ?? null,
       coverPath: m.coverPath,
       coverSource: m.coverSource,
-      coverMissing: !this.fileExists(m.coverPath),
+      coverMissing: this.coverMissing(m.coverPath),
       favourite: m.favourite,
       createdAt: m.createdAt,
       pile:
@@ -265,7 +287,7 @@ export class LibraryQueryRepository {
       id: m.id,
       title: m.title,
       coverPath: m.coverPath,
-      coverMissing: !this.fileExists(m.coverPath),
+      coverMissing: this.coverMissing(m.coverPath),
       coverSource: m.coverSource,
       isTop: m.id === top.id,
       variation: variationOf(m)
