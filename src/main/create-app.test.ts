@@ -6,7 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 import type { BrowserWindow, BrowserWindowConstructorOptions } from 'electron'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { getBootStatus, setBootStatus } from './boot-status'
-import { CRASH_DIALOG, createApp, type AppDeps, type LaunchServices, type LaunchSteps } from './create-app'
+import {
+  CRASH_DIALOG,
+  createApp,
+  type AppDeps,
+  type LaunchServices,
+  type LaunchSteps
+} from './create-app'
 
 class FakeWebContents extends EventEmitter {
   reload = vi.fn()
@@ -292,7 +298,9 @@ describe('the window', () => {
     expect(navigate('file:///Users/neesh/Desktop/kit.psd')).toBe(false)
     expect(navigate('https://example.com')).toBe(false)
     expect(
-      navigate('file:///Applications/DesignStash.app/Contents/Resources/app/out/renderer/index.html#top')
+      navigate(
+        'file:///Applications/DesignStash.app/Contents/Resources/app/out/renderer/index.html#top'
+      )
     ).toBe(true)
   })
 
@@ -316,7 +324,10 @@ describe('the window', () => {
     await launch()
     const send = steps.installMenu.mock.calls[0]![0] as (command: string) => void
     send('settings')
-    expect(lastWindow().webContents.send).toHaveBeenCalledWith(IPC_CHANNELS.MENU_COMMAND, 'settings')
+    expect(lastWindow().webContents.send).toHaveBeenCalledWith(
+      IPC_CHANNELS.MENU_COMMAND,
+      'settings'
+    )
     const takePending = steps.installMenu.mock.calls[0]![1] as () => string | null
     expect(takePending()).toBeNull()
   })
@@ -332,6 +343,22 @@ describe('the window', () => {
     expect(windows).toHaveLength(2)
     expect(lastWindow().webContents.send).not.toHaveBeenCalled()
     expect(takePending()).toBe('settings')
+    expect(takePending()).toBeNull()
+  })
+
+  it('Edit › Undo or Redo with every window closed opens one, and is never replayed in it', async () => {
+    await launch()
+    const [send, takePending] = steps.installMenu.mock.calls[0]! as [
+      (command: string) => void,
+      () => string | null
+    ]
+    lastWindow().close()
+    send('undo')
+    expect(windows).toHaveLength(2)
+    lastWindow().close()
+    send('redo')
+    expect(windows).toHaveLength(3)
+    // A fresh window has nothing of its own to undo; the app's history waits for the next ⌘Z.
     expect(takePending()).toBeNull()
   })
 

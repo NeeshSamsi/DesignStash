@@ -61,14 +61,23 @@ export interface LaunchSteps {
 export interface AppDeps {
   app: Pick<
     App,
-    'whenReady' | 'requestSingleInstanceLock' | 'on' | 'quit' | 'exit' | 'getPath' | 'setAppUserModelId'
+    | 'whenReady'
+    | 'requestSingleInstanceLock'
+    | 'on'
+    | 'quit'
+    | 'exit'
+    | 'getPath'
+    | 'setAppUserModelId'
   >
   process: Pick<NodeJS.Process, 'on' | 'platform'>
   createWindow: (options: BrowserWindowConstructorOptions) => BrowserWindow
   /** The primary display minus the menu bar and dock. */
   workArea: () => Size
   openExternal: (url: string) => void
-  showMessageBox: (window: BrowserWindow, options: MessageBoxOptions) => Promise<MessageBoxReturnValue>
+  showMessageBox: (
+    window: BrowserWindow,
+    options: MessageBoxOptions
+  ) => Promise<MessageBoxReturnValue>
   /** The dev server's address, or the built index.html. */
   page: { url: string } | { file: string }
   preload: string
@@ -79,7 +88,8 @@ export interface AppDeps {
 export const CRASH_DIALOG: MessageBoxOptions = {
   type: 'error',
   message: 'Something went wrong',
-  detail: 'DesignStash hit a problem it couldn’t recover from. Your stash is safe. Reload to carry on.',
+  detail:
+    'DesignStash hit a problem it couldn’t recover from. Your stash is safe. Reload to carry on.',
   buttons: ['Reload', 'Quit'],
   defaultId: 0,
   cancelId: 1
@@ -256,12 +266,13 @@ export function createApp(deps: AppDeps): void {
     openWindow()
     // Menu items reach whichever window is open, through the menu:command push. With every window
     // closed, a menu item brings the window back and waits for it: the window asks for it once it
-    // listens (menu:pending), since a push sent while it loads would reach no one.
+    // listens (menu:pending), since a push sent while it loads would reach no one. Undo and Redo
+    // aren't kept: a fresh window has nothing of its own to undo.
     let pendingMenu: MenuCommand | null = null
     steps.installMenu(
       (command) => {
         if (!mainWindow) {
-          pendingMenu = command
+          if (command !== 'undo' && command !== 'redo') pendingMenu = command
           openWindow()
         } else if (!mainWindow.isDestroyed())
           mainWindow.webContents.send(IPC_CHANNELS.MENU_COMMAND, command)
