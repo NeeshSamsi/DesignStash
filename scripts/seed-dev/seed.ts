@@ -29,6 +29,11 @@
  * kept in tmp/dev-seed/hauls.json, so `suggest` touches nothing else in the inbox.
  *
  * DESIGNSTASH_USER_DATA and DESIGNSTASH_TEST_SET override the dev userData and the test set.
+ * DESIGNSTASH_APP, set to a packaged DesignStash.app (`pnpm package` writes
+ * dist/mac-arm64/DesignStash.app), drives that build instead of the repo's: its own binary with only
+ * --user-data-dir, started from / as Finder starts it, so nothing reaches the repo by a relative path.
+ * DESIGNSTASH_SEED_OUT moves everything the seed writes (logs, pushes, hauls, reports and backups)
+ * from tmp/dev-seed and tmp/ into one folder, so a second run's record never meets the dev run's.
  */
 import { execFileSync } from 'node:child_process'
 import {
@@ -44,7 +49,7 @@ import {
   writeFileSync
 } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import type { LookOverQueue, StashResult } from '@shared/approval'
@@ -72,12 +77,18 @@ import {
 } from './plan'
 
 const REPO = process.cwd()
-const USER_DATA =
-  process.env.DESIGNSTASH_USER_DATA ??
-  join(homedir(), 'Library', 'Application Support', 'designstash')
-const TEST_SET =
+const USER_DATA = resolve(
+  process.env.DESIGNSTASH_USER_DATA ?? join(homedir(), 'Library', 'Application Support', 'designstash')
+)
+const TEST_SET = resolve(
   process.env.DESIGNSTASH_TEST_SET ?? join(homedir(), 'Downloads', 'DesignStash Test Set')
-const SEED_DIR = join(REPO, 'tmp', 'dev-seed')
+)
+/** A packaged DesignStash.app to drive, or undefined for the repo's build. */
+const PACKAGED_APP = process.env.DESIGNSTASH_APP ? resolve(process.env.DESIGNSTASH_APP) : undefined
+const OUT = process.env.DESIGNSTASH_SEED_OUT ? resolve(process.env.DESIGNSTASH_SEED_OUT) : undefined
+const SEED_DIR = OUT ?? join(REPO, 'tmp', 'dev-seed')
+/** Where backups go: tmp/, beside tmp/dev-seed, or the output folder when there is one. */
+const BACKUP_BASE = OUT ?? join(REPO, 'tmp')
 const HAULS_FILE = join(SEED_DIR, 'hauls.json')
 const today = () => new Date().toISOString().slice(0, 10)
 const eventsFile = () => join(SEED_DIR, `events-${today()}.json`)
@@ -147,20 +158,26 @@ interface Launched {
 /** Pushes the seed keeps, in the window, for the report: the AI's progress and Look it over's drafts. */
 const RECORDED = ['ai:status', 'look-over:draft']
 
+/** How to start the app: the packaged binary from / (DESIGNSTASH_APP), or `electron .` in the repo. */
+function launchTarget(): { executablePath?: string; args: string[]; cwd: string } {
+  if (!PACKAGED_APP) return { args: ['.', `--user-data-dir=${USER_DATA}`], cwd: REPO }
+  const executablePath = join(PACKAGED_APP, 'Contents', 'MacOS', 'DesignStash')
+  if (!existsSync(executablePath)) throw new Error(`No packaged app at ${executablePath}.`)
+  return { executablePath, args: [`--user-data-dir=${USER_DATA}`], cwd: '/' }
+}
+
 /**
- * The built app on the dev userData, as `pnpm start` runs it, never in test mode or with the stub AI.
- * Its main process's output goes to tmp/dev-seed/app-<command>.log, and the window starts keeping
- * the pushes in RECORDED.
+ * The built app on the dev userData, as `pnpm start` runs it (or the packaged app, as Finder does),
+ * never in test mode or with the stub AI. Its main process's output goes to
+ * tmp/dev-seed/app-<command>.log, and the window starts keeping the pushes in RECORDED.
  */
 async function launch(command: string, env: Record<string, string> = {}): Promise<Launched> {
   const base = { ...process.env }
   for (const key of ['NODE_ENV', 'DESIGNSTASH_E2E_STUB_AI', 'ELECTRON_RENDERER_URL'])
     delete base[key]
-  const app = await electron.launch({
-    args: ['.', `--user-data-dir=${USER_DATA}`],
-    cwd: REPO,
-    env: { ...base, ...env } as Record<string, string>
-  })
+  const target = launchTarget()
+  log(`Starting ${target.executablePath ?? 'the repo build'} on ${USER_DATA}.`)
+  const app = await electron.launch({ ...target, env: { ...base, ...env } as Record<string, string> })
   mkdirSync(SEED_DIR, { recursive: true })
   const appLog = join(SEED_DIR, `app-${command}.log`)
   const keep = (chunk: Buffer | string) => appendFileSync(appLog, chunk)
@@ -236,7 +253,7 @@ function shapeOf(root: string): LibraryShape | null {
 function runBackup(label: string | undefined): void {
   assertAppClosed()
   const root = libraryRoot()
-  const dir = freshBackupDir(join(REPO, 'tmp'), new Date(), existsSync, label)
+  const dir = freshBackupDir(BACKUP_BASE, new Date(), existsSync, label)
   mkdirSync(dir, { recursive: true })
   execFileSync('cp', ['-c', '-R', root, join(dir, 'Library')])
   copyFileSync(settingsFile(), join(dir, 'settings.json'))
@@ -292,7 +309,7 @@ function runModel(id: string | undefined): void {
 // ── import ───────────────────────────────────────────────────────────────────────────────────
 
 function backUp(): string {
-  const dir = freshBackupDir(join(REPO, 'tmp'), new Date(), existsSync)
+  const dir = freshBackupDir(BACKUP_BASE, new Date(), existsSync)
   const root = libraryRoot()
   mkdirSync(dir, { recursive: true })
   copyFileSync(join(USER_DATA, 'settings.json'), join(dir, 'settings.json'))
@@ -600,8 +617,8 @@ function runReport(file: string | undefined): void {
   const couldnt = runs.filter((r) => r.status === 'failed' && !r.hardStop)
   const runMs = runs.filter((r) => r.status === 'ready').map((r) => r.ms)
   const pileMs = [...requests.values()].filter((v): v is number => v !== null)
-  out.push(`# Dev seed run, ${today()}`, '')
-  out.push(`Model: ${recorded.model ?? 'unknown'}. ${rows.length} mockups: ${tops.length} piles and ${rows.filter((r) => !r.is_group && r.group_id === null).length} on their own.`, '')
+  out.push(`# ${PACKAGED_APP ? 'Packaged' : 'Dev'} seed run, ${today()}`, '')
+  out.push(`App: ${PACKAGED_APP ?? 'the repo build'}. Model: ${recorded.model ?? 'unknown'}. ${rows.length} mockups: ${tops.length} piles and ${rows.filter((r) => !r.is_group && r.group_id === null).length} on their own.`, '')
   const relaunches = restarts.filter((at) => at - recorded.startedAt > 5_000).length
   if (relaunches > 0) out.push(`The app was launched again ${relaunches} time${relaunches === 1 ? '' : 's'} during the run; a run or pile request cut off by that isn't timed.`, '')
   out.push('## Counts', '')
