@@ -66,6 +66,18 @@ describe('list and stats', () => {
     expect(repo.mockups.getMockup(side.id)?.sizeBytes).toBe(1000)
   })
 
+  it('says where each item came from, so Trash can read “Tossed from To sort”', async () => {
+    const tossed = make('tossed')
+    repo.mockups.setStage([tossed.id], 'to_sort')
+    repo.trash.moveManyToTrash([tossed.id])
+    const fromStash = make('kept')
+    repo.trash.moveManyToTrash([fromStash.id])
+
+    const origins = new Map((await trash.list()).map((i) => [i.id, i.origin]))
+    expect(origins.get(tossed.id)).toBe('to-sort')
+    expect(origins.get(fromStash.id)).toBe('my-stash')
+  })
+
   it('counts piles and singles once each and adds up the bytes', async () => {
     trashedPile('pile')
     repo.trash.moveManyToTrash([make('single').id])
@@ -150,7 +162,8 @@ describe('empty', () => {
     const result = await trash.empty()
 
     expect(result).toEqual({ deletedCount: 2, bytesFreed: 3000 })
-    for (const id of [top.id, side.id, single.id]) expect(repo.mockups.getMockup(id)).toBeUndefined()
+    for (const id of [top.id, side.id, single.id])
+      expect(repo.mockups.getMockup(id)).toBeUndefined()
     expect(repo.mockups.getMockup(keep.id)).toBeDefined()
     expect(rm).toHaveBeenCalledWith(`${ROOT}/mockups/pile/original.psd`)
     expect(rm).toHaveBeenCalledWith(`${ROOT}/mockups/pile-side/original.psd`)
@@ -164,7 +177,10 @@ describe('empty', () => {
   })
 
   it('never touches files outside the stash folder', async () => {
-    const m = make('desk', { libraryPath: '/Users/me/Desktop/original.psd', coverPath: '/Users/me/Desktop/c.png' })
+    const m = make('desk', {
+      libraryPath: '/Users/me/Desktop/original.psd',
+      coverPath: '/Users/me/Desktop/c.png'
+    })
     repo.trash.moveManyToTrash([m.id])
 
     await trash.empty()

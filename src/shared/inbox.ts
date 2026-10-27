@@ -39,8 +39,14 @@ export const InboxCountsSchema = z.object({
 export type InboxCounts = z.infer<typeof InboxCountsSchema>
 
 /** A card in Trash: a pile or a single mockup, with when it was trashed and the space it takes. */
+/** Where a mockup in Trash came from: Restore puts it back there. `import`: an undone import's. */
+export const TrashOriginSchema = z.enum(['my-stash', 'to-sort', 'to-stash', 'import'])
+export type TrashOrigin = z.infer<typeof TrashOriginSchema>
+
 export const TrashItemSchema = LibraryItemSchema.extend({
   trashedAt: z.string(),
+  /** Where it came from, for the card's caption ("Tossed from To sort"). */
+  origin: TrashOriginSchema,
   /** The PSDs in the pile or single, in bytes. 0 when they can't be measured. */
   sizeBytes: z.number()
 })
