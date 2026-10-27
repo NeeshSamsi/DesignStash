@@ -32,6 +32,30 @@ export const isPile = (unit: LookOverUnit) => unit.kind === 'pile'
 const stepCount = (unit: LookOverUnit) => unit.items.length + (isPile(unit) ? 1 : 0)
 const isReview = (unit: LookOverUnit, step: number) => isPile(unit) && step === unit.items.length
 
+/**
+ * What Look it over opens on (inboxes.md): the whole queue (Look them over), the whole queue from
+ * one card (that card's Look it over) or only the cards picked (Look over 3).
+ */
+export type LookOverScope =
+  | { kind: 'all' }
+  | { kind: 'from'; unitId: number }
+  | { kind: 'only'; unitIds: readonly number[] }
+
+/**
+ * The queue main sent, cut to what this opening covers. A card's own Look it over starts on it,
+ * ahead of where Finish later left off; a card that has gone since keeps that place instead.
+ */
+export function scopeQueue(queue: LookOverQueue, scope: LookOverScope): LookOverQueue {
+  if (scope.kind === 'all') return queue
+  if (scope.kind === 'from') {
+    const unit = queue.units.find((u) => u.unitId === scope.unitId)
+    if (!unit) return queue
+    return { ...queue, resume: { unitId: unit.unitId, mockupId: unit.items[0]!.mockupId } }
+  }
+  const picked = new Set(scope.unitIds)
+  return { ...queue, units: queue.units.filter((u) => picked.has(u.unitId)) }
+}
+
 /** A fresh flow from the queue main sent, resuming where Finish later left off. */
 export function createFlow(queue: LookOverQueue): FlowState {
   const units = queue.units
@@ -103,14 +127,20 @@ export function jumpTo(s: FlowState, step: number): FlowState {
   return open({ ...from, skipped }, { unit: s.position.unit, step })
 }
 
-/** After Stash pile (or Stash on a single): the next unit starts on its first mockup. */
+/**
+ * After Stash pile (or Stash on a single): the next unit starts on its first mockup. After the
+ * last one, a flow that opened partway through goes round to the first one still waiting.
+ */
 export function afterStash(s: FlowState): FlowState {
   const unit = currentUnit(s)
   const stashed = new Set([...s.stashed, unit.unitId])
   const checked = new Set([...s.checked, ...unit.items.map((i) => i.mockupId)])
   const base = { ...s, stashed, checked }
-  const following = s.position.unit + 1
-  if (following >= s.units.length) return base
+  const following =
+    s.position.unit + 1 < s.units.length
+      ? s.position.unit + 1
+      : s.units.findIndex((u) => !stashed.has(u.unitId))
+  if (following === -1) return base
   return open(base, { unit: following, step: 0 })
 }
 
@@ -291,7 +321,10 @@ export type PrimaryKind = 'next' | 'stash-pile' | 'stash' | 'save-next'
  */
 export function primary(s: FlowState): { kind: PrimaryKind; label: string } {
   const unit = currentUnit(s)
-  const last = s.position.unit === s.units.length - 1
+  // The last unit, with nothing before it still waiting for the flow to go round to.
+  const last =
+    s.position.unit === s.units.length - 1 &&
+    s.units.every((u, i) => i === s.position.unit || s.stashed.has(u.unitId))
   const saved = s.stashed.has(unit.unitId)
   if (isPile(unit)) {
     if (!onReview(s)) return { kind: 'next', label: 'Next' }

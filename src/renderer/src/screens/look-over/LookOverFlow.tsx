@@ -55,11 +55,14 @@ import {
   progress,
   rail,
   reviewCards,
+  scopeQueue,
   skip,
   type DraftForm,
-  type FlowState
+  type FlowState,
+  type LookOverScope
 } from './flow-model'
 import {
+  NOTHING_LEFT,
   NO_COVER_REASON,
   NO_TITLE_REASON,
   SKIP_NOTE,
@@ -72,7 +75,9 @@ import { WRITING_PLACEHOLDER } from '@renderer/lib/writing-field'
 
 interface LookOverFlowProps {
   open: boolean
-  /** Finish later (confirmed), or all done. */
+  /** What it opens on: the whole queue (the default), from one card, or only the cards picked. */
+  scope?: LookOverScope
+  /** Finish later (confirmed), all done, or nothing left to look over. */
   onClose: () => void
   /** Back from the very first mockup, while nothing is stashed: the Sort board. Hidden without it. */
   onBackToSort?: () => void
@@ -100,6 +105,8 @@ const sameForm = (a: Form, b: Form) =>
   a.description === b.description &&
   tagIds(a).join() === tagIds(b).join()
 
+const ALL: LookOverScope = { kind: 'all' }
+
 const panelSource = (cover: Cover): 'embedded' | 'sidecar' | 'uploaded' | 'none' =>
   cover.path === '' || cover.source === 'none'
     ? 'none'
@@ -123,10 +130,14 @@ function Skeletons() {
 }
 
 /** Look it over (B3): the haul, one mockup at a time, piles first. Everything in a pile is a draft until Stash pile. */
-export function LookOverFlow({ open, onClose, onBackToSort }: LookOverFlowProps) {
+export function LookOverFlow({ open, scope = ALL, onClose, onBackToSort }: LookOverFlowProps) {
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
   useFlowOpen(open)
+  const close = useRef(onClose)
+  useEffect(() => {
+    close.current = onClose
+  })
 
   useEffect(() => {
     if (!open) return
@@ -142,9 +153,18 @@ export function LookOverFlow({ open, onClose, onBackToSort }: LookOverFlowProps)
     }
   }, [open, attempt])
 
-  if (!open) return null
+  const queue = loaded.status === 'ready' ? scopeQueue(loaded.queue, scope) : null
+  // Everything it would show was stashed or tossed since the page drew its cards.
+  const empty = open && queue !== null && queue.units.length === 0
+  useEffect(() => {
+    if (!empty) return
+    toast({ message: NOTHING_LEFT })
+    close.current()
+  }, [empty])
 
-  if (loaded.status !== 'ready') {
+  if (!open || empty) return null
+
+  if (queue === null) {
     return (
       <FlowModal
         open
@@ -167,17 +187,24 @@ export function LookOverFlow({ open, onClose, onBackToSort }: LookOverFlowProps)
     )
   }
   return (
-    <Session queue={loaded.queue} onClose={onClose} {...(onBackToSort ? { onBackToSort } : {})} />
+    <Session
+      queue={queue}
+      others={loaded.status === 'ready' ? loaded.queue.units.length - queue.units.length : 0}
+      onClose={onClose}
+      {...(onBackToSort ? { onBackToSort } : {})}
+    />
   )
 }
 
 interface SessionProps {
   queue: LookOverQueue
+  /** Piles and mockups waiting in To stash that this opening leaves out (Look over 3). */
+  others: number
   onClose: () => void
   onBackToSort?: () => void
 }
 
-function Session({ queue, onClose, onBackToSort }: SessionProps) {
+function Session({ queue, others, onClose, onBackToSort }: SessionProps) {
   const [flow, setFlow] = useState<FlowState>(() => createFlow(queue))
   const [forms, setForms] = useState<Record<number, Form>>(() =>
     Object.fromEntries(queue.units.flatMap((u) => u.items.map((i) => [i.mockupId, formOf(i)])))
@@ -462,20 +489,38 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     return () => window.removeEventListener('keydown', onKey)
   }, [restorable])
 
+  /**
+   * A title left blank takes back the one main has as you move on, as a blank variation does
+   * (L8.2). In a pile the title is the base, so every draft in it takes the base back.
+   */
+  const restoreTitle = (current: Form): Form => {
+    if (!item || current.title.trim() !== '') return current
+    const title = saved.current[item.mockupId]?.title.trim() || item.title
+    const ids = new Set(
+      current.variation !== null ? unit.items.map((i) => i.mockupId) : [item.mockupId]
+    )
+    setForms((all) =>
+      Object.fromEntries(
+        Object.entries(all).map(([id, f]) => [id, ids.has(Number(id)) ? { ...f, title } : f])
+      )
+    )
+    return { ...current, title }
+  }
+
   /** Saves the open mockup's draft when it changed or hasn't been recorded as looked at. */
   const saveCurrent = async (): Promise<boolean> => {
     if (!item || !form) return true
-    const unchanged = sameForm(form, saved.current[item.mockupId]!)
+    const draft = restoreTitle(form)
+    const unchanged = sameForm(draft, saved.current[item.mockupId]!)
     if (unchanged && savedChecked.current.has(item.mockupId)) return true
-    if (form.title.trim() === '') return false
     const res = await window.api
       .invoke(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, {
         mockupId: item.mockupId,
-        title: form.title.trim(),
+        title: draft.title.trim(),
         // In a pile the title is the base (renaming every draft in it) and this is its own part.
-        ...(form.variation !== null ? { variation: form.variation } : {}),
-        description: form.description,
-        tagIds: tagIds(form)
+        ...(draft.variation !== null ? { variation: draft.variation } : {}),
+        description: draft.description,
+        tagIds: tagIds(draft)
       })
       .catch(() => null)
     if (!res?.success) {
@@ -486,29 +531,11 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
       })
       return false
     }
-    saved.current = { ...saved.current, [item.mockupId]: form }
+    // Mockups the save reached (a renamed base, a top's edit carried to untouched variants) come
+    // back as look-over:draft pushes, which the drafts take like a late suggestion.
+    saved.current = { ...saved.current, [item.mockupId]: draft }
     savedChecked.current.add(item.mockupId)
     setEditedTops((ids) => new Set([...ids].filter((id) => id !== item.mockupId)))
-    if (res.data.propagatedIds.length > 0) {
-      // The top mockup's edit carried over to variants that were not touched: show what they now hold.
-      const fresh = await window.api
-        .invoke(IPC_CHANNELS.LOOK_OVER_OPEN, undefined)
-        .catch(() => null)
-      if (fresh?.success) {
-        const updated = fresh.data.units
-          .flatMap((u) => u.items)
-          .filter((i) => res.data.propagatedIds.includes(i.mockupId))
-        dispatch({ type: 'items', items: updated })
-        setForms((current) => ({
-          ...current,
-          ...Object.fromEntries(updated.map((i) => [i.mockupId, formOf(i)]))
-        }))
-        saved.current = {
-          ...saved.current,
-          ...Object.fromEntries(updated.map((i) => [i.mockupId, formOf(i)]))
-        }
-      }
-    }
     return true
   }
 
@@ -577,8 +604,9 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
 
   const finish = (s: FlowState) => {
     if (finished(s)) {
-      // Everything is tucked away: land where it now lives, not on an empty inbox.
-      useUiStore.getState().setView('all')
+      // Everything is tucked away: land where it now lives, not on an empty inbox. With cards this
+      // opening left out still waiting, To stash stays.
+      if (others === 0) useUiStore.getState().setView('all')
       toast(doneMessage(stashedCount.current, 0), 'success')
       onClose()
     }
@@ -689,14 +717,15 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
         .catch(() => null)
     }
     setBusy(false)
-    if (!ok) return
+    // A failed save said so in its own toast and keeps the edits; the ask closes so they show.
     setAsking(false)
+    if (!ok) return
     const waiting = flow.units
       .filter((u) => !flow.stashed.has(u.unitId))
       .reduce((n, u) => n + u.items.length, 0)
     toast(
       stashedCount.current > 0
-        ? `${stashedCount.current} tucked away · ${waiting} waiting in To stash.`
+        ? doneMessage(stashedCount.current, waiting)
         : 'Your place is saved. Pick up in To stash.',
       'success'
     )

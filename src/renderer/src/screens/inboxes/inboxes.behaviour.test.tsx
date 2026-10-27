@@ -179,22 +179,25 @@ describe('To stash', () => {
     expect(card(2).textContent).not.toContain('Sniffing…')
   })
 
-  it('hover offers "Look it over", which opens that card', async () => {
+  it('hover offers "Look it over", which opens Look it over on that card', async () => {
     setup(listOf(stash))
     const onLookOver = vi.fn()
     render(<InboxPage stage="to_stash" onLookOver={onLookOver} />)
-    await screen.findByText('Clay pile')
-    fireEvent.click(card(1).querySelector('button')!)
-    expect(onLookOver.mock.calls[0]?.[0].map((i: InboxItem) => i.id)).toEqual([1])
+    await screen.findByText('Single')
+    fireEvent.click(card(2).querySelector('button')!)
+    expect(onLookOver).toHaveBeenCalledWith({ kind: 'from', unitId: 2 })
   })
 
-  it('Look them over hands everything to the approval stepper', async () => {
+  it('Look them over opens on everything; Look over N on just the cards picked', async () => {
     setup(listOf(stash))
     const onLookOver = vi.fn()
     render(<InboxPage stage="to_stash" onLookOver={onLookOver} />)
     await screen.findByText('Clay pile')
     fireEvent.click(screen.getByRole('button', { name: 'Look them over' }))
-    expect(onLookOver.mock.calls[0]?.[0].map((i: InboxItem) => i.id)).toEqual([1, 2])
+    expect(onLookOver).toHaveBeenLastCalledWith({ kind: 'all' })
+    fireEvent.click(card(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Look over 1' }))
+    expect(onLookOver).toHaveBeenLastCalledWith({ kind: 'only', unitIds: [2] })
   })
 
   it('Toss these asks, then sends INBOX_TOSS with the ids', async () => {

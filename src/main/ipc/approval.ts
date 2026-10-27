@@ -30,7 +30,16 @@ export function registerApprovalHandlers(ctx: HandlerContext): void {
     for (const unit of queue.units) if (unit.kind === 'pile') void inferenceQueueFor(ctx).askPile(unit.unitId)
     return queue
   })
-  registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, (args) => lookOver.saveDraft(args))
+  // The other mockups a save reached (a renamed base, a top's edit carried to its variants) go out
+  // as look-over:draft before the save answers, so the window takes them without reopening the queue.
+  registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, async (args) => {
+    const saved = await lookOver.saveDraft(args)
+    for (const id of saved.propagatedIds) {
+      const item = await lookOver.item(id)
+      if (item) push(IPC_CHANNELS.LOOK_OVER_DRAFT, item)
+    }
+    return saved
+  })
   registerIpcHandler(IPC_CHANNELS.LOOK_OVER_SKIP, async (args) => {
     const result = await lookOver.skip(args.mockupId)
     if (result.skipped) telemetry.get().track(TELEMETRY_EVENTS.AI_ITEM_SKIPPED)

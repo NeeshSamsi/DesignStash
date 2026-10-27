@@ -7,7 +7,7 @@ import LibraryPage from './screens/library/LibraryPage'
 import InboxPage from './screens/inboxes/InboxPage'
 import TrashPage from './screens/trash/TrashPage'
 import { SortFlow } from './screens/sort'
-import { LookOverFlow } from './screens/look-over'
+import { LookOverFlow, type LookOverScope } from './screens/look-over'
 import AppShell from './AppShell'
 import DebugMenu from './DebugMenu'
 import { useEntitlementStore } from './stores/entitlementStore'
@@ -18,11 +18,11 @@ import { useUpdateNotice } from './lib/update-notice'
 import { useActiveModelNotice } from './lib/model-notice'
 import { GatherDock, useGather, useGatherDrops } from './screens/gather'
 
-type AddFlow = 'approval' | null
-
 /** The app window, once launch is fine and onboarding is done. */
 function AppMain() {
-  const [addFlow, setAddFlow] = useState<AddFlow>(null)
+  /** What Look it over is open on, or null when it is closed. */
+  const [lookOver, setLookOver] = useState<LookOverScope | null>(null)
+  const addFlow = lookOver === null ? null : 'approval'
   /** The import batch on the Sort board, or null when it is closed. */
   const [sortBatch, setSortBatch] = useState<string | null>(null)
 
@@ -95,10 +95,10 @@ function AppMain() {
       return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
     setSortBatch(batchId)
   }
-  const openLookOver = () => setAddFlow('approval')
+  const openLookOver = (scope: LookOverScope = { kind: 'all' }) => setLookOver(scope)
 
   const handleLookOverClosed = async () => {
-    setAddFlow(null)
+    setLookOver(null)
     await refreshLibrary()
   }
 
@@ -144,12 +144,13 @@ function AppMain() {
         open={sortBatch !== null}
         batchId={sortBatch}
         onClose={() => setSortBatch(null)}
-        onLookThemOver={openLookOver}
+        onLookThemOver={() => openLookOver()}
       />
       <LookOverFlow
-        open={addFlow === 'approval'}
+        open={lookOver !== null}
+        {...(lookOver ? { scope: lookOver } : {})}
         onClose={() => void handleLookOverClosed()}
-        onBackToSort={() => setAddFlow(null)}
+        onBackToSort={() => setLookOver(null)}
       />
     </>
   )

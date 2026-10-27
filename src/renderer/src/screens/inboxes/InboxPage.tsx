@@ -23,6 +23,7 @@ import { HeaderActions, useHeaderStatus } from '@renderer/lib/page-header-slot'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast } from '@renderer/stores/toastStore'
 import { AddCardMenu } from '../gather/AddCardMenu'
+import type { LookOverScope } from '../look-over'
 import { useInboxList } from './useInboxList'
 import { coverUrl } from '@shared/cover-url'
 import { coverDisplay } from '@shared/library'
@@ -31,8 +32,11 @@ export interface InboxPageProps {
   stage: InboxStage
   /** Opens the Sort board (To sort) for these cards: the selection, or all of them. */
   onSort?: (items: InboxItem[]) => void
-  /** Opens the legacy approval stepper (To stash) for these cards, until Look it over lands. */
-  onLookOver?: (items: InboxItem[]) => void
+  /**
+   * Opens Look it over (To stash): on everything, from a card's own Look it over, or on just the
+   * cards picked (“Look over 3”).
+   */
+  onLookOver?: (scope: LookOverScope) => void
   /** The import entry points behind the Add card (and the empty page's button). */
   onAddFiles?: () => void
   onAddFolder?: () => void
@@ -167,7 +171,9 @@ export default function InboxPage({
               showStatus={badge !== undefined}
               {...(badge ? { status: badge } : {})}
               state={coverDisplay(item, selection.isSelected(key))}
-              {...(!toSortPage && onLookOver ? { onLookItOver: () => onLookOver([item]) } : {})}
+              {...(!toSortPage && onLookOver
+                ? { onLookItOver: () => onLookOver({ kind: 'from', unitId: item.id }) }
+                : {})}
             />
           )
         })}
@@ -186,7 +192,15 @@ export default function InboxPage({
             }
             onCancel={() => setTossing(targets)}
             primaryLabel={primary}
-            onPrimary={() => (toSortPage ? onSort?.(targets) : onLookOver?.(targets))}
+            onPrimary={() =>
+              toSortPage
+                ? onSort?.(targets)
+                : onLookOver?.(
+                    selected.length > 0
+                      ? { kind: 'only', unitIds: selected.map((item) => item.id) }
+                      : { kind: 'all' }
+                  )
+            }
           />
         </HeaderActions>
       )}

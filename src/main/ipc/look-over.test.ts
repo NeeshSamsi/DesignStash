@@ -115,6 +115,29 @@ describe('look-over channels', () => {
     ).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
   })
 
+  it('pushes every other mockup a save reached as it answers, so the window never reopens the queue', async () => {
+    const [top, side] = [waiting('top'), waiting('side')]
+    repo.piles.createPile([top.id, side.id], top.id)
+    await call(IPC_CHANNELS.LOOK_OVER_OPEN)
+    push.mockClear()
+
+    const saved = await call(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, {
+      mockupId: top.id,
+      title: 'Renamed',
+      description: '',
+      tagIds: []
+    })
+    expect(saved).toEqual({ success: true, data: { propagatedIds: [side.id] } })
+    expect(push).toHaveBeenCalledWith(
+      IPC_CHANNELS.LOOK_OVER_DRAFT,
+      expect.objectContaining({ mockupId: side.id, title: 'Renamed' })
+    )
+    expect(push).not.toHaveBeenCalledWith(
+      IPC_CHANNELS.LOOK_OVER_DRAFT,
+      expect.objectContaining({ mockupId: top.id })
+    )
+  })
+
   it("saves an edit on the top of a pile, offers it on the variant, and pushes the variant once accepting's version is ready", async () => {
     const [top, side] = [waiting('top'), waiting('side')]
     repo.piles.createPile([top.id, side.id], top.id)

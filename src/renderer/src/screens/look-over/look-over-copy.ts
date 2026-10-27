@@ -1,8 +1,9 @@
 const mockups = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
 
 /**
- * The toast when Look it over ends. All stashed: "All tucked away · N mockups stashed".
- * Some still waiting: "N tucked away · M skipped ones are waiting in To stash."
+ * The toast when Look it over ends (inboxes.md, Done). All stashed: "All tucked away · N mockups
+ * stashed". Finish later with some still waiting: "N tucked away · M skipped ones are waiting in
+ * To stash."
  */
 export function doneMessage(stashed: number, waiting: number): string {
   if (waiting === 0) return `All tucked away · ${mockups(stashed)} stashed`
@@ -26,6 +27,8 @@ export function stashRefusal(reason: 'not-ready' | 'no-cover'): {
 }
 
 export const NO_COVER_REASON = 'Add a cover to stash it'
+/** Look it over opened on nothing: everything it would show was stashed or tossed meanwhile (S10.E4). */
+export const NOTHING_LEFT = 'Nothing left to look over'
 export const NO_TITLE_REASON = 'Add a title to continue'
 /** Where Skip for now sends a mockup: nowhere new, it just goes to the end of the queue. */
 export const SKIP_NOTE = 'It stays in To stash'

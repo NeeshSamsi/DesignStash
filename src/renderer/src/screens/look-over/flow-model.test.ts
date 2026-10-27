@@ -19,6 +19,7 @@ import {
   progress,
   rail,
   reviewCards,
+  scopeQueue,
   skip,
   type FlowState
 } from './flow-model'
@@ -82,6 +83,41 @@ describe('createFlow', () => {
 
   it('ignores a resume point that is no longer in the queue', () => {
     expect(at(createFlow(queue({ resume: { unitId: 99, mockupId: 1 } })))).toBe('0:0')
+  })
+})
+
+describe('where Look it over opens (inboxes.md I2)', () => {
+  it('opens on the card whose Look it over was pressed, ahead of a resume point', () => {
+    const q = queue({ resume: { unitId: 1, mockupId: 11 } })
+    const s = createFlow(scopeQueue(q, { kind: 'from', unitId: 2 }))
+    expect(at(s)).toBe('1:0')
+    expect(currentItem(s)?.mockupId).toBe(20)
+    expect(s.units).toHaveLength(4)
+  })
+
+  it('opens where Finish later left off when the card it was asked for has gone', () => {
+    const q = queue({ resume: { unitId: 1, mockupId: 11 } })
+    expect(at(createFlow(scopeQueue(q, { kind: 'from', unitId: 99 })))).toBe('0:1')
+  })
+
+  it('looks over only the cards picked, piles first as the queue has them', () => {
+    const s = createFlow(scopeQueue(queue(), { kind: 'only', unitIds: [31, 2] }))
+    expect(s.units.map((u) => u.unitId)).toEqual([2, 31])
+    expect(at(s)).toBe('0:0')
+    expect(headerBadge(s)).toBe('Pile 1 of 1')
+  })
+
+  it('has nothing to look over when none of the cards picked still wait', () => {
+    expect(scopeQueue(queue(), { kind: 'only', unitIds: [99] }).units).toEqual([])
+  })
+
+  it('goes round to the first one still waiting after stashing the last', () => {
+    let s = createFlow(scopeQueue(queue(), { kind: 'from', unitId: 31 }))
+    expect(primary(s)).toEqual({ kind: 'stash', label: 'Stash & next' })
+    s = afterStash(s)
+    expect(finished(s)).toBe(false)
+    expect(at(s)).toBe('0:0')
+    expect(currentItem(s)?.mockupId).toBe(10)
   })
 })
 

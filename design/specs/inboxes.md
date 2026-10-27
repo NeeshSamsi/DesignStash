@@ -13,13 +13,14 @@ All three pages use the same grid, cards, action bar and selection as My Stash: 
 ## To stash
 
 - **Cards:** piles with their +N and single mockups, in sorted order. No per-card status badge: everything on this page is waiting, and the page title says so.
-- **Hover:** one full-width primary **Look it over** along the cover's bottom, over a soft scrim, styled like Open in Photoshop on My Stash cards. It opens that pile or mockup in Look it over. Click still selects.
-- **Action bar:** Toss these (secondary) · Look them over (primary).
+- **Hover:** one full-width primary **Look it over** along the cover's bottom, over a soft scrim, styled like Open in Photoshop on My Stash cards. It opens that pile or mockup in Look it over, ahead of where Finish later left off, and carries on through the rest; after the last one it goes round to the first still waiting. Click still selects.
+- **Action bar:** Toss these (secondary) · Look them over (primary). With a selection, “Look over 3” looks over just those three. Once they're stashed the toast says so and the page stays, since the rest still wait here.
+- **Nothing left:** if everything Look it over would show was stashed or tossed meanwhile, it doesn't open: a toast says “Nothing left to look over” and the page refreshes.
 
 ## Done
 
 - **All tucked away:** a success toast in the usual place, bottom-right, styled like “Saved your changes”: “All tucked away · 12 mockups stashed”. It times out like any toast. There's no separate celebration popup.
-- **Some skipped:** the same toast: “10 tucked away · 2 skipped ones are waiting in To stash.”
+- **Some skipped:** Finish later after stashing some gives the same toast: “10 tucked away · 2 skipped ones are waiting in To stash.”
 
 ## Trash
 
