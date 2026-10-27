@@ -27,6 +27,11 @@ export interface UndoService {
   editField(direction: 'undo' | 'redo'): void
 }
 
+/** The id an undoable reply carries (`undoEntryId`), or nothing when no entry was recorded. */
+export function undoEntry(id: number | undefined): { undoEntryId?: number } {
+  return id === undefined ? {} : { undoEntryId: id }
+}
+
 export interface UndoServiceDeps {
   /** Runs data's ops (ops/index.ts). */
   data: OpRunner<DataOp>

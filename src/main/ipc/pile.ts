@@ -4,6 +4,8 @@ import { LookOverService } from '../import/look-over-service'
 import { StashService } from '../import/stash-service'
 import { PileService } from '../library/pile-service'
 import { PileTitles } from '../library/pile-titles'
+import type { StashResult } from '@shared/approval'
+import { undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { countsChanged, inferenceQueueFor } from './library-effects'
 import { registerIpcHandler } from './register'
@@ -23,7 +25,8 @@ export function registerPileHandlers(ctx: HandlerContext): void {
   const titles = new PileTitles(repo)
   // A pile waiting in To stash keeps its titles in its drafts: they are made before a title changes.
   const draftsReady = async (pileId: number | null) => {
-    if (pileId !== null && repo.mockups.getMockup(pileId)?.stage === 'to_stash') await lookOver.draftsFor(pileId)
+    if (pileId !== null && repo.mockups.getMockup(pileId)?.stage === 'to_stash')
+      await lookOver.draftsFor(pileId)
   }
 
   // A mockup that joins takes its file marker or number at once; the model then names the pile again (L8).
@@ -32,16 +35,24 @@ export function registerPileHandlers(ctx: HandlerContext): void {
     return result
   }
 
-  registerIpcHandler(IPC_CHANNELS.PILE_CREATE, (args) => joined(piles.create(args.memberIds, args.topId)))
-  registerIpcHandler(IPC_CHANNELS.PILE_ADD, (args) => joined(piles.add(args.pileId, args.memberIds)))
-  registerIpcHandler(IPC_CHANNELS.PILE_MERGE, (args) => joined(piles.merge(args.sourceIds, args.targetId)))
+  registerIpcHandler(IPC_CHANNELS.PILE_CREATE, (args) =>
+    joined(piles.create(args.memberIds, args.topId))
+  )
+  registerIpcHandler(IPC_CHANNELS.PILE_ADD, (args) =>
+    joined(piles.add(args.pileId, args.memberIds))
+  )
+  registerIpcHandler(IPC_CHANNELS.PILE_MERGE, (args) =>
+    joined(piles.merge(args.sourceIds, args.targetId))
+  )
   registerIpcHandler(IPC_CHANNELS.PILE_SET_TOP, (args) => piles.setTop(args.pileId, args.topId))
   registerIpcHandler(IPC_CHANNELS.PILE_DISBAND, (args) => piles.disband(args.pileId))
   registerIpcHandler(IPC_CHANNELS.PILE_REMOVE, (args) =>
     piles.removeFromPile(args.pileId, args.mockupId)
   )
   registerIpcHandler(IPC_CHANNELS.PILE_RESTORE, (args) => piles.restore(args.snapshot))
-  registerIpcHandler(IPC_CHANNELS.PILE_MEMBERS, (args) => ({ items: repo.library.getPileItems(args.pileId) }))
+  registerIpcHandler(IPC_CHANNELS.PILE_MEMBERS, (args) => ({
+    items: repo.library.getPileItems(args.pileId)
+  }))
 
   registerIpcHandler(IPC_CHANNELS.PILE_RENAME, async (args) => {
     await draftsReady(args.pileId)
@@ -54,23 +65,23 @@ export function registerPileHandlers(ctx: HandlerContext): void {
     return titles.setVariation(args.mockupId, args.words, args.source)
   })
 
-  registerIpcHandler(IPC_CHANNELS.PILE_STASH, async (args) => {
-    const result = await stash.stashPile(args.pileId)
-    if (result.ok) {
-      countsChanged(ctx)
-      void approved(result.stashedIds.length).catch(() => {})
-    }
-    return result
-  })
+  // Stash pile and Stash & next are one action each in the undo history, and in Look it over's own
+  // steps: undo puts the mockups back in To stash with their drafts.
+  const stashed = async (label: string, mockupIds: number[], run: () => Promise<StashResult>) => {
+    const { result, record } = await ctx.dataOps.track(label, { mockupIds }, run)
+    if (!result.ok) return result
+    countsChanged(ctx)
+    void approved(result.stashedIds.length).catch(() => {})
+    return { ...result, ...undoEntry(ctx.undo.record(record)) }
+  }
 
-  registerIpcHandler(IPC_CHANNELS.MOCKUP_STASH, async (args) => {
-    const result = await stash.stashSingle(args.mockupId)
-    if (result.ok) {
-      countsChanged(ctx)
-      void approved(result.stashedIds.length).catch(() => {})
-    }
-    return result
-  })
+  registerIpcHandler(IPC_CHANNELS.PILE_STASH, (args) =>
+    stashed('Stash pile', ctx.dataOps.scopes.pile(args.pileId), () => stash.stashPile(args.pileId))
+  )
+
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_STASH, (args) =>
+    stashed('Stash', [args.mockupId], () => stash.stashSingle(args.mockupId))
+  )
 
   registerIpcHandler(IPC_CHANNELS.PILE_UNSTASH, async (args) => {
     const result = await stash.unstash(args.snapshot)
