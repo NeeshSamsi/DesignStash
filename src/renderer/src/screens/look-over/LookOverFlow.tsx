@@ -769,21 +769,32 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
       )
     : null
 
-  const footerPrimary = (
-    <Tooltip label={wait ?? (blocked ? NO_TITLE_REASON : NO_COVER_REASON)} arrow="bottom-right">
-      <span tabIndex={blocked || noCover || wait ? 0 : -1} className="inline-flex">
-        <Button
-          label={model.label}
-          loading={busy}
-          disabled={
-            busy ||
-            (review && wait !== null) ||
-            (!review && (blocked || (noCover && model.kind !== 'next')))
-          }
-          onClick={primaryAction}
-        />
+  // Why the primary button can't be pressed, from exactly what holds it: the wait on review; off
+  // review a blank title, then no cover, except on Next, which a pile mockup with no cover can take.
+  const disabledReason = review
+    ? wait
+    : blocked
+      ? NO_TITLE_REASON
+      : noCover && model.kind !== 'next'
+        ? NO_COVER_REASON
+        : null
+  const primaryButton = (
+    <Button
+      label={model.label}
+      loading={busy}
+      disabled={busy || disabledReason !== null}
+      onClick={primaryAction}
+    />
+  )
+  // Only a held button says why, and only then does its wrapper take a tab stop.
+  const footerPrimary = disabledReason ? (
+    <Tooltip label={disabledReason} arrow="bottom-right">
+      <span tabIndex={0} className="inline-flex">
+        {primaryButton}
       </span>
     </Tooltip>
+  ) : (
+    primaryButton
   )
 
   const footer = (
