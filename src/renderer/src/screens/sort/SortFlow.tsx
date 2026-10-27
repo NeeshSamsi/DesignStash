@@ -219,6 +219,7 @@ function SortSession({ initial, whole, copying, onClose, onLookThemOver }: Sessi
               state={state}
               dispatch={send}
               onMenu={(target, at) => setMenu({ target, at })}
+              menuOpen={menu !== null}
             />
           </div>
           <ActionBar

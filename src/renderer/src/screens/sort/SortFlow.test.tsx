@@ -681,6 +681,65 @@ describe('leaving', () => {
     })
   })
 
+  describe('the board by keyboard alone (F-046)', () => {
+    const press = (name: string, init: KeyboardEventInit = {}) =>
+      fireEvent.keyDown(document.activeElement ?? board(), { key: name, ...init })
+    const focused = () => (document.activeElement as HTMLElement | null)?.dataset.tileId
+
+    it('arrows walk the tiles, piles first, and only the one under the cursor takes Tab', async () => {
+      setupApi()
+      mount()
+      await ready()
+      press('ArrowRight')
+      expect(focused()).toBe('1')
+      press('ArrowRight')
+      expect(focused()).toBe('2')
+      press('ArrowLeft')
+      expect(focused()).toBe('1')
+      const tabStops = [...document.querySelectorAll<HTMLElement>('[data-tile-id][tabindex="0"]')]
+      expect(tabStops.map((t) => t.dataset.tileId)).toEqual(['1'])
+    })
+
+    it('Space picks two tiles and ⌘G piles them', async () => {
+      setupApi()
+      mount()
+      await ready()
+      press('ArrowRight')
+      for (let i = 0; i < 7; i++) press('ArrowRight')
+      expect(focused()).toBe('8')
+      press(' ')
+      press('ArrowRight')
+      press(' ')
+      expect(tile(8).getAttribute('aria-selected')).toBe('true')
+      expect(tile(9).getAttribute('aria-selected')).toBe('true')
+      press('g', { metaKey: true })
+      expect(pileIds()).toHaveLength(3)
+    })
+
+    it('the menu key opens the tile’s menu: Put on top, then Move to another pile', async () => {
+      setupApi()
+      mount()
+      await ready()
+      press('ArrowRight')
+      press('ArrowRight')
+      expect(focused()).toBe('2')
+      press('F10', { shiftKey: true })
+      fireEvent.keyDown(await screen.findByRole('menuitem', { name: /Put on top/ }), {
+        key: 'Enter'
+      })
+      await waitFor(() => expect(tileIds(pile('phones'))[0]).toBe(2))
+      await waitFor(() => expect(focused()).toBe('2'))
+
+      press('ContextMenu')
+      fireEvent.keyDown(await screen.findByRole('menuitem', { name: /Move to/ }), {
+        key: 'ArrowRight'
+      })
+      fireEvent.keyDown(await screen.findByRole('menuitem', { name: /mug/ }), { key: 'Enter' })
+      await waitFor(() => expect(tileIds(pile('mugs'))).toContain(2))
+      expect(tileIds(pile('phones'))).not.toContain(2)
+    })
+  })
+
   it('renders nothing when closed', () => {
     setupApi()
     render(<SortFlow open={false} onClose={vi.fn()} onLookThemOver={vi.fn()} />)
