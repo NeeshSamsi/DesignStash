@@ -1,5 +1,6 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TrashService } from '../library/trash-service'
+import { pilesOf, undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { countsChanged, mockupsArrived, mockupsLeft } from './library-effects'
 import { registerIpcHandler } from './register'
@@ -8,12 +9,18 @@ export function registerTrashHandlers(ctx: HandlerContext): void {
   const { repo, settings } = ctx
   const trash = new TrashService(repo, settings.getLibraryRoot())
 
-  registerIpcHandler(IPC_CHANNELS.MOCKUP_TRASH, (args) => {
+  // One action in the undo history. A pile member leaves its pile first (the repository does it),
+  // so the entry covers its whole pile, and undo puts it back in.
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_TRASH, async (args) => {
     const ids = args.ids
-    const count = repo.trash.moveManyToTrash(ids)
+    const { result: count, record } = await ctx.dataOps.track(
+      'Move to Trash',
+      { mockupIds: pilesOf(ctx.dataOps.scopes, ids) },
+      () => repo.trash.moveManyToTrash(ids)
+    )
     mockupsLeft(ctx, ids)
     countsChanged(ctx)
-    return { ok: true, count }
+    return { ok: true, count, ...undoEntry(ctx.undo.record(record)) }
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_RESTORE, (args) => {

@@ -27,6 +27,11 @@ export interface UndoService {
   editField(direction: 'undo' | 'redo'): void
 }
 
+/** Every mockup in the piles (or singles) of `ids`, once each: an action's scope. */
+export function pilesOf(scopes: { pile(id: number): number[] }, ids: number[]): number[] {
+  return [...new Set(ids.flatMap((id) => scopes.pile(id)))]
+}
+
 /** The id an undoable reply carries (`undoEntryId`), or nothing when no entry was recorded. */
 export function undoEntry(id: number | undefined): { undoEntryId?: number } {
   return id === undefined ? {} : { undoEntryId: id }

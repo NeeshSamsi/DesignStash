@@ -1,10 +1,12 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { CoverService } from '../library/cover-service'
 import { PileTitles } from '../library/pile-titles'
+import { undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
-export function registerMockupHandlers({ repo, library, settings }: HandlerContext): void {
+export function registerMockupHandlers(ctx: HandlerContext): void {
+  const { repo, library, settings } = ctx
   const covers = new CoverService(repo, settings.getLibraryRoot())
   const titles = new PileTitles(repo)
 
@@ -19,9 +21,16 @@ export function registerMockupHandlers({ repo, library, settings }: HandlerConte
     }
   })
 
-  registerIpcHandler(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, (args) => {
-    repo.mockups.setFavourite(args.mockupId, args.favourite)
-    return { favourite: args.favourite }
+  // Starring or unstarring several cards is one action in the undo history.
+  registerIpcHandler(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, async (args) => {
+    const { record } = await ctx.dataOps.track(
+      args.favourite ? 'Star' : 'Unstar',
+      { mockupIds: args.ids },
+      () => {
+        for (const id of args.ids) repo.mockups.setFavourite(id, args.favourite)
+      }
+    )
+    return { favourite: args.favourite, ...undoEntry(ctx.undo.record(record)) }
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_UPDATE, (args) => {

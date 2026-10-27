@@ -9,8 +9,9 @@ export const mockupContract = {
     request: z.object({ mockupId: z.number() }),
     response: MockupDetailSchema
   },
+  /** Star or unstar several at once: one action in the undo history. */
   [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: {
-    request: z.object({ mockupId: z.number(), favourite: z.boolean() }),
+    request: z.object({ ids: z.array(z.number()).min(1), favourite: z.boolean() }),
     response: withUndoEntry(z.object({ favourite: z.boolean() }))
   },
   [IPC_CHANNELS.MOCKUP_UPDATE]: {

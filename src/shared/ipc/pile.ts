@@ -48,8 +48,9 @@ export const pileContract = {
     request: z.object({ pileId: z.number(), topId: z.number() }),
     response: withUndoEntry(PileChangeSchema)
   },
+  /** Disband several piles at once: one action in the undo history. */
   [IPC_CHANNELS.PILE_DISBAND]: {
-    request: z.object({ pileId: z.number() }),
+    request: z.object({ pileIds: z.array(z.number()).min(1) }),
     response: withUndoEntry(
       z.object({
         snapshot: PileSnapshotSchema,

@@ -5,7 +5,7 @@ import { StashService } from '../import/stash-service'
 import { PileService } from '../library/pile-service'
 import { PileTitles } from '../library/pile-titles'
 import type { StashResult } from '@shared/approval'
-import { undoEntry } from '../undo/undo-service'
+import { pilesOf, undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { countsChanged, inferenceQueueFor } from './library-effects'
 import { registerIpcHandler } from './register'
@@ -45,7 +45,25 @@ export function registerPileHandlers(ctx: HandlerContext): void {
     joined(piles.merge(args.sourceIds, args.targetId))
   )
   registerIpcHandler(IPC_CHANNELS.PILE_SET_TOP, (args) => piles.setTop(args.pileId, args.topId))
-  registerIpcHandler(IPC_CHANNELS.PILE_DISBAND, (args) => piles.disband(args.pileId))
+  // Disbanding several piles is one action in the undo history. Every id must be a pile, or none
+  // is disbanded.
+  registerIpcHandler(IPC_CHANNELS.PILE_DISBAND, async (args) => {
+    for (const id of args.pileIds) {
+      if (!repo.mockups.getMockup(id)?.isGroup) throw new Error(`${id} is not a pile`)
+    }
+    const { result, record } = await ctx.dataOps.track(
+      args.pileIds.length > 1 ? 'Disband piles' : 'Disband pile',
+      { mockupIds: pilesOf(ctx.dataOps.scopes, args.pileIds) },
+      () => {
+        const done = args.pileIds.map((id) => piles.disband(id))
+        return {
+          snapshot: { rows: done.flatMap((d) => d.snapshot.rows) },
+          freedIds: done.flatMap((d) => d.freedIds)
+        }
+      }
+    )
+    return { ...result, ...undoEntry(ctx.undo.record(record)) }
+  })
   registerIpcHandler(IPC_CHANNELS.PILE_REMOVE, (args) =>
     piles.removeFromPile(args.pileId, args.mockupId)
   )

@@ -5,6 +5,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -39,7 +40,8 @@ beforeEach(() => {
     repo,
     push: vi.fn(),
     ai: { activeProvider: async () => null },
-    settings: { getLibraryRoot: () => '/library' }
+    settings: { getLibraryRoot: () => '/library' },
+    ...undoForTests(repo, test.db)
   } as unknown as HandlerContext
   registerPileHandlers(ctx)
   registerTrashHandlers(ctx)
@@ -99,7 +101,7 @@ describe('pile handlers', () => {
 
     const disbanded = await call<{ snapshot: unknown; freedIds: number[] }>(
       IPC_CHANNELS.PILE_DISBAND,
-      { pileId: d }
+      { pileIds: [d] }
     )
     expect(disbanded.success && disbanded.data.freedIds.sort()).toEqual([a, b, c, d, e].sort())
     expect(repo.library.getLibrary({ sort: 'name' })).toHaveLength(5)
@@ -137,7 +139,7 @@ describe('pile handlers', () => {
     expect(repo.mockups.getMockup(c)).toMatchObject({ groupId: a })
 
     // A pile of two dissolves.
-    await call(IPC_CHANNELS.PILE_DISBAND, { pileId: a })
+    await call(IPC_CHANNELS.PILE_DISBAND, { pileIds: [a] })
     await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
     expect(await call(IPC_CHANNELS.PILE_REMOVE, { pileId: a, mockupId: b })).toMatchObject({
       success: true,
@@ -159,13 +161,15 @@ describe('pile members (the pile page, F-068)', () => {
   it('answers a pile’s mockups as library rows in one call: the top first, then the rest in order', async () => {
     const [a, b, c] = [make('a'), make('b'), make('c')] as [number, number, number]
     await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b, c], topId: c })
-    const tag = repo.tags.createTag({ label: 'Clay', categoryId: repo.tags.createCategory({ label: 'Style' }).id })
+    const tag = repo.tags.createTag({
+      label: 'Clay',
+      categoryId: repo.tags.createCategory({ label: 'Style' }).id
+    })
     repo.mockups.addTagToMockup(b, tag.id)
 
-    const res = await call<{ items: { id: number; pileId: number; pile: unknown; tags: { label: string }[] }[] }>(
-      IPC_CHANNELS.PILE_MEMBERS,
-      { pileId: c }
-    )
+    const res = await call<{
+      items: { id: number; pileId: number; pile: unknown; tags: { label: string }[] }[]
+    }>(IPC_CHANNELS.PILE_MEMBERS, { pileId: c })
 
     expect(res.success).toBe(true)
     const items = res.success ? res.data.items : []
@@ -176,10 +180,16 @@ describe('pile members (the pile page, F-068)', () => {
 
   it('answers no mockups for a pile that is gone or a mockup on its own', async () => {
     const [a, b] = [make('a'), make('b')] as [number, number]
-    expect(await call(IPC_CHANNELS.PILE_MEMBERS, { pileId: a })).toEqual({ success: true, data: { items: [] } })
+    expect(await call(IPC_CHANNELS.PILE_MEMBERS, { pileId: a })).toEqual({
+      success: true,
+      data: { items: [] }
+    })
     await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
     repo.trash.moveManyToTrash([a])
-    expect(await call(IPC_CHANNELS.PILE_MEMBERS, { pileId: a })).toEqual({ success: true, data: { items: [] } })
+    expect(await call(IPC_CHANNELS.PILE_MEMBERS, { pileId: a })).toEqual({
+      success: true,
+      data: { items: [] }
+    })
   })
 })
 
@@ -189,7 +199,7 @@ describe('trash handlers', () => {
 
     expect(await call(IPC_CHANNELS.MOCKUP_TRASH, { ids: [a, b] })).toEqual({
       success: true,
-      data: { ok: true, count: 2 }
+      data: { ok: true, count: 2, undoEntryId: expect.any(Number) }
     })
     expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([c])
 
@@ -245,7 +255,8 @@ describe('pile titles: rename and set-variation (design/specs/pile-titles.md)', 
         ...extra
       })
     ).id
-  const titles = (ids: number[]) => ids.map((id) => [repo.mockups.getMockup(id)!.title, repo.mockups.getMockup(id)!.variation])
+  const titles = (ids: number[]) =>
+    ids.map((id) => [repo.mockups.getMockup(id)!.title, repo.mockups.getMockup(id)!.variation])
 
   async function stashedPile() {
     const [a, b] = [file('tote-a.psd'), file('tote-b.psd')]
@@ -256,7 +267,10 @@ describe('pile titles: rename and set-variation (design/specs/pile-titles.md)', 
   it('renames a pile in My Stash: every mockup, exactly, with what it was for Undo', async () => {
     const [a, b] = await stashedPile()
     const res = await call(IPC_CHANNELS.PILE_RENAME, { pileId: a, base: 'Canvas tote' })
-    expect(res).toEqual({ success: true, data: { pileId: a, base: 'Canvas tote', previous: 'tote-a', mockupIds: [a, b] } })
+    expect(res).toEqual({
+      success: true,
+      data: { pileId: a, base: 'Canvas tote', previous: 'tote-a', mockupIds: [a, b] }
+    })
     expect(titles([a, b])).toEqual([
       ['Canvas tote', 'A'],
       ['Canvas tote', 'B']
@@ -273,23 +287,38 @@ describe('pile titles: rename and set-variation (design/specs/pile-titles.md)', 
   })
 
   it('renames a pile waiting in To stash on its drafts, making them first', async () => {
-    const [a, b] = [file('tote-a.psd', { stage: 'to_stash' }), file('tote-b.psd', { stage: 'to_stash' })]
+    const [a, b] = [
+      file('tote-a.psd', { stage: 'to_stash' }),
+      file('tote-b.psd', { stage: 'to_stash' })
+    ]
     repo.piles.createPile([a, b], a)
 
     await call(IPC_CHANNELS.PILE_RENAME, { pileId: a, base: 'Canvas tote' })
 
-    expect([repo.drafts.getDraft(a)?.title, repo.drafts.getDraft(b)?.title]).toEqual(['Canvas tote', 'Canvas tote'])
+    expect([repo.drafts.getDraft(a)?.title, repo.drafts.getDraft(b)?.title]).toEqual([
+      'Canvas tote',
+      'Canvas tote'
+    ])
     expect(repo.drafts.getDraft(b)?.variation).toBe('B')
     expect(repo.mockups.getMockup(b)?.title).toBe('tote-b')
   })
 
   it('sets a variation as typed, and an emptied one takes its marker back', async () => {
     const [, b] = await stashedPile()
-    expect(await call(IPC_CHANNELS.PILE_SET_VARIATION, { mockupId: b, words: 'on a hook' })).toEqual({
+    expect(
+      await call(IPC_CHANNELS.PILE_SET_VARIATION, { mockupId: b, words: 'on a hook' })
+    ).toEqual({
       success: true,
-      data: { mockupId: b, variation: { words: 'on a hook', source: 'typed' }, previous: { words: 'B', source: 'marker' } }
+      data: {
+        mockupId: b,
+        variation: { words: 'on a hook', source: 'typed' },
+        previous: { words: 'B', source: 'marker' }
+      }
     })
-    const emptied = await call<{ variation: unknown }>(IPC_CHANNELS.PILE_SET_VARIATION, { mockupId: b, words: '' })
+    const emptied = await call<{ variation: unknown }>(IPC_CHANNELS.PILE_SET_VARIATION, {
+      mockupId: b,
+      words: ''
+    })
     expect(emptied.success && emptied.data.variation).toEqual({ words: 'B', source: 'marker' })
   })
 
@@ -312,10 +341,14 @@ describe('pile titles: rename and set-variation (design/specs/pile-titles.md)', 
 
   it('sends the pile and the variation with a mockup’s details', async () => {
     const [a, b] = await stashedPile()
-    const res = await call<{ item: { pileId: number; variation: unknown }; variants: { variation: unknown }[] }>(
-      IPC_CHANNELS.MOCKUP_DETAIL,
-      { mockupId: b }
-    )
-    expect(res.success && res.data.item).toMatchObject({ title: 'tote-a', pileId: a, variation: { words: 'B', source: 'marker' } })
+    const res = await call<{
+      item: { pileId: number; variation: unknown }
+      variants: { variation: unknown }[]
+    }>(IPC_CHANNELS.MOCKUP_DETAIL, { mockupId: b })
+    expect(res.success && res.data.item).toMatchObject({
+      title: 'tote-a',
+      pileId: a,
+      variation: { words: 'B', source: 'marker' }
+    })
   })
 })
