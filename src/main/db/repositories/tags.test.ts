@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '../schema'
@@ -319,6 +319,65 @@ describe('tag management — merge / delete / deleteCategory (M8.2)', () => {
     expect(repo.tags.getAllTags().map((t) => `${t.id}:${t.categoryId}`)).toEqual(before)
     expect(repo.tags.getAllCategories().find((c) => c.id === angle.id)).toBeDefined()
     expect(repo.mockups.getTagsForMockup(m.id)).toHaveLength(inAngle.length)
+  })
+
+  describe('a write that fails part-way changes nothing', () => {
+    /** Search can't take the change: every write that keeps it in step fails. */
+    const searchFails = () =>
+      vi.spyOn(repo.search, 'upsertSearchIndex').mockImplementation(() => {
+        throw new Error('search is stuck')
+      })
+    const tagged = (label: string) => {
+      const tag = repo.tags.getAllTags().find((t) => t.label === label)!
+      const m = repo.mockups.createMockup(approvedMockup({ title: `Has ${label}`, libraryPath: `/lib/f-${label}.psd` }))
+      repo.mockups.addTagToMockup(m.id, tag.id)
+      repo.search.upsertSearchIndex(m.id)
+      return { tag, m }
+    }
+
+    it('renameTag', () => {
+      const { tag } = tagged('Laptop')
+      searchFails()
+      expect(() => repo.tags.renameTag(tag.id, 'Notebook')).toThrow('search is stuck')
+      expect(repo.tags.getAllTags().find((t) => t.id === tag.id)?.label).toBe('Laptop')
+    })
+
+    it('deleteTag', () => {
+      const { tag, m } = tagged('Laptop')
+      searchFails()
+      expect(() => repo.tags.deleteTag(tag.id)).toThrow('search is stuck')
+      expect(repo.mockups.getTagsForMockup(m.id).map((t) => t.id)).toEqual([tag.id])
+      expect(matchFts('laptop')).toEqual([m.id])
+    })
+
+    it('restoreTag', () => {
+      const { tag, m } = tagged('Laptop')
+      const { snapshot } = repo.tags.deleteTag(tag.id)
+      searchFails()
+      expect(() => repo.tags.restoreTag(snapshot)).toThrow('search is stuck')
+      expect(repo.tags.getTagByLabel(tag.categoryId, 'Laptop')).toBeUndefined()
+      expect(repo.mockups.getTagsForMockup(m.id)).toEqual([])
+    })
+
+    it('mergeTags', () => {
+      const { tag: macbook, m } = tagged('MacBook')
+      const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
+      searchFails()
+      expect(() => repo.tags.mergeTags(macbook.id, laptop.id)).toThrow('search is stuck')
+      expect(repo.mockups.getTagsForMockup(m.id).map((t) => t.id)).toEqual([macbook.id])
+    })
+
+    it('deleteCategory with its tags moving into a same-named one', () => {
+      const environment = repo.tags.getAllCategories().find((c) => c.label === 'Environment')!
+      const angle = repo.tags.getAllCategories().find((c) => c.label === 'Angle')!
+      repo.tags.createTag({ label: 'Side', categoryId: environment.id })
+      const { tag: side, m } = tagged('Side')
+      expect(side.categoryId).toBe(angle.id)
+      searchFails()
+      expect(() => repo.tags.deleteCategory(angle.id, environment.id)).toThrow('search is stuck')
+      expect(repo.tags.getAllCategories().find((c) => c.id === angle.id)).toBeDefined()
+      expect(repo.mockups.getTagsForMockup(m.id).map((t) => t.id)).toEqual([side.id])
+    })
   })
 
   it('deleteCategory rejects moving tags into itself or a missing category', () => {

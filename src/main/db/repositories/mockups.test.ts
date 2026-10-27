@@ -207,6 +207,21 @@ describe('updateMockupMeta', () => {
     expect(repo.mockups.getMockup(m.id)?.title).toBe('Clay mug')
   })
 
+  it('keeps the old details and tags when a write fails part-way', () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Old Title', libraryPath: '/lib/fp.psd' }))
+    const [laptop, phone] = ['Laptop', 'Phone'].map((label) => repo.tags.getAllTags().find((t) => t.label === label)!)
+    repo.mockups.addTagToMockup(m.id, phone!.id)
+    sqlite.exec(`CREATE TRIGGER stuck_link BEFORE INSERT ON mockup_tags
+      WHEN NEW.tag_id = ${laptop!.id} BEGIN SELECT RAISE(ABORT, 'stuck'); END`)
+
+    expect(() =>
+      repo.mockups.updateMockupMeta(m.id, { title: 'New Title', description: 'New', tagIds: [laptop!.id] })
+    ).toThrow(/stuck/)
+
+    expect(repo.mockups.getMockup(m.id)).toMatchObject({ title: 'Old Title', description: null })
+    expect(repo.mockups.getTagsForMockup(m.id).map((t) => t.label)).toEqual(['Phone'])
+  })
+
   it('leaves a mockup in Trash out of search when its details are saved', () => {
     const m = repo.mockups.createMockup(approvedMockup({ title: 'Binned', libraryPath: '/lib/bn.psd' }))
     repo.trash.moveToTrash(m.id)

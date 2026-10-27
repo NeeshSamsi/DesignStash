@@ -115,15 +115,14 @@ export class MockupRepository {
     if (!title) throw new Error('A mockup needs a title')
     const m = this.getMockup(id)
     if (!m) throw new Error(`Mockup ${id} not found`)
-    this.db
-      .update(mockups)
-      .set({ title, description: data.description })
-      .where(eq(mockups.id, id))
-      .run()
-    this.clearTagsForMockup(id)
-    for (const tagId of data.tagIds) this.addTagToMockup(id, tagId)
-    // One in Trash stays out of search.
-    if (m.stage === 'stashed' && m.deletedAt === null) this.search.upsertSearchIndex(id)
+    // One transaction, so a failure part-way never leaves the mockup without its tags.
+    this.db.transaction((tx) => {
+      tx.update(mockups).set({ title, description: data.description }).where(eq(mockups.id, id)).run()
+      this.clearTagsForMockup(id)
+      for (const tagId of data.tagIds) this.addTagToMockup(id, tagId)
+      // One in Trash stays out of search.
+      if (m.stage === 'stashed' && m.deletedAt === null) this.search.upsertSearchIndex(id)
+    })
   }
 
   // Variants

@@ -106,15 +106,17 @@ export class TrashRepository {
     }
   }
 
-  /** Bring several mockups (or piles) back from Trash. Returns how many came back. */
+  /** Bring several mockups (or piles) back from Trash, all or none. Returns how many came back. */
   restoreMany(ids: number[]): number {
-    let restored = 0
-    for (const id of new Set(ids)) {
-      if (!this.mockups.getMockup(id)) continue
-      this.restore(id)
-      restored++
-    }
-    return restored
+    return this.db.transaction(() => {
+      let restored = 0
+      for (const id of new Set(ids)) {
+        if (!this.mockups.getMockup(id)) continue
+        this.restore(id)
+        restored++
+      }
+      return restored
+    })
   }
 
   restore(id: number): void {
@@ -124,16 +126,16 @@ export class TrashRepository {
   }
 
   deleteMockupsHard(ids: number[]): { id: number; libraryPath: string; coverPath: string }[] {
-    // Collect paths and remove FTS entries before the transaction (FTS run() can't nest in tx)
+    // The search rows go in the same transaction, so a failed delete leaves search as it was.
     const paths: { id: number; libraryPath: string; coverPath: string }[] = []
-    for (const id of ids) {
-      const m = this.mockups.getMockup(id)
-      if (m) {
-        paths.push({ id, libraryPath: m.libraryPath, coverPath: m.coverPath })
-        this.search.removeSearchIndex(id)
-      }
-    }
     this.db.transaction((tx) => {
+      for (const id of ids) {
+        const m = this.mockups.getMockup(id)
+        if (m) {
+          paths.push({ id, libraryPath: m.libraryPath, coverPath: m.coverPath })
+          this.search.removeSearchIndex(id)
+        }
+      }
       for (const id of ids) tx.delete(mockups).where(eq(mockups.id, id)).run()
     })
     return paths

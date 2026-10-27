@@ -99,13 +99,11 @@ export class TagRepository {
     const tag = this.db.select().from(tags).where(eq(tags.id, tagId)).get()
     if (!tag) throw new Error(`Tag ${tagId} not found`)
     this.assertTagNameFree(tag.categoryId, label, tagId)
-    this.db.update(tags).set({ label }).where(eq(tags.id, tagId)).run()
-    const affected = this.db
-      .select({ mockupId: mockupTags.mockupId })
-      .from(mockupTags)
-      .where(eq(mockupTags.tagId, tagId))
-      .all()
-    for (const { mockupId } of affected) this.search.upsertSearchIndex(mockupId)
+    // Search follows in the same transaction, so it never keeps the old name.
+    this.db.transaction((tx) => {
+      tx.update(tags).set({ label }).where(eq(tags.id, tagId)).run()
+      for (const mockupId of this.mockupIdsForTag(tagId)) this.search.upsertSearchIndex(mockupId)
+    })
   }
 
   /**
@@ -161,9 +159,11 @@ export class TagRepository {
   /** Merge sourceTag into targetTag: re-point every association, dedupe, delete source, reindex FTS. */
   mergeTags(sourceTagId: number, targetTagId: number): { affectedMockups: number } {
     this.assertMergeable(sourceTagId, targetTagId)
-    const affected = this.db.transaction((tx) => this.mergeInTx(tx, sourceTagId, targetTagId))
-
-    for (const mockupId of affected) this.search.upsertSearchIndex(mockupId)
+    const affected = this.db.transaction((tx) => {
+      const moved = this.mergeInTx(tx, sourceTagId, targetTagId)
+      for (const mockupId of moved) this.search.upsertSearchIndex(mockupId)
+      return moved
+    })
     return { affectedMockups: affected.length }
   }
 
@@ -189,9 +189,10 @@ export class TagRepository {
     if (!tag) throw new Error(`Tag ${tagId} not found`)
     const affected = this.mockupIdsForTag(tagId)
 
-    this.db.delete(tags).where(eq(tags.id, tagId)).run()
-
-    for (const mockupId of affected) this.search.upsertSearchIndex(mockupId)
+    this.db.transaction((tx) => {
+      tx.delete(tags).where(eq(tags.id, tagId)).run()
+      for (const mockupId of affected) this.search.upsertSearchIndex(mockupId)
+    })
     return {
       affectedMockups: affected.length,
       snapshot: {
@@ -220,13 +221,15 @@ export class TagRepository {
       .get()
     if (!category) throw new Error(`Category ${tag.categoryId} not found`)
 
-    const tagId =
-      this.getTagByLabel(tag.categoryId, tag.label)?.id ??
-      this.db.insert(tags).values(tag).returning({ id: tags.id }).get().id
-
     const restored = snapshot.mockupIds.filter((id) => this.mockups.getMockup(id) !== undefined)
-    for (const mockupId of restored) this.mockups.addTagToMockup(mockupId, tagId)
-    for (const mockupId of restored) this.search.upsertSearchIndex(mockupId)
+    const tagId = this.db.transaction((tx) => {
+      const id =
+        this.getTagByLabel(tag.categoryId, tag.label)?.id ??
+        tx.insert(tags).values(tag).returning({ id: tags.id }).get().id
+      for (const mockupId of restored) this.mockups.addTagToMockup(mockupId, id)
+      for (const mockupId of restored) this.search.upsertSearchIndex(mockupId)
+      return id
+    })
     return { tagId, restoredMockups: restored.length }
   }
 
@@ -256,8 +259,8 @@ export class TagRepository {
         .get()
       if (!target) throw new Error(`Category ${moveTagsTo} not found`)
 
-      // Every move and the delete are one transaction, so a failure leaves nothing half-moved.
-      const touched = this.db.transaction((tx) => {
+      // Every move, the delete and search are one transaction, so a failure leaves nothing half-moved.
+      this.db.transaction((tx) => {
         const merged: number[] = []
         for (const tag of tagsIn) {
           const clash = this.getTagByNormalisedLabel(moveTagsTo, tag.label)
@@ -265,9 +268,8 @@ export class TagRepository {
           else tx.update(tags).set({ categoryId: moveTagsTo }).where(eq(tags.id, tag.id)).run()
         }
         tx.delete(tagCategories).where(eq(tagCategories.id, categoryId)).run()
-        return merged
+        for (const mockupId of new Set(merged)) this.search.upsertSearchIndex(mockupId)
       })
-      for (const mockupId of new Set(touched)) this.search.upsertSearchIndex(mockupId)
     } else {
       this.db.delete(tagCategories).where(eq(tagCategories.id, categoryId)).run()
     }

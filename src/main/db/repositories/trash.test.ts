@@ -149,6 +149,49 @@ describe('moveManyToTrash / restoreMany', () => {
   })
 })
 
+describe('a move that fails part-way changes nothing', () => {
+  beforeEach(() => ensureSearchIndex(db))
+
+  /** Two indexed mockups; SQLite refuses any change to the second. */
+  const twoWithTheSecondStuck = (when: string) => {
+    const [a, b] = ['First', 'Second'].map((title) => {
+      const m = repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/stuck-${title}.psd` }))
+      repo.search.upsertSearchIndex(m.id)
+      return m
+    }) as [Mockup, Mockup]
+    sqlite.exec(`CREATE TRIGGER stuck ${when} ON mockups WHEN OLD.id = ${b.id}
+      BEGIN SELECT RAISE(ABORT, 'stuck'); END`)
+    return [a, b] as const
+  }
+
+  it('moveManyToTrash', () => {
+    const [a, b] = twoWithTheSecondStuck('BEFORE UPDATE OF deleted_at')
+    expect(() => repo.trash.moveManyToTrash([a.id, b.id])).toThrow(/stuck/)
+    expect(repo.mockups.getMockup(a.id)?.deletedAt).toBeNull()
+    expect(repo.search.isIndexed(a.id)).toBe(true)
+  })
+
+  it('restoreMany', () => {
+    const a = repo.mockups.createMockup(approvedMockup({ title: 'First', libraryPath: '/lib/r1.psd' }))
+    const b = repo.mockups.createMockup(approvedMockup({ title: 'Second', libraryPath: '/lib/r2.psd' }))
+    repo.trash.moveManyToTrash([a.id, b.id])
+    sqlite.exec(`CREATE TRIGGER stuck BEFORE UPDATE OF deleted_at ON mockups WHEN OLD.id = ${b.id}
+      BEGIN SELECT RAISE(ABORT, 'stuck'); END`)
+
+    expect(() => repo.trash.restoreMany([a.id, b.id])).toThrow(/stuck/)
+    expect(repo.mockups.getMockup(a.id)?.deletedAt).not.toBeNull()
+    expect(repo.search.isIndexed(a.id)).toBe(false)
+  })
+
+  it('deleteMockupsHard', () => {
+    const [a, b] = twoWithTheSecondStuck('BEFORE DELETE')
+    expect(() => repo.trash.deleteMockupsHard([a.id, b.id])).toThrow(/stuck/)
+    expect(repo.mockups.getMockup(a.id)).toBeDefined()
+    expect(repo.search.isIndexed(a.id)).toBe(true)
+    expect(repo.search.isIndexed(b.id)).toBe(true)
+  })
+})
+
 describe('moveManyToTrash: a mockup inside a pile', () => {
   beforeEach(() => ensureSearchIndex(db))
 
