@@ -122,6 +122,8 @@ const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Stops here when anything has the library's database open: the dev app must be closed. */
 function assertAppClosed(): void {
+  // A fresh profile has no database yet, so nothing can have it open.
+  if (!existsSync(dbPath())) return
   let pids = ''
   try {
     pids = execFileSync('lsof', ['-t', dbPath()], { encoding: 'utf8' }).trim()
