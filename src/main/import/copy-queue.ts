@@ -376,7 +376,15 @@ export class CopyQueue {
       })
       this.live = null
 
-      if (this.repo.mockups.mockupExistsByHash(sha256)) {
+      const twin = this.repo.mockups.findByHash(sha256)
+      if (twin && twin.trashedAs !== null) {
+        await this.bringBack(twin, twin.trashedAs, partPath, libraryPath, size)
+        this.repo.copyJobs.setJobState(job.id, { status: 'done', mockupId: twin.id })
+        this.emit(haulId, job.id)
+        this.opts.onLanded?.([twin.id])
+        return
+      }
+      if (twin) {
         await this.deps.rm(destDir).catch(() => {})
         return skip('duplicate')
       }
@@ -431,6 +439,32 @@ export class CopyQueue {
         throw new Pause('source-gone')
       skip('unreadable')
     }
+  }
+
+  /**
+   * A dropped file whose mockup sits in Trash brings it back as it was, title, description and tags
+   * included, with its pile if it went to Trash with one. The copy just made is only kept when the
+   * mockup's own PSD went missing while it sat in Trash: it is the same file, so it takes its place.
+   */
+  private async bringBack(
+    twin: { id: number; libraryPath: string },
+    trashRow: number,
+    partPath: string,
+    libraryPath: string,
+    size: number
+  ): Promise<void> {
+    const destDir = join(libraryPath, '..')
+    const ownPsdThere = await this.deps.stat(twin.libraryPath).then(
+      () => true,
+      () => false
+    )
+    if (ownPsdThere) {
+      await this.deps.rm(destDir).catch(() => {})
+    } else {
+      await this.deps.rename(partPath, libraryPath)
+      this.repo.mockups.updateMockup(twin.id, { libraryPath, sizeBytes: size })
+    }
+    this.repo.trash.restoreMany([trashRow])
   }
 
   /** The images in a zip that could be a PSD's preview (`previewImages`); none when it can't be listed. */

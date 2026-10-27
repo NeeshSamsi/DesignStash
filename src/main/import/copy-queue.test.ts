@@ -609,6 +609,78 @@ describe('resuming at launch', () => {
   })
 })
 
+describe('a file whose mockup is in Trash', () => {
+  /** Land one dropped file and give back its mockup's id. */
+  const landed1 = async (rel: string, content: string) => {
+    const path = psd(rel, content)
+    const q = queue()
+    await q.start([path])
+    await q.idle()
+    return repo.copyJobs.getJobs(last().haulId)[0]!.mockupId!
+  }
+  const dropAgain = async (rel: string) => {
+    const q = queue()
+    await q.start([join(drop, rel)])
+    await q.idle()
+    return (await q.status())!
+  }
+  const mockupFolders = () => readdirSync(join(root, 'mockups')).sort()
+
+  it('brings it back with its title, description and tags, and keeps no second copy', async () => {
+    const id = await landed1('a.psd', 'SAME')
+    repo.mockups.updateMockup(id, { title: 'Glass iPhone', description: 'On a desk' })
+    const style = repo.tags.createCategory({ label: 'Mood' })
+    const calm = repo.tags.createTag({ label: 'Calm', categoryId: style.id })
+    repo.mockups.addTagToMockup(id, calm.id)
+    repo.trash.moveToTrash(id)
+    const folders = mockupFolders()
+    landed.length = 0
+
+    const status = await dropAgain('a.psd')
+
+    expect(repo.mockups.getMockup(id)).toMatchObject({
+      deletedAt: null,
+      title: 'Glass iPhone',
+      description: 'On a desk'
+    })
+    expect(repo.mockups.getTagsForMockup(id).map((t) => t.label)).toEqual(['Calm'])
+    expect(mockupFolders()).toEqual(folders)
+    expect(status.files[0]).toMatchObject({ status: 'done', mockupId: id })
+    expect(status.skipped.duplicate).toBe(0)
+    expect(landed).toEqual([[id]])
+  })
+
+  it('brings back the whole pile it went to Trash with', async () => {
+    const top = await landed1('top.psd', 'TOP')
+    const member = await landed1('member.psd', 'MEMBER')
+    repo.piles.createPile([top, member], top)
+    repo.trash.moveToTrash(top)
+
+    await dropAgain('member.psd')
+
+    expect(repo.mockups.getMockup(top)!.deletedAt).toBeNull()
+    expect(repo.mockups.getMockup(member)).toMatchObject({ deletedAt: null, groupId: top })
+  })
+
+  it('takes the new copy as its PSD when its own went missing while it sat in Trash', async () => {
+    const id = await landed1('a.psd', 'SAME')
+    repo.trash.moveToTrash(id)
+    rmSync(repo.mockups.getMockup(id)!.libraryPath)
+
+    await dropAgain('a.psd')
+
+    const m = repo.mockups.getMockup(id)!
+    expect(m.deletedAt).toBeNull()
+    expect(readFileSync(m.libraryPath, 'utf8')).toBe('SAME')
+  })
+
+  it('still skips a file whose mockup is in the library, as a duplicate', async () => {
+    await landed1('a.psd', 'SAME')
+    const status = await dropAgain('a.psd')
+    expect(status.skipped.duplicate).toBe(1)
+  })
+})
+
 describe('a copy in progress', () => {
   it('writes under a .part name, so a copy cut off is never taken for a PSD, and lands as original.psd', async () => {
     psd('a.psd', 'AAAA')

@@ -82,8 +82,18 @@ export class MockupRepository {
       .all()
   }
 
-  mockupExistsByHash(hash: string): boolean {
-    return !!this.db.select().from(mockups).where(eq(mockups.contentHash, hash)).get()
+  /**
+   * The mockup that already has this file, if any. One in the library comes first. One in Trash says
+   * which Trash row brings it back: its own, or its pile's top, since a pile goes to Trash by its top.
+   */
+  findByHash(hash: string): { id: number; libraryPath: string; trashedAs: number | null } | undefined {
+    const twins = this.db.select().from(mockups).where(eq(mockups.contentHash, hash)).all()
+    const placed = twins.map((m) => {
+      const top = m.deletedAt === null && m.groupId !== null ? this.getMockup(m.groupId) : undefined
+      const trashedAs = m.deletedAt !== null ? m.id : top?.deletedAt ? top.id : null
+      return { id: m.id, libraryPath: m.libraryPath, trashedAs }
+    })
+    return placed.find((m) => m.trashedAs === null) ?? placed[0]
   }
 
   updateMockup(id: number, data: Partial<NewMockup>): void {
