@@ -50,6 +50,12 @@ describe('prompt profiles', () => {
     expect(apple.variations).toBeUndefined()
   })
 
+  it("has only the 9B write a pile's base in that request; the 4B and Apple keep the top's own title (round 4 B)", () => {
+    expect(qwen35.pileBase).toBe(true)
+    expect(qwen3vl.pileBase).toBeUndefined()
+    expect(apple.pileBase).toBeUndefined()
+  })
+
   it('checks the scene things from the tuning, for every model', () => {
     for (const profile of [qwen3vl, qwen35, apple]) expect(profile.sceneThings).toBe(SCENE_THINGS)
   })

@@ -5,6 +5,7 @@ import type { AnalysisInput, InferenceProvider, InferenceResult } from '@shared/
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb, sample } from '../db/repositories/__tests__/setup'
+import { PileTitles } from '../library/pile-titles'
 import { InferenceQueue, analysisInputFor } from './inference-queue'
 import { RunTimes, memoryRunTimes } from './run-timing'
 
@@ -727,7 +728,7 @@ describe('what Look it over is told about a run (design L6)', () => {
       const before: number[] = []
       const pileVariations = vi.fn(async (pile: { coverPath: string; fileName: string }[]) => {
         before.push(stub.calls.length)
-        return answer(pile)
+        return { variations: await answer(pile), base: null }
       })
       return { ...stub, provider: { ...stub.provider, pileVariations }, pileVariations, before }
     }
@@ -867,6 +868,158 @@ describe('what Look it over is told about a run (design L6)', () => {
       expect(stop).toHaveBeenCalledOnce()
       expect(variation(top!.id)).toBeNull()
       expect(status(other.id)).toBe('ready')
+    })
+
+    describe("the pile's base, with a model that names it (the 9B, round 4 B)", () => {
+      const OWN = 'Long scroll MacBook on wavy sheets'
+      /** A pile in To stash whose top's suggestion has landed in its drafts, as Look it over leaves it: every draft holds the top's own title. */
+      const namedPile = (...names: string[]) => {
+        const rows = waitingPile(...names)
+        repo.mockups.updateMockup(rows[0]!.id, { aiStatus: 'ready', aiResult: result(OWN) })
+        for (const r of rows.slice(1)) repo.mockups.updateMockup(r.id, { aiStatus: 'ready', aiResult: result(r.title) })
+        for (const r of rows) repo.drafts.updateDraft(r.id, { title: OWN })
+        return rows
+      }
+      const base = (id: number) => repo.drafts.getDraft(id)!.title
+      /** A provider that names bases (unless `names` is false): each call answers its variations, and the base from the top's title it was given. */
+      const baseNamer = (answer: (topTitle: string) => string | null, names = true) => {
+        const stub = stubProvider((input) => result(input.fileName))
+        const pileVariations = vi.fn(async (pile: { coverPath: string; fileName: string }[], topTitle?: string) => ({
+          variations: pile.map((m) => m.fileName.replace('.psd', '')),
+          base: topTitle === undefined ? null : answer(topTitle)
+        }))
+        return { provider: { ...stub.provider, pileVariations, ...(names && { pileBase: true }) }, pileVariations }
+      }
+
+      it("asks for the base with the variations, from the top's own title, and gives it to every mockup in the pile", async () => {
+        const [top, side] = namedPile('scroll_wavy', 'scroll_flat')
+        const named = baseNamer(() => 'Long scroll MacBook')
+        const landed: [number, number[]][] = []
+        const queue = queueWith(named.provider, { onVariations: (pileId, ids) => landed.push([pileId, ids]) })
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls[0]![1]).toBe(OWN)
+        expect([base(top!.id), base(side!.id)]).toEqual(['Long scroll MacBook', 'Long scroll MacBook'])
+        expect(repo.drafts.getDraft(top!.id)!.keptFields).not.toContain('title')
+        expect(variation(side!.id)).toEqual({ words: 'scroll_flat', source: 'ai' })
+        expect(landed).toEqual([[top!.id, [top!.id, side!.id]]])
+      })
+
+      it('keeps a base the person typed, and asks only for the variations', async () => {
+        const [top, side] = namedPile('scroll_wavy', 'scroll_flat')
+        new PileTitles(repo).renameBase(top!.id, 'My scroll MacBook')
+        const named = baseNamer(() => 'Long scroll MacBook')
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls[0]![1]).toBeUndefined()
+        expect([base(top!.id), base(side!.id)]).toEqual(['My scroll MacBook', 'My scroll MacBook'])
+      })
+
+      it('keeps a base the person types while the model writes', async () => {
+        const [top] = namedPile('scroll_wavy', 'scroll_flat')
+        const named = baseNamer(() => {
+          new PileTitles(repo).renameBase(top!.id, 'Typed meanwhile')
+          return 'Long scroll MacBook'
+        })
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(base(top!.id)).toBe('Typed meanwhile')
+      })
+
+      it("waits for the top's suggestion to land in its draft, then asks for the base once", async () => {
+        const [top, side] = namedPile('scroll_wavy', 'scroll_flat')
+        repo.drafts.updateDraft(top!.id, { title: 'scroll', awaitingAi: true })
+        repo.drafts.updateDraft(side!.id, { title: 'scroll' })
+        const named = baseNamer(() => 'Long scroll MacBook')
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+        expect(named.pileVariations.mock.calls.map((c) => c[1])).toEqual([undefined])
+        expect(base(side!.id)).toBe('scroll')
+
+        // Look it over settles the top: its suggestion names the pile, and the pile is asked again.
+        repo.drafts.updateDraft(top!.id, { awaitingAi: false })
+        new PileTitles(repo).renameBase(top!.id, OWN, 'ai')
+        await queue.askPile(top!.id)
+        await queue.idle()
+        expect(named.pileVariations.mock.calls.map((c) => c[1])).toEqual([undefined, OWN])
+        expect([base(top!.id), base(side!.id)]).toEqual(['Long scroll MacBook', 'Long scroll MacBook'])
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+        expect(named.pileVariations).toHaveBeenCalledTimes(2)
+      })
+
+      it("asks no more for a base that came back as the top's own title", async () => {
+        const [top] = namedPile('scroll_wavy', 'scroll_flat')
+        const named = baseNamer((own) => own)
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.askPile(top!.id)
+        await queue.idle()
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations).toHaveBeenCalledOnce()
+        expect(base(top!.id)).toBe(OWN)
+      })
+
+      it("makes the base again from the top's own title when a mockup joins", async () => {
+        const [top] = namedPile('scroll_wavy', 'scroll_flat')
+        let asked = 0
+        const named = baseNamer(() => (++asked === 1 ? 'Long scroll MacBook on sheets' : 'Long scroll MacBook'))
+        const queue = queueWith(named.provider)
+        await queue.askPile(top!.id)
+        await queue.idle()
+        expect(base(top!.id)).toBe('Long scroll MacBook on sheets')
+
+        const desk = imported('scroll_desk', { aiStatus: 'ready', aiResult: result('desk') })
+        repo.piles.addToPile(top!.id, [desk.id])
+        repo.mockups.setStage([desk.id], 'to_stash')
+        repo.drafts.ensureDraft(desk.id, { title: base(top!.id), description: '', tagIds: [] })
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls.map((c) => c[1])).toEqual([OWN, OWN])
+        expect(base(desk.id)).toBe('Long scroll MacBook')
+      })
+
+      it('asks no base for a pile in My Stash, whose name the person has seen', async () => {
+        const rows = ['clay', 'realistic'].map((n) => imported(`watch-${n}`, { aiStatus: 'ready', aiResult: result(`Apple Watch ${n}`) }))
+        repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+        repo.mockups.setStage(rows.map((r) => r.id), 'stashed')
+        const named = baseNamer(() => 'Apple Watch')
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(rows[0]!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls[0]![1]).toBeUndefined()
+        expect(repo.mockups.getMockup(rows[1]!.id)!.title).toBe('watch-realistic')
+      })
+
+      it("never gives the top's title to a model that doesn't name bases (the 4B)", async () => {
+        const [top] = namedPile('scroll_wavy', 'scroll_flat')
+        const named = baseNamer(() => 'Long scroll MacBook', false)
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls.map((c) => c[1])).toEqual([undefined])
+        expect(base(top!.id)).toBe(OWN)
+      })
     })
   })
 })

@@ -10,6 +10,7 @@ import {
   VISION_IMAGE_MAX_EDGE,
   buildRequest,
   parseResult,
+  pileBaseTitle,
   readCoverAsDataUrl,
   type ChatContentPart,
   type ChatReply,
@@ -166,11 +167,57 @@ describe('VisionInferenceProvider.analyze', () => {
     const provider = new VisionInferenceProvider('m', { prompt: { ...SHIPPED, variations: true }, complete, readImage: async () => IMAGE })
     const pile = covers.map((coverPath, i) => ({ coverPath, fileName: `phone_${i}.psd` }))
 
-    expect(await provider.pileVariations!(pile)).toEqual(['front view', null])
+    expect(await provider.pileVariations!(pile)).toEqual({ variations: ['front view', null], base: null })
     expect(complete).toHaveBeenCalledOnce()
     expect(userText(complete.mock.calls[0]![0])).toContain('1 = phone_0.psd, 2 = phone_1.psd')
     expect(makeProvider().provider.pileVariations).toBeUndefined()
     await rm(dir, { recursive: true, force: true })
+  })
+
+  describe("a pile's base (round 4 B: the 9B)", () => {
+    let dir: string
+    let pile: { coverPath: string; fileName: string }[]
+    beforeAll(async () => {
+      dir = await mkdtemp(join(tmpdir(), 'vision-base-'))
+      pile = await Promise.all(
+        ['front', 'side'].map(async (name) => {
+          const coverPath = join(dir, `${name}.png`)
+          await sharp({ create: { width: 400, height: 300, channels: 3, background: '#808080' } }).png().toFile(coverPath)
+          return { coverPath, fileName: `scroll_${name}.psd` }
+        })
+      )
+    })
+    afterAll(() => rm(dir, { recursive: true, force: true }))
+
+    const reply = (title: string) =>
+      vi.fn<(req: ChatRequest) => Promise<ChatReply>>(async () => ({ text: JSON.stringify({ variations: ['wavy', 'flat'], title }) }))
+
+    it("asks for the base with the variations when its profile names bases, from the top's own title, and tidies it as a title", async () => {
+      const complete = reply("Long Scroll MacBook mockup variants with 'ACME' text")
+      const provider = new VisionInferenceProvider('m', { prompt: { ...SHIPPED, variations: true, pileBase: true }, complete, readImage: async () => IMAGE })
+
+      expect(provider.pileBase).toBe(true)
+      expect(await provider.pileVariations!(pile, 'Long Scroll MacBook on wavy sheets')).toEqual({ variations: ['wavy', 'flat'], base: 'Long Scroll MacBook' })
+      expect(userText(complete.mock.calls[0]![0])).toContain('The first mockup\'s own title is "Long Scroll MacBook on wavy sheets".')
+    })
+
+    it('never asks for one when its profile names only the variations (the 4B), even given the title', async () => {
+      const complete = reply('Long Scroll MacBook')
+      const provider = new VisionInferenceProvider('m', { prompt: { ...SHIPPED, variations: true }, complete, readImage: async () => IMAGE })
+
+      expect(provider.pileBase).toBeFalsy()
+      expect(await provider.pileVariations!(pile, 'Long Scroll MacBook on wavy sheets')).toEqual({ variations: ['wavy', 'flat'], base: null })
+      expect(userText(complete.mock.calls[0]![0])).not.toContain("own title")
+    })
+
+    it('gives no base when tidying leaves nothing', async () => {
+      const provider = new VisionInferenceProvider('m', {
+        prompt: { ...SHIPPED, variations: true, pileBase: true },
+        complete: reply('Free PSD mockup variants'),
+        readImage: async () => IMAGE
+      })
+      expect((await provider.pileVariations!(pile, 'Phone')).base).toBeNull()
+    })
   })
 
   it("says whether its runtime has the model loaded, and loads it on load()", async () => {
@@ -927,5 +974,27 @@ describe('VisionInferenceProvider pile edits', () => {
 
   it('throws on an empty rewrite, so the caller falls back to a copy', async () => {
     await expect(pileProvider(undefined, { description: ' ', tags: [] }).provider.pileEdits!.rewrite!(EDIT, ENTRY)).rejects.toThrow()
+  })
+})
+
+describe('pileBaseTitle', () => {
+  it('cuts the words for the pile itself (variant, variation), as the 4B and 9B add them', () => {
+    expect(pileBaseTitle('iMac Monitor Variants')).toBe('iMac Monitor')
+    expect(pileBaseTitle('Apron variants')).toBe('Apron')
+  })
+
+  it('tidies the rest as a suggested title: printed words, stock words, a capital, the object\'s colours', () => {
+    expect(pileBaseTitle("Free menu card labeled 'Salt & Vine' mockup")).toBe('Menu card')
+    expect(pileBaseTitle('iMac desktop setup')).toBe('iMac desktop setup')
+    expect(pileBaseTitle('stacked cubes')).toBe('Stacked cubes')
+    expect(pileBaseTitle('White ceramic mug with handle')).toBe('Ceramic mug with handle')
+  })
+
+  it('keeps to 60 characters at a word, and gives nothing when nothing is left', () => {
+    const long = pileBaseTitle('Long scroll MacBook Pro laptop with an extended landing page design shown')!
+    expect(long.length).toBeLessThanOrEqual(60)
+    expect(long.endsWith('…')).toBe(true)
+    expect(pileBaseTitle('Mockup variations')).toBeNull()
+    expect(pileBaseTitle('  ')).toBeNull()
   })
 })

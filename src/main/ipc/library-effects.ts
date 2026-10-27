@@ -55,7 +55,16 @@ function settleDrafts(ctx: HandlerContext, updates: AiStatusEvent['updates']): v
   for (const { mockupId } of done) {
     lookOver
       .settle(mockupId)
-      .then((item) => item && ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item))
+      .then((item) => {
+        if (!item) return
+        ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item)
+        // The top's suggestion just named its pile: a model that names bases (the 9B) makes it what every mockup shares.
+        if (item.role === 'top') {
+          inferenceQueueFor(ctx)
+            .askPile(mockupId)
+            .catch((err: unknown) => console.error('[AI] Could not ask a pile for its base:', err))
+        }
+      })
       .catch((err: unknown) => console.error('[AI] Could not fill in a draft:', err))
   }
 }

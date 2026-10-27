@@ -12,7 +12,8 @@ import { MASK_RULE, NAMES_ONLY, SHIPPED, requestFrom } from './request'
  * cover with its slot blurred grey; when one is only on the slot, the answer is made again from the
  * labelled cover (`MASK_RULE`), given the first answer less those words. A refusal asks once more.
  * It judges pile edits on the cover as it is (round 3 C, eval c3 and c4), and names a pile's
- * variations in one request (35 of 41 right on round 4's piles, about 4 s a pile).
+ * variations in one request (35 of 41 right on round 4's piles, about 4 s a pile), and in that request
+ * the pile's base: the top's own title less what not every mockup has (11 of 12 piles, against 9).
  */
 export const profile: PromptProfile = {
   buildRequest: requestFrom({ ...SHIPPED, noImage: NAMES_ONLY, maskRule: MASK_RULE }),
@@ -21,5 +22,6 @@ export const profile: PromptProfile = {
   verify: { check: 'soft', remask: 'label' },
   redo: true,
   pileEdits: { judge: true },
-  variations: true
+  variations: true,
+  pileBase: true
 }

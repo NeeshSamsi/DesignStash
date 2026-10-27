@@ -6,7 +6,7 @@ import { normaliseTagLabel } from '../../shared/tags'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
 import { CHECK_SCHEMA, ENTRY_SCHEMA, checkPrompt, pileEditRequest, readCheck, readRewrite, rewritePrompt } from './pile-edit'
 import { objectHintLine, objectHintRequest, readObjectHint } from './object-hint'
-import { askPileVariations } from './pile-variations'
+import { askPileVariations, withoutPileWords } from './pile-variations'
 import { draftLine, placeholderQuestion, placeholderWordsIn } from './placeholder-check'
 import type { PromptProfile } from './prompts/profile'
 import { isPlaceholder } from '../psd/placeholder'
@@ -283,6 +283,16 @@ function clip(text: string, max: number): string {
   return `${(space > 0 ? cut.slice(0, space) : cut).replace(/[\s,;:]+$/, '')}…`
 }
 
+/**
+ * A pile's base as the model gave it (`pileVariations`), tidied as a suggested title is: without the
+ * words for the pile itself (variant, variation), printed words, stock words and the object's
+ * colours, at most 60 characters. Null when nothing is left.
+ */
+export function pileBaseTitle(raw: string): string | null {
+  const title = clip(sentence(stripJunk(stripQuoted(withoutPileWords(raw)))), TITLE_MAX)
+  return withoutObjectColours({ title, description: '', tags: [] }).title || null
+}
+
 /** Parse and tidy the reply: valid shape, clean text, no duplicate tags ("iPhone" and "iphone" are one). */
 export function parseResult(raw: string): InferenceResult {
   const match = raw.match(/\{[\s\S]*\}/)
@@ -401,6 +411,8 @@ export class VisionInferenceProvider implements InferenceProvider {
   readonly pileEdits: PileEditSteps
   /** A pile's variations in one request, for a profile that names them (`PromptProfile.variations`). */
   readonly pileVariations?: NonNullable<InferenceProvider['pileVariations']>
+  /** Whether that request also names the pile's base (`PromptProfile.pileBase`). */
+  readonly pileBase?: boolean
 
   constructor(
     readonly name: string,
@@ -412,7 +424,12 @@ export class VisionInferenceProvider implements InferenceProvider {
       ...(!how.copy && { rewrite: (edit: PileEdit, entry: PileEditEntry) => this.rewriteForEdit(edit, entry) })
     }
     if (deps.prompt.variations) {
-      this.pileVariations = (pile) => askPileVariations(pile, async (request) => (await this.deps.complete(request)).text)
+      const base = deps.prompt.pileBase === true
+      if (base) this.pileBase = true
+      this.pileVariations = async (pile, topTitle) => {
+        const named = await askPileVariations(pile, async (request) => (await this.deps.complete(request)).text, base ? topTitle : undefined)
+        return { ...named, base: named.base === null ? null : pileBaseTitle(named.base) }
+      }
     }
   }
 

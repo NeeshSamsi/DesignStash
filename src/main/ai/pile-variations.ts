@@ -1,4 +1,5 @@
 import sharp from 'sharp'
+import type { PileNames } from '../../shared/inference'
 
 /**
  * Pile variations (design/specs/pile-titles.md, L8): 1 to 3 words for each mockup in a pile, the
@@ -9,6 +10,10 @@ import sharp from 'sharp'
  * say so (`PromptProfile.variations`); Apple is never asked, since half to two thirds of its words
  * were wrong. A mockup the model calls "same", or gives nothing for, gets no words here, and
  * `PileTitles.landAi` gives it the fallback (its file marker or number).
+ *
+ * The 9B's request also asks for the pile's base (`PromptProfile.pileBase`): the top's own suggested
+ * title with what not every mockup in the pile has taken out. On the eval's 12 piles that fitted 11
+ * (the top's whole title fitted 9), and "Long scroll MacBook" lost the wavy sheets only its top lies on.
  */
 
 export const PILE_VARIATION_SYSTEM =
@@ -17,19 +22,29 @@ export const PILE_VARIATION_SYSTEM =
 export const VARIATION_RULES =
   'Look at the angle or view, the setting or surface, the state (open, closed, lit) and how many objects it shows. Never name a colour of the object itself, and never describe what is printed or shown on it.'
 
-/** The question, about the sheet `pileSheet` makes from the pile's covers in this order. */
-export function pileVariationsText(fileNames: string[]): string {
+/** The base's line: the top's own title, less what not every mockup in the pile has (round 4 B, "pilebase3"). */
+export function pileBaseLine(topTitle: string): string {
+  return `The first mockup's own title is "${topTitle}". Also give the pile's title, at most 60 characters: that title with anything taken out that not every mockup in the pile has, such as a setting, a surface, a state or the design on a screen or label. Keep the object's name and product name as they are. Leave out the words mockup, variant and variation, and anything printed on the object.`
+}
+
+/**
+ * The question, about the sheet `pileSheet` makes from the pile's covers in this order. Given the
+ * top's own title, it also asks for the pile's base.
+ */
+export function pileVariationsText(fileNames: string[], topTitle?: string): string {
   const n = fileNames.length
   return [
     `The image shows ${n} mockups from one pile, numbered 1 to ${n} from left to right and top to bottom. Files: ${fileNames.map((f, i) => `${i + 1} = ${f}`).join(', ')}.`,
     `For each one, in 1 to 3 words, say what sets it apart from the others. ${VARIATION_RULES} Give each a different answer where you can, and answer "same" for one that looks the same as another.`,
-    `Reply with JSON: variations, a list of ${n} answers in order.`
+    ...(topTitle === undefined ? [] : [pileBaseLine(topTitle)]),
+    `Reply with JSON: variations, a list of ${n} answers in order${topTitle === undefined ? '' : ', then title'}.`
   ].join('\n')
 }
 
-/** The chat request for a pile: the sheet, then the question, held to one answer per mockup. */
-export function pileVariationsRequest(sheetUrl: string, fileNames: string[]): object {
+/** The chat request for a pile: the sheet, then the question, held to one answer per mockup, and the base when asked. */
+export function pileVariationsRequest(sheetUrl: string, fileNames: string[], topTitle?: string): object {
   const n = fileNames.length
+  const base = topTitle !== undefined
   return {
     messages: [
       { role: 'system', content: PILE_VARIATION_SYSTEM },
@@ -37,7 +52,7 @@ export function pileVariationsRequest(sheetUrl: string, fileNames: string[]): ob
         role: 'user',
         content: [
           { type: 'image_url', image_url: { url: sheetUrl } },
-          { type: 'text', text: pileVariationsText(fileNames) }
+          { type: 'text', text: pileVariationsText(fileNames, topTitle) }
         ]
       }
     ],
@@ -47,13 +62,16 @@ export function pileVariationsRequest(sheetUrl: string, fileNames: string[]): ob
         name: 'variation',
         schema: {
           type: 'object',
-          properties: { variations: { type: 'array', items: { type: 'string' }, minItems: n, maxItems: n } },
-          required: ['variations']
+          properties: {
+            variations: { type: 'array', items: { type: 'string' }, minItems: n, maxItems: n },
+            ...(base && { title: { type: 'string', maxLength: 80 } })
+          },
+          required: ['variations', ...(base ? ['title'] : [])]
         }
       }
     },
     temperature: 0,
-    max_tokens: 60 + 30 * n
+    max_tokens: 60 + 30 * n + (base ? 30 : 0)
   }
 }
 
@@ -120,6 +138,29 @@ export function readPileVariations(text: string, count: number): (string | null)
   })
 }
 
+/** The pile's base from the reply, trimmed, as the model wrote it; null when it gave none or the reply can't be read. */
+export function readPileBase(text: string): string | null {
+  let said: unknown
+  try {
+    said = (JSON.parse(text) as { title?: unknown }).title
+  } catch {
+    return null
+  }
+  return typeof said === 'string' && said.trim() !== '' ? said.trim() : null
+}
+
+/** Words for the pile itself, which the 4B and the 9B add to a base ("iMac Monitor Variants"), with an "of the" after them. */
+const PILE_WORDS = /\b(?:variants?|variations?)\b(?:\s+of\b(?:\s+(?:the|an?)\b)?)?/gi
+
+/** A base without the words for the pile itself; the provider tidies the rest as a title (`pileBaseTitle`). */
+export function withoutPileWords(base: string): string {
+  return base
+    .replace(PILE_WORDS, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:])/g, '$1')
+    .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '')
+}
+
 /** One mockup of a pile, in pile order (the top first). */
 export interface PileMember {
   coverPath: string
@@ -128,18 +169,21 @@ export interface PileMember {
 
 /**
  * The model's words for every mockup in a pile, the top included, from one request through
- * `complete` (the model's chat, answering with the reply's text). Nothing for any of them when the
- * request fails, or for a pile of one, which has nothing to tell apart.
+ * `complete` (the model's chat, answering with the reply's text), and the pile's base when given
+ * the top's own title. Nothing for any of them when the request fails, or for a pile of one, which
+ * has nothing to tell apart.
  */
 export async function askPileVariations(
   pile: PileMember[],
-  complete: (request: object) => Promise<string>
-): Promise<(string | null)[]> {
-  const none = pile.map(() => null)
+  complete: (request: object) => Promise<string>,
+  topTitle?: string
+): Promise<PileNames> {
+  const none = { variations: pile.map(() => null), base: null }
   if (pile.length < 2) return none
   try {
     const sheet = await pileSheet(pile.map((m) => m.coverPath))
-    return readPileVariations(await complete(pileVariationsRequest(sheet, pile.map((m) => m.fileName))), pile.length)
+    const text = await complete(pileVariationsRequest(sheet, pile.map((m) => m.fileName), topTitle))
+    return { variations: readPileVariations(text, pile.length), base: topTitle === undefined ? null : readPileBase(text) }
   } catch {
     return none
   }

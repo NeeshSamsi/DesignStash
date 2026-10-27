@@ -6,6 +6,7 @@ import {
 } from '@shared/inference'
 import type { AiStatus } from '@shared/inbox'
 import type { AiRun, AiStatusEvent, AiStatusUpdate } from '@shared/ipc/ai-status'
+import { tidyWords } from '@shared/pile-variation'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
 import { PileTitles } from '../library/pile-titles'
@@ -44,7 +45,7 @@ export interface InferenceQueueDeps {
   now?: () => number
   /** Calls `fire` after `ms`, and returns what clears it. Default: `setTimeout`. */
   timer?: (ms: number, fire: () => void) => () => void
-  /** A pile's variations landed (design L8): the mockups whose words changed. */
+  /** A pile's variations landed (design L8): the mockups whose words or base changed. */
   onVariations?: (pileId: number, mockupIds: number[]) => void
 }
 
@@ -75,6 +76,8 @@ export class InferenceQueue {
   private readonly piles: number[] = []
   /** The mockups each pile was last asked about, so it's asked again only once they change. */
   private readonly named = new Map<number, string>()
+  /** The mockups and the top's own title each pile's base was last asked from, so a base is asked once for each. */
+  private readonly based = new Map<number, string>()
   private pumping: Promise<void> | null = null
 
   private readonly timing: RunTimes
@@ -183,11 +186,12 @@ export class InferenceQueue {
    * Ask a pile for its variations (design L8), once nothing in it is waiting for its own suggestion
    * and its titles are kept (drafts in To stash, its mockups in My Stash), with a model that names
    * them. A pile is asked again only when its mockups have changed since, as when one joins, and
-   * while one of them still has only the fallback's words or none.
+   * while one of them still has only the fallback's words or none. With a model that names bases
+   * (the 9B), it is also asked while its base is still its top's own title, once for that title.
    */
   async askPile(pileId: number): Promise<void> {
     const provider = await this.deps.getProvider()
-    if (!provider?.pileVariations || !this.wantsVariations(pileId)) return
+    if (!provider?.pileVariations || !this.wantsVariations(pileId, provider)) return
     if (!this.piles.includes(pileId)) this.piles.push(pileId)
     this.pump()
   }
@@ -258,26 +262,50 @@ export class InferenceQueue {
     })
   }
 
-  private wantsVariations(pileId: number): boolean {
+  private wantsVariations(pileId: number, provider: InferenceProvider): boolean {
     const pile = this.pileMembers(pileId)
     if (!pile || pile.length < 2) return false
     const writing = (m: Mockup) => this.fifo.includes(m.id) || this.current === m.id || m.aiStatus === 'pending' || m.aiStatus === 'sniffing'
     if (pile.some((p) => writing(p.mockup))) return false
-    if (this.named.get(pileId) === pile.map((p) => p.mockup.id).join(',')) return false
+    const ids = pile.map((p) => p.mockup.id).join(',')
     // Still to name: a mockup with no words, or only the fallback's.
-    return pile.some((p) => p.source !== 'ai' && p.source !== 'typed')
+    if (this.named.get(pileId) !== ids && pile.some((p) => p.source !== 'ai' && p.source !== 'typed')) return true
+    // Or a base that is still the top's own title, not yet asked from with these mockups.
+    const base = this.baseFrom(pileId, provider)
+    return base !== null && base.now === tidyWords(base.topTitle) && this.based.get(pileId) !== `${ids}\n${base.topTitle}`
+  }
+
+  /**
+   * The top's own suggested title, for a model that names bases (the 9B), while the pile's base can
+   * take the AI's: the pile waits in To stash, nobody typed its base, and the top's suggestion has
+   * landed in its draft (until then Look it over would write the top's title over the base). With
+   * the base as it is now. Null otherwise: a pile in My Stash keeps the name the person saw.
+   */
+  private baseFrom(pileId: number, provider: InferenceProvider): { topTitle: string; now: string } | null {
+    if (!provider.pileBase) return null
+    const top = this.deps.repo.mockups.getMockup(pileId)
+    if (!top?.isGroup || top.deletedAt !== null || top.stage !== 'to_stash' || top.aiStatus !== 'ready') return null
+    const draft = this.deps.repo.drafts.getDraft(pileId)
+    if (!draft || draft.awaitingAi || draft.keptFields.includes('title')) return null
+    const own = InferenceResultSchema.safeParse(top.aiResult)
+    return own.success ? { topTitle: own.data.title, now: tidyWords(draft.title) } : null
   }
 
   /**
    * One request for a pile's variations, landed by `PileTitles.landAi`: typed words stay, "same" or
-   * no answer takes the fallback, and words the app gives twice get a number. A request that fails
-   * leaves the fallback; one stuck past the hard stop is stopped, and the queue moves on.
+   * no answer takes the fallback, and words the app gives twice get a number. With a model that
+   * names bases, the same request gives the pile's base from its top's own title, which renames
+   * every mockup in it unless the person typed a base meanwhile. A request that fails leaves the
+   * fallback and the base; one stuck past the hard stop is stopped, and the queue moves on.
    */
   private async namePile(pileId: number): Promise<void> {
     const provider = await this.deps.getProvider()
     const pile = this.pileMembers(pileId)
     if (!provider?.pileVariations || !pile || pile.length < 2) return
-    this.named.set(pileId, pile.map((p) => p.mockup.id).join(','))
+    const ids = pile.map((p) => p.mockup.id).join(',')
+    this.named.set(pileId, ids)
+    const topTitle = this.baseFrom(pileId, provider)?.topTitle
+    if (topTitle !== undefined) this.based.set(pileId, `${ids}\n${topTitle}`)
     const slowAfterMs = this.timing.slowAfterMs(this.deps.model?.() ?? null)
     let stuck = false
     let clear = () => {}
@@ -287,13 +315,20 @@ export class InferenceQueue {
         resolve(null)
       })
     })
-    const asked = provider.pileVariations(pile.map((p) => ({ coverPath: p.mockup.coverPath, fileName: analysisInputFor(p.mockup).fileName })))
-    const answers = await Promise.race([asked.catch(() => null), stopped])
+    const asked = provider.pileVariations(
+      pile.map((p) => ({ coverPath: p.mockup.coverPath, fileName: analysisInputFor(p.mockup).fileName })),
+      topTitle
+    )
+    const named = await Promise.race([asked.catch(() => null), stopped])
     clear()
     if (stuck) await provider.stop?.().catch(() => {})
-    if (!answers) return
-    const changed = new PileTitles(this.deps.repo).landAi(pileId, new Map(pile.map((p, i) => [p.mockup.id, answers[i] ?? null])))
-    if (changed.length > 0) this.deps.onVariations?.(pileId, changed)
+    if (!named) return
+    const titles = new PileTitles(this.deps.repo)
+    const changed = new Set(titles.landAi(pileId, new Map(pile.map((p, i) => [p.mockup.id, named.variations[i] ?? null]))))
+    if (named.base !== null && topTitle !== undefined && this.baseFrom(pileId, provider)?.topTitle === topTitle) {
+      for (const id of titles.renameBase(pileId, named.base, 'ai').mockupIds) changed.add(id)
+    }
+    if (changed.size > 0) this.deps.onVariations?.(pileId, [...changed])
   }
 
   private async process(id: number): Promise<void> {

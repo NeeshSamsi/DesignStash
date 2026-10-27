@@ -53,10 +53,24 @@ export interface InferenceProvider {
   pileEdits?: PileEditSteps
   /**
    * A pile's variations (design/specs/pile-titles.md, L8): the model's words for each mockup, in
-   * pile order (the top first), from one request; null where it gave none or said "same". Left out
-   * by a model whose piles take the fallback (Apple).
+   * pile order (the top first), from one request; null where it gave none or said "same". Given the
+   * top's own suggested title, a model that names bases (`pileBase`) also gives the pile's base in
+   * that request. Left out by a model whose piles take the fallback (Apple).
    */
-  pileVariations?(pile: { coverPath: string; fileName: string }[]): Promise<(string | null)[]>
+  pileVariations?(pile: { coverPath: string; fileName: string }[], topTitle?: string): Promise<PileNames>
+  /**
+   * Whether `pileVariations` also names the pile's base: the top's own title with what not every
+   * mockup in the pile has taken out (the 9B, round 4 B). Left out, the base stays the top's title.
+   */
+  readonly pileBase?: boolean
+}
+
+/** What one request named for a pile. */
+export interface PileNames {
+  /** Each mockup's words, in pile order; null where the model gave none or said "same". */
+  variations: (string | null)[]
+  /** The pile's base, tidied as a title; null when it wasn't asked for, or nothing was left of it. */
+  base: string | null
 }
 
 /** A mockup's description and tag labels. */

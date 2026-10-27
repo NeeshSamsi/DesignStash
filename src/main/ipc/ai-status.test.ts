@@ -151,6 +151,29 @@ describe('ai:status push', () => {
     expect(drafts).toHaveLength(1)
   })
 
+  it("names a pile's base once its top's suggestion lands in a waiting draft, with a model that names bases (the 9B)", async () => {
+    const [top, side] = [make('top'), make('side')]
+    repo.piles.createPile([top.id, side.id], top.id)
+    repo.mockups.setStage([top.id, side.id], 'to_stash')
+    repo.mockups.updateMockup(top.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(side.id, { aiStatus: 'ready', aiResult: { title: 'Side', description: 'd', tags: [] } })
+    await new LookOverService(repo, async () => null, { probe: async () => ({ width: 1, height: 1 }) }).open()
+    analyze.mockResolvedValue({ title: 'Long scroll MacBook on wavy sheets', description: 'd', tags: [] })
+    const pileVariations = vi.fn(async (_pile: unknown[], topTitle?: string) => ({
+      variations: ['wavy', 'flat'],
+      base: topTitle ? 'Long scroll MacBook' : null
+    }))
+    Object.assign(ctx, { ai: { activeProvider: async () => ({ id: 'stub', name: 'Stub', analyze, pileVariations, pileBase: true }) } })
+
+    await inferenceQueueFor(ctx).enqueue([top.id])
+
+    await vi.waitFor(() => expect(repo.drafts.getDraft(side.id)?.title).toBe('Long scroll MacBook'))
+    expect(pileVariations).toHaveBeenLastCalledWith(expect.any(Array), 'Long scroll MacBook on wavy sheets')
+    await vi.waitFor(() =>
+      expect(push).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_DRAFT, expect.objectContaining({ mockupId: side.id, title: 'Long scroll MacBook' }))
+    )
+  })
+
   it('is one shared queue for the whole app', () => {
     expect(inferenceQueueFor(ctx)).toBe(inferenceQueueFor(ctx))
   })

@@ -6,9 +6,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   PILE_VARIATION_SYSTEM,
   askPileVariations,
+  pileBaseLine,
   pileSheet,
   pileVariationsRequest,
-  readPileVariations
+  pileVariationsText,
+  readPileBase,
+  readPileVariations,
+  withoutPileWords
 } from './pile-variations'
 
 let dir: string
@@ -27,7 +31,9 @@ const size = async (url: string) => sharp(Buffer.from(url.slice(url.indexOf(',')
 
 type Request = {
   messages: { role: string; content: string | { type: string; text?: string; image_url?: { url: string } }[] }[]
-  response_format: { json_schema: { schema: { properties: { variations: { minItems: number; maxItems: number } } } } }
+  response_format: {
+    json_schema: { schema: { properties: { variations: { minItems: number; maxItems: number }; title?: { type: string; maxLength: number } }; required: string[] } }
+  }
   temperature: number
   max_tokens: number
 }
@@ -63,6 +69,60 @@ describe('pileVariationsRequest', () => {
   })
 })
 
+describe("the pile's base, asked in the same request (round 4 B, the 9B)", () => {
+  const names = ['phone_front.psd', 'phone_side.psd']
+  const top = 'Long scroll MacBook on wavy white sheets'
+
+  it("starts from the top's own title, in the words round 4 B measured (pilebase3)", () => {
+    expect(pileBaseLine(top)).toBe(
+      'The first mockup\'s own title is "Long scroll MacBook on wavy white sheets". Also give the pile\'s title, at most 60 characters: that title with anything taken out that not every mockup in the pile has, such as a setting, a surface, a state or the design on a screen or label. Keep the object\'s name and product name as they are. Leave out the words mockup, variant and variation, and anything printed on the object.'
+    )
+    expect(pileVariationsText(names, top).split('\n')).toEqual([
+      ...pileVariationsText(names).split('\n').slice(0, 2),
+      pileBaseLine(top),
+      'Reply with JSON: variations, a list of 2 answers in order, then title.'
+    ])
+  })
+
+  it('holds the reply to the variations, then a title, with room for it', () => {
+    const request = pileVariationsRequest('data:image/jpeg;base64,SHEET', names, top) as Request
+    const { schema } = request.response_format.json_schema
+    expect(schema.properties.title).toEqual({ type: 'string', maxLength: 80 })
+    expect(schema.required).toEqual(['variations', 'title'])
+    expect(request.max_tokens).toBe(60 + 30 * 2 + 30)
+    expect((pileVariationsRequest('data:image/jpeg;base64,SHEET', names) as Request).response_format.json_schema.schema.required).toEqual(['variations'])
+  })
+})
+
+describe('readPileBase', () => {
+  it('gives the base as the model wrote it, trimmed', () => {
+    expect(readPileBase(JSON.stringify({ variations: ['a', 'b'], title: ' Long Scroll MacBook ' }))).toBe('Long Scroll MacBook')
+  })
+
+  it('gives nothing for an empty or missing title, or a reply it cannot read', () => {
+    expect(readPileBase(JSON.stringify({ variations: ['a'], title: '  ' }))).toBeNull()
+    expect(readPileBase(JSON.stringify({ variations: ['a'] }))).toBeNull()
+    expect(readPileBase(JSON.stringify({ title: 3 }))).toBeNull()
+    expect(readPileBase('not json')).toBeNull()
+  })
+})
+
+describe('withoutPileWords', () => {
+  it('cuts the words for the pile itself, which the 4B and 9B add to a base', () => {
+    expect(withoutPileWords('iMac Monitor Variants')).toBe('iMac Monitor')
+    expect(withoutPileWords('Apron variants')).toBe('Apron')
+    expect(withoutPileWords('Variations of the Apple Watch Ultra')).toBe('Apple Watch Ultra')
+    expect(withoutPileWords('Oval mug, variant views')).toBe('Oval mug, views')
+    expect(withoutPileWords('Mockup variants')).toBe('Mockup')
+    expect(withoutPileWords('Variants')).toBe('')
+  })
+
+  it('leaves every other word as it is', () => {
+    expect(withoutPileWords('Long Scroll MacBook')).toBe('Long Scroll MacBook')
+    expect(withoutPileWords('Invariant poster')).toBe('Invariant poster')
+  })
+})
+
 describe('readPileVariations', () => {
   it('gives each mockup its words in order, trimmed, as the model wrote them', () => {
     expect(readPileVariations(JSON.stringify({ variations: [' front view ', 'side view.', 'European layout'] }), 3)).toEqual([
@@ -91,19 +151,33 @@ describe('askPileVariations', () => {
 
   it('asks once for the whole pile, the top included, and reads the answer', async () => {
     const complete = vi.fn<(request: object) => Promise<string>>(async () => JSON.stringify({ variations: ['front', 'side'] }))
-    expect(await askPileVariations(pile(), complete)).toEqual(['front', 'side'])
+    expect(await askPileVariations(pile(), complete)).toEqual({ variations: ['front', 'side'], base: null })
     expect(complete).toHaveBeenCalledOnce()
     const request = complete.mock.calls[0]![0] as Request
     expect(await size((request.messages[1]!.content as { image_url?: { url: string } }[])[0]!.image_url!.url)).toMatchObject({ width: 1024 })
   })
 
+  it("given the top's own title, asks for the pile's base in the same request and reads it", async () => {
+    const complete = vi.fn<(request: object) => Promise<string>>(async () => JSON.stringify({ variations: ['front', 'side'], title: 'Phone' }))
+    expect(await askPileVariations(pile(), complete, 'Phone on a grey floor')).toEqual({ variations: ['front', 'side'], base: 'Phone' })
+    const [, text] = (complete.mock.calls[0]![0] as Request).messages[1]!.content as { text?: string }[]
+    expect(text!.text).toContain(pileBaseLine('Phone on a grey floor'))
+  })
+
+  it('reads no base it did not ask for', async () => {
+    expect(await askPileVariations(pile(), async () => JSON.stringify({ variations: ['front', 'side'], title: 'Phone' }))).toEqual({
+      variations: ['front', 'side'],
+      base: null
+    })
+  })
+
   it('gives nothing for any of them when the request fails, so they all take the fallback', async () => {
-    expect(await askPileVariations(pile(), async () => Promise.reject(new Error('busy')))).toEqual([null, null])
+    expect(await askPileVariations(pile(), async () => Promise.reject(new Error('busy')), 'Phone')).toEqual({ variations: [null, null], base: null })
   })
 
   it('asks nothing for a pile of one', async () => {
     const complete = vi.fn(async () => '')
-    expect(await askPileVariations(pile().slice(0, 1), complete)).toEqual([null])
+    expect(await askPileVariations(pile().slice(0, 1), complete, 'Phone')).toEqual({ variations: [null], base: null })
     expect(complete).not.toHaveBeenCalled()
   })
 })
