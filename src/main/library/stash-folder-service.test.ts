@@ -8,7 +8,7 @@ import { createSettingsStore, type SettingsStore } from '../settings'
 import { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
-import { applyPendingStash, StashFolderService, type StashFolderDeps } from './stash-folder-service'
+import { applyPendingStash, StashFolderService, stashMockupCount, type StashFolderDeps } from './stash-folder-service'
 
 let base: string
 let root: string
@@ -333,6 +333,25 @@ describe('change: point', () => {
 
     expect(await service().change(empty, 'point')).toEqual({ ok: false, reason: 'no-stash' })
     expect(settings.get().pendingStash).toBeNull()
+  })
+})
+
+describe('stashMockupCount', () => {
+  it('counts the mockups in a stash, leaving out Trash', () => {
+    const other = join(base, 'Other')
+    mkdirSync(other)
+    const db = new Database(join(other, 'designstash.db'))
+    db.exec(`CREATE TABLE mockups (id integer primary key, deleted_at text);
+             INSERT INTO mockups VALUES (1, NULL), (2, NULL), (3, '2026-10-01T09:00:00Z');`)
+    db.close()
+
+    expect(stashMockupCount(other)).toBe(2)
+  })
+
+  it('has no count when there is no stash, or its database cannot be read', () => {
+    expect(stashMockupCount(join(base, 'Nowhere'))).toBeNull()
+    write(join(base, 'Broken', 'designstash.db'), 'not a database')
+    expect(stashMockupCount(join(base, 'Broken'))).toBeNull()
   })
 })
 

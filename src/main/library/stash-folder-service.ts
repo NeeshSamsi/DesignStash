@@ -287,6 +287,28 @@ async function nearestExisting(path: string): Promise<string> {
 }
 
 /**
+ * How many mockups the stash in `folder` holds, Trash left out, read from its database without
+ * changing it. Null when there is no stash there or its database can't be read.
+ */
+export function stashMockupCount(folder: string): number | null {
+  try {
+    const db = new Database(join(folder, DB_FILE), {
+      readonly: true,
+      fileMustExist: true,
+      nativeBinding: nativeBinding()
+    })
+    try {
+      const count = db.prepare('SELECT count(*) FROM mockups WHERE deleted_at IS NULL').pluck().get()
+      return typeof count === 'number' ? count : null
+    } finally {
+      db.close()
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
  * Run at launch, before the database is opened. Switches to a stash folder chosen last time and, for
  * a move, clears the old folder once the new copy is confirmed. If the new copy has gone missing, the
  * old folder stays in use.

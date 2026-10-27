@@ -11,7 +11,9 @@ export const BootStateSchema = z.enum([
 export const FolderCheckSchema = z.object({
   state: z.enum(['ok', 'missing', 'not-writable']),
   /** A DesignStash library is already in the folder. */
-  hasLibrary: z.boolean()
+  hasLibrary: z.boolean(),
+  /** How many mockups that library holds, Trash left out. Null without one, or when it can't be read. */
+  mockupCount: z.number().int().nonnegative().nullable()
 })
 
 /** Launch problems and the onboarding folder check. Replies carry states only, never paths or messages. */
