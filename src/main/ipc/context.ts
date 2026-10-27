@@ -60,9 +60,16 @@ export interface HandlerContext {
   push<C extends PushChannel>(channel: C, payload: PushPayload<C>): void
 }
 
-export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRuntime {
-  const modelsDir = join(settings.getLibraryRoot(), '..', 'models')
+export function createAiRuntime(
+  settings: SettingsStore,
+  repo: Repository,
+  userDataDir: string
+): AiRuntime {
+  // Models are app data, so moving or pointing the stash folder never leaves them behind.
+  const modelsDir = join(userDataDir, 'models')
   const downloader = new ModelDownloader(modelsDir)
+  // Earlier versions kept them beside the stash folder; any found there move in now.
+  void downloader.adopt(join(settings.getLibraryRoot(), '..', 'models'))
   // Qwen 2.5 VL 3B or 7B, chosen before the switch, reads as no model chosen.
   forgetRemovedModel(settings)
 
@@ -72,7 +79,7 @@ export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRu
 
   // A llama-server left running by a crashed or killed app is stopped now, and this run's is
   // remembered so the next launch can do the same.
-  const pidFile = new LlamaPidFile(join(modelsDir, '..', 'llama-server.pid'))
+  const pidFile = new LlamaPidFile(join(userDataDir, 'llama-server.pid'))
   void pidFile.reapStale().catch(() => {})
   const providers = createProviderFactory({
     modelsDir,
@@ -82,7 +89,7 @@ export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRu
   })
 
   // Meaning search runs a second llama-server in embedding mode, with its own pid file.
-  const embedPidFile = new LlamaPidFile(join(modelsDir, '..', 'llama-server-embed.pid'))
+  const embedPidFile = new LlamaPidFile(join(userDataDir, 'llama-server-embed.pid'))
   void embedPidFile.reapStale().catch(() => {})
   const meaningModelPath = join(modelsDir, MEANING_MODEL_ID, MODEL_FILE_NAMES.model)
   const embeddings = new EmbeddingService({
@@ -158,7 +165,7 @@ export function createHandlerContext(opts: {
     settings: opts.settings,
     telemetry: opts.telemetry,
     repo: opts.repo,
-    ai: createAiRuntime(opts.settings, opts.repo),
+    ai: createAiRuntime(opts.settings, opts.repo, app.getPath('userData')),
     library: new LibraryService(opts.repo, opts.settings.getLibraryRoot(), {
       openPath: (p) => shell.openPath(p)
     }),
