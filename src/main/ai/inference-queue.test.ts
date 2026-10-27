@@ -7,7 +7,7 @@ import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb, sample } from '../db/repositories/__tests__/setup'
 import { PileTitles } from '../library/pile-titles'
 import { InferenceQueue, analysisInputFor } from './inference-queue'
-import { RunTimes, memoryRunTimes } from './run-timing'
+import { HARD_STOP_FACTOR, RunTimes, memoryRunTimes } from './run-timing'
 
 const result = (title: string): InferenceResult => ({
   title,
@@ -472,6 +472,44 @@ describe('what Look it over is told about a run (design L6)', () => {
     expect(times.get()['qwen3.5-9b']!.at(-1)).toBe(14_000)
   })
 
+  it("starts the clock once the mockup's files are readied, so a slow slot mask is never the model's time (F-036)", async () => {
+    let now = 1_000
+    const times = memoryRunTimes()
+    times.set({ 'qwen3.5-9b': [12_000, 12_000, 13_000, 14_000, 15_000] })
+    const timing = new RunTimes(times)
+    const slowAfterMs = timing.slowAfterMs('qwen3.5-9b')
+    const stub = stubProvider(() => {
+      now += 9_000
+      return result('x')
+    })
+    const hardStops: number[] = []
+    const a = imported('a')
+    let whilePreparing: unknown = null
+    const queue = queueWith(stub.provider, {
+      now: () => now,
+      model: () => 'qwen3.5-9b',
+      timing,
+      // A kit of smart objects: its mask takes 4 s, and it still waits its turn to be written meanwhile.
+      prepare: async () => {
+        whilePreparing = queue.statusOf(a.id)
+        now += 4_000
+      },
+      timer: (ms) => {
+        hardStops.push(ms)
+        return () => {}
+      }
+    })
+
+    await queue.enqueue([a.id])
+    await queue.idle()
+
+    const runs = events.flatMap((e) => e.updates).filter((u) => u.status === 'sniffing').map((u) => u.run)
+    expect(runs).toEqual([{ phase: 'writing', writingSince: 5_000, slowAfterMs }])
+    expect(times.get()['qwen3.5-9b']!.at(-1)).toBe(9_000)
+    expect(hardStops).toEqual([HARD_STOP_FACTOR * slowAfterMs])
+    expect(whilePreparing).toEqual({ mockupId: a.id, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs } })
+  })
+
   it('says the model is starting while it loads, and starts the clock once it answers', async () => {
     let now = 0
     const loading = later()
@@ -604,7 +642,7 @@ describe('what Look it over is told about a run (design L6)', () => {
       expect(repo.mockups.getMockup(a.id)?.aiResult).toBeNull()
     })
 
-    it('counts the time spent readying the files towards the stop', async () => {
+    it('counts the stop from when the model begins, after its files are readied (F-036)', async () => {
       let now = 0
       const hand = handTimer()
       const stub = stubProvider(() => result('a'))
@@ -622,7 +660,7 @@ describe('what Look it over is told about a run (design L6)', () => {
       await queue.enqueue([imported('a').id])
       await queue.idle()
 
-      expect(hand.set[0]!.ms).toBe(3 * timing.slowAfterMs('apple') - 1_000)
+      expect(hand.set[0]!.ms).toBe(3 * timing.slowAfterMs('apple'))
     })
   })
 

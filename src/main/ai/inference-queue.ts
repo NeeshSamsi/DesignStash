@@ -170,11 +170,12 @@ export class InferenceQueue {
 
   /**
    * Where one mockup is: waiting its turn (with the threshold, since the renderer counts a wait on
-   * screen too), its run, or the status it ended with. Null when it is gone.
+   * screen too, and while its files are readied), its run, or the status it ended with. Null when
+   * it is gone.
    */
   statusOf(id: number): AiStatusUpdate | null {
     if (this.current === id && this.run) return { mockupId: id, status: 'sniffing', run: this.run }
-    if (this.fifo.includes(id)) {
+    if (this.fifo.includes(id) || this.current === id) {
       const slowAfterMs = this.timing.slowAfterMs(this.deps.model?.() ?? null)
       return { mockupId: id, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs } }
     }
@@ -351,12 +352,13 @@ export class InferenceQueue {
       // A load that fails leaves it to the request, which fails and is tried again.
       await provider.load?.().catch(() => {})
     }
-    const since = this.now()
-    this.run = { phase: 'writing', writingSince: since, slowAfterMs }
-    this.emit([{ ...(cold ? { mockupId: id, status: 'sniffing' as const } : this.setStatus(id, 'sniffing')), run: this.run }])
+    // Readying its files (the slot mask) is no part of the model's run: the clock starts after.
     await this.deps.prepare?.(m).catch(() => {})
     // Filled in by the person while the model loaded or the files were readied: nothing to ask.
     if (this.deps.repo.mockups.getMockup(id)?.aiStatus === 'opted_out') return
+    const since = this.now()
+    this.run = { phase: 'writing', writingSince: since, slowAfterMs }
+    this.emit([{ ...(cold ? { mockupId: id, status: 'sniffing' as const } : this.setStatus(id, 'sniffing')), run: this.run }])
     const result = await this.suggestBy(provider, m, since + HARD_STOP_FACTOR * slowAfterMs)
 
     // Tossed or trashed while it was being read: nothing to write to. Filled in by the person: theirs.
