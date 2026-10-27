@@ -56,6 +56,11 @@ export const mockups = sqliteTable(
     favouritedAt: text('favourited_at'),
     deletedAt: text('deleted_at'),
     /**
+     * In Trash: where it came from, for the Trash card's caption ("Tossed from To sort"). Its stage
+     * is kept, so Restore puts it back there. `import`: an import that was undone brought it in.
+     */
+    trashOrigin: text('trash_origin', { enum: ['my-stash', 'to-sort', 'to-stash', 'import'] }),
+    /**
      * Where the mockup is in the import flow: waiting to be sorted into piles, sorted and waiting
      * to be looked over, or stashed (in My Stash).
      */
@@ -295,6 +300,8 @@ export const mockupEmbeddings = sqliteTable(
 // mockups_fts (FTS5 virtual table) is maintained via raw SQL in search-index.ts and repository.ts — NOT a Drizzle table.
 
 export type Mockup = InferSelectModel<typeof mockups>
+/** Where a mockup in Trash came from (`mockups.trash_origin`). */
+export type TrashOrigin = NonNullable<Mockup['trashOrigin']>
 export type Draft = InferSelectModel<typeof drafts>
 export type CopyHaul = InferSelectModel<typeof copyHauls>
 export type CopyJob = InferSelectModel<typeof copyJobs>

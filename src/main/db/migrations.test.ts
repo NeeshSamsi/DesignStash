@@ -204,3 +204,21 @@ describe('migration: AI-made tags no mockup carries (F-034)', () => {
     expect(sqlite.prepare('SELECT suggestion FROM tag_categories WHERE id = 3').get()).toEqual({ suggestion: 0 })
   })
 })
+
+describe('migration: where a mockup in Trash came from', () => {
+  it('marks every mockup already in Trash as from My Stash, since Toss deleted for good before', () => {
+    const { sqlite, migrateRest } = databaseBefore('_trash_origin')
+    sqlite.exec(`
+      INSERT INTO mockups (id, title, library_path, cover_path, cover_source, deleted_at) VALUES
+        (1, 'Gone', '/l/1.psd', '/c/1.png', 'embedded', '2026-10-20T10:00:00.000Z'),
+        (2, 'Here', '/l/2.psd', '/c/2.png', 'embedded', NULL);
+    `)
+
+    migrateRest()
+
+    expect(sqlite.prepare('SELECT id, trash_origin FROM mockups ORDER BY id').all()).toEqual([
+      { id: 1, trash_origin: 'my-stash' },
+      { id: 2, trash_origin: null }
+    ])
+  })
+})

@@ -149,6 +149,38 @@ describe('moveManyToTrash / restoreMany', () => {
   })
 })
 
+describe('where a mockup in Trash came from (undo spec: Toss goes to Trash)', () => {
+  beforeEach(() => ensureSearchIndex(db))
+
+  const at = (stage: 'stashed' | 'to_sort' | 'to_stash', title: string) =>
+    repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/o-${title}.psd`, stage }))
+
+  it('marks each with the place it left: My Stash, To sort or To stash', () => {
+    const [mine, sorting, stashing] = [at('stashed', 'm'), at('to_sort', 's'), at('to_stash', 't')]
+
+    repo.trash.moveManyToTrash([mine.id, sorting.id, stashing.id])
+
+    const origins = Object.fromEntries(repo.trash.getTrashEntries().map((e) => [e.row.id, e.origin]))
+    expect(origins).toEqual({ [mine.id]: 'my-stash', [sorting.id]: 'to-sort', [stashing.id]: 'to-stash' })
+  })
+
+  it('marks what an undone import brought in as from that import', () => {
+    const m = at('to_sort', 'haul')
+    repo.trash.moveManyToTrash([m.id], { origin: 'import' })
+    expect(repo.trash.getTrashEntries()).toMatchObject([{ row: { id: m.id }, origin: 'import' }])
+  })
+
+  it('Restore puts a tossed mockup back in the inbox it came from, and forgets where it was', () => {
+    const m = at('to_sort', 'back')
+    repo.trash.moveManyToTrash([m.id])
+
+    repo.trash.restoreMany([m.id])
+
+    expect(repo.mockups.getMockup(m.id)).toMatchObject({ stage: 'to_sort', deletedAt: null, trashOrigin: null })
+    expect(repo.inbox.list('to_sort').map((r) => r.id)).toContain(m.id)
+  })
+})
+
 describe('a move that fails part-way changes nothing', () => {
   beforeEach(() => ensureSearchIndex(db))
 

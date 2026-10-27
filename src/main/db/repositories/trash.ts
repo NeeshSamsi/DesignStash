@@ -2,11 +2,15 @@ import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm'
 import { fullTitle } from '@shared/pile-variation'
 import type { AppDatabase } from '../connection'
 import { mockups } from '../schema'
-import type { Mockup } from '../schema'
+import type { Mockup, TrashOrigin } from '../schema'
 import type { LibraryQueryRepository, LibraryRow } from './library-query'
 import type { MockupRepository } from './mockups'
 import { PLACE_ALONE, pileRole } from './piles'
 import type { SearchRepository } from './search'
+
+/** Where a mockup goes to Trash from: the inbox its stage says, or My Stash. */
+const originOf = (m: Pick<Mockup, 'stage'>): TrashOrigin =>
+  m.stage === 'to_sort' ? 'to-sort' : m.stage === 'to_stash' ? 'to-stash' : 'my-stash'
 
 /** Soft delete (deletedAt), restore and permanent delete. */
 export class TrashRepository {
@@ -31,7 +35,7 @@ export class TrashRepository {
    * What is in Trash, newest first: each pile or single mockup once, with when it was trashed
    * and every id it covers (a pile's members come back and go with it).
    */
-  getTrashEntries(): { row: LibraryRow; trashedAt: string; ids: number[] }[] {
+  getTrashEntries(): { row: LibraryRow; trashedAt: string; ids: number[]; origin: TrashOrigin }[] {
     const trashed = this.db
       .select()
       .from(mockups)
@@ -43,7 +47,8 @@ export class TrashRepository {
     return trashed.map((m, i) => ({
       row: rows[i]!,
       trashedAt: m.deletedAt!,
-      ids: [m.id, ...(lookups.members.get(m.id) ?? [])]
+      ids: [m.id, ...(lookups.members.get(m.id) ?? [])],
+      origin: m.trashOrigin ?? originOf(m)
     }))
   }
 
@@ -54,9 +59,10 @@ export class TrashRepository {
   /**
    * Move several mockups (or piles) to Trash together, so they share one timestamp. Returns how many
    * moved. A mockup inside a pile leaves it first and lands in Trash on its own, since Trash lists
-   * only rows outside a pile; one whose pile goes in the same move goes with the pile.
+   * only rows outside a pile; one whose pile goes in the same move goes with the pile. Each keeps
+   * where it came from (its stage's inbox, or My Stash); `origin: 'import'` marks an undone import's.
    */
-  moveManyToTrash(ids: number[]): number {
+  moveManyToTrash(ids: number[], options: { origin?: 'import' } = {}): number {
     const deletedAt = new Date().toISOString()
     const wanted = new Set(ids)
     return this.db.transaction((tx) => {
@@ -68,7 +74,10 @@ export class TrashRepository {
           if (wanted.has(m.groupId!)) continue
           this.leavePile(tx, m)
         }
-        tx.update(mockups).set({ deletedAt }).where(eq(mockups.id, id)).run()
+        tx.update(mockups)
+          .set({ deletedAt, trashOrigin: options.origin ?? originOf(m) })
+          .where(eq(mockups.id, id))
+          .run()
         this.search.removeSearchIndex(id)
         moved++
       }
@@ -119,8 +128,9 @@ export class TrashRepository {
     })
   }
 
+  /** Out of Trash, back where it was: its stage never changed, so a tossed one goes back to its inbox. */
   restore(id: number): void {
-    this.db.update(mockups).set({ deletedAt: null }).where(eq(mockups.id, id)).run()
+    this.db.update(mockups).set({ deletedAt: null, trashOrigin: null }).where(eq(mockups.id, id)).run()
     const m = this.mockups.getMockup(id)
     if (m?.stage === 'stashed') this.search.upsertSearchIndex(id)
   }
