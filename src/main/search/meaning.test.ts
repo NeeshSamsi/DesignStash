@@ -1,12 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import {
+  MEANING_DIMENSIONS,
   MEANING_FLOOR,
   appendMeaningHits,
+  compactCosine,
+  compactVector,
   cosine,
   documentHash,
   meaningDocument,
   meaningHits,
-  normalise
+  normalise,
+  shortVector
 } from './meaning'
 
 describe('meaningDocument', () => {
@@ -63,5 +67,33 @@ describe('appendMeaningHits', () => {
 
   it('changes nothing when there are no meaning hits', () => {
     expect(appendMeaningHits([5], [])).toEqual([5])
+  })
+})
+
+describe('compact vectors (F-070): nomic v1.5 cut to its first 256 numbers, kept as bytes', () => {
+  /** A 768-number vector whose meaning sits in its first numbers, as Matryoshka training puts it. */
+  const vector = (seed: number) => Array.from({ length: 768 }, (_, i) => Math.sin(seed * (i + 1)) * (i < 256 ? 1 : 0.2))
+
+  it('keeps 256 signed bytes, of unit length within their rounding', () => {
+    const c = compactVector(vector(1))
+    expect(c).toBeInstanceOf(Int8Array)
+    expect(c.length).toBe(MEANING_DIMENSIONS)
+    expect(Math.sqrt(c.reduce((t, x) => t + x * x, 0)) / 127).toBeCloseTo(1, 1)
+  })
+
+  it('scores the same direction 1 and the opposite -1, from the 768 numbers the model gives', () => {
+    const v = vector(2)
+    expect(compactCosine(shortVector(v), compactVector(v))).toBeCloseTo(1, 2)
+    expect(compactCosine(shortVector(v), compactVector(v.map((x) => -x)))).toBeCloseTo(-1, 2)
+  })
+
+  it('keeps the nearer document nearer, and close to its unrounded score', () => {
+    const q = vector(3)
+    const near = q.map((x, i) => x + 0.3 * Math.sin(7 * i))
+    const far = vector(9)
+    const query = shortVector(q)
+    const [toNear, toFar] = [compactCosine(query, compactVector(near)), compactCosine(query, compactVector(far))]
+    expect(toNear).toBeGreaterThan(toFar)
+    expect(toNear).toBeCloseTo(cosine(query, shortVector(near)), 2)
   })
 })

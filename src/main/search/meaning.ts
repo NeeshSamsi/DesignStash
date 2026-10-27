@@ -55,6 +55,46 @@ export function cosine(a: ArrayLike<number>, b: ArrayLike<number>): number {
   return sum
 }
 
+/**
+ * How many of nomic v1.5's 768 numbers a meaning vector keeps. It is trained (Matryoshka) to hold
+ * its meaning in the first ones, so the first 256 search almost as well at a third of the size and
+ * scoring time (F-070).
+ */
+export const MEANING_DIMENSIONS = 256
+
+/**
+ * A vector cut to `MEANING_DIMENSIONS`, by nomic v1.5's recipe: layer norm over the whole vector,
+ * then the first numbers, at unit length. A vector of any scale gives the same one.
+ */
+export function shortVector(v: ArrayLike<number>): Float32Array {
+  const n = v.length
+  let mean = 0
+  for (let i = 0; i < n; i++) mean += v[i]!
+  mean /= n
+  let variance = 0
+  for (let i = 0; i < n; i++) variance += (v[i]! - mean) ** 2
+  const sd = Math.sqrt(variance / n + 1e-5)
+  const out = new Float32Array(Math.min(MEANING_DIMENSIONS, n))
+  for (let i = 0; i < out.length; i++) out[i] = (v[i]! - mean) / sd
+  return Float32Array.from(normalise(Array.from(out)))
+}
+
+/** A document's vector as it is kept: short, each number a signed byte (-127 to 127). */
+export function compactVector(v: ArrayLike<number>): Int8Array {
+  return Int8Array.from(shortVector(v), (x) => Math.max(-127, Math.min(127, Math.round(x * 127))))
+}
+
+/** Cosine of a short unit query (`shortVector`) and a compact document vector. */
+export function compactCosine(query: ArrayLike<number>, doc: Int8Array): number {
+  let dot = 0
+  let norm = 0
+  for (let i = 0; i < doc.length; i++) {
+    dot += query[i]! * doc[i]!
+    norm += doc[i]! * doc[i]!
+  }
+  return norm === 0 ? 0 : dot / Math.sqrt(norm)
+}
+
 /** The closest `top` items at or above the floor, closest first. */
 export function meaningHits<K>(
   similarities: ReadonlyMap<K, number>,
