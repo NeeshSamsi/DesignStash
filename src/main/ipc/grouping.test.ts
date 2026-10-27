@@ -105,6 +105,25 @@ describe('sort board handlers', () => {
   })
 })
 
+describe('grouping confirm handler', () => {
+  it('changes nothing when one of its writes fails part-way', async () => {
+    const [a, b, c] = toSort(3) as [number, number, number]
+    const board = { batchId: 'b1', groups: [{ id: 'p', memberIds: [a, b] }], singletonIds: [c] }
+    await call(IPC_CHANNELS.SORT_BOARD_SAVE, board)
+    vi.spyOn(repo.mockups, 'setStage').mockImplementation(() => {
+      throw new Error('disk full')
+    })
+    const res = await call(IPC_CHANNELS.GROUPING_CONFIRM, board)
+    expect(res.success).toBe(false)
+    expect(repo.mockups.getMockup(a)).toMatchObject({ isGroup: false, groupId: null, stage: 'to_sort' })
+    expect(repo.mockups.getMockup(b)).toMatchObject({ groupId: null, stage: 'to_sort' })
+    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: 'b1' })).toEqual({
+      success: true,
+      data: { board }
+    })
+  })
+})
+
 describe('grouping propose handler', () => {
   it('proposes only what is still waiting to be sorted (S1.E4)', async () => {
     const [a, b, c, d] = toSort(4) as [number, number, number, number]

@@ -35,12 +35,15 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
   })
 
   registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
-    repo.piles.confirmGroupings(args.groups, args.singletonIds)
-    repo.sortBoards.clear(args.batchId)
-    repo.mockups.setStage(
-      [...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds],
-      'to_stash'
-    )
+    // One transaction: piles laid out but still in To sort would hide from its list.
+    repo.transaction(() => {
+      repo.piles.confirmGroupings(args.groups, args.singletonIds)
+      repo.sortBoards.clear(args.batchId)
+      repo.mockups.setStage(
+        [...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds],
+        'to_stash'
+      )
+    })
     countsChanged(ctx)
     // Telemetry: counts only — never group contents.
     telemetry.get().track(TELEMETRY_EVENTS.GROUP_CONFIRMED, {
