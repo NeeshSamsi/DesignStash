@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { coverUrl } from '@shared/cover-url'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { shortcuts } from '@renderer/lib/shortcuts'
+import { afterUndo } from '@renderer/lib/undo-router'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
@@ -278,40 +279,74 @@ describe('details sidebar · editing', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
-  it('asks before Cancel, ✕ or another card throws edits away; Keep editing keeps them', async () => {
+  it('Cancel with edits discards them at once, with Undo; Undo brings them back and Redo drops them again (undo.md)', async () => {
+    setup({ [IPC_CHANNELS.UNDO_RECORD_DISCARD]: () => ok({ undoEntryId: 5 }) })
     const title = await edit()
     fireEvent.change(title, { target: { value: 'Changed' } })
-
     fireEvent.click(button('Cancel')!)
-    let ask = await screen.findByRole('alertdialog')
-    expect(within(ask).getByText('Discard your changes?')).not.toBeNull()
-    fireEvent.click(within(ask).getByRole('button', { name: 'Keep editing' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
-    expect(title.value).toBe('Changed')
-    expect(useDetailsStore.getState().target).toEqual({ id: 42, edit: true })
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull())
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByText('Hero Screen')).not.toBeNull()
+    const values = { title: 'Changed', description: 'The main hero mockup', tagIds: [7] }
+    await waitFor(() =>
+      expect(calls(IPC_CHANNELS.UNDO_RECORD_DISCARD)).toEqual([
+        [IPC_CHANNELS.UNDO_RECORD_DISCARD, { mockupId: 42, values }]
+      ])
+    )
+    await waitFor(() =>
+      expect(toasts.undoToast).toHaveBeenCalledWith(
+        'Discarded your changes',
+        expect.any(Function),
+        undefined,
+        5
+      )
+    )
+    expect(calls(IPC_CHANNELS.MOCKUP_UPDATE)).toHaveLength(0)
 
-    fireEvent.click(button('Close')!)
-    ask = await screen.findByRole('alertdialog')
-    fireEvent.click(within(ask).getByRole('button', { name: 'Keep editing' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
-    expect(useDetailsStore.getState().target?.id).toBe(42)
+    // Edit › Undo: main hands back the discarded values for the window to put back.
+    act(() =>
+      afterUndo(
+        {
+          status: 'done',
+          label: 'Discard your changes',
+          renderer: { kind: 'reopen-editor', mockupId: 42, values }
+        },
+        'undo'
+      )
+    )
+    const back = (await screen.findByRole('textbox', { name: 'Title' })) as HTMLInputElement
+    await waitFor(() => expect(back.value).toBe('Changed'))
+    expect(useDetailsStore.getState().dirty).toBe(true)
 
-    // Another card is a way out too.
+    // Edit › Redo discards them again.
+    act(() =>
+      afterUndo(
+        {
+          status: 'done',
+          label: 'Discard your changes',
+          renderer: { kind: 'discard-editor', mockupId: 42 }
+        },
+        'redo'
+      )
+    )
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull())
+    expect(screen.getByText('Hero Screen')).not.toBeNull()
+  })
+
+  it('✕ and another card are ways out too: each discards at once, and nothing saves', async () => {
+    const title = await edit()
+    fireEvent.change(title, { target: { value: 'Changed' } })
     act(() => useDetailsStore.getState().guard(() => useDetailsStore.getState().syncTarget(43)))
-    ask = await screen.findByRole('alertdialog')
-    fireEvent.click(within(ask).getByRole('button', { name: 'Discard' }))
-    expect(useDetailsStore.getState().target?.id).toBe(43)
+    await waitFor(() => expect(useDetailsStore.getState().target?.id).toBe(43))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(calls(IPC_CHANNELS.MOCKUP_UPDATE)).toHaveLength(0)
   })
 
-  it('Discard on Cancel puts the saved values back', async () => {
-    const title = await edit()
-    fireEvent.change(title, { target: { value: 'Changed' } })
+  it('without edits, Cancel just closes the fields and records nothing', async () => {
+    await edit()
     fireEvent.click(button('Cancel')!)
-    const ask = await screen.findByRole('alertdialog')
-    fireEvent.click(within(ask).getByRole('button', { name: 'Discard' }))
     await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull())
-    expect(screen.getByText('Hero Screen')).not.toBeNull()
+    expect(calls(IPC_CHANNELS.UNDO_RECORD_DISCARD)).toHaveLength(0)
   })
 
   it('opens straight into fields when edit was asked for', async () => {

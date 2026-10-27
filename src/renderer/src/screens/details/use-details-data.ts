@@ -10,14 +10,18 @@ import { useLibraryStore } from '@renderer/stores/libraryStore'
 import { useTagTreeStore } from '@renderer/stores/tagTreeStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import {
+  discardedOf,
   draftOf,
   formFromDetail,
+  formWithEdit,
   isDirty,
   saveBlockedReason,
   type DetailDraft,
   type DetailForm
 } from './detail-edits'
 import { syncLibrary } from './library-sync'
+import { noteEdit, onEditUndo, takeRestored } from './discarded-edit'
+import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { disbandPile } from './pile-actions'
 
 type Status = 'loading' | 'ready' | 'error'
@@ -95,8 +99,10 @@ export function useDetailsData(id: number) {
         return
       }
       const next = formFromDetail(loaded.detail, loaded.tree)
+      // Undo of a discard opened this mockup again: its fields take the discarded edits.
+      const back = takeRestored(id)
       setDetail(loaded.detail)
-      setForm(next)
+      setForm(back ? formWithEdit(next, back, loaded.tree) : next)
       setSaved(draftOf(next))
       setStatus('ready')
     })()
@@ -144,6 +150,16 @@ export function useDetailsData(id: number) {
   const dirty = status === 'ready' && isDirty(saved, draft)
   const blocked = saveBlockedReason(draft)
 
+  // What a discard would throw away, so it can keep it for Undo.
+  const discarded = dirty ? discardedOf(form) : null
+  const discardedKey = JSON.stringify(discarded)
+  useEffect(() => {
+    noteEdit(id, discarded)
+    return () => noteEdit(id, null)
+    // The key stands for the values: a new object each render must not re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, discardedKey])
+
   /** Put the form back to what was last saved. */
   const reset = useCallback(() => {
     setForm((current) => {
@@ -156,6 +172,29 @@ export function useDetailsData(id: number) {
       }
     })
   }, [detail, saved])
+
+  // Undo of a discard on this mockup puts the edits back in the open fields; Redo drops them again.
+  const formRef = useRef({ status, detail, tagTree })
+  useEffect(() => {
+    formRef.current = { status, detail, tagTree }
+  })
+  useEffect(
+    () =>
+      onEditUndo(
+        (mockupId) => {
+          if (mockupId !== id || formRef.current.status !== 'ready') return
+          const back = takeRestored(id)
+          if (back) setForm((current) => formWithEdit(current, back, formRef.current.tagTree ?? []))
+        },
+        (mockupId) => {
+          const { detail: shown, tagTree: tree } = formRef.current
+          if (mockupId !== id || !shown) return
+          setForm(formFromDetail(shown, tree ?? []))
+          useDetailsStore.getState().setEditing(false)
+        }
+      ),
+    [id]
+  )
 
   /**
    * A pile mockup's variation left empty: when focus leaves it takes its last saved words back, so
