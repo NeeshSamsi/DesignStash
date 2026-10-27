@@ -27,6 +27,8 @@ function AppMain() {
 
   const gather = useGather()
   const drops = useGatherDrops(gather)
+  // A haul running or paused still has files to come, which the Sort board won't show (S1.E1).
+  const haulOpen = gather.haul?.state === 'running' || gather.haul?.state === 'paused'
 
   const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
   const view = useUiStore((s) => s.view)
@@ -125,6 +127,7 @@ function AppMain() {
       <SortFlow
         open={sorting !== null}
         {...(sorting ? { scope: sorting } : {})}
+        copying={haulOpen}
         onClose={() => setSorting(null)}
         onLookThemOver={() => openLookOver()}
       />

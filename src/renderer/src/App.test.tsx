@@ -329,6 +329,78 @@ describe('App', () => {
     })
   })
 
+  it.each([
+    ['running', true],
+    ['paused', true],
+    ['done', false]
+  ] as const)(
+    'the Sort board says it is still copying while a haul is %s (S1.E1)',
+    async (state, shown) => {
+      const base = window.api.invoke as ReturnType<typeof vi.fn>
+      const previous = base.getMockImplementation() as (c: string, r: unknown) => unknown
+      base.mockImplementation(async (channel: string, request: unknown) => {
+        if (channel === IPC_CHANNELS.COPY_STATUS)
+          return {
+            success: true,
+            data: {
+              haul: {
+                haulId: 'h1',
+                state,
+                total: 40,
+                landed: 12,
+                bytesTotal: 0,
+                bytesCopied: 0,
+                bytesPerSecond: 0,
+                secondsLeft: null,
+                skipped: {
+                  notPsd: 0,
+                  duplicate: 0,
+                  unreadable: 0,
+                  archiveUnsupported: 0,
+                  noPsdInArchive: 0
+                },
+                files: []
+              }
+            }
+          }
+        if (channel === IPC_CHANNELS.INBOX_COUNTS)
+          return { success: true, data: { toSort: 1, toStash: 0, sniffing: 0, trash: 0 } }
+        if (channel === IPC_CHANNELS.INBOX_LIST)
+          return {
+            success: true,
+            data: {
+              items: [
+                {
+                  id: 7,
+                  title: 'a.psd',
+                  description: null,
+                  coverPath: '/c/a.webp',
+                  coverSource: 'embedded',
+                  coverMissing: false,
+                  favourite: false,
+                  createdAt: '2026-10-11',
+                  pile: null,
+                  pileId: null,
+                  variation: null,
+                  tags: [],
+                  stage: 'to_sort',
+                  aiStatus: 'ready',
+                  sizeBytes: 1,
+                  batchId: 'h1'
+                }
+              ]
+            }
+          }
+        return previous(channel, request)
+      })
+      render(<App />)
+      fireEvent.click(await screen.findByRole('button', { name: /To sort/ }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Sort' }))
+      await screen.findByRole('application', { name: 'Sort board' })
+      expect(screen.queryByText('Still copying') !== null).toBe(shown)
+    }
+  )
+
   it('Sort on To sort opens the one Sort board, for everything waiting', async () => {
     const base = window.api.invoke as ReturnType<typeof vi.fn>
     const previous = base.getMockImplementation() as (c: string, r: unknown) => unknown
