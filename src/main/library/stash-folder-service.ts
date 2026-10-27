@@ -128,12 +128,14 @@ export class StashFolderService {
 
   async info(): Promise<StashInfo> {
     const { libraryRoot, pendingStash } = this.settings.get()
-    const ids = this.repo.mockups.getAllLibraryPaths().map((p) => p.mockupId)
-    const sizes = await ensureSizes(this.repo, this.deps.stat, ids)
+    // Every record in one read; only a PSD that has never been measured is looked at on disk.
+    const rows = this.repo.mockups.getAllMockups().filter((m) => m.deletedAt === null)
+    const unmeasured = rows.filter((m) => m.sizeBytes === null).map((m) => m.id)
+    const measured = await ensureSizes(this.repo, this.deps.stat, unmeasured)
     return {
       path: pendingStash?.path ?? libraryRoot,
-      count: ids.length,
-      bytes: [...sizes.values()].reduce<number>((sum, s) => sum + (s ?? 0), 0),
+      count: rows.length,
+      bytes: rows.reduce((sum, m) => sum + (m.sizeBytes ?? measured.get(m.id) ?? 0), 0),
       restartRequired: pendingStash !== null
     }
   }

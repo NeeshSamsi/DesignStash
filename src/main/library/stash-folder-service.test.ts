@@ -84,6 +84,31 @@ describe('info', () => {
     settings.update({ pendingStash: { path: '/new/place', mode: 'point', oldRoot: root } })
     expect(await service().info()).toMatchObject({ path: '/new/place', restartRequired: true })
   })
+
+  it('sizes a big stash from its records, without reading them one at a time', async () => {
+    for (let i = 0; i < 1000; i++) {
+      repo.mockups.createMockup(
+        approvedMockup({ title: `m${i}`, libraryPath: join(root, `mockups/${i}/original.psd`), sizeBytes: 2 })
+      )
+    }
+    const stat = vi.fn(async () => ({ size: 1 }))
+    const getMockup = vi.spyOn(repo.mockups, 'getMockup')
+
+    const info = await service({ stat }).info()
+
+    expect(info).toMatchObject({ count: 1000, bytes: 2000 })
+    expect(stat).not.toHaveBeenCalled()
+    expect(getMockup).not.toHaveBeenCalled()
+  })
+
+  it('measures a PSD with no size once, and remembers it', async () => {
+    repo.mockups.createMockup(approvedMockup({ title: 'a', libraryPath: join(root, 'mockups/a/original.psd') }))
+    const stat = vi.fn(async () => ({ size: 700 }))
+
+    expect(await service({ stat }).info()).toMatchObject({ count: 1, bytes: 700 })
+    expect(await service({ stat }).info()).toMatchObject({ count: 1, bytes: 700 })
+    expect(stat).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('change: move', () => {
