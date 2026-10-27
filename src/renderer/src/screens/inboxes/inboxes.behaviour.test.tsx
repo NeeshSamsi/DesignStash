@@ -26,6 +26,7 @@ const inbox = (id: number, over: Partial<InboxItem> = {}): InboxItem => ({
 const trashed = (id: number, over: Partial<TrashItem> = {}): TrashItem => ({
   ...item(id),
   trashedAt: `2026-10-${String(10 + id).padStart(2, '0')}T12:00:00Z`,
+  origin: 'my-stash',
   sizeBytes: 2048,
   ...over
 })
@@ -276,6 +277,28 @@ describe('Trash', () => {
     )
     expect(titles).toEqual(['3', '2', '1'])
     expect(card(3).textContent).toContain('Trashed')
+  })
+
+  it('marks a tossed card with the inbox it came from, and Restore says where it went back (undo.md)', async () => {
+    const tossed = trashed(4, { title: 'Tossed one', origin: 'to-sort' })
+    setup({
+      [IPC_CHANNELS.TRASH_LIST]: () => ok({ items: [tossed] }),
+      [IPC_CHANNELS.TRASH_STATS]: () => ok({ count: 1, bytes: 2048 }),
+      [IPC_CHANNELS.TRASH_RESTORE]: () => ok({ restoredIds: [4], missing: [], undoEntryId: 12 })
+    })
+    render(<TrashPage />)
+    await screen.findByText('Tossed one')
+    expect(card(4).textContent).toContain('Tossed from To sort ·')
+    expect(card(4).textContent).not.toContain('Trashed')
+    fireEvent.click(within(card(4)).getByRole('button', { name: 'Restore' }))
+    await waitFor(() =>
+      expect(toasts.undoToast).toHaveBeenCalledWith(
+        'Restored to To sort',
+        expect.any(Function),
+        '1 item',
+        12
+      )
+    )
   })
 
   it('Restore all needs no confirm and its toast offers Undo', async () => {

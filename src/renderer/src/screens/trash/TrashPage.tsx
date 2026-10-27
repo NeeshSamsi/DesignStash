@@ -16,6 +16,7 @@ import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
 import { agoText, formatBytes, newestFirst } from '@renderer/lib/inbox-list'
+import { restoredTo, trashCaption } from './trash-copy'
 import { pluralise } from '@renderer/lib/plural'
 import { HeaderActions } from '@renderer/lib/page-header-slot'
 import { useInboxStore } from '@renderer/stores/inboxStore'
@@ -81,11 +82,15 @@ export default function TrashPage() {
       return
     }
     const { restoredIds, missing, undoEntryId } = res.data
+    // Each card goes back where it came from; the toast says where, read before the list reloads.
+    const origins = (useInboxStore.getState().trash ?? [])
+      .filter((t) => restoredIds.includes(t.id))
+      .map((t) => t.origin)
     selection.clear()
     await refresh()
     if (restoredIds.length > 0) {
       undoToast(
-        'Restored to My Stash',
+        restoredTo(origins),
         () =>
           void (async () => {
             await window.api.invoke(IPC_CHANNELS.MOCKUP_TRASH, { ids: restoredIds })
@@ -217,7 +222,8 @@ export default function TrashPage() {
               mockupId={key}
               variant="trash"
               title={item.title}
-              trashedAgo={agoText(item.trashedAt)}
+              // Where it came from and when: "Tossed from To sort · 2 min ago".
+              tags={trashCaption(item.origin, agoText(item.trashedAt))}
               {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
               pile={item.pile}
               state={coverDisplay(item, selection.isSelected(key))}
