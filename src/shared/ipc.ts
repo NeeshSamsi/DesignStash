@@ -23,7 +23,6 @@ import { pileContract } from './ipc/pile'
 import { inboxContract } from './ipc/inbox'
 import { integrityContract } from './ipc/integrity'
 import { telemetryContract } from './ipc/telemetry'
-import { entitlementsContract } from './ipc/entitlements'
 import { debugContract } from './ipc/debug'
 import { menuContract } from './ipc/menu'
 import { PUSH_CONTRACT } from './ipc/push'
@@ -68,7 +67,6 @@ export const IPC_DOMAIN_CONTRACTS = {
   inbox: inboxContract,
   integrity: integrityContract,
   telemetry: telemetryContract,
-  entitlements: entitlementsContract,
   debug: debugContract,
   menu: menuContract
 } as const
@@ -91,7 +89,6 @@ export const IPC_CONTRACT = {
   ...inboxContract,
   ...integrityContract,
   ...telemetryContract,
-  ...entitlementsContract,
   ...debugContract,
   ...menuContract
 } as const

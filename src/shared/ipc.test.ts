@@ -602,19 +602,6 @@ describe('IPC Contract', () => {
       expect(response.parse({ enabled: true })).toEqual({ enabled: true })
     })
   })
-
-  describe('ENTITLEMENTS_SNAPSHOT channel', () => {
-    const { response } = IPC_CONTRACT[IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT]
-
-    it('parses a valid snapshot response', () => {
-      const valid = { tier: 'free', enabled: { 'app.core': true, 'search.semantic': true } }
-      expect(response.parse(valid)).toEqual(valid)
-    })
-
-    it('rejects an invalid tier', () => {
-      expect(() => response.parse({ tier: 'enterprise', enabled: {} })).toThrow()
-    })
-  })
 })
 
 describe('menu:command push', () => {

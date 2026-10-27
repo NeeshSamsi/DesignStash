@@ -9,7 +9,6 @@ import { SortFlow, type SortScope } from './screens/sort'
 import { LookOverFlow, type LookOverScope } from './screens/look-over'
 import AppShell from './AppShell'
 import DebugMenu from './DebugMenu'
-import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { useDetailEffects } from './stores/detailEffectsStore'
@@ -32,20 +31,12 @@ function AppMain() {
   // A haul running or paused still has files to come, which the Sort board won't show (S1.E1).
   const haulOpen = gather.haul?.state === 'running' || gather.haul?.state === 'paused'
 
-  const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
   const view = useUiStore((s) => s.view)
   const openModal = useUiStore((s) => s.openModal)
   const setLibraryStats = useLibraryStore((s) => s.setStats)
 
   useUpdateNotice()
   useActiveModelNotice()
-
-  useEffect(() => {
-    void (async () => {
-      const res = await window.api.invoke(IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT, undefined)
-      if (res.success) setSnapshot(res.data)
-    })()
-  }, [setSnapshot])
 
   // The launch stash check, once when the shell is first entered. Changes open the blocking stash
   // check modal on what was found; a check that fails points at Settings › My Stash.

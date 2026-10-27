@@ -18,7 +18,6 @@ import { registerPileHandlers } from './pile'
 import { registerInboxHandlers } from './inbox'
 import { registerIntegrityHandlers } from './integrity'
 import { registerTelemetryHandlers } from './telemetry'
-import { registerEntitlementsHandlers } from './entitlements'
 import { registerDebugHandlers } from './debug'
 
 /**
@@ -57,6 +56,5 @@ export function registerAllHandlers(ctx: HandlerContext): void {
   registerInboxHandlers(ctx)
   registerIntegrityHandlers(ctx)
   registerTelemetryHandlers(ctx)
-  registerEntitlementsHandlers()
   if (!app.isPackaged) registerDebugHandlers(ctx.settings)
 }

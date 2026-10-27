@@ -83,12 +83,6 @@ beforeEach(() => {
       if (channel === IPC_CHANNELS.APP_INFO) {
         return { success: true, data: { name: 'DesignStash', version: '0.0.0', env: 'test' } }
       }
-      if (channel === IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT) {
-        return {
-          success: true,
-          data: { tier: 'free', enabled: { 'search.semantic': true, 'app.core': true } }
-        }
-      }
       if (channel === IPC_CHANNELS.DEBUG_READ_SETTINGS) {
         return { success: true, data: { path: '/stub/settings.json', json: '{}', exists: false } }
       }

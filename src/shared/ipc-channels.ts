@@ -111,7 +111,6 @@ export const IPC_CHANNELS = {
   TELEMETRY_TRACK: 'telemetry:track',
   TELEMETRY_GET_CONSENT: 'telemetry:get-consent',
   TELEMETRY_SET_CONSENT: 'telemetry:set-consent',
-  ENTITLEMENTS_SNAPSHOT: 'entitlements:snapshot',
   DEBUG_RESET_APP: 'debug:reset-app',
   DEBUG_READ_SETTINGS: 'debug:read-settings',
   MENU_COMMAND: 'menu:command',
