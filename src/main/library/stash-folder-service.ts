@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, rmSync, rmdirSync } from 'node:fs'
 import { promises as fs } from 'node:fs'
-import { dirname, join, sep } from 'node:path'
+import { dirname, join, relative, sep } from 'node:path'
 import Database from 'better-sqlite3'
 import { nativeBinding } from '../db/native-binding'
 import type { StashChangeMode, StashChangeResult, StashInfo, StashMoveProgress } from '@shared/stash'
@@ -17,6 +17,13 @@ const DB_FILE = 'designstash.db'
 const STASH_ENTRIES = [DB_FILE, `${DB_FILE}-wal`, `${DB_FILE}-shm`, 'config.json', 'mockups', 'covers', 'cache']
 /** Folders and files copied one by one. The database is copied by SQLite itself. */
 const COPIED_ENTRIES = ['config.json', 'mockups', 'covers']
+/** Every column that holds a path to a file in the stash. */
+const PATH_COLUMNS = [
+  ['mockups', 'library_path'],
+  ['mockups', 'cover_path'],
+  ['variants', 'library_path'],
+  ['variants', 'cover_path']
+] as const
 
 export interface StashFolderDeps {
   stat: (path: string) => Promise<{ size: number }>
@@ -27,6 +34,8 @@ export interface StashFolderDeps {
   backupDb: (dest: string) => Promise<void>
   /** Point the paths in a database copy at the new folder. */
   rewritePaths: (dbPath: string, from: string, to: string) => void
+  /** Every PSD and cover a database copy's records point at. */
+  referencedPaths: (dbPath: string) => string[]
 }
 
 const defaultDeps: StashFolderDeps = {
@@ -48,17 +57,22 @@ const defaultDeps: StashFolderDeps = {
       const prefix = from.endsWith(sep) ? from : from + sep
       const next = to.endsWith(sep) ? to : to + sep
       db.transaction(() => {
-        for (const [table, column] of [
-          ['mockups', 'library_path'],
-          ['mockups', 'cover_path'],
-          ['variants', 'library_path'],
-          ['variants', 'cover_path']
-        ] as const) {
+        for (const [table, column] of PATH_COLUMNS) {
           db.prepare(
             `UPDATE ${table} SET ${column} = ? || substr(${column}, ?) WHERE substr(${column}, 1, ?) = ?`
           ).run(next, prefix.length + 1, prefix.length, prefix)
         }
       })()
+    } finally {
+      db.close()
+    }
+  },
+  referencedPaths: (dbPath) => {
+    const db = new Database(dbPath, { readonly: true, nativeBinding: nativeBinding() })
+    try {
+      return PATH_COLUMNS.flatMap(([table, column]) =>
+        db.prepare(`SELECT ${column} FROM ${table}`).pluck().all()
+      ).filter((p): p is string => typeof p === 'string' && p !== '')
     } finally {
       db.close()
     }
@@ -147,7 +161,7 @@ export class StashFolderService {
     }
 
     const files = await listStashFiles(root)
-    const totalBytes = files.reduce((sum, f) => sum + f.size, 0)
+    let totalBytes = files.reduce((sum, f) => sum + f.size, 0)
     const dbBytes = await this.deps.stat(join(root, DB_FILE)).then((s) => s.size, () => 0)
 
     // Room for everything (with a margin on the database, which can grow while copying) before writing a byte.
@@ -179,6 +193,19 @@ export class StashFolderService {
 
       report('verifying', copied)
       await this.deps.backupDb(join(target, DB_FILE))
+      // An import or the AI may have written files since the list was made. Those the database copy
+      // has a record of come along; anything newer is redone after the restart, where its import resumes.
+      const late = await lateFiles(root, files, this.deps.referencedPaths(join(target, DB_FILE)))
+      files.push(...late)
+      totalBytes += late.reduce((sum, f) => sum + f.size, 0)
+      for (const file of late) {
+        const dest = join(target, file.rel)
+        await fs.mkdir(dirname(dest), { recursive: true })
+        await this.deps.copyFile(join(root, file.rel), dest)
+        copiedBytes += file.size
+        copied++
+      }
+      report('verifying', copied)
       this.deps.rewritePaths(join(target, DB_FILE), root, target)
       if (!(await this.matches(files, target))) {
         await this.cleanUp(target, existed)
@@ -213,6 +240,33 @@ export class StashFolderService {
       await fs.rm(join(target, entry), { recursive: true, force: true })
     }
   }
+}
+
+/**
+ * Files in the stash that the list missed, in the folders `referenced` points into. A record's own
+ * folder (mockups/<id>) comes whole, so its cover, thumbnail and slot mask come with its PSD.
+ */
+async function lateFiles(root: string, listed: FileEntry[], referenced: string[]): Promise<FileEntry[]> {
+  const scopes = new Set<string>()
+  for (const path of referenced) {
+    if (!path.startsWith(root + sep)) continue
+    const parts = relative(root, path).split(sep)
+    if (parts.length < 2 || !COPIED_ENTRIES.includes(parts[0]!)) continue
+    scopes.add(parts.length > 2 ? join(parts[0]!, parts[1]!) : join(...parts))
+  }
+  const have = new Set(listed.map((f) => f.rel))
+  const late: FileEntry[] = []
+  for (const scope of scopes) {
+    const stat = await fs.stat(join(root, scope)).catch(() => null)
+    if (!stat) continue
+    const found = stat.isDirectory() ? await listFiles(root, scope) : [{ rel: scope, size: stat.size }]
+    for (const file of found) {
+      if (have.has(file.rel)) continue
+      have.add(file.rel)
+      late.push(file)
+    }
+  }
+  return late
 }
 
 async function nearestExisting(path: string): Promise<string> {

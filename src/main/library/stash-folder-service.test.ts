@@ -126,6 +126,52 @@ describe('change: move', () => {
     expect(progress.some((p) => p.phase === 'verifying')).toBe(true)
   })
 
+  it('brings along what an import landed while the copy ran, once the database copy has its record', async () => {
+    const target = join(base, 'Moved')
+    const late = join(root, 'mockups', 'b')
+    let landed = false
+    const result = await service({
+      copyFile: async (src, dest) => {
+        writeFileSync(dest, readFileSync(src))
+        if (landed) return
+        landed = true
+        // A haul still running: its files land after the list was made, its record before the backup.
+        write(join(late, 'original.psd'), 'psd-b')
+        write(join(late, 'cover.webp'), 'cover-b')
+        write(join(late, 'slot-mask.png'), 'mask-b')
+      },
+      backupDb: async (dest) => {
+        await makeDeps().backupDb!(dest)
+        const db = new Database(dest)
+        db.prepare('INSERT INTO mockups VALUES (3, ?, ?)').run(join(late, 'original.psd'), join(late, 'cover.webp'))
+        db.close()
+      }
+    }).change(target, 'move')
+
+    expect(result).toEqual({ ok: true, restartRequired: true })
+    expect(tree(join(target, 'mockups', 'b')).sort()).toEqual(['cover.webp', 'original.psd', 'slot-mask.png'])
+    expect(readFileSync(join(target, 'mockups/b/original.psd'), 'utf8')).toBe('psd-b')
+    const last = progress.at(-1)!
+    expect(last.copiedFiles).toBe(last.totalFiles)
+    expect(last.copiedBytes).toBe(last.totalBytes)
+  })
+
+  it('leaves behind a file whose record came after the database copy, for its import to redo', async () => {
+    const target = join(base, 'Moved')
+    let landed = false
+    await service({
+      copyFile: async (src, dest) => {
+        writeFileSync(dest, readFileSync(src))
+        if (landed) return
+        landed = true
+        write(join(root, 'mockups', 'c', 'original.psd'), 'psd-c')
+      }
+    }).change(target, 'move')
+
+    // The database copy has no record of it, so the stash check would only find a stray PSD there.
+    expect(existsSync(join(target, 'mockups', 'c'))).toBe(false)
+  })
+
   it('moves into an empty existing folder', async () => {
     const target = join(base, 'EmptyAlready')
     mkdirSync(target)
