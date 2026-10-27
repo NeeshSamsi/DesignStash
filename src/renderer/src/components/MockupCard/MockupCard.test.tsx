@@ -23,6 +23,29 @@ describe('MockupCard', () => {
     expect(screen.getByText(MOCKUP_CARD_CONTRACT.texts.dropHint)).not.toBeNull()
   })
 
+  it('shows a cover that fails to load as missing, and tries again when the cover changes', () => {
+    // A cover deleted in Finder mid-session: the launch check has not seen it yet, the image fails.
+    const { container, rerender } = render(<MockupCard coverSrc="stash-cover://one/cover.webp" />)
+    const cover = () => container.querySelector('[data-ds="CoverImage"]')!
+    expect(cover().getAttribute('data-state')).toBe('loaded')
+    fireEvent.error(container.querySelector('img')!)
+    expect(cover().getAttribute('data-state')).toBe('missing-file')
+    expect(screen.getByText('Cover file missing')).not.toBeNull()
+
+    // A new cover is a new try.
+    rerender(<MockupCard coverSrc="stash-cover://one/cover-2.webp" />)
+    expect(cover().getAttribute('data-state')).toBe('loaded')
+  })
+
+  it('keeps a failed cover missing while the card is selected', () => {
+    const { container, rerender } = render(<MockupCard coverSrc="stash-cover://one/cover.webp" />)
+    fireEvent.error(container.querySelector('img')!)
+    rerender(<MockupCard coverSrc="stash-cover://one/cover.webp" state="selected" />)
+    expect(container.querySelector('[data-ds="CoverImage"]')?.getAttribute('data-state')).toBe(
+      'missing-file'
+    )
+  })
+
   describe('library', () => {
     it('offers Open in Photoshop and Edit details, never a bare Open or Zoom', () => {
       const onOpenInPhotoshop = vi.fn()

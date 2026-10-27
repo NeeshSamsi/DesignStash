@@ -126,6 +126,13 @@ export function MockupCard({
   // In a selectable grid the selection comes from the grid, so a selected card with no cover is
   // still ringed and announced: its state only says what is wrong with the cover.
   const inGrid = useGridCard(loading ? undefined : mockupId)
+  // A cover that fails to load is gone (deleted in Finder since launch, so the launch check never
+  // saw it): show it as missing, as the next launch would. A different cover is a fresh try.
+  const [failedCover, setFailedCover] = useState<string | null>(null)
+  const coverState =
+    coverSrc !== undefined && failedCover === coverSrc && COVER_STATE[state] === 'loaded'
+      ? 'missing-file'
+      : COVER_STATE[state]
   const ringed =
     state === 'selected' ||
     (inGrid?.selected === true && (state === 'cover-missing' || state === 'no-preview'))
@@ -173,10 +180,15 @@ export function MockupCard({
           stacked && 'delay-100 group-hover/card:delay-0'
         )}
       >
-        <div className={mockupCardCoverVariants({ hidden: leftBehind })}>
+        <div
+          className={mockupCardCoverVariants({ hidden: leftBehind })}
+          onError={(event) => {
+            if (event.target instanceof HTMLImageElement && coverSrc) setFailedCover(coverSrc)
+          }}
+        >
           <CoverImage
             size="md"
-            state={COVER_STATE[state]}
+            state={coverState}
             {...(coverSrc ? { src: coverSrc } : {})}
             imageClassName="group-hover/card:scale-105"
             className="size-full rounded-none"
