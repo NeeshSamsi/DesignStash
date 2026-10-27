@@ -10,6 +10,17 @@ import type { SearchRepository } from './search'
 /** The handle inside a transaction. */
 type Tx = Parameters<Parameters<AppDatabase['transaction']>[0]>[0]
 
+/** A name another tag in the category, or another category, already reads as. Says what is there. */
+export class NameTakenError extends Error {
+  constructor(readonly taken: { label: string; categoryLabel?: string }) {
+    super(
+      taken.categoryLabel === undefined
+        ? `There’s already a category called “${taken.label}”`
+        : `“${taken.label}” is already a tag in ${taken.categoryLabel}`
+    )
+  }
+}
+
 /** Two-tier taxonomy: categories and the tags inside them. */
 export class TagRepository {
   constructor(
@@ -37,7 +48,7 @@ export class TagRepository {
     if (!category) throw new Error(`Category ${categoryId} not found`)
     const clash = this.getCategoryByNormalisedLabel(label)
     if (clash && clash.id !== categoryId) {
-      throw new Error(`There’s already a category called “${clash.label}”`)
+      throw new NameTakenError({ label: clash.label })
     }
     this.db.update(tagCategories).set({ label }).where(eq(tagCategories.id, categoryId)).run()
   }
@@ -129,7 +140,7 @@ export class TagRepository {
       .from(tagCategories)
       .where(eq(tagCategories.id, categoryId))
       .get()
-    throw new Error(`“${clash.label}” is already a tag in ${category?.label ?? 'this category'}`)
+    throw new NameTakenError({ label: clash.label, categoryLabel: category?.label ?? '' })
   }
 
   /** Mockups carrying a tag. */

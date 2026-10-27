@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import type { NameChange } from '@shared/ipc/tags'
 import type { TagTree as TagTreeData, TagTreeNode } from '@shared/tags'
 import { FormDialog } from '../../components/FormDialog'
 import { Select } from '../../components/Select'
@@ -39,18 +40,39 @@ export function TagsPane() {
 
   const ipc = window.api.invoke
 
+  /**
+   * A rename or move main refused because the name is taken: say what is there, and reject so the
+   * tree keeps its input open.
+   */
+  const unlessTaken = (change: NameChange, description: string) => {
+    if (change.ok) return
+    toast({
+      variant: 'error',
+      message:
+        change.categoryLabel === undefined
+          ? `There’s already a category called “${change.label}”`
+          : `“${change.label}” is already a tag in ${change.categoryLabel}`,
+      description
+    })
+    throw new Error('That name is taken')
+  }
+
   const addTag = async (categoryId: number, label: string) => {
     await run('Couldn’t add that tag', () => ipc(IPC_CHANNELS.TAG_CREATE, { label, categoryId }))
     await load()
   }
   const moveTag = async (tagId: number, categoryId: number) => {
-    await run('Couldn’t move that tag', () =>
+    const change = await run<NameChange>('Couldn’t move that tag', () =>
       ipc(IPC_CHANNELS.TAG_SET_CATEGORY, { tagId, categoryId })
     )
+    unlessTaken(change, 'Merge the two, or rename one first.')
     await load()
   }
   const renameTag = async (tagId: number, label: string) => {
-    await run('Couldn’t rename that tag', () => ipc(IPC_CHANNELS.TAG_RENAME, { tagId, label }))
+    const change = await run<NameChange>('Couldn’t rename that tag', () =>
+      ipc(IPC_CHANNELS.TAG_RENAME, { tagId, label })
+    )
+    unlessTaken(change, 'Pick another name.')
     await load()
   }
   const deleteTag = async (tag: TagTreeNode) => {
@@ -69,9 +91,10 @@ export function TagsPane() {
     await load()
   }
   const renameCategory = async (categoryId: number, label: string) => {
-    await run('Couldn’t rename that category', () =>
+    const change = await run<NameChange>('Couldn’t rename that category', () =>
       ipc(IPC_CHANNELS.CATEGORY_RENAME, { categoryId, label })
     )
+    unlessTaken(change, 'Pick another name.')
     await load()
   }
 

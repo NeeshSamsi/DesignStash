@@ -96,11 +96,13 @@ describe('tag:rename', () => {
     expect(repo.tags.getAllTags().find((t) => t.id === phone.id)?.label).toBe('PHONE')
   })
 
-  it('refuses a name another tag in the category has, in plain words, and changes nothing', async () => {
+  it('refuses a name another tag in the category has, saying which, and changes nothing', async () => {
     const phone = tag('Device', 'Phone')
     const res = await call(IPC_CHANNELS.TAG_RENAME, { tagId: phone.id, label: 'iphone' })
-    expect(res.success).toBe(false)
-    expect(!res.success && res.error.message).toBe('“iPhone” is already a tag in Device')
+    expect(res).toEqual({
+      success: true,
+      data: { ok: false, reason: 'taken', label: 'iPhone', categoryLabel: 'Device' }
+    })
     expect(repo.tags.getAllTags().find((t) => t.id === phone.id)?.label).toBe('Phone')
   })
 
@@ -129,7 +131,10 @@ describe('tag:set-category', () => {
       tagId: side.id,
       categoryId: clash.categoryId
     })
-    expect(!res.success && res.error.message).toBe('“side” is already a tag in Environment')
+    expect(res).toEqual({
+      success: true,
+      data: { ok: false, reason: 'taken', label: 'side', categoryLabel: 'Environment' }
+    })
     expect(repo.tags.getAllTags().find((t) => t.id === side.id)?.categoryId).toBe(category('Angle').id)
   })
 })
@@ -204,7 +209,7 @@ describe('category:rename', () => {
   it('refuses a name another category has, whatever its casing, and changes nothing', async () => {
     const style = category('Style').id
     const res = await call(IPC_CHANNELS.CATEGORY_RENAME, { categoryId: style, label: 'angle' })
-    expect(!res.success && res.error.message).toBe('There’s already a category called “Angle”')
+    expect(res).toEqual({ success: true, data: { ok: false, reason: 'taken', label: 'Angle' } })
     expect(repo.tags.getAllCategories().find((c) => c.id === style)?.label).toBe('Style')
   })
 })
