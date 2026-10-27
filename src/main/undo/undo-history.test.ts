@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { UNDO_LIMIT, UndoHistory, type OpOutcome, type UndoTarget } from './undo-history'
 
 /** A fake op: what a service would be told to do, as data. */
@@ -93,17 +93,12 @@ describe('UndoHistory', () => {
     const history = new UndoHistory<FakeOp>(fakeRunner(), {
       now: () => new Date('2026-10-27T05:00:00Z')
     })
-    expect(history.state()).toEqual({ undo: null, redo: null })
+    expect(history.state()).toEqual({ undo: null, redo: null, entries: [] })
     const id = titleEdit(history, 1, 'Tote', 'Tote bag')
-    expect(history.state()).toEqual({
-      undo: { id, label: 'Edit details', at: '2026-10-27T05:00:00.000Z' },
-      redo: null
-    })
+    const step = { id, label: 'Edit details', at: '2026-10-27T05:00:00.000Z', reversal: false }
+    expect(history.state()).toEqual({ undo: step, redo: null, entries: [{ id }] })
     await history.undo()
-    expect(history.state()).toEqual({
-      undo: null,
-      redo: { id, label: 'Edit details', at: '2026-10-27T05:00:00.000Z' }
-    })
+    expect(history.state()).toEqual({ undo: null, redo: step, entries: [] })
   })
 
   it('with nothing to undo or redo, says so and runs nothing', async () => {
@@ -126,15 +121,97 @@ describe('UndoHistory', () => {
     expect(runner.ran.at(-1)).toEqual({ kind: 'title', mockupId: 2, title: 'before 2' })
   })
 
-  it('a toast’s Undo works only while its action is still the newest', async () => {
+  it('a toast’s Undo on the newest entry is a plain undo: redo puts it back', async () => {
+    const runner = fakeRunner()
+    const history = new UndoHistory<FakeOp>(runner)
+    const id = titleEdit(history, 1, 'Tote', 'Tote bag')
+
+    expect(await history.undoEntry(id)).toEqual({ status: 'done', label: 'Edit details' })
+    expect(history.state()).toMatchObject({ undo: null, redo: { id } })
+    await history.redo()
+    expect(runner.ran.at(-1)).toEqual({ kind: 'title', mockupId: 1, title: 'Tote bag' })
+  })
+
+  it('a toast’s Undo on an older entry undoes it alone when nothing newer touched the same things', async () => {
     const runner = fakeRunner()
     const history = new UndoHistory<FakeOp>(runner)
     const older = titleEdit(history, 1, 'Tote', 'Tote bag')
     const newer = titleEdit(history, 2, 'Mug', 'Coffee mug')
 
-    expect(await history.undo({ id: older })).toEqual({ status: 'stale' })
+    expect(await history.undoEntry(older)).toEqual({ status: 'done', label: 'Edit details' })
+
+    expect(runner.ran).toEqual([{ kind: 'title', mockupId: 1, title: 'Tote' }])
+    // Recorded as a new action on top, so ⌘Z straight after puts it back; redo is cleared.
+    const { undo, redo, entries } = history.state()
+    expect(undo).toMatchObject({ label: 'Edit details', reversal: true })
+    expect(redo).toBeNull()
+    expect(entries.map((e) => e.id)).toEqual([newer, undo!.id])
+    await history.undo()
+    expect(runner.ran.at(-1)).toEqual({ kind: 'title', mockupId: 1, title: 'Tote bag' })
+  })
+
+  it('a toast’s Undo is blocked when a newer action touched the same things, and runs nothing', async () => {
+    const runner = fakeRunner()
+    const history = new UndoHistory<FakeOp>(runner)
+    const older = titleEdit(history, 1, 'Tote', 'Tote bag')
+    const newer = titleEdit(history, 1, 'Tote bag', 'Canvas tote')
+    titleEdit(history, 2, 'Mug', 'Coffee mug')
+
+    expect(await history.undoEntry(older)).toEqual({
+      status: 'blocked',
+      label: 'Edit details',
+      blockedBy: newer
+    })
     expect(runner.ran).toEqual([])
-    expect(await history.undo({ id: newer })).toEqual({ status: 'done', label: 'Edit details' })
+  })
+
+  it('says which entries a toast may still undo on its own', () => {
+    const history = new UndoHistory<FakeOp>(fakeRunner())
+    const a = titleEdit(history, 1, 'Tote', 'Tote bag')
+    const b = titleEdit(history, 2, 'Mug', 'Coffee mug')
+    const c = titleEdit(history, 1, 'Tote bag', 'Canvas tote')
+    const d = titleEdit(history, 1, 'Canvas tote', 'Tote')
+    // The newest one that touched the same thing blocks it.
+    expect(history.state().entries).toEqual([
+      { id: a, blockedBy: d },
+      { id: b },
+      { id: c, blockedBy: d },
+      { id: d }
+    ])
+  })
+
+  it('a toast’s Undo for an entry that is no longer in the history says it is gone', async () => {
+    const history = new UndoHistory<FakeOp>(fakeRunner())
+    const id = titleEdit(history, 1, 'Tote', 'Tote bag')
+    await history.undo()
+    expect(await history.undoEntry(id)).toEqual({ status: 'gone' })
+    expect(await history.undoEntry(999)).toEqual({ status: 'gone' })
+  })
+
+  it('hands back a step only the window can carry out', async () => {
+    const reopen = {
+      kind: 'reopen-editor' as const,
+      mockupId: 1,
+      values: { title: 'Tote', description: '', tagIds: [] }
+    }
+    const history = new UndoHistory<FakeOp>(fakeRunner(() => ({ ok: true, renderer: reopen })))
+    titleEdit(history, 1, 'Tote', 'Tote bag')
+    expect(await history.undo()).toEqual({
+      status: 'done',
+      label: 'Edit details',
+      renderer: reopen
+    })
+  })
+
+  it('tells its listener after every change', async () => {
+    const onChange = vi.fn()
+    const history = new UndoHistory<FakeOp>(fakeRunner(), { onChange })
+    titleEdit(history, 1, 'Tote', 'Tote bag')
+    await history.undo()
+    await history.redo()
+    history.forget([mockup(1)])
+    history.clear()
+    expect(onChange).toHaveBeenCalledTimes(5)
   })
 
   it('drops a step whose target is gone, says why, and the next undo goes to the step before', async () => {
@@ -148,7 +225,7 @@ describe('UndoHistory', () => {
     expect(await history.undo()).toEqual({
       status: 'dropped',
       label: 'Edit details',
-      reason: { kind: 'missing-target', target: mockup(2) }
+      reason: 'that mockup was deleted for good'
     })
     // Gone from both sides: nothing to redo, and the next undo is the edit before it.
     expect(history.state().redo).toBeNull()
@@ -170,7 +247,10 @@ describe('UndoHistory', () => {
 
     expect(history.forget([mockup(1)])).toBe(2)
 
-    expect(history.state()).toEqual({ undo: expect.objectContaining({ id: kept }), redo: null })
+    expect(history.state()).toMatchObject({
+      undo: expect.objectContaining({ id: kept }),
+      redo: null
+    })
     await history.undo()
     expect(history.state().undo).toBeNull()
   })
@@ -223,7 +303,7 @@ describe('UndoHistory', () => {
     const id = titleEdit(history, 1, 'Tote', 'Tote bag')
 
     await expect(history.undo()).rejects.toThrow('database is locked')
-    expect(history.state()).toEqual({ undo: expect.objectContaining({ id }), redo: null })
+    expect(history.state()).toMatchObject({ undo: expect.objectContaining({ id }), redo: null })
 
     fail = false
     expect(await history.undo()).toEqual({ status: 'done', label: 'Edit details' })
@@ -256,7 +336,10 @@ describe('UndoHistory', () => {
     slow.resolve({ ok: true })
     await undoing
 
-    expect(history.state()).toEqual({ undo: expect.objectContaining({ id: newer }), redo: null })
+    expect(history.state()).toMatchObject({
+      undo: expect.objectContaining({ id: newer }),
+      redo: null
+    })
   })
 
   it('an entry a permanent delete drops while it runs does not come back', async () => {
@@ -271,7 +354,7 @@ describe('UndoHistory', () => {
     slow.resolve({ ok: true })
     await undoing
 
-    expect(history.state()).toEqual({ undo: null, redo: null })
+    expect(history.state()).toMatchObject({ undo: null, redo: null })
   })
 
   it('clear() while a redo runs leaves nothing behind', async () => {
@@ -288,13 +371,13 @@ describe('UndoHistory', () => {
     slow.resolve({ ok: true })
     await redoing
 
-    expect(history.state()).toEqual({ undo: null, redo: null })
+    expect(history.state()).toMatchObject({ undo: null, redo: null })
   })
 
   it('clear() forgets everything: on quit and on a stash folder switch', () => {
     const history = new UndoHistory<FakeOp>(fakeRunner())
     titleEdit(history, 1, 'Tote', 'Tote bag')
     history.clear()
-    expect(history.state()).toEqual({ undo: null, redo: null })
+    expect(history.state()).toMatchObject({ undo: null, redo: null })
   })
 })

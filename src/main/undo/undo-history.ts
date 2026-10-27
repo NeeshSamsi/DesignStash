@@ -1,17 +1,23 @@
+import type { RendererUndoOp, UndoRunResult } from '@shared/ipc/undo'
+
 /** The most entries the history keeps. Older ones go first. */
 export const UNDO_LIMIT = 200
 
 /**
- * Something an action changed, so a permanent delete (Empty Trash, Delete for good, Delete entry)
- * can drop the entries that point at what it removed.
+ * Something an action changed. A permanent delete (Empty Trash, Delete for good, Delete entry)
+ * drops the entries that point at what it removed, and a toast's Undo is blocked by a newer entry
+ * that points at the same thing. A pile or a cover change points at its mockups.
  */
 export interface UndoTarget {
   kind: 'mockup' | 'tag' | 'category' | 'model'
   id: number | string
 }
 
-/** How an op went. A target that is gone comes back as data, never as a throw. */
-export type OpOutcome = { ok: true } | { ok: false; missing: UndoTarget }
+/**
+ * How an op went. A target that is gone comes back as data, never as a throw. An op the window
+ * carries out itself (Discard your changes) hands back its `renderer` step.
+ */
+export type OpOutcome = { ok: true; renderer?: RendererUndoOp } | { ok: false; missing: UndoTarget }
 
 /** Runs an op through the same services the action used. */
 export interface OpRunner<Op> {
@@ -31,25 +37,34 @@ export interface UndoEntry<Op> extends UndoRecord<Op> {
   id: number
   /** When it was recorded (ISO). */
   at: string
+  /** Recorded by a toast's out-of-order undo: its undo puts that action back. */
+  reversal: boolean
 }
-
-export type DropReason = { kind: 'missing-target'; target: UndoTarget }
-
-export type UndoResult =
-  | { status: 'done'; label: string }
-  | { status: 'empty' }
-  /** A toast's Undo for an action that is no longer the newest. */
-  | { status: 'stale' }
-  /** The step couldn't run and is gone from the history; the next one is the step before. */
-  | { status: 'dropped'; label: string; reason: DropReason }
 
 export interface UndoStep {
   id: number
   label: string
   at: string
+  reversal: boolean
+}
+
+export interface UndoHistoryState {
+  undo: UndoStep | null
+  redo: UndoStep | null
+  /** Every entry there is to undo, oldest first, with the newest later one blocking its toast. */
+  entries: { id: number; blockedBy?: number }[]
+}
+
+const NOUN: Record<UndoTarget['kind'], string> = {
+  mockup: 'mockup',
+  tag: 'tag',
+  category: 'category',
+  model: 'model'
 }
 
 const sameTarget = (a: UndoTarget, b: UndoTarget): boolean => a.kind === b.kind && a.id === b.id
+const overlaps = (a: UndoTarget[], b: UndoTarget[]): boolean =>
+  a.some((t) => b.some((u) => sameTarget(t, u)))
 
 /**
  * The app's undo history for this session (design/specs/undo.md): the person's actions, newest
@@ -67,12 +82,14 @@ export class UndoHistory<Op extends { kind: string }> {
   private dropped = new WeakSet<UndoEntry<Op>>()
   private queue: Promise<unknown> = Promise.resolve()
   private readonly now: () => Date
+  private readonly onChange: () => void
 
   constructor(
     private readonly runner: OpRunner<Op>,
-    options: { now?: () => Date } = {}
+    options: { now?: () => Date; onChange?: () => void } = {}
   ) {
     this.now = options.now ?? (() => new Date())
+    this.onChange = options.onChange ?? (() => {})
   }
 
   /**
@@ -80,23 +97,48 @@ export class UndoHistory<Op extends { kind: string }> {
    * toast keeps it). The entry is copied, which also refuses an op that holds a function.
    */
   record(action: UndoRecord<Op>): number {
-    const copy = structuredClone(action)
-    const entry: UndoEntry<Op> = { ...copy, id: this.nextId++, at: this.now().toISOString() }
-    this.done.push(entry)
-    if (this.done.length > UNDO_LIMIT) this.done.shift()
-    this.undone = []
-    this.generation++
-    return entry.id
+    const id = this.push(structuredClone(action), false)
+    this.onChange()
+    return id
   }
 
-  /** Takes back the newest action. With `id`, only when that entry is still the newest. */
-  undo(options: { id?: number } = {}): Promise<UndoResult> {
-    return this.serially(() => this.step('undo', options.id))
+  /** Takes back the newest action. */
+  undo(): Promise<UndoRunResult> {
+    return this.serially(() => this.step('undo'))
   }
 
   /** Does again the action undone last. */
-  redo(): Promise<UndoResult> {
+  redo(): Promise<UndoRunResult> {
     return this.serially(() => this.step('redo'))
+  }
+
+  /**
+   * A toast's Undo. The newest entry is a plain undo. An older one is undone on its own when no
+   * newer entry points at the same things, and that is recorded as a new action, so ⌘Z straight
+   * after puts it back; otherwise it's blocked, and nothing runs.
+   */
+  undoEntry(id: number): Promise<UndoRunResult> {
+    return this.serially(async () => {
+      const index = this.done.findIndex((e) => e.id === id)
+      if (index === -1) return { status: 'gone' }
+      if (index === this.done.length - 1) return this.step('undo')
+      const entry = this.done[index]!
+      const blocker = this.blockerOf(index)
+      if (blocker) return { status: 'blocked', label: entry.label, blockedBy: blocker.id }
+
+      const outcome = await this.runner.run(entry.undo)
+      const wasDropped = this.dropped.has(entry)
+      this.remove(entry)
+      if (!outcome.ok) return this.drop(entry, outcome.missing)
+      if (!wasDropped) {
+        this.push(
+          { label: entry.label, undo: entry.redo, redo: entry.undo, targets: entry.targets },
+          true
+        )
+      }
+      this.onChange()
+      return this.doneResult(entry, outcome)
+    })
   }
 
   /**
@@ -104,11 +146,12 @@ export class UndoHistory<Op extends { kind: string }> {
    * so ⌘Z walks back past them. Returns how many went.
    */
   forget(targets: UndoTarget[]): number {
-    const hit = (e: UndoEntry<Op>) => e.targets.some((t) => targets.some((g) => sameTarget(t, g)))
+    const hit = (e: UndoEntry<Op>) => overlaps(e.targets, targets)
     const gone = [...this.done, ...this.undone].filter(hit)
     for (const entry of gone) this.dropped.add(entry)
     this.done = this.done.filter((e) => !hit(e))
     this.undone = this.undone.filter((e) => !hit(e))
+    if (gone.length > 0) this.onChange()
     return gone.length
   }
 
@@ -117,13 +160,44 @@ export class UndoHistory<Op extends { kind: string }> {
     this.done = []
     this.undone = []
     this.generation++
+    this.onChange()
   }
 
-  /** The next undo and redo, for the Edit menu's labels and the toasts. */
-  state(): { undo: UndoStep | null; redo: UndoStep | null } {
+  /** The next undo and redo, for the Edit menu's labels, and which toasts may still undo. */
+  state(): UndoHistoryState {
     const step = (e: UndoEntry<Op> | undefined): UndoStep | null =>
-      e ? { id: e.id, label: e.label, at: e.at } : null
-    return { undo: step(this.done.at(-1)), redo: step(this.undone.at(-1)) }
+      e ? { id: e.id, label: e.label, at: e.at, reversal: e.reversal } : null
+    return {
+      undo: step(this.done.at(-1)),
+      redo: step(this.undone.at(-1)),
+      entries: this.done.map((e, i) => {
+        const blocker = this.blockerOf(i)
+        return blocker ? { id: e.id, blockedBy: blocker.id } : { id: e.id }
+      })
+    }
+  }
+
+  /** The newest later entry that points at something the entry at `index` points at. */
+  private blockerOf(index: number): UndoEntry<Op> | undefined {
+    const entry = this.done[index]!
+    for (let i = this.done.length - 1; i > index; i--) {
+      if (overlaps(this.done[i]!.targets, entry.targets)) return this.done[i]
+    }
+    return undefined
+  }
+
+  private push(action: UndoRecord<Op>, reversal: boolean): number {
+    const entry: UndoEntry<Op> = {
+      ...action,
+      id: this.nextId++,
+      at: this.now().toISOString(),
+      reversal
+    }
+    this.done.push(entry)
+    if (this.done.length > UNDO_LIMIT) this.done.shift()
+    this.undone = []
+    this.generation++
+    return entry.id
   }
 
   private serially<T>(run: () => Promise<T>): Promise<T> {
@@ -136,33 +210,45 @@ export class UndoHistory<Op extends { kind: string }> {
    * Runs the newest entry on one side and moves it to the other. The entry stays where it is until
    * its op has run, so an op that throws leaves the history as it was.
    */
-  private async step(direction: 'undo' | 'redo', id?: number): Promise<UndoResult> {
+  private async step(direction: 'undo' | 'redo'): Promise<UndoRunResult> {
     const from = direction === 'undo' ? this.done : this.undone
     const entry = from.at(-1)
     if (!entry) return { status: 'empty' }
-    if (id !== undefined && entry.id !== id) return { status: 'stale' }
 
     const generation = this.generation
     const outcome = await this.runner.run(direction === 'undo' ? entry.undo : entry.redo)
 
     // Read the sides again: an action may have been recorded, or entries forgotten, meanwhile.
+    const wasDropped = this.dropped.has(entry)
     this.remove(entry)
-    if (!outcome.ok) {
-      return {
-        status: 'dropped',
-        label: entry.label,
-        reason: { kind: 'missing-target', target: outcome.missing }
+    if (!outcome.ok) return this.drop(entry, outcome.missing)
+    if (!wasDropped) {
+      if (direction === 'undo') {
+        // An action recorded while this ran cleared redo, and this step goes with it.
+        if (generation === this.generation) this.undone.push(entry)
+      } else {
+        this.done.push(entry)
+        if (this.done.length > UNDO_LIMIT) this.done.shift()
       }
     }
-    if (this.dropped.has(entry)) return { status: 'done', label: entry.label }
-    if (direction === 'undo') {
-      // An action recorded while this ran cleared redo, and this step goes with it.
-      if (generation === this.generation) this.undone.push(entry)
-    } else {
-      this.done.push(entry)
-      if (this.done.length > UNDO_LIMIT) this.done.shift()
+    this.onChange()
+    return this.doneResult(entry, outcome)
+  }
+
+  /** The step couldn't run: it's gone from the history, and the toast says why. */
+  private drop(entry: UndoEntry<Op>, missing: UndoTarget): UndoRunResult {
+    this.onChange()
+    return {
+      status: 'dropped',
+      label: entry.label,
+      reason: `that ${NOUN[missing.kind]} was deleted for good`
     }
-    return { status: 'done', label: entry.label }
+  }
+
+  private doneResult(entry: UndoEntry<Op>, outcome: { renderer?: RendererUndoOp }): UndoRunResult {
+    return outcome.renderer
+      ? { status: 'done', label: entry.label, renderer: outcome.renderer }
+      : { status: 'done', label: entry.label }
   }
 
   private remove(entry: UndoEntry<Op>): void {
