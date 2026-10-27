@@ -297,7 +297,7 @@ describe('meaning search through the library', () => {
     expect(result.meaningHit).toBe(true)
   })
 
-  it('puts keyword hits first and adds the meaning hit after them', () => {
+  it('puts keyword hits first and adds the meaning hits after them', () => {
     ensureSearchIndex(db)
     const kw = stash('Jumper on a hanger', '/lib/fts/m3.psd')
     const sw = stash('Black sweatshirt', '/lib/fts/m4.psd')
@@ -306,10 +306,10 @@ describe('meaning search through the library', () => {
       [kw.id, 0.9],
       [sw.id, 0.7]
     ])
-    // The closest is already a keyword hit, so the top-1 rule adds nothing.
+    // The closest is already a keyword hit; the next one above the floor still joins (top 6, F-076).
     expect(repo.library.queryLibrary({ query: 'jumper', sort: 'date', meaning: sims })).toMatchObject({
-      rows: [{ id: kw.id }],
-      meaningHit: false
+      rows: [{ id: kw.id }, { id: sw.id }],
+      meaningHit: true
     })
     const sims2 = new Map([
       [kw.id, 0.4],
