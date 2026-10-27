@@ -305,9 +305,7 @@ describe('LibraryPage stars', () => {
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: /Star Mockup 1/ }))
     await waitFor(() =>
-      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toEqual([
-        { mockupId: 1, favourite: true }
-      ])
+      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toEqual([{ ids: [1], favourite: true }])
     )
     expect(useLibraryStore.getState().items[0]!.favourite).toBe(true)
   })
@@ -316,8 +314,8 @@ describe('LibraryPage stars', () => {
     const starred = [item(1, { favourite: true }), item(2, { favourite: true })]
     const api = setupApi(starred, {
       [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: (request) => {
-        const { mockupId, favourite } = request as { mockupId: number; favourite: boolean }
-        starred.find((i) => i.id === mockupId)!.favourite = favourite
+        const { ids, favourite } = request as { ids: number[]; favourite: boolean }
+        for (const id of ids) starred.find((i) => i.id === id)!.favourite = favourite
         return { success: true, data: { favourite } }
       },
       [IPC_CHANNELS.LIBRARY_LIST]: () => ({
@@ -352,8 +350,8 @@ describe('LibraryPage stars', () => {
     const starred = [item(1, { favourite: true })]
     const api = setupApi(starred, {
       [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: (request) => {
-        const { mockupId, favourite } = request as { mockupId: number; favourite: boolean }
-        starred.find((i) => i.id === mockupId)!.favourite = favourite
+        const { ids, favourite } = request as { ids: number[]; favourite: boolean }
+        for (const id of ids) starred.find((i) => i.id === id)!.favourite = favourite
         return { success: true, data: { favourite } }
       },
       [IPC_CHANNELS.LIBRARY_LIST]: () => ({
@@ -369,7 +367,7 @@ describe('LibraryPage stars', () => {
     await act(async () => undo())
     await waitFor(() =>
       expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE).at(-1)).toEqual({
-        mockupId: 1,
+        ids: [1],
         favourite: true
       })
     )

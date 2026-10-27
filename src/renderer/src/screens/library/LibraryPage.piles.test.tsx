@@ -150,7 +150,7 @@ describe('piles by shortcut', () => {
     fireEvent.click(cards()[0]!)
     cards()[0]!.focus()
     fireEvent.keyDown(cards()[0]!, { key: 'g', metaKey: true, shiftKey: true })
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_DISBAND)).toEqual([{ pileId: 1 }]))
+    await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_DISBAND)).toEqual([{ pileIds: [1] }]))
     await waitFor(() => expect(screen.getByText('2 of 2 selected')).toBeTruthy())
     expect(undoToast).toHaveBeenCalledWith(
       'Pile disbanded',
@@ -177,7 +177,7 @@ describe('piles by shortcut', () => {
     expect(api.calls(IPC_CHANNELS.PILE_DISBAND)).toHaveLength(0)
     fireEvent.contextMenu(cards()[0]!)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Disband pile/ }))
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_DISBAND)).toEqual([{ pileId: 1 }]))
+    await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_DISBAND)).toEqual([{ pileIds: [1] }]))
   })
 })
 

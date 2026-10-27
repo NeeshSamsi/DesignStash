@@ -10,6 +10,7 @@ import { useGridSelection } from '@renderer/hooks/use-grid-selection'
 import { HeaderActions } from '@renderer/lib/page-header-slot'
 import { useDetailsStore, type OpenPile } from '@renderer/stores/detailsStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { pluralise } from '@renderer/lib/plural'
 import { syncLibrary } from '../details/library-sync'
 import { disbandPile, putOnTop, removeFromPile } from '../details/pile-actions'
 import { itemName } from '@renderer/lib/item-title'
@@ -80,9 +81,12 @@ export function PilePage({ pile }: { pile: OpenPile }) {
     return id === undefined ? undefined : itemById(id)
   }
 
-  const setFavourite = async (item: LibraryItem, favourite: boolean) => {
+  /** Stars or unstars these in one go: one change, one undo entry. */
+  const setFavourite = async (targets: readonly LibraryItem[], favourite: boolean) => {
+    const ids = targets.filter((item) => item.favourite !== favourite).map((item) => item.id)
+    if (ids.length === 0) return
     const res = await window.api
-      .invoke(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, { mockupId: item.id, favourite })
+      .invoke(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, { ids, favourite })
       .catch(() => null)
     if (res?.success) void syncLibrary()
     else toast({ variant: 'error', message: 'Couldn’t update the star. Try again.' })
@@ -95,39 +99,34 @@ export function PilePage({ pile }: { pile: OpenPile }) {
     })
 
   /**
-   * Moves one mockup to Trash. It leaves the pile first (as Remove from pile, so taking the top
-   * promotes the next) and lands in Trash on its own; Undo brings it back into the pile.
+   * Moves these to Trash. Main takes them out of the pile as it does (taking the top promotes the
+   * next), as one undo entry, and Undo brings them back into the pile.
    */
-  const trash = async (item: LibraryItem) => {
-    const removed = await window.api
-      .invoke(IPC_CHANNELS.PILE_REMOVE, { pileId: pile.id, mockupId: item.id })
-      .catch(() => null)
-    const res = removed?.success
-      ? await window.api.invoke(IPC_CHANNELS.MOCKUP_TRASH, { ids: [item.id] }).catch(() => null)
-      : null
-    if (!removed?.success || !res?.success || !res.data.ok) {
-      if (removed?.success) {
-        await window.api
-          .invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot: removed.data.snapshot })
-          .catch(() => null)
-      }
+  const trash = async (targets: readonly LibraryItem[]) => {
+    const [first] = targets
+    if (!first) return
+    const ids = targets.map((item) => item.id)
+    const res = await window.api.invoke(IPC_CHANNELS.MOCKUP_TRASH, { ids }).catch(() => null)
+    if (!res?.success || !res.data.ok) {
       toast({ variant: 'error', message: 'Couldn’t move that to Trash. Try again.' })
       return
     }
-    const { pileId: next, snapshot } = removed.data
     raw.clear()
     void syncLibrary()
     undoToast(
       'Moved to Trash',
       () =>
         void (async () => {
-          await window.api.invoke(IPC_CHANNELS.MOCKUP_RESTORE, { ids: [item.id] })
-          await window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot })
+          await window.api.invoke(IPC_CHANNELS.MOCKUP_RESTORE, { ids })
           await syncLibrary()
         })().catch(() => {}),
-      itemName(item)
+      targets.length === 1 ? itemName(first) : pluralise(targets.length, 'mockup'),
+      res.data.undoEntryId
     )
-    // A pile left with one mockup is gone: back to My Stash. A new top carries on as the pile.
+    // A pile left with one mockup is gone: back to My Stash. Taking the top makes the next one,
+    // in the pile's order, the top, and the pile carries on under its id.
+    const rest = items.filter((member) => !ids.includes(member.id))
+    const next = rest.length < 2 ? null : ids.includes(pile.id) ? rest[0]!.id : pile.id
     if (next === null) useDetailsStore.getState().closePile()
     else if (next !== pile.id)
       useDetailsStore.getState().openPile({ ...pile, id: next, select: next, edit: false })
@@ -227,7 +226,7 @@ export function PilePage({ pile }: { pile: OpenPile }) {
                 {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
                 favourite={item.favourite}
                 state={coverDisplay(item, raw.isSelected(key))}
-                onToggleFavourite={(favourite) => void setFavourite(item, favourite)}
+                onToggleFavourite={(favourite) => void setFavourite([item], favourite)}
                 onMore={(event) => {
                   const box = event.currentTarget.getBoundingClientRect()
                   openMenuFor(item, { x: box.left, y: box.bottom })
@@ -247,11 +246,10 @@ export function PilePage({ pile }: { pile: OpenPile }) {
         actions={{
           openInPhotoshop: (item) => void openInPhotoshop(item),
           editDetails,
-          star: (targets, favourite) =>
-            targets.forEach((item) => void setFavourite(item, favourite)),
+          star: (targets, favourite) => void setFavourite(targets, favourite),
           putOnTop: (item) => void makeTop(item),
           removeFromPile: (item) => void removeItem(item),
-          trash: (targets) => targets.forEach((item) => void trash(item)),
+          trash: (targets) => void trash(targets),
           selectAll: selection.selectAll,
           undo: () => {}
         }}

@@ -169,7 +169,7 @@ describe('PilePage', () => {
     render(<Host />)
     await ready()
     fireEvent.click(screen.getByRole('button', { name: 'Disband pile' }))
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_DISBAND)).toEqual([{ pileId: 1 }]))
+    await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_DISBAND)).toEqual([{ pileIds: [1] }]))
     await waitFor(() => expect(useDetailsStore.getState().pile).toBeNull())
     expect(toasts.undoToast.mock.calls[0]![0]).toBe('Pile disbanded')
   })
@@ -244,12 +244,10 @@ describe('PilePage', () => {
     await waitFor(() => expect(useDetailsStore.getState().pile).toBeNull())
   })
 
-  it('Move to Trash takes a mockup out of the pile first, so it lands in Trash on its own', async () => {
-    const snapshot = { rows: [{ id: 3, isGroup: false, groupId: 1 }] }
+  it('Move to Trash is one call: main takes the mockup out of the pile, as one undo entry', async () => {
     const api = setupApi([], {
       ...handlers,
-      [IPC_CHANNELS.PILE_REMOVE]: () => ok({ pileId: 1, snapshot, freedIds: [3] }),
-      [IPC_CHANNELS.MOCKUP_TRASH]: () => ok({ ok: true, count: 1 })
+      [IPC_CHANNELS.MOCKUP_TRASH]: () => ok({ ok: true, count: 1, undoEntryId: 9 })
     })
     useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })
     render(<Host />)
@@ -257,23 +255,18 @@ describe('PilePage', () => {
     fireEvent.contextMenu(cards()[2]!)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Move to Trash/ }))
     await waitFor(() => expect(api.calls(IPC_CHANNELS.MOCKUP_TRASH)).toEqual([{ ids: [3] }]))
-    expect(api.calls(IPC_CHANNELS.PILE_REMOVE)).toEqual([{ pileId: 1, mockupId: 3 }])
-    const removedAt = api.invoke.mock.calls.findIndex(([c]) => c === IPC_CHANNELS.PILE_REMOVE)
-    const trashedAt = api.invoke.mock.calls.findIndex(([c]) => c === IPC_CHANNELS.MOCKUP_TRASH)
-    expect(removedAt).toBeLessThan(trashedAt)
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    expect(toasts.undoToast.mock.calls[0]![0]).toBe('Moved to Trash')
+    expect(api.calls(IPC_CHANNELS.PILE_REMOVE)).toEqual([])
+    await waitFor(() =>
+      expect(toasts.undoToast).toHaveBeenCalledWith('Moved to Trash', expect.any(Function), 'V3', 9)
+    )
     expect(useDetailsStore.getState().pile).toMatchObject({ id: 1 })
   })
 
-  it('Undo after Move to Trash brings the mockup back into the pile', async () => {
-    const snapshot = { rows: [{ id: 3, isGroup: false, groupId: 1 }] }
+  it('Undo without an entry brings it back from Trash', async () => {
     const api = setupApi([], {
       ...handlers,
-      [IPC_CHANNELS.PILE_REMOVE]: () => ok({ pileId: 1, snapshot, freedIds: [3] }),
       [IPC_CHANNELS.MOCKUP_TRASH]: () => ok({ ok: true, count: 1 }),
-      [IPC_CHANNELS.MOCKUP_RESTORE]: () => ok({ ok: true, count: 1 }),
-      [IPC_CHANNELS.PILE_RESTORE]: () => ok({ restoredIds: [3] })
+      [IPC_CHANNELS.MOCKUP_RESTORE]: () => ok({ ok: true, count: 1 })
     })
     useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })
     render(<Host />)
@@ -281,14 +274,9 @@ describe('PilePage', () => {
     fireEvent.contextMenu(cards()[2]!)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Move to Trash/ }))
     await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-
     const undo = toasts.undoToast.mock.calls[0]![1] as () => void
     act(() => undo())
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_RESTORE)).toEqual([{ snapshot }]))
-    expect(api.calls(IPC_CHANNELS.MOCKUP_RESTORE)).toEqual([{ ids: [3] }])
-    const restoredAt = api.invoke.mock.calls.findIndex(([c]) => c === IPC_CHANNELS.MOCKUP_RESTORE)
-    const repiledAt = api.invoke.mock.calls.findIndex(([c]) => c === IPC_CHANNELS.PILE_RESTORE)
-    expect(restoredAt).toBeLessThan(repiledAt)
+    await waitFor(() => expect(api.calls(IPC_CHANNELS.MOCKUP_RESTORE)).toEqual([{ ids: [3] }]))
   })
 
   it('Move to Trash on the top carries on with the next mockup as the pile', async () => {
@@ -307,33 +295,35 @@ describe('PilePage', () => {
   it('a pile left with one mockup after Move to Trash is gone: back to My Stash', async () => {
     setupApi([], {
       ...handlers,
-      [IPC_CHANNELS.PILE_REMOVE]: () =>
-        ok({ pileId: null, snapshot: { rows: [] }, freedIds: [1, 3] }),
+      [IPC_CHANNELS.PILE_MEMBERS]: () =>
+        ok({
+          items: [1, 3].map((id) =>
+            item(id, { title: `V${id}`, ...(id === 1 && { pile: { memberCount: 2 } }) })
+          )
+        }),
       [IPC_CHANNELS.MOCKUP_TRASH]: () => ok({ ok: true, count: 1 })
     })
     useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 2, select: 1, edit: false })
     render(<Host />)
-    await ready()
-    fireEvent.contextMenu(cards()[2]!)
+    await waitFor(() => expect(cards()).toHaveLength(2))
+    fireEvent.contextMenu(cards()[1]!)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Move to Trash/ }))
     await waitFor(() => expect(useDetailsStore.getState().pile).toBeNull())
   })
 
-  it('when Trash refuses, the mockup goes back into the pile and nothing else changes', async () => {
-    const snapshot = { rows: [{ id: 3, isGroup: false, groupId: 1 }] }
-    const api = setupApi([], {
+  it('when Trash refuses, nothing changes and it says so', async () => {
+    setupApi([], {
       ...handlers,
-      [IPC_CHANNELS.PILE_REMOVE]: () => ok({ pileId: 1, snapshot, freedIds: [3] }),
-      [IPC_CHANNELS.MOCKUP_TRASH]: () => ({ success: false, error: { code: 'X', message: 'x' } }),
-      [IPC_CHANNELS.PILE_RESTORE]: () => ok({ restoredIds: [3] })
+      [IPC_CHANNELS.MOCKUP_TRASH]: () => ({ success: false, error: { code: 'X', message: 'x' } })
     })
     useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })
     render(<Host />)
     await ready()
     fireEvent.contextMenu(cards()[2]!)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Move to Trash/ }))
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_RESTORE)).toEqual([{ snapshot }]))
-    expect(toasts.toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'error' }))
+    await waitFor(() =>
+      expect(toasts.toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'error' }))
+    )
     expect(toasts.undoToast).not.toHaveBeenCalled()
     expect(useDetailsStore.getState().pile).toMatchObject({ id: 1 })
   })

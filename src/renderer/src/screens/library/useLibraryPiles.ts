@@ -86,29 +86,20 @@ export function useLibraryPiles({ refresh, offerUndo }: LibraryPilesInput) {
     async (targets: readonly LibraryItem[]) => {
       const piles = pilesIn(targets)
       if (piles.length === 0) return
-      const snapshots: PileSnapshot[] = []
-      const freed: number[] = []
-      const entries: (number | undefined)[] = []
-      for (const pile of piles) {
-        const res = await window.api.invoke(IPC_CHANNELS.PILE_DISBAND, { pileId: pile.id })
-        if (!res.success) {
-          fail()
-          break
-        }
-        snapshots.push(res.data.snapshot)
-        freed.push(...res.data.freedIds)
-        entries.push(res.data.undoEntryId)
-      }
-      if (snapshots.length === 0) return
+      // One call for every pile: one change, one undo entry.
+      const res = await window.api.invoke(IPC_CHANNELS.PILE_DISBAND, {
+        pileIds: piles.map((pile) => pile.id)
+      })
+      if (!res.success) return fail()
+      const { snapshot, freedIds: freed, undoEntryId } = res.data
       useDetailEffects.getState().selectAfterReload(freed)
       await refresh()
       offerUndo(
         'disband pile',
-        snapshots.length === 1 ? 'Pile disbanded' : 'Piles disbanded',
-        () => restore(snapshots),
+        piles.length === 1 ? 'Pile disbanded' : 'Piles disbanded',
+        () => restore([snapshot]),
         `${mockups(freed.length)} ${freed.length === 1 ? 'is' : 'are'} on ${freed.length === 1 ? 'its' : 'their'} own`,
-        // Several piles are several entries, which one toast can't undo together yet.
-        entries.length === 1 ? entries[0] : undefined
+        undoEntryId
       )
     },
     [refresh, offerUndo, restore]

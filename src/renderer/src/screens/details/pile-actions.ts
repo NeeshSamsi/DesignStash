@@ -8,7 +8,9 @@ import { syncLibrary } from './library-sync'
  * once the grid has reloaded. True when it worked.
  */
 export async function disbandPile(pileId: number): Promise<boolean> {
-  const res = await window.api.invoke(IPC_CHANNELS.PILE_DISBAND, { pileId }).catch(() => null)
+  const res = await window.api
+    .invoke(IPC_CHANNELS.PILE_DISBAND, { pileIds: [pileId] })
+    .catch(() => null)
   if (!res?.success) {
     toast({
       variant: 'error',

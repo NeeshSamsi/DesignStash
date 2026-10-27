@@ -180,8 +180,7 @@ describe('card menu', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Star 2' }))
     await waitFor(() =>
       expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toEqual([
-        { mockupId: 1, favourite: true },
-        { mockupId: 2, favourite: true }
+        { ids: [1, 2], favourite: true }
       ])
     )
   })

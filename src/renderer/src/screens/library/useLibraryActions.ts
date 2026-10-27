@@ -69,42 +69,49 @@ export function useLibraryActions({
     await latest.current?.run()
   }, [])
 
-  const setFavourite = useCallback(async (id: number, favourite: boolean) => {
+  /**
+   * Stars or unstars these in one call, so it's one change and one undo entry. The cards change at
+   * once and change back if main refuses. Gives the entry, or false when it failed.
+   */
+  const setFavourite = useCallback(async (ids: readonly number[], favourite: boolean) => {
     const patch = (value: boolean) => {
       const state = useLibraryStore.getState()
-      state.setItems(state.items.map((i) => (i.id === id ? { ...i, favourite: value } : i)))
+      state.setItems(state.items.map((i) => (ids.includes(i.id) ? { ...i, favourite: value } : i)))
     }
     patch(favourite)
     const res = await window.api.invoke(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, {
-      mockupId: id,
+      ids: [...ids],
       favourite
     })
     if (!res.success) {
       patch(!favourite)
       toast({ variant: 'error', message: 'Couldn’t update the star. Try again.' })
-      return false
+      return false as const
     }
     const stats = await window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
     if (stats.success) useLibraryStore.getState().setStats(stats.data)
-    return true
+    return { undoEntryId: res.data.undoEntryId }
   }, [])
 
   /** Stars or unstars. In Starred an unstarred card stays until you leave, with Undo. */
   const setFavouriteFor = useCallback(
     async (targets: readonly LibraryItem[], favourite: boolean) => {
-      const changed: LibraryItem[] = []
-      for (const item of targets) {
-        if (item.favourite === favourite) continue
-        if (await setFavourite(item.id, favourite)) changed.push(item)
-      }
-      if (changed.length === 0 || !(starredOnly && !favourite)) return
-      for (const item of changed) keepLingering(item.id)
-      offerUndo('unstar', 'Removed from Starred', async () => {
-        for (const item of changed) {
-          releaseLingering(item.id)
-          await setFavourite(item.id, true)
-        }
-      })
+      const changed = targets.filter((item) => item.favourite !== favourite)
+      if (changed.length === 0) return
+      const ids = changed.map((item) => item.id)
+      const done = await setFavourite(ids, favourite)
+      if (!done || !(starredOnly && !favourite)) return
+      for (const id of ids) keepLingering(id)
+      offerUndo(
+        'unstar',
+        'Removed from Starred',
+        async () => {
+          for (const id of ids) releaseLingering(id)
+          await setFavourite(ids, true)
+        },
+        undefined,
+        done.undoEntryId
+      )
     },
     [starredOnly, setFavourite, keepLingering, releaseLingering, offerUndo]
   )

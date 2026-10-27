@@ -144,7 +144,7 @@ describe('details sidebar · one mockup, read-only', () => {
     fireEvent.click(button(/Star Hero Screen/)!)
     await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toHaveLength(1))
     expect(calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)[0]![1]).toEqual({
-      mockupId: 42,
+      ids: [42],
       favourite: true
     })
   })

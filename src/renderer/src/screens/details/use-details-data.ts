@@ -275,7 +275,7 @@ export function useDetailsData(id: number) {
       )
     set(favourite)
     const res = await window.api
-      .invoke(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, { mockupId: item.id, favourite })
+      .invoke(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, { ids: [item.id], favourite })
       .catch(() => null)
     if (res?.success) void syncLibrary()
     else set(!favourite)
