@@ -9,7 +9,8 @@ import { makeMockupZip, makeZip } from '../fixtures/zips'
  * Zips as downloaded from free mockup sites go straight in: the PSDs inside are copied into the
  * stash and the zip is left as it was. Imports come from the DesignStash test set: its generated
  * `invalid/` and `edge/` cases (outcomes from its MANIFEST.md), `folders/Mixed Drop/` and one small
- * real zip. Started through copy:start, as the journey does; the drop and the Add menu call it too.
+ * real zip. Started through copy:start directly: the journey's gather tests cover the ways in
+ * (File › Add Files…, the Add card, ⌘O and drops), which all end in that call.
  */
 
 interface File {
