@@ -7,8 +7,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { startWithCapital, withoutObjectColours } from '../../src/main/ai/object-colour'
-import { JUNK_WORDS } from '../../src/main/ai/vision-provider'
+import { pileBaseTitle } from '../../src/main/ai/vision-provider'
 import { argValue, runDir } from './eval-files'
 import { piles } from './prompts/pile'
 
@@ -23,11 +22,9 @@ const today = Object.fromEntries(
   (argValue('today') ?? 'qwen3-vl-4b=sp-base-strip,qwen3.5-9b=ck-9d-merged-strip').split(',').map((pair) => pair.split('=') as [string, string])
 )
 
-/** A base as the app would keep it: quoted print, stock words (free, mockup, PSD) and object colours cut. */
+/** A base as the app keeps it (`pileBaseTitle`): no variant or variation, quoted print, stock words or object colours, at most 60 characters. */
 export function cleaned(base: string | null): string | null {
-  if (!base) return null
-  const text = startWithCapital(base.replace(/'[^']+'/g, '').replace(JUNK_WORDS, '').replace(/\s+/g, ' ').replace(/\s+([,.])/g, '$1').trim())
-  return withoutObjectColours({ title: text, description: '', tags: [] }).title || null
+  return base ? pileBaseTitle(base) : null
 }
 
 /** Never in a base, whatever the pile: words for the pile itself. */
@@ -53,7 +50,7 @@ for (const [model, run] of Object.entries(today)) {
     if (f.fits) fitting[key]!++
     return `${base ?? '-'} (${f.fits ? 'fits' : `no: ${f.why}`})`
   }
-  console.log(`\n${model} (today: ${run}; every base cleaned as the app cleans a title)\n| Pile | I'd say | Today | ${hows.join(' | ')} |\n|---|---|---|${hows.map(() => '---|').join('')}`)
+  console.log(`\n${model} (today: ${run}; every base tidied as the app tidies a pile's base)\n| Pile | I'd say | Today | ${hows.join(' | ')} |\n|---|---|---|${hows.map(() => '---|').join('')}`)
   for (const p of piles()) {
     const g = gold[p.top]!
     const cells = [verdict(cleaned(titleOf.get(p.top) ?? null), g, 'today'), ...hows.map((h) => verdict(cleaned(asked[h]![p.top] ?? null), g, h))]

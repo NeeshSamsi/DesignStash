@@ -10,8 +10,9 @@
  *         prompt and question are the app's own (`src/main/ai/pile-variations.ts`).
  *   pilebase, pilebase2, pilebase3  the pile request, also asked for the pile's base title: what
  *         every mockup shares, the setting only if they all have it (2 also says what to leave out;
- *         3 starts from the top's own title, from `--top-titles <run>`). The bases go to bases.json
- *         beside the results, for `base-table.ts`.
+ *         3 starts from the top's own title, from `--top-titles <run>`, and is the app's request for
+ *         the 9B, `pileVariationsText` with the top's title). The bases go to bases.json beside the
+ *         results, for `base-table.ts`, which tidies them as the app does (`pileBaseTitle`).
  *
  *   pnpm exec tsx --tsconfig tsconfig.node.json scripts/ai-eval/variation.ts --model qwen3.5-9b --how pair|pile|pilebase
  *
@@ -47,20 +48,21 @@ const BASE_LINES: Record<string, string> = {
     "Also give the pile's title, at most 60 characters, written like a catalogue title for any one of them: the main object, its product name if known, and the setting only if every mockup in the pile has it. Leave out how the mockups differ, the words mockup, variant and variation, and anything printed on the object."
 }
 
-/** 3: the top's own suggested title, less what not every mockup in the pile has. */
-const fromTopTitle = (title: string) =>
-  `The first mockup's own title is "${title}". Also give the pile's title, at most 60 characters: that title with anything taken out that not every mockup in the pile has, such as a setting, a surface, a state or the design on a screen or label. Keep the object's name and product name as they are. Leave out the words mockup, variant and variation, and anything printed on the object.`
-
-/** The pile request, also asked for a base title every mockup in the pile shares (round 4 B, the base). */
+/**
+ * The pile request, also asked for a base title every mockup in the pile shares (round 4 B, the
+ * base). 3 is the app's own: the top's suggested title, less what not every mockup in the pile has.
+ */
 function pileBaseText(names: string[], how: string, topTitle?: string): string {
+  if (how === 'pilebase3') return pileText(names, topTitle ?? names[0]!)
   return [
     pileText(names).replace(/\nReply with JSON:.*$/, ''),
-    how === 'pilebase3' ? fromTopTitle(topTitle ?? names[0]!) : BASE_LINES[how]!,
+    BASE_LINES[how]!,
     `Reply with JSON: variations, a list of ${names.length} answers in order, then title.`
   ].join('\n')
 }
 
 const PAIR_SCHEMA = { type: 'object', properties: { difference: { type: 'string' } }, required: ['difference'] }
+/** As the app's (`pileVariationsRequest`). */
 const pileSchema = (n: number, withBase = false) => ({
   type: 'object',
   properties: {
