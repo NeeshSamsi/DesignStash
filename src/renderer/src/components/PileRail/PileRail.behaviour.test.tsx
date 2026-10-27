@@ -50,6 +50,8 @@ const queueOf = (over: Record<string, unknown> = {}) => ({
 
 type Handler = (payload: unknown) => unknown
 let invoke: ReturnType<typeof vi.fn>
+/** What the screen listens for, by channel, so a test can push as main does. */
+const pushes = new Map<string, (payload: unknown) => void>()
 
 function setup(overrides: Record<string, Handler> = {}, queue: unknown = queueOf()) {
   const handlers: Record<string, Handler> = {
@@ -72,10 +74,14 @@ function setup(overrides: Record<string, Handler> = {}, queue: unknown = queueOf
   invoke = vi.fn(
     async (channel: string, payload: unknown) => handlers[channel]?.(payload) ?? ok({})
   )
+  pushes.clear()
   window.api = {
     appName: 'DesignStash',
     invoke,
-    subscribe: vi.fn(() => () => {}),
+    subscribe: vi.fn((channel: string, fn: (payload: unknown) => void) => {
+      pushes.set(channel, fn)
+      return () => pushes.delete(channel)
+    }),
     getPathForFile: vi.fn()
   } as unknown as typeof window.api
 }
@@ -238,12 +244,18 @@ describe('Piles · drafts until Stash pile', () => {
   })
 
   it('updates untouched variants when the top mockup is edited, keeping edited ones', async () => {
-    const fresh = queueOf()
-    ;(fresh.units[0]!.items[1] as Record<string, unknown>).description = 'Brand new words'
-    let opens = 0
+    // Main pushes each mockup a save reached on look-over:draft as the save answers.
     setup({
-      [IPC_CHANNELS.LOOK_OVER_OPEN]: () => ok(++opens === 1 ? queueOf() : fresh),
-      [IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT]: () => ok({ propagatedIds: [11] })
+      [IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT]: () => {
+        pushes.get(IPC_CHANNELS.LOOK_OVER_DRAFT)?.({
+          ...item(11, 'variant', 10, { title: 'Title 10', description: 'Brand new words' }),
+          variation: null,
+          waitingForAi: false,
+          carry: null,
+          ai: { status: 'ready' }
+        })
+        return ok({ propagatedIds: [11] })
+      }
     })
     await start()
     fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), {
@@ -263,6 +275,7 @@ describe('Piles · drafts until Stash pile', () => {
         (screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value
       ).toBe('About 10')
     )
+    expect(calls(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1)
   })
 
   it('marks a mockup jumped past without opening and shows it as Not checked at review', async () => {
