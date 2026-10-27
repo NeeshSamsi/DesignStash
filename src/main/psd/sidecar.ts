@@ -78,8 +78,14 @@ function pathDistance(psdPath: string, candidatePath: string): number {
   return psdParts.length - common + (candParts.length - common)
 }
 
+/**
+ * An image named for the PSD: the nearest one with its exact name anywhere in the drop, else a
+ * near-miss name, which is only trusted from the PSD's own folder. Further away, a near miss is
+ * as likely to be another kit's render ("iphone-15-pro-max" for "iphone-15-pro").
+ */
 export function findSidecar(psdPath: string, candidateImagePaths: string[]): SidecarMatch | null {
   const psdStem = normalizeStem(psdPath)
+  const psdDir = dirname(psdPath)
 
   const exactMatches: SidecarMatch[] = []
   const fuzzyMatches: SidecarMatch[] = []
@@ -92,7 +98,7 @@ export function findSidecar(psdPath: string, candidateImagePaths: string[]): Sid
         candidateName: basename(candidatePath),
         confidence: 1.0,
       })
-    } else {
+    } else if (dirname(candidatePath) === psdDir) {
       const score = bigramDice(psdStem, candStem)
       if (score >= SIDECAR_FUZZY_THRESHOLD) {
         fuzzyMatches.push({

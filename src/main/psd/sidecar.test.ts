@@ -103,30 +103,25 @@ describe('findSidecar — canonical dropped tree', () => {
 })
 
 describe('findSidecar — fuzzy and edge cases', () => {
-  it('fuzzy-matches a near-miss filename above SIDECAR_FUZZY_THRESHOLD', async () => {
-    const dir = tempDir()
-    const psdDir = join(dir, 'PSD')
-    const jpgDir = join(dir, 'JPG')
-    mkdirSync(psdDir, { recursive: true })
-    mkdirSync(jpgDir, { recursive: true })
+  it('fuzzy-matches a near-miss name beside the PSD', () => {
+    // 'iphone-15-pro' and 'iphone-15-pro-max' share 12 bigrams: a Dice score of 24/28, over 0.85.
+    const psdPath = '/drop/Kit A/iphone-15-pro.psd'
+    const beside = '/drop/Kit A/iphone-15-pro-max.jpg'
 
-    // PSD stem "hero banner design" vs JPG stem "hero-banner design" — after normalization:
-    // psd: "hero banner design", jpg: "hero-banner design" — different stems (hyphen preserved)
-    // Use a genuinely close name instead:
-    const psdPath = join(psdDir, 'homepage hero.psd')
-    writeFileSync(psdPath, '') // dummy — findSidecar only needs the path string
-    const jpgPath = join(jpgDir, 'homepage-hero.jpg')
-    await buildSidecarImage(jpgPath, { format: 'jpeg' })
+    const match = findSidecar(psdPath, [beside])
 
-    const candidates = [jpgPath]
-    const match = findSidecar(psdPath, candidates)
-    // normalizeStem('homepage hero') = 'homepage hero'
-    // normalizeStem('homepage-hero') = 'homepage-hero'
-    // These are not equal, so fuzzy applies. Bigram dice should be high.
-    if (match !== null) {
-      expect(match.confidence).toBeGreaterThanOrEqual(0.85)
-    }
-    // Note: whether the hyphen case passes fuzzy depends on bigram score — acceptable if null too
+    expect(match?.path).toBe(beside)
+    expect(match!.confidence).toBeGreaterThanOrEqual(0.85)
+  })
+
+  it('never takes a near-miss name from another folder in the drop', () => {
+    const psdPath = '/drop/Kit A/iphone-15-pro.psd'
+    const otherKit = '/drop/Kit B/renders/iphone-15-pro-max.jpg'
+
+    expect(findSidecar(psdPath, [otherKit])).toBeNull()
+    expect(findSidecar(psdPath, [otherKit, '/drop/Kit A/iphone-15-pro-max.png'])?.path).toBe(
+      '/drop/Kit A/iphone-15-pro-max.png'
+    )
   })
 
   it('returns null for an unrelated filename', async () => {
