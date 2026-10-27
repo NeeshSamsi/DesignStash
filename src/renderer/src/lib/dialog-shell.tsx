@@ -24,9 +24,9 @@ type Kind = 'static' | 'dialog' | 'alert'
 
 const KindContext = createContext<Kind>('static')
 
-/** Menus, pickers and popovers that open over a dialog. */
+/** Menus, pickers and popovers that open over a dialog. The card grid's list is not one. */
 const NESTED_LAYER =
-  '[role="menu"], [role="listbox"], [data-slot="popover-content"], [data-slot="select-content"]'
+  '[role="menu"], [role="listbox"]:not([data-slot="mockup-cards"]), [data-slot="popover-content"], [data-slot="select-content"]'
 
 /**
  * Whether a menu, picker or popover was open when the latest mouse press began. Radix closes such a

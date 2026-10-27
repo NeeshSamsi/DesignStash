@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 
-/** Overlays that own Esc while they are up: dialogs, menus, pickers. */
-const OVERLAY = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]'
+/** Overlays that own Esc while they are up: dialogs, menus, pickers. The card grid's list is not one. */
+const OVERLAY =
+  '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]:not([data-slot="mockup-cards"])'
 
 /** The cover panel while it replaces a cover; it handles its own Esc. */
 const REPLACING =

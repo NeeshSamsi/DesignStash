@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentProps,
@@ -19,6 +20,7 @@ import {
   type Rect
 } from '@renderer/lib/marquee'
 import { cn } from '@renderer/lib/utils'
+import { GridCardContext, type GridCard } from './grid-card'
 import { MOCKUP_GRID_DEFAULTS, type MockupGridContractProps } from './MockupGrid.types'
 import { MOCKUP_GRID_CARDS, MOCKUP_GRID_MARQUEE, mockupGridVariants } from './MockupGrid.variants'
 
@@ -52,6 +54,8 @@ export interface MockupGridProps
   error?: ReactNode
   /** Cards per row for ↑ ↓. Measured from the layout when omitted. */
   columns?: number
+  /** What assistive tech calls the list of cards. */
+  listLabel?: string
 }
 
 function cardElements(root: HTMLElement): HTMLElement[] {
@@ -88,6 +92,7 @@ export function MockupGrid({
   noResults,
   error,
   columns,
+  listLabel = 'Mockups',
   onClick,
   onKeyDown,
   onMouseDown,
@@ -202,6 +207,19 @@ export function MockupGrid({
     window.addEventListener('resize', remeasure)
   }
 
+  // With a selection the cards are a multi-select list: each says whether it is selected and "3 of 128".
+  const ids = selection?.ids
+  const positions = useMemo(() => new Map(ids?.map((id, index) => [id, index + 1])), [ids])
+  const cardLookup = useMemo(() => {
+    if (!selection) return null
+    return (id: string): GridCard | null => {
+      const position = positions.get(id)
+      if (position === undefined) return null
+      return { selected: selection.isSelected(id), position, count: positions.size }
+    }
+  }, [selection, positions])
+  const listbox = cardLookup !== null && state === 'populated'
+
   const add = addCard ?? <AddMockupCard onClick={onAdd} />
   const withCards = state === 'populated' || state === 'loading' || state === 'empty'
 
@@ -217,9 +235,17 @@ export function MockupGrid({
       {...props}
     >
       {withCards && (
-        <div className={MOCKUP_GRID_CARDS}>
+        <div
+          data-slot="mockup-cards"
+          className={MOCKUP_GRID_CARDS}
+          {...(listbox
+            ? { role: 'listbox', 'aria-multiselectable': true, 'aria-label': listLabel }
+            : {})}
+        >
           {(state === 'empty' || showAdd) && add}
-          {state === 'populated' && children}
+          {state === 'populated' && (
+            <GridCardContext.Provider value={cardLookup}>{children}</GridCardContext.Provider>
+          )}
           {state === 'loading' &&
             Array.from({ length: LOADING_CARD_COUNT }, (_, index) => (
               <MockupCard key={index} state="loading" />
