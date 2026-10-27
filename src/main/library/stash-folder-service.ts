@@ -160,6 +160,8 @@ export class StashFolderService {
   }
 
   private async move(root: string, target: string, existed: boolean): Promise<StashChangeResult> {
+    // A copy still running or paused writes into this folder, and its files would miss the move.
+    if (this.repo.copyJobs.getActiveHaul()) return { ok: false, reason: 'busy' }
     if (existed) {
       const entries = (await fs.readdir(target)).filter((n) => n !== '.DS_Store')
       if (entries.length > 0) return { ok: false, reason: 'not-empty' }

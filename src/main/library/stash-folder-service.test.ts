@@ -197,6 +197,24 @@ describe('change: move', () => {
     expect(existsSync(join(target, 'mockups', 'c'))).toBe(false)
   })
 
+  it('waits for a copy that is still running or paused, and writes nothing', async () => {
+    const target = join(base, 'Moved')
+    repo.copyJobs.createHaul('running', [], 0)
+    expect(await service().change(target, 'move')).toEqual({ ok: false, reason: 'busy' })
+
+    repo.copyJobs.setHaulState('running', { state: 'paused', pauseReason: 'disk-full' })
+    expect(await service().change(target, 'move')).toEqual({ ok: false, reason: 'busy' })
+
+    expect(existsSync(target)).toBe(false)
+    expect(settings.get().pendingStash).toBeNull()
+  })
+
+  it('moves once the copy is done', async () => {
+    repo.copyJobs.createHaul('finished', [], 0)
+    repo.copyJobs.setHaulState('finished', { state: 'done' })
+    expect(await service().change(join(base, 'Moved'), 'move')).toEqual({ ok: true, restartRequired: true })
+  })
+
   it('moves into an empty existing folder', async () => {
     const target = join(base, 'EmptyAlready')
     mkdirSync(target)
