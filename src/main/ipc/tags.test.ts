@@ -149,6 +149,51 @@ describe('category:create', () => {
   })
 })
 
+describe('names of only spaces, and ids that are gone', () => {
+  it('refuses a tag or category of only spaces, and adds nothing', async () => {
+    const device = category('Device').id
+    const counts = [tagCount(), categoryCount()]
+
+    const created = await call(IPC_CHANNELS.TAG_CREATE, { label: '   ', categoryId: device })
+    const createdCategory = await call(IPC_CHANNELS.CATEGORY_CREATE, { label: ' ' })
+
+    expect(!created.success && created.error.message).toBe('A tag needs a name')
+    expect(!createdCategory.success && createdCategory.error.message).toBe('A category needs a name')
+    expect([tagCount(), categoryCount()]).toEqual(counts)
+  })
+
+  it('refuses a rename to only spaces', async () => {
+    const phone = tag('Device', 'Phone')
+    const style = category('Style').id
+
+    const renamedTag = await call(IPC_CHANNELS.TAG_RENAME, { tagId: phone.id, label: ' ' })
+    const renamedCategory = await call(IPC_CHANNELS.CATEGORY_RENAME, { categoryId: style, label: '  ' })
+
+    expect(!renamedTag.success && renamedTag.error.message).toBe('A tag needs a name')
+    expect(!renamedCategory.success && renamedCategory.error.message).toBe('A category needs a name')
+    expect(repo.tags.getAllTags().find((t) => t.id === phone.id)?.label).toBe('Phone')
+    expect(repo.tags.getAllCategories().find((c) => c.id === style)?.label).toBe('Style')
+  })
+
+  it('keeps a name without the spaces around it', async () => {
+    const device = category('Device').id
+    const res = await call(IPC_CHANNELS.TAG_CREATE, { label: '  Foldable ', categoryId: device })
+    expect(res).toMatchObject({ success: true, data: { label: 'Foldable' } })
+    const cat = await call(IPC_CHANNELS.CATEGORY_CREATE, { label: ' Mood  ' })
+    expect(cat).toMatchObject({ success: true, data: { label: 'Mood' } })
+  })
+
+  it('a rename or move of a tag or category that is gone answers not found', async () => {
+    const rename = await call(IPC_CHANNELS.TAG_RENAME, { tagId: 9999, label: 'Handset' })
+    const move = await call(IPC_CHANNELS.TAG_SET_CATEGORY, { tagId: 9999, categoryId: category('Device').id })
+    const renameCategory = await call(IPC_CHANNELS.CATEGORY_RENAME, { categoryId: 9999, label: 'Look' })
+
+    expect(!rename.success && rename.error.message).toBe('Tag 9999 not found')
+    expect(!move.success && move.error.message).toBe('Tag 9999 not found')
+    expect(!renameCategory.success && renameCategory.error.message).toBe('Category 9999 not found')
+  })
+})
+
 describe('category:rename', () => {
   it('renames the category', async () => {
     const res = await call(IPC_CHANNELS.CATEGORY_RENAME, { categoryId: category('Style').id, label: 'Look' })

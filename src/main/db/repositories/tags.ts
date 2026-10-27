@@ -33,6 +33,8 @@ export class TagRepository {
 
   /** Refuses a name another category reads the same as, whatever its casing. */
   renameCategory(categoryId: number, label: string): void {
+    const category = this.db.select().from(tagCategories).where(eq(tagCategories.id, categoryId)).get()
+    if (!category) throw new Error(`Category ${categoryId} not found`)
     const clash = this.getCategoryByNormalisedLabel(label)
     if (clash && clash.id !== categoryId) {
       throw new Error(`There’s already a category called “${clash.label}”`)

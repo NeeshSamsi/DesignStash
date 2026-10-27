@@ -106,18 +106,24 @@ export class MockupRepository {
     this.db.update(mockups).set({ coverPath, coverSource }).where(eq(mockups.id, mockupId)).run()
   }
 
+  /** Edit details: the title, description and tags. Refuses a mockup that is gone and a blank title. */
   updateMockupMeta(
     id: number,
     data: { title: string; description: string; tagIds: number[] }
   ): void {
+    const title = data.title.trim()
+    if (!title) throw new Error('A mockup needs a title')
+    const m = this.getMockup(id)
+    if (!m) throw new Error(`Mockup ${id} not found`)
     this.db
       .update(mockups)
-      .set({ title: data.title, description: data.description })
+      .set({ title, description: data.description })
       .where(eq(mockups.id, id))
       .run()
     this.clearTagsForMockup(id)
     for (const tagId of data.tagIds) this.addTagToMockup(id, tagId)
-    this.search.upsertSearchIndex(id)
+    // One in Trash stays out of search.
+    if (m.stage === 'stashed' && m.deletedAt === null) this.search.upsertSearchIndex(id)
   }
 
   // Variants

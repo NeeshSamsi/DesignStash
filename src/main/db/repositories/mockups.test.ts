@@ -185,4 +185,34 @@ describe('updateMockupMeta', () => {
       .all('Old') as { rowid: number }[]
     expect(oldRows.map((r) => r.rowid)).not.toContain(m.id)
   })
+
+  it('refuses a mockup that no longer exists, and writes nothing', () => {
+    const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
+
+    expect(() =>
+      repo.mockups.updateMockupMeta(9999, { title: 'Gone', description: '', tagIds: [laptop.id] })
+    ).toThrow('Mockup 9999 not found')
+    expect(sqlite.prepare('SELECT count(*) AS n FROM mockup_tags').get()).toEqual({ n: 0 })
+  })
+
+  it('refuses a title of only spaces, and keeps a title without the spaces around it', () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Mug', libraryPath: '/lib/sp.psd' }))
+
+    expect(() => repo.mockups.updateMockupMeta(m.id, { title: '   ', description: '', tagIds: [] })).toThrow(
+      'A mockup needs a title'
+    )
+    expect(repo.mockups.getMockup(m.id)?.title).toBe('Mug')
+
+    repo.mockups.updateMockupMeta(m.id, { title: '  Clay mug ', description: '', tagIds: [] })
+    expect(repo.mockups.getMockup(m.id)?.title).toBe('Clay mug')
+  })
+
+  it('leaves a mockup in Trash out of search when its details are saved', () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Binned', libraryPath: '/lib/bn.psd' }))
+    repo.trash.moveToTrash(m.id)
+
+    repo.mockups.updateMockupMeta(m.id, { title: 'Binned again', description: '', tagIds: [] })
+
+    expect(repo.search.isIndexed(m.id)).toBe(false)
+  })
 })
