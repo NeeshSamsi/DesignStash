@@ -103,7 +103,21 @@ Everything else that asks for a confirm today, and can now be undone, loses the 
 - **The three permanent confirms:** the "This can't be undone." line, with a red primary.
 - **Toss, Delete model and Discard changes:** their confirms are removed, and an Undo toast replaces each.
 
+## Notes for building (from the audit fixes, 2026-10-27)
+
+- **Route undo and redo first.** `runMenuCommand` drops every menu command while a dialog overlay other than Settings is open (`menu-commands.ts`). Sort and Look it over are dialogs, so undo and redo must be routed before that check.
+- **The router mustn't rely on a global shortcut binding.** F-060 keeps those out of dialogs. With ⌘Z as a menu accelerator, the renderer receives a menu command, not a keydown, which fits.
+- **Leave undo and redo out of F-008's replay** (`menu:pending`): a fresh window has nothing to undo.
+- **"Undo Sort" restores the saved board too.** Since F-049, `GROUPING_CONFIRM` also removes the committed mockups from the saved board (`sortBoards.remove`), so the undo puts the board's remainder back, as well as the stage and the piles. "Sort N" commits only part of the board.
+- **Undoing a stash in Look it over should return only the restored unit's items.** Today it reopens the whole queue (the left half of F-044).
+- **Text fields:** `document.execCommand('undo')` in the renderer saves a round trip to `webContents.undo()`. Check it in the packaged app.
+
 ## Open points (for Neesh's review before building)
 
 1. **Undoing an import.** "Undo import" moves what the haul brought in to Trash, which keeps redo possible, since the app doesn't keep the person's original paths. The alternative is deleting the copies outright, which is final, so there'd be no redo.
 2. **A toast's Undo when it's no longer the newest.** The proposal hides it, so undo always goes in order. Undoing out of order would be possible for independent actions, but it's harder to reason about.
+3. **What ⌘Z undoes inside Look it over.** Look it over has no step history today; its ⌘Z only brings back a dismissed edit offer (L7.10). The options:
+   - its own steps: accepting or dismissing a suggestion or offer, and each Stash & next;
+   - nothing of its own, so ⌘Z outside a field goes to the app history, whose newest entries are this session's stashes.
+
+   The proposal is the first, since it keeps "the flow's last step" true in both flows.
