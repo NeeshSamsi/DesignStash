@@ -17,7 +17,9 @@ Neesh: "I want the undo to be contextual and powerful. If inside an input, undo 
 
 - **Redo:** a new action clears what's waiting to be redone, as in every Mac app.
 - **The menu names it:** "Undo Move to Trash", "Redo Disband pile". In a field or a flow it reads plain "Undo". It's disabled when there's nothing to undo.
-- **Toasts keep their Undo button.** It undoes that toast's action while it's still the newest in the history. Once something newer happens, the older toast's Undo button goes, and ⌘Z walks back in order.
+- **Toasts keep their Undo button, even after something newer happens** (Neesh, 2026-10-27).
+  - A toast's Undo undoes its own action out of order, as long as no newer action touched the same mockups, piles, tags or covers. The out-of-order undo is recorded as a new action, so ⌘Z straight after it puts things back.
+  - If a newer action did touch the same things, the toast's button is disabled, with the reason "Changed since. Use ⌘Z". It never undoes the newer change silently.
 
 ## What's in the history
 
@@ -32,7 +34,7 @@ Every action a person takes that changes the library, including the ones that as
 | Star and unstar | None | App history |
 | Cover: Replace, Use the PSD's preview | ⌘Z in the cover panel | App history |
 | Pile base rename, variation set | Toast | App history |
-| An import (a haul) | Cancel, then Undo all (`COPY_UNDO_ALL`) | App history: "Undo import of 12 mockups" (see Open points) |
+| An import (a haul) | Cancel, then Undo all (`COPY_UNDO_ALL`) | App history: "Undo import of 12 mockups" moves what it brought in to Trash, so redo can bring it back (Neesh, 2026-10-27) |
 | Sort's result (piles confirmed, mockups to To stash) | In-flow steps only | One app entry, "Undo Sort", when the board commits |
 | Look it over: Stash & next, Stash pile | `StashSnapshot` | One app entry per stash. Its undo puts the mockups back in To stash with their drafts. |
 | Toss (To sort, To stash) | Confirm, then a hard delete | **Becomes Move to Trash** (below), with no confirm |
@@ -112,12 +114,8 @@ Everything else that asks for a confirm today, and can now be undone, loses the 
 - **Undoing a stash in Look it over should return only the restored unit's items.** Today it reopens the whole queue (the left half of F-044).
 - **Text fields:** `document.execCommand('undo')` in the renderer saves a round trip to `webContents.undo()`. Check it in the packaged app.
 
-## Open points (for Neesh's review before building)
+## Settled open points (Neesh, 2026-10-27)
 
-1. **Undoing an import.** "Undo import" moves what the haul brought in to Trash, which keeps redo possible, since the app doesn't keep the person's original paths. The alternative is deleting the copies outright, which is final, so there'd be no redo.
-2. **A toast's Undo when it's no longer the newest.** The proposal hides it, so undo always goes in order. Undoing out of order would be possible for independent actions, but it's harder to reason about.
-3. **What ⌘Z undoes inside Look it over.** Look it over has no step history today; its ⌘Z only brings back a dismissed edit offer (L7.10). The options:
-   - its own steps: accepting or dismissing a suggestion or offer, and each Stash & next;
-   - nothing of its own, so ⌘Z outside a field goes to the app history, whose newest entries are this session's stashes.
-
-   The proposal is the first, since it keeps "the flow's last step" true in both flows.
+1. **Undoing an import** moves what it brought in to Trash, so redo can bring it back (the app doesn't keep the person's original paths). Empty Trash is the only final step.
+2. **An older toast's Undo** keeps working out of order when nothing newer touched the same things; otherwise it's disabled with a reason (see "The rule").
+3. **⌘Z inside Look it over** undoes the flow's own last step: accepting or dismissing a suggestion or an edit offer, or the last Stash & next. Look it over keeps its own step list for this, as Sort does.
