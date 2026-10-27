@@ -86,6 +86,22 @@ describe('dev-reset', () => {
     expect(existsSync(join(beside, 'training.csv'))).toBe(true)
   })
 
+  it('keeps the dev tooling that lives in dev’s folder: llama-server, the helper and ai-eval', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { userData } = setup()
+    for (const tool of ['llama-server', 'helper', 'ai-eval']) {
+      mkdirSync(join(userData, tool), { recursive: true })
+      writeFileSync(join(userData, tool, 'keep'), 'x')
+    }
+
+    await devReset({ userData, all: false })
+
+    for (const tool of ['llama-server', 'helper', 'ai-eval'])
+      expect(existsSync(join(userData, tool, 'keep'))).toBe(true)
+    expect(existsSync(join(userData, 'settings.json'))).toBe(false)
+    expect(existsSync(join(userData, 'Library'))).toBe(false)
+  })
+
   it('refuses a stash folder at the root of the disk', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const { userData } = setup()

@@ -23,8 +23,9 @@ import { Repository } from '../src/main/db/repository'
 import { listArchive, openArchiveEntry, previewImages } from '../src/main/import/archive'
 import { scanForPsds, type ScannedPsd } from '../src/main/import/scanner'
 import { isPlaceholder, resolveCover } from '../src/main/psd'
+import { DEV_USER_DATA } from '../src/main/dev-user-data'
 
-const USER_DATA = join(homedir(), 'Library', 'Application Support', 'designstash')
+const USER_DATA = join(homedir(), 'Library', 'Application Support', DEV_USER_DATA)
 
 function libraryRoot(): string {
   if (process.env.DESIGNSTASH_LIBRARY) return process.env.DESIGNSTASH_LIBRARY

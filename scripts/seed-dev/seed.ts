@@ -58,6 +58,7 @@ import type { CopyStatus } from '@shared/ipc/import'
 import { fullTitle } from '@shared/pile-variation'
 import { objectColourWords } from '../../src/main/ai/object-colour'
 import { placeholderWordsIn } from '../../src/main/ai/placeholder-check'
+import { DEV_USER_DATA } from '../../src/main/dev-user-data'
 import { MODEL_FILE_NAMES, getModel } from '../../src/main/ai/registry'
 import {
   aiRuns,
@@ -78,7 +79,7 @@ import {
 
 const REPO = process.cwd()
 const USER_DATA = resolve(
-  process.env.DESIGNSTASH_USER_DATA ?? join(homedir(), 'Library', 'Application Support', 'designstash')
+  process.env.DESIGNSTASH_USER_DATA ?? join(homedir(), 'Library', 'Application Support', DEV_USER_DATA)
 )
 const TEST_SET = resolve(
   process.env.DESIGNSTASH_TEST_SET ?? join(homedir(), 'Downloads', 'DesignStash Test Set')

@@ -1,15 +1,20 @@
 import { homedir } from 'node:os'
 import { isAbsolute, join, relative } from 'node:path'
-import { rm, readFile } from 'node:fs/promises'
+import { rm, readFile, readdir, rmdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
-const APP = 'designstash'
+// Dev's own data folder (src/main/dev-user-data.ts). The installed app uses DesignStash.
+const APP = 'DesignStash-dev'
+
+// Dev tooling the build scripts put in dev's folder (build-helper, fetch-llama-server, ai-eval).
+// It is not app state, so a reset keeps it.
+const TOOLING = ['llama-server', 'helper', 'ai-eval']
 
 // App artifacts inside a stash folder: named items only, NEVER the folder or other files.
 const ARTIFACTS = ['designstash.db', 'designstash.db-shm', 'designstash.db-wal', 'config.json', 'mockups', 'models']
 
-/** Whether `path` sits inside `folder`. macOS disks ignore case, and dev and the installed app spell the folder differently. */
+/** Whether `path` sits inside `folder`. macOS disks ignore case. */
 function isInside(path, folder) {
   const rel = relative(folder.toLowerCase(), path.toLowerCase())
   return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
@@ -22,10 +27,10 @@ function assertSafe(path) {
 }
 
 /**
- * Back to a first run: removes the app's userData folder (settings, logs, caches, the AI models in
- * <userData>/models, and a stash folder kept inside it). The installed app shares this userData
- * folder, so a stash folder anywhere else may be its library; that one is only cleared with `all`,
- * and only the app's own files in it.
+ * Back to a first run: clears dev's userData folder (settings, logs, caches, the AI models in
+ * <userData>/models, and a stash folder kept inside it), keeping only the dev tooling. A stash
+ * folder anywhere else may not be dev's alone, so it is only cleared with `all`, and only the app's
+ * own files in it.
  */
 export async function devReset({ userData, all }) {
   // Learn the configured libraryRoot BEFORE wiping userData (default if absent).
@@ -47,10 +52,14 @@ export async function devReset({ userData, all }) {
     for (const a of ARTIFACTS) await rm(join(libraryRoot, a), { recursive: true, force: true })
     console.log('  cleaned app files in', libraryRoot)
   } else {
-    console.log('  left alone (it may be the installed app’s library; pass --all to clear it):', libraryRoot)
+    console.log('  left alone, since it is outside userData (pass --all to clear the app files in it):', libraryRoot)
   }
-  await rm(userData, { recursive: true, force: true })
-  console.log('  removed', userData)
+  const entries = existsSync(userData) ? await readdir(userData) : []
+  for (const name of entries) {
+    if (!TOOLING.includes(name)) await rm(join(userData, name), { recursive: true, force: true })
+  }
+  if (entries.every((name) => !TOOLING.includes(name))) await rmdir(userData).catch(() => {})
+  console.log('  cleared', userData, '(kept', TOOLING.join(', ') + ')')
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

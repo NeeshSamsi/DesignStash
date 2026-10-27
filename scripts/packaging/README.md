@@ -20,8 +20,9 @@ To try a packaged build without touching your real profile, start it with its ow
 /Applications/DesignStash.app/Contents/MacOS/DesignStash --user-data-dir=/tmp/ds-profile
 ```
 
-A packaged app uses `~/Library/Application Support/DesignStash`, which on a case-insensitive disk
-is the same folder `pnpm dev` uses (`designstash`). The override avoids sharing it.
+A packaged app uses `~/Library/Application Support/DesignStash`. `pnpm dev` keeps its own
+`DesignStash-dev` (src/main/dev-user-data.ts), so the two never share a library, settings or the
+single-instance lock. The override keeps a test run away from both.
 
 ## How a release happens
 

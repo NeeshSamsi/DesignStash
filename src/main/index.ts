@@ -4,6 +4,10 @@ import { createApp } from './create-app'
 import { launchSteps } from './launch-steps'
 import { registerCoverScheme } from './cover-protocol'
 import { rendererDevUrl } from './renderer-url'
+import { applyDevUserData } from './dev-user-data'
+
+// First, before the crash reporter or the single-instance lock reads it: dev's own data folder.
+applyDevUserData(app)
 
 // Crash dumps are written locally and never uploaded (uploadToServer: false). On the next launch
 // a new dump becomes an `app_crashed` event, if the person shares usage data.
