@@ -23,7 +23,7 @@ import { noteProcessGone, recentCrashLine, takeNewCrashes } from './telemetry/cr
 import { ProblemReporter } from './telemetry/problem-reporter'
 import { TELEMETRY_EVENTS, sizeBucket } from '@shared/telemetry'
 import { IPC_CHANNELS } from '@shared/ipc'
-import { installAppMenu } from './menu'
+import { installAppMenu, type MenuDeps, type UndoMenuItems } from './menu'
 import type { LaunchSteps } from './create-app'
 
 function migrationsFolder(): string {
@@ -33,6 +33,10 @@ function migrationsFolder(): string {
 /** The real launch work, on Electron and the app's modules. `createApp` runs it in order. */
 export function launchSteps(opts: { devUrl: string | undefined }): LaunchSteps {
   const userData = (): string => app.getPath('userData')
+  // The menu goes in after the handlers, and the undo history names its Undo and Redo: whichever
+  // comes second puts the labels on.
+  let menuDeps: MenuDeps | null = null
+  let undoItems: UndoMenuItems | undefined
 
   return {
     prepare(settings) {
@@ -84,7 +88,9 @@ export function launchSteps(opts: { devUrl: string | undefined }): LaunchSteps {
           try {
             const integrity = createIntegrityService(new Repository(db), settings)
             const { lastRun } = await createStashCheck(settings, integrity).run('launch')
-            logger.info(`integrity: launch check ${lastRun?.result}, ${lastRun?.toReview} to review`)
+            logger.info(
+              `integrity: launch check ${lastRun?.result}, ${lastRun?.toReview} to review`
+            )
           } catch (err) {
             logger.error('Integrity launch scan failed:', err)
           }
@@ -177,7 +183,16 @@ export function launchSteps(opts: { devUrl: string | undefined }): LaunchSteps {
 
     registerLibraryHandlers(settings, services, getWindow) {
       const repo = new Repository(getDb())
-      const ctx = createHandlerContext({ settings, telemetry: services.telemetry, repo, getWindow })
+      const ctx = createHandlerContext({
+        settings,
+        telemetry: services.telemetry,
+        repo,
+        getWindow,
+        undoMenu: (items) => {
+          undoItems = items
+          if (menuDeps) installAppMenu({ ...menuDeps, undo: items })
+        }
+      })
       // A cover deleted outside the app (in Finder) shows as missing: the library checks it again,
       // and the window reads its list again (F-012).
       watchCoverChanges(settings.getLibraryRoot(), {
@@ -188,11 +203,8 @@ export function launchSteps(opts: { devUrl: string | undefined }): LaunchSteps {
     },
 
     installMenu(send, takePending) {
-      installAppMenu({
-        send,
-        openExternal: (url) => void shell.openExternal(url),
-        dev: !app.isPackaged
-      })
+      menuDeps = { send, openExternal: (url) => void shell.openExternal(url), dev: !app.isPackaged }
+      installAppMenu({ ...menuDeps, ...(undoItems ? { undo: undoItems } : {}) })
       registerIpcHandler(IPC_CHANNELS.MENU_PENDING, takePending)
     },
 

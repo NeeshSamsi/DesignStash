@@ -19,6 +19,7 @@ import { registerInboxHandlers } from './inbox'
 import { registerIntegrityHandlers } from './integrity'
 import { registerTelemetryHandlers } from './telemetry'
 import { registerDebugHandlers } from './debug'
+import { registerUndoHandlers } from './undo'
 
 /**
  * The handlers the screens before the app rely on (app lifecycle, launch status, settings, folder
@@ -55,6 +56,7 @@ export function registerAllHandlers(ctx: HandlerContext): void {
   registerPileHandlers(ctx)
   registerInboxHandlers(ctx)
   registerIntegrityHandlers(ctx)
+  registerUndoHandlers(ctx)
   registerTelemetryHandlers(ctx)
   if (!app.isPackaged) registerDebugHandlers(ctx.settings)
 }

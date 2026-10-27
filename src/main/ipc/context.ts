@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, shell, type BrowserWindow } from 'electron'
-import type { PushChannel, PushPayload } from '@shared/ipc'
+import { IPC_CHANNELS, type PushChannel, type PushPayload } from '@shared/ipc'
 import type { InferenceProvider } from '@shared/inference'
 import type { SettingsStore } from '../settings'
 import type { Telemetry } from '../telemetry'
@@ -24,6 +24,10 @@ import { MODEL_FILE_NAMES } from '../ai/registry'
 import { LlamaMeaningEmbedder } from '../search/embedder'
 import { EmbeddingService } from '../search/embedding-service'
 import { MEANING_MODEL_ID } from '../search/meaning'
+import { getDb } from '../db/connection'
+import { createDataOps, type DataOps } from '../undo/ops'
+import { createUndoService, type UndoService } from '../undo/undo-service'
+import type { UndoMenuItems } from '../undo/menu-items'
 
 /**
  * Mutable holder for the telemetry instance. Consent can flip at runtime, so
@@ -58,6 +62,10 @@ export interface HandlerContext {
   library: LibraryService
   /** Send a push event (PUSH_CHANNELS only) to the renderer. */
   push<C extends PushChannel>(channel: C, payload: PushPayload<C>): void
+  /** The app's undo history: each undoable handler records its action here (design/specs/undo.md). */
+  undo: UndoService
+  /** Data's side of undo: runs an action and returns it as an undo record (`track`). */
+  dataOps: DataOps
 }
 
 export function createAiRuntime(
@@ -160,7 +168,11 @@ export function createHandlerContext(opts: {
   telemetry: TelemetryRef
   repo: Repository
   getWindow: () => BrowserWindow | null
+  /** Puts the history's labels on Edit › Undo and Redo. */
+  undoMenu?: (items: UndoMenuItems) => void
 }): HandlerContext {
+  const push = createPush(opts.getWindow)
+  const dataOps = createDataOps({ repo: opts.repo, db: getDb() })
   return {
     settings: opts.settings,
     telemetry: opts.telemetry,
@@ -169,6 +181,19 @@ export function createHandlerContext(opts: {
     library: new LibraryService(opts.repo, opts.settings.getLibraryRoot(), {
       openPath: (p) => shell.openPath(p)
     }),
-    push: createPush(opts.getWindow)
+    push,
+    dataOps,
+    undo: createUndoService({
+      data: dataOps.runner,
+      settings: opts.settings,
+      push: (state) => push(IPC_CHANNELS.UNDO_STATE, state),
+      menu: opts.undoMenu ?? (() => {}),
+      editField: (direction) => {
+        const window = opts.getWindow()
+        if (!window || window.isDestroyed()) return
+        if (direction === 'undo') window.webContents.undo()
+        else window.webContents.redo()
+      }
+    })
   }
 }
