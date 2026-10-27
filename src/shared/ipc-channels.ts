@@ -114,7 +114,14 @@ export const IPC_CHANNELS = {
   DEBUG_RESET_APP: 'debug:reset-app',
   DEBUG_READ_SETTINGS: 'debug:read-settings',
   MENU_COMMAND: 'menu:command',
-  MENU_PENDING: 'menu:pending'
+  MENU_PENDING: 'menu:pending',
+  UNDO_RUN: 'undo:run',
+  REDO_RUN: 'redo:run',
+  UNDO_ENTRY: 'undo:entry',
+  UNDO_CONTEXT: 'undo:context',
+  UNDO_FIELD: 'undo:field',
+  UNDO_RECORD_DISCARD: 'undo:record-discard',
+  UNDO_STATE: 'undo:state'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -133,7 +140,8 @@ export const PUSH_CHANNELS = [
   IPC_CHANNELS.INBOX_COUNTS_CHANGED,
   IPC_CHANNELS.MENU_COMMAND,
   IPC_CHANNELS.LOOK_OVER_DRAFT,
-  IPC_CHANNELS.LIBRARY_CHANGED
+  IPC_CHANNELS.LIBRARY_CHANGED,
+  IPC_CHANNELS.UNDO_STATE
 ] as const
 
 export type PushChannel = (typeof PUSH_CHANNELS)[number]

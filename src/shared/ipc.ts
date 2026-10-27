@@ -25,6 +25,7 @@ import { integrityContract } from './ipc/integrity'
 import { telemetryContract } from './ipc/telemetry'
 import { debugContract } from './ipc/debug'
 import { menuContract } from './ipc/menu'
+import { undoContract } from './ipc/undo'
 import { PUSH_CONTRACT } from './ipc/push'
 
 export {
@@ -68,7 +69,8 @@ export const IPC_DOMAIN_CONTRACTS = {
   integrity: integrityContract,
   telemetry: telemetryContract,
   debug: debugContract,
-  menu: menuContract
+  menu: menuContract,
+  undo: undoContract
 } as const
 
 /** Every invoke channel's request/response schemas. */
@@ -90,7 +92,8 @@ export const IPC_CONTRACT = {
   ...integrityContract,
   ...telemetryContract,
   ...debugContract,
-  ...menuContract
+  ...menuContract,
+  ...undoContract
 } as const
 
 export type IpcRequest<C extends InvokeChannel> = z.infer<(typeof IPC_CONTRACT)[C]['request']>

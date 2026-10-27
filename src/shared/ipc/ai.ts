@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
+import { withUndoEntry } from './undo'
 
 export const AiModelTierSchema = z.enum(['small', 'medium', 'large'])
 export type AiModelTier = z.infer<typeof AiModelTierSchema>
@@ -114,13 +115,15 @@ export const aiContract = {
       /** Needed to delete the model in use; without it the model is kept and `inUse` comes back true. */
       confirmed: z.boolean().optional()
     }),
-    response: z.object({
-      deleted: z.boolean(),
-      /** The model is the one in use. When not confirmed, nothing was deleted: ask first. */
-      inUse: z.boolean(),
-      /** AI_RESTORE_MODEL can bring it back until the next launch. False for old text models. */
-      undoable: z.boolean()
-    })
+    response: withUndoEntry(
+      z.object({
+        deleted: z.boolean(),
+        /** The model is the one in use. When not confirmed, nothing was deleted: ask first. */
+        inUse: z.boolean(),
+        /** AI_RESTORE_MODEL can bring it back until the next launch. False for old text models. */
+        undoable: z.boolean()
+      })
+    )
   },
   [IPC_CHANNELS.AI_RESTORE_MODEL]: {
     request: z.object({ id: z.string().min(1), makeActive: z.boolean().optional() }),

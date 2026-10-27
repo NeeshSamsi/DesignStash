@@ -59,7 +59,12 @@ const copyCountsShape = {
     archiveUnsupported: z.number(),
     /** Zips with no PSD inside. Each counts once. */
     noPsdInArchive: z.number()
-  })
+  }),
+  /**
+   * The history entry for this import ("Undo import of 12 mockups"), once it has landed something
+   * and stopped. Its Undo moves what it brought in to Trash.
+   */
+  undoEntryId: z.number().int().optional()
 }
 
 /**

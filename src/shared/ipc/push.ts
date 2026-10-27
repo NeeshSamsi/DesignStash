@@ -7,6 +7,7 @@ import { AiDownloadProgressSchema } from './ai'
 import { AiStatusEventSchema } from './ai-status'
 import { CopyProgressSchema } from './import'
 import { MenuCommandSchema } from './menu'
+import { UndoStateSchema } from './undo'
 
 /**
  * Main → renderer push events, each with its payload schema. They have no request or response
@@ -26,5 +27,7 @@ export const PUSH_CONTRACT = {
    * Something in the stash folder changed outside the app, so the library views read again. `covers`:
    * a cover the list had seen on disk changed or went (cover-watch).
    */
-  [IPC_CHANNELS.LIBRARY_CHANGED]: { payload: z.object({ reason: z.literal('covers') }) }
+  [IPC_CHANNELS.LIBRARY_CHANGED]: { payload: z.object({ reason: z.literal('covers') }) },
+  /** The undo history changed: the next labels, and which toasts' Undo is still allowed. */
+  [IPC_CHANNELS.UNDO_STATE]: { payload: UndoStateSchema }
 } as const satisfies { [C in PushChannel]: { payload: z.ZodType } }

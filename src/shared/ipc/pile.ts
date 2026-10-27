@@ -3,6 +3,7 @@ import { StashResultSchema, StashSnapshotSchema } from '../approval'
 import { IPC_CHANNELS } from '../ipc-channels'
 import { LibraryItemSchema } from '../library'
 import { VariationSchema, VariationSourceSchema } from '../pile-variation'
+import { withUndoEntry } from './undo'
 
 /**
  * One mockup's place in a pile, and its titles, which joining or leaving a pile changes. A snapshot
@@ -33,37 +34,41 @@ const PileChangeSchema = z.object({
 export const pileContract = {
   [IPC_CHANNELS.PILE_CREATE]: {
     request: z.object({ memberIds: z.array(z.number()).min(2), topId: z.number() }),
-    response: PileChangeSchema
+    response: withUndoEntry(PileChangeSchema)
   },
   [IPC_CHANNELS.PILE_ADD]: {
     request: z.object({ pileId: z.number(), memberIds: z.array(z.number()).min(1) }),
-    response: PileChangeSchema
+    response: withUndoEntry(PileChangeSchema)
   },
   [IPC_CHANNELS.PILE_MERGE]: {
     request: z.object({ sourceIds: z.array(z.number()).min(1), targetId: z.number() }),
-    response: PileChangeSchema
+    response: withUndoEntry(PileChangeSchema)
   },
   [IPC_CHANNELS.PILE_SET_TOP]: {
     request: z.object({ pileId: z.number(), topId: z.number() }),
-    response: PileChangeSchema
+    response: withUndoEntry(PileChangeSchema)
   },
   [IPC_CHANNELS.PILE_DISBAND]: {
     request: z.object({ pileId: z.number() }),
-    response: z.object({
-      snapshot: PileSnapshotSchema,
-      /** Every mockup that is now on its own, the old top included. */
-      freedIds: z.array(z.number())
-    })
+    response: withUndoEntry(
+      z.object({
+        snapshot: PileSnapshotSchema,
+        /** Every mockup that is now on its own, the old top included. */
+        freedIds: z.array(z.number())
+      })
+    )
   },
   [IPC_CHANNELS.PILE_REMOVE]: {
     request: z.object({ pileId: z.number(), mockupId: z.number() }),
-    response: z.object({
-      /** The pile's id afterwards (the next mockup when the top left); null when it is no longer a pile. */
-      pileId: z.number().nullable(),
-      snapshot: PileSnapshotSchema,
-      /** The mockups that are now on their own: the one removed, and the last one when the pile dissolved. */
-      freedIds: z.array(z.number())
-    })
+    response: withUndoEntry(
+      z.object({
+        /** The pile's id afterwards (the next mockup when the top left); null when it is no longer a pile. */
+        pileId: z.number().nullable(),
+        snapshot: PileSnapshotSchema,
+        /** The mockups that are now on their own: the one removed, and the last one when the pile dissolved. */
+        freedIds: z.array(z.number())
+      })
+    )
   },
   [IPC_CHANNELS.PILE_RESTORE]: {
     request: z.object({ snapshot: PileSnapshotSchema }),
@@ -84,15 +89,17 @@ export const pileContract = {
    */
   [IPC_CHANNELS.PILE_RENAME]: {
     request: z.object({ pileId: z.number(), base: z.string().trim().min(1) }),
-    response: z.object({
-      pileId: z.number(),
-      /** The base as saved. */
-      base: z.string(),
-      /** The base before, for Undo. */
-      previous: z.string(),
-      /** Every mockup whose title changed. */
-      mockupIds: z.array(z.number())
-    })
+    response: withUndoEntry(
+      z.object({
+        pileId: z.number(),
+        /** The base as saved. */
+        base: z.string(),
+        /** The base before, for Undo. */
+        previous: z.string(),
+        /** Every mockup whose title changed. */
+        mockupIds: z.array(z.number())
+      })
+    )
   },
   /**
    * Set one mockup's variation, in Look it over or My Stash. Typed words are kept exactly, even when
@@ -100,24 +107,30 @@ export const pileContract = {
    * emptied field). `source` is only for Undo: it puts `previous` back as it was.
    */
   [IPC_CHANNELS.PILE_SET_VARIATION]: {
-    request: z.object({ mockupId: z.number(), words: z.string(), source: VariationSourceSchema.optional() }),
-    response: z.object({
+    request: z.object({
       mockupId: z.number(),
-      /** The variation as saved. */
-      variation: VariationSchema,
-      /** The variation before, for Undo. */
-      previous: VariationSchema.nullable()
-    })
+      words: z.string(),
+      source: VariationSourceSchema.optional()
+    }),
+    response: withUndoEntry(
+      z.object({
+        mockupId: z.number(),
+        /** The variation as saved. */
+        variation: VariationSchema,
+        /** The variation before, for Undo. */
+        previous: VariationSchema.nullable()
+      })
+    )
   },
   /** Look it over: commit a whole pile from its drafts, all or nothing. */
   [IPC_CHANNELS.PILE_STASH]: {
     request: z.object({ pileId: z.number() }),
-    response: StashResultSchema
+    response: withUndoEntry(StashResultSchema)
   },
   /** Look it over: stash a mockup that stands on its own. */
   [IPC_CHANNELS.MOCKUP_STASH]: {
     request: z.object({ mockupId: z.number() }),
-    response: StashResultSchema
+    response: withUndoEntry(StashResultSchema)
   },
   [IPC_CHANNELS.PILE_UNSTASH]: {
     request: z.object({ snapshot: StashSnapshotSchema }),

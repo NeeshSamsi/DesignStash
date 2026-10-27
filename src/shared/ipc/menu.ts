@@ -17,7 +17,10 @@ export const MenuCommandSchema = z.enum([
   'view:to-sort',
   'view:to-stash',
   'view:trash',
-  'report-problem'
+  'report-problem',
+  // Edit › Undo and Redo (⌘Z, ⇧⌘Z). The window routes them: a field, an open flow, or the app.
+  'undo',
+  'redo'
 ])
 export type MenuCommand = z.infer<typeof MenuCommandSchema>
 
