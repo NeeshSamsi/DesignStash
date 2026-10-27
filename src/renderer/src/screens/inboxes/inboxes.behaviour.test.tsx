@@ -143,16 +143,16 @@ describe('To sort', () => {
     expect(screen.queryByText('Sniffing…')).toBeNull()
   })
 
-  it('Sort hands the selection, or everything, to the grouping review', async () => {
+  it('Sort opens the board on everything waiting; Sort N on just the cards picked', async () => {
     setup(listOf([inbox(1), inbox(2), inbox(3)]))
     const onSort = vi.fn()
     render(<InboxPage stage="to_sort" onSort={onSort} />)
     await screen.findByText('file-1.psd')
     fireEvent.click(screen.getByRole('button', { name: 'Sort' }))
-    expect(onSort.mock.calls[0]?.[0].map((i: InboxItem) => i.id)).toEqual([1, 2, 3])
+    expect(onSort).toHaveBeenLastCalledWith({ kind: 'all' })
     fireEvent.click(card(2))
     fireEvent.click(screen.getByRole('button', { name: 'Sort 1' }))
-    expect(onSort.mock.calls[1]?.[0].map((i: InboxItem) => i.id)).toEqual([2])
+    expect(onSort).toHaveBeenLastCalledWith({ kind: 'only', mockupIds: [2] })
   })
 
   it('refetches when main says the counts changed', async () => {

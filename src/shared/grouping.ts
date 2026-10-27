@@ -32,6 +32,12 @@ export const GroupingProposalSchema = z.object({
 })
 export type GroupingProposal = z.infer<typeof GroupingProposalSchema>
 
+/**
+ * The one Sort board's id. It covers everything waiting in To sort, across imports, so the
+ * `batchId` of a proposal, a saved board and a confirm is always this.
+ */
+export const TO_SORT_BOARD = 'to-sort'
+
 // What the renderer sends back to confirm (may differ from original proposal after user edits)
 export const ConfirmedGroupSchema = z.object({
   id: z.string(), // same temp UUID from proposal (for change-tracking)
@@ -39,7 +45,9 @@ export const ConfirmedGroupSchema = z.object({
 })
 export type ConfirmedGroup = z.infer<typeof ConfirmedGroupSchema>
 
+/** The piles to make real. A board opened on a few mockups ("Sort 3") confirms only those. */
 export const GroupingConfirmRequestSchema = z.object({
+  /** TO_SORT_BOARD. */
   batchId: z.string(),
   groups: z.array(ConfirmedGroupSchema),
   singletonIds: z.array(z.number()) // mockupIds confirmed as standalone
@@ -51,9 +59,11 @@ export const COULDNT_SUGGEST_PILES = 'Couldn’t suggest piles. You can still so
 
 /**
  * The Sort board as the user left it (Finish later from Sort). Same shape as a confirmed board:
- * each pile lists its mockups with the top first, and the rest stand alone.
+ * each pile lists its mockups with the top first, and the rest stand alone. There is one board,
+ * for everything in To sort.
  */
 export const SortBoardSchema = z.object({
+  /** TO_SORT_BOARD. */
   batchId: z.string(),
   groups: z.array(z.object({ id: z.string(), memberIds: z.array(z.number()).min(2) })),
   singletonIds: z.array(z.number())

@@ -24,14 +24,15 @@ import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast } from '@renderer/stores/toastStore'
 import { AddCardMenu } from '../gather/AddCardMenu'
 import type { LookOverScope } from '../look-over'
+import type { SortScope } from '../sort'
 import { useInboxList } from './useInboxList'
 import { coverUrl } from '@shared/cover-url'
 import { coverDisplay } from '@shared/library'
 
 export interface InboxPageProps {
   stage: InboxStage
-  /** Opens the Sort board (To sort) for these cards: the selection, or all of them. */
-  onSort?: (items: InboxItem[]) => void
+  /** Opens the Sort board (To sort): on everything waiting, or on just the cards picked (“Sort 3”). */
+  onSort?: (scope: SortScope) => void
   /**
    * Opens Look it over (To stash): on everything, from a card's own Look it over, or on just the
    * cards picked (“Look over 3”).
@@ -194,7 +195,11 @@ export default function InboxPage({
             primaryLabel={primary}
             onPrimary={() =>
               toSortPage
-                ? onSort?.(targets)
+                ? onSort?.(
+                    selected.length > 0
+                      ? { kind: 'only', mockupIds: selected.map((item) => item.id) }
+                      : { kind: 'all' }
+                  )
                 : onLookOver?.(
                     selected.length > 0
                       ? { kind: 'only', unitIds: selected.map((item) => item.id) }

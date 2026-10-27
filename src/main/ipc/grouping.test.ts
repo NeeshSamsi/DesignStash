@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { IpcResult } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { SortBoard } from '@shared/grouping'
+import { TO_SORT_BOARD, type SortBoard } from '@shared/grouping'
 import type { Repository } from '../db/repository'
 import { batchSample, createTestDb } from '../db/repositories/__tests__/setup'
 import type { HandlerContext } from './context'
@@ -25,14 +25,14 @@ let repo: Repository
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
 
-const toSort = (n: number) =>
+const toSort = (n: number, batch = 'b1') =>
   Array.from(
     { length: n },
     (_, i) =>
       repo.mockups.createMockup({
-        ...batchSample('b1'),
+        ...batchSample(batch),
         title: `M${i}`,
-        libraryPath: `/lib/${i}.psd`,
+        libraryPath: `/lib/${batch}/${i}.psd`,
         stage: 'to_sort'
       }).id
   )
@@ -53,7 +53,7 @@ afterEach(() => sqlite.close())
 
 describe('sort board handlers', () => {
   it('has no board before the first save', async () => {
-    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: 'b1' })).toEqual({
+    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: TO_SORT_BOARD })).toEqual({
       success: true,
       data: { board: null }
     })
@@ -62,7 +62,7 @@ describe('sort board handlers', () => {
   it('saves the board and loads it back (Finish later)', async () => {
     const [a, b, c] = toSort(3) as [number, number, number]
     const board: SortBoard = {
-      batchId: 'b1',
+      batchId: TO_SORT_BOARD,
       groups: [{ id: 'p', memberIds: [b, a] }],
       singletonIds: [c]
     }
@@ -70,7 +70,7 @@ describe('sort board handlers', () => {
       success: true,
       data: { saved: true }
     })
-    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: 'b1' })).toEqual({
+    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: TO_SORT_BOARD })).toEqual({
       success: true,
       data: { board }
     })
@@ -79,7 +79,7 @@ describe('sort board handlers', () => {
   it('rejects a board with a pile of one at the contract', async () => {
     const [a] = toSort(1) as [number]
     const res = await call(IPC_CHANNELS.SORT_BOARD_SAVE, {
-      batchId: 'b1',
+      batchId: TO_SORT_BOARD,
       groups: [{ id: 'p', memberIds: [a] }],
       singletonIds: []
     })
@@ -89,18 +89,66 @@ describe('sort board handlers', () => {
   it('forgets the saved board once the piles are confirmed', async () => {
     const [a, b, c] = toSort(3) as [number, number, number]
     await call(IPC_CHANNELS.SORT_BOARD_SAVE, {
-      batchId: 'b1',
+      batchId: TO_SORT_BOARD,
       groups: [{ id: 'p', memberIds: [a, b] }],
       singletonIds: [c]
     })
     await call(IPC_CHANNELS.GROUPING_CONFIRM, {
-      batchId: 'b1',
+      batchId: TO_SORT_BOARD,
       groups: [{ id: 'p', memberIds: [a, b] }],
       singletonIds: [c]
     })
-    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: 'b1' })).toMatchObject({
+    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: TO_SORT_BOARD })).toMatchObject({
       success: true,
       data: { board: null }
+    })
+  })
+})
+
+describe('one board for everything in To sort (F-049)', () => {
+  const proposed = async () => {
+    const res = await call<{
+      groups: { members: { mockupId: number }[] }[]
+      singletons: { mockupId: number }[]
+    }>(IPC_CHANNELS.GROUPING_PROPOSE, { batchId: TO_SORT_BOARD })
+    if (!res.success) throw new Error('propose failed')
+    return [...res.data.groups.flatMap((g) => g.members), ...res.data.singletons]
+      .map((m) => m.mockupId)
+      .sort((a, b) => a - b)
+  }
+
+  it('proposes from every haul waiting, not just one', async () => {
+    const first = toSort(2, 'b1')
+    const second = toSort(3, 'b2')
+    expect(await proposed()).toEqual([...first, ...second])
+  })
+
+  it('confirming some leaves the rest of the saved board as it was', async () => {
+    const [a, b] = toSort(2, 'b1') as [number, number]
+    const [x, y] = toSort(2, 'b2') as [number, number]
+    await call(IPC_CHANNELS.SORT_BOARD_SAVE, {
+      batchId: TO_SORT_BOARD,
+      groups: [
+        { id: 'p', memberIds: [a, b] },
+        { id: 'q', memberIds: [x, y] }
+      ],
+      singletonIds: []
+    })
+    await call(IPC_CHANNELS.GROUPING_CONFIRM, {
+      batchId: TO_SORT_BOARD,
+      groups: [{ id: 'p', memberIds: [a, b] }],
+      singletonIds: []
+    })
+    expect(repo.mockups.getMockup(a)).toMatchObject({ isGroup: true, stage: 'to_stash' })
+    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: TO_SORT_BOARD })).toEqual({
+      success: true,
+      data: {
+        board: {
+          batchId: TO_SORT_BOARD,
+          groups: [{ id: 'q', memberIds: [x, y] }],
+          singletonIds: []
+        }
+      }
     })
   })
 })
@@ -108,16 +156,24 @@ describe('sort board handlers', () => {
 describe('grouping confirm handler', () => {
   it('changes nothing when one of its writes fails part-way', async () => {
     const [a, b, c] = toSort(3) as [number, number, number]
-    const board = { batchId: 'b1', groups: [{ id: 'p', memberIds: [a, b] }], singletonIds: [c] }
+    const board = {
+      batchId: TO_SORT_BOARD,
+      groups: [{ id: 'p', memberIds: [a, b] }],
+      singletonIds: [c]
+    }
     await call(IPC_CHANNELS.SORT_BOARD_SAVE, board)
     vi.spyOn(repo.mockups, 'setStage').mockImplementation(() => {
       throw new Error('disk full')
     })
     const res = await call(IPC_CHANNELS.GROUPING_CONFIRM, board)
     expect(res.success).toBe(false)
-    expect(repo.mockups.getMockup(a)).toMatchObject({ isGroup: false, groupId: null, stage: 'to_sort' })
+    expect(repo.mockups.getMockup(a)).toMatchObject({
+      isGroup: false,
+      groupId: null,
+      stage: 'to_sort'
+    })
     expect(repo.mockups.getMockup(b)).toMatchObject({ groupId: null, stage: 'to_sort' })
-    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: 'b1' })).toEqual({
+    expect(await call(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: TO_SORT_BOARD })).toEqual({
       success: true,
       data: { board }
     })
@@ -131,7 +187,7 @@ describe('grouping propose handler', () => {
     repo.mockups.updateMockup(d, { deletedAt: new Date().toISOString() })
     const res = await call<{ groups: unknown[]; singletons: { mockupId: number }[] }>(
       IPC_CHANNELS.GROUPING_PROPOSE,
-      { batchId: 'b1' }
+      { batchId: TO_SORT_BOARD }
     )
     expect(res.success).toBe(true)
     if (!res.success) return
@@ -153,7 +209,7 @@ describe('grouping propose handler', () => {
           libraryPath: `/lib/${fileName}`,
           stage: 'to_sort',
           importContext: {
-            batchId: 'b1',
+            batchId: TO_SORT_BOARD,
             folderTrail,
             originalFilename: fileName,
             archiveName: 'Apple-Watch-Ultra-Mockup.zip',
@@ -171,7 +227,7 @@ describe('grouping propose handler', () => {
 
       const res = await call<{
         groups: { reason: string; members: { mockupId: number; archiveTitle?: string }[] }[]
-      }>(IPC_CHANNELS.GROUPING_PROPOSE, { batchId: 'b1' })
+      }>(IPC_CHANNELS.GROUPING_PROPOSE, { batchId: TO_SORT_BOARD })
       expect(res.success).toBe(true)
       if (!res.success) return
       expect(res.data.groups).toHaveLength(1)

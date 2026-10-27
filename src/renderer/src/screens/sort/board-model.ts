@@ -141,6 +141,31 @@ export function toSortBoard(state: BoardState, batchId: string): SortBoard {
   }
 }
 
+/**
+ * A board opened on a few mockups (“Sort 3”) put back into the whole board, for Finish later:
+ * those mockups leave wherever the whole board had them and take the places they have now. A pile
+ * left with one mockup dissolves. A pile split between the two keeps its id in the whole, and the
+ * part's half gets a fresh one.
+ */
+export function mergeBoard(whole: SortBoard, part: SortBoard, freshId: () => string): SortBoard {
+  const moved = new Set([...part.groups.flatMap((g) => g.memberIds), ...part.singletonIds])
+  const kept = whole.groups.map((g) => ({
+    id: g.id,
+    memberIds: g.memberIds.filter((id) => !moved.has(id))
+  }))
+  const piles = kept.filter((g) => g.memberIds.length >= 2)
+  const taken = new Set(piles.map((g) => g.id))
+  return {
+    batchId: whole.batchId,
+    groups: [...piles, ...part.groups.map((g) => (taken.has(g.id) ? { ...g, id: freshId() } : g))],
+    singletonIds: [
+      ...whole.singletonIds.filter((id) => !moved.has(id)),
+      ...kept.filter((g) => g.memberIds.length === 1).flatMap((g) => g.memberIds),
+      ...part.singletonIds
+    ]
+  }
+}
+
 // ── Reading a board ──────────────────────────────────────────────────────────────────────────
 
 /** Every tile in reading order: piles first, then the tray. */

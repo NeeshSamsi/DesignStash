@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from './App'
 import { IPC_CHANNELS } from '@shared/ipc'
+import { TO_SORT_BOARD } from '@shared/grouping'
 import { useLibraryStore } from './stores/libraryStore'
 import { useUiStore } from './stores/uiStore'
 import { useCopyStore } from './stores/copyStore'
@@ -328,7 +329,7 @@ describe('App', () => {
     })
   })
 
-  it('Sort on To sort opens the Sort board for the cards’ import batch', async () => {
+  it('Sort on To sort opens the one Sort board, for everything waiting', async () => {
     const base = window.api.invoke as ReturnType<typeof vi.fn>
     const previous = base.getMockImplementation() as (c: string, r: unknown) => unknown
     base.mockImplementation(async (channel: string, request: unknown) => {
@@ -368,12 +369,12 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sort' }))
     await waitFor(() =>
       expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.GROUPING_PROPOSE, {
-        batchId: 'batch-7'
+        batchId: TO_SORT_BOARD
       })
     )
     expect(await screen.findByRole('application', { name: 'Sort board' })).toBeTruthy()
     expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.SORT_BOARD_LOAD, {
-      batchId: 'batch-7'
+      batchId: TO_SORT_BOARD
     })
   })
 })

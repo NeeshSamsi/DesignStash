@@ -5,6 +5,7 @@ import {
   boardFromSaved,
   boardOrder,
   makeBoardReducer,
+  mergeBoard,
   canDisband,
   canNewPile,
   canPutOnTop,
@@ -988,5 +989,68 @@ describe('invariants', () => {
     const frozen = JSON.stringify(before)
     run(before, click(1), { type: 'take-out' }, { type: 'disband' }, { type: 'select-all' })
     expect(JSON.stringify(before)).toBe(frozen)
+  })
+})
+
+describe('a board opened on a few, put back into the whole (Sort 3, F-049)', () => {
+  const fresh = () => 'fresh'
+
+  it('moves the few to where they are now and leaves the rest as it was', () => {
+    const whole = {
+      batchId: 'to-sort',
+      groups: [
+        { id: 'phones', memberIds: [1, 2, 3, 4] },
+        { id: 'mugs', memberIds: [5, 6] }
+      ],
+      singletonIds: [7, 8]
+    }
+    const part = {
+      batchId: 'to-sort',
+      groups: [{ id: 'mine', memberIds: [8, 5] }],
+      singletonIds: [2]
+    }
+    expect(mergeBoard(whole, part, fresh)).toEqual({
+      batchId: 'to-sort',
+      groups: [
+        { id: 'phones', memberIds: [1, 3, 4] },
+        { id: 'mine', memberIds: [8, 5] }
+      ],
+      singletonIds: [7, 6, 2]
+    })
+  })
+
+  it('gives the part of a split pile a fresh id, so two piles never share one', () => {
+    const whole = {
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [1, 2, 3, 4] }],
+      singletonIds: []
+    }
+    const part = {
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [2, 3] }],
+      singletonIds: []
+    }
+    expect(mergeBoard(whole, part, fresh).groups).toEqual([
+      { id: 'phones', memberIds: [1, 4] },
+      { id: 'fresh', memberIds: [2, 3] }
+    ])
+  })
+
+  it('keeps a pile’s id when the part took all of it', () => {
+    const whole = {
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [1, 2] }],
+      singletonIds: [3]
+    }
+    const part = {
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [2, 1] }],
+      singletonIds: []
+    }
+    expect(mergeBoard(whole, part, fresh)).toEqual({
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [2, 1] }],
+      singletonIds: [3]
+    })
   })
 })

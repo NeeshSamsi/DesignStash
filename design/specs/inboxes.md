@@ -9,6 +9,8 @@ All three pages use the same grid, cards, action bar and selection as My Stash: 
 
 - **Cards:** file names only, singles (no +N yet).
 - **AI status badge** (decided 2026-10-19): most cards will be ready, so only the few still in progress get a quiet badge, “Sniffing…”, matching Look it over's “Sniffing out a title…”. The action bar's line counts them (“Still sniffing 7 of 38”) and reads “AI suggestions ready for all 38” once they're done.
+- **One Sort board** (Neesh, 2026-10-27): **Sort**, and **Sort now** on My Stash's waiting strip, open one board for everything waiting here, whichever drop it came in with, so piles can mix mockups from different drops. Finish later keeps that one board.
+- **Sort 3:** with a selection, the board holds just those three, with the piles the whole board has cut to them. Look them over confirms only them and leaves the rest of the board as it was; Finish later puts them back into the whole board where they now sit.
 
 ## To stash
 

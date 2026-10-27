@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { InboxItem } from '@shared/inbox'
 import { BootGate } from './screens/boot/BootGate'
 import { stashCheckCopy } from './screens/integrity'
 import LibraryPage from './screens/library/LibraryPage'
 import InboxPage from './screens/inboxes/InboxPage'
 import TrashPage from './screens/trash/TrashPage'
-import { SortFlow } from './screens/sort'
+import { SortFlow, type SortScope } from './screens/sort'
 import { LookOverFlow, type LookOverScope } from './screens/look-over'
 import AppShell from './AppShell'
 import DebugMenu from './DebugMenu'
@@ -23,8 +22,8 @@ function AppMain() {
   /** What Look it over is open on, or null when it is closed. */
   const [lookOver, setLookOver] = useState<LookOverScope | null>(null)
   const addFlow = lookOver === null ? null : 'approval'
-  /** The import batch on the Sort board, or null when it is closed. */
-  const [sortBatch, setSortBatch] = useState<string | null>(null)
+  /** What the Sort board is open on, or null when it is closed. */
+  const [sorting, setSorting] = useState<SortScope | null>(null)
 
   const gather = useGather()
   const drops = useGatherDrops(gather)
@@ -76,15 +75,8 @@ function AppMain() {
     if (statsRes.success) setLibraryStats(statsRes.data)
   }, [setLibraryStats])
 
-  // The Sort board works on an import batch; Look it over works on the whole queue main holds, piles first.
-  const batchOf = (items: InboxItem[]) =>
-    items.find((item) => item.batchId !== null)?.batchId ?? null
-  const openSort = (items: InboxItem[]) => {
-    const batchId = batchOf(items)
-    if (batchId === null)
-      return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
-    setSortBatch(batchId)
-  }
+  // Sort and Look it over each open on everything waiting, or on just the cards picked.
+  const openSort = (scope: SortScope = { kind: 'all' }) => setSorting(scope)
   const openLookOver = (scope: LookOverScope = { kind: 'all' }) => setLookOver(scope)
 
   const handleLookOverClosed = async () => {
@@ -107,7 +99,7 @@ function AppMain() {
             starredOnly={view === 'starred'}
             onAddFiles={() => void gather.addFiles()}
             onAddFolder={() => void gather.addFolder()}
-            onSortWaiting={openSort}
+            onSortWaiting={() => openSort()}
           />
         )}
         {addFlow === null && view === 'to-sort' && (
@@ -131,9 +123,9 @@ function AppMain() {
         {addFlow === null && view === 'trash' && <TrashPage />}
       </AppShell>
       <SortFlow
-        open={sortBatch !== null}
-        batchId={sortBatch}
-        onClose={() => setSortBatch(null)}
+        open={sorting !== null}
+        {...(sorting ? { scope: sorting } : {})}
+        onClose={() => setSorting(null)}
         onLookThemOver={() => openLookOver()}
       />
       <LookOverFlow

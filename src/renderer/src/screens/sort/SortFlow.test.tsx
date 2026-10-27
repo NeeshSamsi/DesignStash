@@ -3,7 +3,12 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import type { ReactNode } from 'react'
 import type { DndContextProps } from '@dnd-kit/core'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { GroupMember, GroupingProposal, SortBoard } from '@shared/grouping'
+import {
+  TO_SORT_BOARD,
+  type GroupMember,
+  type GroupingProposal,
+  type SortBoard
+} from '@shared/grouping'
 import { useShortcutDispatcher } from '@renderer/lib/shortcuts'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { SortFlow } from './SortFlow'
@@ -34,7 +39,7 @@ const member = (id: number, fileName: string, folder: string[] = []): GroupMembe
 })
 
 const proposal = (overrides: Partial<GroupingProposal> = {}): GroupingProposal => ({
-  batchId: 'b1',
+  batchId: TO_SORT_BOARD,
   groups: [
     {
       id: 'phones',
@@ -103,7 +108,7 @@ function mount(props: Partial<React.ComponentProps<typeof SortFlow>> = {}) {
   const onLookThemOver = vi.fn()
   render(
     <ShortcutHost>
-      <SortFlow open batchId="b1" onClose={onClose} onLookThemOver={onLookThemOver} {...props} />
+      <SortFlow open onClose={onClose} onLookThemOver={onLookThemOver} {...props} />
     </ShortcutHost>
   )
   return { onClose, onLookThemOver }
@@ -188,7 +193,7 @@ describe('opening the board (S1)', () => {
   it('opens with the board the user left, not a fresh suggestion (Finish later)', async () => {
     setupApi({
       saved: {
-        batchId: 'b1',
+        batchId: TO_SORT_BOARD,
         groups: [{ id: 'mine', memberIds: [9, 8] }],
         singletonIds: [1, 2, 3, 4, 5, 6, 7, 10]
       }
@@ -532,7 +537,7 @@ describe('leaving', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
     expect(api.calls(IPC_CHANNELS.SORT_BOARD_SAVE)).toEqual([
       {
-        batchId: 'b1',
+        batchId: TO_SORT_BOARD,
         groups: [
           { id: 'phones', memberIds: [1, 2, 3, 4] },
           { id: 'mugs', memberIds: [5, 6, 7] }
@@ -582,15 +587,15 @@ describe('leaving', () => {
     expect(await screen.findByRole('alertdialog')).toBeTruthy()
   })
 
-  it('Look them over saves the piles with each top first, then hands the batch on', async () => {
+  it('Look them over saves the piles with each top first, then hands them on', async () => {
     const api = setupApi()
     const { onClose, onLookThemOver } = mount()
     await ready()
     fireEvent.click(screen.getByRole('button', { name: 'Look them over' }))
-    await waitFor(() => expect(onLookThemOver).toHaveBeenCalledWith('b1'))
+    await waitFor(() => expect(onLookThemOver).toHaveBeenCalled())
     expect(api.calls(IPC_CHANNELS.GROUPING_CONFIRM)).toEqual([
       {
-        batchId: 'b1',
+        batchId: TO_SORT_BOARD,
         groups: [
           { id: 'phones', memberIds: [1, 2, 3, 4] },
           { id: 'mugs', memberIds: [5, 6, 7] }
@@ -615,9 +620,55 @@ describe('leaving', () => {
     expect(onLookThemOver).not.toHaveBeenCalled()
   })
 
+  describe('Sort 3: a board of just the cards picked (F-049)', () => {
+    const only = { kind: 'only', mockupIds: [2, 3, 8] } as const
+
+    it('shows just those three, with the piles cut to them', async () => {
+      setupApi()
+      mount({ scope: only })
+      await ready()
+      expect(pileIds()).toEqual(['phones'])
+      expect(tileIds(pile('phones'))).toEqual([2, 3])
+      expect(screen.getByText('3 mockups')).toBeTruthy()
+    })
+
+    it('Look them over confirms just those three', async () => {
+      const api = setupApi()
+      const { onLookThemOver } = mount({ scope: only })
+      await ready()
+      fireEvent.click(screen.getByRole('button', { name: 'Look them over' }))
+      await waitFor(() => expect(onLookThemOver).toHaveBeenCalled())
+      expect(api.calls(IPC_CHANNELS.GROUPING_CONFIRM)).toEqual([
+        { batchId: TO_SORT_BOARD, groups: [{ id: 'phones', memberIds: [2, 3] }], singletonIds: [8] }
+      ])
+    })
+
+    it('Finish later keeps the rest of the board around them', async () => {
+      const api = setupApi()
+      const { onClose } = mount({ scope: only })
+      await ready()
+      fireEvent.click(screen.getByRole('button', { name: 'Finish later' }))
+      fireEvent.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Finish later' })
+      )
+      await waitFor(() => expect(onClose).toHaveBeenCalled())
+      expect(api.calls(IPC_CHANNELS.SORT_BOARD_SAVE)).toEqual([
+        {
+          batchId: TO_SORT_BOARD,
+          groups: [
+            { id: 'phones', memberIds: [1, 4] },
+            { id: 'mugs', memberIds: [5, 6, 7] },
+            { id: expect.any(String), memberIds: [2, 3] }
+          ],
+          singletonIds: [9, 10, 8]
+        }
+      ])
+    })
+  })
+
   it('renders nothing when closed', () => {
     setupApi()
-    render(<SortFlow open={false} batchId="b1" onClose={vi.fn()} onLookThemOver={vi.fn()} />)
+    render(<SortFlow open={false} onClose={vi.fn()} onLookThemOver={vi.fn()} />)
     expect(document.querySelector('[data-ds="FlowModal"]')).toBeNull()
   })
 })
