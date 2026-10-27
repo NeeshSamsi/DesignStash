@@ -5,14 +5,18 @@ export { MEANING_MODEL_ID }
 
 /**
  * Meaning search, as evaluated in the AI bake-off (Roadmap, "Meaning search measured"): nomic-embed
- * v1.5 vectors, keyword hits first, then the closest meaning hit if it reaches the floor. The
+ * v1.5 vectors, keyword hits first, then the closest meaning hits that reach the floor. The
  * eval harness (`scripts/ai-eval/meaning.ts`) imports this file, so it measures what ships.
  */
 
 /** The least cosine a meaning hit needs. */
 export const MEANING_FLOOR = 0.55
-/** How many meaning hits a search adds, at most. */
-export const MEANING_TOP = 1
+/**
+ * How many meaning hits a search adds, at most: six, for recall, as Neesh prefers (F-076). On the
+ * blind searches that took recall from 57 to 76% (Apple), 64 to 81% (4B) and 67 to 83% (9B), and
+ * precision from about 85 to 57%.
+ */
+export const MEANING_TOP = 6
 /** A search shorter than this is keyword-only. */
 export const MEANING_MIN_QUERY_CHARS = 3
 /**

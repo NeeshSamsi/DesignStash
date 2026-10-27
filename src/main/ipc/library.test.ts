@@ -95,4 +95,21 @@ describe('meaning search through the handler', () => {
     expect(res).toMatchObject({ success: true, data: { items: [{ id: m.id }] } })
     expect(track.mock.calls[0]![1]).toMatchObject({ meaning_hit: true, had_results: true })
   })
+
+  it('adds up to 6 meaning hits that reach the floor, closest first, for recall (F-076)', async () => {
+    const made = Array.from({ length: 8 }, (_, i) =>
+      repo.mockups.createMockup({
+        title: `Sweatshirt ${i}`,
+        libraryPath: `/lib/l/m${i}.psd`,
+        coverPath: `/lib/l/m${i}.png`,
+        coverSource: 'embedded',
+        stage: 'stashed'
+      })
+    )
+    repo.search.rebuildSearchIndex()
+    // Seven reach the floor (0.55), one doesn't; the closest six are added.
+    similarities.mockResolvedValue(new Map(made.map((m, i) => [m.id, i === 7 ? 0.5 : 0.9 - i * 0.05])))
+    const res = await call<{ items: { id: number }[] }>(IPC_CHANNELS.LIBRARY_LIST, { query: 'jumper', sort: 'date' })
+    expect(res.success && res.data.items.map((i) => i.id)).toEqual(made.slice(0, 6).map((m) => m.id))
+  })
 })
