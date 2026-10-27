@@ -2,8 +2,7 @@ import type { AiStatus, InboxItem } from '@shared/inbox'
 
 /** Pure copy and rules for To sort, To stash and Trash. The pages wire these to IPC. */
 
-const plural = (n: number, one: string, many: string) =>
-  `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
+import { mockups, pluralise } from './plural'
 
 /** Cards still waiting on an AI suggestion get the quiet badge. Ready, failed and off get none. */
 export function sniffingBadge(status: AiStatus): string | undefined {
@@ -44,7 +43,7 @@ export function doneMessage(
   skipped: number
 ): { message: string; description?: string } {
   if (skipped === 0)
-    return { message: `All tucked away · ${plural(stashed, 'mockup', 'mockups')} stashed` }
+    return { message: `All tucked away · ${mockups(stashed)} stashed` }
   return {
     message: `${stashed} tucked away`,
     description: `${skipped} skipped ${skipped === 1 ? 'one is' : 'ones are'} waiting in To stash.`
@@ -61,9 +60,9 @@ export function agoText(iso: string, now: number = Date.now()): string {
   if (Number.isNaN(then)) return 'a while ago'
   const age = Math.max(0, now - then)
   if (age < MINUTE) return 'just now'
-  if (age < HOUR) return `${plural(Math.floor(age / MINUTE), 'minute', 'minutes')} ago`
-  if (age < DAY) return `${plural(Math.floor(age / HOUR), 'hour', 'hours')} ago`
-  if (age < 30 * DAY) return `${plural(Math.floor(age / DAY), 'day', 'days')} ago`
+  if (age < HOUR) return `${pluralise(Math.floor(age / MINUTE), 'minute')} ago`
+  if (age < DAY) return `${pluralise(Math.floor(age / HOUR), 'hour')} ago`
+  if (age < 30 * DAY) return `${pluralise(Math.floor(age / DAY), 'day')} ago`
   return new Date(then).toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
@@ -88,7 +87,6 @@ export function newestFirst<T extends { trashedAt: string }>(items: readonly T[]
   return [...items].sort((a, b) => Date.parse(b.trashedAt) - Date.parse(a.trashedAt))
 }
 
-export const pluralise = plural
 
 export interface TossCopy {
   title: string
@@ -102,7 +100,7 @@ export interface TossCopy {
 /** The Toss confirm, worded as in Figma I1.E2 (To sort) and I2.E1 (To stash). */
 export function tossCopy(stage: 'to_sort' | 'to_stash', items: readonly InboxItem[]): TossCopy {
   const n = items.length
-  const discard = `Discard ${plural(n, 'mockup', 'mockups')}`
+  const discard = `Discard ${mockups(n)}`
   if (stage === 'to_stash') {
     return {
       title: 'Toss these?',
@@ -124,7 +122,7 @@ export function tossCopy(stage: 'to_sort' | 'to_stash', items: readonly InboxIte
     confirmLabel: discard,
     ...(measured
       ? {
-          detailTitle: plural(n, 'mockup', 'mockups'),
+          detailTitle: mockups(n),
           detailMeta: formatBytes(sizes.reduce((sum, size) => sum + size, 0))
         }
       : {})

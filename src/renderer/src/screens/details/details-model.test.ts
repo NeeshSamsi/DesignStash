@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Variant } from '@shared/library'
-import { addedOn, detailsCaption, mockupsLabel, pileOrder } from './details-model'
+import { addedOn, detailsCaption, pileOrder } from './details-model'
 
 const now = new Date('2026-10-20T12:00:00')
 
@@ -39,11 +39,6 @@ describe('details model', () => {
     expect(detailsCaption(item, 'top', now)).toBe('Top mockup · added 12 Oct')
     expect(detailsCaption(item, 'pile', now)).toBe('Pile · 4 mockups')
     expect(detailsCaption({ ...item, createdAt: 'x' }, 'mockup', now)).toBe('Mockup')
-  })
-
-  it('counts mockups in the singular', () => {
-    expect(mockupsLabel(1)).toBe('1 mockup')
-    expect(mockupsLabel(2)).toBe('2 mockups')
   })
 
   it('lists the top mockup first and keeps the rest in order', () => {

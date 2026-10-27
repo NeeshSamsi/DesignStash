@@ -1,4 +1,5 @@
 import type { LibraryItem, Variant } from '@shared/library'
+import { mockups } from '@renderer/lib/plural'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -10,7 +11,6 @@ export function addedOn(createdAt: string, now: Date = new Date()): string {
   return date.getFullYear() === now.getFullYear() ? day : `${day} ${date.getFullYear()}`
 }
 
-export const mockupsLabel = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
 
 /** A pile's mockups in the order the sidebar lists them: the top one first, the rest as they come. */
 export function pileOrder(variants: readonly Variant[]): Variant[] {
@@ -29,7 +29,7 @@ export function detailsCaption(
   kind: DetailsKind,
   now?: Date
 ): string {
-  if (kind === 'pile') return `Pile · ${mockupsLabel(item.pile?.memberCount ?? 1)}`
+  if (kind === 'pile') return `Pile · ${mockups(item.pile?.memberCount ?? 1)}`
   const added = addedOn(item.createdAt, now)
   const lead =
     typeof item.pileId === 'number'

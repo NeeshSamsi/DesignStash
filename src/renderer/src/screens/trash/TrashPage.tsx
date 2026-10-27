@@ -14,7 +14,8 @@ import { MockupCard } from '@renderer/components/MockupCard'
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
-import { agoText, formatBytes, newestFirst, pluralise } from '@renderer/lib/inbox-list'
+import { agoText, formatBytes, newestFirst } from '@renderer/lib/inbox-list'
+import { pluralise } from '@renderer/lib/plural'
 import { HeaderActions } from '@renderer/lib/page-header-slot'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { useUiStore } from '@renderer/stores/uiStore'
@@ -87,7 +88,7 @@ export default function TrashPage() {
             await window.api.invoke(IPC_CHANNELS.MOCKUP_TRASH, { ids: restoredIds })
             await refresh()
           })(),
-        pluralise(restoredIds.length, 'item', 'items')
+        pluralise(restoredIds.length, 'item')
       )
     }
     if (missing.length > 0) {
@@ -111,7 +112,7 @@ export default function TrashPage() {
     await refresh()
     toast({
       variant: 'success',
-      message: `Deleted ${pluralise(targets.length, 'item', 'items')} for good`
+      message: `Deleted ${pluralise(targets.length, 'item')} for good`
     })
   }
 
@@ -135,7 +136,7 @@ export default function TrashPage() {
     toast({
       variant: 'success',
       message: 'Trash emptied',
-      description: `${pluralise(res.data.deletedCount, 'item', 'items')} gone, ${formatBytes(res.data.bytesFreed)} freed`
+      description: `${pluralise(res.data.deletedCount, 'item')} gone, ${formatBytes(res.data.bytesFreed)} freed`
     })
   }
 
@@ -297,7 +298,7 @@ export default function TrashPage() {
         title="Empty Trash?"
         description={
           ask?.kind === 'empty'
-            ? `${pluralise(ask.stats.count, 'item', 'items')} will be deleted for good, freeing ${formatBytes(ask.stats.bytes)}. This can’t be undone.`
+            ? `${pluralise(ask.stats.count, 'item')} will be deleted for good, freeing ${formatBytes(ask.stats.bytes)}. This can’t be undone.`
             : ''
         }
         confirmLabel="Empty Trash"

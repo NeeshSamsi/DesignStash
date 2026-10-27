@@ -70,11 +70,6 @@ export function isGenericNameStart(start: string): boolean {
   return (GENERIC_NAME_STARTS as readonly string[]).includes(firstWord)
 }
 
-/** "1 mockup" or "N mockups". The count is a badge, never the title. */
-export function mockupCountLabel(count: number): string {
-  return `${count} ${count === 1 ? 'mockup' : 'mockups'}`
-}
-
 const lastFolder = (member: PileTitleMember) =>
   member.folderTrail[member.folderTrail.length - 1]?.trim()
 

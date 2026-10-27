@@ -13,13 +13,13 @@ import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
 import {
   aiTotals,
-  pluralise,
   sniffingBadge,
   sniffingLine,
   tossCopy,
   verbFor
 } from '@renderer/lib/inbox-list'
 import { HeaderActions, useHeaderStatus } from '@renderer/lib/page-header-slot'
+import { mockups } from '@renderer/lib/plural'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { toast } from '@renderer/stores/toastStore'
 import { AddCardMenu } from '../gather/AddCardMenu'
@@ -89,7 +89,7 @@ export default function InboxPage({
     selection.clear()
     await refresh()
     const n = res.data.tossedIds.length
-    toast({ variant: 'success', message: `Tossed ${pluralise(n, 'mockup', 'mockups')}` })
+    toast({ variant: 'success', message: `Tossed ${mockups(n)}` })
   }
 
   // Both inboxes start with the Add card, as in Figma I1.1 and I2.1.

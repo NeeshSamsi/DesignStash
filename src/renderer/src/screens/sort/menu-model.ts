@@ -9,7 +9,7 @@ import {
   UndoIcon
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
-import { mockupCountLabel } from '@shared/pile-title'
+import { mockups } from '@renderer/lib/plural'
 import {
   canDisband,
   canNewPile,
@@ -144,7 +144,7 @@ function tileRows(state: BoardState): MenuRow[] {
   })
   const newPile = item({
     key: 'new-pile',
-    label: n > 1 ? `New pile from ${mockupCountLabel(n)}` : 'New pile',
+    label: n > 1 ? `New pile from ${mockups(n)}` : 'New pile',
     icon: Layers01Icon,
     shortcut: '⌘G',
     ...unless(newPileBlock(state)),

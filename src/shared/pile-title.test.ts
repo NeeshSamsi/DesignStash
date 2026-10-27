@@ -4,7 +4,6 @@ import {
   GENERIC_NAME_STARTS,
   REASON_SIMILAR_NAMES,
   REASON_TOP_STASHED,
-  mockupCountLabel,
   pileTitle,
   type PileTitleMember
 } from './pile-title'
@@ -202,12 +201,6 @@ describe('pileTitle', () => {
   })
 
   describe('count label', () => {
-    it('says "1 mockup" / "N mockups"', () => {
-      expect(mockupCountLabel(1)).toBe('1 mockup')
-      expect(mockupCountLabel(2)).toBe('2 mockups')
-      expect(mockupCountLabel(14)).toBe('14 mockups')
-    })
-
     it('never uses the count as the title', () => {
       expect(pileTitle([member('a.psd', [], true), member('b.psd')]).title).not.toMatch(/mockups?$/)
     })

@@ -10,7 +10,8 @@ import { subscribePush } from '../../lib/subscribe'
 import { toast } from '../../stores/toastStore'
 import { Badge } from '../../ui/badge'
 import { friendlyPath, shortPath } from '../onboarding/onboarding-copy'
-import { formatBytes, mockupCount, stashCheckView, stashFailureCopy } from './settings-copy'
+import { mockups } from '../../lib/plural'
+import { formatBytes, stashCheckView, stashFailureCopy } from './settings-copy'
 
 interface Props {
   /** Opens the Trash page and closes Settings. */
@@ -134,7 +135,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
   }
 
   const what = info
-    ? `${mockupCount(info.count)} (${formatBytes(info.bytes)})`
+    ? `${mockups(info.count)} (${formatBytes(info.bytes)})`
     : 'every PSD and cover'
 
   const view = check ? stashCheckView(check) : null
@@ -169,7 +170,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
           <SettingsPathField
             path={info ? shortPath(friendlyPath(info.path)) : '…'}
             {...(info ? { fullPath: friendlyPath(info.path) } : {})}
-            meta={info ? `${mockupCount(info.count)} · ${formatBytes(info.bytes)}` : ''}
+            meta={info ? `${mockups(info.count)} · ${formatBytes(info.bytes)}` : ''}
             onChange={() => void change()}
           />
           {info?.restartRequired && (
@@ -199,7 +200,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
             trash
               ? trashEmpty
                 ? 'Trash is empty.'
-                : `${mockupCount(trash.count)} · ${formatBytes(trash.bytes)}, kept until you empty it.`
+                : `${mockups(trash.count)} · ${formatBytes(trash.bytes)}, kept until you empty it.`
               : ' '
           }
           controls={
@@ -266,7 +267,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
         title="Empty Trash?"
         description={
           trash
-            ? `This permanently deletes ${mockupCount(trash.count)} and frees ${formatBytes(trash.bytes)}. It can’t be undone.`
+            ? `This permanently deletes ${mockups(trash.count)} and frees ${formatBytes(trash.bytes)}. It can’t be undone.`
             : 'This permanently deletes everything in Trash. It can’t be undone.'
         }
         confirmLabel="Empty Trash"

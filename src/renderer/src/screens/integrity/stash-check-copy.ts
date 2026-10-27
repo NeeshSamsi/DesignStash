@@ -1,4 +1,4 @@
-import { pluralise } from '@renderer/lib/inbox-list'
+import { mockups, pluralise } from '@renderer/lib/plural'
 
 /** Plain words for the stash check's toasts. Names and counts only, never a path or a code. */
 export const stashCheckCopy = {
@@ -9,9 +9,9 @@ export const stashCheckCopy = {
   },
   couldNotLoad: 'Couldn’t check your stash. Try again.',
   inSync: 'Your stash is in sync',
-  added: (n: number) => `Added ${pluralise(n, 'file', 'files')} to To sort`,
-  removed: (n: number) => `Removed ${pluralise(n, 'mockup', 'mockups')}`,
-  ignored: (n: number) => `Ignored ${pluralise(n, 'change', 'changes')}`,
+  added: (n: number) => `Added ${pluralise(n, 'file')} to To sort`,
+  removed: (n: number) => `Removed ${mockups(n)}`,
+  ignored: (n: number) => `Ignored ${pluralise(n, 'change')}`,
   couldNotAdd: 'Couldn’t add those. Try again.',
   couldNotRemove: 'Couldn’t remove those. Try again.',
   couldNotIgnore: 'Couldn’t ignore those. Try again.',

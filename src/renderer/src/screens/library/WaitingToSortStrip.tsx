@@ -3,7 +3,7 @@ import type { InboxItem } from '@shared/inbox'
 import { coverUrl } from '@shared/cover-url'
 import { CoverImage } from '@renderer/components/CoverImage'
 import { useInboxCounts } from '@renderer/hooks/use-inbox-counts'
-import { pluralise } from '@renderer/lib/inbox-list'
+import { mockups } from '@renderer/lib/plural'
 import { useCopyStore } from '@renderer/stores/copyStore'
 import { useWaitingStripStore } from '@renderer/stores/waitingStripStore'
 import { Button } from '@renderer/ui/button'
@@ -81,7 +81,7 @@ interface StripProps {
 
 function Strip({ waiting, items, copying, onLater, onSort }: StripProps) {
   // The copy card owns the "N of M copied" count and the per-file detail; the strip only says what waits.
-  const title = `${pluralise(waiting, 'mockup', 'mockups')} waiting to be sorted`
+  const title = `${mockups(waiting)} waiting to be sorted`
   const hint = copying
     ? 'Still copying. They land in To sort as they arrive, so you can start on what is here.'
     : 'They landed in To sort. Sort them into piles, then look them over to stash them.'

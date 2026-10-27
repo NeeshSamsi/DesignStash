@@ -24,8 +24,6 @@ export function formatWhen(iso: string | null, now: Date = new Date()): string {
   return `${at.getDate()} ${at.toLocaleString('en-GB', { month: 'short' })}, ${time}`
 }
 
-export const mockupCount = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
-
 /** Why a stash folder change did not happen, in plain words. The old folder is untouched. */
 export function stashFailureCopy(reason: StashChangeFailure): {
   title: string

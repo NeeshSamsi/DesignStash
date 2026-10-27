@@ -6,10 +6,7 @@ import { formatBytes } from '../settings/settings-copy'
 
 /** Pure rules for Gather: what the widget says, what a drag means, what a drop becomes. */
 
-/** 1204 reads as "1,204". */
-export const formatCount = (n: number) => n.toLocaleString('en-US')
-
-const plural = (n: number, one: string, many: string) => `${formatCount(n)} ${n === 1 ? one : many}`
+import { formatCount, mockups } from '@renderer/lib/plural'
 
 /**
  * Files that were looked at: landed, or left out as a duplicate or unreadable. Not-PSDs never count,
@@ -166,7 +163,7 @@ export function rowState(file: CopyFile): CopyFileRowState {
 export function undoneMessage(removed: number): { message: string; description: string } {
   return {
     message: 'Copy undone',
-    description: `${plural(removed, 'mockup', 'mockups')} removed from To sort. Your originals weren’t touched.`
+    description: `${mockups(removed)} removed from To sort. Your originals weren’t touched.`
   }
 }
 
@@ -274,7 +271,7 @@ export function overlayFor(input: {
       title: 'Drop to add them to To sort',
       description:
         input.waiting > 0
-          ? `They’ll join the ${plural(input.waiting, 'mockup', 'mockups')} already waiting.`
+          ? `They’ll join the ${mockups(input.waiting)} already waiting.`
           : 'They’ll wait here until you sort them.'
     }
   }

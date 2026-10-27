@@ -1,5 +1,6 @@
 import type { GroupMember, GroupingProposal, SortBoard } from '@shared/grouping'
-import { mockupCountLabel, pileTitle, type PileTitle } from '@shared/pile-title'
+import { pileTitle, type PileTitle } from '@shared/pile-title'
+import { mockups } from '@renderer/lib/plural'
 
 // The Sort board as a pure reducer: selection, drag and drop, piles, undo.
 // Behaviour comes from the Sort flow (Figma B2 · Sort into piles, S2 to S8) and
@@ -191,7 +192,7 @@ export function titleOfPile(state: BoardState, pile: BoardPile): PileTitle {
   return pileTitle(members, stashedTitle ? { stashedTitle } : {})
 }
 
-export const countLabel = (pile: BoardPile): string => mockupCountLabel(pile.memberIds.length)
+export const countLabel = (pile: BoardPile): string => mockups(pile.memberIds.length)
 
 export const isTileSelected = (state: BoardState, tileId: number) =>
   state.selectedTiles.includes(tileId)
@@ -422,8 +423,8 @@ function dropIntoPile(state: BoardState, ids: number[], pileId: string): BoardSt
     p.id === pileId ? { ...p, memberIds: [...p.memberIds, ...moving] } : p
   )
   return commit(state, {
-    label: `Move ${mockupCountLabel(moving.length)}`,
-    notice: `Added ${mockupCountLabel(moving.length)} to ${titleOfPile({ ...state, piles }, piles.find((p) => p.id === pileId)!).title}.`,
+    label: `Move ${mockups(moving.length)}`,
+    notice: `Added ${mockups(moving.length)} to ${titleOfPile({ ...state, piles }, piles.find((p) => p.id === pileId)!).title}.`,
     piles,
     standalone: lifted.standalone,
     selectedTiles: ids,
@@ -444,7 +445,7 @@ function startPile(
   const piles = [created, ...lifted.piles]
   return commit(state, {
     label: 'New pile',
-    notice: `New pile of ${mockupCountLabel(members.length)}.`,
+    notice: `New pile of ${mockups(members.length)}.`,
     piles,
     standalone: lifted.standalone,
     selectedTiles: ids,
@@ -457,8 +458,8 @@ function takeOut(state: BoardState, ids: number[]): BoardState {
   if (!moving.length) return { ...state, drag: null }
   const lifted = lift(state, moving)
   return commit(state, {
-    label: `Take ${mockupCountLabel(moving.length)} out`,
-    notice: `Moved ${mockupCountLabel(moving.length)} to On its own.`,
+    label: `Take ${mockups(moving.length)} out`,
+    notice: `Moved ${mockups(moving.length)} to On its own.`,
     piles: lifted.piles,
     standalone: [...lifted.standalone, ...moving],
     selectedTiles: ids,

@@ -1,7 +1,6 @@
 import type { FilterChip } from './tag-filter'
 
-const mockups = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
-const favourites = (n: number) => `${n} ${n === 1 ? 'favourite' : 'favourites'}`
+import { mockups, pluralise } from './plural'
 
 /**
  * What the picked tags read as in the header: “Device · iPhone, MacBook; Style · Clay”. A whole
@@ -40,11 +39,11 @@ export function libraryDescription(input: LibraryDescription): string {
   const query = input.query.trim()
   const filtered = input.chips.length > 0
   if (query === '' && !filtered) {
-    return input.view === 'starred' ? favourites(input.starred) : mockups(input.total)
+    return input.view === 'starred' ? pluralise(input.starred, 'favourite') : mockups(input.total)
   }
   const lead =
     query !== ''
-      ? `${input.shown} ${input.shown === 1 ? 'result' : 'results'} for “${query}”`
+      ? `${pluralise(input.shown, 'result')} for “${query}”`
       : mockups(input.shown)
   return filtered ? `${lead} · filtered by ${filterSummary(input.chips)}` : lead
 }

@@ -1,4 +1,4 @@
-const mockups = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
+import { mockups } from '@renderer/lib/plural'
 
 /**
  * The toast when Look it over ends (inboxes.md, Done). All stashed: "All tucked away · N mockups

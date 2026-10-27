@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { PileSnapshot } from '@shared/ipc/pile'
 import type { LibraryItem } from '@shared/library'
 import { pilesIn, type PileIntent } from '@renderer/lib/library-list'
+import { mockups } from '@renderer/lib/plural'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { toast } from '@renderer/stores/toastStore'
 
@@ -11,7 +12,6 @@ export interface LibraryPilesInput {
   offerUndo: (name: string, message: string, run: () => Promise<void>, description?: string) => void
 }
 
-const mockups = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
 
 const COPY = {
   create: { name: 'new pile', message: 'Pile made' },

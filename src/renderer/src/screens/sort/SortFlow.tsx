@@ -6,7 +6,7 @@ import {
   type GroupMember,
   type SortBoard as SavedBoard
 } from '@shared/grouping'
-import { mockupCountLabel } from '@shared/pile-title'
+import { mockups } from '@renderer/lib/plural'
 import { ActionBar } from '@renderer/components/ActionBar'
 import { Banner } from '@renderer/components/Banner'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
@@ -188,7 +188,7 @@ function SortSession({ initial, whole, copying, onClose, onLookThemOver }: Sessi
     <FlowModal
       open
       step="sort"
-      count={mockupCountLabel(total)}
+      count={mockups(total)}
       onRequestClose={requestClose}
       body={
         <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -247,7 +247,7 @@ function SortSession({ initial, whole, copying, onClose, onLookThemOver }: Sessi
             variant="neutral"
             working={busy}
             title="Your haul isn’t stashed yet"
-            description={`Your piles so far are kept. All ${mockupCountLabel(total)} wait in To sort until you come back.`}
+            description={`Your piles so far are kept. All ${mockups(total)} wait in To sort until you come back.`}
             confirmLabel="Finish later"
             workingLabel="Saving…"
             cancelLabel="Keep going"

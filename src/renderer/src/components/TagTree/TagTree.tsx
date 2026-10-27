@@ -36,6 +36,7 @@ import {
   tagTreeVariants
 } from './TagTree.variants'
 import { pointMenuAlign } from '@renderer/lib/point-menu'
+import { mockups, pluralise } from '@renderer/lib/plural'
 
 type Category = TagTreeData[number]
 type Result = void | Promise<void>
@@ -69,7 +70,6 @@ const FRESH_MS = 2000
 
 const norm = (text: string) => text.trim().toLowerCase()
 const freshKey = (categoryId: number, label: string) => `${categoryId}:${norm(label)}`
-const tagCountText = (n: number) => `${n} ${n === 1 ? 'tag' : 'tags'}`
 
 /** Runs an owner handler; a rejection is the owner's to report, so the input just stays. */
 async function attempt(run: () => Result): Promise<boolean> {
@@ -451,7 +451,7 @@ export function TagTree({
               {tag.label}
             </span>
             <span className={cn(rowHintClass, 'whitespace-nowrap')}>
-              {tag.usageCount} {tag.usageCount === 1 ? 'mockup' : 'mockups'}
+              {mockups(tag.usageCount)}
             </span>
             <DropdownMenu
               align="end"
@@ -595,7 +595,7 @@ export function TagTree({
                 {category.categoryLabel}
               </h3>
               <p className="min-w-0 flex-1 type-caption-xs-regular text-tertiary">
-                {tagCountText(category.tags.length)}
+                {pluralise(category.tags.length, 'tag')}
               </p>
               <DropdownMenu
                 align="end"

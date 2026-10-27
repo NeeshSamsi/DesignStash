@@ -6,7 +6,8 @@ import { ErrorState } from '@renderer/components/ErrorState'
 import { MockupCard } from '@renderer/components/MockupCard'
 import { Tooltip } from '@renderer/components/Tooltip'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
-import { detailsCaption, mockupsLabel, pileOrder } from './details-model'
+import { mockups } from '@renderer/lib/plural'
+import { detailsCaption, pileOrder } from './details-model'
 import { PhotoshopAsk, SidebarActions, SidebarHeader } from './SidebarParts'
 import { SidebarLoading } from './SingleView'
 import type { useDetailsData } from './use-details-data'
@@ -59,7 +60,7 @@ export function PileView({ data }: { data: Data }) {
       </SidebarHeader>
 
       <div
-        aria-label={mockupsLabel(count)}
+        aria-label={mockups(count)}
         className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 content-start gap-3 overflow-y-auto"
       >
         {variants.map((variant) => (

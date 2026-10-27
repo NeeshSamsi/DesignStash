@@ -7,7 +7,7 @@ import { Select } from '../../components/Select'
 import { TagTree } from '../../components/TagTree'
 import { useTagTreeStore } from '../../stores/tagTreeStore'
 import { toast, undoToast } from '../../stores/toastStore'
-import { mockupCount } from './settings-copy'
+import { mockups } from '@renderer/lib/plural'
 
 type Category = TagTreeData[number]
 interface Merge {
@@ -83,7 +83,7 @@ export function TagsPane() {
     undoToast(
       `Deleted “${tag.label}”`,
       () => void ipc(IPC_CHANNELS.TAG_RESTORE, { snapshot: data.snapshot }).then(() => load()),
-      `Removed from ${mockupCount(data.affectedMockups)}`
+      `Removed from ${mockups(data.affectedMockups)}`
     )
   }
   const createCategory = async (label: string) => {
@@ -194,7 +194,7 @@ export function TagsPane() {
         <p role="status" className="type-body-sm-regular text-muted-foreground">
           {merge?.count === null || merge === null
             ? 'Counting mockups…'
-            : `${mockupCount(merge.count)} will move to “${merge.target.label}”. “${merge.source.label}” goes away.`}
+            : `${mockups(merge.count)} will move to “${merge.target.label}”. “${merge.source.label}” goes away.`}
         </p>
       </FormDialog>
 

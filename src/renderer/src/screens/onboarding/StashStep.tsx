@@ -4,7 +4,7 @@ import { ChoiceDialog } from '@renderer/components/ChoiceDialog'
 import { OnboardingStep } from '@renderer/components/OnboardingStep'
 import { PathField } from '@renderer/components/PathField'
 import type { PathFieldState } from '@renderer/components/PathField/PathField.types'
-import { mockupCount } from '../settings/settings-copy'
+import { mockups } from '@renderer/lib/plural'
 import { folderHint, friendlyPath, locationTrail, shortPath, STASH_STEP } from './onboarding-copy'
 
 export interface StashStepProps {
@@ -83,7 +83,7 @@ export function StashStep({ onBack, onNext }: StashStepProps) {
       : choice.kind === 'unconfirmed'
         ? choice.count === null
           ? 'There’s already a stash in here.'
-          : `There’s already a stash in here (${mockupCount(choice.count)}).`
+          : `There’s already a stash in here (${mockups(choice.count)}).`
         : undefined
   const blocked = shown === null || choice.kind === 'blocked' || choice.kind === 'unconfirmed'
 
