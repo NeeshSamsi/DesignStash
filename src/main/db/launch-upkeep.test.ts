@@ -4,8 +4,9 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from './schema'
 import type { Repository } from './repository'
 import { ensureSearchIndex } from './search-index'
-import { createTestDb, sample } from './repositories/__tests__/setup'
-import { refreshSearchIndex } from './search-index-refresh'
+import { approvedMockup, createTestDb } from './repositories/__tests__/setup'
+import { PileTitles } from '../library/pile-titles'
+import { runLaunchUpkeep, type UpkeepSteps } from './launch-upkeep'
 
 let sqlite: Database.Database
 let db: BetterSQLite3Database<typeof schema>
@@ -23,69 +24,109 @@ const indexed = (): number[] =>
     (r) => r.rowid
   )
 
-function stashed(title: string): number {
-  return repo.mockups.createMockup({
-    ...sample,
-    title,
-    libraryPath: `/lib/fts/${title}.psd`,
-    stage: 'stashed'
-  }).id
-}
+/** A stashed mockup that came in as `fileName`. */
+const make = (fileName: string): number =>
+  repo.mockups.createMockup(
+    approvedMockup({
+      title: fileName.replace(/\.psd$/, ''),
+      libraryPath: `/lib/${fileName}`,
+      importContext: { batchId: 'b', folderTrail: [], originalFilename: fileName }
+    })
+  ).id
 
-describe('refreshSearchIndex', () => {
-  it('rebuilds a library that has never been stamped', () => {
-    const id = stashed('Hero')
+/** The real launch work, the way launch-steps runs it. */
+const real = (): UpkeepSteps => ({
+  settlePileTitles: () => new PileTitles(repo).settleAll(),
+  rebuildSearchIndex: () => repo.search.rebuildSearchIndex()
+})
+
+const spies = () => ({ settlePileTitles: vi.fn(), rebuildSearchIndex: vi.fn() })
+
+describe('runLaunchUpkeep', () => {
+  it('settles piles from before base titles and rebuilds the index on a library never stamped', () => {
+    const [top, member] = [make('tote-a.psd'), make('tote-b.psd')]
+    repo.piles.createPile([top, member], top)
+    repo.mockups.updateMockup(member, { title: 'Blue tote' })
     sqlite.prepare('DELETE FROM mockups_fts').run()
 
-    expect(refreshSearchIndex(sqlite, () => repo.search.rebuildSearchIndex())).toBe(true)
-    expect(indexed()).toEqual([id])
+    expect(runLaunchUpkeep(sqlite, real())).toBe(true)
+
+    expect(repo.mockups.getMockup(member)!.title).toBe('tote-a')
+    expect(indexed()).toEqual([top, member])
   })
 
-  it('skips the rebuild on the next launch while the stamp matches', () => {
-    stashed('Hero')
-    refreshSearchIndex(sqlite, () => repo.search.rebuildSearchIndex())
+  it('does neither on the next launch while the stamp matches', () => {
+    make('poster.psd')
+    runLaunchUpkeep(sqlite, real())
 
-    const rebuild = vi.fn()
-    expect(refreshSearchIndex(sqlite, rebuild)).toBe(false)
-    expect(rebuild).not.toHaveBeenCalled()
+    const steps = spies()
+    expect(runLaunchUpkeep(sqlite, steps)).toBe(false)
+    expect(steps.settlePileTitles).not.toHaveBeenCalled()
+    expect(steps.rebuildSearchIndex).not.toHaveBeenCalled()
   })
 
-  it('rebuilds once after a new migration', () => {
-    refreshSearchIndex(sqlite, () => repo.search.rebuildSearchIndex())
+  it('runs both once after a new migration', () => {
+    runLaunchUpkeep(sqlite, real())
     sqlite
       .prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)')
       .run('next', Date.now())
 
-    const rebuild = vi.fn()
-    expect(refreshSearchIndex(sqlite, rebuild)).toBe(true)
-    expect(refreshSearchIndex(sqlite, rebuild)).toBe(false)
-    expect(rebuild).toHaveBeenCalledTimes(1)
+    const steps = spies()
+    expect(runLaunchUpkeep(sqlite, steps)).toBe(true)
+    expect(runLaunchUpkeep(sqlite, steps)).toBe(false)
+    expect(steps.settlePileTitles).toHaveBeenCalledTimes(1)
+    expect(steps.rebuildSearchIndex).toHaveBeenCalledTimes(1)
   })
 
-  it('runs the whole rebuild in one transaction', () => {
-    stashed('Hero')
-    let inTransaction = false
-    refreshSearchIndex(sqlite, () => {
-      inTransaction = sqlite.inTransaction
-      repo.search.rebuildSearchIndex()
+  it('settles the piles first, then rebuilds, all in one transaction', () => {
+    const calls: string[] = []
+    runLaunchUpkeep(sqlite, {
+      settlePileTitles: () => calls.push(`settle ${sqlite.inTransaction}`),
+      rebuildSearchIndex: () => calls.push(`rebuild ${sqlite.inTransaction}`)
     })
-    expect(inTransaction).toBe(true)
+    expect(calls).toEqual(['settle true', 'rebuild true'])
   })
 
   it('a rebuild that fails part-way leaves the index as it was and tries again next launch', () => {
-    const id = stashed('Hero')
+    const id = make('poster.psd')
     repo.search.upsertSearchIndex(id)
 
     expect(() =>
-      refreshSearchIndex(sqlite, () => {
-        sqlite.prepare('DELETE FROM mockups_fts').run()
-        throw new Error('disk full')
+      runLaunchUpkeep(sqlite, {
+        settlePileTitles: () => {},
+        rebuildSearchIndex: () => {
+          sqlite.prepare('DELETE FROM mockups_fts').run()
+          throw new Error('disk full')
+        }
       })
     ).toThrow('disk full')
     expect(indexed()).toEqual([id])
 
+    const steps = spies()
+    expect(runLaunchUpkeep(sqlite, steps)).toBe(true)
+    expect(steps.rebuildSearchIndex).toHaveBeenCalledTimes(1)
+  })
+
+  it('a settle that fails is reported, the index still rebuilds, and both run again next launch', () => {
+    const onError = vi.fn()
     const rebuild = vi.fn()
-    expect(refreshSearchIndex(sqlite, rebuild)).toBe(true)
+    const failing = new Error('pile 12 unreadable')
+
+    runLaunchUpkeep(
+      sqlite,
+      {
+        settlePileTitles: () => {
+          throw failing
+        },
+        rebuildSearchIndex: rebuild
+      },
+      onError
+    )
+
+    expect(onError).toHaveBeenCalledWith(failing)
     expect(rebuild).toHaveBeenCalledTimes(1)
+    const steps = spies()
+    expect(runLaunchUpkeep(sqlite, steps)).toBe(true)
+    expect(steps.settlePileTitles).toHaveBeenCalledTimes(1)
   })
 })

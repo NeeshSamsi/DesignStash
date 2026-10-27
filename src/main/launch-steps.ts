@@ -6,7 +6,7 @@ import { initDb, getDb, getSqlite, closeDb } from './db/connection'
 import { runMigrations } from './db/migrate'
 import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
 import { ensureSearchIndex } from './db/search-index'
-import { refreshSearchIndex } from './db/search-index-refresh'
+import { runLaunchUpkeep } from './db/launch-upkeep'
 import { applyCsp } from './csp'
 import { handleCoverRequests } from './cover-protocol'
 import { attachLogFile, captureConsole, logger } from './logger'
@@ -56,14 +56,18 @@ export function launchSteps(opts: { devUrl: string | undefined }): LaunchSteps {
       ensureSearchIndex(db)
       seedTaxonomy(db)
       try {
-        // Piles from before base titles get their base and variations (design/specs/pile-titles.md).
-        new PileTitles(new Repository(db)).settleAll()
-      } catch (err) {
-        logger.error('Settling pile titles failed:', err)
-      }
-      try {
-        if (refreshSearchIndex(getSqlite(), () => new Repository(db).search.rebuildSearchIndex()))
-          logger.info('Search index rebuilt')
+        // Only after an update or a migration: piles from before base titles get their base and
+        // variations (design/specs/pile-titles.md), then the keyword index is written again.
+        const repo = new Repository(db)
+        const ran = runLaunchUpkeep(
+          getSqlite(),
+          {
+            settlePileTitles: () => new PileTitles(repo).settleAll(),
+            rebuildSearchIndex: () => repo.search.rebuildSearchIndex()
+          },
+          (err) => logger.error('Settling pile titles failed:', err)
+        )
+        if (ran) logger.info('Pile titles settled and search index rebuilt')
       } catch (err) {
         logger.error('Search index rebuild failed:', err)
       }
