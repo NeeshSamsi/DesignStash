@@ -1,6 +1,6 @@
 import { app } from 'electron'
-import type { HandlerContext } from './context'
-import { registerAppHandlers } from './app'
+import type { HandlerContext, TelemetryRef } from './context'
+import { registerAppHandlers, registerRendererErrorHandler } from './app'
 import { registerBootHandlers, type BootHandlerDeps } from './boot'
 import { registerAboutHandlers } from './about'
 import { registerSettingsHandlers } from './settings'
@@ -23,10 +23,15 @@ import { registerDebugHandlers } from './debug'
 
 /**
  * The handlers the screens before the app rely on (app lifecycle, launch status, settings, folder
- * picker, problem report). Registered once at launch, library or not.
+ * picker, problem report, renderer errors). Registered once at launch, library or not. Without
+ * `telemetry` (it failed to start) renderer errors still reach the log.
  */
-export function registerPreAppHandlers(deps: BootHandlerDeps): void {
+export function registerPreAppHandlers({
+  telemetry,
+  ...deps
+}: BootHandlerDeps & { telemetry?: TelemetryRef }): void {
   registerAppHandlers()
+  registerRendererErrorHandler(telemetry ?? null)
   registerBootHandlers(deps)
 }
 

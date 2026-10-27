@@ -17,6 +17,7 @@ export const IPC_CHANNELS = {
   APP_RELAUNCH: 'app:relaunch',
   APP_RELOAD: 'app:reload',
   APP_QUIT: 'app:quit',
+  APP_RENDERER_ERROR: 'app:renderer-error',
   BOOT_STATUS: 'boot:status',
   BOOT_CHECK_FOLDER: 'boot:check-folder',
   DIALOG_SELECT_DIRECTORY: 'dialog:select-directory',

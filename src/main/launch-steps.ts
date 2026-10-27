@@ -162,7 +162,13 @@ export function launchSteps(opts: { devUrl: string | undefined }): LaunchSteps {
         settings,
         // Only an open library has counts for the problem report.
         repo: libraryOpen ? new Repository(getDb()) : null,
-        ...(services ? { reporter: services.reporter, crashLine: services.crashLine } : {})
+        ...(services
+          ? {
+              reporter: services.reporter,
+              crashLine: services.crashLine,
+              telemetry: services.telemetry
+            }
+          : {})
       })
     },
 
