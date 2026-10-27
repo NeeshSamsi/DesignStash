@@ -171,7 +171,7 @@ export class CopyQueue {
             }
       )
     )
-    const skippedArchives = [...scan.skippedArchives]
+    const skippedItems = [...scan.skippedItems]
       .sort((a, b) => a.path.localeCompare(b.path))
       .map((a) => ({ fileName: a.name, skipReason: a.reason }))
 
@@ -188,7 +188,7 @@ export class CopyQueue {
       this.repo.copyJobs.createHaul(haulId, scan.candidateImagePaths, scan.skippedCount)
     }
     this.repo.copyJobs.addJobs(haulId, jobs)
-    this.repo.copyJobs.addSkippedJobs(haulId, skippedArchives)
+    this.repo.copyJobs.addSkippedJobs(haulId, skippedItems)
 
     if (!active && !this.repo.copyJobs.nextQueued(haulId)) {
       this.repo.copyJobs.setHaulState(haulId, { state: 'done' })
