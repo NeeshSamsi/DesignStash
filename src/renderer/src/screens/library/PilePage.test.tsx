@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import type { LibraryItem } from '@shared/library'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useDetailsEscape } from '../details/use-details-escape'
@@ -10,26 +11,14 @@ import { item, resetStores, setupApi } from './library-test-utils'
 const toasts = vi.hoisted(() => ({ toast: vi.fn(), undoToast: vi.fn() }))
 vi.mock('@renderer/stores/toastStore', () => toasts)
 
-const variant = (id: number, isTop: boolean) => ({
-  id,
-  title: `V${id}`,
-  coverPath: `/lib/${id}.png`,
-  coverMissing: false,
-  coverSource: 'embedded',
-  isTop
-})
-const variants = [variant(2, false), variant(1, true), variant(3, false)]
-
 const ok = (data: unknown) => ({ success: true, data })
+/** The pile's mockups as PILE_MEMBERS answers them: the top first. */
+const members = (make: (id: number) => LibraryItem) => () =>
+  ok({ items: [1, 2, 3].map(make) })
 const handlers = {
-  [IPC_CHANNELS.MOCKUP_DETAIL]: (request: unknown) => {
-    const id = (request as { mockupId: number }).mockupId
-    const base = item(id, { title: `V${id}`, createdAt: '2026-10-12T09:00:00' })
-    return ok({
-      item: id === 1 ? { ...base, pile: { memberCount: 3 } } : base,
-      variants: id === 1 ? variants : []
-    })
-  },
+  [IPC_CHANNELS.PILE_MEMBERS]: members((id) =>
+    item(id, { title: `V${id}`, createdAt: '2026-10-12T09:00:00', ...(id === 1 && { pile: { memberCount: 3 } }) })
+  ),
   [IPC_CHANNELS.PILE_DISBAND]: () => ok({ snapshot: { rows: [] }, freedIds: [1, 2, 3] }),
   [IPC_CHANNELS.PILE_REMOVE]: (request: unknown) => {
     const { mockupId } = request as { mockupId: number }
@@ -56,6 +45,15 @@ beforeEach(() => {
 })
 
 describe('PilePage', () => {
+  it('loads the whole pile in one call, however many mockups it has (F-068)', async () => {
+    const api = setupApi([], handlers)
+    useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })
+    render(<Host />)
+    await ready()
+    expect(api.calls(IPC_CHANNELS.PILE_MEMBERS)).toEqual([{ pileId: 1 }])
+    expect(api.calls(IPC_CHANNELS.MOCKUP_DETAIL)).toEqual([])
+  })
+
   it('lists the pile’s mockups as full cards, the top one first and marked Top', async () => {
     setupApi([], handlers)
     useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })
@@ -70,18 +68,14 @@ describe('PilePage', () => {
     const words: Record<number, string> = { 1: 'three-quarter', 2: 'side', 3: 'flat lay' }
     setupApi([], {
       ...handlers,
-      [IPC_CHANNELS.MOCKUP_DETAIL]: (request: unknown) => {
-        const id = (request as { mockupId: number }).mockupId
-        const base = item(id, {
+      [IPC_CHANNELS.PILE_MEMBERS]: members((id) =>
+        item(id, {
           title: 'Clay iPhone 15 Pro',
           pileId: 1,
-          variation: { words: words[id]!, source: 'ai' }
+          variation: { words: words[id]!, source: 'ai' },
+          ...(id === 1 && { pile: { memberCount: 3 } })
         })
-        return ok({
-          item: id === 1 ? { ...base, pile: { memberCount: 3 } } : base,
-          variants: id === 1 ? variants : []
-        })
-      }
+      )
     })
     useDetailsStore
       .getState()
@@ -347,7 +341,7 @@ describe('PilePage', () => {
   it('goes back when the pile no longer exists', async () => {
     setupApi([], {
       ...handlers,
-      [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok({ item: item(1), variants: [] })
+      [IPC_CHANNELS.PILE_MEMBERS]: () => ok({ items: [] })
     })
     useDetailsStore.getState().openPile({ id: 1, title: 'V1', count: 3, select: 1, edit: false })
     render(<Host />)

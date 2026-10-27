@@ -274,6 +274,16 @@ export class LibraryQueryRepository {
     }))
   }
 
+  /**
+   * A pile's mockups for its page, as grid rows: the top first, then the rest in order. Empty when
+   * `pileId` is no pile's top, or the pile is in Trash.
+   */
+  getPileItems(pileId: number): LibraryRow[] {
+    const top = this.mockups.getMockup(pileId)
+    if (!top || pileRole(top) !== 'top' || top.deletedAt !== null) return []
+    return this.toRows([top, ...this.piles.getMockupsByGroupId(pileId).sort((a, b) => a.id - b.id)])
+  }
+
   getMockupDetail(id: number): {
     mockup: Mockup | undefined
     tags: { id: number; label: string; categoryLabel: string }[]

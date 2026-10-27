@@ -155,6 +155,34 @@ describe('pile handlers', () => {
   })
 })
 
+describe('pile members (the pile page, F-068)', () => {
+  it('answers a pile’s mockups as library rows in one call: the top first, then the rest in order', async () => {
+    const [a, b, c] = [make('a'), make('b'), make('c')] as [number, number, number]
+    await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b, c], topId: c })
+    const tag = repo.tags.createTag({ label: 'Clay', categoryId: repo.tags.createCategory({ label: 'Style' }).id })
+    repo.mockups.addTagToMockup(b, tag.id)
+
+    const res = await call<{ items: { id: number; pileId: number; pile: unknown; tags: { label: string }[] }[] }>(
+      IPC_CHANNELS.PILE_MEMBERS,
+      { pileId: c }
+    )
+
+    expect(res.success).toBe(true)
+    const items = res.success ? res.data.items : []
+    expect(items.map((i) => i.id)).toEqual([c, a, b])
+    expect(items[0]).toMatchObject({ pileId: c, pile: { memberCount: 3 } })
+    expect(items.find((i) => i.id === b)?.tags.map((t) => t.label)).toEqual(['Clay'])
+  })
+
+  it('answers no mockups for a pile that is gone or a mockup on its own', async () => {
+    const [a, b] = [make('a'), make('b')] as [number, number]
+    expect(await call(IPC_CHANNELS.PILE_MEMBERS, { pileId: a })).toEqual({ success: true, data: { items: [] } })
+    await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
+    repo.trash.moveManyToTrash([a])
+    expect(await call(IPC_CHANNELS.PILE_MEMBERS, { pileId: a })).toEqual({ success: true, data: { items: [] } })
+  })
+})
+
 describe('trash handlers', () => {
   it('moves and restores several mockups at once', async () => {
     const [a, b, c] = [make('a'), make('b'), make('c')]

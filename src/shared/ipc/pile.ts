@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { StashResultSchema, StashSnapshotSchema } from '../approval'
 import { IPC_CHANNELS } from '../ipc-channels'
+import { LibraryItemSchema } from '../library'
 import { VariationSchema, VariationSourceSchema } from '../pile-variation'
 
 /**
@@ -67,6 +68,14 @@ export const pileContract = {
   [IPC_CHANNELS.PILE_RESTORE]: {
     request: z.object({ snapshot: PileSnapshotSchema }),
     response: z.object({ restoredIds: z.array(z.number()) })
+  },
+  /**
+   * A pile's mockups for its page, in one call: the top first, then the rest in order, each as a
+   * library row with its tags and star. Empty when it is no longer a pile (or is in Trash).
+   */
+  [IPC_CHANNELS.PILE_MEMBERS]: {
+    request: z.object({ pileId: z.number() }),
+    response: z.object({ items: z.array(LibraryItemSchema) })
   },
   /**
    * Rename a pile: its base title, on every mockup in it, exactly, with no AI

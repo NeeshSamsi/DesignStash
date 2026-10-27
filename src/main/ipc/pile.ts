@@ -41,6 +41,7 @@ export function registerPileHandlers(ctx: HandlerContext): void {
     piles.removeFromPile(args.pileId, args.mockupId)
   )
   registerIpcHandler(IPC_CHANNELS.PILE_RESTORE, (args) => piles.restore(args.snapshot))
+  registerIpcHandler(IPC_CHANNELS.PILE_MEMBERS, (args) => ({ items: repo.library.getPileItems(args.pileId) }))
 
   registerIpcHandler(IPC_CHANNELS.PILE_RENAME, async (args) => {
     await draftsReady(args.pileId)
