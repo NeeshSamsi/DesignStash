@@ -1,8 +1,11 @@
 import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm'
+import { fullTitle } from '@shared/pile-variation'
 import type { AppDatabase } from '../connection'
 import { mockups } from '../schema'
+import type { Mockup } from '../schema'
 import type { LibraryQueryRepository, LibraryRow } from './library-query'
 import type { MockupRepository } from './mockups'
+import { PLACE_ALONE, pileRole } from './piles'
 import type { SearchRepository } from './search'
 
 /** Soft delete (deletedAt), restore and permanent delete. */
@@ -45,25 +48,62 @@ export class TrashRepository {
   }
 
   moveToTrash(id: number): void {
-    this.db
-      .update(mockups)
-      .set({ deletedAt: new Date().toISOString() })
-      .where(eq(mockups.id, id))
-      .run()
-    this.search.removeSearchIndex(id)
+    this.moveManyToTrash([id])
   }
 
-  /** Move several mockups (or piles) to Trash together, so they share one timestamp. Returns how many moved. */
+  /**
+   * Move several mockups (or piles) to Trash together, so they share one timestamp. Returns how many
+   * moved. A mockup inside a pile leaves it first and lands in Trash on its own, since Trash lists
+   * only rows outside a pile; one whose pile goes in the same move goes with the pile.
+   */
   moveManyToTrash(ids: number[]): number {
     const deletedAt = new Date().toISOString()
-    let moved = 0
-    for (const id of new Set(ids)) {
-      if (!this.mockups.getMockup(id)) continue
-      this.db.update(mockups).set({ deletedAt }).where(eq(mockups.id, id)).run()
-      this.search.removeSearchIndex(id)
-      moved++
+    const wanted = new Set(ids)
+    return this.db.transaction((tx) => {
+      let moved = 0
+      for (const id of wanted) {
+        const m = this.mockups.getMockup(id)
+        if (!m) continue
+        if (pileRole(m) === 'member') {
+          if (wanted.has(m.groupId!)) continue
+          this.leavePile(tx, m)
+        }
+        tx.update(mockups).set({ deletedAt }).where(eq(mockups.id, id)).run()
+        this.search.removeSearchIndex(id)
+        moved++
+      }
+      return moved
+    })
+  }
+
+  /**
+   * Take a member out of its pile, as Remove from pile does: it keeps its full title, and a pile
+   * left with one mockup stops being a pile.
+   */
+  private leavePile(tx: Pick<AppDatabase, 'update'>, member: Mockup): void {
+    const topId = member.groupId!
+    const others = this.db
+      .select({ id: mockups.id })
+      .from(mockups)
+      .where(eq(mockups.groupId, topId))
+      .all()
+      .filter((m) => m.id !== member.id)
+    const top = others.length === 0 ? this.mockups.getMockup(topId) : undefined
+    for (const m of top ? [member, top] : [member]) {
+      tx.update(mockups)
+        .set({
+          ...PLACE_ALONE,
+          ...(m.variation
+            ? { title: fullTitle(m.title, { words: m.variation }), variation: null, variationSource: null }
+            : {})
+        })
+        .where(eq(mockups.id, m.id))
+        .run()
     }
-    return moved
+    // The top's title changed: search knows it by the new one.
+    if (top?.variation && top.stage === 'stashed' && top.deletedAt === null) {
+      this.search.upsertSearchIndex(top.id)
+    }
   }
 
   /** Bring several mockups (or piles) back from Trash. Returns how many came back. */

@@ -94,26 +94,43 @@ export function PilePage({ pile }: { pile: OpenPile }) {
       raw.set([String(item.id)])
     })
 
+  /**
+   * Moves one mockup to Trash. It leaves the pile first (as Remove from pile, so taking the top
+   * promotes the next) and lands in Trash on its own; Undo brings it back into the pile.
+   */
   const trash = async (item: LibraryItem) => {
-    const res = await window.api
-      .invoke(IPC_CHANNELS.MOCKUP_TRASH, { ids: [item.id] })
+    const removed = await window.api
+      .invoke(IPC_CHANNELS.PILE_REMOVE, { pileId: pile.id, mockupId: item.id })
       .catch(() => null)
-    if (!res?.success || !res.data.ok) {
+    const res = removed?.success
+      ? await window.api.invoke(IPC_CHANNELS.MOCKUP_TRASH, { ids: [item.id] }).catch(() => null)
+      : null
+    if (!removed?.success || !res?.success || !res.data.ok) {
+      if (removed?.success) {
+        await window.api
+          .invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot: removed.data.snapshot })
+          .catch(() => null)
+      }
       toast({ variant: 'error', message: 'Couldn’t move that to Trash. Try again.' })
       return
     }
+    const { pileId: next, snapshot } = removed.data
     raw.clear()
-    await reload()
     void syncLibrary()
     undoToast(
       'Moved to Trash',
-      () => {
-        void window.api
-          .invoke(IPC_CHANNELS.MOCKUP_RESTORE, { ids: [item.id] })
-          .then(() => Promise.all([reload(), syncLibrary()]))
-      },
+      () =>
+        void (async () => {
+          await window.api.invoke(IPC_CHANNELS.MOCKUP_RESTORE, { ids: [item.id] })
+          await window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot })
+          await syncLibrary()
+        })().catch(() => {}),
       itemName(item)
     )
+    // A pile left with one mockup is gone: back to My Stash. A new top carries on as the pile.
+    if (next === null) useDetailsStore.getState().closePile()
+    else if (next !== pile.id)
+      useDetailsStore.getState().openPile({ ...pile, id: next, select: next, edit: false })
   }
 
   const makeTop = async (item: LibraryItem) => {

@@ -20,7 +20,7 @@ beforeEach(() => {
 
 afterEach(() => sqlite.close())
 
-/** 50 mockups: tags added out of order, a few piles, one pile with a trashed member. */
+/** 50 mockups: tags added out of order, a few piles, one mockup trashed from its pile of two. */
 function seed(): number[] {
   const tagIds = repo.tags.getAllTags().map((t) => t.id)
   const ids: number[] = []

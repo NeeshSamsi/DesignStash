@@ -120,6 +120,13 @@
       "when": 1793008764714,
       "tag": "0016_pile_variations",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1793072362220,
+      "tag": "0017_free_trashed_pile_members",
+      "breakpoints": true
     }
   ]
 }
