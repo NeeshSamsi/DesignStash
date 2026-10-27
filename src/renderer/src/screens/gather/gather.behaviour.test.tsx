@@ -244,7 +244,6 @@ describe('the widget', () => {
     api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Keep 12' }))
     expect(screen.queryByText(/Copying stopped/)).toBeNull()
-    expect(api.sent(IPC_CHANNELS.COPY_UNDO_ALL)).toEqual([])
   })
 
   it('Undo all undoes the import’s own entry, so it goes to Trash and Redo can bring it back (undo.md)', async () => {
@@ -257,7 +256,6 @@ describe('the widget', () => {
     api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled', undoEntryId: 21 }))
     fireEvent.click(await screen.findByRole('button', { name: 'Undo all' }))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.UNDO_ENTRY)).toEqual([{ id: 21 }]))
-    expect(api.sent(IPC_CHANNELS.COPY_UNDO_ALL)).toEqual([])
     await waitFor(() =>
       expect(toasts.toast).toHaveBeenCalledWith({
         variant: 'success',

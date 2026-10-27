@@ -72,8 +72,7 @@ beforeEach(() => {
 describe('piles by shortcut', () => {
   it('makes a pile from the selection with Cmd+G, first selected on top, undoable', async () => {
     const api = setupApi([item(1), item(2), item(3)], {
-      [IPC_CHANNELS.PILE_CREATE]: () => pileOk(1, [1, 2, 3]),
-      [IPC_CHANNELS.PILE_RESTORE]: () => ({ success: true, data: { restoredIds: [1, 2, 3] } })
+      [IPC_CHANNELS.PILE_CREATE]: () => pileOk(1, [1, 2, 3])
     })
     page()
     await ready()
@@ -142,8 +141,7 @@ describe('piles by shortcut', () => {
             success: true,
             data: { snapshot: snapshot(1, 11), freedIds: [1, 11], undoEntryId: 32 }
           }
-        },
-        [IPC_CHANNELS.PILE_RESTORE]: () => ({ success: true, data: { restoredIds: [1, 11] } })
+        }
       },
       { total: 2, favourites: 0, groups: 0, trashed: 0 }
     )
@@ -179,8 +177,7 @@ describe('piles by shortcut', () => {
 describe('piles by drag', () => {
   it('makes a pile by dropping a card or selection on a card (target goes on top) or with Cmd+G, undoable', async () => {
     const api = setupApi([item(1), item(2)], {
-      [IPC_CHANNELS.PILE_CREATE]: () => pileOk(2),
-      [IPC_CHANNELS.PILE_RESTORE]: () => ({ success: true, data: { restoredIds: [1, 2] } })
+      [IPC_CHANNELS.PILE_CREATE]: () => pileOk(2)
     })
     page()
     await ready()
