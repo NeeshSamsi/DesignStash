@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
 import { createSettingsStore, type SettingsStore } from '../settings'
 import { ModelDownloader } from '../ai/download'
+import { createUndoService, type UndoService } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -19,6 +20,7 @@ vi.mock('electron', () => ({
 
 import { registerAiHandlers } from './ai'
 
+let undo: UndoService
 let base: string
 let modelsDir: string
 let settings: SettingsStore
@@ -61,19 +63,32 @@ beforeEach(() => {
   appleReason = 'appleIntelligenceNotEnabled'
   llamaServer = '/app/llama-server/llama-server'
   runtime = null
-  registerAiHandlers({
+  undo = createUndoService({
+    data: { run: () => ({ ok: true }) },
     settings,
-    push,
-    telemetry: { get: () => ({ track: vi.fn() }) },
-    ai: {
-      modelsDir,
-      downloader: new ModelDownloader(modelsDir),
-      activeDownloads,
-      appleStatus: async () =>
-        appleReady ? { available: true, reason: null } : { available: false, reason: appleReason },
-      embeddings
-    }
-  } as unknown as HandlerContext, { llamaServerPath: () => llamaServer, runtimeProblem: () => runtime })
+    push: () => {},
+    menu: () => {},
+    editField: () => {}
+  })
+  registerAiHandlers(
+    {
+      settings,
+      push,
+      undo,
+      telemetry: { get: () => ({ track: vi.fn() }) },
+      ai: {
+        modelsDir,
+        downloader: new ModelDownloader(modelsDir),
+        activeDownloads,
+        appleStatus: async () =>
+          appleReady
+            ? { available: true, reason: null }
+            : { available: false, reason: appleReason },
+        embeddings
+      }
+    } as unknown as HandlerContext,
+    { llamaServerPath: () => llamaServer, runtimeProblem: () => runtime }
+  )
 })
 
 afterEach(() => rmSync(base, { recursive: true, force: true }))
@@ -124,7 +139,7 @@ describe('AI_LIST_MODELS: the active model can’t run', () => {
     expect(await problem()).toBeNull()
   })
 
-  it("says the runtime is missing when a downloaded model has no llama-server to run on (F-038)", async () => {
+  it('says the runtime is missing when a downloaded model has no llama-server to run on (F-038)', async () => {
     install('qwen3-vl-4b')
     settings.update({ activeModelId: 'qwen3-vl-4b' })
     llamaServer = null
@@ -196,9 +211,10 @@ describe('AI_DELETE_MODEL', () => {
 
     expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen3.5-9b' })).toEqual({
       success: true,
-      data: { deleted: true, inUse: false, undoable: true }
+      data: { deleted: true, inUse: false, undoable: true, undoEntryId: expect.any(Number) }
     })
     expect(existsSync(join(modelsDir, 'qwen3.5-9b'))).toBe(false)
+    expect(undo.history.state().undo).toMatchObject({ label: 'Delete model' })
 
     expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen3.5-9b' })).toEqual({
       success: true,
@@ -227,7 +243,7 @@ describe('AI_DELETE_MODEL', () => {
       await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen3-vl-4b', confirmed: true })
     ).toEqual({
       success: true,
-      data: { deleted: true, inUse: true, undoable: true }
+      data: { deleted: true, inUse: true, undoable: true, undoEntryId: expect.any(Number) }
     })
     expect(settings.get().activeModelId).toBeNull()
 
@@ -379,7 +395,7 @@ describe('the meaning-search model', () => {
     install(id, ['model.gguf'])
     expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id })).toEqual({
       success: true,
-      data: { deleted: true, inUse: false, undoable: true }
+      data: { deleted: true, inUse: false, undoable: true, undoEntryId: expect.any(Number) }
     })
     expect(embeddings.modelRemoved).toHaveBeenCalledTimes(1)
     expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id })).toMatchObject({

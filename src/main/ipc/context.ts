@@ -15,7 +15,7 @@ import {
   resolveLlamaServerPath,
   stubAiEnabled
 } from '../ai/provider-factory'
-import { getModel, isBuiltIn } from '../ai/registry'
+import { getModel, isBuiltIn, isMeaningModel } from '../ai/registry'
 import { NativeHelper, resolveHelperPath } from '../native/helper'
 import { LibraryService } from '../library/library-service'
 import { LlamaServer } from '../ai/llama-server'
@@ -173,11 +173,13 @@ export function createHandlerContext(opts: {
 }): HandlerContext {
   const push = createPush(opts.getWindow)
   const dataOps = createDataOps({ repo: opts.repo, db: getDb() })
+  const ai = createAiRuntime(opts.settings, opts.repo, app.getPath('userData'))
+  const { settings } = opts
   return {
-    settings: opts.settings,
+    settings,
     telemetry: opts.telemetry,
     repo: opts.repo,
-    ai: createAiRuntime(opts.settings, opts.repo, app.getPath('userData')),
+    ai,
     library: new LibraryService(opts.repo, opts.settings.getLibraryRoot(), {
       openPath: (p) => shell.openPath(p)
     }),
@@ -188,6 +190,22 @@ export function createHandlerContext(opts: {
       settings: opts.settings,
       push: (state) => push(IPC_CHANNELS.UNDO_STATE, state),
       menu: opts.undoMenu ?? (() => {}),
+      // Delete model sets a model aside until quit; its undo brings it back, as ai:restore-model does.
+      models: {
+        restore: async (id, makeActive) => {
+          const restored = await ai.downloader.restoreSetAside(id)
+          if (restored && isMeaningModel(id)) ai.embeddings.backfill()
+          if (restored && makeActive) settings.update({ activeModelId: id })
+          return restored
+        },
+        setAside: async (id) => {
+          const setAside = await ai.downloader.setAside(id)
+          if (setAside && settings.get().activeModelId === id)
+            settings.update({ activeModelId: null })
+          if (setAside && isMeaningModel(id)) await ai.embeddings.modelRemoved()
+          return setAside
+        }
+      },
       editField: (direction) => {
         const window = opts.getWindow()
         if (!window || window.isDestroyed()) return

@@ -14,6 +14,7 @@ import {
   isMeaningModel
 } from '../ai/registry'
 import { inferenceQueueFor } from './library-effects'
+import { undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
@@ -189,7 +190,9 @@ export function registerAiHandlers(
     if (deleted && inUse) settings.update({ activeModelId: null })
     // Search goes back to keywords only: the vectors and the server go with the model.
     if (deleted && isMeaningModel(args.id)) await ai.embeddings.modelRemoved()
-    return { deleted, inUse: deleted && inUse, undoable: deleted }
+    // Set aside until quit, so it's in the undo history: its undo brings it back.
+    const entry = deleted ? ctx.undo.record(ctx.undo.modelRecord(args.id, inUse)) : undefined
+    return { deleted, inUse: deleted && inUse, undoable: deleted, ...undoEntry(entry) }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_RESTORE_MODEL, async (args) => {

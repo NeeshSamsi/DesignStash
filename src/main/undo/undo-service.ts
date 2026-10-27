@@ -12,6 +12,10 @@ export type AppOp =
   | DataOp
   | { kind: 'renderer'; payload: RendererUndoOp }
   | { kind: 'pending-stash'; payload: { pendingStash: PendingStash | null } }
+  /** The stash check's ignore list, as it was or as the action left it. */
+  | { kind: 'ignored-drift'; payload: { ids: string[] } }
+  /** A model set aside by Delete model (kept until quit): brought back, or set aside again. */
+  | { kind: 'model'; payload: { id: string; action: 'restore' | 'set-aside'; makeActive: boolean } }
 
 export interface UndoService {
   history: UndoHistory<AppOp>
@@ -21,6 +25,10 @@ export interface UndoService {
   recordDiscard(mockupId: number, values: DiscardedEdit): number
   /** A stash folder change waiting for the restart, from `before` to `after`. */
   pendingStashRecord(before: PendingStash | null, after: PendingStash | null): UndoRecord<AppOp>
+  /** The stash check's ignore list, from `before` to `after`. */
+  ignoredDriftRecord(label: string, before: string[], after: string[]): UndoRecord<AppOp>
+  /** Delete model: undo restores it (active again when it was), redo sets it aside again. */
+  modelRecord(id: string, wasActive: boolean): UndoRecord<AppOp>
   /** Where ⌘Z lands now, as the window reports it, for the Edit menu's labels. */
   setContext(context: UndoContext): void
   /** A focused field's own undo or redo, through the window. */
@@ -46,6 +54,11 @@ export interface UndoServiceDeps {
   /** Puts new labels on Edit › Undo and Redo. */
   menu: (items: UndoMenuItems) => void
   editField: (direction: 'undo' | 'redo') => void
+  /** A set-aside model's files: each says whether they were there. */
+  models?: {
+    restore(id: string, makeActive: boolean): Promise<boolean>
+    setAside(id: string): Promise<boolean>
+  }
 }
 
 /**
@@ -64,10 +77,33 @@ export function createUndoService(deps: UndoServiceDeps): UndoService {
         case 'pending-stash':
           deps.settings.update({ pendingStash: op.payload.pendingStash })
           return { ok: true }
+        case 'ignored-drift':
+          deps.settings.update({ ignoredDrift: op.payload.ids })
+          return { ok: true }
+        case 'model':
+          return modelStep(op.payload)
         default:
           return deps.data.run(op)
       }
     }
+  }
+
+  const modelStep = async ({
+    id,
+    action,
+    makeActive
+  }: {
+    id: string
+    action: 'restore' | 'set-aside'
+    makeActive: boolean
+  }): Promise<OpOutcome> => {
+    const models = deps.models
+    const there = models
+      ? action === 'restore'
+        ? await models.restore(id, makeActive)
+        : await models.setAside(id)
+      : false
+    return there ? { ok: true } : { ok: false, missing: { kind: 'model', id } }
   }
 
   const refreshMenu = (): void => deps.menu(undoMenuItems(context, history.state()))
@@ -100,6 +136,18 @@ export function createUndoService(deps: UndoServiceDeps): UndoService {
       undo: { kind: 'pending-stash', payload: { pendingStash: before } },
       redo: { kind: 'pending-stash', payload: { pendingStash: after } },
       targets: []
+    }),
+    ignoredDriftRecord: (label, before, after) => ({
+      label,
+      undo: { kind: 'ignored-drift', payload: { ids: before } },
+      redo: { kind: 'ignored-drift', payload: { ids: after } },
+      targets: []
+    }),
+    modelRecord: (id, wasActive) => ({
+      label: 'Delete model',
+      undo: { kind: 'model', payload: { id, action: 'restore', makeActive: wasActive } },
+      redo: { kind: 'model', payload: { id, action: 'set-aside', makeActive: false } },
+      targets: [{ kind: 'model', id }]
     }),
     setContext(next) {
       context = next

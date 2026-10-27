@@ -9,7 +9,7 @@ import type { DataOp } from './ops'
 import type { OpRunner } from './undo-history'
 import { createUndoService } from './undo-service'
 
-function setup() {
+function setup(extra: Partial<Parameters<typeof createUndoService>[0]> = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'ds-undo-service-'))
   const settings = createSettingsStore(dir)
   const ran: DataOp[] = []
@@ -27,7 +27,8 @@ function setup() {
     settings,
     push: (state) => pushes.push(state),
     menu: (items) => menus.push(items),
-    editField
+    editField,
+    ...extra
   })
   return { dir, settings, ran, pushes, menus, editField, undo }
 }
@@ -129,5 +130,39 @@ describe('the undo service', () => {
     undo.editField('undo')
     undo.editField('redo')
     expect(editField.mock.calls).toEqual([['undo'], ['redo']])
+  })
+
+  it('Ignore and Ignore all: undo puts the ignore list back, redo ignores them again', async () => {
+    const { undo, settings } = setup()
+    settings.update({ ignoredDrift: ['a'] })
+    undo.record(undo.ignoredDriftRecord('Ignore', ['a'], ['a', 'b']))
+    settings.update({ ignoredDrift: ['a', 'b'] })
+
+    await undo.history.undo()
+    expect(settings.get().ignoredDrift).toEqual(['a'])
+    await undo.history.redo()
+    expect(settings.get().ignoredDrift).toEqual(['a', 'b'])
+  })
+
+  it('Delete model: undo restores the set-aside model, active again if it was; redo sets it aside', async () => {
+    const models = { restore: vi.fn(async () => true), setAside: vi.fn(async () => true) }
+    const { undo } = setup({ models })
+    undo.record(undo.modelRecord('qwen3-vl-4b', true))
+
+    await undo.history.undo()
+    expect(models.restore).toHaveBeenCalledWith('qwen3-vl-4b', true)
+    await undo.history.redo()
+    expect(models.setAside).toHaveBeenCalledWith('qwen3-vl-4b')
+  })
+
+  it('a model whose files are gone is dropped, with the reason', async () => {
+    const models = { restore: vi.fn(async () => false), setAside: vi.fn(async () => true) }
+    const { undo } = setup({ models })
+    undo.record(undo.modelRecord('qwen3-vl-4b', false))
+    expect(await undo.history.undo()).toEqual({
+      status: 'dropped',
+      label: 'Delete model',
+      reason: 'that model was deleted for good'
+    })
   })
 })
