@@ -74,7 +74,13 @@ export function StashStep({ onBack, onNext }: StashStepProps) {
         : choice.kind === 'unconfirmed'
           ? 'existing-library'
           : 'default'
-  const hint = choice.kind === 'blocked' ? choice.hint : undefined
+  // The folder check only says whether there is a stash, so the line gives no count.
+  const hint =
+    choice.kind === 'blocked'
+      ? choice.hint
+      : choice.kind === 'unconfirmed'
+        ? 'There’s already a stash in here.'
+        : undefined
   const blocked = shown === null || choice.kind === 'blocked' || choice.kind === 'unconfirmed'
 
   const proceed = async () => {

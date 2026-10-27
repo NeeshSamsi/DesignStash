@@ -253,6 +253,21 @@ describe('welcome and stash folder', () => {
     expect(await screen.findByRole('heading', { name: 'Set up on-device AI' })).toBeTruthy()
   })
 
+  it('says under the field that a stash is already there, without a made-up count', async () => {
+    installApi(
+      base({
+        [IPC_CHANNELS.DIALOG_SELECT_DIRECTORY]: () => ok({ path: '/Users/ada/Old' }),
+        [IPC_CHANNELS.BOOT_CHECK_FOLDER]: () => ok({ state: 'ok', hasLibrary: true })
+      })
+    )
+    mount('stash')
+    await screen.findByText('~/Pictures/DesignStash')
+    fireEvent.click(btn('Choose…'))
+    await screen.findByRole('alertdialog')
+    expect(screen.getByText('There’s already a stash in here.')).toBeTruthy()
+    expect(screen.queryByText(/128 mockups/)).toBeNull()
+  })
+
   it('Choose another reopens the picker', async () => {
     const api = installApi(
       base({
