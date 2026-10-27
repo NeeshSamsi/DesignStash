@@ -3,7 +3,6 @@ import type { InboxItem } from '@shared/inbox'
 import {
   agoText,
   aiTotals,
-  doneMessage,
   formatBytes,
   tossCopy,
   newestFirst,
@@ -41,16 +40,6 @@ describe('copy', () => {
   it('names the selection', () => {
     expect(verbFor('Toss', 0)).toBe('Toss')
     expect(verbFor('Look over', 3)).toBe('Look over 3')
-  })
-
-  it('writes the done toast', () => {
-    expect(doneMessage(12, 0)).toEqual({ message: 'All tucked away · 12 mockups stashed' })
-    expect(doneMessage(1, 0).message).toBe('All tucked away · 1 mockup stashed')
-    expect(doneMessage(10, 2)).toEqual({
-      message: '10 tucked away',
-      description: '2 skipped ones are waiting in To stash.'
-    })
-    expect(doneMessage(10, 1).description).toBe('1 skipped one is waiting in To stash.')
   })
 })
 

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem, TrashItem } from '@shared/inbox'
-import { doneMessage } from '@renderer/lib/inbox-list'
 import { useHeaderSlot } from '@renderer/lib/page-header-slot'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { item } from '../library/library-test-utils'
@@ -252,19 +251,6 @@ describe('Add card', () => {
     expect(dialog.textContent).toContain('2 mockups')
     expect(dialog.textContent).toContain('4 MB')
     expect(screen.getByRole('button', { name: 'Discard 2 mockups' })).toBeTruthy()
-  })
-})
-
-describe('done toasts', () => {
-  it('"All tucked away · 12 mockups stashed" when nothing was skipped', () => {
-    expect(doneMessage(12, 0)).toEqual({ message: 'All tucked away · 12 mockups stashed' })
-  })
-
-  it('"10 tucked away · 2 skipped ones are waiting in To stash." when some were skipped', () => {
-    expect(doneMessage(10, 2)).toEqual({
-      message: '10 tucked away',
-      description: '2 skipped ones are waiting in To stash.'
-    })
   })
 })
 

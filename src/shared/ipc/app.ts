@@ -5,7 +5,7 @@ export const UpdateStatusSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('up-to-date'), lastCheckedAt: z.string().nullable() }),
   /**
    * A newer release exists. While builds are unsigned the app cannot install it, so `releaseUrl`
-   * is the page to download it from; `notes` is the release's changelog (markdown, may be empty).
+   * is the page to download it from; `notes` is the release's changelog as plain text (may be empty).
    */
   z.object({
     state: z.literal('available'),

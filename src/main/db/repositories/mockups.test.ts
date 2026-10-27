@@ -5,7 +5,7 @@ import type * as schema from '../schema'
 import type { Repository } from '../repository'
 import { seedTaxonomy } from '../bootstrap'
 import { ensureSearchIndex } from '../search-index'
-import { approvedMockup, batchSample, createTestDb, sample } from './__tests__/setup'
+import { approvedMockup, createTestDb, sample } from './__tests__/setup'
 
 let sqlite: Database.Database
 let db: BetterSQLite3Database<typeof schema>
@@ -129,19 +129,6 @@ describe('Repository — variants', () => {
     })
     repo.mockups.deleteMockup(m.id)
     expect(repo.mockups.getVariantsForMockup(m.id)).toHaveLength(0)
-  })
-})
-
-describe('getMockupsByBatchId', () => {
-  it('returns only mockups with the matching batchId', () => {
-    repo.mockups.createMockup({ ...batchSample('batch-1'), title: 'A', libraryPath: '/lib/a.psd' })
-    repo.mockups.createMockup({ ...batchSample('batch-1'), title: 'B', libraryPath: '/lib/b.psd' })
-    repo.mockups.createMockup({ ...batchSample('batch-1'), title: 'C', libraryPath: '/lib/c.psd' })
-    repo.mockups.createMockup({ ...batchSample('batch-2'), title: 'D', libraryPath: '/lib/d.psd' })
-    repo.mockups.createMockup({ ...batchSample('batch-2'), title: 'E', libraryPath: '/lib/e.psd' })
-    expect(repo.mockups.getMockupsByBatchId('batch-1')).toHaveLength(3)
-    expect(repo.mockups.getMockupsByBatchId('batch-2')).toHaveLength(2)
-    expect(repo.mockups.getMockupsByBatchId('batch-99')).toHaveLength(0)
   })
 })
 

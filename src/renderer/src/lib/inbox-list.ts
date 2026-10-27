@@ -37,19 +37,6 @@ export function verbFor(verb: string, selected: number): string {
   return selected > 0 ? `${verb} ${selected}` : verb
 }
 
-/** The success toast after the approval flow: all stashed, or some skipped. */
-export function doneMessage(
-  stashed: number,
-  skipped: number
-): { message: string; description?: string } {
-  if (skipped === 0)
-    return { message: `All tucked away · ${mockups(stashed)} stashed` }
-  return {
-    message: `${stashed} tucked away`,
-    description: `${skipped} skipped ${skipped === 1 ? 'one is' : 'ones are'} waiting in To stash.`
-  }
-}
-
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR

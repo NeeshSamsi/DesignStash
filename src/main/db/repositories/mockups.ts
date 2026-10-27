@@ -100,14 +100,6 @@ export class MockupRepository {
     this.db.update(mockups).set(data).where(eq(mockups.id, id)).run()
   }
 
-  getMockupsByBatchId(batchId: string): Mockup[] {
-    return this.db
-      .select()
-      .from(mockups)
-      .where(sql`json_extract(${mockups.importContext}, '$.batchId') = ${batchId}`)
-      .all()
-  }
-
   setMockupCover(
     mockupId: number,
     coverPath: string,
