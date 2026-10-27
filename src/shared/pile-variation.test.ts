@@ -3,6 +3,7 @@ import {
   fallbackVariations,
   fileMarkers,
   fullTitle,
+  latinLookalikes,
   numberRepeats,
   saysSame,
   tidyWords,
@@ -47,6 +48,27 @@ describe('fileMarkers', () => {
   it('numbers them in pile order when the names give no marker, or the same one twice', () => {
     expect(fileMarkers(['IMG_4821.psd', 'IMG_4822.psd'])).toEqual(['1', '2'])
     expect(fileMarkers(['x-1513-a.psd', 'x-1513-b.psd', 'x-1514-a.psd'])).toEqual(['1', '2', '3'])
+  })
+})
+
+describe('latinLookalikes: Cyrillic and Greek letters that look Latin, in a Latin name (F-077)', () => {
+  it('writes a lookalike inside a Latin word as the Latin letter ("Сlay", with a Cyrillic С, to "Clay")', () => {
+    expect(latinLookalikes('Apple Watch Ultra - \u0421lay')).toBe('Apple Watch Ultra - Clay')
+    expect(latinLookalikes('m\u043eckup_\u0391pple')).toBe('mockup_Apple')
+  })
+
+  it('writes a word of lookalikes alone as Latin when the name has Latin words too ("tote-С")', () => {
+    expect(latinLookalikes('tote-\u0421.psd')).toBe('tote-C.psd')
+  })
+
+  it('leaves a name written in Cyrillic or Greek as it is', () => {
+    expect(latinLookalikes('Москва mockup.psd')).toBe('Москва mockup.psd')
+    expect(latinLookalikes('Сок.psd')).toBe('Сок.psd')
+    expect(latinLookalikes('Αθήνα poster')).toBe('Αθήνα poster')
+  })
+
+  it('makes the same file marker as the Latin name would, so a search for it finds it', () => {
+    expect(fileMarkers(['Apple-Watch-Realistic.psd', 'Apple-Watch-\u0421lay.psd'])).toEqual(['realistic', 'clay'])
   })
 })
 

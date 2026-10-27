@@ -482,6 +482,11 @@ describe('analysisInputFor', () => {
     const m = imported('side', { importContext: null })
     expect(analysisInputFor(m)).toEqual({ imagePath: '/lib/side.webp', fileName: 'side', folderTrail: [] })
   })
+
+  it('writes Cyrillic lookalikes in a Latin name as Latin, so the model and the fallback title read "Clay" (F-077)', () => {
+    const m = imported('watch', { importContext: { batchId: 'b', folderTrail: ['\u0421lay kit'], originalFilename: 'Watch-\u0421lay.psd' } })
+    expect(analysisInputFor(m)).toMatchObject({ fileName: 'Watch-Clay.psd', folderTrail: ['Clay kit'] })
+  })
 })
 
 /** A promise to settle by hand. */

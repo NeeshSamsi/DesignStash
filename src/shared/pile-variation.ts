@@ -38,6 +38,26 @@ export function saysSame(said: string): boolean {
   return SAME.test(said)
 }
 
+/** Cyrillic and Greek letters drawn like Latin ones, each above the Latin letter it passes for. */
+const LOOKS = '\u0410\u0412\u0415\u041a\u041c\u041d\u041e\u0420\u0421\u0422\u0425\u0423\u0405\u0406\u0408\u0430\u0435\u043e\u0440\u0441\u0443\u0445\u0455\u0456\u0458\u04bb\u0501\u0391\u0392\u0395\u0396\u0397\u0399\u039a\u039c\u039d\u039f\u03a1\u03a4\u03a5\u03a7\u03bf'
+const LIKE = 'ABEKMHOPCTXYSIJaeopcyxsijhdABEZHIKMNOPTYXo'
+const LATIN_FOR = new Map([...LOOKS].map((c, i) => [c, LIKE[i]!]))
+
+/**
+ * A name with the Cyrillic and Greek letters that look Latin written as the Latin ones, where the
+ * name is Latin: "Сlay" (a Cyrillic С, as some marketplaces' files have) becomes "Clay", so a search
+ * for "clay" finds it (F-077). Only a word whose every Cyrillic or Greek letter has a Latin twin is
+ * rewritten, so a word in Cyrillic or Greek ("Москва", "Αθήνα") stays as written, and so does a
+ * name with no Latin letters.
+ */
+export function latinLookalikes(name: string): string {
+  if (!/\p{Script=Latin}/u.test(name)) return name
+  return name.replace(/\p{L}+/gu, (word) => {
+    const latin = [...word].map((c) => LATIN_FOR.get(c) ?? c).join('')
+    return /[\p{Script=Cyrillic}\p{Script=Greek}]/u.test(latin) ? word : latin
+  })
+}
+
 /**
  * The fallback when the model can't tell, for each file in a pile: the short part of its name the
  * others don't share ("A" in tote-a, "2" in mug-2, "EU" in notebook_EU, "clay" in "Watch - Clay").
@@ -59,7 +79,7 @@ export function fallbackVariations(fileNames: string[]): Variation[] {
 
 /** Each file's own marker, or null when one has none or two share one. */
 function ownMarkers(fileNames: string[]): string[] | null {
-  const words = fileNames.map((n) => n.replace(/\.[^.]+$/, '').split(/[-_\s.,()]+/).filter(Boolean))
+  const words = fileNames.map((n) => latinLookalikes(n).replace(/\.[^.]+$/, '').split(/[-_\s.,()]+/).filter(Boolean))
   const markers = words.map((mine, i) => {
     const others = words.filter((_, j) => j !== i)
     const own = mine.filter((w, k) => others.every((o) => o[k] !== w) && /^(?:\p{L}{1,12}|\d{1,2})$/u.test(w))

@@ -6,7 +6,7 @@ import {
 } from '@shared/inference'
 import type { AiStatus } from '@shared/inbox'
 import type { AiRun, AiStatusEvent, AiStatusUpdate } from '@shared/ipc/ai-status'
-import { tidyWords } from '@shared/pile-variation'
+import { latinLookalikes, tidyWords } from '@shared/pile-variation'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
 import { PileTitles } from '../library/pile-titles'
@@ -24,8 +24,9 @@ export function analysisInputFor(m: Mockup): AnalysisInput {
   const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
   return {
     imagePath: m.coverPath,
-    fileName: ctx?.originalFilename ?? m.title,
-    folderTrail: ctx?.folderTrail ?? []
+    // Cyrillic letters that look Latin in a Latin name are read as Latin ("Сlay" as "Clay", F-077).
+    fileName: latinLookalikes(ctx?.originalFilename ?? m.title),
+    folderTrail: (ctx?.folderTrail ?? []).map(latinLookalikes)
   }
 }
 
