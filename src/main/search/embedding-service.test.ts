@@ -132,25 +132,56 @@ describe('EmbeddingService', () => {
     expect(repo.embeddings.count(MEANING_MODEL_ID)).toBe(0)
   })
 
-  it('gives up on a failed batch without throwing, and the next backfill tries again', async () => {
+  it('puts a failed batch at the back after a pause, and the next batch still runs, so one failure loses nothing (F-027)', async () => {
     const embedder = fakeEmbedder()
-    const failing = vi.spyOn(embedder, 'embedDocuments').mockRejectedValueOnce(new Error('down'))
+    const tries = vi.spyOn(embedder, 'embedDocuments').mockRejectedValueOnce(new Error('down'))
+    const sleeps: number[] = []
     const log = vi.fn()
     const svc = new EmbeddingService({
       repo,
       available: () => true,
       embedder: () => embedder,
-      sleep: async () => {},
+      sleep: async (ms) => {
+        sleeps.push(ms)
+      },
       log
+    })
+    for (let i = 0; i < 10; i++) stashed(`Bag ${i}`, `/lib/s/r${i}.psd`)
+    svc.backfill()
+    await svc.idle()
+
+    expect(repo.embeddings.count(MEANING_MODEL_ID)).toBe(10)
+    expect(tries).toHaveBeenCalledTimes(3)
+    // The 2 that were behind it lead the next batch, and the failed 8 follow.
+    expect(embedder.documentBatches.map((b) => b.length)).toEqual([8, 2])
+    expect(embedder.documentBatches[0]!.slice(0, 2)).toEqual([expect.stringMatching(/^Bag 8/), expect.stringMatching(/^Bag 9/)])
+    expect(sleeps).toContain(30_000)
+    expect(log).toHaveBeenCalledWith(expect.stringMatching(/again in 30 s/), expect.any(Error))
+  })
+
+  it('tries a mockup three times, waiting longer each time, then leaves it to the next backfill (F-027)', async () => {
+    const embedder = fakeEmbedder()
+    const tries = vi.spyOn(embedder, 'embedDocuments').mockRejectedValue(new Error('down'))
+    const sleeps: number[] = []
+    const svc = new EmbeddingService({
+      repo,
+      available: () => true,
+      embedder: () => embedder,
+      sleep: async (ms) => {
+        sleeps.push(ms)
+      },
+      log: () => {}
     })
     stashed('Tote bag', '/lib/s/h.psd')
     svc.backfill()
     await svc.idle()
-    expect(log).toHaveBeenCalled()
+    expect(tries).toHaveBeenCalledTimes(3)
+    expect(sleeps.filter((ms) => ms >= 30_000)).toEqual([30_000, 120_000])
     expect(repo.embeddings.count(MEANING_MODEL_ID)).toBe(0)
+
+    tries.mockRestore()
     svc.backfill()
     await svc.idle()
-    expect(failing).toHaveBeenCalledTimes(2)
     expect(repo.embeddings.count(MEANING_MODEL_ID)).toBe(1)
   })
 
