@@ -263,6 +263,25 @@ describe('applyPendingStash (at the next launch)', () => {
     expect(existsSync(root)).toBe(false)
   })
 
+  it('also clears the covers the stash check made, and an empty models folder, out of the old one', async () => {
+    write(join(root, 'cache', 'f0123', 'cover.webp'), 'cover')
+    mkdirSync(join(root, 'models'))
+    await service().change(join(base, 'Moved'), 'move')
+
+    applyPendingStash(settings)
+
+    expect(existsSync(root)).toBe(false)
+  })
+
+  it('keeps a models folder in the old one that has something in it', async () => {
+    write(join(root, 'models', 'mine.txt'), 'not ours')
+    await service().change(join(base, 'Moved'), 'move')
+
+    applyPendingStash(settings)
+
+    expect(readFileSync(join(root, 'models', 'mine.txt'), 'utf8')).toBe('not ours')
+  })
+
   it('keeps the old folder and drops the change if the new copy has gone missing', async () => {
     const target = join(base, 'Moved')
     await service().change(target, 'move')

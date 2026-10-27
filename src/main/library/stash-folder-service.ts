@@ -10,8 +10,11 @@ import type { SettingsStore } from '../settings'
 import { ensureSizes } from './app-files'
 
 const DB_FILE = 'designstash.db'
-/** What belongs to the stash inside its folder. Anything else in there is the user's. */
-const STASH_ENTRIES = [DB_FILE, `${DB_FILE}-wal`, `${DB_FILE}-shm`, 'config.json', 'mockups', 'covers']
+/**
+ * What belongs to the stash inside its folder. Anything else in there is the user's. `cache` holds
+ * the covers the stash check draws for stray PSDs, which it draws again wherever the stash is.
+ */
+const STASH_ENTRIES = [DB_FILE, `${DB_FILE}-wal`, `${DB_FILE}-shm`, 'config.json', 'mockups', 'covers', 'cache']
 /** Folders and files copied one by one. The database is copied by SQLite itself. */
 const COPIED_ENTRIES = ['config.json', 'mockups', 'covers']
 
@@ -242,6 +245,13 @@ export function applyPendingStash(settings: SettingsStore): void {
   }
   settings.update({ libraryRoot: pending.path, pendingStash: null })
   for (const entry of STASH_ENTRIES) rmSync(join(pending.oldRoot, entry), { recursive: true, force: true })
+  try {
+    // Launch makes an empty models folder in every stash, unused since models live in app data.
+    // One with anything in it is someone's own, and stays.
+    rmdirSync(join(pending.oldRoot, 'models'))
+  } catch {
+    // Not there, or not empty.
+  }
   try {
     if (readdirSync(pending.oldRoot).length === 0) rmdirSync(pending.oldRoot)
   } catch {
