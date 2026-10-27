@@ -1,4 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createHash } from 'node:crypto'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { CoverResolution } from '../psd/types'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, approvedMockup, type TestDb } from '../db/repositories/__tests__/setup'
 import { IntegrityService, type IntegrityDeps } from './integrity-service'
@@ -109,6 +111,98 @@ describe('report', () => {
     const second = (await service(disk.deps).report()).found[0]!.id
     expect(first).toBe(second)
     expect(first).toMatch(/^f[0-9a-f]{16}$/)
+  })
+
+  it('gives a found file the same id after the stash folder moves, so an ignored one stays ignored', async () => {
+    const before = fakeDisk({ [`${mockups}/x1/a.psd`]: 5 })
+    const after = fakeDisk({ ['/Volumes/Drive/Stash/mockups/x1/a.psd']: 5 })
+    const there = (await service(before.deps).report()).found[0]!.id
+    const moved = new IntegrityService(t.repo, '/Volumes/Drive/Stash', after.deps)
+    expect((await moved.report()).found[0]!.id).toBe(there)
+  })
+
+  it('keeps a file ignored under the id an earlier version gave it', async () => {
+    const path = `${mockups}/x1/a.psd`
+    const earlierId = `f${createHash('sha256').update(path).digest('hex').slice(0, 16)}`
+    let saved = [earlierId]
+    const store = { get: () => saved, set: (ids: string[]) => void (saved = ids) }
+    const disk = fakeDisk({ [path]: 5 })
+
+    expect((await new IntegrityService(t.repo, LIB, { ...disk.deps, ignored: store }).report()).found).toEqual([])
+    // Stored under its new id, it stays ignored once the stash folder moves too.
+    expect(saved).toHaveLength(1)
+    expect(saved[0]).not.toBe(earlierId)
+    const after = fakeDisk({ ['/Volumes/Drive/Stash/mockups/x1/a.psd']: 5 })
+    const moved = new IntegrityService(t.repo, '/Volumes/Drive/Stash', { ...after.deps, ignored: store })
+    expect((await moved.report()).found).toEqual([])
+  })
+})
+
+describe('found files’ covers', () => {
+  const stray = `${mockups}/x1/a.psd`
+
+  it('draws a cover once, and uses it again while the file is still found, after a restart too', async () => {
+    const disk = fakeDisk({ [stray]: 5 })
+    const draw = vi.fn(disk.deps.resolveCover!)
+    disk.deps.resolveCover = async (input) => {
+      const cover = await draw(input)
+      if (cover.source !== 'none') disk.files[cover.coverPath] = 1
+      return cover
+    }
+    const s = service(disk.deps)
+
+    const first = (await s.report()).found[0]!
+    const again = (await s.report()).found[0]!
+    const restarted = (await service(disk.deps).report()).found[0]!
+
+    expect(draw).toHaveBeenCalledTimes(1)
+    expect(again.coverPath).toBe(first.coverPath)
+    expect(restarted.coverPath).toBe(first.coverPath)
+  })
+
+  it('clears covers drawn for files that are no longer found', async () => {
+    const disk = fakeDisk({ [stray]: 5 })
+    const removed: string[] = []
+    const s = service({ ...disk.deps, removeFolder: async (dir) => void removed.push(dir) })
+    const { id } = (await s.report()).found[0]!
+    const cache = `${LIB}/cache`
+    const listing = disk.deps.readdir!
+    disk.deps.readdir = async (dir) => (dir === cache ? ['fold0000000000000', id] : listing(dir))
+
+    await service({ ...disk.deps, removeFolder: async (dir) => void removed.push(dir) }).report()
+
+    expect(removed).toEqual([`${cache}/fold0000000000000`])
+  })
+
+  it('answers in good time however many covers are still being drawn, and has them the next time', async () => {
+    const disk = fakeDisk({ [stray]: 5 })
+    let finish: (cover: CoverResolution) => void = () => {}
+    disk.deps.resolveCover = () => new Promise((resolve) => (finish = resolve))
+    const s = service({ ...disk.deps, coverWaitMs: 20 })
+
+    const first = (await s.report()).found[0]!
+    finish({ source: 'embedded', coverPath: `${LIB}/cache/x/cover.webp`, thumbPath: `${LIB}/cache/x/thumb.webp` })
+    const next = (await s.report()).found[0]!
+
+    expect(first.coverPath).toBeUndefined()
+    expect(next.coverPath).toBe(`${LIB}/cache/x/cover.webp`)
+  })
+
+  it('draws two covers at a time, since each reads a whole PSD', async () => {
+    const disk = fakeDisk(Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`${mockups}/x${n}/a.psd`, 5])))
+    let now = 0
+    let most = 0
+    disk.deps.resolveCover = async ({ outDir }) => {
+      most = Math.max(most, ++now)
+      await new Promise((r) => setTimeout(r, 5))
+      now--
+      return { source: 'embedded', coverPath: `${outDir}/cover.webp`, thumbPath: `${outDir}/thumb.webp` }
+    }
+
+    const report = await service({ ...disk.deps, coverWaitMs: 5_000 }).report()
+
+    expect(report.found.every((f) => f.coverPath)).toBe(true)
+    expect(most).toBe(2)
   })
 })
 

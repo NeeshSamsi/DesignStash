@@ -1,4 +1,4 @@
-import { join, basename, dirname, extname } from 'node:path'
+import { join, basename, dirname, extname, relative } from 'node:path'
 import { promises as fs } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import type { Repository } from '../db/repository'
@@ -29,7 +29,16 @@ export interface IntegrityDeps {
   pickFile: () => Promise<string | null>
   /** The ids the user chose to ignore. Persisted by the owner; kept in memory by default. */
   ignored: { get: () => string[]; set: (ids: string[]) => void }
+  /** Remove a folder and everything in it. */
+  removeFolder: (path: string) => Promise<void>
+  /** How long the report waits for covers still being drawn. Those not ready show the next time. */
+  coverWaitMs: number
 }
+
+/** Found files' covers drawn at once. Each reads a whole PSD's composite, in a worker of its own. */
+const COVER_DRAWS_AT_ONCE = 2
+/** Long enough for a handful of stray PSDs; a big batch shows the rest of its covers the next time. */
+const COVER_WAIT_MS = 3000
 
 /** How much the scan found that the user has not ignored. The items themselves come from `report()`. */
 export interface IntegrityReport {
@@ -77,8 +86,11 @@ async function defaultExists(p: string): Promise<boolean> {
  */
 const PSD = /\.psd$/i
 
-const foundId = (path: string): string =>
-  `f${createHash('sha256').update(path).digest('hex').slice(0, 16)}`
+const hashId = (text: string): string => `f${createHash('sha256').update(text).digest('hex').slice(0, 16)}`
+/** A found file's id comes from its path inside the stash, so it stays the same when the stash moves. */
+const foundId = (libraryRoot: string, path: string): string => hashId(relative(libraryRoot, path))
+/** The id earlier versions gave it, from the whole path. */
+const earlierFoundId = (path: string): string => hashId(path)
 const goneId = (mockupId: number): string => `m${mockupId}`
 
 function memoryIgnored(): IntegrityDeps['ignored'] {
@@ -112,9 +124,16 @@ export class IntegrityService {
           await fs.copyFile(from, to)
         }),
       pickFile: deps?.pickFile ?? (async () => null),
-      ignored: deps?.ignored ?? memoryIgnored()
+      ignored: deps?.ignored ?? memoryIgnored(),
+      removeFolder: deps?.removeFolder ?? ((p) => fs.rm(p, { recursive: true, force: true })),
+      coverWaitMs: deps?.coverWaitMs ?? COVER_WAIT_MS
     }
   }
+
+  /** Covers being drawn or drawn for found files, by id: each is drawn once while its file is found. */
+  private readonly covers = new Map<string, Promise<string | null>>()
+  private drawingNow = 0
+  private readonly waitingToDraw: (() => void)[] = []
 
   /** Mockups live under <libraryRoot>/mockups/<uuid>/original.psd (matches ImportService). */
   private mockupsDir(): string {
@@ -137,8 +156,9 @@ export class IntegrityService {
     const found = new Map<string, string>()
     for (const f of await this.deps.listFiles(this.mockupsDir())) {
       if (!PSD.test(f) || known.has(f)) continue
-      found.set(foundId(f), f)
+      found.set(foundId(this.libraryRoot, f), f)
     }
+    this.keepEarlierIgnores(found)
     const ignored = new Set(this.deps.ignored.get())
     const gone = new Map<string, { mockupId: number; libraryPath: string }>()
     for (const row of rows) {
@@ -146,6 +166,15 @@ export class IntegrityService {
       if (!(await this.deps.exists(row.libraryPath))) gone.set(goneId(row.mockupId), row)
     }
     return { found, gone }
+  }
+
+  /** A file ignored under the id an earlier version gave it is ignored under its own id from now on. */
+  private keepEarlierIgnores(found: Map<string, string>): void {
+    const ignored = this.deps.ignored.get()
+    if (ignored.length === 0) return
+    const byEarlierId = new Map([...found].map(([id, path]) => [earlierFoundId(path), id]))
+    if (!ignored.some((id) => byEarlierId.has(id))) return
+    this.deps.ignored.set(ignored.map((id) => byEarlierId.get(id) ?? id))
   }
 
   /** Only what the user has not chosen to ignore. */
@@ -161,6 +190,8 @@ export class IntegrityService {
    */
   async report(): Promise<DriftReport> {
     const { found, gone } = this.visible(await this.drift(true))
+    await this.clearCovers(new Set(found.keys()))
+    const covers = await this.coversReady(found)
 
     const foundItems: FoundFile[] = []
     for (const [id, path] of found) {
@@ -170,17 +201,8 @@ export class IntegrityService {
       } catch {
         // Unmeasured: the row still lists.
       }
-      let coverPath: string | undefined
-      try {
-        const cover = await this.deps.resolveCover({
-          psdPath: path,
-          candidateImagePaths: [],
-          outDir: join(this.libraryRoot, 'cache', id)
-        })
-        if (cover.source !== 'none') coverPath = cover.coverPath
-      } catch {
-        // A PSD we can't read still gets a row, without a cover.
-      }
+      // A PSD we can't read, or whose cover isn't drawn yet, still gets a row, without a cover.
+      const coverPath = covers.get(id)
       foundItems.push({
         id,
         name: basename(path, extname(path)),
@@ -201,6 +223,83 @@ export class IntegrityService {
       })
     }
     return { found: foundItems, gone: goneItems }
+  }
+
+  private cacheDir(): string {
+    return join(this.libraryRoot, 'cache')
+  }
+
+  /**
+   * The found files' covers that are ready within `coverWaitMs`: those drawn before, then those drawn
+   * now, a few at a time. One still being drawn when the time is up shows the next time the check opens.
+   */
+  private async coversReady(found: Map<string, string>): Promise<Map<string, string>> {
+    const ready = new Map<string, string>()
+    const drawn = [...found].map(([id, path]) =>
+      this.coverFor(id, path).then((cover) => {
+        if (cover) ready.set(id, cover)
+      })
+    )
+    let timer: ReturnType<typeof setTimeout> | undefined
+    await Promise.race([
+      Promise.all(drawn),
+      new Promise<void>((resolve) => (timer = setTimeout(resolve, this.deps.coverWaitMs)))
+    ])
+    clearTimeout(timer)
+    return new Map(ready)
+  }
+
+  /** A found file's cover, under cache/<id>: the one drawn before, else drawn now. Null when it can't be. */
+  private coverFor(id: string, path: string): Promise<string | null> {
+    const known = this.covers.get(id)
+    if (known) return known
+    const outDir = join(this.cacheDir(), id)
+    const cover = (async () => {
+      const drawnBefore = join(outDir, 'cover.webp')
+      if (await this.deps.exists(drawnBefore)) return drawnBefore
+      await this.turnToDraw()
+      try {
+        const resolution = await this.deps.resolveCover({ psdPath: path, candidateImagePaths: [], outDir })
+        return resolution.source === 'none' ? null : resolution.coverPath
+      } catch {
+        return null
+      } finally {
+        this.doneDrawing()
+      }
+    })()
+    this.covers.set(id, cover)
+    // A cover that couldn't be drawn is tried again the next time.
+    void cover.then((drawn) => {
+      if (drawn === null && this.covers.get(id) === cover) this.covers.delete(id)
+    })
+    return cover
+  }
+
+  private async turnToDraw(): Promise<void> {
+    if (this.drawingNow < COVER_DRAWS_AT_ONCE) {
+      this.drawingNow++
+      return
+    }
+    // `doneDrawing` hands its turn straight over.
+    await new Promise<void>((resolve) => this.waitingToDraw.push(resolve))
+  }
+
+  private doneDrawing(): void {
+    const next = this.waitingToDraw.shift()
+    if (next) next()
+    else this.drawingNow--
+  }
+
+  /** Covers drawn for files no longer found: added, removed, ignored, or gone from the folder. */
+  private async clearCovers(found: Set<string>): Promise<void> {
+    for (const id of this.covers.keys()) if (!found.has(id)) this.covers.delete(id)
+    const cache = this.cacheDir()
+    const names = await this.deps.readdir(cache)
+    for (const name of names) {
+      if (found.has(name)) continue
+      await this.deps.removeFolder(join(cache, name)).catch(() => {})
+    }
+    if (found.size === 0 && names.length > 0) await this.deps.rmdir(cache).catch(() => {})
   }
 
   /** Put found files in To sort. The caller queues them for suggestions. Returns the new mockup ids. */
