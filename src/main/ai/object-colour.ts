@@ -32,7 +32,7 @@ const OBJECT_NOUNS = [
   'cover', 'menu', 'box', 'cube', 'package', 'packaging', 'tube', 'bottle', 'pump', 'dispenser', 'jar', 'lid', 'can', 'cup', 'mug', 'handle',
   'tote', 'bag', 'shopper', 'pouch', 'wrapper', 'bar', 'carton', 'tape', 'roll', 'lighter', 'cap', 'hat', 'hoodie', 'shirt', 't-shirt', 'tee',
   'top', 'leggings', 'tights', 'sweatshirt', 'jumper', 'sweater', 'apron', 'flag', 'sleeve', 'stitching', 'holder', 'clasp', 'rim', 'interior',
-  'zip', 'zipper', 'cord', 'core', 'brim', 'closure', 'homepod'
+  'zip', 'zipper', 'cord', 'core', 'brim', 'closure', 'homepod', 'text', 'lettering'
 ]
 const NOUN = `(?:${OBJECT_NOUNS.join('|')})(?:e?s)?`
 
@@ -73,6 +73,20 @@ const PRONOUN = new RegExp(`\\b(an?\\s+)(${PHRASE})\\s+(ones?)\\b`, 'gi')
  */
 const GRADIENT_WITH = new RegExp(`\\s+with\\s+(?:an?\\s+)?(?:(?:soft|smooth|subtle|bold|vibrant)\\s+)?(${PHRASE}\\s+(?:colou?r\\s+)?gradient)\\b(?!\\s+finish)`, 'gi')
 const GRADIENT_OF = new RegExp(`\\s+(?:(?:displayed|shown|printed|rendered)\\s+)?in\\s+(?:an?\\s+)?(?:(?:soft|smooth|subtle|bold|vibrant)\\s+)?(gradient\\s+of\\s+${PHRASE})\\b`, 'gi')
+
+/**
+ * The colours of the object's details, after it: "with yellow and black accents", "and in white
+ * colours", ", with green and white colours". They go whole, with the words that joined them on;
+ * before "and" only they and the "and" go ("with black accents and soft shadows" keeps "with soft
+ * shadows"). A room's accents are the setting's ("a poster in a room with yellow accents"), and so
+ * are tones ("a concrete room with light and grey tones") and highlights, which are the light.
+ */
+const DETAILS = new RegExp(
+  `(?:\\s*,)?(?:\\s+and)?\\s+(?:with|featuring|in)\\s+(?:(?:subtle|bold|bright|vivid|vibrant)\\s+)?(${PHRASE})\\s+(?:accents?|colou?rs|details?|trims?)\\b(\\s+and\\s+)?`,
+  'gi'
+)
+/** Places whose details are the setting's, when they come straight before. */
+const PLACE = /\b(?:rooms?|walls?|interior|space|studio|kitchen|office|floor|table|desk|shelf|counter)\s*$/i
 
 /** "three white and one cardboard boxes": two counts of one kind of object, told apart by colour, become one count ("four boxes"). */
 const COUNTS = ['a', 'an', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
@@ -121,6 +135,12 @@ function colourSpans(text: string): Span[] {
     if (SETTING.test(text.slice(Math.max(0, at - 40), at))) continue
     const oneAt = m.index + m[0].length - m[3]!.length
     spans.push({ at, end: m.index + m[0].length, cutFrom: m.index, cutTo: oneAt })
+  }
+  for (const m of text.matchAll(DETAILS)) {
+    if (PLACE.test(text.slice(0, m.index))) continue
+    const at = m.index + m[0].toLowerCase().indexOf(m[1]!.toLowerCase())
+    const end = m.index + m[0].length
+    spans.push({ at, end: end - (m[2]?.length ?? 0), cutFrom: m[2] ? at : m.index, cutTo: end })
   }
   for (const m of [...text.matchAll(GRADIENT_WITH), ...text.matchAll(GRADIENT_OF)]) {
     const at = m.index + m[0].length - m[1]!.length

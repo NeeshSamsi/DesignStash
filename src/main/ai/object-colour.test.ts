@@ -149,3 +149,45 @@ describe('the phrasings the 9B dev seed found missing (2026-10-26)', () => {
     expect(strip('Boxes', 'A stack of three white and one box, sitting on a base.').description).toBe('A stack of four boxes, sitting on a base.')
   })
 })
+
+describe("the phrasings Apple's model wrote in the packaged run (2026-10-27, F-077)", () => {
+  const description = (text: string) => strip('', text).description
+
+  it('cuts the colours of the object\'s details, after it, whole: accents, colours, highlights', () => {
+    expect(description('A smartwatch, also called a wearable, on a white background with yellow and black accents.')).toBe(
+      'A smartwatch, also called a wearable, on a white background.'
+    )
+    expect(description('A smartwatch, also called a wearable, centered on a white background and in white colours.')).toBe(
+      'A smartwatch, also called a wearable, centered on a white background.'
+    )
+    expect(description('A box on a white stand, minimalist, against a grey background, with green and white colours.')).toBe(
+      'A box on a white stand, minimalist, against a grey background.'
+    )
+  })
+
+  it('keeps the word that joined them on when more follows: only the colours and "and" go', () => {
+    expect(description('A laptop, also called a computer, resting on a white surface at a slight angle, with black accents and soft shadows.')).toBe(
+      'A laptop, also called a computer, resting on a white surface at a slight angle, with soft shadows.'
+    )
+  })
+
+  it('keeps a highlight, which is the light', () => {
+    expect(strip('Curved sticker with white highlight', '').title).toBe('Curved sticker with white highlight')
+  })
+
+  it('cuts the colour of printed text', () => {
+    expect(description('A billboard, also called a sign, standing on a city street with green trees and blue sky, featuring black text and a QR code.')).toBe(
+      'A billboard, also called a sign, standing on a city street with green trees and blue sky, featuring text and a QR code.'
+    )
+  })
+
+  it("keeps the setting's colours: the chair and background, a room's tones, a room's accents", () => {
+    for (const text of [
+      'A laptop, also called a computer, resting on a brown chair with a black frame, against a warm background of orange and black.',
+      'A box on a white base, also called a design, in a concrete room with light and grey tones.',
+      'A poster in a room with yellow accents.'
+    ]) {
+      expect(description(text)).toBe(text)
+    }
+  })
+})
