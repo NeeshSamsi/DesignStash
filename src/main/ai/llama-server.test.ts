@@ -276,6 +276,29 @@ describe('LlamaServer', () => {
     expect(err).not.toBeInstanceOf(LlamaStartError)
   })
 
+  it("cancels a request when the caller's signal aborts, so the server is free for the next one (F-035)", async () => {
+    let first = true
+    let sent: AbortSignal | undefined
+    const h = harness({
+      chat: (init) => {
+        if (!first) return reply('{"title":"next"}')
+        first = false
+        sent = init?.signal ?? undefined
+        // A check that never answers until it is cancelled.
+        return new Promise<Response>((_, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('aborted'))))
+      }
+    })
+    const caller = new AbortController()
+    const asked = h.server.complete({}, caller.signal)
+    await vi.waitFor(() => expect(sent).toBeDefined())
+    expect(sent!.aborted).toBe(false)
+
+    caller.abort()
+    await expect(asked).rejects.toThrow(/aborted/)
+    expect(sent!.aborted).toBe(true)
+    await expect(h.server.chat({})).resolves.toBe('{"title":"next"}')
+  })
+
   it('gives up and kills the server when it never becomes ready', async () => {
     const h = harness({ health: () => json({ error: 'Loading model' }, 503), startTimeoutMs: 1000 })
     await expect(h.server.chat({})).rejects.toThrow(/didn't become ready/)

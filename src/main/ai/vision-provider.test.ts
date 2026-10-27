@@ -921,7 +921,7 @@ describe('VisionInferenceProvider pile edits', () => {
   const ENTRY = { description: 'A laptop on a grey mesh floor.', tags: ['Laptop', 'floor'] }
 
   function pileProvider(pileEdits: PromptProfile['pileEdits'], reply: object) {
-    const complete = vi.fn<(req: ChatRequest) => Promise<ChatReply>>(async () => ({ text: JSON.stringify(reply) }))
+    const complete = vi.fn<(req: ChatRequest, signal?: AbortSignal) => Promise<ChatReply>>(async () => ({ text: JSON.stringify(reply) }))
     const readImage = vi.fn<(path: string) => Promise<string | null>>(async () => IMAGE)
     const provider = new VisionInferenceProvider('Qwen3.5 9B', { prompt: { ...SHIPPED, ...(pileEdits && { pileEdits }) }, complete, readImage })
     return { provider, complete, readImage }
@@ -970,6 +970,18 @@ describe('VisionInferenceProvider pile edits', () => {
     const removal = { before: { description: 'A mug on a saucer.', tags: ['saucer'] }, after: { description: 'A mug.', tags: [] } }
     expect(await provider.pileEdits!.rewrite!(removal, ENTRY)).toBe(ENTRY.description)
     expect(complete).not.toHaveBeenCalled()
+  })
+
+  it("passes the caller's signal to the model for a check and a rewrite, so one that ran out of time can be cancelled (F-035)", async () => {
+    // The shared PileEditSteps gains the signal with look-over-service's half of F-035; until then it is reached this way.
+    const judged = pileProvider({ judge: true }, { answer: 'yes', reason: '' })
+    const signal = new AbortController().signal
+    await Reflect.apply(judged.provider.pileEdits.check!, undefined, ['/c', EDIT, ['bench'], signal])
+    expect(judged.complete.mock.calls[0]![1]).toBe(signal)
+
+    const rewritten = pileProvider(undefined, { description: 'A laptop on a white slatted bench.', tags: [] })
+    await Reflect.apply(rewritten.provider.pileEdits.rewrite!, undefined, [EDIT, ENTRY, signal])
+    expect(rewritten.complete.mock.calls[0]![1]).toBe(signal)
   })
 
   it('throws on an empty rewrite, so the caller falls back to a copy', async () => {

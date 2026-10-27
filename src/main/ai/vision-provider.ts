@@ -114,7 +114,8 @@ export interface VisionProviderDeps {
   /** The model's own prompt: how it is asked and how its reply is read. */
   prompt: PromptProfile
   /** Send one chat request (an answer, or a scene-thing question) and return the reply. */
-  complete(request: object): Promise<ChatReply>
+  /** `signal` cancels the request (an edit check that ran out of time, F-035). */
+  complete(request: object, signal?: AbortSignal): Promise<ChatReply>
   /** The cover as a data URL the runtime can decode, or null when there isn't one to read. */
   readImage(path: string): Promise<string | null>
   /** Release the runtime (stop the server). */
@@ -420,8 +421,10 @@ export class VisionInferenceProvider implements InferenceProvider {
   ) {
     const how = deps.prompt.pileEdits ?? {}
     this.pileEdits = {
-      ...(how.judge && { check: (coverPath: string, edit: PileEdit, added: string[]) => this.checkEdit(coverPath, edit, added) }),
-      ...(!how.copy && { rewrite: (edit: PileEdit, entry: PileEditEntry) => this.rewriteForEdit(edit, entry) })
+      ...(how.judge && {
+        check: (coverPath: string, edit: PileEdit, added: string[], signal?: AbortSignal) => this.checkEdit(coverPath, edit, added, signal)
+      }),
+      ...(!how.copy && { rewrite: (edit: PileEdit, entry: PileEditEntry, signal?: AbortSignal) => this.rewriteForEdit(edit, entry, signal) })
     }
     if (deps.prompt.variations) {
       const base = deps.prompt.pileBase === true
@@ -442,17 +445,17 @@ export class VisionInferenceProvider implements InferenceProvider {
   }
 
   /** Whether what a pile edit added is true of a variant's cover as it is. */
-  private async checkEdit(coverPath: string, edit: PileEdit, added: string[]): Promise<{ answer: 'yes' | 'no'; reason: string }> {
+  private async checkEdit(coverPath: string, edit: PileEdit, added: string[], signal?: AbortSignal): Promise<{ answer: 'yes' | 'no'; reason: string }> {
     const url = await this.deps.readImage(coverPath)
     if (!url) throw new Error('No cover to check the edit against')
-    return readCheck((await this.deps.complete(pileEditRequest(checkPrompt(edit, added), CHECK_SCHEMA, url))).text)
+    return readCheck((await this.deps.complete(pileEditRequest(checkPrompt(edit, added), CHECK_SCHEMA, url), signal)).text)
   }
 
   /** The variant's description with the edit's change worked in, from the text alone. */
-  private async rewriteForEdit(edit: PileEdit, entry: PileEditEntry): Promise<string> {
+  private async rewriteForEdit(edit: PileEdit, entry: PileEditEntry, signal?: AbortSignal): Promise<string> {
     const prompt = rewritePrompt(edit, entry)
     if (prompt === null) return entry.description
-    return readRewrite((await this.deps.complete(pileEditRequest(prompt, ENTRY_SCHEMA))).text)
+    return readRewrite((await this.deps.complete(pileEditRequest(prompt, ENTRY_SCHEMA), signal)).text)
   }
 
   /** Stop the runtime mid-run (the hard stop). The next request starts it again. */

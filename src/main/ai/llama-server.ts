@@ -142,9 +142,12 @@ export class LlamaServer {
     return content
   }
 
-  /** POST a chat completion and return the whole reply (every choice, logprobs, usage, timings). */
-  async complete(body: object): Promise<ChatCompletion> {
-    return (await this.post('/v1/chat/completions', body)) as ChatCompletion
+  /**
+   * POST a chat completion and return the whole reply (every choice, logprobs, usage, timings).
+   * Aborting `signal` cancels it, which frees the server's one slot for the next request (F-035).
+   */
+  async complete(body: object, signal?: AbortSignal): Promise<ChatCompletion> {
+    return (await this.post('/v1/chat/completions', body, signal)) as ChatCompletion
   }
 
   /** Vectors for texts, in order, from an embedding server. Starts the server if it isn't running. */
@@ -159,7 +162,7 @@ export class LlamaServer {
     return rows.map((r) => r.embedding as number[])
   }
 
-  private async post(path: string, body: object): Promise<unknown> {
+  private async post(path: string, body: object, signal?: AbortSignal): Promise<unknown> {
     this.clearIdle()
     this.inFlight++
     try {
@@ -168,7 +171,7 @@ export class LlamaServer {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.config.requestTimeoutMs ?? 180_000)
+        signal: this.requestSignal(signal)
       })
       if (!res.ok) {
         throw new Error(`llama-server answered ${res.status}: ${(await res.text()).slice(0, 200)}`)
@@ -178,6 +181,12 @@ export class LlamaServer {
       this.inFlight--
       if (this.inFlight === 0) this.armIdle()
     }
+  }
+
+  /** The request's own time limit, and the caller's signal when there is one. */
+  private requestSignal(signal?: AbortSignal): AbortSignal {
+    const timeout = AbortSignal.timeout(this.config.requestTimeoutMs ?? 180_000)
+    return signal ? AbortSignal.any([signal, timeout]) : timeout
   }
 
   /** Stop the child: SIGTERM, then SIGKILL if it hasn't gone after a grace period. */

@@ -96,8 +96,8 @@ function createVisionProvider(files: VisionModelFiles, pidFile?: LlamaPidFile): 
   })
   return new VisionInferenceProvider(files.name, {
     prompt: files.prompt,
-    complete: async (request) => {
-      const choice = (await server.complete(request)).choices?.[0]
+    complete: async (request, signal) => {
+      const choice = (await server.complete(request, signal)).choices?.[0]
       const text = choice?.message?.content
       if (typeof text !== 'string') throw new Error('llama-server reply has no message content')
       return { text, logprobs: choice?.logprobs }
