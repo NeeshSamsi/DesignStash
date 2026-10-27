@@ -24,13 +24,15 @@ interface FigmaComponent {
 }
 
 const FIGMA_ONLY = new Set(['ContentSlot', 'ModalLayer'])
+// Figma components with no code (NOT_IN_CODE in scripts/ds/contract.mjs).
+const NOT_IN_CODE = new Set(['AddMenu'])
 const pascal = (s: string) =>
   s
     .replace(/[^A-Za-z0-9]+(.)?/g, (_: string, c?: string) => (c ? c.toUpperCase() : ''))
     .replace(/^./, (c) => c.toUpperCase())
 
 const figma = snapshot<{ components: FigmaComponent[] }>('components.json').components.filter(
-  (c) => !FIGMA_ONLY.has(c.name) && !c.retired
+  (c) => !FIGMA_ONLY.has(c.name) && !NOT_IN_CODE.has(c.name) && !c.retired
 )
 const byName = new Map(CATALOG.map((e) => [e.contract.name, e]))
 // Axes whose code prop has another name (OVERRIDES.axisNames in scripts/ds/contract.mjs).

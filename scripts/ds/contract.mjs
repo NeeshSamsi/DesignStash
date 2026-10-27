@@ -10,6 +10,13 @@ export const FIGMA_FILE_KEY = 'fB8PHTrzz89lAQOhXbsHMK'
 /** Figma-only helpers that are plain ReactNode slots in code, not components. */
 export const FIGMA_ONLY = new Set(['ContentSlot', 'ModalLayer'])
 
+/**
+ * Figma components with nothing in the app behind them, so they get no code and no catalogue
+ * entry. They stay in Figma; the scaffold can make them again if a screen ever needs one.
+ * AddMenu: the Add card's menu and File › Add Files… are the live paths (audit F-074).
+ */
+export const NOT_IN_CODE = new Set(['AddMenu'])
+
 /** Visual states that are CSS interactions in code (hover/focus-visible), never props. */
 export const INTERACTION_STATES = ['default', 'hover', 'focus', 'pressed']
 
@@ -178,6 +185,6 @@ export function toContract(c) {
 
 export function loadContracts() {
   return loadSnapshot('components.json')
-    .components.filter((c) => !FIGMA_ONLY.has(c.name) && !c.retired)
+    .components.filter((c) => !FIGMA_ONLY.has(c.name) && !NOT_IN_CODE.has(c.name) && !c.retired)
     .map(toContract)
 }

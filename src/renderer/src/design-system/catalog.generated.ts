@@ -34,7 +34,6 @@ import { GlobalSearch, GLOBAL_SEARCH_CONTRACT } from '@renderer/components/Globa
 import { SidebarNavItem, SIDEBAR_NAV_ITEM_CONTRACT } from '@renderer/components/SidebarNavItem'
 import { SidebarNav, SIDEBAR_NAV_CONTRACT } from '@renderer/components/SidebarNav'
 import { TreeBranch, TREE_BRANCH_CONTRACT } from '@renderer/components/TreeBranch'
-import { AddMenu, ADD_MENU_CONTRACT } from '@renderer/components/AddMenu'
 import { PageHeader, PAGE_HEADER_CONTRACT } from '@renderer/components/PageHeader'
 import { CenteredLayout, CENTERED_LAYOUT_CONTRACT } from '@renderer/components/CenteredLayout'
 import { ActivityDock, ACTIVITY_DOCK_CONTRACT } from '@renderer/components/ActivityDock'
@@ -145,7 +144,6 @@ export const CATALOG: CatalogEntry[] = [
   entry(SIDEBAR_NAV_ITEM_CONTRACT, SidebarNavItem),
   entry(SIDEBAR_NAV_CONTRACT, SidebarNav),
   entry(TREE_BRANCH_CONTRACT, TreeBranch),
-  entry(ADD_MENU_CONTRACT, AddMenu),
   entry(PAGE_HEADER_CONTRACT, PageHeader),
   entry(CENTERED_LAYOUT_CONTRACT, CenteredLayout),
   entry(ACTIVITY_DOCK_CONTRACT, ActivityDock),

@@ -326,7 +326,6 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'B1 · Gather',
     page: '↳ Gather',
     components: [
-      'AddMenu',
       'AddMockupCard',
       'AppWindow',
       'Badge',

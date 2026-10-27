@@ -15,7 +15,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import prettier from 'prettier'
-import { ROOT, camel, loadContracts, loadSnapshot, pascal } from './contract.mjs'
+import { FIGMA_ONLY, NOT_IN_CODE, ROOT, camel, loadContracts, loadSnapshot, pascal } from './contract.mjs'
 
 const CHECK = process.argv.includes('--check')
 const RENDERER = resolve(ROOT, 'src/renderer/src')
@@ -326,7 +326,7 @@ export const SCREENS: ScreenEntry[] = ${JSON.stringify(
       flow: s.flow,
       page: s.page,
       components: s.components
-        .filter((n) => !['ContentSlot', 'ModalLayer'].includes(n))
+        .filter((n) => !FIGMA_ONLY.has(n) && !NOT_IN_CODE.has(n))
         .map(codeName)
     })),
     null,
