@@ -37,4 +37,38 @@ jobs:
       - name: Build
         run: pnpm build
 
-      # E2E (Playwright + Electron) runs separately once stabilised on CI runners.
+  # The Electron suite, once lint, unit tests and the build pass. Every test launches the built app
+  # with its own userData folder and a stub AI. Specs that need the real mockup test set skip
+  # themselves when it isn't there, as here.
+  e2e:
+    needs: build
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The tests need a display of at least 1440×900; this shows what the runner has.
+      - name: Display
+        run: system_profiler SPDisplaysDataType | grep -i resolution || true
+
+      - name: E2E (Playwright + Electron)
+        run: pnpm test:e2e
+
+      - name: Keep the screenshots of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 7
