@@ -290,6 +290,16 @@ describe('drags', () => {
     ]
     expect(keepDropped(files)).toEqual([0, 2, 3])
   })
+
+  it('keeps a folder whose name has a dot in it, and drops a file that only looks like one', () => {
+    const files = [
+      { name: 'Device Mockups 2.0', type: '', directory: true },
+      { name: 'ls.graphics', type: '', directory: true },
+      { name: 'Brand 2.0', type: '', directory: false },
+      { name: 'Client mockups', type: '', directory: false }
+    ]
+    expect(keepDropped(files)).toEqual([0, 1])
+  })
 })
 
 describe('where a drop lands', () => {

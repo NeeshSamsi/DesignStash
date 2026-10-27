@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { dragVerdict, keepDropped, type DragVerdict } from './gather-model'
+import { dragVerdict, keepDropped, type DragVerdict, type DroppedFile } from './gather-model'
 
 export interface DragState {
   /** Files are being dragged over the window. */
@@ -14,6 +14,20 @@ export interface DragState {
 const IDLE: DragState = { active: false, verdict: 'ok', count: 0, at: { x: 0, y: 0 } }
 
 const hasFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files')
+
+/**
+ * The dropped files, each with whether it is a folder. The drop's items carry that as entries,
+ * one per file in the same order; it can only be read while the drop event runs.
+ */
+function withFolders(files: File[], data: DataTransfer | null): DroppedFile[] {
+  const items = Array.from(data?.items ?? []).filter((item) => item.kind === 'file')
+  const aligned = items.length === files.length
+  return files.map((file, index) => ({
+    name: file.name,
+    type: file.type,
+    directory: aligned ? items[index]!.webkitGetAsEntry?.()?.isDirectory : undefined
+  }))
+}
 
 export interface WindowDropOptions {
   /** Called with the paths of what was dropped, PSDs and folders only. Not called when nothing is left. */
@@ -81,7 +95,7 @@ export function useWindowDrop({
       if (!ok) return
       const files = Array.from(event.dataTransfer?.files ?? [])
       if (files.length === 0) return
-      const kept = keepDropped(files).map((i) => files[i]!)
+      const kept = keepDropped(withFolders(files, event.dataTransfer)).map((i) => files[i]!)
       if (kept.length === 0) return reject()
       take(kept.map(pathOf))
     }

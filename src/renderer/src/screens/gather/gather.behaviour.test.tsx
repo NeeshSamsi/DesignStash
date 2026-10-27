@@ -466,6 +466,22 @@ describe('drops', () => {
     expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
   })
 
+  it('dropping a folder with a dot in its name starts a copy with it', async () => {
+    const api = installApi(base({ [IPC_CHANNELS.COPY_START]: () => ok(haul()) }))
+    window.api.getPathForFile = vi.fn((f: File) => `/drop/${f.name}`)
+    render(<Harness />)
+    const folder = new File([''], 'Device Mockups 2.0')
+    const drop = dragEvent('drop', [], [folder])
+    ;(drop.dataTransfer as { items: unknown[] }).items = [
+      { kind: 'file', type: '', webkitGetAsEntry: () => ({ isDirectory: true }) }
+    ]
+    fire(drop)
+    await waitFor(() =>
+      expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([{ paths: ['/drop/Device Mockups 2.0'] }])
+    )
+    expect(toasts.toast).not.toHaveBeenCalled()
+  })
+
   it('dropping only non-PSDs adds nothing and says why', async () => {
     const api = installApi(base())
     window.api.getPathForFile = vi.fn((f: File) => `/drop/${f.name}`)

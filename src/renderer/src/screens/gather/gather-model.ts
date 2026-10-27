@@ -200,12 +200,23 @@ export function dragVerdict(items: readonly DragItem[]): DragVerdict {
 
 const PSD_NAME = /\.(psd|psb|zip|rar|7z)$/i
 
-/** On drop the names are known. PSDs and archives are kept. Folders have no extension and are kept: main scans them. */
-export function keepDropped(files: readonly { name: string; type: string }[]): number[] {
+export interface DroppedFile {
+  name: string
+  type: string
+  /** Whether the drop said it is a folder. Unknown when the drop gave no entry for it. */
+  directory?: boolean | undefined
+}
+
+/**
+ * On drop the names are known. PSDs and archives are kept, and so are folders: main scans them.
+ * A folder's name can have a dot in it ("Device Mockups 2.0"), so the drop's own word on what is a
+ * folder wins. Without it, a name with no extension stands for a folder.
+ */
+export function keepDropped(files: readonly DroppedFile[]): number[] {
   const kept: number[] = []
   files.forEach((file, index) => {
-    const hasExtension = /\.[^./]+$/.test(file.name)
-    if (PSD_NAME.test(file.name) || !hasExtension) kept.push(index)
+    const folder = file.directory ?? !/\.[^./]+$/.test(file.name)
+    if (PSD_NAME.test(file.name) || folder) kept.push(index)
   })
   return kept
 }
