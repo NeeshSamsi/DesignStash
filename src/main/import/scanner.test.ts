@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { basename, join, resolve } from 'node:path'
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { scanForPsds } from './scanner'
 import { makeZip, markEncrypted, zipBytes } from './__tests__/zips'
 
@@ -81,6 +81,106 @@ describe('scanForPsds', () => {
     )
   })
 
+  it('looks for cover images outside hidden folders only', async () => {
+    const dir = join(TEST_DIR, 'hidden-images')
+    mkdirSync(join(dir, '.cache'), { recursive: true })
+    mkdirSync(join(dir, 'previews'), { recursive: true })
+    writeFileSync(join(dir, 'design.psd'), '')
+    writeFileSync(join(dir, '.cache', 'design.jpg'), '')
+    writeFileSync(join(dir, 'previews', 'design.jpg'), '')
+
+    const result = await scanForPsds([dir], { stagingDir: STAGING })
+
+    expect(result.candidateImagePaths).toEqual([join(dir, 'previews', 'design.jpg')])
+  })
+
+  describe('something in the drop it cannot read', () => {
+    let n = 0
+    const fresh = () => {
+      const d = join(TEST_DIR, `unreadable-${n++}`)
+      mkdirSync(d, { recursive: true })
+      return d
+    }
+    const names = (result: Awaited<ReturnType<typeof scanForPsds>>) =>
+      result.psds.map((p) => p.importContext.originalFileName).sort()
+
+    it('skips a folder it may not open, as unreadable, and keeps the rest of the drop', async () => {
+      const d = fresh()
+      const locked = join(d, 'Locked')
+      mkdirSync(locked)
+      writeFileSync(join(locked, 'inside.psd'), '')
+      writeFileSync(join(d, 'open.psd'), '')
+      chmodSync(locked, 0o000)
+      try {
+        const result = await scanForPsds([d], { stagingDir: STAGING })
+        expect(names(result)).toEqual(['open.psd'])
+        expect(result.skippedItems).toEqual([{ path: locked, name: 'Locked', reason: 'unreadable' }])
+      } finally {
+        chmodSync(locked, 0o755)
+      }
+    })
+
+    it('skips a dropped item that is gone by the time it is read', async () => {
+      const d = fresh()
+      writeFileSync(join(d, 'here.psd'), '')
+
+      const result = await scanForPsds([join(d, 'gone.psd'), join(d, 'here.psd')], {
+        stagingDir: STAGING
+      })
+
+      expect(names(result)).toEqual(['here.psd'])
+      expect(result.skippedItems).toEqual([
+        { path: join(d, 'gone.psd'), name: 'gone.psd', reason: 'unreadable' }
+      ])
+    })
+
+    it('follows a link to a PSD, and never a link to a folder, which could lead back up the tree', async () => {
+      const d = fresh()
+      const kit = join(d, 'Kit')
+      mkdirSync(kit)
+      writeFileSync(join(kit, 'a.psd'), '')
+      writeFileSync(join(d, 'elsewhere.psd'), '')
+      symlinkSync(kit, join(kit, 'loop'))
+      symlinkSync(join(d, 'elsewhere.psd'), join(kit, 'shortcut.psd'))
+
+      const result = await scanForPsds([kit], { stagingDir: STAGING })
+
+      expect(names(result)).toEqual(['a.psd', 'shortcut.psd'])
+      expect(result.skippedItems).toEqual([])
+    })
+  })
+
+  it('walks a big drop without holding up the main thread', async () => {
+    const dir = join(TEST_DIR, 'big-drop')
+    for (let f = 0; f < 150; f++) {
+      const kit = join(dir, `Kit ${f}`)
+      mkdirSync(kit, { recursive: true })
+      writeFileSync(join(kit, 'mockup.psd'), '')
+      for (let i = 1; i < 10; i++) writeFileSync(join(kit, `preview ${i}.jpg`), '')
+    }
+    // A turn of the event loop between steps of the walk means other work (IPC, pushes) gets a go.
+    let turns = 0
+    let longest = 0
+    let last = performance.now()
+    let walking = true
+    const turn = () => {
+      const now = performance.now()
+      longest = Math.max(longest, now - last)
+      last = now
+      turns++
+      if (walking) setImmediate(turn)
+    }
+    setImmediate(turn)
+
+    const result = await scanForPsds([dir], { stagingDir: STAGING })
+    walking = false
+
+    expect(result.psds).toHaveLength(150)
+    expect(result.candidateImagePaths).toHaveLength(1350)
+    expect(turns).toBeGreaterThan(20)
+    expect(longest).toBeLessThan(100)
+  })
+
   describe('zips', () => {
     let n = 0
     /** A fresh folder for each test, so counts never leak between them. */
@@ -123,7 +223,7 @@ describe('scanForPsds', () => {
         }
       ])
       expect(result.skippedCount).toBe(0)
-      expect(result.skippedArchives).toEqual([])
+      expect(result.skippedItems).toEqual([])
       expect(existsSync(join(d, '.staging'))).toBe(false)
     })
 
@@ -141,7 +241,7 @@ describe('scanForPsds', () => {
       const result = await scanForPsds([zip], { stagingDir: join(d, '.staging') })
       expect(result.psds.map((p) => p.importContext.originalFileName)).toEqual(['Cap.psd'])
       expect(result.skippedCount).toBe(0)
-      expect(result.skippedArchives).toEqual([])
+      expect(result.skippedItems).toEqual([])
     })
 
     it('finds zips inside a dropped folder, with the folders before them in the trail', async () => {
@@ -168,7 +268,7 @@ describe('scanForPsds', () => {
       const result = await scanForPsds([zip], { stagingDir: join(d, '.staging') })
       expect(result.psds).toEqual([])
       expect(result.skippedCount).toBe(0)
-      expect(result.skippedArchives).toEqual([
+      expect(result.skippedItems).toEqual([
         { path: zip, name: 'Fonts.zip', reason: 'no-psd-in-archive' }
       ])
     })
@@ -179,7 +279,7 @@ describe('scanForPsds', () => {
       writeFileSync(join(d, 'Pack.7z'), '7z')
       const result = await scanForPsds([d], { stagingDir: join(d, '.staging') })
       expect(result.skippedCount).toBe(0)
-      expect(result.skippedArchives.map((a) => [a.name, a.reason]).sort()).toEqual([
+      expect(result.skippedItems.map((a) => [a.name, a.reason]).sort()).toEqual([
         ['Pack.7z', 'archive-unsupported'],
         ['Pack.rar', 'archive-unsupported']
       ])
@@ -191,7 +291,7 @@ describe('scanForPsds', () => {
       markEncrypted(zip)
       const result = await scanForPsds([zip], { stagingDir: join(d, '.staging') })
       expect(result.psds).toEqual([])
-      expect(result.skippedArchives).toEqual([
+      expect(result.skippedItems).toEqual([
         { path: zip, name: 'Locked.zip', reason: 'archive-unsupported' }
       ])
     })
@@ -202,7 +302,7 @@ describe('scanForPsds', () => {
       const result = await scanForPsds([join(d, 'Broken.zip')], {
         stagingDir: join(d, '.staging')
       })
-      expect(result.skippedArchives).toEqual([
+      expect(result.skippedItems).toEqual([
         { path: join(d, 'Broken.zip'), name: 'Broken.zip', reason: 'unreadable' }
       ])
     })
@@ -236,7 +336,7 @@ describe('scanForPsds', () => {
         originalFileName: 'Notebook.psd',
         folderTrail: ['Free 3 Cards Mockup', 'Cards']
       })
-      expect(result.skippedArchives).toEqual([])
+      expect(result.skippedItems).toEqual([])
     })
 
     it('counts an outer zip whose only inner zip has no PSD as no-psd-in-archive', async () => {
@@ -245,7 +345,7 @@ describe('scanForPsds', () => {
       const outer = await makeZip(join(d, 'Outer.zip'), [{ name: 'inner.zip', data: inner }])
       const result = await scanForPsds([outer], { stagingDir: join(d, '.staging') })
       expect(result.psds).toEqual([])
-      expect(result.skippedArchives).toEqual([
+      expect(result.skippedItems).toEqual([
         { path: outer, name: 'Outer.zip', reason: 'no-psd-in-archive' }
       ])
     })
