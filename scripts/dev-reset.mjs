@@ -22,9 +22,10 @@ function assertSafe(path) {
 }
 
 /**
- * Back to a first run: removes the app's userData folder (settings, logs, caches, and a stash
- * folder kept inside it). The installed app shares this userData folder, so a stash folder anywhere
- * else may be its library; that one is only cleared with `all`, and only the app's own files in it.
+ * Back to a first run: removes the app's userData folder (settings, logs, caches, the AI models in
+ * <userData>/models, and a stash folder kept inside it). The installed app shares this userData
+ * folder, so a stash folder anywhere else may be its library; that one is only cleared with `all`,
+ * and only the app's own files in it.
  */
 export async function devReset({ userData, all }) {
   // Learn the configured libraryRoot BEFORE wiping userData (default if absent).
@@ -44,11 +45,7 @@ export async function devReset({ userData, all }) {
     console.log('  stash folder is inside userData, removed with it:', libraryRoot)
   } else if (all) {
     for (const a of ARTIFACTS) await rm(join(libraryRoot, a), { recursive: true, force: true })
-    // Models from before they moved into userData sat beside the stash folder.
-    const oldModels = join(libraryRoot, '..', 'models')
-    await rm(oldModels, { recursive: true, force: true })
     console.log('  cleaned app files in', libraryRoot)
-    console.log('  removed', oldModels)
   } else {
     console.log('  left alone (it may be the installed app’s library; pass --all to clear it):', libraryRoot)
   }

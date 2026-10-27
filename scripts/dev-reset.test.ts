@@ -63,6 +63,29 @@ describe('dev-reset', () => {
     expect(existsSync(userData)).toBe(false)
   })
 
+  it('removes the AI models, which live in userData', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { userData } = setup((home) => join(home, 'Documents', 'DesignStash'))
+    mkdirSync(join(userData, 'models', 'qwen3-vl-4b'), { recursive: true })
+    writeFileSync(join(userData, 'models', 'qwen3-vl-4b', 'model.gguf'), 'weights')
+
+    await devReset({ userData, all: false })
+
+    expect(existsSync(join(userData, 'models'))).toBe(false)
+  })
+
+  it('never deletes a folder beside the stash folder, even with --all', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { userData, stash } = setup((home) => join(home, 'Documents', 'DesignStash'))
+    const beside = join(stash, '..', 'models')
+    mkdirSync(beside, { recursive: true })
+    writeFileSync(join(beside, 'training.csv'), 'mine')
+
+    await devReset({ userData, all: true })
+
+    expect(existsSync(join(beside, 'training.csv'))).toBe(true)
+  })
+
   it('refuses a stash folder at the root of the disk', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     const { userData } = setup()
