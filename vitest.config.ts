@@ -14,6 +14,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.test.ts']
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.test.ts'],
+    // Every source file is in the report, so one no test ever loads shows at 0% instead of being
+    // left out of the total. (Vitest 4's form of coverage.all.)
+    coverage: { include: ['src/**/*.{ts,tsx}'] }
   }
 })
