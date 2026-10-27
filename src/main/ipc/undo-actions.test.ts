@@ -284,3 +284,28 @@ describe('recorded actions', () => {
     })
   })
 })
+
+describe('permanent deletes', () => {
+  it('Empty Trash drops every entry that points at what it deleted, and ⌘Z walks back past them', async () => {
+    const [a, b] = [make('a'), make('b')]
+    await call(IPC_CHANNELS.MOCKUP_TRASH, { ids: [a] })
+    await call(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, { ids: [b], favourite: true })
+
+    await call(IPC_CHANNELS.TRASH_EMPTY)
+
+    expect(undo.history.state().entries).toHaveLength(1)
+    expect(await undo.history.undo()).toEqual({ status: 'done', label: 'Star' })
+    expect(await undo.history.undo()).toEqual({ status: 'empty' })
+  })
+
+  it('Delete for good drops only the entries that point at that mockup', async () => {
+    const [a, b] = [make('a'), make('b')]
+    await call(IPC_CHANNELS.MOCKUP_TRASH, { ids: [a] })
+    const kept = (await call<{ undoEntryId: number }>(IPC_CHANNELS.MOCKUP_TRASH, { ids: [b] }))
+      .undoEntryId
+
+    await call(IPC_CHANNELS.TRASH_DELETE_ENTRY, { ids: [a] })
+
+    expect(undo.history.state().entries).toEqual([{ id: kept }])
+  })
+})

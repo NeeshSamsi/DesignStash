@@ -63,14 +63,22 @@ export function registerTrashHandlers(ctx: HandlerContext): void {
     )
   )
 
+  // The three permanent actions (Empty Trash, Delete for good, Delete entry) are never in the
+  // history, and the entries that point at what they deleted go, so ⌘Z walks back past them.
+  const deletedForGood = (ids: number[]) =>
+    ctx.undo.history.forget(ids.map((id) => ({ kind: 'mockup' as const, id })))
+
   registerIpcHandler(IPC_CHANNELS.TRASH_EMPTY, async () => {
+    const ids = repo.trash.getTrashEntries().flatMap((e) => e.ids)
     const result = await trash.empty()
+    deletedForGood(ids)
     countsChanged(ctx)
     return result
   })
 
   registerIpcHandler(IPC_CHANNELS.TRASH_DELETE_ENTRY, async (args) => {
     const result = await trash.deleteEntries(args.ids)
+    deletedForGood(result.deletedIds)
     countsChanged(ctx)
     return result
   })
