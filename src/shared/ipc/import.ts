@@ -30,6 +30,8 @@ export const CopyFileSchema = z.object({
   skipReason: CopySkipReasonSchema.optional(),
   /** The mockup it became, once it has landed in To sort. */
   mockupId: z.number().optional(),
+  /** The file's mockup was in Trash and came back with its title, tags and description; nothing new was copied. */
+  restored: z.literal(true).optional(),
   /** The file's size, and how much of it is copied so far (the row's own progress bar). */
   size: z.number().optional(),
   bytesCopied: z.number().optional()

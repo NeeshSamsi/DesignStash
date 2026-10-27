@@ -203,6 +203,15 @@ describe('widget', () => {
     expect(rowState(file({ status: 'skipped', skipReason: 'not-psd' }))).toBe('not-psd')
   })
 
+  it('says a file brought its mockup back from Trash', () => {
+    const restored: CopyFile = { jobId: 1, name: 'a.psd', status: 'done', size: 312_000_000, restored: true }
+    expect(rowDetail(restored, haul())).toBe('Already in Trash · restored')
+    expect(rowDetail({ ...restored, archiveName: 'Free_Cap_Mockup.zip' }, haul())).toBe(
+      'Already in Trash · restored · From Free_Cap_Mockup.zip'
+    )
+    expect(rowState(restored)).toBe('done')
+  })
+
   it('words the undo toast', () => {
     expect(undoneMessage(12).description).toBe(
       '12 mockups removed from To sort. Your originals weren’t touched.'

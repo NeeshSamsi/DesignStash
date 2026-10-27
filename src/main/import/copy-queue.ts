@@ -127,6 +127,8 @@ export class CopyQueue {
   private lastPush = 0
   /** Staging folders of drops still being read, which cleanup must leave alone. */
   private readonly scanning = new Set<string>()
+  /** By haul, the jobs whose file brought its mockup back from Trash: read from the records once, then kept up to date. */
+  private readonly restoredJobs = new Map<string, Set<number>>()
   private rate: { haulId: string; samples: { at: number; bytes: number }[] } = {
     haulId: '',
     samples: []
@@ -380,6 +382,7 @@ export class CopyQueue {
       if (twin && twin.trashedAs !== null) {
         await this.bringBack(twin, twin.trashedAs, partPath, libraryPath, size)
         this.repo.copyJobs.setJobState(job.id, { status: 'done', mockupId: twin.id })
+        this.restoredJobs.get(haulId)?.add(job.id)
         this.emit(haulId, job.id)
         this.opts.onLanded?.([twin.id])
         return
@@ -508,6 +511,7 @@ export class CopyQueue {
     const haul = this.repo.copyJobs.getHaul(haulId)
     if (!haul) return null
     const jobs = this.repo.copyJobs.getJobs(haulId)
+    const restored = this.restoredIn(haulId, jobs)
     const live = this.live
     const bytesTotal = jobs.reduce((sum, j) => sum + j.sizeBytes, 0)
     const bytesCopied = jobs.reduce(
@@ -540,8 +544,25 @@ export class CopyQueue {
         archiveUnsupported: jobs.filter((j) => j.skipReason === 'archive-unsupported').length,
         noPsdInArchive: jobs.filter((j) => j.skipReason === 'no-psd-in-archive').length
       },
-      files: jobs.map((j) => toFile(j, live))
+      files: jobs.map((j) => toFile(j, live, restored.has(j.id)))
     }
+  }
+
+  /**
+   * A mockup this haul landed carries the haul's id; one a file brought back from Trash came from an
+   * earlier one. Worked out once per haul (after a restart too), then kept as files are restored.
+   */
+  private restoredIn(haulId: string, jobs: CopyJob[]): Set<number> {
+    let known = this.restoredJobs.get(haulId)
+    if (!known) {
+      const batchOf = (mockupId: number) =>
+        (this.repo.mockups.getMockup(mockupId)?.importContext as { batchId?: string } | null)?.batchId
+      known = new Set(
+        jobs.filter((j) => j.mockupId !== null && batchOf(j.mockupId) !== haulId).map((j) => j.id)
+      )
+      this.restoredJobs.set(haulId, known)
+    }
+    return known
   }
 
   /** Speed over the last few seconds, and the time left at that speed. Nothing until there is enough to go on. */
@@ -596,7 +617,7 @@ function archiveContext(archiveName: string): { archiveName: string; archiveTitl
   return archiveTitle ? { archiveName, archiveTitle } : { archiveName }
 }
 
-function toFile(j: CopyJob, live: { jobId: number; bytes: number } | null): CopyFile {
+function toFile(j: CopyJob, live: { jobId: number; bytes: number } | null, restored: boolean): CopyFile {
   return {
     jobId: j.id,
     name: j.fileName,
@@ -604,6 +625,7 @@ function toFile(j: CopyJob, live: { jobId: number; bytes: number } | null): Copy
     status: j.status,
     ...(j.skipReason ? { skipReason: j.skipReason } : {}),
     ...(j.mockupId !== null ? { mockupId: j.mockupId } : {}),
+    ...(restored ? { restored: true as const } : {}),
     size: j.sizeBytes,
     bytesCopied:
       j.status === 'done'

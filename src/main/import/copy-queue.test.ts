@@ -645,9 +645,24 @@ describe('a file whose mockup is in Trash', () => {
     })
     expect(repo.mockups.getTagsForMockup(id).map((t) => t.label)).toEqual(['Calm'])
     expect(mockupFolders()).toEqual(folders)
-    expect(status.files[0]).toMatchObject({ status: 'done', mockupId: id })
+    expect(status.files[0]).toMatchObject({ status: 'done', mockupId: id, restored: true })
     expect(status.skipped.duplicate).toBe(0)
     expect(landed).toEqual([[id]])
+  })
+
+  it('marks only the row of a file that brought its mockup back, after a restart too', async () => {
+    const id = await landed1('a.psd', 'SAME')
+    expect((await queue().status())!.files[0]).not.toHaveProperty('restored')
+    repo.trash.moveToTrash(id)
+    psd('b.psd', 'NEW')
+
+    const q = queue()
+    await q.start([join(drop, 'a.psd'), join(drop, 'b.psd')])
+    await q.idle()
+
+    const rows = (await queue().status())!.files
+    expect(rows.find((f) => f.name === 'a.psd')).toMatchObject({ restored: true })
+    expect(rows.find((f) => f.name === 'b.psd')).not.toHaveProperty('restored')
   })
 
   it('brings back the whole pile it went to Trash with', async () => {

@@ -131,7 +131,12 @@ export function rowDetail(file: CopyFile, haul: CopyStatus): string | null {
   // A PSD out of a zip keeps saying which zip it came from.
   const from = file.archiveName ? `From ${file.archiveName}` : null
   if (file.status === 'done') {
-    const done = file.size ? `Copied · ${formatBytes(file.size)}` : 'Copied'
+    // A file whose mockup was in Trash brought it back, and nothing new was copied.
+    const done = file.restored
+      ? 'Already in Trash · restored'
+      : file.size
+        ? `Copied · ${formatBytes(file.size)}`
+        : 'Copied'
     return from ? `${done} · ${from}` : done
   }
   if (file.status === 'queued' && haul.state === 'cancelled') return 'Not copied'
