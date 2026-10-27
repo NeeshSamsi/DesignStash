@@ -14,7 +14,7 @@ export interface DialogProps extends DialogContractProps {
 /**
  * Dialog — Overlay shells. Screens never use these directly — they use Modal / ConfirmDialog / ChoiceDialog.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=213-781
- * Adapter over ui/dialog.tsx, ui/alert-dialog.tsx and ui/sheet.tsx: this renders the static shell
+ * Adapter over ui/dialog.tsx and ui/alert-dialog.tsx: this renders the static shell
  * (catalog, Figma parity); the live overlays are the ui/ primitives.
  */
 export function Dialog({ className, ...rest }: DialogProps) {
