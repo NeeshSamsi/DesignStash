@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { drafts, lookOverResume, mockupTags, mockups } from '../schema'
-import type { StashSnapshot } from '@shared/approval'
 import type { VariationSource } from '@shared/pile-variation'
 import type { Draft, DraftCarry, DraftField, Mockup } from '../schema'
 import { pruneSuggestions } from './tags'
@@ -128,42 +127,14 @@ export class DraftRepository {
   /**
    * Commit drafts to their mockups, all or nothing: title, description and tags are written, the
    * mockups become approved and stashed, and the drafts and the resume pointer go. The AI's
-   * suggestions that landed become tags; the ones dismissed go (F-034). Returns what was there
-   * before, for Undo. The search index is the caller's job (it can't run inside this).
+   * suggestions that landed become tags; the ones dismissed go (F-034). Its undo is the stash's
+   * entry in the undo history. The search index is the caller's job (it can't run inside this).
    */
-  stash(unitId: number, ids: number[]): StashSnapshot {
-    return this.db.transaction((tx) => {
+  stash(unitId: number, ids: number[]): void {
+    this.db.transaction((tx) => {
       const rows = tx.select().from(mockups).where(inArray(mockups.id, ids)).all()
       const draftRows = tx.select().from(drafts).where(inArray(drafts.mockupId, ids)).all()
       const draftBy = new Map(draftRows.map((d) => [d.mockupId, d]))
-      const tagRows = tx.select().from(mockupTags).where(inArray(mockupTags.mockupId, ids)).all()
-      const resume = tx.select().from(lookOverResume).where(eq(lookOverResume.unitId, unitId)).get()
-
-      const snapshot: StashSnapshot = {
-        mockups: rows.map((m) => ({
-          id: m.id,
-          title: m.title,
-          description: m.description,
-          tagIds: tagRows.filter((t) => t.mockupId === m.id).map((t) => t.tagId),
-          stage: m.stage,
-          sortedAt: m.sortedAt,
-          variation: m.variation,
-          variationSource: m.variationSource
-        })),
-        drafts: draftRows.map((d) => ({
-          mockupId: d.mockupId,
-          title: d.title,
-          description: d.description,
-          tagIds: d.tagIds,
-          touched: d.touched,
-          checked: d.checked,
-          skippedAt: d.skippedAt,
-          carry: d.carry ?? null,
-          variation: d.variation,
-          variationSource: d.variationSource
-        })),
-        resume: resume ? { unitId: resume.unitId, mockupId: resume.mockupId } : null
-      }
 
       const now = new Date().toISOString()
       for (const m of rows) {
@@ -188,44 +159,6 @@ export class DraftRepository {
       tx.delete(drafts).where(inArray(drafts.mockupId, ids)).run()
       tx.delete(lookOverResume).where(eq(lookOverResume.unitId, unitId)).run()
       pruneSuggestions(tx)
-      return snapshot
-    })
-  }
-
-  /** Undo a stash: every mockup, tag link, draft and the resume pointer go back as they were. */
-  unstash(snapshot: StashSnapshot): number[] {
-    return this.db.transaction((tx) => {
-      const back: number[] = []
-      for (const m of snapshot.mockups) {
-        const exists = tx.select({ id: mockups.id }).from(mockups).where(eq(mockups.id, m.id)).get()
-        if (!exists) continue
-        tx.update(mockups)
-          .set({
-            title: m.title,
-            description: m.description,
-            stage: m.stage,
-            sortedAt: m.sortedAt,
-            ...(m.variation !== undefined && { variation: m.variation, variationSource: m.variationSource ?? null })
-          })
-          .where(eq(mockups.id, m.id))
-          .run()
-        tx.delete(mockupTags).where(eq(mockupTags.mockupId, m.id)).run()
-        for (const tagId of m.tagIds) {
-          tx.insert(mockupTags).values({ mockupId: m.id, tagId }).onConflictDoNothing().run()
-        }
-        back.push(m.id)
-      }
-      for (const d of snapshot.drafts) {
-        if (!back.includes(d.mockupId)) continue
-        tx.insert(drafts).values(d).onConflictDoUpdate({ target: drafts.mockupId, set: d }).run()
-      }
-      if (snapshot.resume && back.includes(snapshot.resume.mockupId)) {
-        tx.insert(lookOverResume)
-          .values(snapshot.resume)
-          .onConflictDoUpdate({ target: lookOverResume.unitId, set: { mockupId: snapshot.resume.mockupId } })
-          .run()
-      }
-      return back
     })
   }
 }

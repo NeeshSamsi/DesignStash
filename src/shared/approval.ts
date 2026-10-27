@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { AiStatusUpdateSchema } from './ipc/ai-status'
-import { VariationSchema, VariationSourceSchema } from './pile-variation'
+import { VariationSchema } from './pile-variation'
 
 // A tag attached to an item in the approval queue
 export const ApprovalTagSchema = z.object({
@@ -196,40 +196,6 @@ export const LookOverProgressSchema = z.object({
 export type LookOverProgress = z.infer<typeof LookOverProgressSchema>
 
 // ---- Stash pile (commit the whole pile at once) ----
-
-/** What a stash replaced (the drafts repository keeps it this way). */
-export const StashSnapshotSchema = z.object({
-  mockups: z.array(
-    z.object({
-      id: z.number(),
-      title: z.string(),
-      description: z.string().nullable(),
-      tagIds: z.array(z.number()),
-      stage: z.enum(['to_sort', 'to_stash', 'stashed']),
-      sortedAt: z.string().nullable(),
-      /** Left out by snapshots from before base titles. */
-      variation: z.string().nullable().optional(),
-      variationSource: VariationSourceSchema.nullable().optional()
-    })
-  ),
-  drafts: z.array(
-    z.object({
-      mockupId: z.number(),
-      title: z.string(),
-      description: z.string(),
-      tagIds: z.array(z.number()),
-      touched: z.boolean(),
-      checked: z.boolean(),
-      skippedAt: z.string().nullable(),
-      carry: DraftCarrySchema.nullable(),
-      /** Left out by snapshots from before base titles. */
-      variation: z.string().nullable().optional(),
-      variationSource: VariationSourceSchema.nullable().optional()
-    })
-  ),
-  resume: z.object({ unitId: z.number(), mockupId: z.number() }).nullable()
-})
-export type StashSnapshot = z.infer<typeof StashSnapshotSchema>
 
 /** Stashing is all or nothing. A refusal changes nothing and says why, with the mockups that are the reason. */
 export const StashResultSchema = z.discriminatedUnion('ok', [

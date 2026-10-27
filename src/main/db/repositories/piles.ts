@@ -7,8 +7,7 @@ import type { VariationSource } from '@shared/pile-variation'
 
 /**
  * A row's place in a pile, with its titles, since joining and leaving a pile changes them (the base
- * and the variation). Restoring these rows undoes any pile change. Snapshots made before base
- * titles have no titles, and restoring one leaves the titles as they are.
+ * and the variation). A pile change returns these from before it (`before`).
  */
 export interface PileRow {
   id: number
@@ -116,26 +115,6 @@ export class PileRepository {
         .map((r) => [r.id, r])
     )
     return ids.flatMap((id) => found.get(id) ?? [])
-  }
-
-  /** Put rows back as they were (Undo). Rows that were deleted since are skipped. */
-  restorePileRows(rows: PileRow[]): void {
-    this.db.transaction((tx) => {
-      for (const row of rows) {
-        tx.update(mockups)
-          .set({
-            isGroup: row.isGroup,
-            groupId: row.groupId,
-            ...(row.title !== undefined && {
-              title: row.title,
-              variation: row.variation ?? null,
-              variationSource: row.variationSource ?? null
-            })
-          })
-          .where(eq(mockups.id, row.id))
-          .run()
-      }
-    })
   }
 
   /** A pile from mockups on their own; `topId` becomes the leader. */
