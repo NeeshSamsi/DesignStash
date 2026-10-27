@@ -19,6 +19,7 @@ import {
   titleOfPile,
   toSortBoard,
   undoLabel,
+  redoLabel,
   type BoardAction,
   type BoardState
 } from './board-model'
@@ -941,6 +942,40 @@ describe('undo', () => {
     const s = run(fixture(), click(3), { type: 'put-on-top' }, { type: 'dismiss-notice' })
     expect(s.notice).toBeNull()
     expect(undoLabel(s)).toBe('Put on top')
+  })
+})
+
+describe('redo (⇧⌘Z, undo.md)', () => {
+  it('puts an undone change back, selection too, and names it', () => {
+    const done = run(fixture(), click(8), click(9, { meta: true }), { type: 'new-pile' })
+    const undone = run(done, { type: 'undo' })
+    expect(redoLabel(undone)).toBe('New pile')
+    const redone = run(undone, { type: 'redo' })
+    expect(redone.piles).toEqual(done.piles)
+    expect(redone.standalone).toEqual(done.standalone)
+    expect(redone.selectedTiles).toEqual(done.selectedTiles)
+    expect(undoLabel(redone)).toBe('New pile')
+    expect(redoLabel(redone)).toBeNull()
+  })
+
+  it('walks forward through several undone changes in order', () => {
+    const one = run(fixture(), click(3), { type: 'put-on-top' })
+    const two = run(one, click(8), click(9, { meta: true }), { type: 'new-pile' })
+    const back = run(two, { type: 'undo' }, { type: 'undo' })
+    expect(run(back, { type: 'redo' }).piles).toEqual(one.piles)
+    expect(run(back, { type: 'redo' }, { type: 'redo' }).piles).toEqual(two.piles)
+  })
+
+  it('a new change clears what was waiting to be redone', () => {
+    const undone = run(fixture(), click(3), { type: 'put-on-top' }, { type: 'undo' })
+    const changed = run(undone, click(2), { type: 'take-out' })
+    expect(redoLabel(changed)).toBeNull()
+    expect(run(changed, { type: 'redo' })).toBe(changed)
+  })
+
+  it('does nothing with nothing to redo', () => {
+    const s = fixture()
+    expect(run(s, { type: 'redo' })).toBe(s)
   })
 })
 

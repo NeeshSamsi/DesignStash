@@ -58,6 +58,8 @@ export interface BoardState {
   /** Plain words for the toast after the last change, with its Undo. */
   notice: string | null
   history: Snapshot[]
+  /** Changes undone since the last new one, newest last: what redo puts back (⇧⌘Z). */
+  future: Snapshot[]
   /** Title of a pile's already-stashed top mockup (rule 0), by pile id. */
   stashedTitles: Record<string, string>
 }
@@ -129,6 +131,7 @@ export function createBoard({ members, groups, stashedTitles = {} }: BoardSource
     drag: null,
     notice: null,
     history: [],
+    future: [],
     stashedTitles
   }
 }
@@ -256,6 +259,10 @@ export function undoLabel(state: BoardState): string | null {
   return state.history[state.history.length - 1]?.label ?? null
 }
 
+export function redoLabel(state: BoardState): string | null {
+  return state.future[state.future.length - 1]?.label ?? null
+}
+
 // ── Actions ──────────────────────────────────────────────────────────────────────────────────
 
 export type BoardAction =
@@ -281,6 +288,7 @@ export type BoardAction =
   | { type: 'move-to'; destination: DropTarget | { kind: 'new-pile' } }
   | { type: 'take-out' }
   | { type: 'undo' }
+  | { type: 'redo' }
   | { type: 'dismiss-notice' }
 
 const without = <T>(list: T[], remove: T[]) => list.filter((x) => !remove.includes(x))
@@ -312,6 +320,18 @@ const snapshot = (state: BoardState, label: string): Snapshot => ({
   selectedTiles: state.selectedTiles,
   selectedPiles: state.selectedPiles,
   anchor: state.anchor
+})
+
+/** The board as a snapshot left it, with nothing in hand and no toast. */
+const restore = (state: BoardState, to: Snapshot): BoardState => ({
+  ...state,
+  piles: to.piles,
+  standalone: to.standalone,
+  selectedTiles: to.selectedTiles,
+  selectedPiles: to.selectedPiles,
+  anchor: to.anchor,
+  drag: null,
+  notice: null
 })
 
 /** Names every pile whose top changed, for the toast ("X is now the top mockup"). */
@@ -362,7 +382,8 @@ function commit(state: BoardState, change: Change): BoardState {
     selectedPiles,
     drag: null,
     notice: change.notice + extra,
-    history: [...state.history, snapshot(state, change.label)].slice(-HISTORY_LIMIT)
+    history: [...state.history, snapshot(state, change.label)].slice(-HISTORY_LIMIT),
+    future: []
   }
 }
 
@@ -667,15 +688,19 @@ function reduce(state: BoardState, action: BoardAction, newPileId: () => string)
       const last = state.history[state.history.length - 1]
       if (!last) return state
       return {
-        ...state,
-        piles: last.piles,
-        standalone: last.standalone,
-        selectedTiles: last.selectedTiles,
-        selectedPiles: last.selectedPiles,
-        anchor: last.anchor,
-        drag: null,
-        notice: null,
-        history: state.history.slice(0, -1)
+        ...restore(state, last),
+        history: state.history.slice(0, -1),
+        future: [...state.future, snapshot(state, last.label)]
+      }
+    }
+
+    case 'redo': {
+      const next = state.future[state.future.length - 1]
+      if (!next) return state
+      return {
+        ...restore(state, next),
+        history: [...state.history, snapshot(state, next.label)].slice(-HISTORY_LIMIT),
+        future: state.future.slice(0, -1)
       }
     }
 
