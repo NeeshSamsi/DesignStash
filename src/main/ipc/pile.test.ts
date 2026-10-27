@@ -205,7 +205,7 @@ describe('trash handlers', () => {
 
     expect(await call(IPC_CHANNELS.MOCKUP_RESTORE, { ids: [a, b] })).toEqual({
       success: true,
-      data: { ok: true, count: 2 }
+      data: { ok: true, count: 2, undoEntryId: expect.any(Number) }
     })
     expect(repo.library.getLibrary({ sort: 'name' })).toHaveLength(3)
   })
@@ -269,7 +269,13 @@ describe('pile titles: rename and set-variation (design/specs/pile-titles.md)', 
     const res = await call(IPC_CHANNELS.PILE_RENAME, { pileId: a, base: 'Canvas tote' })
     expect(res).toEqual({
       success: true,
-      data: { pileId: a, base: 'Canvas tote', previous: 'tote-a', mockupIds: [a, b] }
+      data: {
+        pileId: a,
+        base: 'Canvas tote',
+        previous: 'tote-a',
+        mockupIds: [a, b],
+        undoEntryId: expect.any(Number)
+      }
     })
     expect(titles([a, b])).toEqual([
       ['Canvas tote', 'A'],
@@ -312,7 +318,8 @@ describe('pile titles: rename and set-variation (design/specs/pile-titles.md)', 
       data: {
         mockupId: b,
         variation: { words: 'on a hook', source: 'typed' },
-        previous: { words: 'B', source: 'marker' }
+        previous: { words: 'B', source: 'marker' },
+        undoEntryId: expect.any(Number)
       }
     })
     const emptied = await call<{ variation: unknown }>(IPC_CHANNELS.PILE_SET_VARIATION, {

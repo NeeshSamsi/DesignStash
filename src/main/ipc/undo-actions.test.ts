@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import type Database from 'better-sqlite3'
 import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
 import type { Repository } from '../db/repository'
@@ -81,7 +81,18 @@ beforeEach(() => {
     library: new LibraryService(repo, root),
     ...undoing
   } as unknown as HandlerContext
-  registerMockupHandlers(ctx)
+  // The cover work as the cover service's own tests fake it: no image tools, no files.
+  let coverId = 0
+  registerMockupHandlers(ctx, {
+    stat: async () => ({ size: 1024 }),
+    readHead: async () => Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]),
+    probe: async () => ({ width: 1600, height: 1200 }),
+    makeCover: async (_src, outDir) => `${outDir}/cover.webp`,
+    makeCoverFromRaw: async (_raw, outDir) => `${outDir}/cover.webp`,
+    readEmbedded: async () => ({ data: Buffer.alloc(4), width: 800, height: 600 }),
+    isPlaceholder: async () => false,
+    newId: () => `c${++coverId}`
+  })
   registerPileHandlers(ctx)
   registerTrashHandlers(ctx)
 })
@@ -168,5 +179,108 @@ describe('one action, one entry', () => {
     expect(repo.mockups.getMockup(member)).toMatchObject({ groupId: null })
     expect(repo.mockups.getMockup(member)?.deletedAt).not.toBeNull()
     await roundTrip(ids, before, 'Move to Trash')
+  })
+})
+
+/** Whole rows and their tags: undo and redo must bring them back exactly. */
+const full = (ids: number[]) =>
+  ids.map((id) => ({
+    row: repo.mockups.getMockup(id) ?? null,
+    tags: repo.mockups.getTagsForMockup(id).map((t) => t.id)
+  }))
+
+/** Runs a recorded action, then checks its undo and redo against the rows before and after it. */
+async function recorded(label: string, ids: number[], act: () => Promise<Record<string, unknown>>) {
+  const before = full(ids)
+  const reply = await act()
+  expect(reply.undoEntryId).toEqual(expect.any(Number))
+  const after = full(ids)
+  expect(after).not.toEqual(before)
+  expect(undo.history.state().undo).toMatchObject({ label })
+  expect(await undo.history.undo()).toEqual({ status: 'done', label })
+  expect(full(ids)).toEqual(before)
+  expect(await undo.history.redo()).toEqual({ status: 'done', label })
+  expect(full(ids)).toEqual(after)
+}
+
+describe('recorded actions', () => {
+  it('Restore and Restore all', async () => {
+    const [a, b] = [make('a'), make('b')]
+    // Restore keeps a mockup in Trash when its PSD is gone, so these have theirs.
+    for (const id of [a, b]) {
+      const psd = repo.mockups.getMockup(id)!.libraryPath
+      mkdirSync(dirname(psd), { recursive: true })
+      writeFileSync(psd, 'psd')
+    }
+    repo.trash.moveManyToTrash([a, b])
+    await recorded('Restore', [a, b], () => call(IPC_CHANNELS.TRASH_RESTORE, { ids: [a] }))
+    await recorded('Restore all', [a, b], () => call(IPC_CHANNELS.TRASH_RESTORE_ALL))
+  })
+
+  it('New pile, Add to pile, Merge piles, Put on top, Remove from pile', async () => {
+    const [a, b, c, d, e] = [make('a'), make('b'), make('c'), make('d'), make('e')]
+    const all = [a, b, c, d, e]
+    await recorded('New pile', all, () =>
+      call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: a })
+    )
+    await recorded('Add to pile', all, () =>
+      call(IPC_CHANNELS.PILE_ADD, { pileId: a, memberIds: [c] })
+    )
+    repo.piles.createPile([d, e], d)
+    await recorded('Merge piles', all, () =>
+      call(IPC_CHANNELS.PILE_MERGE, { sourceIds: [d], targetId: a })
+    )
+    await recorded('Put on top', all, () =>
+      call(IPC_CHANNELS.PILE_SET_TOP, { pileId: a, topId: b })
+    )
+    await recorded('Remove from pile', all, () =>
+      call(IPC_CHANNELS.PILE_REMOVE, { pileId: b, mockupId: c })
+    )
+  })
+
+  it('Rename pile and Edit variation', async () => {
+    const [a, b] = [make('a'), make('b')]
+    repo.piles.createPile([a, b], a)
+    await recorded('Rename pile', [a, b], () =>
+      call(IPC_CHANNELS.PILE_RENAME, { pileId: a, base: 'Canvas tote' })
+    )
+    await recorded('Edit variation', [a, b], () =>
+      call(IPC_CHANNELS.PILE_SET_VARIATION, { mockupId: b, words: 'Back' })
+    )
+  })
+
+  it('Replace cover and Use the PSD’s preview', async () => {
+    const a = make('a')
+    await recorded('Replace cover', [a], () =>
+      call(IPC_CHANNELS.MOCKUP_SET_COVER, { mockupId: a, filePath: '/Users/me/Desktop/new.png' })
+    )
+    await recorded('Use the PSD’s preview', [a], () =>
+      call(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: a })
+    )
+  })
+
+  it('Edit details, field by field', async () => {
+    const a = make('a')
+    await recorded('Edit details', [a], () =>
+      call(IPC_CHANNELS.MOCKUP_UPDATE, {
+        mockupId: a,
+        title: 'Tote bag',
+        description: 'Canvas, front',
+        tagIds: []
+      })
+    )
+    // A description the AI wrote since is kept when the title edit is undone.
+    await call(IPC_CHANNELS.MOCKUP_UPDATE, {
+      mockupId: a,
+      title: 'Mug',
+      description: 'Canvas, front',
+      tagIds: []
+    })
+    repo.mockups.updateMockup(a, { description: 'Written later' })
+    await undo.history.undo()
+    expect(repo.mockups.getMockup(a)).toMatchObject({
+      title: 'Tote bag',
+      description: 'Written later'
+    })
   })
 })

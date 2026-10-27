@@ -35,16 +35,36 @@ export function registerPileHandlers(ctx: HandlerContext): void {
     return result
   }
 
+  /** Runs a pile action as one entry in the undo history, scoped to every pile `ids` touch. */
+  const recorded = async <T extends object>(
+    label: string,
+    ids: number[],
+    run: () => T | Promise<T>
+  ) => {
+    const { result, record } = await ctx.dataOps.track(
+      label,
+      { mockupIds: pilesOf(ctx.dataOps.scopes, ids) },
+      run
+    )
+    return { ...result, ...undoEntry(ctx.undo.record(record)) }
+  }
+
   registerIpcHandler(IPC_CHANNELS.PILE_CREATE, (args) =>
-    joined(piles.create(args.memberIds, args.topId))
+    recorded('New pile', args.memberIds, () => joined(piles.create(args.memberIds, args.topId)))
   )
   registerIpcHandler(IPC_CHANNELS.PILE_ADD, (args) =>
-    joined(piles.add(args.pileId, args.memberIds))
+    recorded('Add to pile', [args.pileId, ...args.memberIds], () =>
+      joined(piles.add(args.pileId, args.memberIds))
+    )
   )
   registerIpcHandler(IPC_CHANNELS.PILE_MERGE, (args) =>
-    joined(piles.merge(args.sourceIds, args.targetId))
+    recorded('Merge piles', [...args.sourceIds, args.targetId], () =>
+      joined(piles.merge(args.sourceIds, args.targetId))
+    )
   )
-  registerIpcHandler(IPC_CHANNELS.PILE_SET_TOP, (args) => piles.setTop(args.pileId, args.topId))
+  registerIpcHandler(IPC_CHANNELS.PILE_SET_TOP, (args) =>
+    recorded('Put on top', [args.pileId], () => piles.setTop(args.pileId, args.topId))
+  )
   // Disbanding several piles is one action in the undo history. Every id must be a pile, or none
   // is disbanded.
   registerIpcHandler(IPC_CHANNELS.PILE_DISBAND, async (args) => {
@@ -65,22 +85,27 @@ export function registerPileHandlers(ctx: HandlerContext): void {
     return { ...result, ...undoEntry(ctx.undo.record(record)) }
   })
   registerIpcHandler(IPC_CHANNELS.PILE_REMOVE, (args) =>
-    piles.removeFromPile(args.pileId, args.mockupId)
+    recorded('Remove from pile', [args.pileId], () =>
+      piles.removeFromPile(args.pileId, args.mockupId)
+    )
   )
   registerIpcHandler(IPC_CHANNELS.PILE_RESTORE, (args) => piles.restore(args.snapshot))
   registerIpcHandler(IPC_CHANNELS.PILE_MEMBERS, (args) => ({
     items: repo.library.getPileItems(args.pileId)
   }))
 
+  // The drafts a waiting pile needs are made first, so the entry is the rename alone.
   registerIpcHandler(IPC_CHANNELS.PILE_RENAME, async (args) => {
     await draftsReady(args.pileId)
-    return titles.renameBase(args.pileId, args.base)
+    return recorded('Rename pile', [args.pileId], () => titles.renameBase(args.pileId, args.base))
   })
 
   registerIpcHandler(IPC_CHANNELS.PILE_SET_VARIATION, async (args) => {
     const m = repo.mockups.getMockup(args.mockupId)
     await draftsReady(m ? (m.isGroup ? m.id : m.groupId) : null)
-    return titles.setVariation(args.mockupId, args.words, args.source)
+    return recorded('Edit variation', [args.mockupId], () =>
+      titles.setVariation(args.mockupId, args.words, args.source)
+    )
   })
 
   // Stash pile and Stash & next are one action each in the undo history, and in Look it over's own
