@@ -398,7 +398,8 @@ describe('a big library', () => {
     for (const path of covers) present.delete(path)
     fileExists.mockClear()
 
-    library.forgetCoversUnder('/s/mockups/a/cover.webp')
+    expect(library.forgetCoversUnder('/s/mockups/a/cover.webp')).toBe(true)
+    expect(library.forgetCoversUnder('/s/designstash.db-wal')).toBe(false)
     expect(missing()).toEqual({ [a!.id]: true, [b!.id]: false, [bb!.id]: false })
     expect(fileExists).toHaveBeenCalledTimes(1)
 

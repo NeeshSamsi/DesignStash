@@ -77,11 +77,16 @@ export class LibraryQueryRepository {
   /**
    * Something under `path` changed on disk: a file, or a folder and everything in it. Its covers are
    * checked again at the next list, so one deleted outside the app shows as missing (cover-watch).
+   * True when it was a cover the list had seen, so the list is worth asking for again.
    */
-  forgetCoversUnder(path: string): void {
-    if (this.coversFound.delete(path)) return
+  forgetCoversUnder(path: string): boolean {
+    if (this.coversFound.delete(path)) return true
     const folder = path.endsWith(sep) ? path : path + sep
-    for (const found of this.coversFound) if (found.startsWith(folder)) this.coversFound.delete(found)
+    let forgot = false
+    for (const found of this.coversFound) {
+      if (found.startsWith(folder)) forgot = this.coversFound.delete(found) || forgot
+    }
+    return forgot
   }
 
   /** Whether a cover file is gone. A missing one is checked again each time, so it shows once it's back. */

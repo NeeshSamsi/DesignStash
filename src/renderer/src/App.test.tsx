@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from './App'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TO_SORT_BOARD } from '@shared/grouping'
@@ -104,6 +104,25 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByRole('button', { name: /My Stash/ })).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeTruthy()
+  })
+
+  it('reads My Stash again when main says the stash folder changed, such as a cover deleted in Finder (F-012)', async () => {
+    render(<App />)
+    await screen.findByRole('navigation', { name: 'Primary' })
+    const lists = () =>
+      vi.mocked(window.api.invoke).mock.calls.filter(([c]) => c === IPC_CHANNELS.LIBRARY_LIST).length
+    await waitFor(() => expect(lists()).toBeGreaterThan(0))
+    const before = lists()
+    const listener = vi
+      .mocked(window.api.subscribe)
+      .mock.calls.find(([channel]) => channel === IPC_CHANNELS.LIBRARY_CHANGED)?.[1] as
+      | ((payload: unknown) => void)
+      | undefined
+    expect(listener).toBeDefined()
+
+    act(() => listener!({ reason: 'covers' }))
+
+    await waitFor(() => expect(lists()).toBeGreaterThan(before))
   })
 
   it('a drop on My Stash starts a copy', async () => {

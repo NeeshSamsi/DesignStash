@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
-import { watchCovers, type WatchFn } from './cover-watch'
+import { watchCoverChanges, watchCovers, type WatchFn } from './cover-watch'
 
 const cleanup: (() => void)[] = []
 afterEach(() => {
@@ -28,6 +28,65 @@ describe('a cover deleted mid-session (F-012, design/specs/cover.md)', () => {
     rmSync(cover)
 
     await expect.poll(coverMissing, { timeout: 5_000, interval: 50 }).toBe(true)
+  })
+})
+
+describe('a cover deleted mid-session in a stash folder with a space, # and %', () => {
+  it('is forgotten under the path the library stored, not a URL-encoded or /private one', async () => {
+    const base = mkdtempSync(join(tmpdir(), 'ds-covers-'))
+    cleanup.push(() => rmSync(base, { recursive: true, force: true }))
+    const root = join(base, 'Application Support #1 100%', 'Library')
+    mkdirSync(join(root, 'mockups', 'poster'), { recursive: true })
+    const cover = join(root, 'mockups', 'poster', 'cover.webp')
+    writeFileSync(cover, 'webp')
+    const forgotten: string[] = []
+    cleanup.push(watchCovers(root, (path) => forgotten.push(path)))
+
+    rmSync(cover)
+
+    await expect.poll(() => forgotten.includes(cover), { timeout: 5_000, interval: 50 }).toBe(true)
+  })
+})
+
+describe('watchCoverChanges', () => {
+  /** A watch that hands its listener to the test. */
+  const fakeWatch = () => {
+    let listener: ((event: string, filename: string | null) => void) | undefined
+    const watch: WatchFn = (_root, _opts, l) => {
+      listener = l
+      return { close: vi.fn(), on: vi.fn(), unref: vi.fn() } as unknown as ReturnType<WatchFn>
+    }
+    return { watch, fire: (filename: string) => listener!('rename', filename) }
+  }
+
+  it('tells the window once when covers the library had seen change, however many go at once', () => {
+    vi.useFakeTimers()
+    cleanup.push(() => vi.useRealTimers())
+    const fake = fakeWatch()
+    const changed = vi.fn()
+    const forget = vi.fn((path: string) => path.endsWith('cover.webp'))
+    cleanup.push(watchCoverChanges('/stash', { forget, changed }, fake.watch))
+
+    fake.fire(join('mockups', 'a', 'cover.webp'))
+    fake.fire(join('mockups', 'b', 'cover.webp'))
+    expect(changed).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(100)
+
+    expect(forget).toHaveBeenCalledWith(join('/stash', 'mockups', 'a', 'cover.webp'))
+    expect(changed).toHaveBeenCalledTimes(1)
+  })
+
+  it('says nothing when the change is to a file no cover in the list is, such as the database', () => {
+    vi.useFakeTimers()
+    cleanup.push(() => vi.useRealTimers())
+    const fake = fakeWatch()
+    const changed = vi.fn()
+    cleanup.push(watchCoverChanges('/stash', { forget: () => false, changed }, fake.watch))
+
+    fake.fire('designstash.db-wal')
+    vi.advanceTimersByTime(100)
+
+    expect(changed).not.toHaveBeenCalled()
   })
 })
 

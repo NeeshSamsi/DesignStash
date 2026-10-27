@@ -1,4 +1,4 @@
-import type { z } from 'zod'
+import { z } from 'zod'
 import { IPC_CHANNELS, type PushChannel } from '../ipc-channels'
 import { LookOverItemSchema } from '../approval'
 import { InboxCountsSchema } from '../inbox'
@@ -21,5 +21,10 @@ export const PUSH_CONTRACT = {
   [IPC_CHANNELS.INBOX_COUNTS_CHANGED]: { payload: InboxCountsSchema },
   [IPC_CHANNELS.MENU_COMMAND]: { payload: MenuCommandSchema },
   /** A Look it over draft a late AI suggestion filled in (`LookOverService.settle`). */
-  [IPC_CHANNELS.LOOK_OVER_DRAFT]: { payload: LookOverItemSchema }
+  [IPC_CHANNELS.LOOK_OVER_DRAFT]: { payload: LookOverItemSchema },
+  /**
+   * Something in the stash folder changed outside the app, so the library views read again. `covers`:
+   * a cover the list had seen on disk changed or went (cover-watch).
+   */
+  [IPC_CHANNELS.LIBRARY_CHANGED]: { payload: z.object({ reason: z.literal('covers') }) }
 } as const satisfies { [C in PushChannel]: { payload: z.ZodType } }

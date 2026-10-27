@@ -12,6 +12,8 @@ import DebugMenu from './DebugMenu'
 import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
+import { useDetailEffects } from './stores/detailEffectsStore'
+import { subscribePush } from './lib/subscribe'
 import { toast } from './stores/toastStore'
 import { useUpdateNotice } from './lib/update-notice'
 import { useActiveModelNotice } from './lib/model-notice'
@@ -69,6 +71,14 @@ function AppMain() {
       }
     })()
   }, [openModal])
+
+  // Something in the stash folder changed outside the app (a cover deleted in Finder): every
+  // library view reads again, so the card shows the cover as missing (F-012).
+  useEffect(
+    () =>
+      subscribePush(IPC_CHANNELS.LIBRARY_CHANGED, () => useDetailEffects.getState().notifyChanged()),
+    []
+  )
 
   // My Stash fetches its own list, with its view and filters, whenever it shows: only the counts
   // are refreshed here.

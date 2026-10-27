@@ -65,6 +65,8 @@ export const IPC_CHANNELS = {
   CATEGORY_RESTORE: 'category:restore',
   LIBRARY_LIST: 'library:list',
   LIBRARY_STATS: 'library:stats',
+  /** Push: something in the stash folder changed outside the app (a cover deleted in Finder). */
+  LIBRARY_CHANGED: 'library:changed',
   MOCKUP_DETAIL: 'mockup:detail',
   MOCKUP_SET_FAVOURITE: 'mockup:set-favourite',
   MOCKUP_UPDATE: 'mockup:update',
@@ -130,7 +132,8 @@ export const PUSH_CHANNELS = [
   IPC_CHANNELS.COPY_PROGRESS,
   IPC_CHANNELS.INBOX_COUNTS_CHANGED,
   IPC_CHANNELS.MENU_COMMAND,
-  IPC_CHANNELS.LOOK_OVER_DRAFT
+  IPC_CHANNELS.LOOK_OVER_DRAFT,
+  IPC_CHANNELS.LIBRARY_CHANGED
 ] as const
 
 export type PushChannel = (typeof PUSH_CHANNELS)[number]
