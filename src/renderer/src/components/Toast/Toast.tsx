@@ -14,6 +14,8 @@ import { toastIconVariants, toastVariants } from './Toast.variants'
 export interface ToastProps extends ToastContractProps {
   /** Action button label. Defaults to Retry on `error`, otherwise Undo. */
   actionLabel?: string
+  /** The action can't run now; the description line says why (an Undo a newer change blocks). */
+  actionDisabled?: boolean
   onAction?: () => void
   onClose?: () => void
   className?: string
@@ -31,7 +33,14 @@ const ICONS = {
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=213-905
  * Presentational body; stores/toastStore.ts mounts it through Sonner (ui/sonner.tsx).
  */
-export function Toast({ className, actionLabel, onAction, onClose, ...rest }: ToastProps) {
+export function Toast({
+  className,
+  actionLabel,
+  actionDisabled = false,
+  onAction,
+  onClose,
+  ...rest
+}: ToastProps) {
   const props = { ...TOAST_DEFAULTS, ...rest }
   return (
     <div
@@ -54,7 +63,7 @@ export function Toast({ className, actionLabel, onAction, onClose, ...rest }: To
         )}
       </div>
       {props.action && (
-        <Button variant="outline-subtle" size="xs" onClick={onAction}>
+        <Button variant="outline-subtle" size="xs" disabled={actionDisabled} onClick={onAction}>
           {actionLabel ?? (props.variant === 'error' ? 'Retry' : 'Undo')}
         </Button>
       )}

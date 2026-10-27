@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactElement } from 'react'
+import { IPC_CHANNELS } from '@shared/ipc'
+import { useUndoRan } from '@renderer/lib/undo-router'
 
 const sonner = vi.hoisted(() => ({
   custom: vi.fn(),
@@ -124,3 +126,73 @@ describe('toastStore', () => {
     expect(onUndo).not.toHaveBeenCalled()
   })
 })
+
+describe('an Undo toast for an entry in the app’s history (undo.md)', () => {
+  let push: ((payload: unknown) => void) | undefined
+  let answer: unknown
+  let invoke: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    sonner.custom.mockReset()
+    sonner.dismiss.mockReset()
+    answer = { status: 'done', label: 'Move to Trash' }
+    invoke = vi.fn(async () => ({ success: true, data: answer }))
+    window.api = {
+      invoke,
+      subscribe: vi.fn((channel: string, fn: (payload: unknown) => void) => {
+        if (channel === IPC_CHANNELS.UNDO_STATE) push = fn
+        return () => {}
+      })
+    } as unknown as typeof window.api
+  })
+
+  const undo = () => screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement
+
+  it('undoes its own entry through main, not the old closure, and the screens reload', async () => {
+    const closure = vi.fn()
+    const ran = vi.fn()
+    const { unmount } = render(<Listener onRan={ran} />)
+    undoToast('Moved to Trash', closure, undefined, 7)
+    mount()
+    fireEvent.click(undo())
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.UNDO_ENTRY, { id: 7 }))
+    await waitFor(() => expect(ran).toHaveBeenCalledTimes(1))
+    expect(closure).not.toHaveBeenCalled()
+    unmount()
+  })
+
+  it('without an entry (a handler not recording yet) runs its closure as before', () => {
+    const closure = vi.fn()
+    undoToast('Moved to Trash', closure)
+    mount()
+    fireEvent.click(undo())
+    expect(closure).toHaveBeenCalledTimes(1)
+    expect(invoke).not.toHaveBeenCalled()
+  })
+
+  it('is disabled, saying why, once a newer action touched the same things', async () => {
+    undoToast('Moved to Trash', vi.fn(), 'Clay phone', 7)
+    mount()
+    expect(undo().disabled).toBe(false)
+    act(() => push?.({ undoLabel: 'Star', entries: [{ id: 7, blockedBy: 9 }, { id: 9 }] }))
+    await waitFor(() => expect(undo().disabled).toBe(true))
+    expect(screen.getByText('Changed since. Use ⌘Z')).toBeTruthy()
+    act(() => push?.({ entries: [{ id: 7 }] }))
+    await waitFor(() => expect(undo().disabled).toBe(false))
+    expect(screen.getByText('Clay phone')).toBeTruthy()
+  })
+
+  it('goes once its entry has left the history (undone with ⌘Z, or dropped)', async () => {
+    undoToast('Moved to Trash', vi.fn(), undefined, 7)
+    mount()
+    act(() => push?.({ entries: [{ id: 7 }] }))
+    expect(sonner.dismiss).not.toHaveBeenCalled()
+    act(() => push?.({ redoLabel: 'Move to Trash', entries: [] }))
+    await waitFor(() => expect(sonner.dismiss).toHaveBeenCalledWith('toast-1'))
+  })
+})
+
+function Listener({ onRan }: { onRan: () => void }) {
+  useUndoRan(onRan)
+  return null
+}
