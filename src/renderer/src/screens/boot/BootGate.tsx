@@ -1,4 +1,4 @@
-import { useCallback, type ReactNode } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { CenteredLayout } from '@renderer/components/CenteredLayout'
 import { ErrorState } from '@renderer/components/ErrorState'
@@ -20,6 +20,9 @@ export interface BootGateProps {
  */
 export function BootGate({ children }: BootGateProps) {
   const boot = useBoot()
+  // After a settings reset, setup picks up at the stash step: the folder there is the one main
+  // recovered, or the default when it couldn't.
+  const [resumeAtStash, setResumeAtStash] = useState(false)
 
   const relaunch = useCallback(
     () => void window.api.invoke(IPC_CHANNELS.APP_RELAUNCH, undefined),
@@ -86,7 +89,7 @@ export function BootGate({ children }: BootGateProps) {
             variant="standard"
             step="3"
             title="Let’s set things up again"
-            body="Your settings file got scrambled, so we reset it. Your stash is exactly where you left it."
+            body="Your settings file got scrambled, so we reset it. Check your stash folder, then set up AI again."
             content={
               <Banner
                 tone="warning"
@@ -105,13 +108,22 @@ export function BootGate({ children }: BootGateProps) {
               boot.dismiss()
             }}
             primaryLabel="Continue"
-            onPrimary={boot.dismiss}
+            onPrimary={() => {
+              setResumeAtStash(true)
+              boot.dismiss()
+            }}
           />
         }
       />
     )
   }
 
-  if (!boot.onboarded) return <OnboardingFlow onComplete={boot.markOnboarded} />
+  if (!boot.onboarded)
+    return (
+      <OnboardingFlow
+        onComplete={boot.markOnboarded}
+        start={resumeAtStash ? 'stash' : 'welcome'}
+      />
+    )
   return <>{children}</>
 }

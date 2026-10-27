@@ -137,7 +137,7 @@ describe('launch problems', () => {
     expect(api.sent(IPC_CHANNELS.APP_RELAUNCH)).toEqual([])
   })
 
-  it('settings-corrupt: says they were reset and a copy was kept, then Continue starts setup', async () => {
+  it('settings-corrupt: says they were reset and a copy was kept, then Continue starts at the stash folder', async () => {
     launch('settings-corrupt', { onboarded: false, backupKept: true })
     mount()
     expect(await screen.findByText('Let’s set things up again')).toBeTruthy()
@@ -145,7 +145,16 @@ describe('launch problems', () => {
     expect(screen.getByText(/We kept a copy of the old ones/)).toBeTruthy()
     expect(document.body.textContent).not.toContain('settings.json')
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
-    expect(await screen.findByRole('heading', { name: 'Welcome to DesignStash' })).toBeTruthy()
+    expect(
+      await screen.findByRole('heading', { name: 'Where should your stash live?' })
+    ).toBeTruthy()
+  })
+
+  it('settings-corrupt never promises the stash is where it was, and asks to check it', async () => {
+    launch('settings-corrupt', { onboarded: false })
+    mount()
+    expect(await screen.findByText(/Check your stash folder/)).toBeTruthy()
+    expect(document.body.textContent).not.toContain('exactly where you left it')
   })
 
   it('settings-corrupt without a backup does not claim one', async () => {
