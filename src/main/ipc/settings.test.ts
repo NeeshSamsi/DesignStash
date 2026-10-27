@@ -58,15 +58,25 @@ describe('stash channels', () => {
     })
   })
 
-  it('points at an existing folder and asks for a restart', async () => {
+  it('points at a folder that holds a stash and asks for a restart', async () => {
     const other = join(base, 'Other')
     mkdirSync(other)
+    writeFileSync(join(other, 'designstash.db'), '')
     expect(await call(IPC_CHANNELS.STASH_CHANGE, { path: other, mode: 'point' })).toEqual({
       success: true,
       data: { ok: true, restartRequired: true }
     })
     expect(await call(IPC_CHANNELS.STASH_INFO)).toMatchObject({
       data: { path: other, restartRequired: true }
+    })
+  })
+
+  it('will not point at a folder with no stash in it', async () => {
+    const empty = join(base, 'Empty')
+    mkdirSync(empty)
+    expect(await call(IPC_CHANNELS.STASH_CHANGE, { path: empty, mode: 'point' })).toEqual({
+      success: true,
+      data: { ok: false, reason: 'failed' }
     })
   })
 

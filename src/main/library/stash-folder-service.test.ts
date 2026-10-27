@@ -308,6 +308,14 @@ describe('change: point', () => {
     expect(await service().change(join(base, 'nope'), 'point')).toEqual({ ok: false, reason: 'not-a-folder' })
     expect(await service().change(root, 'point')).toEqual({ ok: false, reason: 'same-folder' })
   })
+
+  it('refuses a folder with no stash in it, which would start an empty library', async () => {
+    const empty = join(base, 'Empty')
+    mkdirSync(empty)
+
+    expect(await service().change(empty, 'point')).toEqual({ ok: false, reason: 'failed' })
+    expect(settings.get().pendingStash).toBeNull()
+  })
 })
 
 describe('applyPendingStash (at the next launch)', () => {
@@ -367,7 +375,7 @@ describe('applyPendingStash (at the next launch)', () => {
 
   it('just switches for point, and removes nothing', async () => {
     const existing = join(base, 'Other stash')
-    mkdirSync(existing)
+    write(join(existing, 'designstash.db'), 'theirs')
     await service().change(existing, 'point')
 
     applyPendingStash(settings)

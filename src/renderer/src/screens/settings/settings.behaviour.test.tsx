@@ -119,6 +119,7 @@ function setup(overrides: Record<string, Handler> = {}) {
       ok({ lastRun: { at: NOW, trigger: 'launch', result: 'in-sync', toReview: 0 } }),
     [IPC_CHANNELS.TRASH_STATS]: () => ok({ count: 3, bytes: 412_000_000 }),
     [IPC_CHANNELS.DIALOG_SELECT_DIRECTORY]: () => ok({ path: '/Volumes/Work/Stash' }),
+    [IPC_CHANNELS.BOOT_CHECK_FOLDER]: () => ok({ state: 'ok', hasLibrary: false }),
     [IPC_CHANNELS.STASH_CHANGE]: () => ok({ ok: true, restartRequired: true }),
     [IPC_CHANNELS.APP_RELAUNCH]: () => ok({ relaunching: true }),
     [IPC_CHANNELS.STASH_CHECK_RUN]: () =>
@@ -268,20 +269,39 @@ describe('Settings · My Stash', () => {
     expect(screen.getByText('128 mockups · 14.2 GB')).not.toBeNull()
   })
 
-  it('asks Move my files, Use as is or Cancel after Change… picks a folder', async () => {
+  /** The stash already in the picked folder, as the folder check reports it. */
+  const holdsStash = {
+    [IPC_CHANNELS.BOOT_CHECK_FOLDER]: () => ok({ state: 'ok', hasLibrary: true })
+  }
+  const buttonsIn = (dialog: HTMLElement) =>
+    within(dialog)
+      .getAllByRole('button')
+      .map((b) => b.textContent)
+      .sort()
+
+  it('asks only Move my files or Cancel for a folder with no stash in it', async () => {
     open()
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
     const dialog = await screen.findByRole('alertdialog')
-    const names = within(dialog)
-      .getAllByRole('button')
-      .map((b) => b.textContent)
-    expect(names.sort()).toEqual(['Cancel', 'Move my files', 'Use as is'])
+    expect(calls(IPC_CHANNELS.BOOT_CHECK_FOLDER)[0]![1]).toEqual({ path: '/Volumes/Work/Stash' })
+    expect(buttonsIn(dialog)).toEqual(['Cancel', 'Move my files'])
     // The description says how much would move.
     expect(dialog.textContent).toContain('128 mockups (14.2 GB)')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
     expect(calls(IPC_CHANNELS.STASH_CHANGE)).toHaveLength(0)
+  })
+
+  it('asks Use as is or Cancel for a folder that already holds a stash', async () => {
+    setup(holdsStash)
+    open()
+    await screen.findByText('~/Pictures/DesignStash')
+    fireEvent.click(btn('Change…'))
+    const dialog = await screen.findByRole('alertdialog')
+    // A move needs an empty folder, so it is not offered here.
+    expect(buttonsIn(dialog)).toEqual(['Cancel', 'Use as is'])
+    expect(dialog.textContent).toContain('already holds a stash')
   })
 
   it('does nothing when the folder picker is cancelled', async () => {
@@ -331,6 +351,7 @@ describe('Settings · My Stash', () => {
   })
 
   it('points only without a progress dialog, and Later keeps the app open', async () => {
+    setup(holdsStash)
     open()
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
@@ -361,7 +382,7 @@ describe('Settings · My Stash', () => {
     fireEvent.click(btn('Change…'))
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
-        name: 'Use as is'
+        name: 'Move my files'
       })
     )
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
