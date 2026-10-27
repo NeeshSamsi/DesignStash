@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem, TrashItem } from '@shared/inbox'
 import { useHeaderSlot } from '@renderer/lib/page-header-slot'
@@ -347,6 +347,30 @@ describe('Trash', () => {
     )!
     fireEvent.click(confirm)
     await waitFor(() => expect(sent(IPC_CHANNELS.TRASH_EMPTY)).toHaveLength(1))
+  })
+
+  it('each permanent action asks once, in red, saying it can’t be undone (undo.md)', async () => {
+    setup(
+      handlers({
+        [IPC_CHANNELS.TRASH_RESTORE_ALL]: () => ok({ restoredIds: [1, 2], missing: [3] })
+      })
+    )
+    render(<TrashPage />)
+    await screen.findByText('Newest')
+    const asks: [string, () => void][] = [
+      ['Delete for good', () => fireEvent.click(within3('Delete for good'))],
+      ['Empty Trash', () => fireEvent.click(screen.getByRole('button', { name: 'Empty Trash' }))],
+      ['Delete entry', () => fireEvent.click(screen.getByRole('button', { name: 'Restore all' }))]
+    ]
+    for (const [label, open] of asks) {
+      open()
+      const dialog = await screen.findByRole('alertdialog')
+      expect(dialog.textContent).toContain('This can’t be undone.')
+      const primary = [...dialog.querySelectorAll('button')].find((b) => b.textContent === label)!
+      expect(primary.getAttribute('data-variant')).toBe('destructive')
+      fireEvent.click(within(dialog).getByRole('button', { name: /Cancel|Keep in Trash/ }))
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    }
   })
 
   it('offers Keep in Trash or Delete entry when a PSD is gone', async () => {

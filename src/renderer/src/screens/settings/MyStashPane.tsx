@@ -267,8 +267,8 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
         title="Empty Trash?"
         description={
           trash
-            ? `This permanently deletes ${mockups(trash.count)} and frees ${formatBytes(trash.bytes)}. It can’t be undone.`
-            : 'This permanently deletes everything in Trash. It can’t be undone.'
+            ? `This permanently deletes ${mockups(trash.count)} and frees ${formatBytes(trash.bytes)}. This can’t be undone.`
+            : 'This permanently deletes everything in Trash. This can’t be undone.'
         }
         confirmLabel="Empty Trash"
         cancelLabel="Cancel"

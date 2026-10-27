@@ -312,7 +312,7 @@ export default function TrashPage() {
         working={working}
         detail={false}
         title={missingTitle}
-        description="The PSD is gone from your stash folder. You can keep the entry in Trash or delete it."
+        description="The PSD is gone from your stash folder. You can keep the entry in Trash or delete it. This can’t be undone."
         confirmLabel="Delete entry"
         cancelLabel="Keep in Trash"
         workingLabel="Deleting…"

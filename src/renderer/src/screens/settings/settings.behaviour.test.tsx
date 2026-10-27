@@ -434,7 +434,9 @@ describe('Settings · My Stash', () => {
     fireEvent.click(btn('Empty Trash…'))
     const dialog = await screen.findByRole('alertdialog')
     expect(
-      within(dialog).getByText(/permanently deletes 3 mockups and frees 412 MB/)
+      within(dialog).getByText(
+        /permanently deletes 3 mockups and frees 412 MB\. This can’t be undone\./
+      )
     ).not.toBeNull()
     expect(calls(IPC_CHANNELS.TRASH_EMPTY)).toHaveLength(0)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Empty Trash' }))
@@ -664,9 +666,13 @@ describe('Settings · AI model', () => {
     const banner = (await screen.findByText('Apple Intelligence is turned off')).closest(
       '[data-ds="Banner"]'
     ) as HTMLElement
-    expect(within(banner).getByText(/Turn it on in System Settings, or choose another model/)).not.toBeNull()
+    expect(
+      within(banner).getByText(/Turn it on in System Settings, or choose another model/)
+    ).not.toBeNull()
     // AI is still on: the person only has to pick a model.
-    expect(screen.getByRole('switch', { name: 'Use on-device AI' }).getAttribute('aria-checked')).toBe('true')
+    expect(
+      screen.getByRole('switch', { name: 'Use on-device AI' }).getAttribute('aria-checked')
+    ).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Use this model' }))
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'qwen3b' })
@@ -961,7 +967,10 @@ describe('Settings · About', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Copy report' }))
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.REPORT_COPY, { action: 'copy-full', message: '' })
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.REPORT_COPY, {
+        action: 'copy-full',
+        message: ''
+      })
     )
   })
 
@@ -997,7 +1006,9 @@ describe('Meaning search row', () => {
     expect(within(row).getByText('146 MB')).toBeTruthy()
     fireEvent.click(within(row).getByRole('button', { name: 'Download' }))
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: 'nomic-embed-v1.5' })
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DOWNLOAD_MODEL, {
+        id: 'nomic-embed-v1.5'
+      })
     )
     expect(within(row).getByRole('button', { name: 'Cancel' })).toBeTruthy()
   })
