@@ -14,8 +14,20 @@ export const FIGMA_ONLY = new Set(['ContentSlot', 'ModalLayer'])
  * Figma components with nothing in the app behind them, so they get no code and no catalogue
  * entry. They stay in Figma; the scaffold can make them again if a screen ever needs one.
  * AddMenu: the Add card's menu and File › Add Files… are the live paths (audit F-074).
+ * The rest only ever filled the DEV catalogue, and Neesh had them deleted (audit F-059). ProGate
+ * goes with them: a gate is built again for whichever paid tier comes, where it shows up.
  */
-export const NOT_IN_CODE = new Set(['AddMenu'])
+export const NOT_IN_CODE = new Set([
+  'AddMenu',
+  'ListGroup',
+  'Modal',
+  'ProGate',
+  'RadioGroup',
+  'ScrollArea',
+  'Separator',
+  'Tabs',
+  'Tabs Trigger'
+])
 
 /** Visual states that are CSS interactions in code (hover/focus-visible), never props. */
 export const INTERACTION_STATES = ['default', 'hover', 'focus', 'pressed']

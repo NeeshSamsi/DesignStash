@@ -25,7 +25,17 @@ interface FigmaComponent {
 
 const FIGMA_ONLY = new Set(['ContentSlot', 'ModalLayer'])
 // Figma components with no code (NOT_IN_CODE in scripts/ds/contract.mjs).
-const NOT_IN_CODE = new Set(['AddMenu'])
+const NOT_IN_CODE = new Set([
+  'AddMenu',
+  'ListGroup',
+  'Modal',
+  'ProGate',
+  'RadioGroup',
+  'ScrollArea',
+  'Separator',
+  'Tabs',
+  'Tabs Trigger'
+])
 const pascal = (s: string) =>
   s
     .replace(/[^A-Za-z0-9]+(.)?/g, (_: string, c?: string) => (c ? c.toUpperCase() : ''))
