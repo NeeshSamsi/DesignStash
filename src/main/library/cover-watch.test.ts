@@ -11,6 +11,31 @@ afterEach(() => {
   for (const undo of cleanup.splice(0).reverse()) undo()
 })
 
+/**
+ * Watches `root` and waits until the watch is live: FSEvents starts on its own thread, so a file
+ * deleted straight after `watchCovers` returns can go unseen under load. Returns every path seen.
+ */
+async function liveWatch(root: string, also: (path: string) => void = () => {}): Promise<string[]> {
+  const seen: string[] = []
+  cleanup.push(
+    watchCovers(root, (path) => {
+      seen.push(path)
+      also(path)
+    })
+  )
+  const marker = join(root, 'watch-ready')
+  await expect
+    .poll(
+      () => {
+        writeFileSync(marker, String(Date.now()))
+        return seen.includes(marker)
+      },
+      { timeout: 8_000, interval: 100 }
+    )
+    .toBe(true)
+  return seen
+}
+
 describe('a cover deleted mid-session (F-012, design/specs/cover.md)', () => {
   it('shows as missing at the next list, without the list checking every cover on disk', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ds-covers-'))
@@ -24,11 +49,11 @@ describe('a cover deleted mid-session (F-012, design/specs/cover.md)', () => {
     const coverMissing = () => repo.library.getLibrary({ sort: 'date' }).find((r) => r.id === m.id)?.coverMissing
 
     expect(coverMissing()).toBe(false)
-    cleanup.push(watchCovers(root, (path) => repo.library.forgetCoversUnder(path)))
+    await liveWatch(root, (path) => repo.library.forgetCoversUnder(path))
     rmSync(cover)
 
-    await expect.poll(coverMissing, { timeout: 5_000, interval: 50 }).toBe(true)
-  })
+    await expect.poll(coverMissing, { timeout: 8_000, interval: 50 }).toBe(true)
+  }, 20_000)
 })
 
 describe('a cover deleted mid-session in a stash folder with a space, # and %', () => {
@@ -39,13 +64,12 @@ describe('a cover deleted mid-session in a stash folder with a space, # and %', 
     mkdirSync(join(root, 'mockups', 'poster'), { recursive: true })
     const cover = join(root, 'mockups', 'poster', 'cover.webp')
     writeFileSync(cover, 'webp')
-    const forgotten: string[] = []
-    cleanup.push(watchCovers(root, (path) => forgotten.push(path)))
+    const forgotten = await liveWatch(root)
 
     rmSync(cover)
 
-    await expect.poll(() => forgotten.includes(cover), { timeout: 5_000, interval: 50 }).toBe(true)
-  })
+    await expect.poll(() => forgotten.includes(cover), { timeout: 8_000, interval: 50 }).toBe(true)
+  }, 20_000)
 })
 
 describe('watchCoverChanges', () => {
