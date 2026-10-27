@@ -3,13 +3,6 @@ import { TagService } from '../db/tag-service'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
-/** A name without the spaces around it. One of only spaces is refused. */
-function nameOf(label: string, what: 'tag' | 'category'): string {
-  const name = label.trim()
-  if (!name) throw new Error(`A ${what} needs a name`)
-  return name
-}
-
 export function registerTagHandlers({ repo }: HandlerContext): void {
   const tagService = new TagService(repo)
 
@@ -28,17 +21,16 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
 
   // A name the category already has, whatever its casing, answers with that tag (as AI tags snap to it).
   registerIpcHandler(IPC_CHANNELS.TAG_CREATE, (args) => {
-    const label = nameOf(args.label, 'tag')
     const tag =
-      repo.tags.getTagByNormalisedLabel(args.categoryId, label) ??
-      repo.tags.createTag({ label, categoryId: args.categoryId })
+      repo.tags.getTagByNormalisedLabel(args.categoryId, args.label) ??
+      repo.tags.createTag({ label: args.label, categoryId: args.categoryId })
     return { tagId: tag.id, label: tag.label, categoryId: tag.categoryId }
   })
 
   registerIpcHandler(IPC_CHANNELS.TAG_TREE, () => ({ tree: repo.tags.getTagTree() }))
 
   registerIpcHandler(IPC_CHANNELS.TAG_RENAME, (args) => {
-    repo.tags.renameTag(args.tagId, nameOf(args.label, 'tag'))
+    repo.tags.renameTag(args.tagId, args.label)
     return { ok: true }
   })
 
@@ -59,14 +51,14 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
   })
 
   registerIpcHandler(IPC_CHANNELS.CATEGORY_CREATE, (args) => {
-    const label = nameOf(args.label, 'category')
     const cat =
-      repo.tags.getCategoryByNormalisedLabel(label) ?? repo.tags.createCategory({ label })
+      repo.tags.getCategoryByNormalisedLabel(args.label) ??
+      repo.tags.createCategory({ label: args.label })
     return { categoryId: cat.id, label: cat.label }
   })
 
   registerIpcHandler(IPC_CHANNELS.CATEGORY_RENAME, (args) => {
-    repo.tags.renameCategory(args.categoryId, nameOf(args.label, 'category'))
+    repo.tags.renameCategory(args.categoryId, args.label)
     return { ok: true }
   })
 

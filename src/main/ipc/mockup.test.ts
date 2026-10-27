@@ -10,6 +10,7 @@ import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
 import { LibraryService } from '../library/library-service'
+import { PileTitles } from '../library/pile-titles'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -49,6 +50,7 @@ beforeEach(() => {
 afterEach(() => {
   sqlite.close()
   rmSync(dir, { recursive: true, force: true })
+  vi.restoreAllMocks()
 })
 
 const png = async (name: string, width: number, height: number) => {
@@ -138,5 +140,49 @@ describe('MOCKUP_OPEN_EXTERNAL', () => {
     const res = await call(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, { mockupId: m.id })
 
     expect(res).toEqual({ success: true, data: { opened: false, reason: 'no-app' } })
+  })
+})
+
+describe('MOCKUP_UPDATE', () => {
+  const save = (mockupId: number, title: string) =>
+    call(IPC_CHANNELS.MOCKUP_UPDATE, { mockupId, title, description: '', tagIds: [] })
+
+  const pileOfTwo = () => {
+    const top = repo.mockups.createMockup(
+      approvedMockup({ title: 'Clay tote', libraryPath: join(dir, 'a.psd'), isGroup: true, variation: 'front' })
+    )
+    const side = repo.mockups.createMockup(
+      approvedMockup({ title: 'Clay tote', libraryPath: join(dir, 'b.psd'), groupId: top.id, variation: 'side' })
+    )
+    return [top, side] as const
+  }
+
+  it('refuses a pile title of only spaces before the pile is renamed', async () => {
+    const [top, side] = pileOfTwo()
+    const renameBase = vi.spyOn(PileTitles.prototype, 'renameBase')
+
+    const res = await save(side.id, '   ')
+
+    expect(res).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
+    expect(renameBase).not.toHaveBeenCalled()
+    expect([top, side].map((m) => repo.mockups.getMockup(m.id)?.title)).toEqual(['Clay tote', 'Clay tote'])
+  })
+
+  it('refuses a title of only spaces on a mockup on its own', async () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Mug', libraryPath: join(dir, 'mug.psd') }))
+    expect(await save(m.id, ' ')).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
+    expect(repo.mockups.getMockup(m.id)?.title).toBe('Mug')
+  })
+
+  it('takes the title without the spaces around it', async () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Mug', libraryPath: join(dir, 'mug.psd') }))
+    const renameBase = vi.spyOn(PileTitles.prototype, 'renameBase')
+    const [, side] = pileOfTwo()
+
+    expect(await save(m.id, '  Clay mug ')).toMatchObject({ success: true })
+    expect(await save(side.id, ' Canvas tote  ')).toMatchObject({ success: true })
+
+    expect(repo.mockups.getMockup(m.id)?.title).toBe('Clay mug')
+    expect(renameBase).toHaveBeenCalledWith(side.groupId, 'Canvas tote')
   })
 })

@@ -150,15 +150,15 @@ describe('category:create', () => {
 })
 
 describe('names of only spaces, and ids that are gone', () => {
-  it('refuses a tag or category of only spaces, and adds nothing', async () => {
+  it('refuses a tag or category of only spaces at the door, and adds nothing', async () => {
     const device = category('Device').id
     const counts = [tagCount(), categoryCount()]
 
     const created = await call(IPC_CHANNELS.TAG_CREATE, { label: '   ', categoryId: device })
     const createdCategory = await call(IPC_CHANNELS.CATEGORY_CREATE, { label: ' ' })
 
-    expect(!created.success && created.error.message).toBe('A tag needs a name')
-    expect(!createdCategory.success && createdCategory.error.message).toBe('A category needs a name')
+    expect(created).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
+    expect(createdCategory).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
     expect([tagCount(), categoryCount()]).toEqual(counts)
   })
 
@@ -169,8 +169,8 @@ describe('names of only spaces, and ids that are gone', () => {
     const renamedTag = await call(IPC_CHANNELS.TAG_RENAME, { tagId: phone.id, label: ' ' })
     const renamedCategory = await call(IPC_CHANNELS.CATEGORY_RENAME, { categoryId: style, label: '  ' })
 
-    expect(!renamedTag.success && renamedTag.error.message).toBe('A tag needs a name')
-    expect(!renamedCategory.success && renamedCategory.error.message).toBe('A category needs a name')
+    expect(renamedTag).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
+    expect(renamedCategory).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
     expect(repo.tags.getAllTags().find((t) => t.id === phone.id)?.label).toBe('Phone')
     expect(repo.tags.getAllCategories().find((c) => c.id === style)?.label).toBe('Style')
   })

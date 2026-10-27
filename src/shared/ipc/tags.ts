@@ -10,7 +10,7 @@ export const tagsContract = {
     response: z.object({ categories: z.array(TagsByCategorySchema) })
   },
   [IPC_CHANNELS.TAG_CREATE]: {
-    request: z.object({ label: z.string().min(1), categoryId: z.number() }),
+    request: z.object({ label: z.string().trim().min(1), categoryId: z.number() }),
     response: z.object({ tagId: z.number(), label: z.string(), categoryId: z.number() })
   },
   [IPC_CHANNELS.TAG_TREE]: {
@@ -18,7 +18,7 @@ export const tagsContract = {
     response: z.object({ tree: TagTreeSchema })
   },
   [IPC_CHANNELS.TAG_RENAME]: {
-    request: z.object({ tagId: z.number(), label: z.string().min(1) }),
+    request: z.object({ tagId: z.number(), label: z.string().trim().min(1) }),
     response: z.object({ ok: z.boolean() })
   },
   [IPC_CHANNELS.TAG_MERGE]: {
@@ -42,11 +42,11 @@ export const tagsContract = {
     response: z.object({ ok: z.boolean() })
   },
   [IPC_CHANNELS.CATEGORY_CREATE]: {
-    request: z.object({ label: z.string().min(1) }),
+    request: z.object({ label: z.string().trim().min(1) }),
     response: z.object({ categoryId: z.number(), label: z.string() })
   },
   [IPC_CHANNELS.CATEGORY_RENAME]: {
-    request: z.object({ categoryId: z.number(), label: z.string().min(1) }),
+    request: z.object({ categoryId: z.number(), label: z.string().trim().min(1) }),
     response: z.object({ ok: z.boolean() })
   },
   [IPC_CHANNELS.CATEGORY_DELETE]: {
