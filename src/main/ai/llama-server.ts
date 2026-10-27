@@ -7,6 +7,8 @@ export interface ServerProcess {
   readonly exitCode: number | null
   kill(signal?: NodeJS.Signals): boolean
   once(event: 'exit', listener: (code: number | null) => void): unknown
+  /** A spawn that fails (no file, no execute bit) emits this and never 'exit'. */
+  on(event: 'error', listener: (err: Error) => void): unknown
   stderr?: { on(event: 'data', listener: (chunk: Buffer | string) => void): unknown } | null
 }
 
@@ -219,6 +221,18 @@ export class LlamaServer {
     if (child.pid !== undefined) void this.config.tracker?.record(child.pid)
     const unregister = this.deps.onParentExit(() => child.kill('SIGKILL'))
     child.stderr?.on('data', (chunk) => this.recordStderr(String(chunk)))
+    let failed: Error | undefined
+    child.on('error', (err) => {
+      failed ??= err
+      this.recordStderr(`process error: ${err.message}`)
+      // Never spawned: there is no process to exit, so forget it here.
+      if (child.pid === undefined && this.child === child) {
+        unregister()
+        this.child = null
+        this.healthy = false
+        this.clearIdle()
+      }
+    })
     child.once('exit', (code) => {
       exitCode = code
       unregister()
@@ -234,6 +248,10 @@ export class LlamaServer {
 
     const polls = Math.ceil((this.config.startTimeoutMs ?? 120_000) / HEALTH_POLL_MS)
     for (let i = 0; i < polls; i++) {
+      if (failed) {
+        if (child.pid !== undefined) await this.stop()
+        throw new Error(`llama-server couldn't start: ${failed.message}. ${this.tail()}`)
+      }
       if (exitCode !== undefined) {
         throw new Error(`llama-server exited while loading (code ${exitCode}). ${this.tail()}`)
       }

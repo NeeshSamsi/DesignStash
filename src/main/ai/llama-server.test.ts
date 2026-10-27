@@ -200,6 +200,36 @@ describe('LlamaServer', () => {
     expect(h.spawnArgs).toHaveLength(2)
   })
 
+  it("fails at once, with the reason, when the binary can't be started, and starts afresh next time (F-039)", async () => {
+    // A spawn that fails (no file, no execute bit) emits 'error' and never 'exit', and nothing listens on the port.
+    const h = harness({
+      health: () => {
+        if (h.processes.at(-1)!.pid === undefined) throw new TypeError('fetch failed')
+        return json({ status: 'ok' })
+      }
+    })
+    const spawn = h.deps.spawn
+    let broken = true
+    h.deps.spawn = (command, args) => {
+      const p = spawn(command, args) as FakeProcess
+      if (broken) {
+        broken = false
+        p.pid = undefined
+        process.nextTick(() => p.emit('error', Object.assign(new Error('spawn /bin/llama-server ENOENT'), { code: 'ENOENT' })))
+      }
+      return p
+    }
+    h.deps.sleep = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+    await expect(h.server.chat({})).rejects.toThrow(/couldn't start.*ENOENT/)
+    const healthChecks = vi.mocked(h.deps.fetch).mock.calls.filter(([url]) => String(url).endsWith('/health'))
+    expect(healthChecks.length).toBeLessThanOrEqual(2)
+    expect(h.server.running).toBe(false)
+
+    await expect(h.server.chat({})).resolves.toBe('{"title":"t"}')
+    expect(h.spawnArgs).toHaveLength(2)
+  })
+
   it('gives up and kills the server when it never becomes ready', async () => {
     const h = harness({ health: () => json({ error: 'Loading model' }, 503), startTimeoutMs: 1000 })
     await expect(h.server.chat({})).rejects.toThrow(/didn't become ready/)
