@@ -39,6 +39,46 @@ function databaseBefore(tagEnd: string) {
   return { sqlite, migrateRest: () => migrate(db, { migrationsFolder: './drizzle' }) }
 }
 
+describe('indexes for the library’s lookups', () => {
+  /** How SQLite plans to answer `query`, as one line per step. */
+  const plan = (query: string) => {
+    const sqlite = new Database(':memory:')
+    open.push(sqlite)
+    migrate(drizzle(sqlite, { schema }), { migrationsFolder: './drizzle' })
+    return (sqlite.prepare(`EXPLAIN QUERY PLAN ${query}`).all() as { detail: string }[])
+      .map((r) => r.detail)
+      .join('\n')
+  }
+
+  it('finds a pile’s mockups by their top without reading every mockup', () => {
+    expect(plan('SELECT id FROM mockups WHERE group_id = 7')).toContain('mockups_group_deleted_idx')
+  })
+
+  it('counts and lists Trash without reading every mockup', () => {
+    expect(
+      plan('SELECT count(*) FROM mockups WHERE deleted_at IS NOT NULL AND group_id IS NULL')
+    ).toContain('mockups_group_deleted_idx')
+  })
+
+  it('counts an inbox without reading every mockup', () => {
+    expect(
+      plan(`SELECT count(*) FROM mockups WHERE deleted_at IS NULL AND stage = 'to_sort'`)
+    ).toContain('mockups_stage_deleted_idx')
+  })
+
+  it('checks an imported file for a duplicate by its hash without reading every mockup', () => {
+    expect(plan(`SELECT id FROM mockups WHERE content_hash = 'abc'`)).toContain(
+      'mockups_content_hash_idx'
+    )
+  })
+
+  it('finds the mockups carrying a tag without reading every link', () => {
+    expect(plan('SELECT mockup_id FROM mockup_tags WHERE tag_id = 3')).toContain(
+      'mockup_tags_tag_id_idx'
+    )
+  })
+})
+
 describe('migration: free trashed pile members', () => {
   const insert = (sqlite: Database.Database, rows: string) =>
     sqlite.exec(`

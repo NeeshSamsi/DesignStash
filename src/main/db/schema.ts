@@ -6,6 +6,7 @@ import {
   blob,
   primaryKey,
   check,
+  index,
   uniqueIndex,
   type AnySQLiteColumn
 } from 'drizzle-orm/sqlite-core'
@@ -76,7 +77,13 @@ export const mockups = sqliteTable(
   },
   (table) => [
     // A row is a pile's top or a member of one, never both (see pileRole in repositories/piles.ts).
-    check('mockups_pile_shape', sql`NOT (${table.isGroup} AND ${table.groupId} IS NOT NULL)`)
+    check('mockups_pile_shape', sql`NOT (${table.isGroup} AND ${table.groupId} IS NOT NULL)`),
+    // A pile's mockups by their top, and Trash (deleted, outside a pile).
+    index('mockups_group_deleted_idx').on(table.groupId, table.deletedAt),
+    // The inbox lists and counts, and My Stash.
+    index('mockups_stage_deleted_idx').on(table.stage, table.deletedAt),
+    // The duplicate check on every imported file.
+    index('mockups_content_hash_idx').on(table.contentHash)
   ]
 )
 
@@ -130,7 +137,11 @@ export const mockupTags = sqliteTable(
       .notNull()
       .references(() => tags.id, { onDelete: 'cascade' })
   },
-  (table) => [primaryKey({ columns: [table.mockupId, table.tagId] })]
+  (table) => [
+    primaryKey({ columns: [table.mockupId, table.tagId] }),
+    // The mockups carrying a tag (rename, merge, delete, usage counts).
+    index('mockup_tags_tag_id_idx').on(table.tagId)
+  ]
 )
 
 /**
