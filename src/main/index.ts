@@ -25,8 +25,9 @@ import { noteProcessGone, recentCrashLine, takeNewCrashes } from './telemetry/cr
 import { ProblemReporter } from './telemetry/problem-reporter'
 import { TELEMETRY_EVENTS, sizeBucket } from '@shared/telemetry'
 import { installAppMenu } from './menu'
+import { rendererDevUrl as devUrlFrom } from './renderer-url'
 
-const rendererDevUrl = process.env['ELECTRON_RENDERER_URL']
+const rendererDevUrl = devUrlFrom(process.env, app.isPackaged)
 
 // Crash dumps are written locally and never uploaded (uploadToServer: false). On the next launch
 // a new dump becomes an `app_crashed` event, if the person shares usage data.
