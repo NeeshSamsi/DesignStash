@@ -3,6 +3,7 @@ import { LlamaMeaningEmbedder } from './embedder'
 
 const server = (vectors: number[][]) => ({
   embed: vi.fn(async () => vectors),
+  start: vi.fn(async () => {}),
   stop: vi.fn(async () => {})
 })
 
@@ -29,7 +30,14 @@ describe('LlamaMeaningEmbedder', () => {
   })
 
   it('passes a server failure on', async () => {
-    const s = { embed: vi.fn().mockRejectedValue(new Error('down')), stop: vi.fn() }
+    const s = { embed: vi.fn().mockRejectedValue(new Error('down')), start: vi.fn(), stop: vi.fn() }
     await expect(new LlamaMeaningEmbedder(s).embedQuery('x')).rejects.toThrow('down')
+  })
+
+  it('starts the server ahead of a search, embedding nothing (F-017)', async () => {
+    const s = server([])
+    await new LlamaMeaningEmbedder(s).start()
+    expect(s.start).toHaveBeenCalledOnce()
+    expect(s.embed).not.toHaveBeenCalled()
   })
 })

@@ -21,6 +21,7 @@ let sqlite: Database.Database
 let repo: Repository
 let track: ReturnType<typeof vi.fn>
 let similarities: ReturnType<typeof vi.fn>
+let warm: ReturnType<typeof vi.fn>
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -31,10 +32,11 @@ beforeEach(() => {
   const test = createTestDb()
   ;({ sqlite, repo } = test)
   similarities = vi.fn(async () => null)
+  warm = vi.fn()
   registerLibraryHandlers({
     repo,
     telemetry: { get: () => ({ track }) },
-    ai: { embeddings: { similarities } }
+    ai: { embeddings: { similarities, warm } }
   } as unknown as HandlerContext)
 })
 afterEach(() => sqlite.close())
@@ -62,9 +64,18 @@ describe('meaning search through the handler', () => {
     await call(IPC_CHANNELS.LIBRARY_LIST, { query: 'ab', sort: 'date' })
     expect(similarities).not.toHaveBeenCalled()
     await call(IPC_CHANNELS.LIBRARY_LIST, { query: ' abc ', sort: 'date' })
-    expect(similarities).toHaveBeenCalledWith('abc')
+    expect(similarities).toHaveBeenCalledWith('abc', { within: 300 })
     await call(IPC_CHANNELS.LIBRARY_LIST, { sort: 'date' })
     expect(similarities).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts the meaning model while a search is still 1 or 2 characters, so its first search needs no wait (F-017)', async () => {
+    await call(IPC_CHANNELS.LIBRARY_LIST, { query: 'a', sort: 'date' })
+    await call(IPC_CHANNELS.LIBRARY_LIST, { query: 'ab', sort: 'date' })
+    expect(warm).toHaveBeenCalledTimes(2)
+    await call(IPC_CHANNELS.LIBRARY_LIST, { query: '', sort: 'date' })
+    await call(IPC_CHANNELS.LIBRARY_LIST, { query: 'abc', sort: 'date' })
+    expect(warm).toHaveBeenCalledTimes(2)
   })
 
   it('adds the meaning hit and reports meaning_hit: true', async () => {

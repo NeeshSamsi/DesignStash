@@ -15,6 +15,11 @@ export const MEANING_FLOOR = 0.55
 export const MEANING_TOP = 1
 /** A search shorter than this is keyword-only. */
 export const MEANING_MIN_QUERY_CHARS = 3
+/**
+ * How long a search waits for meaning search before showing keyword results without it (F-017).
+ * A warm model answers in tens of milliseconds; a cold start takes 0.3 s or more (R-004).
+ */
+export const MEANING_WAIT_MS = 300
 /** Nomic wants these in front of what it embeds. */
 export const DOCUMENT_PREFIX = 'search_document: '
 export const QUERY_PREFIX = 'search_query: '

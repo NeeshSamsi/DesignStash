@@ -196,6 +196,34 @@ describe('EmbeddingService', () => {
     expect(sims.get(bag.id)).toBeCloseTo(0)
   })
 
+  it('answers within the time it is given, and keyword results go without it when the model is slower (F-017)', async () => {
+    const embedder = fakeEmbedder()
+    let release = () => {}
+    const slow = new Promise<void>((resolve) => (release = resolve))
+    const fast = embedder.embedQuery
+    embedder.embedQuery = async (q) => {
+      await slow
+      return fast(q)
+    }
+    const svc = new EmbeddingService({ repo, available: () => true, embedder: () => embedder, sleep: async () => {} })
+    const m = stashed('Tote bag', '/lib/s/w.psd')
+    repo.embeddings.upsert(m.id, MEANING_MODEL_ID, normalise([0, 1]), 'h')
+
+    expect(await svc.similarities('bag', { within: 10 })).toBeNull()
+    // The slow answer still lands, and warms the model for the next search.
+    release()
+    expect((await svc.similarities('bag', { within: 1_000 }))?.get(m.id)).toBeCloseTo(1)
+  })
+
+  it('starts the model before a search when asked to warm it, and only when it can run (F-017)', async () => {
+    const start = vi.fn(async () => {})
+    const embedder = { ...fakeEmbedder(), start }
+    new EmbeddingService({ repo, available: () => true, embedder: () => embedder }).warm()
+    expect(start).toHaveBeenCalledOnce()
+    new EmbeddingService({ repo, available: () => false, embedder: () => embedder }).warm()
+    expect(start).toHaveBeenCalledOnce()
+  })
+
   it('answers null for a query when the embedder fails', async () => {
     const embedder = fakeEmbedder()
     embedder.embedQuery = async () => {

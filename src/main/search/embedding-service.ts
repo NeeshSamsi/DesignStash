@@ -136,10 +136,37 @@ export class EmbeddingService {
   }
 
   /**
+   * Start the model before a search needs it (the person has begun typing one), with the vectors
+   * read, so the first search doesn't wait for either (F-017).
+   */
+  warm(): void {
+    if (this.stopped || !this.deps.available()) return
+    try {
+      this.cache ??= this.deps.repo.embeddings.vectors(MEANING_MODEL_ID)
+    } catch {
+      // The database is closed: there is nothing to search.
+      return
+    }
+    void this.embedder.start?.().catch((err: unknown) => this.deps.log?.('Could not start meaning search', err))
+  }
+
+  /**
    * How close each mockup is to a search, by cosine, or null when meaning search can't answer
    * (no model, no vectors yet, or the embedder failed): the caller then shows keyword results only.
+   * Given `within` ms, null when the answer takes longer, so keyword results never wait for the
+   * model to start (F-017); the answer still runs on and warms it for the next search.
    */
-  async similarities(query: string): Promise<Map<number, number> | null> {
+  async similarities(query: string, { within }: { within?: number } = {}): Promise<Map<number, number> | null> {
+    const answer = this.answer(query)
+    if (within === undefined) return answer
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const late = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), within)
+    })
+    return Promise.race([answer, late]).finally(() => clearTimeout(timer))
+  }
+
+  private async answer(query: string): Promise<Map<number, number> | null> {
     if (this.stopped || !this.deps.available()) return null
     try {
       const vectors = (this.cache ??= this.deps.repo.embeddings.vectors(MEANING_MODEL_ID))

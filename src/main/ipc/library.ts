@@ -2,15 +2,17 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS, sizeBucket } from '@shared/telemetry'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
-import { MEANING_MIN_QUERY_CHARS } from '../search/meaning'
+import { MEANING_MIN_QUERY_CHARS, MEANING_WAIT_MS } from '../search/meaning'
 
 export function registerLibraryHandlers({ telemetry, repo, ai }: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.LIBRARY_LIST, async (args) => {
     const query = args.query?.trim() ?? ''
+    // A search being typed starts the meaning model, so it is up when the search gets long enough.
+    if (query.length > 0 && query.length < MEANING_MIN_QUERY_CHARS) ai.embeddings.warm()
     // Meaning search: how close each mockup is to the search. Null (no model, no vectors, a
-    // failure) leaves keyword results, as before.
+    // failure, or slower than MEANING_WAIT_MS) leaves keyword results, as before.
     const meaning =
-      query.length >= MEANING_MIN_QUERY_CHARS ? await ai.embeddings.similarities(query) : null
+      query.length >= MEANING_MIN_QUERY_CHARS ? await ai.embeddings.similarities(query, { within: MEANING_WAIT_MS }) : null
     const { rows: items, meaningHit } = repo.library.queryLibrary({
       meaning,
       ...(args.tagIds !== undefined && { tagIds: args.tagIds }),
