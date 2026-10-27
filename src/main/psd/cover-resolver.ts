@@ -13,7 +13,7 @@ export async function resolveCover(input: ResolveCoverInput): Promise<CoverResol
   const { psdPath, sidecarFor = psdPath, candidateImagePaths, readImage, outDir } = input
   const open = (path: string) => (readImage ? readImage(path) : path)
 
-  const raw = await readEmbeddedPreview(psdPath)
+  const raw = await (input.readEmbedded ?? readEmbeddedPreview)(psdPath)
   if (raw) {
     const preview = (await isPlaceholder(raw)) ? findPreviewFor(sidecarFor, candidateImagePaths) : null
     if (preview) {

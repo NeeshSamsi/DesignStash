@@ -53,6 +53,26 @@ describe('resolveCover — embedded branch', () => {
   })
 })
 
+describe('resolveCover — who reads the composite', () => {
+  it('reads the PSD’s composite with the reader it is given, as the app’s worker does', async () => {
+    const dir = tempDir()
+    const pixels = Buffer.alloc(800 * 600 * 4)
+    for (let i = 0; i < pixels.length; i++) pixels[i] = i % 4 === 3 ? 255 : (i * 7) % 256
+    const readEmbedded = vi.fn(async () => ({ data: pixels, width: 800, height: 600 }))
+
+    const result = await resolveCover({
+      psdPath: join(dir, 'not-on-disk.psd'),
+      candidateImagePaths: [],
+      outDir: join(dir, 'out'),
+      readEmbedded
+    })
+
+    expect(readEmbedded).toHaveBeenCalledWith(join(dir, 'not-on-disk.psd'))
+    expect(result.source).toBe('embedded')
+    if (result.source === 'embedded') expect(existsSync(result.coverPath)).toBe(true)
+  })
+})
+
 describe('resolveCover — sidecar branch', () => {
   it('returns source=sidecar when embedded is absent but sidecar candidate exists', async () => {
     const dir = tempDir()

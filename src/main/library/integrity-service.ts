@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import type { Repository } from '../db/repository'
 import { resolveCover } from '../psd'
+import { readEmbeddedPreviewInWorker } from '../psd/embedded-worker'
 import type { ResolveCoverInput, CoverResolution } from '../psd/types'
 import type { DriftReport, FoundFile, GoneRecord, RelinkOutcome } from '@shared/integrity'
 import { defaultAppFileOps, isInside, removeAppCopies, type AppFileOps } from './app-files'
@@ -12,7 +13,7 @@ export interface IntegrityDeps {
   listFiles: (dir: string) => Promise<string[]>
   /** Whether a path exists on disk. Default fs.access-based. */
   exists: (p: string) => Promise<boolean>
-  /** Cover resolution for an in-place orphan file. Default uses the real psd resolver. */
+  /** Cover resolution for an in-place orphan file. Default uses the real psd resolver, reading the PSD in a worker. */
   resolveCover: (input: ResolveCoverInput) => Promise<CoverResolution>
   /** File size in bytes. Throws when the file can't be read. */
   stat: (p: string) => Promise<{ size: number }>
@@ -97,7 +98,9 @@ export class IntegrityService {
     this.deps = {
       listFiles: deps?.listFiles ?? defaultListFiles,
       exists: deps?.exists ?? defaultExists,
-      resolveCover: deps?.resolveCover ?? resolveCover,
+      resolveCover:
+        deps?.resolveCover ??
+        ((input) => resolveCover({ readEmbedded: readEmbeddedPreviewInWorker, ...input })),
       stat: deps?.stat ?? ((p) => fs.stat(p)),
       rm: deps?.rm ?? ((p) => fs.rm(p, { force: true })),
       readdir: deps?.readdir ?? defaultAppFileOps.readdir,

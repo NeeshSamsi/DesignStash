@@ -60,6 +60,52 @@ export function buildPsdWithComposite(
   writeFileSync(path, buf)
 }
 
+export interface LayeredOptions {
+  width?: number
+  height?: number
+  /** Layers, each a full-size photo-like image that compresses badly, as real layer pixels do. */
+  layers?: number
+  /** Large Document Format (.psb), whose section lengths are 8 bytes. */
+  psb?: boolean
+  /** The composite fades from opaque to clear, so the file says the merged result has transparency. */
+  transparent?: boolean
+}
+
+/** Writes a PSD whose layers' pixels are most of the file, with a composite of its own. */
+export function buildLayeredPsd(
+  path: string,
+  { width = 1024, height = 768, layers = 3, psb = false, transparent = false }: LayeredOptions = {}
+): void {
+  mkdirSync(dirname(path), { recursive: true })
+  const photo = (seed: number, alpha: (x: number) => number) => {
+    const data = new Uint8ClampedArray(width * height * 4)
+    for (let i = 0; i < data.length; i += 4) {
+      const x = (i / 4) % width
+      const y = Math.floor(i / 4 / width)
+      data[i] = (x * 7 + y * 3 + seed * 31) % 256
+      data[i + 1] = (x * 3 + y * 11 + seed * 17) % 256
+      data[i + 2] = (x * y + seed * 13) % 256
+      data[i + 3] = alpha(x)
+    }
+    return { data, width, height }
+  }
+  const buf = writePsdBuffer(
+    {
+      width,
+      height,
+      imageData: photo(0, (x) => (transparent ? Math.round((255 * (width - 1 - x)) / (width - 1)) : 255)),
+      children: Array.from({ length: layers }, (_, i) => ({
+        name: `Layer ${i + 1}`,
+        top: 0,
+        left: 0,
+        imageData: photo(i + 1, () => 255)
+      }))
+    },
+    { psb }
+  )
+  writeFileSync(path, buf)
+}
+
 /** Writes a PSD with a composite smaller than MIN_EMBEDDED_EDGE (100×100). */
 export function buildPsdSmallComposite(path: string): void {
   mkdirSync(dirname(path), { recursive: true })

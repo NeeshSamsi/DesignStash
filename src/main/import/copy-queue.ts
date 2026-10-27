@@ -7,6 +7,7 @@ import type { Repository } from '../db/repository'
 import type { CopyJob } from '../db/schema'
 import { removeAppCopies } from '../library/app-files'
 import { SLOT_MASK_FILE, resolveCover, writeDesignSlotMask } from '../psd'
+import { readEmbeddedPreviewInWorker } from '../psd/embedded-worker'
 import type { SlotMaskRun } from '../psd/design-slot-worker'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
 import {
@@ -55,7 +56,8 @@ export interface CopyQueueDeps {
 }
 
 const defaultDeps: CopyQueueDeps = {
-  resolveCover,
+  // The PSD's composite is read and decoded in a worker, so a big PSD never holds up the main thread.
+  resolveCover: (input) => resolveCover({ readEmbedded: readEmbeddedPreviewInWorker, ...input }),
   writeSlotMask: writeDesignSlotMask,
   freeBytes: async (p) => {
     const s = await fs.statfs(p)

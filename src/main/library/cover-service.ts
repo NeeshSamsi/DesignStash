@@ -5,7 +5,7 @@ import sharp from 'sharp'
 import { COVER_MAX_BYTES } from '@shared/cover-fit'
 import type { CoverChange } from '@shared/library'
 import type { Repository } from '../db/repository'
-import { readEmbeddedPreview } from '../psd/embedded'
+import { readEmbeddedPreviewInWorker } from '../psd/embedded-worker'
 import { generateCoverFromFile, generateCoverFromRaw } from '../psd/image'
 import { isPlaceholder } from '../psd/placeholder'
 import type { RawImage } from '../psd/types'
@@ -43,7 +43,8 @@ const defaultDeps: CoverServiceDeps = {
   },
   makeCover: async (srcPath, outDir) => (await generateCoverFromFile(srcPath, outDir)).coverPath,
   makeCoverFromRaw: async (raw, outDir) => (await generateCoverFromRaw(raw, outDir)).coverPath,
-  readEmbedded: readEmbeddedPreview,
+  // Read and decoded in a worker, so a big PSD never holds up the main thread.
+  readEmbedded: (psdPath) => readEmbeddedPreviewInWorker(psdPath),
   isPlaceholder: (raw) => isPlaceholder(raw),
   newId: randomUUID
 }
