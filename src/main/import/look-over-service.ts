@@ -132,6 +132,8 @@ export class LookOverService {
   }
 
   async open(): Promise<LookOverQueue> {
+    // Suggestions a mockup left behind when it went (tossed, trashed or deleted) go now (F-034).
+    this.repo.tags.pruneSuggestions()
     const provider = await this.getProvider()
     const units: LookOverUnit[] = []
 

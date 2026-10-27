@@ -4,6 +4,7 @@ import type { IpcResult } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { Repository } from '../db/repository'
 import { seedTaxonomy } from '../db/bootstrap'
+import { TagService } from '../db/tag-service'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
 import type { HandlerContext } from './context'
@@ -79,6 +80,48 @@ describe('tag:create', () => {
     expect(first).toMatchObject({ success: true })
     expect(second).toEqual(first)
     expect(repo.tags.getAllTags().filter((t) => t.label === 'Clay')).toHaveLength(1)
+  })
+})
+
+describe('a name the AI only suggested so far (F-034)', () => {
+  const suggest = async (category: string, label: string) =>
+    (await new TagService(repo).snapTags([{ category, label }]))[0]!
+  const listed = () =>
+    repo.tags.getTagTree().flatMap((c) => [c.categoryLabel, ...c.tags.map((t) => `${c.categoryLabel}/${t.label}`)])
+
+  it('a person adding it makes it theirs, so it is listed and never pruned', async () => {
+    const id = await suggest('Device', 'Foldable')
+    const res = await call(IPC_CHANNELS.TAG_CREATE, { label: 'foldable', categoryId: category('Device').id })
+
+    expect(res).toMatchObject({ success: true, data: { tagId: id, label: 'Foldable' } })
+    expect(repo.tags.getAllTags().find((t) => t.id === id)?.createdBy).toBe('user')
+    expect(listed()).toContain('Device/Foldable')
+  })
+
+  it('a person adding a category the AI only suggested makes it theirs', async () => {
+    await suggest('Colour', 'Beige')
+    const res = await call(IPC_CHANNELS.CATEGORY_CREATE, { label: 'colour' })
+
+    expect(res).toMatchObject({ success: true, data: { label: 'Colour' } })
+    expect(listed()).toContain('Colour')
+    expect(listed()).not.toContain('Colour/Beige')
+  })
+
+  it('a tag a person adds in it makes the category theirs too', async () => {
+    await suggest('Colour', 'Beige')
+    const colour = repo.tags.getCategoryByLabel('Colour')!
+    await call(IPC_CHANNELS.TAG_CREATE, { label: 'Terracotta', categoryId: colour.id })
+
+    expect(listed()).toEqual(expect.arrayContaining(['Colour', 'Colour/Terracotta']))
+  })
+
+  it('the lists leave suggestions out', async () => {
+    await suggest('Colour', 'Beige')
+    const tree = await call<{ tree: { categoryLabel: string }[] }>(IPC_CHANNELS.TAG_TREE)
+    const byCategory = await call<{ categories: { categoryLabel: string }[] }>(IPC_CHANNELS.TAG_LIST_BY_CATEGORY)
+
+    expect(tree.success && tree.data.tree.map((c) => c.categoryLabel)).not.toContain('Colour')
+    expect(byCategory.success && byCategory.data.categories.map((c) => c.categoryLabel)).not.toContain('Colour')
   })
 })
 

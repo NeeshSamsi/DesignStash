@@ -1,6 +1,6 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull, notExists, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
-import { tags, mockupTags, tagCategories } from '../schema'
+import { drafts, mockups, tags, mockupTags, tagCategories } from '../schema'
 import type { Tag, NewTag, TagCategory } from '../schema'
 import type { ApprovalTag } from '@shared/approval'
 import { normaliseTagLabel, type CategorySnapshot, type TagMatch, type TagSnapshot } from '@shared/tags'
@@ -21,6 +21,55 @@ export class NameTakenError extends Error {
   }
 }
 
+/** How a suggestion is matched to a tag: its category and label, as `normaliseTagLabel` reads them. */
+const suggestionKey = (category: string, label: string) =>
+  `${normaliseTagLabel(category)}\u0000${normaliseTagLabel(label)}`
+
+/** The tags an AI result (a mockup's `aiResult`) suggests, as keys. Anything else in it is ignored. */
+function suggestedKeys(aiResult: unknown): string[] {
+  const suggested = (aiResult as { tags?: unknown } | null)?.tags
+  if (!Array.isArray(suggested)) return []
+  return suggested.flatMap((t: { category?: unknown; label?: unknown }) =>
+    typeof t?.category === 'string' && typeof t.label === 'string' ? [suggestionKey(t.category, t.label)] : []
+  )
+}
+
+/**
+ * Drop AI suggestions that never became tags (F-034): a suggestion no draft holds and no mockup still
+ * waiting in an inbox suggests, then a category made for suggestions that has no tags left. A tag
+ * that landed on a mockup, or that a person made, stays. A dismissed suggestion stays while its
+ * mockup waits, so Undo in Look it over can bring it back.
+ */
+export function pruneSuggestions(db: Pick<AppDatabase, 'select' | 'delete'>): void {
+  const suggestions = db
+    .select({ id: tags.id, label: tags.label, category: tagCategories.label })
+    .from(tags)
+    .innerJoin(tagCategories, eq(tagCategories.id, tags.categoryId))
+    .where(eq(tags.createdBy, 'suggestion'))
+    .all()
+  if (suggestions.length > 0) {
+    const held = new Set(db.select({ tagIds: drafts.tagIds }).from(drafts).all().flatMap((d) => d.tagIds))
+    const waiting = db
+      .select({ aiResult: mockups.aiResult })
+      .from(mockups)
+      .where(and(inArray(mockups.stage, ['to_sort', 'to_stash']), isNull(mockups.deletedAt), isNotNull(mockups.aiResult)))
+      .all()
+    const named = new Set(waiting.flatMap((m) => suggestedKeys(m.aiResult)))
+    const gone = suggestions
+      .filter((t) => !held.has(t.id) && !named.has(suggestionKey(t.category, t.label)))
+      .map((t) => t.id)
+    if (gone.length > 0) db.delete(tags).where(inArray(tags.id, gone)).run()
+  }
+  db.delete(tagCategories)
+    .where(
+      and(
+        eq(tagCategories.suggestion, true),
+        notExists(db.select({ one: sql`1` }).from(tags).where(eq(tags.categoryId, tagCategories.id)))
+      )
+    )
+    .run()
+}
+
 /** Two-tier taxonomy: categories and the tags inside them. */
 export class TagRepository {
   constructor(
@@ -34,7 +83,7 @@ export class TagRepository {
     return this.db.select().from(tagCategories).where(eq(tagCategories.label, label)).get()
   }
 
-  createCategory(data: { label: string; isCanonical?: boolean }): TagCategory {
+  createCategory(data: { label: string; isCanonical?: boolean; suggestion?: boolean }): TagCategory {
     return this.db.insert(tagCategories).values(data).returning().get()
   }
 
@@ -58,15 +107,18 @@ export class TagRepository {
     return this.db.select().from(tags).all()
   }
 
-  /** Categories (ordered by sortOrder) each with their tags + per-tag usage counts. */
+  /**
+   * Categories (ordered by sortOrder) each with their tags + per-tag usage counts: what Settings, the
+   * tag filter and the tag matches list. AI suggestions aren't tags yet, so they're left out.
+   */
   getTagTree(): {
     categoryId: number
     categoryLabel: string
     tagCount: number
     tags: { tagId: number; label: string; usageCount: number }[]
   }[] {
-    const categories = this.getAllCategories()
-    const allTags = this.db.select().from(tags).all()
+    const categories = this.getAllCategories().filter((c) => !c.suggestion)
+    const allTags = this.getAllTags().filter((t) => t.createdBy !== 'suggestion')
     const usageRows = this.db
       .select({ tagId: mockupTags.tagId, count: sql<number>`count(*)` })
       .from(mockupTags)
@@ -212,7 +264,8 @@ export class TagRepository {
           label: tag.label,
           categoryId: tag.categoryId,
           isCanonical: tag.isCanonical,
-          createdBy: tag.createdBy
+          // A suggestion isn't listed, so Settings can't delete one; were it deleted, it comes back as the AI's.
+          createdBy: tag.createdBy === 'suggestion' ? 'ai' : tag.createdBy
         },
         mockupIds: affected
       }
@@ -303,7 +356,35 @@ export class TagRepository {
     return { categoryId: row.id }
   }
 
-  /** Tags with this name in any category, compared as `normaliseTagLabel` does ("iphone" finds "iPhone"). */
+  /**
+   * A person adds a tag the AI only suggested so far: it's theirs now, so it is listed and never
+   * pruned, and so is its category. Returns the tag as it is now.
+   */
+  claimTag(tag: Tag): Tag {
+    this.claimCategory(tag.categoryId)
+    if (tag.createdBy !== 'suggestion') return tag
+    this.db.update(tags).set({ createdBy: 'user' }).where(eq(tags.id, tag.id)).run()
+    return { ...tag, createdBy: 'user' }
+  }
+
+  /** A person adds a category the AI only suggested so far: it's theirs now. */
+  claimCategory(categoryId: number): void {
+    this.db
+      .update(tagCategories)
+      .set({ suggestion: false })
+      .where(and(eq(tagCategories.id, categoryId), eq(tagCategories.suggestion, true)))
+      .run()
+  }
+
+  /** Drop AI suggestions nothing suggests any more (see `pruneSuggestions`). */
+  pruneSuggestions(): void {
+    pruneSuggestions(this.db)
+  }
+
+  /**
+   * Tags with this name in any category, compared as `normaliseTagLabel` does ("iphone" finds
+   * "iPhone"). AI suggestions aren't tags yet, so they're left out.
+   */
   findTagsByLabel(label: string): TagMatch[] {
     const wanted = normaliseTagLabel(label)
     if (!wanted) return []
@@ -316,6 +397,7 @@ export class TagRepository {
       })
       .from(tags)
       .innerJoin(tagCategories, eq(tags.categoryId, tagCategories.id))
+      .where(sql`${tags.createdBy} <> 'suggestion'`)
       .orderBy(tagCategories.sortOrder, tags.id)
       .all()
       .filter((t) => normaliseTagLabel(t.label) === wanted)

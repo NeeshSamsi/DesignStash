@@ -20,8 +20,9 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
   const tagService = new TagService(repo)
 
   registerIpcHandler(IPC_CHANNELS.TAG_LIST_BY_CATEGORY, () => {
-    const allCategories = repo.tags.getAllCategories()
-    const allTags = repo.tags.getAllTags()
+    // AI suggestions aren't tags yet (F-034).
+    const allCategories = repo.tags.getAllCategories().filter((c) => !c.suggestion)
+    const allTags = repo.tags.getAllTags().filter((t) => t.createdBy !== 'suggestion')
     const categories = allCategories.map((cat) => ({
       categoryId: cat.id,
       categoryLabel: cat.label,
@@ -32,11 +33,13 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
     return { categories }
   })
 
-  // A name the category already has, whatever its casing, answers with that tag (as AI tags snap to it).
+  // A name the category already has, whatever its casing, answers with that tag (as AI tags snap to
+  // it). A person adding one the AI only suggested makes it theirs, and its category too (F-034).
   registerIpcHandler(IPC_CHANNELS.TAG_CREATE, (args) => {
-    const tag =
+    const tag = repo.tags.claimTag(
       repo.tags.getTagByNormalisedLabel(args.categoryId, args.label) ??
-      repo.tags.createTag({ label: args.label, categoryId: args.categoryId, createdBy: 'user' })
+        repo.tags.createTag({ label: args.label, categoryId: args.categoryId, createdBy: 'user' })
+    )
     return { tagId: tag.id, label: tag.label, categoryId: tag.categoryId }
   })
 
@@ -62,9 +65,9 @@ export function registerTagHandlers({ repo }: HandlerContext): void {
   )
 
   registerIpcHandler(IPC_CHANNELS.CATEGORY_CREATE, (args) => {
-    const cat =
-      repo.tags.getCategoryByNormalisedLabel(args.label) ??
-      repo.tags.createCategory({ label: args.label })
+    const found = repo.tags.getCategoryByNormalisedLabel(args.label)
+    if (found) repo.tags.claimCategory(found.id)
+    const cat = found ?? repo.tags.createCategory({ label: args.label })
     return { categoryId: cat.id, label: cat.label }
   })
 

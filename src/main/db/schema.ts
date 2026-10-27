@@ -106,7 +106,12 @@ export const tagCategories = sqliteTable('tag_categories', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   label: text('label').notNull().unique(),
   sortOrder: integer('sort_order').notNull().default(0),
-  isCanonical: integer('is_canonical', { mode: 'boolean' }).notNull().default(true)
+  isCanonical: integer('is_canonical', { mode: 'boolean' }).notNull().default(true),
+  /**
+   * Made for an AI suggestion that no mockup carries yet, so it isn't listed (F-034). It becomes a
+   * category when one of its tags lands on a mockup (a trigger in migration 0019) or a person adds it.
+   */
+  suggestion: integer('suggestion', { mode: 'boolean' }).notNull().default(false)
 })
 
 /** Tags: two tiers, category then tag. No nesting; roll-up is at the category level. */
@@ -119,7 +124,12 @@ export const tags = sqliteTable(
       .notNull()
       .references(() => tagCategories.id, { onDelete: 'cascade' }),
     isCanonical: integer('is_canonical', { mode: 'boolean' }).notNull().default(true),
-    createdBy: text('created_by', { enum: ['seed', 'ai', 'user'] })
+    /**
+     * `suggestion` is an AI suggestion no mockup carries yet: not a tag yet, so it isn't listed, and
+     * it goes once nothing suggests it (F-034). It turns `ai` when it lands on a mockup (a trigger in
+     * migration 0019).
+     */
+    createdBy: text('created_by', { enum: ['seed', 'ai', 'user', 'suggestion'] })
       .notNull()
       .default('seed')
   },

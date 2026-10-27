@@ -138,3 +138,69 @@ describe('migration: free trashed pile members', () => {
     expect(placement(sqlite)).toEqual(before)
   })
 })
+
+describe('migration: AI-made tags no mockup carries (F-034)', () => {
+  /** A library from before suggestions were told apart from tags. */
+  const before = () => {
+    const db = databaseBefore('_tag_suggestions')
+    db.sqlite.exec(`
+      INSERT INTO tag_categories (id, label, sort_order, is_canonical) VALUES
+        (1, 'Device', 0, 1), (2, 'Colour', 1, 0), (3, 'Mood', 2, 0), (4, 'Texture', 3, 0), (5, 'Empty', 4, 0);
+      INSERT INTO tags (id, label, category_id, is_canonical, created_by) VALUES
+        (1, 'Laptop', 1, 1, 'seed'),
+        (2, 'Beige', 2, 0, 'ai'),
+        (3, 'Gradient', 2, 0, 'ai'),
+        (4, 'Warm', 3, 0, 'ai'),
+        (5, 'Calm', 3, 0, 'ai'),
+        (6, 'Clay', 1, 1, 'user'),
+        (7, 'Matte', 4, 1, 'user');
+      INSERT INTO mockups (id, title, library_path, cover_path, cover_source, stage) VALUES
+        (1, 'Stashed', '/l/1.psd', '/c/1.png', 'embedded', 'stashed'),
+        (2, 'Waiting', '/l/2.psd', '/c/2.png', 'embedded', 'to_stash');
+      INSERT INTO mockup_tags (mockup_id, tag_id) VALUES (1, 2);
+      INSERT INTO drafts (mockup_id, title, tag_ids) VALUES (2, 'Waiting', '[4]');
+    `)
+    return db
+  }
+  const tagsNow = (sqlite: Database.Database) =>
+    sqlite.prepare('SELECT label, created_by AS createdBy FROM tags ORDER BY id').all()
+  const categoriesNow = (sqlite: Database.Database) =>
+    sqlite.prepare('SELECT label, suggestion FROM tag_categories ORDER BY id').all()
+
+  it('removes AI-made tags at no mockups, keeps one a draft still holds as a suggestion, and keeps every tag a person made', () => {
+    const { sqlite, migrateRest } = before()
+
+    migrateRest()
+
+    expect(tagsNow(sqlite)).toEqual([
+      { label: 'Laptop', createdBy: 'seed' },
+      { label: 'Beige', createdBy: 'ai' },
+      { label: 'Warm', createdBy: 'suggestion' },
+      { label: 'Clay', createdBy: 'user' },
+      { label: 'Matte', createdBy: 'user' }
+    ])
+  })
+
+  it('removes AI-made categories left with nothing in them, and marks one holding only suggestions', () => {
+    const { sqlite, migrateRest } = before()
+
+    migrateRest()
+
+    expect(categoriesNow(sqlite)).toEqual([
+      { label: 'Device', suggestion: 0 },
+      { label: 'Colour', suggestion: 0 },
+      { label: 'Mood', suggestion: 1 },
+      { label: 'Texture', suggestion: 0 }
+    ])
+  })
+
+  it('a suggestion that lands on a mockup becomes a tag, and its category with it', () => {
+    const { sqlite, migrateRest } = before()
+    migrateRest()
+
+    sqlite.exec('INSERT INTO mockup_tags (mockup_id, tag_id) VALUES (2, 4)')
+
+    expect(sqlite.prepare('SELECT created_by AS createdBy FROM tags WHERE id = 4').get()).toEqual({ createdBy: 'ai' })
+    expect(sqlite.prepare('SELECT suggestion FROM tag_categories WHERE id = 3').get()).toEqual({ suggestion: 0 })
+  })
+})

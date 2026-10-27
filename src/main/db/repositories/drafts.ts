@@ -4,6 +4,7 @@ import { drafts, lookOverResume, mockupTags, mockups } from '../schema'
 import type { StashSnapshot } from '@shared/approval'
 import type { VariationSource } from '@shared/pile-variation'
 import type { Draft, DraftCarry, DraftField, Mockup } from '../schema'
+import { pruneSuggestions } from './tags'
 
 export interface DraftFields {
   title: string
@@ -126,8 +127,9 @@ export class DraftRepository {
 
   /**
    * Commit drafts to their mockups, all or nothing: title, description and tags are written, the
-   * mockups become approved and stashed, and the drafts and the resume pointer go. Returns what
-   * was there before, for Undo. The search index is the caller's job (it can't run inside this).
+   * mockups become approved and stashed, and the drafts and the resume pointer go. The AI's
+   * suggestions that landed become tags; the ones dismissed go (F-034). Returns what was there
+   * before, for Undo. The search index is the caller's job (it can't run inside this).
    */
   stash(unitId: number, ids: number[]): StashSnapshot {
     return this.db.transaction((tx) => {
@@ -185,6 +187,7 @@ export class DraftRepository {
       }
       tx.delete(drafts).where(inArray(drafts.mockupId, ids)).run()
       tx.delete(lookOverResume).where(eq(lookOverResume.unitId, unitId)).run()
+      pruneSuggestions(tx)
       return snapshot
     })
   }

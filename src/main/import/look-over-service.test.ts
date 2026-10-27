@@ -136,6 +136,18 @@ describe('open', () => {
     expect((await service().open()).units).toHaveLength(1)
   })
 
+  it('drops AI suggestions nothing suggests any more, such as a tossed mockup’s (F-034)', async () => {
+    const gone = waiting('gone')
+    ready(gone.id, { title: 'Gone', description: '', tags: [{ category: 'Colour', label: 'Beige' }] })
+    await service().open()
+    expect(repo.tags.getCategoryByLabel('Colour')).toBeDefined()
+    repo.mockups.deleteMockup(gone.id)
+
+    await service().open()
+
+    expect(repo.tags.getCategoryByLabel('Colour')).toBeUndefined()
+  })
+
   it('uses the cached AI suggestion without asking the provider again', async () => {
     const m = waiting('a')
     repo.mockups.updateMockup(m.id, {
