@@ -89,7 +89,6 @@ export function registerPileHandlers(ctx: HandlerContext): void {
       piles.removeFromPile(args.pileId, args.mockupId)
     )
   )
-  registerIpcHandler(IPC_CHANNELS.PILE_RESTORE, (args) => piles.restore(args.snapshot))
   registerIpcHandler(IPC_CHANNELS.PILE_MEMBERS, (args) => ({
     items: repo.library.getPileItems(args.pileId)
   }))
@@ -125,10 +124,4 @@ export function registerPileHandlers(ctx: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.MOCKUP_STASH, (args) =>
     stashed('Stash', [args.mockupId], () => stash.stashSingle(args.mockupId))
   )
-
-  registerIpcHandler(IPC_CHANNELS.PILE_UNSTASH, async (args) => {
-    const result = await stash.unstash(args.snapshot)
-    countsChanged(ctx)
-    return result
-  })
 }

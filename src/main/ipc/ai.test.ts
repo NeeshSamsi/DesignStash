@@ -6,6 +6,7 @@ import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
 import { createSettingsStore, type SettingsStore } from '../settings'
 import { ModelDownloader } from '../ai/download'
 import { createUndoService, type UndoService } from '../undo/undo-service'
+import { modelUndoOps } from '../undo/model-ops'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -63,12 +64,18 @@ beforeEach(() => {
   appleReason = 'appleIntelligenceNotEnabled'
   llamaServer = '/app/llama-server/llama-server'
   runtime = null
+  const downloader = new ModelDownloader(modelsDir)
   undo = createUndoService({
     data: { run: () => ({ ok: true }) },
     settings,
     push: () => {},
     menu: () => {},
-    editField: () => {}
+    editField: () => {},
+    models: modelUndoOps({
+      downloader,
+      embeddings: embeddings as unknown as Parameters<typeof modelUndoOps>[0]['embeddings'],
+      settings
+    })
   })
   registerAiHandlers(
     {
@@ -78,7 +85,7 @@ beforeEach(() => {
       telemetry: { get: () => ({ track: vi.fn() }) },
       ai: {
         modelsDir,
-        downloader: new ModelDownloader(modelsDir),
+        downloader,
         activeDownloads,
         appleStatus: async () =>
           appleReady
@@ -216,10 +223,7 @@ describe('AI_DELETE_MODEL', () => {
     expect(existsSync(join(modelsDir, 'qwen3.5-9b'))).toBe(false)
     expect(undo.history.state().undo).toMatchObject({ label: 'Delete model' })
 
-    expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen3.5-9b' })).toEqual({
-      success: true,
-      data: { restored: true }
-    })
+    expect(await undo.history.undo()).toEqual({ status: 'done', label: 'Delete model' })
     expect(existsSync(join(modelsDir, 'qwen3.5-9b', 'model.gguf'))).toBe(true)
   })
 
@@ -247,7 +251,7 @@ describe('AI_DELETE_MODEL', () => {
     })
     expect(settings.get().activeModelId).toBeNull()
 
-    await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen3-vl-4b', makeActive: true })
+    await undo.history.undo()
     expect(settings.get().activeModelId).toBe('qwen3-vl-4b')
   })
 
@@ -398,9 +402,7 @@ describe('the meaning-search model', () => {
       data: { deleted: true, inUse: false, undoable: true, undoEntryId: expect.any(Number) }
     })
     expect(embeddings.modelRemoved).toHaveBeenCalledTimes(1)
-    expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id })).toMatchObject({
-      data: { restored: true }
-    })
+    expect(await undo.history.undo()).toMatchObject({ status: 'done', label: 'Delete model' })
     expect(embeddings.backfill).toHaveBeenCalledTimes(1)
   })
 })

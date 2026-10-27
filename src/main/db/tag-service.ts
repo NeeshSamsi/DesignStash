@@ -50,14 +50,9 @@ export class TagService {
 
   deleteTag: Handler<Channels['TAG_DELETE']> = ({ tagId }) => this.repo.tags.deleteTag(tagId)
 
-  restoreTag: Handler<Channels['TAG_RESTORE']> = ({ snapshot }) => this.repo.tags.restoreTag(snapshot)
-
   previewMergeTags: Handler<Channels['TAG_MERGE_PREVIEW']> = ({ sourceTagId, targetTagId }) =>
     this.repo.tags.previewMergeTags(sourceTagId, targetTagId)
 
   deleteCategory: Handler<Channels['CATEGORY_DELETE']> = ({ categoryId, moveTagsTo }) =>
     this.repo.tags.deleteCategory(categoryId, moveTagsTo)
-
-  restoreCategory: Handler<Channels['CATEGORY_RESTORE']> = ({ snapshot }) =>
-    this.repo.tags.restoreCategory(snapshot)
 }

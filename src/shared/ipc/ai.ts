@@ -120,14 +120,10 @@ export const aiContract = {
         deleted: z.boolean(),
         /** The model is the one in use. When not confirmed, nothing was deleted: ask first. */
         inUse: z.boolean(),
-        /** AI_RESTORE_MODEL can bring it back until the next launch. False for old text models. */
+        /** Its undo (the history entry) can bring it back until the next launch. False for old text models. */
         undoable: z.boolean()
       })
     )
-  },
-  [IPC_CHANNELS.AI_RESTORE_MODEL]: {
-    request: z.object({ id: z.string().min(1), makeActive: z.boolean().optional() }),
-    response: z.object({ restored: z.boolean() })
   },
   [IPC_CHANNELS.AI_SET_ACTIVE]: {
     request: z.object({ id: z.string().nullable() }),

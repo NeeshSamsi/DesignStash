@@ -333,22 +333,6 @@ describe('stash channels', () => {
     expect(pushed).not.toHaveBeenCalled()
     test.sqlite.close()
   })
-
-  it('rejects a snapshot that is not the right shape', async () => {
-    const test = createTestDb()
-    handlers.clear()
-    const { registerPileHandlers } = await import('./pile')
-    registerPileHandlers({
-      repo: test.repo,
-      push: vi.fn(),
-      ai: { activeProvider: async () => null }
-    } as unknown as HandlerContext)
-    expect(await call(IPC_CHANNELS.PILE_UNSTASH, { snapshot: { mockups: 'no' } })).toMatchObject({
-      success: false,
-      error: { code: 'INVALID_REQUEST' }
-    })
-    test.sqlite.close()
-  })
 })
 
 describe('stash with real cover files', () => {
@@ -460,11 +444,12 @@ describe('stash with real cover files', () => {
         expect.objectContaining({ toStash: 0 })
       )
 
-      const undo = await call<{ restoredIds: number[] }>(IPC_CHANNELS.PILE_UNSTASH, {
-        snapshot: pile.success ? pile.data.snapshot : null
-      })
-      expect(undo.success && undo.data.restoredIds.sort()).toEqual([top.id, side.id].sort())
+      // The pile's own entry, undone after the single's stash: they touch different mockups.
+      expect(
+        await undoing.undo.history.undoEntry(pile.success ? pile.data.undoEntryId : -1)
+      ).toMatchObject({ status: 'done', label: 'Stash pile' })
       expect(r.mockups.getMockup(top.id)?.stage).toBe('to_stash')
+      expect(r.mockups.getMockup(side.id)?.stage).toBe('to_stash')
       expect(r.mockups.getMockup(alone.id)?.stage).toBe('stashed')
       test.sqlite.close()
     } finally {

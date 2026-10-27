@@ -104,7 +104,7 @@ export const importContract = {
     /** The haul that is running or paused, else the latest one, else null. */
     response: z.object({ haul: CopyStatusSchema.nullable() })
   },
-  /** Stop. What had already landed stays: keep it, or COPY_UNDO_ALL. */
+  /** Stop. What had already landed stays: keep it, or undo the import's history entry. */
   [IPC_CHANNELS.COPY_CANCEL]: {
     request: z.object({ haulId: z.string() }),
     response: z.object({ landedIds: z.array(z.number()) })
@@ -112,10 +112,5 @@ export const importContract = {
   [IPC_CHANNELS.COPY_RETRY]: {
     request: z.object({ haulId: z.string() }),
     response: CopyStatusSchema
-  },
-  /** Remove everything this haul landed, records and the app's copies. Originals are never touched. */
-  [IPC_CHANNELS.COPY_UNDO_ALL]: {
-    request: z.object({ haulId: z.string() }),
-    response: z.object({ tossedIds: z.array(z.number()) })
   }
 } as const

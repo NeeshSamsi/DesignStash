@@ -125,7 +125,7 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
       stage: 'stashed'
     })
 
-  it('deleteTag and restoreTag round-trip and match their IPC contracts', () => {
+  it('deleteTag matches its IPC contract', () => {
     const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
     const m = approved('Svc', '/lib/svc.psd')
     repo.mockups.addTagToMockup(m.id, laptop.id)
@@ -133,15 +133,6 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
     const deleted = svc.deleteTag({ tagId: laptop.id })
     expect(IPC_CONTRACT[IPC_CHANNELS.TAG_DELETE].response.parse(deleted)).toEqual(deleted)
     expect(deleted.affectedMockups).toBe(1)
-
-    const request = IPC_CONTRACT[IPC_CHANNELS.TAG_RESTORE].request.parse({
-      snapshot: deleted.snapshot
-    })
-    const restored = svc.restoreTag(request)
-    expect(IPC_CONTRACT[IPC_CHANNELS.TAG_RESTORE].response.parse(restored)).toEqual({
-      tagId: laptop.id,
-      restoredMockups: 1
-    })
   })
 
   it('previewMergeTags matches its IPC contract', () => {
@@ -154,7 +145,7 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
     })
   })
 
-  it('deleteCategory (with and without a target) and restoreCategory match their IPC contracts', () => {
+  it('deleteCategory, with and without a target, matches its IPC contract', () => {
     const cats = repo.tags.getAllCategories()
     const angle = cats.find((c) => c.label === 'Angle')!
     const style = cats.find((c) => c.label === 'Style')!
@@ -166,12 +157,6 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
     const empty = repo.tags.createCategory({ label: 'Mood' })
     const deleted = svc.deleteCategory({ categoryId: empty.id })
     expect(deleted.movedTags).toBe(0)
-    const restored = svc.restoreCategory(
-      IPC_CONTRACT[IPC_CHANNELS.CATEGORY_RESTORE].request.parse({ snapshot: deleted.snapshot })
-    )
-    expect(IPC_CONTRACT[IPC_CHANNELS.CATEGORY_RESTORE].response.parse(restored)).toEqual({
-      categoryId: empty.id
-    })
+    expect(IPC_CONTRACT[IPC_CHANNELS.CATEGORY_DELETE].response.parse(deleted)).toEqual(deleted)
   })
-
 })

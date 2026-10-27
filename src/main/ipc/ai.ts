@@ -195,13 +195,6 @@ export function registerAiHandlers(
     return { deleted, inUse: deleted && inUse, undoable: deleted, ...undoEntry(entry) }
   })
 
-  registerIpcHandler(IPC_CHANNELS.AI_RESTORE_MODEL, async (args) => {
-    const restored = await downloader.restoreSetAside(args.id)
-    if (restored && isMeaningModel(args.id)) ai.embeddings.backfill()
-    if (restored && args.makeActive) settings.update({ activeModelId: args.id })
-    return { restored }
-  })
-
   registerIpcHandler(IPC_CHANNELS.AI_SET_ACTIVE, (args) => {
     // The meaning-search model is not a vision model; it can never be the active one.
     if (args.id && isMeaningModel(args.id)) return { modelId: settings.get().activeModelId }

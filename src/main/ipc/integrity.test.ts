@@ -123,9 +123,7 @@ describe('resolving changes', () => {
     const report = await call<{ gone: unknown[] }>(IPC_CHANNELS.INTEGRITY_REPORT)
     expect(report.success && report.data.gone).toEqual([])
 
-    await call(IPC_CHANNELS.INTEGRITY_UNIGNORE, {
-      ids: ignored.success ? ignored.data.ignoredIds : []
-    })
+    await ctx.undo.history.undo()
     const back = await call<{ gone: unknown[] }>(IPC_CHANNELS.INTEGRITY_REPORT)
     expect(back.success && back.data.gone).toHaveLength(1)
   })
@@ -233,7 +231,7 @@ describe('resolving changes', () => {
     })
     expect(pushed.some((p) => p.channel === IPC_CHANNELS.INBOX_COUNTS_CHANGED)).toBe(true)
 
-    await call(IPC_CHANNELS.INTEGRITY_UNDO_ADD, { mockupIds })
+    await ctx.undo.history.undo()
     expect(ctx.repo.mockups.getMockup(mockupIds[0]!)).toBeUndefined()
   })
 })

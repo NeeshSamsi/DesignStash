@@ -4,7 +4,7 @@ import { CopyQueue } from '../import/copy-queue'
 import { writeDesignSlotMaskInWorker } from '../psd/design-slot-worker'
 import { createImportCompletedReporter } from '../telemetry/events'
 import type { HandlerContext } from './context'
-import { countsChanged, mockupsArrived, mockupsLeft } from './library-effects'
+import { countsChanged, mockupsArrived } from './library-effects'
 import { registerIpcHandler } from './register'
 
 export function registerImportHandlers(ctx: HandlerContext): void {
@@ -46,12 +46,4 @@ export function registerImportHandlers(ctx: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.COPY_STATUS, async () => ({ haul: await copyQueue.status() }))
   registerIpcHandler(IPC_CHANNELS.COPY_CANCEL, (args) => copyQueue.cancel(args.haulId))
   registerIpcHandler(IPC_CHANNELS.COPY_RETRY, (args) => copyQueue.retry(args.haulId))
-  registerIpcHandler(IPC_CHANNELS.COPY_UNDO_ALL, async (args) => {
-    const result = await copyQueue.undoAll(args.haulId)
-    // Undo all deletes for good, so the entries that point at what it removed go too.
-    ctx.undo.history.forget(result.tossedIds.map((id) => ({ kind: 'mockup' as const, id })))
-    mockupsLeft(ctx, result.tossedIds)
-    countsChanged(ctx)
-    return result
-  })
 }

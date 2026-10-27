@@ -9,6 +9,7 @@ import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb } from '../db/repositories/__tests__/setup'
 import { undoForTests } from '../undo/test-support'
+import type { UndoService } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -46,6 +47,7 @@ import { registerImportHandlers } from './import'
 
 let sqlite: Database.Database
 let repo: Repository
+let undo: UndoService
 let base: string
 let drop: string
 let push: ReturnType<typeof vi.fn>
@@ -74,6 +76,8 @@ beforeEach(() => {
   ensureSearchIndex(test.db)
   push = vi.fn()
   analyze = vi.fn(async () => ({ title: 'T', description: '', tags: [] }))
+  const undoing = undoForTests(repo, test.db)
+  undo = undoing.undo
   registerImportHandlers({
     repo,
     push,
@@ -84,7 +88,7 @@ beforeEach(() => {
     },
     telemetry: { get: () => ({ track: vi.fn() }) },
     ai: { activeProvider: async () => ({ id: 's', name: 's', analyze }) },
-    ...undoForTests(repo, test.db)
+    ...undoing
   } as unknown as HandlerContext)
 })
 
@@ -118,21 +122,20 @@ describe('copy channels', () => {
     expect(JSON.stringify(push.mock.calls)).not.toContain(base)
   })
 
-  it('Undo all removes what landed and pushes the counts', async () => {
+  it('an import is one history entry: its undo moves what landed to Trash', async () => {
     writeFileSync(join(drop, 'a.psd'), 'AAAA')
-    const started = await call<CopyStatus>(IPC_CHANNELS.COPY_START, { paths: [drop] })
+    await call<CopyStatus>(IPC_CHANNELS.COPY_START, { paths: [drop] })
     await settle()
+    const status = await call<{ haul: CopyStatus }>(IPC_CHANNELS.COPY_STATUS)
+    const id = status.success ? status.data.haul.undoEntryId : undefined
+    expect(id).toEqual(expect.any(Number))
 
-    const res = await call<{ tossedIds: number[] }>(IPC_CHANNELS.COPY_UNDO_ALL, {
-      haulId: started.success ? started.data.haulId : ''
+    expect(await undo.history.undoEntry(id!)).toMatchObject({
+      status: 'done',
+      label: 'Import of 1 mockup'
     })
-
-    expect(res.success && res.data.tossedIds).toHaveLength(1)
     expect(repo.inbox.list('to_sort')).toEqual([])
-    expect(push).toHaveBeenLastCalledWith(
-      IPC_CHANNELS.INBOX_COUNTS_CHANGED,
-      expect.objectContaining({ toSort: 0 })
-    )
+    expect(repo.trash.getTrashEntries().map((e) => e.origin)).toEqual(['import'])
   })
 
   it('Cancel answers with what landed so far, and Retry on an unknown haul is an error', async () => {

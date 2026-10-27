@@ -86,7 +86,8 @@ async function defaultExists(p: string): Promise<boolean> {
  */
 const PSD = /\.psd$/i
 
-const hashId = (text: string): string => `f${createHash('sha256').update(text).digest('hex').slice(0, 16)}`
+const hashId = (text: string): string =>
+  `f${createHash('sha256').update(text).digest('hex').slice(0, 16)}`
 /** A found file's id comes from its path inside the stash, so it stays the same when the stash moves. */
 const foundId = (libraryRoot: string, path: string): string => hashId(relative(libraryRoot, path))
 /** The id earlier versions gave it, from the whole path. */
@@ -259,7 +260,11 @@ export class IntegrityService {
       if (await this.deps.exists(drawnBefore)) return drawnBefore
       await this.turnToDraw()
       try {
-        const resolution = await this.deps.resolveCover({ psdPath: path, candidateImagePaths: [], outDir })
+        const resolution = await this.deps.resolveCover({
+          psdPath: path,
+          candidateImagePaths: [],
+          outDir
+        })
         return resolution.source === 'none' ? null : resolution.coverPath
       } catch {
         return null
@@ -317,16 +322,6 @@ export class IntegrityService {
   async addAll(): Promise<{ mockupIds: number[] }> {
     const { found } = this.visible(await this.drift())
     return this.add([...found.keys()])
-  }
-
-  /** Undo an add: the records and the app's files for them go. The PSD stays where it was. */
-  async undoAdd(mockupIds: number[]): Promise<void> {
-    const added = mockupIds.filter((id) => {
-      const m = this.repo.mockups.getMockup(id)
-      return m !== undefined && m.stage === 'to_sort' && m.deletedAt === null
-    })
-    const removed = this.repo.trash.deleteMockupsHard(added)
-    await this.removeAppFiles(removed, { keepPsd: true })
   }
 
   /** Remove the records of mockups whose PSD is gone. Anything else in `ids` is skipped. */
@@ -392,11 +387,6 @@ export class IntegrityService {
   async ignoreAll(): Promise<{ ignoredIds: string[] }> {
     const { found, gone } = await this.drift()
     return this.ignore([...found.keys(), ...gone.keys()])
-  }
-
-  async unignore(ids: string[]): Promise<void> {
-    const back = new Set(ids)
-    this.deps.ignored.set(this.deps.ignored.get().filter((id) => !back.has(id)))
   }
 
   /** The app's files for deleted records (removeAppCopies). Leaving one behind is better than failing the action. */

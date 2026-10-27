@@ -51,10 +51,6 @@ export const tagsContract = {
     request: z.object({ tagId: z.number() }),
     response: withUndoEntry(z.object({ affectedMockups: z.number(), snapshot: TagSnapshotSchema }))
   },
-  [IPC_CHANNELS.TAG_RESTORE]: {
-    request: z.object({ snapshot: TagSnapshotSchema }),
-    response: z.object({ tagId: z.number(), restoredMockups: z.number() })
-  },
   [IPC_CHANNELS.TAG_SET_CATEGORY]: {
     request: z.object({ tagId: z.number(), categoryId: z.number() }),
     response: NameChangeSchema
@@ -77,9 +73,5 @@ export const tagsContract = {
         snapshot: CategorySnapshotSchema
       })
     )
-  },
-  [IPC_CHANNELS.CATEGORY_RESTORE]: {
-    request: z.object({ snapshot: CategorySnapshotSchema }),
-    response: z.object({ categoryId: z.number() })
   }
 } as const

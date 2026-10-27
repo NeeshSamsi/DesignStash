@@ -15,10 +15,12 @@ export type ApprovalTag = z.infer<typeof ApprovalTagSchema>
 export const TagsByCategorySchema = z.object({
   categoryId: z.number(),
   categoryLabel: z.string(),
-  tags: z.array(z.object({
-    tagId: z.number(),
-    label: z.string()
-  }))
+  tags: z.array(
+    z.object({
+      tagId: z.number(),
+      label: z.string()
+    })
+  )
 })
 export type TagsByCategory = z.infer<typeof TagsByCategorySchema>
 
@@ -235,7 +237,7 @@ export const StashResultSchema = z.discriminatedUnion('ok', [
     ok: z.literal(true),
     /** Everything now in My Stash: the top and its variants, or the one mockup. */
     stashedIds: z.array(z.number()),
-    /** Pass to PILE_UNSTASH to undo. */
+    /** The rows as they were. Undo goes through the stash's history entry. */
     snapshot: StashSnapshotSchema
   }),
   z.object({

@@ -189,9 +189,9 @@ describe('IPC Contract', () => {
       }
       expect(response.parse(valid)).toEqual(valid)
       expect(() => response.parse({ ...valid, meaning: undefined })).toThrow()
-      expect(response.parse({ ...valid, activeProblem: 'apple-intelligence-off' }).activeProblem).toBe(
-        'apple-intelligence-off'
-      )
+      expect(
+        response.parse({ ...valid, activeProblem: 'apple-intelligence-off' }).activeProblem
+      ).toBe('apple-intelligence-off')
       expect(() => response.parse({ ...valid, activeProblem: 'gone' })).toThrow()
     })
   })
@@ -446,15 +446,6 @@ describe('IPC Contract', () => {
       expect(() => response.parse({ affectedMockups: 2 })).toThrow()
     })
 
-    it('TAG_RESTORE takes the snapshot back', () => {
-      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_RESTORE]
-      expect(request.parse({ snapshot })).toEqual({ snapshot })
-      expect(response.parse({ tagId: 7, restoredMockups: 2 })).toEqual({
-        tagId: 7,
-        restoredMockups: 2
-      })
-    })
-
     it('TAG_MERGE_PREVIEW mirrors TAG_MERGE', () => {
       const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_MERGE_PREVIEW]
       expect(request.parse({ sourceTagId: 1, targetTagId: 2 })).toEqual({
@@ -477,13 +468,6 @@ describe('IPC Contract', () => {
         snapshot: { id: 1, label: 'Angle', sortOrder: 5, isCanonical: true }
       }
       expect(response.parse(valid)).toEqual(valid)
-    })
-
-    it('CATEGORY_RESTORE takes a category snapshot', () => {
-      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.CATEGORY_RESTORE]
-      const snap = { id: 1, label: 'Mood', sortOrder: 6, isCanonical: false }
-      expect(request.parse({ snapshot: snap })).toEqual({ snapshot: snap })
-      expect(response.parse({ categoryId: 1 })).toEqual({ categoryId: 1 })
     })
   })
 
@@ -643,8 +627,11 @@ describe('look-over:draft push', () => {
 
   it("says where the item's suggestion is: writing with its run, couldn't write, or filled in by the person (L6)", () => {
     const run = { phase: 'writing', writingSince: 1_000, slowAfterMs: 20_000 }
-    expect(payload.parse({ ...item, ai: { status: 'sniffing', run } })).toMatchObject({ ai: { status: 'sniffing', run } })
-    for (const status of ['pending', 'failed', 'opted_out', 'off']) expect(payload.safeParse({ ...item, ai: { status } }).success).toBe(true)
+    expect(payload.parse({ ...item, ai: { status: 'sniffing', run } })).toMatchObject({
+      ai: { status: 'sniffing', run }
+    })
+    for (const status of ['pending', 'failed', 'opted_out', 'off'])
+      expect(payload.safeParse({ ...item, ai: { status } }).success).toBe(true)
     expect(payload.safeParse({ ...item, ai: undefined }).success).toBe(false)
     expect(payload.safeParse({ ...item, ai: { status: 'stopped' } }).success).toBe(false)
   })
@@ -658,18 +645,45 @@ describe('look-over:draft push', () => {
     const tag = { tagId: 3, label: 'bench', categoryId: 1, categoryLabel: 'Environment' }
     const offered = {
       ...item,
-      carry: { state: 'offered', reason: 'this one is on a mesh floor', why: 'refused', after: { description: 'A long page on a bench', via: 'rewrite' }, tagsAdded: [tag], tagsRemoved: [] }
+      carry: {
+        state: 'offered',
+        reason: 'this one is on a mesh floor',
+        why: 'refused',
+        after: { description: 'A long page on a bench', via: 'rewrite' },
+        tagsAdded: [tag],
+        tagsRemoved: []
+      }
     }
     expect(payload.parse(offered)).toEqual(offered)
-    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, after: null } }).success).toBe(true)
-    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'copied' } }).success).toBe(false)
+    expect(
+      payload.safeParse({ ...offered, carry: { ...offered.carry, after: null } }).success
+    ).toBe(true)
+    expect(
+      payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'copied' } }).success
+    ).toBe(false)
   })
 
   it('says why an edit is on offer: not judged, refused, slow, failed or undone, and null while checking or once in (L7)', () => {
-    const offered = { ...item, carry: { state: 'offered', reason: null, why: 'unjudged', after: null, tagsAdded: [], tagsRemoved: [] } }
-    for (const why of ['unjudged', 'refused', 'slow', 'failed', 'undone']) expect(payload.safeParse({ ...offered, carry: { ...offered.carry, why } }).success).toBe(true)
-    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'checking', why: null } }).success).toBe(true)
-    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, why: 'timeout' } }).success).toBe(false)
+    const offered = {
+      ...item,
+      carry: {
+        state: 'offered',
+        reason: null,
+        why: 'unjudged',
+        after: null,
+        tagsAdded: [],
+        tagsRemoved: []
+      }
+    }
+    for (const why of ['unjudged', 'refused', 'slow', 'failed', 'undone'])
+      expect(payload.safeParse({ ...offered, carry: { ...offered.carry, why } }).success).toBe(true)
+    expect(
+      payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'checking', why: null } })
+        .success
+    ).toBe(true)
+    expect(
+      payload.safeParse({ ...offered, carry: { ...offered.carry, why: 'timeout' } }).success
+    ).toBe(false)
   })
 })
 
@@ -684,7 +698,10 @@ describe('look-over:open', () => {
 
 describe('look-over:fill-myself and look-over:write', () => {
   it('take one mockup and answer with its item, or null when it is not waiting in To stash (L6.E1, L6.E3)', () => {
-    for (const channel of [IPC_CHANNELS.LOOK_OVER_FILL_MYSELF, IPC_CHANNELS.LOOK_OVER_WRITE] as const) {
+    for (const channel of [
+      IPC_CHANNELS.LOOK_OVER_FILL_MYSELF,
+      IPC_CHANNELS.LOOK_OVER_WRITE
+    ] as const) {
       const { request, response } = IPC_CONTRACT[channel]
       expect(request.parse({ mockupId: 4 })).toEqual({ mockupId: 4 })
       expect(request.safeParse({}).success).toBe(false)
@@ -720,13 +737,33 @@ describe('look-over:showing', () => {
   })
 
   it('answers with where its suggestion is: waiting its turn, its run, or how it ended; null when it is gone', () => {
-    expect(response.parse({ mockupId: 3, status: 'pending' })).toEqual({ mockupId: 3, status: 'pending' })
-    const queued = { mockupId: 3, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs: 20_000 } }
+    expect(response.parse({ mockupId: 3, status: 'pending' })).toEqual({
+      mockupId: 3,
+      status: 'pending'
+    })
+    const queued = {
+      mockupId: 3,
+      status: 'pending',
+      run: { phase: 'queued', writingSince: null, slowAfterMs: 20_000 }
+    }
     expect(response.parse(queued)).toEqual(queued)
     const run = { phase: 'writing', writingSince: 1_700_000_000_000, slowAfterMs: 35_000 }
-    expect(response.parse({ mockupId: 3, status: 'sniffing', run })).toEqual({ mockupId: 3, status: 'sniffing', run })
-    expect(response.parse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'starting', writingSince: null } })?.run?.phase).toBe('starting')
-    expect(response.safeParse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'loading' } }).success).toBe(false)
+    expect(response.parse({ mockupId: 3, status: 'sniffing', run })).toEqual({
+      mockupId: 3,
+      status: 'sniffing',
+      run
+    })
+    expect(
+      response.parse({
+        mockupId: 3,
+        status: 'sniffing',
+        run: { ...run, phase: 'starting', writingSince: null }
+      })?.run?.phase
+    ).toBe('starting')
+    expect(
+      response.safeParse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'loading' } })
+        .success
+    ).toBe(false)
     expect(response.parse(null)).toBeNull()
   })
 })
@@ -735,7 +772,14 @@ describe('ai:status with a run', () => {
   it("carries a started run's phase, its clock and its threshold", () => {
     const { payload } = PUSH_CONTRACT[IPC_CHANNELS.AI_STATUS]
     const event = {
-      updates: [{ mockupId: 1, status: 'sniffing', run: { phase: 'starting', writingSince: null, slowAfterMs: 90_000 } }, { mockupId: 2, status: 'pending' }],
+      updates: [
+        {
+          mockupId: 1,
+          status: 'sniffing',
+          run: { phase: 'starting', writingSince: null, slowAfterMs: 90_000 }
+        },
+        { mockupId: 2, status: 'pending' }
+      ],
       totals: { total: 2, remaining: 2 }
     }
     expect(payload.parse(event)).toEqual(event)

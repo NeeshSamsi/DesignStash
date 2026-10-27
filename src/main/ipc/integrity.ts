@@ -86,13 +86,6 @@ export function registerIntegrityHandlers(
     recordAdd('Add all found PSDs', () => integrityService.addAll())
   )
 
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_UNDO_ADD, async (args) => {
-    mockupsLeft(ctx, args.mockupIds)
-    await integrityService.undoAdd(args.mockupIds)
-    countsChanged(ctx)
-    return recheck({ undone: true })
-  })
-
   /** Removed records leave the AI queue and change the sidebar counts. */
   const removed = async (result: {
     removed: number
@@ -134,9 +127,4 @@ export function registerIntegrityHandlers(
   registerIpcHandler(IPC_CHANNELS.INTEGRITY_IGNORE_ALL, () =>
     recordIgnore('Ignore all', () => integrityService.ignoreAll())
   )
-
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_UNIGNORE, async (args) => {
-    await integrityService.unignore(args.ids)
-    return recheck({ restored: true })
-  })
 }

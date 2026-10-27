@@ -23,11 +23,6 @@ export const integrityContract = {
     request: z.void(),
     response: withUndoEntry(z.object({ mockupIds: z.array(z.number()) }))
   },
-  /** Undo for Add and Add all: removes the records that were added, never the PSD. */
-  [IPC_CHANNELS.INTEGRITY_UNDO_ADD]: {
-    request: z.object({ mockupIds: z.array(z.number()).min(1) }),
-    response: z.object({ undone: z.boolean() })
-  },
   [IPC_CHANNELS.INTEGRITY_REMOVE]: {
     request: z.object({ ids: z.array(z.string()).min(1) }),
     response: z.object({ removed: z.number() })
@@ -48,10 +43,5 @@ export const integrityContract = {
   [IPC_CHANNELS.INTEGRITY_IGNORE_ALL]: {
     request: z.void(),
     response: withUndoEntry(z.object({ ignoredIds: z.array(z.string()) }))
-  },
-  /** Undo for Ignore and Ignore all, with the ids they returned. */
-  [IPC_CHANNELS.INTEGRITY_UNIGNORE]: {
-    request: z.object({ ids: z.array(z.string()).min(1) }),
-    response: z.object({ restored: z.boolean() })
   }
 } as const

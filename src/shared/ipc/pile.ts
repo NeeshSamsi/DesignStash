@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { StashResultSchema, StashSnapshotSchema } from '../approval'
+import { StashResultSchema } from '../approval'
 import { IPC_CHANNELS } from '../ipc-channels'
 import { LibraryItemSchema } from '../library'
 import { VariationSchema, VariationSourceSchema } from '../pile-variation'
@@ -26,7 +26,7 @@ export type PileSnapshot = z.infer<typeof PileSnapshotSchema>
 const PileChangeSchema = z.object({
   /** The pile's id after the change (its top mockup). */
   pileId: z.number(),
-  /** Pass to PILE_RESTORE to undo. */
+  /** The rows as they were. Undo goes through the action's history entry. */
   snapshot: PileSnapshotSchema
 })
 
@@ -70,10 +70,6 @@ export const pileContract = {
         freedIds: z.array(z.number())
       })
     )
-  },
-  [IPC_CHANNELS.PILE_RESTORE]: {
-    request: z.object({ snapshot: PileSnapshotSchema }),
-    response: z.object({ restoredIds: z.array(z.number()) })
   },
   /**
    * A pile's mockups for its page, in one call: the top first, then the rest in order, each as a
@@ -132,9 +128,5 @@ export const pileContract = {
   [IPC_CHANNELS.MOCKUP_STASH]: {
     request: z.object({ mockupId: z.number() }),
     response: withUndoEntry(StashResultSchema)
-  },
-  [IPC_CHANNELS.PILE_UNSTASH]: {
-    request: z.object({ snapshot: StashSnapshotSchema }),
-    response: z.object({ restoredIds: z.array(z.number()) })
   }
 } as const

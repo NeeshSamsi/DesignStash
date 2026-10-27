@@ -75,8 +75,6 @@ export function registerTagHandlers(ctx: HandlerContext): void {
     return { ...result, ...undoEntry(ctx.undo.record(record)) }
   })
 
-  registerIpcHandler(IPC_CHANNELS.TAG_RESTORE, tagService.restoreTag)
-
   registerIpcHandler(IPC_CHANNELS.TAG_SET_CATEGORY, (args) =>
     nameChange(() => repo.tags.reassignTagCategory(args.tagId, args.categoryId))
   )
@@ -109,6 +107,4 @@ export function registerTagHandlers(ctx: HandlerContext): void {
     )
     return { ...result, ...undoEntry(ctx.undo.record(record)) }
   })
-
-  registerIpcHandler(IPC_CHANNELS.CATEGORY_RESTORE, tagService.restoreCategory)
 }

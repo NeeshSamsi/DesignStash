@@ -128,12 +128,17 @@ describe('report', () => {
     const store = { get: () => saved, set: (ids: string[]) => void (saved = ids) }
     const disk = fakeDisk({ [path]: 5 })
 
-    expect((await new IntegrityService(t.repo, LIB, { ...disk.deps, ignored: store }).report()).found).toEqual([])
+    expect(
+      (await new IntegrityService(t.repo, LIB, { ...disk.deps, ignored: store }).report()).found
+    ).toEqual([])
     // Stored under its new id, it stays ignored once the stash folder moves too.
     expect(saved).toHaveLength(1)
     expect(saved[0]).not.toBe(earlierId)
     const after = fakeDisk({ ['/Volumes/Drive/Stash/mockups/x1/a.psd']: 5 })
-    const moved = new IntegrityService(t.repo, '/Volumes/Drive/Stash', { ...after.deps, ignored: store })
+    const moved = new IntegrityService(t.repo, '/Volumes/Drive/Stash', {
+      ...after.deps,
+      ignored: store
+    })
     expect((await moved.report()).found).toEqual([])
   })
 })
@@ -181,7 +186,11 @@ describe('found files’ covers', () => {
     const s = service({ ...disk.deps, coverWaitMs: 20 })
 
     const first = (await s.report()).found[0]!
-    finish({ source: 'embedded', coverPath: `${LIB}/cache/x/cover.webp`, thumbPath: `${LIB}/cache/x/thumb.webp` })
+    finish({
+      source: 'embedded',
+      coverPath: `${LIB}/cache/x/cover.webp`,
+      thumbPath: `${LIB}/cache/x/thumb.webp`
+    })
     const next = (await s.report()).found[0]!
 
     expect(first.coverPath).toBeUndefined()
@@ -189,14 +198,20 @@ describe('found files’ covers', () => {
   })
 
   it('draws two covers at a time, since each reads a whole PSD', async () => {
-    const disk = fakeDisk(Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`${mockups}/x${n}/a.psd`, 5])))
+    const disk = fakeDisk(
+      Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`${mockups}/x${n}/a.psd`, 5]))
+    )
     let now = 0
     let most = 0
     disk.deps.resolveCover = async ({ outDir }) => {
       most = Math.max(most, ++now)
       await new Promise((r) => setTimeout(r, 5))
       now--
-      return { source: 'embedded', coverPath: `${outDir}/cover.webp`, thumbPath: `${outDir}/thumb.webp` }
+      return {
+        source: 'embedded',
+        coverPath: `${outDir}/cover.webp`,
+        thumbPath: `${outDir}/thumb.webp`
+      }
     }
 
     const report = await service({ ...disk.deps, coverWaitMs: 5_000 }).report()
@@ -262,30 +277,6 @@ describe('add', () => {
   })
 })
 
-describe('undo add', () => {
-  it('removes the new records and their covers but never the PSD', async () => {
-    const path = `${mockups}/x1/a.psd`
-    const disk = fakeDisk({ [path]: 5 })
-    const s = service(disk.deps)
-    const [item] = (await s.report()).found
-    const { mockupIds } = await s.add([item!.id])
-
-    await s.undoAdd(mockupIds)
-
-    expect(t.repo.mockups.getMockup(mockupIds[0]!)).toBeUndefined()
-    expect(disk.removed).not.toContain(path)
-    // The file is a found file again.
-    expect((await s.report()).found).toHaveLength(1)
-  })
-
-  it('leaves records that were not added by this action', async () => {
-    const disk = fakeDisk({})
-    const other = t.repo.mockups.createMockup(approvedMockup({ libraryPath: `${mockups}/k/original.psd` }))
-    await service(disk.deps).undoAdd([other.id])
-    expect(t.repo.mockups.getMockup(other.id)).toBeDefined()
-  })
-})
-
 describe('remove', () => {
   it('removes the record of a missing PSD, with its search entry and cover', async () => {
     const disk = fakeDisk({ [`${mockups}/g1/cover.webp`]: 1 })
@@ -320,7 +311,9 @@ describe('remove', () => {
   it('removeAll removes every missing record', async () => {
     const disk = fakeDisk({})
     goneRow('One')
-    t.repo.mockups.createMockup(approvedMockup({ title: 'Two', libraryPath: `${mockups}/g2/original.psd` }))
+    t.repo.mockups.createMockup(
+      approvedMockup({ title: 'Two', libraryPath: `${mockups}/g2/original.psd` })
+    )
     expect((await service(disk.deps).removeAll()).removed).toBe(2)
   })
 })
@@ -405,7 +398,7 @@ describe('relink', () => {
 })
 
 describe('ignore', () => {
-  it('hides ignored files and records from the report and the scan, and unignore brings them back', async () => {
+  it('hides ignored files and records from the report and the scan', async () => {
     const disk = fakeDisk({ [`${mockups}/x1/a.psd`]: 1 })
     const gone = goneRow()
     const s = service(disk.deps)
@@ -416,10 +409,6 @@ describe('ignore', () => {
     expect(ignoredIds).toHaveLength(2)
     expect(await s.report()).toEqual({ found: [], gone: [] })
     expect(await s.scan()).toEqual({ orphanFiles: 0, orphanRecords: 0 })
-
-    await s.unignore(ignoredIds)
-    expect((await s.report()).found).toHaveLength(1)
-    expect((await s.report()).gone).toHaveLength(1)
   })
 
   it('ignoreAll covers both groups and returns only what it newly ignored, for Undo', async () => {
@@ -504,6 +493,9 @@ describe('add with an unreadable PSD', () => {
     const s = service(disk.deps)
     const [item] = (await s.report()).found
     const { mockupIds } = await s.add([item!.id])
-    expect(t.repo.mockups.getMockup(mockupIds[0]!)).toMatchObject({ coverPath: '', coverSource: 'none' })
+    expect(t.repo.mockups.getMockup(mockupIds[0]!)).toMatchObject({
+      coverPath: '',
+      coverSource: 'none'
+    })
   })
 })

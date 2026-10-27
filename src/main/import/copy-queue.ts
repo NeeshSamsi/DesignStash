@@ -5,7 +5,6 @@ import type { Readable } from 'node:stream'
 import type { CopyFile, CopyPauseReason, CopyProgress, CopyStatus } from '@shared/ipc/import'
 import type { Repository } from '../db/repository'
 import type { CopyJob } from '../db/schema'
-import { removeAppCopies } from '../library/app-files'
 import { SLOT_MASK_FILE, resolveCover, writeDesignSlotMask } from '../psd'
 import { readEmbeddedPreviewInWorker } from '../psd/embedded-worker'
 import type { SlotMaskRun } from '../psd/design-slot-worker'
@@ -258,23 +257,6 @@ export class CopyQueue {
       this.pump()
     }
     return this.statusOf(haulId)!
-  }
-
-  /** Remove what the haul landed, as long as it is still waiting in an inbox. Originals are never touched. */
-  async undoAll(haulId: string): Promise<{ tossedIds: number[] }> {
-    const haul = this.repo.copyJobs.getHaul(haulId)
-    if (!haul) return { tossedIds: [] }
-    await this.cancel(haulId)
-    // Only this haul's file in flight matters. Later hauls keep going while the undo finishes.
-    if (this.inFlight?.haulId === haulId) await this.inFlight.settled
-
-    const { ids } = this.repo.inbox.collectTossable(this.repo.copyJobs.landedMockupIds(haulId))
-    const removed = this.repo.trash.deleteMockupsHard(ids)
-    await removeAppCopies(this.repo, this.root, removed, this.deps)
-    this.repo.copyJobs.setHaulState(haulId, { state: 'undone' })
-    this.repo.copyJobs.forgetPendingSources(haulId)
-    this.emit(haulId, null)
-    return { tossedIds: ids }
   }
 
   /** At launch: carry on a haul that was running. A paused one waits for Retry. */

@@ -476,7 +476,7 @@ describe('cancel and undo', () => {
     expect(stopped).toEqual([])
   })
 
-  it('stops and gives back what had landed, which stays until Undo all', async () => {
+  it('stops and gives back what had landed, which stays in To sort', async () => {
     psd('a.psd', 'A')
     psd('b.psd', 'B')
     psd('c.psd', 'C')
@@ -514,97 +514,9 @@ describe('cancel and undo', () => {
     expect(repo.copyJobs.getJobs(haulId).map((j) => j.sourcePath)).toEqual(['', '', ''])
   })
 
-  it('forgets the way back to waiting files when a paused haul is undone', async () => {
-    psd('a.psd', 'A')
-    psd('b.psd', 'B')
-    free = 1
-    const q = queue()
-    const { haulId } = await q.start([drop])
-    await q.idle()
-
-    await q.undoAll(haulId)
-
-    expect(repo.copyJobs.getJobs(haulId).map((j) => j.sourcePath)).toEqual(['', ''])
-    expect((await q.status())!.state).toBe('undone')
-  })
-
-  it('Undo all removes the records and the app copies and never touches the originals', async () => {
-    const a = psd('a.psd', 'A')
-    const b = psd('b.psd', 'B')
-    const q = queue()
-    const { haulId } = await q.start([drop])
-    await q.idle()
-    const folders = readdirSync(join(root, 'mockups'))
-    expect(folders).toHaveLength(2)
-
-    const res = await q.undoAll(haulId)
-
-    expect(res.tossedIds).toHaveLength(2)
-    expect(repo.inbox.list('to_sort')).toEqual([])
-    expect(
-      readdirSync(join(root, 'mockups')).flatMap((d) => readdirSync(join(root, 'mockups', d)))
-    ).toEqual([])
-    expect(existsSync(a) && existsSync(b)).toBe(true)
-    expect((await q.status())!.state).toBe('undone')
-  })
-
-  it("Undo all waits for its own haul's file in flight, not for a haul dropped after it", async () => {
-    const a = psd('a.psd', 'A')
-    const b = psd('b.psd', 'B')
-    const open: Record<string, () => void> = {}
-    const started: Record<string, Promise<void>> = {}
-    const gate = (path: string) => {
-      let begin!: () => void
-      started[path] = new Promise<void>((r) => (begin = r))
-      return { begin, wait: new Promise<void>((r) => (open[path] = r)) }
-    }
-    const gates = { [a]: gate(a), [b]: gate(b) }
-    const q = queue({
-      copyHashed: async (src, dest, onBytes) => {
-        gates[src as string]!.begin()
-        await gates[src as string]!.wait
-        return copyWithHash(src, dest, onBytes)
-      }
-    })
-    const first = await q.start([a])
-    await started[a]
-
-    const undone = q.undoAll(first.haulId)
-    const second = await q.start([b])
-    expect(second.haulId).not.toBe(first.haulId)
-    open[a]!()
-    await started[b]
-    const outcome = await Promise.race([
-      undone.then(() => 'undone'),
-      new Promise((r) => setTimeout(() => r('waiting'), 200))
-    ])
-
-    expect(outcome).toBe('undone')
-    expect((await undone).tossedIds).toHaveLength(1)
-    open[b]!()
-    await q.idle()
-    expect(last()).toMatchObject({ haulId: second.haulId, state: 'done', landed: 1 })
-  })
-
-  it('Undo all leaves alone anything already looked over and stashed', async () => {
-    psd('a.psd', 'A')
-    psd('b.psd', 'B')
-    const q = queue()
-    const { haulId } = await q.start([drop])
-    await q.idle()
-    const [first] = repo.inbox.list('to_sort')
-    repo.mockups.setStage([first!.id], 'stashed')
-
-    const res = await q.undoAll(haulId)
-
-    expect(res.tossedIds).toHaveLength(1)
-    expect(repo.mockups.getMockup(first!.id)).toBeDefined()
-  })
-
   it('ignores a haul id it does not know', async () => {
     const q = queue()
     expect(await q.cancel('nope')).toEqual({ landedIds: [] })
-    expect(await q.undoAll('nope')).toEqual({ tossedIds: [] })
     await expect(q.retry('nope')).rejects.toThrow()
   })
 })

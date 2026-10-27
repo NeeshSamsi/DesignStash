@@ -45,7 +45,12 @@ describe('handler registration', () => {
         downloader: quiet,
         activeDownloads: new Map(),
         activeProvider: async () => null,
-        embeddings: { setBusyCheck: vi.fn(), backfill: vi.fn(), similarities: async () => null, modelRemoved: async () => {} }
+        embeddings: {
+          setBusyCheck: vi.fn(),
+          backfill: vi.fn(),
+          similarities: async () => null,
+          modelRemoved: async () => {}
+        }
       },
       push: vi.fn()
     } as unknown as HandlerContext
@@ -54,6 +59,24 @@ describe('handler registration', () => {
     expect(new Set(registered).size).toBe(registered.length)
     expect(registered).toContain(IPC_CHANNELS.SETTINGS_GET)
     expect(registered).toContain(IPC_CHANNELS.STASH_INFO)
+
+    // The old one-way undo routes are gone: each action's own history entry undoes it now
+    // (design/specs/undo.md). Trash's Restore button still uses mockup:restore, as an action.
+    const retired = [
+      'pile:restore',
+      'pile:unstash',
+      'tag:restore',
+      'category:restore',
+      'integrity:undo-add',
+      'integrity:unignore',
+      'ai:restore-model',
+      'copy:undo-all'
+    ]
+    for (const channel of retired) {
+      expect(registered, channel).not.toContain(channel)
+      expect(Object.values(IPC_CHANNELS), channel).not.toContain(channel)
+    }
+    expect(registered).toContain(IPC_CHANNELS.MOCKUP_RESTORE)
     sqlite.close()
     rmSync(base, { recursive: true, force: true })
   })

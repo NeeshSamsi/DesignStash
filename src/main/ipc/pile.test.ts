@@ -6,6 +6,7 @@ import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
 import { undoForTests } from '../undo/test-support'
+import type { UndoService } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -24,6 +25,7 @@ import { registerMockupHandlers } from './mockup'
 
 let sqlite: Database.Database
 let repo: Repository
+let undo: UndoService
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -36,12 +38,14 @@ beforeEach(() => {
   const test = createTestDb()
   ;({ sqlite, repo } = test)
   ensureSearchIndex(test.db)
+  const undoing = undoForTests(repo, test.db)
+  undo = undoing.undo
   const ctx = {
     repo,
     push: vi.fn(),
     ai: { activeProvider: async () => null },
     settings: { getLibraryRoot: () => '/library' },
-    ...undoForTests(repo, test.db)
+    ...undoing
   } as unknown as HandlerContext
   registerPileHandlers(ctx)
   registerTrashHandlers(ctx)
@@ -75,7 +79,7 @@ describe('pile handlers', () => {
     expect(res).toMatchObject({ success: false, error: { code: 'UNEXPECTED_ERROR' } })
   })
 
-  it('adds, merges, puts on top and disbands, then restores from the snapshot', async () => {
+  it('adds, merges, puts on top and disbands, then the disband is undone', async () => {
     const [a, b, c, d, e] = ['a', 'b', 'c', 'd', 'e'].map(make) as [
       number,
       number,
@@ -106,14 +110,12 @@ describe('pile handlers', () => {
     expect(disbanded.success && disbanded.data.freedIds.sort()).toEqual([a, b, c, d, e].sort())
     expect(repo.library.getLibrary({ sort: 'name' })).toHaveLength(5)
 
-    const restored = await call<{ restoredIds: number[] }>(IPC_CHANNELS.PILE_RESTORE, {
-      snapshot: disbanded.success && disbanded.data.snapshot
-    })
-    expect(restored.success && restored.data.restoredIds.sort()).toEqual([a, b, c, d, e].sort())
+    // The disband's own history entry puts the pile back.
+    await undo.history.undo()
     expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([d])
   })
 
-  it('removes a mockup from a pile, validates the request, and restores from the snapshot', async () => {
+  it('removes a mockup from a pile, validates the request, and its undo puts it back', async () => {
     const [a, b, c] = [make('a'), make('b'), make('c')] as [number, number, number]
     await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b, c], topId: a })
 
@@ -131,10 +133,7 @@ describe('pile handlers', () => {
     expect(repo.mockups.getMockup(b)).toMatchObject({ isGroup: true })
     expect(repo.mockups.getMockup(c)).toMatchObject({ groupId: b })
 
-    const restored = await call<{ restoredIds: number[] }>(IPC_CHANNELS.PILE_RESTORE, {
-      snapshot: removed.success && removed.data.snapshot
-    })
-    expect(restored.success && restored.data.restoredIds.sort()).toEqual([a, b, c].sort())
+    await undo.history.undo()
     expect(repo.mockups.getMockup(a)).toMatchObject({ isGroup: true, groupId: null })
     expect(repo.mockups.getMockup(c)).toMatchObject({ groupId: a })
 
