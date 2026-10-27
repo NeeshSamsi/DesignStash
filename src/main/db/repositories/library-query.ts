@@ -164,7 +164,8 @@ export class LibraryQueryRepository {
         return ra - rb
       }
       if (sort === 'name') return a.title.localeCompare(b.title)
-      return b.createdAt.localeCompare(a.createdAt)
+      // createdAt has whole seconds, so a haul shares one: the later id was added later.
+      return b.createdAt.localeCompare(a.createdAt) || b.id - a.id
     })
 
     return {

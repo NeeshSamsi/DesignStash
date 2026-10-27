@@ -250,6 +250,15 @@ describe('getLibrary', () => {
     expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([ap.id, m.id, z.id])
     expect(repo.library.getLibrary({ sort: 'date' }).map((r) => r.id)).toEqual([m.id, ap.id, z.id])
   })
+
+  it('sort:date puts the later of mockups added in the same second first, as between hauls', () => {
+    const [a, b, c] = ['A', 'B', 'C'].map((title) =>
+      repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/same-${title}.psd` }))
+    )
+    for (const m of [a!, b!, c!]) repo.mockups.updateMockup(m.id, { createdAt: '2026-10-12 09:00:00' })
+
+    expect(repo.library.getLibrary({ sort: 'date' }).map((r) => r.id)).toEqual([c!.id, b!.id, a!.id])
+  })
 })
 
 describe('getMockupDetail', () => {
