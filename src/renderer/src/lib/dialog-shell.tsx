@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
+import { SHORTCUT_BOUNDARY_ATTR } from '@renderer/lib/shortcuts'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -94,6 +95,8 @@ export function DialogFrame({
     const target = (e as CustomEvent<{ originalEvent?: Event }>).detail?.originalEvent?.target
     return target instanceof Element && target.closest('[role="alertdialog"]') !== null
   }
+  // The window's shortcuts stay behind a live dialog; its own scopes still work inside it.
+  const boundary = { [SHORTCUT_BOUNDARY_ATTR]: '' }
   const guard = blocking
     ? {
         onEscapeKeyDown: (e: Event) => e.preventDefault(),
@@ -105,7 +108,7 @@ export function DialogFrame({
     return (
       <KindContext.Provider value="alert">
         <AlertDialog open={open} onOpenChange={onOpenChange}>
-          <AlertDialogContent data-ds={dataDs} className={className} {...guard}>
+          <AlertDialogContent data-ds={dataDs} className={className} {...boundary} {...guard}>
             {children}
           </AlertDialogContent>
         </AlertDialog>
@@ -118,6 +121,7 @@ export function DialogFrame({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           data-ds={dataDs}
+          {...boundary}
           showCloseButton={showCloseButton && !blocking}
           className={className}
           onInteractOutside={(e) => {

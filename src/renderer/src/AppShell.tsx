@@ -121,9 +121,9 @@ export default function AppShell({
   const setQuery = useLibraryStore((s) => s.setQuery)
 
   useShortcutDispatcher()
-  // ⌘F and ⌘K are handled by GlobalSearch (useSearchFocusShortcut); reserving them keeps anyone else off them.
-  useShortcut({ id: 'search.focus', combo: 'mod+f' })
-  useShortcut({ id: 'search.focus-alias', combo: 'mod+k' })
+  // ⌘F, and ⌘K as its alias, focus the title-bar search.
+  useShortcut({ id: 'search.focus', combo: 'mod+f', handler: focusGlobalSearch })
+  useShortcut({ id: 'search.focus-alias', combo: 'mod+k', handler: focusGlobalSearch })
   useShortcut({
     id: 'import.add-files',
     combo: 'mod+o',

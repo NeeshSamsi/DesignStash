@@ -81,12 +81,11 @@ describe('GlobalSearch', () => {
       expect(hint?.textContent).toBe('⌘F')
     })
 
-    it.each(['f', 'k'])('focuses the field on ⌘%s', (key) => {
+    it('leaves ⌘F and ⌘K to the shortcut registry (AppShell binds them)', () => {
       render(<GlobalSearch />)
       const input = screen.getByRole('textbox', { name: 'Search' })
+      fireEvent.keyDown(window, { key: 'f', metaKey: true })
       expect(document.activeElement).not.toBe(input)
-      fireEvent.keyDown(window, { key, metaKey: true })
-      expect(document.activeElement).toBe(input)
     })
 
     it('focusGlobalSearch focuses and selects the field on screen, and does nothing once it is gone', () => {

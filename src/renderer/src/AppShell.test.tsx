@@ -5,6 +5,7 @@ import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { useDetailsStore } from './stores/detailsStore'
 import { shortcuts } from './lib/shortcuts'
+import { DialogFrame } from './lib/dialog-shell'
 import { toast as sonnerToast } from 'sonner'
 import { nameSideMovers, namePanelLayers } from './lib/panel-transition'
 import { readFileSync } from 'node:fs'
@@ -32,8 +33,8 @@ beforeEach(() => {
   } as unknown as typeof window.api
 })
 
-const press = (init: KeyboardEventInit) =>
-  fireEvent.keyDown(document.body, { bubbles: true, cancelable: true, ...init })
+const press = (init: KeyboardEventInit, target: Element = document.body) =>
+  fireEvent.keyDown(target, { bubbles: true, cancelable: true, ...init })
 
 describe('AppShell navigation', () => {
   it('renders the sidebar', () => {
@@ -343,14 +344,34 @@ describe('AppShell shortcuts', () => {
     expect(onAddFiles).toHaveBeenCalledTimes(1)
   })
 
-  it('⌘K focuses the search field', () => {
+  it.each(['f', 'k'])('⌘%s focuses the search field', (key) => {
     render(
       <AppShell>
         <div />
       </AppShell>
     )
-    press({ key: 'k', metaKey: true })
+    press({ key, metaKey: true })
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Search' }))
+  })
+
+  it('⌘F, ⌘O and ⌘, stay behind a modal flow: nothing opens under it', () => {
+    const onAddFiles = vi.fn()
+    render(
+      <>
+        <AppShell onAddFiles={onAddFiles}>
+          <div />
+        </AppShell>
+        <DialogFrame open dataDs="Flow">
+          <button type="button">Inside the flow</button>
+        </DialogFrame>
+      </>
+    )
+    const inside = screen.getByRole('button', { name: 'Inside the flow' })
+    inside.focus()
+    for (const key of ['f', 'k', 'o', ',']) press({ key, metaKey: true }, inside)
+    expect(onAddFiles).not.toHaveBeenCalled()
+    expect(useUiStore.getState().settingsOpen).toBe(false)
+    expect(document.activeElement).toBe(inside)
   })
 
   it('has no duplicate bindings, and ⌘K is taken', () => {

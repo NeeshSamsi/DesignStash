@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import {
+  SHORTCUT_BOUNDARY_ATTR,
   SHORTCUT_SCOPE_ATTR,
   ShortcutRegistry,
   comboFromEvent,
@@ -118,6 +119,49 @@ describe('ShortcutRegistry', () => {
     expect(() => registry.register({ id: 'other', combo: 'mod+k', handler: vi.fn() })).toThrow()
     const event = press({ key: 'k', metaKey: true })
     expect(event.defaultPrevented).toBe(false)
+  })
+
+  describe('a scope boundary (a modal dialog)', () => {
+    /** `<div boundary><div scope="sort"><button/></div></div>`, in the page. */
+    function modal() {
+      const frame = document.createElement('div')
+      frame.setAttribute(SHORTCUT_BOUNDARY_ATTR, '')
+      const board = document.createElement('div')
+      board.setAttribute(SHORTCUT_SCOPE_ATTR, 'sort')
+      const button = document.createElement('button')
+      board.append(button)
+      frame.append(board)
+      document.body.append(frame)
+      return { frame, button }
+    }
+
+    it('stops global shortcuts from inside it, and keeps its own scoped ones', () => {
+      const open = vi.fn()
+      const undo = vi.fn()
+      registry.register({ id: 'import.add-files', combo: 'mod+o', handler: open })
+      registry.register({ id: 'sort.undo', combo: 'mod+z', scope: 'sort', handler: undo })
+      const { frame, button } = modal()
+      const event = press({ key: 'o', metaKey: true }, button)
+      expect(open).not.toHaveBeenCalled()
+      expect(event.defaultPrevented).toBe(false)
+      press({ key: 'z', metaKey: true }, button)
+      expect(undo).toHaveBeenCalledTimes(1)
+      frame.remove()
+    })
+
+    it('stops global shortcuts while it is open, from a menu that sits outside it too', () => {
+      const open = vi.fn()
+      registry.register({ id: 'import.add-files', combo: 'mod+o', handler: open })
+      const { frame } = modal()
+      const menu = document.createElement('div')
+      document.body.append(menu)
+      press({ key: 'o', metaKey: true }, menu)
+      expect(open).not.toHaveBeenCalled()
+      frame.remove()
+      press({ key: 'o', metaKey: true }, menu)
+      expect(open).toHaveBeenCalledTimes(1)
+      menu.remove()
+    })
   })
 
   it('lists what is bound', () => {

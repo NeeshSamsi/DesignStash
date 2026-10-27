@@ -26,20 +26,22 @@ export interface GlobalSearchProps extends GlobalSearchContractProps {
   className?: string
 }
 
-/** The search field on screen, for the menu's View › Search. */
+/** The search field on screen, for ⌘F and the menu's View › Search. */
 let mountedSearch: RefObject<HTMLInputElement | null> | null = null
 
-/** Focuses the title-bar search and selects what is in it, as ⌘F does. */
+/**
+ * Focuses the title-bar search and selects what is in it. AppShell binds ⌘F, and ⌘K as its alias,
+ * to this through the shortcut registry, so neither reaches the field from inside a dialog.
+ */
 export function focusGlobalSearch(): void {
   mountedSearch?.current?.focus()
   mountedSearch?.current?.select()
 }
 
-/** ⌘F, and ⌘K as its alias. The field's hint shows the first. */
-const SEARCH_KEYS = ['f', 'k']
+/** The field's hint: ⌘F, the main shortcut. */
 const SEARCH_HINT = '⌘F'
 
-/** ⌘F (or ⌘K) focuses and selects the field behind `ref`, from anywhere in the window. */
+/** Makes the field behind `ref` the one focusGlobalSearch focuses. */
 export function useSearchFocusShortcut(ref: RefObject<HTMLInputElement | null>) {
   useEffect(() => {
     mountedSearch = ref
@@ -47,20 +49,10 @@ export function useSearchFocusShortcut(ref: RefObject<HTMLInputElement | null>) 
       if (mountedSearch === ref) mountedSearch = null
     }
   }, [ref])
-  useEffect(() => {
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (!event.metaKey || !SEARCH_KEYS.includes(event.key.toLowerCase())) return
-      event.preventDefault()
-      ref.current?.focus()
-      ref.current?.select()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [ref])
 }
 
 /**
- * GlobalSearch — Title-bar search; ⌘F (or ⌘K) focuses, 250 ms debounce; zero results → MockupGrid no-results.
+ * GlobalSearch — Title-bar search; ⌘F (or ⌘K) focuses through AppShell, 250 ms debounce; zero results → MockupGrid no-results.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1649
  * Esc clears the text; Esc on an empty field blurs it. `state` only picks the starting text:
  * focus and query are the field's own.
