@@ -9,7 +9,17 @@ export interface HardwareInfo {
 
 export type ModelTier = 'small' | 'medium' | 'large'
 
+let detected: HardwareInfo | null = null
+
+/**
+ * The Mac's chip and memory, asked once a launch: neither changes while the app runs, and sysctl
+ * blocks the main process (the model list asks on every window focus).
+ */
 export function detectHardware(): HardwareInfo {
+  return (detected ??= readHardware())
+}
+
+function readHardware(): HardwareInfo {
   const totalMemoryBytes = totalmem()
   const totalMemoryGB = totalMemoryBytes / 1024 ** 3
 

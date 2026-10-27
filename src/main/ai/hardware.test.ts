@@ -1,6 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { recommendTier, detectHardware } from './hardware'
 import type { HardwareInfo } from './hardware'
+
+const execSync = vi.hoisted(() => vi.fn<(command: string) => Buffer>(() => Buffer.from('Apple M3 Max\n')))
+vi.mock('node:child_process', async (importOriginal) => ({ ...(await importOriginal<typeof import('node:child_process')>()), execSync }))
 
 describe('recommendTier', () => {
   it('should recommend "medium" for less than 16GB memory', () => {
@@ -46,5 +49,12 @@ describe('detectHardware', () => {
     expect(hw.chip.length).toBeGreaterThan(0)
     expect(hw.totalMemoryGB).toBeGreaterThan(0)
     expect(typeof hw.isAppleSilicon).toBe('boolean')
+  })
+
+  it('asks the system once a launch, so a window coming back runs no sysctl (F-055)', () => {
+    const first = detectHardware()
+    expect(detectHardware()).toBe(first)
+    expect(detectHardware()).toBe(first)
+    expect(execSync.mock.calls.length).toBeLessThanOrEqual(1)
   })
 })
