@@ -1,4 +1,7 @@
 import {
+  Children,
+  Fragment,
+  isValidElement,
   useEffect,
   useMemo,
   useRef,
@@ -21,6 +24,7 @@ import {
 } from '@renderer/lib/marquee'
 import { cn } from '@renderer/lib/utils'
 import { GridCardContext, type GridCard } from './grid-card'
+import { trackCount, useCardWindow, WINDOW_FROM } from './use-card-window'
 import { MOCKUP_GRID_DEFAULTS, type MockupGridContractProps } from './MockupGrid.types'
 import { MOCKUP_GRID_CARDS, MOCKUP_GRID_MARQUEE, mockupGridVariants } from './MockupGrid.variants'
 
@@ -69,8 +73,11 @@ function cardRects(root: HTMLElement): HitTarget[] {
   }))
 }
 
-/** Cards that share the first card's row. */
+/** The grid's column tracks; where nothing lays out, the cards that share the first card's row. */
 function measureColumns(root: HTMLElement): number {
+  const list = root.querySelector('[data-slot="mockup-cards"]')
+  const tracks = list ? trackCount(list) : 0
+  if (tracks > 0) return tracks
   const cards = cardElements(root)
   if (cards.length === 0) return 1
   const firstTop = cards[0]?.getBoundingClientRect().top
@@ -100,6 +107,7 @@ export function MockupGrid({
 }: MockupGridProps) {
   const { state, showAdd, ...props } = { ...MOCKUP_GRID_DEFAULTS, ...rest }
   const rootRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState<Rect | null>(null)
 
   // Handlers read the latest selection without re-binding the window listeners mid-drag.
@@ -222,6 +230,52 @@ export function MockupGrid({
 
   const add = addCard ?? <AddMockupCard onClick={onAdd} />
   const withCards = state === 'populated' || state === 'loading' || state === 'empty'
+  const populated = state === 'populated'
+  const withAdd = state === 'empty' || showAdd
+
+  // Every cell in grid order. A big grid mounts only the rows near the view (F-071), and always
+  // the selection cursor's, so arrow keys, focus and Reveal find its card.
+  const cards = populated ? Children.toArray(children) : []
+  const cells: ReactNode[] = [
+    ...(withAdd ? [<Fragment key="add-card">{add}</Fragment>] : []),
+    ...cards,
+    ...(state === 'loading'
+      ? Array.from({ length: LOADING_CARD_COUNT }, (_, index) => (
+          <MockupCard key={`loading-${index}`} state="loading" />
+        ))
+      : [])
+  ]
+  // Each card's cell, by mockup id: the cursor's row stays mounted, and a reflow keeps its place.
+  const cellIndex = new Map<string, number>()
+  if (populated && cells.length >= WINDOW_FROM) {
+    cards.forEach((card, at) => {
+      if (isValidElement<{ mockupId?: string }>(card) && card.props.mockupId !== undefined)
+        cellIndex.set(card.props.mockupId, at + (withAdd ? 1 : 0))
+    })
+  }
+  const parts = useCardWindow(
+    listRef,
+    cells.length,
+    populated,
+    cursor ? (cellIndex.get(cursor) ?? null) : null,
+    (mockupId) => cellIndex.get(mockupId)
+  )
+  const mounted = parts
+    ? parts.flatMap((part) =>
+        part.kind === 'cells'
+          ? cells.slice(part.from, part.to)
+          : [
+              // Stands in for rows that are not mounted; never a scroll anchor, so the view holds still.
+              <div
+                key={part.key}
+                aria-hidden
+                data-grid-rows=""
+                className="col-span-full"
+                style={{ height: part.height, overflowAnchor: 'none' }}
+              />
+            ]
+      )
+    : cells
 
   return (
     <div
@@ -236,20 +290,14 @@ export function MockupGrid({
     >
       {withCards && (
         <div
+          ref={listRef}
           data-slot="mockup-cards"
           className={MOCKUP_GRID_CARDS}
           {...(listbox
             ? { role: 'listbox', 'aria-multiselectable': true, 'aria-label': listLabel }
             : {})}
         >
-          {(state === 'empty' || showAdd) && add}
-          {state === 'populated' && (
-            <GridCardContext.Provider value={cardLookup}>{children}</GridCardContext.Provider>
-          )}
-          {state === 'loading' &&
-            Array.from({ length: LOADING_CARD_COUNT }, (_, index) => (
-              <MockupCard key={index} state="loading" />
-            ))}
+          <GridCardContext.Provider value={cardLookup}>{mounted}</GridCardContext.Provider>
         </div>
       )}
       {state === 'no-results' && noResults}
