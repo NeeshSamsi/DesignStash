@@ -167,6 +167,21 @@ On the B piles, three piles get words from their names ("realistic" and "clay", 
 
 It's used when the model says "same", gives no answer, or gives two mockups in a pile the same words. In those cases the mockups take their markers in place of the words ("Lighter · 2", "Lighter · 3").
 
+### B6. The pile's base (7ccfa15)
+
+The 9B dev seed (2026-10-26) found that the base was the top's whole title, so a setting only the top has named the whole pile: the long scrolls were "Grid MacBook on white bench" and the boxes "Stacked cubes on concrete floor". Neesh's model is that the base is what every mockup in the pile shares. `round4/bases.json` gives each B pile the object its base must name and the words it must leave out (the menus' plate, the scrolls' bench, and every setting only some mockups have). `variation.ts --how pilebase|pilebase2|pilebase3` asks for the base in the pile request three ways, and `base-table.ts` judges each base tidied as the app tidies it (`pileBaseTitle`: no "variant" or "variation", printed words, stock words or object colours, at most 60 characters).
+
+| Model | Today: the top's title | 1: a title that fits every mockup | 2: 1, saying what to leave out | 3: the top's own title, less what not every mockup has |
+|---|---|---|---|---|
+| 9B | 9 of 12 | 10 | 10 | **11** |
+| 4B | 9 of 12 | 11 | 10 | 10 |
+
+- **3 on the 9B** changes four bases: "Grid MacBook on white bench" becomes "Long Scroll MacBook", "Stacked cubes on concrete floor" becomes "Stacked cubes", "Apple Watch Ultra on white" becomes "Apple Watch Ultra", and "iPhone on grey floor in dramatic shadows" becomes "iPhone on grey floor in shadows". The other eight keep the top's words, detail included ("Flip-top lighter", "Bib apron", "Hanging gift card holder"). The menus still name their top's plate ("Slim menu card on ceramic plate in sunlight").
+- **1 and 2 flatten names that were fine** ("Lighter", "Apron", "Gift Card Holder", "iMac"), and on the 9B they read the template's sample copy ("Salt & Vine Menu") and the file name ("Stacked Boards").
+- **The 4B** writes "Variants" into its bases ("iMac Monitor Variants", "Apron variants"), which the app's tidy now cuts, and with 3 it adds a variation word to one ("Apple Watch Ultra - Realistic").
+- **Variations hold:** the 9B gets 36 of 41 with 3 (35 without the base), but repeats words in three piles ("floating" twice, "open" twice, "single card on plate" twice), which the app numbers ("floating 2"). It tells 9 of 12 piles apart, against 11.
+- **Cost:** still one request a pile, about 0.1 s more a mockup on the 9B.
+
 ### For Neesh: B
 
 - Proposal: for the 4B and the 9B, ask for the variations in the pile step, the whole pile in one numbered image and one request, the top included. That's about 2 s a pile on the 4B and 4 s on the 9B.
@@ -179,6 +194,8 @@ It's used when the model says "same", gives no answer, or gives two mockups in a
 - Suggest 1 to 3 words, and never block longer ones.
 - Duplicate variations: the spec (`design/specs/pile-titles.md`) replaces "both take their file markers". The app's words get a number ("side 2"), and words a person typed are never changed.
 - Variation words go into the app with the base and variation data model, which comes next.
+
+**Decided (Neesh, 2026-10-27):** the 9B's pile request gives the base the 3rd way, from the top's own title, and the app cuts "variant" and "variation" from it. The 4B and Apple keep the top's title. It lands while the pile waits in To stash and nobody has renamed it, and again from the top's own title when a mockup joins. A pile in My Stash keeps the name the person saw.
 
 ## C. 4B speed, quality first
 
