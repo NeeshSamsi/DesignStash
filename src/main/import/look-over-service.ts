@@ -79,13 +79,21 @@ export function changedTagIds(own: number[], top: DraftCarry['top']): number[] {
 /** What `withTimeout` rejects with once its time is up. */
 class TimedOut extends Error {}
 
-/** The promise, or a rejection once `ms` have passed. */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+/**
+ * What `run` gives, or a rejection once `ms` have passed. Then `run`'s signal is aborted too, which
+ * cancels the model's request: left running, it would hold the model's one slot and the next
+ * mockup's suggestion would wait behind it (F-035).
+ */
+function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+  const controller = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new TimedOut('Timed out')), Math.max(0, ms))
+    timer = setTimeout(() => {
+      controller.abort()
+      reject(new TimedOut('Timed out'))
+    }, Math.max(0, ms))
   })
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+  return Promise.race([run(controller.signal), timeout]).finally(() => clearTimeout(timer))
 }
 
 /** What judging one variant came to: the edit worked in, or offered, with the model's reason on a no. */
@@ -527,8 +535,9 @@ export class LookOverService {
     const { added } = editDiff(this.wordsOf(carry.top))
     if (added.length > 0) {
       const cover = this.repo.mockups.getMockup(id)?.coverPath
-      if (!cover || !steps.check) return { offer: null, why: 'failed' }
-      const said = await withTimeout(steps.check(cover, this.wordsOf(carry.top), added), left).catch((err: unknown) => (err instanceof TimedOut ? 'slow' : 'failed') as OfferWhy)
+      const check = steps.check
+      if (!cover || !check) return { offer: null, why: 'failed' }
+      const said = await withTimeout((signal) => check(cover, this.wordsOf(carry.top), added, signal), left).catch((err: unknown) => (err instanceof TimedOut ? 'slow' : 'failed') as OfferWhy)
       if (typeof said === 'string') return { offer: null, why: said }
       if (said.answer === 'no') return { offer: said.reason || null, why: 'refused' }
     }
@@ -584,7 +593,7 @@ export class LookOverService {
     const rewrite = provider?.pileEdits?.rewrite
     if (rewrite) {
       try {
-        return { description: await withTimeout(rewrite(this.wordsOf(carry.top), this.entryOf(draft)), this.deps.rewriteMs), via: 'rewrite' }
+        return { description: await withTimeout((signal) => rewrite(this.wordsOf(carry.top), this.entryOf(draft), signal), this.deps.rewriteMs), via: 'rewrite' }
       } catch {
         // Falls through to the copy.
       }

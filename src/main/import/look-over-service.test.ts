@@ -652,7 +652,8 @@ describe('an edit to a pile top', () => {
     expect(pushed.at(-1)).toMatchObject({ mockupId: rows[1]!.id, carry: { after: { via: 'rewrite' } } })
     expect(model.rewrite).toHaveBeenCalledWith(
       { before: { description: 'A laptop on white books.', tags: ['Laptop', 'books'] }, after: { description: 'A laptop on a white slatted bench.', tags: ['Laptop', 'bench'] } },
-      { description: 'A laptop on a mesh floor.', tags: ['Laptop', 'floor'] }
+      { description: 'A laptop on a mesh floor.', tags: ['Laptop', 'floor'] },
+      expect.any(AbortSignal)
     )
     expect(progress).toEqual([])
   })
@@ -667,6 +668,29 @@ describe('an edit to a pile top', () => {
     await save()
     await svc.whenIdle()
     expect((await itemOf(svc, rows[1]!.id)).carry!.after).toEqual({ description: 'A laptop on a white slatted bench.', via: 'copy' })
+  })
+
+  it("cancels the rewrite's request when it takes longer than rewriteMs, so the model is free (F-035)", async () => {
+    const signals: (AbortSignal | undefined)[] = []
+    const provider: InferenceProvider = {
+      id: 'stub',
+      name: 'Stub',
+      analyze: async () => {
+        throw new Error('not asked')
+      },
+      pileEdits: {
+        rewrite: (_edit, _entry, signal) => {
+          signals.push(signal)
+          return new Promise<string>(() => {})
+        }
+      }
+    }
+    const svc = service(provider, { rewriteMs: 10 })
+    const { save } = await editedPile(svc, [{ description: 'A laptop on a mesh floor.', tags: [] }])
+    await save()
+    await svc.whenIdle()
+    expect(signals).toHaveLength(1)
+    expect(signals[0]?.aborted).toBe(true)
   })
 
   it("takes only the edit's tag changes: the added ones added, the removed ones taken out, the rest kept", async () => {
@@ -752,7 +776,7 @@ describe('an edit to a pile top', () => {
       const left = await itemOf(svc, rows[2]!.id)
       expect(left).toMatchObject({ description: 'A laptop on a mesh floor.', carry: { state: 'offered', reason: 'this one is on a mesh floor' } })
       expect(left.carry!.after).toEqual({ description: 'A laptop on a mesh floor.', via: 'rewrite' })
-      expect(model.check).toHaveBeenCalledWith('/lib/v1.webp', expect.anything(), ['slatted', 'bench'])
+      expect(model.check).toHaveBeenCalledWith('/lib/v1.webp', expect.anything(), ['slatted', 'bench'], expect.any(AbortSignal))
 
       expect(progress[0]).toEqual({ pileId: rows[0]!.id, completed: 0, total: 2, phase: 'running' })
       expect(progress.at(-1)).toEqual({ pileId: rows[0]!.id, completed: 2, total: 2, phase: 'done' })
@@ -900,6 +924,30 @@ describe('an edit to a pile top', () => {
       await svc.whenIdle()
       expect([await whyOf(svc, rows[1]!.id), await whyOf(svc, rows[2]!.id)]).toEqual(['slow', 'slow'])
       slow.resolve({ answer: 'yes', reason: '' })
+    })
+
+    it("cancels the check's request when it runs out of time, so the model is free for the next run (F-035)", async () => {
+      const signals: (AbortSignal | undefined)[] = []
+      const provider: InferenceProvider = {
+        id: 'stub',
+        name: 'Stub',
+        analyze: async () => {
+          throw new Error('not asked')
+        },
+        pileEdits: {
+          check: (_cover, _edit, _added, signal) => {
+            signals.push(signal)
+            return new Promise<Check>(() => {})
+          },
+          rewrite: async (_edit, entry) => entry.description
+        }
+      }
+      const svc = service(provider, { judgeMs: 30 })
+      const { save } = await editedPile(svc, [{ description: 'One.', tags: [] }])
+      await save()
+      await svc.whenIdle()
+      expect(signals).toHaveLength(1)
+      expect(signals[0]?.aborted).toBe(true)
     })
 
     it('is `slow` when Look it over closed before the check reached it', async () => {

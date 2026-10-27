@@ -973,14 +973,13 @@ describe('VisionInferenceProvider pile edits', () => {
   })
 
   it("passes the caller's signal to the model for a check and a rewrite, so one that ran out of time can be cancelled (F-035)", async () => {
-    // The shared PileEditSteps gains the signal with look-over-service's half of F-035; until then it is reached this way.
     const judged = pileProvider({ judge: true }, { answer: 'yes', reason: '' })
     const signal = new AbortController().signal
-    await Reflect.apply(judged.provider.pileEdits.check!, undefined, ['/c', EDIT, ['bench'], signal])
+    await judged.provider.pileEdits.check!('/c', EDIT, ['bench'], signal)
     expect(judged.complete.mock.calls[0]![1]).toBe(signal)
 
     const rewritten = pileProvider(undefined, { description: 'A laptop on a white slatted bench.', tags: [] })
-    await Reflect.apply(rewritten.provider.pileEdits.rewrite!, undefined, [EDIT, ENTRY, signal])
+    await rewritten.provider.pileEdits.rewrite!(EDIT, ENTRY, signal)
     expect(rewritten.complete.mock.calls[0]![1]).toBe(signal)
   })
 

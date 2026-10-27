@@ -92,7 +92,10 @@ export interface PileEditSteps {
    * on a no, a few words on why ("this one is on a white backdrop"). Only a model that judges pile
    * edits has it (round 3 C: the 9B).
    */
-  check?(coverPath: string, edit: PileEdit, added: string[]): Promise<{ answer: 'yes' | 'no'; reason: string }>
-  /** The variant's description with only the edit's change worked in, in a text request. */
-  rewrite?(edit: PileEdit, entry: PileEditEntry): Promise<string>
+  check?(coverPath: string, edit: PileEdit, added: string[], signal?: AbortSignal): Promise<{ answer: 'yes' | 'no'; reason: string }>
+  /**
+   * The variant's description with only the edit's change worked in, in a text request. For both
+   * steps, aborting `signal` cancels the model's request, which frees it for the next run.
+   */
+  rewrite?(edit: PileEdit, entry: PileEditEntry, signal?: AbortSignal): Promise<string>
 }
