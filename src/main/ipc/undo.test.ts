@@ -30,6 +30,7 @@ let dir: string
 let undo: UndoService
 let menus: UndoMenuItems[]
 let editField: Mock<(direction: 'undo' | 'redo') => void>
+let pushed: Mock<(channel: string, payload: unknown) => void>
 const ran: unknown[] = []
 
 beforeEach(() => {
@@ -50,7 +51,10 @@ beforeEach(() => {
     menu: (items) => menus.push(items),
     editField
   })
-  registerUndoHandlers({ undo } as unknown as HandlerContext)
+  pushed = vi.fn()
+  // Only the counts are read: the sidebar is told after every step that ran.
+  const repo = { inbox: { getCounts: () => ({ toSort: 1, toStash: 0, sniffing: 0, trash: 2 }) } }
+  registerUndoHandlers({ undo, repo, push: pushed } as unknown as HandlerContext)
 })
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
@@ -74,8 +78,21 @@ describe('undo handlers', () => {
     ])
   })
 
-  it('says when there is nothing to undo', async () => {
+  it('says when there is nothing to undo, and tells the sidebar nothing', async () => {
     expect(await call(IPC_CHANNELS.UNDO_RUN)).toEqual({ status: 'empty' })
+    expect(pushed).not.toHaveBeenCalled()
+  })
+
+  it('tells the sidebar its counts after an undo, a redo or a toast’s undo', async () => {
+    const id = trash(1)
+    await call(IPC_CHANNELS.UNDO_RUN)
+    await call(IPC_CHANNELS.REDO_RUN)
+    await call(IPC_CHANNELS.UNDO_ENTRY, { id })
+    expect(pushed.mock.calls.filter(([c]) => c === IPC_CHANNELS.INBOX_COUNTS_CHANGED)).toEqual([
+      [IPC_CHANNELS.INBOX_COUNTS_CHANGED, { toSort: 1, toStash: 0, sniffing: 0, trash: 2 }],
+      [IPC_CHANNELS.INBOX_COUNTS_CHANGED, { toSort: 1, toStash: 0, sniffing: 0, trash: 2 }],
+      [IPC_CHANNELS.INBOX_COUNTS_CHANGED, { toSort: 1, toStash: 0, sniffing: 0, trash: 2 }]
+    ])
   })
 
   it('undo:entry undoes a toast’s own entry, and says when a newer action blocks it', async () => {
