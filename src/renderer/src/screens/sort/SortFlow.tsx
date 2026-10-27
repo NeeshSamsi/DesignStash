@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { FlowModal } from '@renderer/components/FlowModal'
 import { useShortcut } from '@renderer/lib/shortcuts'
+import { useFlowUndo } from '@renderer/lib/undo-router'
 import { useFlowOpen } from '@renderer/stores/copyStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { Button } from '@renderer/ui/button'
@@ -133,11 +134,10 @@ function SortSession({ initial, whole, copying, onClose, onLookThemOver }: Sessi
     scope: 'sort',
     handler: () => canDisband(latest.current) && send({ type: 'disband' })
   })
-  useShortcut({
-    id: 'sort.undo',
-    combo: 'mod+z',
-    scope: 'sort',
-    handler: () => send({ type: 'undo' })
+  // ⌘Z and ⇧⌘Z (Edit › Undo and Redo) step the board back and forward while it's open.
+  useFlowUndo({
+    undo: () => send({ type: 'undo' }),
+    redo: () => send({ type: 'redo' })
   })
 
   const total = Object.keys(state.tiles).length

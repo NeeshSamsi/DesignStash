@@ -79,47 +79,10 @@ describe('toastStore', () => {
     expect(sonner.dismiss).toHaveBeenCalledWith('toast-1')
   })
 
-  it('⌘Z runs the newest live Undo once, even with focus trapped elsewhere', () => {
-    const first = vi.fn()
-    const second = vi.fn()
-    undoToast('One', first)
-    mount(0, 'a')
-    undoToast('Two', second)
-    mount(1, 'b')
-    const press = () =>
-      document.body.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true })
-      )
-    press()
-    press()
-    expect(second).toHaveBeenCalledTimes(1)
-    expect(first).toHaveBeenCalledTimes(1)
-    press()
-    expect(first).toHaveBeenCalledTimes(1)
-  })
-
-  it('⌘Z is left to text fields', () => {
+  it('leaves ⌘Z to the Edit menu: a toast never answers the key itself (undo.md)', () => {
     const onUndo = vi.fn()
     undoToast('Moved', onUndo)
     mount(0, 'c')
-    const input = document.createElement('input')
-    document.body.append(input)
-    input.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true })
-    )
-    expect(onUndo).not.toHaveBeenCalled()
-    input.remove()
-  })
-
-  it('a dismissed Undo toast no longer answers ⌘Z', () => {
-    const onUndo = vi.fn()
-    undoToast('Moved', onUndo)
-    const options = sonner.custom.mock.calls.at(-1)![1] as {
-      onDismiss: (t: { id: string }) => void
-    }
-    mount(0, 'd')
-    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
-    options.onDismiss({ id: 'd' })
     document.body.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true })
     )

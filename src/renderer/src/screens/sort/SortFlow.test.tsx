@@ -11,7 +11,10 @@ import {
 } from '@shared/grouping'
 import { useShortcutDispatcher } from '@renderer/lib/shortcuts'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { runMenuCommand } from '@renderer/lib/menu-commands'
 import { SortFlow } from './SortFlow'
+
+const menuActions = { focusSearch: () => {} }
 
 vi.mock('@renderer/stores/toastStore', () => ({ toast: vi.fn(), undoToast: vi.fn() }))
 
@@ -318,7 +321,7 @@ describe('selection and menus', () => {
     expect(undoToast).not.toHaveBeenCalled()
   })
 
-  it('⇧⌘G disbands the selected pile and ⌘Z brings it back (S8.E2, S8.E1)', async () => {
+  it('⇧⌘G disbands the selected pile, Edit › Undo (⌘Z) brings it back and Redo (⇧⌘Z) breaks it up again (S8.E2, S8.E1, undo.md)', async () => {
     setupApi()
     mount()
     await ready()
@@ -326,8 +329,22 @@ describe('selection and menus', () => {
     key('g', { metaKey: true, shiftKey: true })
     expect(pileIds()).toEqual(['phones'])
     expect(tileIds(tray())).toEqual([8, 9, 10, 5, 6, 7])
-    key('z', { metaKey: true })
+    act(() => runMenuCommand('undo', menuActions))
     expect(pileIds()).toEqual(['phones', 'mugs'])
+    act(() => runMenuCommand('redo', menuActions))
+    expect(pileIds()).toEqual(['phones'])
+    // The board's own steps: nothing reached main's history.
+    expect(window.api.invoke).not.toHaveBeenCalledWith(IPC_CHANNELS.UNDO_RUN, undefined)
+  })
+
+  it('no longer hears ⌘Z as a key: it comes through the Edit menu', async () => {
+    setupApi()
+    mount()
+    await ready()
+    fireEvent.click(header('mugs'))
+    key('g', { metaKey: true, shiftKey: true })
+    key('z', { metaKey: true })
+    expect(pileIds()).toEqual(['phones'])
   })
 
   it('the toast’s Undo undoes the change', async () => {

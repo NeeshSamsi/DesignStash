@@ -72,6 +72,16 @@ import {
 import { coverUrl } from '@shared/cover-url'
 import { fullTitle } from '@shared/pile-variation'
 import { WRITING_PLACEHOLDER } from '@renderer/lib/writing-field'
+import { useFlowUndo } from '@renderer/lib/undo-router'
+import {
+  NO_STEPS,
+  record,
+  redoAnswer,
+  stepBack,
+  stepForward,
+  undoAnswer,
+  type StepList
+} from './steps'
 
 interface LookOverFlowProps {
   open: boolean
@@ -427,12 +437,20 @@ function Session({ queue, others, onClose, onBackToSort }: SessionProps) {
     answered(res)
   }
 
+  /** The flow's own steps (undo.md, settled point 3), for ⌘Z and ⇧⌘Z while it's open. */
+  const steps = useRef<StepList>(NO_STEPS)
+
   /**
    * The person's answer to the top's edit on a variant (`look-over:answer-edit`): accept (Apply here,
-   * Apply anyway), undo, dismiss (×) or restore (⌘Z). Accepting and undoing change its words, which
-   * the form takes in every field the person hasn't changed.
+   * Apply anyway), undo, dismiss (×) or restore. Accepting and undoing change its words, which the
+   * form takes in every field the person hasn't changed. Each answer is a step ⌘Z can take back;
+   * taking one back or forward answers again without adding a step. True when main took it.
    */
-  const answerEdit = async (id: number, action: AnswerEditRequest['action']) => {
+  const answerEdit = async (
+    id: number,
+    action: AnswerEditRequest['action'],
+    asStep = true
+  ): Promise<boolean> => {
     if (action === 'accept') setApplying(id)
     const res = await window.api
       .invoke(IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT, { mockupId: id, action })
@@ -444,10 +462,11 @@ function Session({ queue, others, onClose, onBackToSort }: SessionProps) {
         message: 'Couldn’t change that',
         description: 'Nothing was changed. Try again.'
       })
-      return
+      return false
     }
     const it = res.data
-    if (!it) return
+    if (!it) return false
+    if (asStep) steps.current = record(steps.current, { kind: 'answer', mockupId: id, action })
     dispatch({ type: 'items', items: [it] })
     if (action === 'accept' || action === 'undo') {
       const was = saved.current[id]
@@ -462,32 +481,26 @@ function Session({ queue, others, onClose, onBackToSort }: SessionProps) {
       dispatch({ type: 'tint', mockupId: id, fields: ['description'], at: Date.now() })
     }
     if (action === 'undo') setAccepted((ids) => new Set([...ids].filter((x) => x !== id)))
+    return true
   }
 
-  // ⌘Z brings back an offer dismissed on screen (L7.10). Outside a text field only, so typing keeps its own undo.
-  const restorable = row && here?.carry?.state === 'dismissed' ? here.mockupId : null
-  useEffect(() => {
-    if (restorable === null) return
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      const z = event.key.toLowerCase() === 'z' && (event.metaKey || event.ctrlKey)
-      if (!z || event.shiftKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      if (
-        target?.isContentEditable ||
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')
-      )
-        return
-      event.preventDefault()
-      void window.api
-        .invoke(IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT, { mockupId: restorable, action: 'restore' })
-        .then((res) => {
-          if (res.success && res.data) dispatch({ type: 'items', items: [res.data] })
-        })
-        .catch(() => {})
+  // ⌘Z and ⇧⌘Z (Edit › Undo and Redo) take the flow's last step back and put it forward again.
+  useFlowUndo({
+    undo: () => {
+      const back = stepBack(steps.current)
+      if (!back) return
+      void answerEdit(back.step.mockupId, undoAnswer(back.step.action), false).then((ok) => {
+        if (ok) steps.current = back.list
+      })
+    },
+    redo: () => {
+      const forward = stepForward(steps.current)
+      if (!forward) return
+      void answerEdit(forward.step.mockupId, redoAnswer(forward.step.action), false).then((ok) => {
+        if (ok) steps.current = forward.list
+      })
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [restorable])
+  })
 
   /**
    * A title left blank takes back the one main has as you move on, as a blank variation does

@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import { runMenuCommand } from '@renderer/lib/menu-commands'
 import { LookOverFlow } from '@renderer/screens/look-over'
+
+const menuActions = { focusSearch: () => {} }
 
 // Behaviour spec for the edit check and the offer in Look it over (design/specs/look-over.md, L7).
 
@@ -200,7 +203,7 @@ describe('Look it over · the edit to the top (L7)', () => {
     )
   })
 
-  it('L7.10: × dismisses for this variant, the row stays empty, and ⌘Z brings the offer back', async () => {
+  it('L7.10: × dismisses for this variant, the row stays empty, and Edit › Undo (⌘Z) brings the offer back', async () => {
     setup(queueWith({ carry: carry() }), {
       [IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT]: (p) =>
         ok(
@@ -217,12 +220,44 @@ describe('Look it over · the edit to the top (L7)', () => {
     expect(within(rail()).queryByText('Edits offered')).toBeNull()
 
     // ⌘Z in a text field is the field's own undo.
-    fireEvent.keyDown(description(), { key: 'z', metaKey: true })
+    description().focus()
+    await act(async () => runMenuCommand('undo', menuActions))
     expect(answered('restore')).toBe(false)
-    fireEvent.keyDown(document.body, { key: 'z', metaKey: true })
+    description().blur()
+    await act(async () => runMenuCommand('undo', menuActions))
     await waitFor(() =>
       expect(line()?.textContent).toContain('Use your top mockup edits here too?')
     )
+  })
+
+  it('Edit › Undo takes an applied edit back, and Redo applies it again (undo.md, settled point 3)', async () => {
+    const states: Record<string, string> = {
+      accept: 'applied',
+      undo: 'offered'
+    }
+    setup(queueWith({ carry: carry() }), {
+      [IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT]: (p) =>
+        ok(
+          item(11, 'variant', {
+            carry: carry({ state: states[(p as { action: string }).action] ?? 'offered' }),
+            description: (p as { action: string }).action === 'accept' ? REWRITE : OWN
+          })
+        )
+    })
+    await start()
+    fireEvent.click(within(line()!).getByRole('button', { name: 'Apply here' }))
+    await waitFor(() => expect(description().value).toBe(REWRITE))
+    await act(async () => runMenuCommand('undo', menuActions))
+    await waitFor(() => expect(description().value).toBe(OWN))
+    expect(answered('undo')).toBe(true)
+    await act(async () => runMenuCommand('redo', menuActions))
+    await waitFor(() => expect(description().value).toBe(REWRITE))
+    const accepts = invoke.mock.calls.filter(
+      ([channel, payload]) =>
+        channel === IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT &&
+        (payload as { action: string }).action === 'accept'
+    )
+    expect(accepts).toHaveLength(2)
   })
 
   it('L7.7: the model left it out, so the preview gives its reason and the button says Apply anyway', async () => {
