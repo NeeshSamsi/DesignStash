@@ -37,7 +37,11 @@ export type AiModelInfo = z.infer<typeof AiModelInfoSchema>
 export const AiActiveProblemSchema = z.enum([
   'apple-intelligence-off',
   'apple-model-not-ready',
-  'apple-unavailable'
+  'apple-unavailable',
+  /** The active model's runtime (llama-server) couldn't start twice in a row. */
+  'runtime-failed',
+  /** The active model is downloaded, and the llama-server it runs on is missing from the app. */
+  'runtime-missing'
 ])
 export type AiActiveProblem = z.infer<typeof AiActiveProblemSchema>
 

@@ -53,6 +53,15 @@ export interface ChatCompletion {
   timings?: Record<string, number>
 }
 
+/**
+ * A start of llama-server that failed: it couldn't be spawned, exited while loading, or never became
+ * ready. The runtime's trouble, never the request's: the queue counts these to tell that the
+ * runtime itself is broken (F-038).
+ */
+export class LlamaStartError extends Error {
+  override name = 'LlamaStartError'
+}
+
 const HOST = '127.0.0.1'
 const HEALTH_POLL_MS = 250
 const STOP_GRACE_MS = 5_000
@@ -265,10 +274,10 @@ export class LlamaServer {
     for (let i = 0; i < polls; i++) {
       if (failed) {
         if (child.pid !== undefined) await this.stop()
-        throw new Error(`llama-server couldn't start: ${failed.message}. ${this.tail()}`)
+        throw new LlamaStartError(`llama-server couldn't start: ${failed.message}. ${this.tail()}`)
       }
       if (exitCode !== undefined) {
-        throw new Error(`llama-server exited while loading (code ${exitCode}). ${this.tail()}`)
+        throw new LlamaStartError(`llama-server exited while loading (code ${exitCode}). ${this.tail()}`)
       }
       try {
         // 503 while the model loads, 200 once it's ready.
@@ -284,7 +293,7 @@ export class LlamaServer {
       await this.deps.sleep(HEALTH_POLL_MS)
     }
     await this.stop()
-    throw new Error(`llama-server didn't become ready in time. ${this.tail()}`)
+    throw new LlamaStartError(`llama-server didn't become ready in time. ${this.tail()}`)
   }
 
   private armIdle(): void {

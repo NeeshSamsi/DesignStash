@@ -26,6 +26,8 @@ let push: ReturnType<typeof vi.fn>
 let activeDownloads: Map<string, AbortController>
 let appleReady: boolean
 let appleReason: string
+let llamaServer: string | null
+let runtime: 'runtime-failed' | null
 let embeddings: {
   setBusyCheck: ReturnType<typeof vi.fn>
   backfill: ReturnType<typeof vi.fn>
@@ -57,6 +59,8 @@ beforeEach(() => {
     modelRemoved: vi.fn(async () => {})
   }
   appleReason = 'appleIntelligenceNotEnabled'
+  llamaServer = '/app/llama-server/llama-server'
+  runtime = null
   registerAiHandlers({
     settings,
     push,
@@ -69,7 +73,7 @@ beforeEach(() => {
         appleReady ? { available: true, reason: null } : { available: false, reason: appleReason },
       embeddings
     }
-  } as unknown as HandlerContext)
+  } as unknown as HandlerContext, { llamaServerPath: () => llamaServer, runtimeProblem: () => runtime })
 })
 
 afterEach(() => rmSync(base, { recursive: true, force: true }))
@@ -117,6 +121,30 @@ describe('AI_LIST_MODELS: the active model can’t run', () => {
     settings.update({ activeModelId: 'qwen3-vl-4b' })
     expect(await problem()).toBeNull()
     settings.update({ activeModelId: null })
+    expect(await problem()).toBeNull()
+  })
+
+  it("says the runtime is missing when a downloaded model has no llama-server to run on (F-038)", async () => {
+    install('qwen3-vl-4b')
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+    llamaServer = null
+    expect(await problem()).toBe('runtime-missing')
+  })
+
+  it('says the runtime keeps failing when the queue could not start it twice in a row (F-038)', async () => {
+    install('qwen3-vl-4b')
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+    runtime = 'runtime-failed'
+    expect(await problem()).toBe('runtime-failed')
+  })
+
+  it("has no runtime problem for a model that isn't downloaded yet, or for Apple's", async () => {
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+    llamaServer = null
+    expect(await problem()).toBeNull()
+    settings.update({ activeModelId: 'apple' })
+    appleReady = true
+    runtime = 'runtime-failed'
     expect(await problem()).toBeNull()
   })
 })

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { LlamaServer, type LlamaServerDeps, type ServerProcess } from './llama-server'
+import { LlamaServer, LlamaStartError, type LlamaServerDeps, type ServerProcess } from './llama-server'
 
 /** A child process that does nothing until the test makes it exit. */
 class FakeProcess extends EventEmitter implements ServerProcess {
@@ -41,7 +41,7 @@ interface Harness {
 function harness(
   opts: {
     health?: () => Response | Promise<Response>
-    chat?: () => Response | Promise<Response>
+    chat?: (init?: RequestInit) => Response | Promise<Response>
     exitsOnTerm?: boolean
     idleMs?: number
     startTimeoutMs?: number
@@ -68,7 +68,7 @@ function harness(
       const url = String(input)
       if (url.endsWith('/health')) return opts.health ? opts.health() : json({ status: 'ok' })
       chatBodies.push(JSON.parse(String(init?.body)))
-      return opts.chat ? opts.chat() : reply('{"title":"t"}')
+      return opts.chat ? opts.chat(init) : reply('{"title":"t"}')
     }) as unknown as typeof fetch,
     sleep: async () => {},
     onParentExit: (listener) => {
@@ -258,6 +258,22 @@ describe('LlamaServer', () => {
       expect.stringMatching(/^\[AI\] llama-server for m is up after \d+\.\d s\.$/),
       '[AI] llama-server for m stopped.'
     ])
+  })
+
+  it("marks a start that fails as the runtime's (LlamaStartError), and a failed request as not (F-038)", async () => {
+    const exits = harness({
+      health: () => {
+        exits.processes[0]!.exit(1)
+        return json({ error: 'Loading model' }, 503)
+      }
+    })
+    await expect(exits.server.chat({})).rejects.toBeInstanceOf(LlamaStartError)
+    const never = harness({ health: () => json({ error: 'Loading model' }, 503), startTimeoutMs: 1000 })
+    await expect(never.server.chat({})).rejects.toBeInstanceOf(LlamaStartError)
+    const answers500 = harness({ chat: () => json({ error: 'boom' }, 500) })
+    const err = await answers500.server.chat({}).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(Error)
+    expect(err).not.toBeInstanceOf(LlamaStartError)
   })
 
   it('gives up and kills the server when it never becomes ready', async () => {

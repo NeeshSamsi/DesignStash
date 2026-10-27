@@ -11,6 +11,7 @@ import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
 import { PileTitles } from '../library/pile-titles'
 import { logger } from '../logger'
+import { LlamaStartError } from './llama-server'
 import { HARD_STOP_FACTOR, RunTimes, memoryRunTimes } from './run-timing'
 
 /**
@@ -60,6 +61,15 @@ const realTimer = (ms: number, fire: () => void) => {
 /** Tries per mockup: the first, and one retry. */
 const ATTEMPTS = 2
 
+/** Runs in a row that couldn't start the model's runtime, after which it counts as broken (F-038). */
+const BROKEN_AFTER = 2
+
+/** How one run went for the runtime: whether it started, and whether a start failed. */
+interface RunStart {
+  started: boolean
+  startFailed: boolean
+}
+
 /** Seconds, to a tenth, for the log. */
 const secs = (ms: number) => (ms / 1000).toFixed(1)
 
@@ -82,6 +92,8 @@ export class InferenceQueue {
   private readonly piles: number[] = []
   /** The mockups each pile was last asked about, so it's asked again only once they change. */
   private readonly named = new Map<number, string>()
+  /** Runs in a row, on one model, that ended because its runtime couldn't start. */
+  private startFailures: { model: string | null; runs: number } = { model: null, runs: 0 }
   /** The mockups and the top's own title each pile's base was last asked from, so a base is asked once for each. */
   private readonly based = new Map<number, string>()
   private pumping: Promise<void> | null = null
@@ -210,6 +222,16 @@ export class InferenceQueue {
     if (!provider?.pileVariations || !this.wantsVariations(pileId, provider)) return
     if (!this.piles.includes(pileId)) this.piles.push(pileId)
     this.pump()
+  }
+
+  /**
+   * 'runtime-failed' once two runs in a row couldn't start the active model's runtime (llama-server
+   * exited while loading, never became ready, or couldn't be spawned): Settings › AI model and a
+   * toast say so once (F-038). A run that starts it, or another model, clears it.
+   */
+  get runtimeProblem(): 'runtime-failed' | null {
+    const model = this.deps.model?.() ?? null
+    return this.startFailures.model === model && this.startFailures.runs >= BROKEN_AFTER ? 'runtime-failed' : null
   }
 
   /** Whether a suggestion is being read or waiting its turn. */
@@ -368,11 +390,14 @@ export class InferenceQueue {
     const model = this.deps.model?.() ?? null
     const slowAfterMs = this.timing.slowAfterMs(model)
     const cold = provider.loaded === false
+    const start: RunStart = { started: false, startFailed: false }
     if (cold) {
       this.run = { phase: 'starting', writingSince: null, slowAfterMs }
       this.emit([{ ...this.setStatus(id, 'sniffing'), run: this.run }])
       // A load that fails leaves it to the request, which fails and is tried again.
-      await provider.load?.().catch(() => {})
+      await provider.load?.().catch((err: unknown) => {
+        if (err instanceof LlamaStartError) start.startFailed = true
+      })
     }
     // Readying its files (the slot mask) is no part of the model's run: the clock starts after.
     await this.deps.prepare?.(m).catch(() => {})
@@ -381,7 +406,8 @@ export class InferenceQueue {
     const since = this.now()
     this.run = { phase: 'writing', writingSince: since, slowAfterMs }
     this.emit([{ ...(cold ? { mockupId: id, status: 'sniffing' as const } : this.setStatus(id, 'sniffing')), run: this.run }])
-    const result = await this.suggestBy(provider, m, since, slowAfterMs)
+    const result = await this.suggestBy(provider, m, since, slowAfterMs, start)
+    this.noteStart(model, start)
 
     // Tossed or trashed while it was being read: nothing to write to. Filled in by the person: theirs.
     const now = this.deps.repo.mockups.getMockup(id)
@@ -405,7 +431,7 @@ export class InferenceQueue {
    * `slowAfterMs` after `since`: the model is stopped so the next mockup doesn't wait behind it, it
    * isn't tried again, and its late answer goes nowhere. Fill it myself stops it the same way.
    */
-  private async suggestBy(provider: InferenceProvider, m: Mockup, since: number, slowAfterMs: number): Promise<InferenceResult | null> {
+  private async suggestBy(provider: InferenceProvider, m: Mockup, since: number, slowAfterMs: number, start: RunStart): Promise<InferenceResult | null> {
     const run: { stopped: boolean; why?: 'hard stop' | 'filled in' } = { stopped: false }
     let clear = () => {}
     const stopped = new Promise<null>((resolve) => {
@@ -417,7 +443,7 @@ export class InferenceQueue {
       this.stopRun = () => stop('filled in')
       clear = this.timer(Math.max(0, since + HARD_STOP_FACTOR * slowAfterMs - this.now()), () => stop('hard stop'))
     })
-    const result = await Promise.race([this.suggest(provider, m, run), stopped])
+    const result = await Promise.race([this.suggest(provider, m, run, start), stopped])
     clear()
     this.stopRun = null
     if (run.stopped) {
@@ -432,16 +458,29 @@ export class InferenceQueue {
     return run.stopped ? null : result
   }
 
-  private async suggest(provider: InferenceProvider, m: Mockup, run: { stopped: boolean }): Promise<InferenceResult | null> {
+  private async suggest(provider: InferenceProvider, m: Mockup, run: { stopped: boolean }, start: RunStart): Promise<InferenceResult | null> {
     for (let attempt = 1; attempt <= ATTEMPTS && !run.stopped; attempt++) {
       try {
-        const parsed = InferenceResultSchema.safeParse(await provider.analyze(analysisInputFor(m)))
+        const answer = await provider.analyze(analysisInputFor(m))
+        start.started = true
+        const parsed = InferenceResultSchema.safeParse(answer)
         if (parsed.success) return parsed.data
-      } catch {
-        // Fall through to the next attempt.
+      } catch (err) {
+        // The runtime answered and the reply was no good, or it couldn't start: either way, the next attempt.
+        if (err instanceof LlamaStartError) start.startFailed = true
+        else start.started = true
       }
     }
     return null
+  }
+
+  /** A run that started the runtime clears the count of failed starts; one that couldn't adds to it. */
+  private noteStart(model: string | null, start: RunStart): void {
+    if (start.started) this.startFailures = { model, runs: 0 }
+    else if (start.startFailed) {
+      const runs = this.startFailures.model === model ? this.startFailures.runs + 1 : 1
+      this.startFailures = { model, runs }
+    }
   }
 
   private inInbox(m: Mockup): boolean {

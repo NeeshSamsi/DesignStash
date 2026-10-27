@@ -3,6 +3,7 @@ import type { AiActiveProblem } from '@shared/ipc/ai'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { detectHardware, recommendTier } from '../ai/hardware'
 import { DownloadError, assertSafeId, classifyDownloadError } from '../ai/download'
+import { resolveLlamaServerPath } from '../ai/provider-factory'
 import {
   MEANING_MODEL,
   MODEL_REGISTRY,
@@ -23,7 +24,21 @@ function appleProblem(reason: string | null): AiActiveProblem {
   return 'apple-unavailable'
 }
 
-export function registerAiHandlers(ctx: HandlerContext): void {
+/** What the handlers ask about the runtime, so tests can say it without a real one. */
+export interface AiHandlerDeps {
+  /** The llama-server the app runs models on, or null when it is missing. */
+  llamaServerPath(): string | null
+  /** 'runtime-failed' once the active model's runtime has failed to start twice in a row. */
+  runtimeProblem(): 'runtime-failed' | null
+}
+
+export function registerAiHandlers(
+  ctx: HandlerContext,
+  deps: AiHandlerDeps = {
+    llamaServerPath: () => resolveLlamaServerPath(),
+    runtimeProblem: () => inferenceQueueFor(ctx).runtimeProblem
+  }
+): void {
   const { settings, telemetry, ai, push } = ctx
   const { downloader, activeDownloads } = ai
 
@@ -63,6 +78,19 @@ export function registerAiHandlers(ctx: HandlerContext): void {
       }))
     )
     const active = activeModelId ? getModel(activeModelId) : undefined
+    const activeInstalled = models.find((m) => m.active)?.installed ?? false
+    // Apple's model can be off in macOS; a downloaded model can have no runtime, or one that won't start.
+    const activeProblem: AiActiveProblem | null = !active
+      ? null
+      : isBuiltIn(active)
+        ? apple.available
+          ? null
+          : appleProblem(apple.reason)
+        : !activeInstalled
+          ? null
+          : deps.llamaServerPath() === null
+            ? 'runtime-missing'
+            : deps.runtimeProblem()
     return {
       models,
       meaning: {
@@ -75,7 +103,7 @@ export function registerAiHandlers(ctx: HandlerContext): void {
         installed: await downloader.isInstalled(MEANING_MODEL.id)
       },
       legacy: await downloader.listLegacy(),
-      activeProblem: active && isBuiltIn(active) && !apple.available ? appleProblem(apple.reason) : null
+      activeProblem
     }
   })
 

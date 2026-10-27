@@ -7,6 +7,7 @@ import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb, sample } from '../db/repositories/__tests__/setup'
 import { PileTitles } from '../library/pile-titles'
 import { InferenceQueue, analysisInputFor } from './inference-queue'
+import { LlamaStartError } from './llama-server'
 import { HARD_STOP_FACTOR, RunTimes, memoryRunTimes } from './run-timing'
 
 const result = (title: string): InferenceResult => ({
@@ -403,6 +404,67 @@ describe('pile context', () => {
     await queue.enqueue([variant.id, single.id])
     await queue.idle()
     expect(calls.map((c) => c.groupContext)).toEqual([undefined, undefined])
+  })
+})
+
+describe('a runtime that keeps failing to start (F-038)', () => {
+  const failing = (err: () => Error) => stubProvider(() => Promise.reject(err())).provider
+  const cannotStart = () => new LlamaStartError('llama-server exited while loading (code 1).')
+
+  it('says the runtime is broken once two runs in a row could not start it, and not after one', async () => {
+    const queue = queueWith(failing(cannotStart), { model: () => 'qwen3-vl-4b' })
+    await queue.enqueue([imported('a').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBeNull()
+
+    await queue.enqueue([imported('b').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBe('runtime-failed')
+  })
+
+  it('forgets it after a run that writes, and on another model', async () => {
+    let broken = true
+    let model = 'qwen3-vl-4b'
+    const stub = stubProvider((input) => (broken ? Promise.reject(cannotStart()) : result(input.fileName)))
+    const queue = queueWith(stub.provider, { model: () => model })
+    await queue.enqueue([imported('a').id, imported('b').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBe('runtime-failed')
+
+    model = 'qwen3.5-9b'
+    expect(queue.runtimeProblem).toBeNull()
+    model = 'qwen3-vl-4b'
+    broken = false
+    await queue.enqueue([imported('c').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBeNull()
+  })
+
+  it('counts a model that never loads, whose run the hard stop then cuts off', async () => {
+    const stub = stubProvider(() => new Promise<InferenceResult>(() => {}))
+    const provider: InferenceProvider = { ...stub.provider, loaded: false, load: () => Promise.reject(cannotStart()), stop: async () => {} }
+    const stops: (() => void)[] = []
+    const queue = queueWith(provider, {
+      model: () => 'qwen3-vl-4b',
+      timer: (_ms, fire) => {
+        stops.push(fire)
+        return () => {}
+      }
+    })
+    await queue.enqueue([imported('a').id, imported('b').id])
+    await vi.waitFor(() => expect(stops).toHaveLength(1))
+    stops[0]!()
+    await vi.waitFor(() => expect(stops).toHaveLength(2))
+    stops[1]!()
+    await queue.idle()
+    expect(queue.runtimeProblem).toBe('runtime-failed')
+  })
+
+  it("leaves other failures to each mockup: a reply that can't be read is no broken runtime", async () => {
+    const queue = queueWith(failing(() => new Error('Invalid JSON in model response')), { model: () => 'qwen3-vl-4b' })
+    await queue.enqueue([imported('a').id, imported('b').id, imported('c').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBeNull()
   })
 })
 

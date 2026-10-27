@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { AiActiveProblem } from '@shared/ipc/ai'
 import { toast } from '../stores/toastStore'
+import { subscribePush } from './subscribe'
 import { useUiStore } from '../stores/uiStore'
 
 /** Why the active model makes no suggestions, for the toast and Settings › AI model. */
@@ -24,13 +25,25 @@ export function activeProblemCopy(problem: AiActiveProblem): { title: string; me
         title: 'Apple’s on-device model isn’t available',
         message: 'New mockups get no suggestions until you choose another model.'
       }
+    case 'runtime-failed':
+      return {
+        title: 'The AI model won’t start',
+        message:
+          'It stopped twice while loading, so new mockups get no suggestions. You can choose another model, or send a report from Help › Report a Problem.'
+      }
+    case 'runtime-missing':
+      return {
+        title: 'Part of DesignStash is missing',
+        message: 'The program that runs AI models isn’t in the app, so new mockups get no suggestions. Reinstalling DesignStash brings it back.'
+      }
   }
 }
 
 /**
  * The app-wide notice for an active model that can't run (Apple's, with Apple Intelligence turned
- * off): one toast with Choose a model, at launch and when the window comes back, only when the
- * problem is new. Settings › AI model shows the same words while it lasts.
+ * off, or a runtime that won't start or is missing): one toast with Choose a model, at launch, when
+ * the window comes back and when a mockup couldn't be written, only when the problem is new.
+ * Settings › AI model shows the same words while it lasts.
  */
 export function useActiveModelNotice(): void {
   const last = useRef<AiActiveProblem | null>(null)
@@ -57,6 +70,13 @@ export function useActiveModelNotice(): void {
     void check()
     const onFocus = () => void check()
     window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
+    // A mockup the AI couldn't write may be the runtime itself failing (F-038).
+    const unsubscribe = subscribePush(IPC_CHANNELS.AI_STATUS, (event) => {
+      if (event.updates.some((u) => u.status === 'failed')) void check()
+    })
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      unsubscribe()
+    }
   }, [])
 }
