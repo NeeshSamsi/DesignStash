@@ -331,7 +331,7 @@ describe('change: point', () => {
     const empty = join(base, 'Empty')
     mkdirSync(empty)
 
-    expect(await service().change(empty, 'point')).toEqual({ ok: false, reason: 'failed' })
+    expect(await service().change(empty, 'point')).toEqual({ ok: false, reason: 'no-stash' })
     expect(settings.get().pendingStash).toBeNull()
   })
 })

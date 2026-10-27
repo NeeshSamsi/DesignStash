@@ -152,7 +152,7 @@ export class StashFolderService {
       if (!stat) return { ok: false, reason: 'not-a-folder' }
       // Pointing opens a stash that is already there. Anywhere else it would start an empty library
       // and leave this one behind, so Settings only offers it for a folder with a stash in it.
-      if (!existsSync(join(path, DB_FILE))) return { ok: false, reason: 'failed' }
+      if (!existsSync(join(path, DB_FILE))) return { ok: false, reason: 'no-stash' }
       this.settings.update({ pendingStash: { path, mode, oldRoot: root } })
       return { ok: true, restartRequired: true }
     }

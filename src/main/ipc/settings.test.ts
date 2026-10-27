@@ -76,7 +76,7 @@ describe('stash channels', () => {
     mkdirSync(empty)
     expect(await call(IPC_CHANNELS.STASH_CHANGE, { path: empty, mode: 'point' })).toEqual({
       success: true,
-      data: { ok: false, reason: 'failed' }
+      data: { ok: false, reason: 'no-stash' }
     })
   })
 

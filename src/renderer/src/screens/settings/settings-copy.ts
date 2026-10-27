@@ -42,6 +42,7 @@ export function stashFailureCopy(reason: StashChangeFailure): {
     'verify-failed':
       'Some files didn’t copy cleanly, so nothing was moved. Your stash is as it was.',
     busy: 'Mockups are still copying into your stash. Try again once the copy finishes or you cancel it.',
+    'no-stash': 'There’s no stash in that folder. Pick it again to move your stash there.',
     failed: 'Something went wrong. Your stash is as it was. Try again.'
   }
   return { title, description: why[reason] }

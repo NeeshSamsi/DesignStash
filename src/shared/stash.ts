@@ -26,6 +26,8 @@ export const StashChangeFailureSchema = z.enum([
   'verify-failed',
   /** Mockups are still copying in. A move waits until the copy is done or cancelled. */
   'busy',
+  /** Using a folder as it is opens the stash already in it, so a folder without one is refused. */
+  'no-stash',
   'failed'
 ])
 export type StashChangeFailure = z.infer<typeof StashChangeFailureSchema>
