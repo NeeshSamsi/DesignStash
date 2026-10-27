@@ -85,6 +85,7 @@
     "@types/yauzl": "^3.4.0",
     "@types/yazl": "^3.3.1",
     "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "4.1.9",
     "drizzle-kit": "^0.31.10",
     "electron": "^42.4.0",
     "electron-builder": "^26.15.3",
