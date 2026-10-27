@@ -72,13 +72,14 @@ import {
 import { coverUrl } from '@shared/cover-url'
 import { fullTitle } from '@shared/pile-variation'
 import { WRITING_PLACEHOLDER } from '@renderer/lib/writing-field'
-import { useFlowUndo } from '@renderer/lib/undo-router'
+import { ipcUndoRoutes, undoEntry, useFlowUndo } from '@renderer/lib/undo-router'
 import {
   NO_STEPS,
   record,
   redoAnswer,
   stepBack,
   stepForward,
+  syncStashes,
   undoAnswer,
   type StepList
 } from './steps'
@@ -484,23 +485,70 @@ function Session({ queue, others, onClose, onBackToSort }: SessionProps) {
     return true
   }
 
-  // ⌘Z and ⇧⌘Z (Edit › Undo and Redo) take the flow's last step back and put it forward again.
+  // ⌘Z and ⇧⌘Z (Edit › Undo and Redo) take the flow's last step back and put it forward again. A
+  // stash is its entry in the app's history: main undoes or redoes it, and the undo:state push
+  // below brings the flow in line, however the stash was undone.
   useFlowUndo({
     undo: () => {
       const back = stepBack(steps.current)
       if (!back) return
-      void answerEdit(back.step.mockupId, undoAnswer(back.step.action), false).then((ok) => {
+      const { step } = back
+      if (step.kind === 'stash') return void undoEntry(step.entryId)
+      void answerEdit(step.mockupId, undoAnswer(step.action), false).then((ok) => {
         if (ok) steps.current = back.list
       })
     },
     redo: () => {
       const forward = stepForward(steps.current)
       if (!forward) return
-      void answerEdit(forward.step.mockupId, redoAnswer(forward.step.action), false).then((ok) => {
+      const { step } = forward
+      // Inside the flow nothing newer than its last stash can be undone, so it's main's next redo.
+      if (step.kind === 'stash') return void ipcUndoRoutes.app('redo')
+      void answerEdit(step.mockupId, redoAnswer(step.action), false).then((ok) => {
         if (ok) steps.current = forward.list
       })
     }
   })
+
+  // A stash undone anywhere (here, its toast, the Edit menu) brings its pile or mockup back to
+  // look over; redone, it's stashed again.
+  useEffect(
+    () =>
+      subscribePush(IPC_CHANNELS.UNDO_STATE, (state) => {
+        const synced = syncStashes(
+          steps.current,
+          state.entries.map((entry) => entry.id)
+        )
+        if (synced.list === steps.current) return
+        steps.current = synced.list
+        for (const step of synced.unstashed) {
+          if (step.kind !== 'stash') continue
+          stashedCount.current -= step.count
+          setFlow((current) => {
+            if (!current.stashed.has(step.unitId)) return current
+            const index = current.units.findIndex((u) => u.unitId === step.unitId)
+            const back = current.units[index]
+            return {
+              ...current,
+              stashed: new Set([...current.stashed].filter((id) => id !== step.unitId)),
+              position: { unit: index, step: back?.kind === 'pile' ? back.items.length : 0 }
+            }
+          })
+        }
+        for (const step of synced.restashed) {
+          if (step.kind !== 'stash') continue
+          stashedCount.current += step.count
+          setFlow((current) => {
+            if (current.stashed.has(step.unitId)) return current
+            const index = current.units.findIndex((u) => u.unitId === step.unitId)
+            return index === current.position.unit
+              ? afterStash(current)
+              : { ...current, stashed: new Set([...current.stashed, step.unitId]) }
+          })
+        }
+      }),
+    []
+  )
 
   /**
    * A title left blank takes back the one main has as you move on, as a blank variation does
@@ -683,14 +731,25 @@ function Session({ queue, others, onClose, onBackToSort }: SessionProps) {
       if (first !== -1) setFlow((s) => jumpTo(s, first))
       return
     }
-    const { snapshot, stashedIds } = res.data
+    const { snapshot, stashedIds, undoEntryId } = res.data
     stashedCount.current += stashedIds.length
     const unitId = unit.unitId
     const advanced = afterStash(flow)
     setFlow(advanced)
+    // The stash is a step ⌘Z takes back here, and the same entry in the app's history.
+    if (undoEntryId !== undefined) {
+      steps.current = record(steps.current, {
+        kind: 'stash',
+        unitId,
+        entryId: undoEntryId,
+        count: stashedIds.length
+      })
+    }
     undoToast(
       pile ? `Pile stashed · ${stashedIds.length} mockups` : 'Stashed',
-      () => void undoStash(snapshot, unitId, stashedIds.length)
+      () => void undoStash(snapshot, unitId, stashedIds.length),
+      undefined,
+      undoEntryId
     )
     finish(advanced)
   }

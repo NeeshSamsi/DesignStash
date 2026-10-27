@@ -5,6 +5,7 @@ import {
   redoAnswer,
   stepBack,
   stepForward,
+  syncStashes,
   undoAnswer,
   type LookOverStep
 } from './steps'
@@ -45,5 +46,38 @@ describe('what taking an answer back does', () => {
   it('puts it forward again as it was given', () => {
     expect(redoAnswer('accept')).toBe('accept')
     expect(redoAnswer('dismiss')).toBe('dismiss')
+  })
+})
+
+describe('a stash is one action with its entry in the app’s history', () => {
+  const stash = (unitId: number, entryId: number): LookOverStep => ({
+    kind: 'stash',
+    unitId,
+    entryId,
+    count: 2
+  })
+
+  it('goes back once its entry has left the history, however it was undone', () => {
+    const list = record(record(NO_STEPS, accept), stash(10, 5))
+    const synced = syncStashes(list, [])
+    expect(synced.list.done).toEqual([accept])
+    expect(synced.list.undone).toEqual([stash(10, 5)])
+    expect(synced.unstashed).toEqual([stash(10, 5)])
+    expect(synced.restashed).toEqual([])
+  })
+
+  it('comes forward again once its entry is back (redone)', () => {
+    const undone = stepBack(record(NO_STEPS, stash(10, 5)))!.list
+    const synced = syncStashes(undone, [5])
+    expect(synced.list.done).toEqual([stash(10, 5)])
+    expect(synced.restashed).toEqual([stash(10, 5)])
+  })
+
+  it('changes nothing while the history agrees', () => {
+    const list = record(NO_STEPS, stash(10, 5))
+    const synced = syncStashes(list, [3, 5])
+    expect(synced.list).toBe(list)
+    expect(synced.unstashed).toEqual([])
+    expect(synced.restashed).toEqual([])
   })
 })

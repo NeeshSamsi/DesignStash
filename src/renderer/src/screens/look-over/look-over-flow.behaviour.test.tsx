@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import { runMenuCommand } from '@renderer/lib/menu-commands'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { LookOverFlow } from '@renderer/screens/look-over'
+
+const menuActions = { focusSearch: () => {} }
 
 // Behaviour spec for opening, leaving and finishing Look it over (design/specs/inboxes.md,
 // piles.md): where it opens, an empty queue, a blank title on the way out, and the done toasts.
@@ -218,5 +221,62 @@ describe('Look it over · a top edit that reached its variants', () => {
       ).toBe('carried words')
     )
     expect(calls(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1)
+  })
+})
+
+describe('Look it over · a stash is one action with its history entry (undo.md)', () => {
+  const stashWithEntry = {
+    [IPC_CHANNELS.MOCKUP_STASH]: (p: unknown) =>
+      ok({
+        ok: true,
+        stashedIds: [(p as { mockupId: number }).mockupId],
+        snapshot: { mockups: [], drafts: [], resume: null },
+        undoEntryId: 5
+      }),
+    [IPC_CHANNELS.UNDO_ENTRY]: () => ok({ status: 'done', label: 'Stash' }),
+    [IPC_CHANNELS.REDO_RUN]: () => ok({ status: 'done', label: 'Stash' })
+  }
+  const history = (ids: number[]) =>
+    act(() => pushes.get(IPC_CHANNELS.UNDO_STATE)?.({ entries: ids.map((id) => ({ id })) }))
+  const titleIs = (value: string) =>
+    waitFor(async () => expect(((await titleField()) as HTMLInputElement).value).toBe(value))
+  // Edit › Undo and Redo outside a field: the flow's own steps.
+  const menu = async (command: 'undo' | 'redo') => {
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await act(async () => runMenuCommand(command, menuActions))
+  }
+
+  it('Edit › Undo in the flow undoes the stash’s entry and brings the mockup back; Redo stashes it again', async () => {
+    setup(queue([single(30), single(31)]), stashWithEntry)
+    render(<LookOverFlow open onClose={vi.fn()} />)
+    await titleField()
+    fireEvent.click(screen.getByRole('button', { name: 'Stash & next' }))
+    await titleIs('poster 31')
+    expect(toasts.undoToast).toHaveBeenCalledWith('Stashed', expect.any(Function), undefined, 5)
+    history([5])
+
+    await menu('undo')
+    expect(calls(IPC_CHANNELS.UNDO_ENTRY)).toEqual([{ id: 5 }])
+    history([])
+    await titleIs('poster 30')
+
+    await menu('redo')
+    expect(calls(IPC_CHANNELS.REDO_RUN)).toHaveLength(1)
+    history([5])
+    await titleIs('poster 31')
+  })
+
+  it('a stash undone from its toast comes back here too, and ⌘Z then doesn’t undo it twice', async () => {
+    setup(queue([single(30), single(31)]), stashWithEntry)
+    render(<LookOverFlow open onClose={vi.fn()} />)
+    await titleField()
+    fireEvent.click(screen.getByRole('button', { name: 'Stash & next' }))
+    await titleIs('poster 31')
+    history([5])
+    // The toast's Undo went to main; the push says the entry has gone.
+    history([])
+    await titleIs('poster 30')
+    await menu('undo')
+    expect(calls(IPC_CHANNELS.UNDO_ENTRY)).toEqual([])
   })
 })

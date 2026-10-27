@@ -3,13 +3,12 @@ import type { AnswerEditRequest } from '@shared/approval'
 /**
  * Look it over's own steps (design/specs/undo.md, settled point 3): what ⌘Z takes back while the
  * flow is open and focus is outside a field, and ⇧⌘Z puts forward again. An answer to the top's
- * edit on a variant (apply it, its Undo, dismiss it, bring it back) is one.
+ * edit on a variant (apply it, its Undo, dismiss it, bring it back) is one, and so is a stash,
+ * which is also an entry in the app's history: one action, in both.
  */
-export type LookOverStep = {
-  kind: 'answer'
-  mockupId: number
-  action: AnswerEditRequest['action']
-}
+export type LookOverStep =
+  | { kind: 'answer'; mockupId: number; action: AnswerEditRequest['action'] }
+  | { kind: 'stash'; unitId: number; entryId: number; count: number }
 
 export interface StepList {
   /** Taken in this session, newest last. */
@@ -52,3 +51,27 @@ export const undoAnswer = (action: AnswerEditRequest['action']) => REVERSE[actio
 
 /** The answer that puts it forward again: the same one. */
 export const redoAnswer = (action: AnswerEditRequest['action']) => action
+
+/**
+ * Lines the stashes up with the app's history (the undo:state push's entries, by id). A stash
+ * whose entry has left the history was undone, from the flow, its toast or the Edit menu, so its
+ * step goes back; one whose entry is back was redone, so it comes forward. Says which moved.
+ */
+export function syncStashes(
+  list: StepList,
+  entryIds: readonly number[]
+): { list: StepList; unstashed: LookOverStep[]; restashed: LookOverStep[] } {
+  const live = new Set(entryIds)
+  const inHistory = (step: LookOverStep) => step.kind !== 'stash' || live.has(step.entryId)
+  const unstashed = list.done.filter((step) => !inHistory(step))
+  const restashed = list.undone.filter((step) => step.kind === 'stash' && inHistory(step))
+  if (unstashed.length === 0 && restashed.length === 0) return { list, unstashed, restashed }
+  return {
+    list: {
+      done: [...list.done.filter(inHistory), ...restashed],
+      undone: [...list.undone.filter((step) => !restashed.includes(step)), ...unstashed]
+    },
+    unstashed,
+    restashed
+  }
+}
