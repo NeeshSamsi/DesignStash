@@ -32,10 +32,6 @@ function AppMain() {
   const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
   const view = useUiStore((s) => s.view)
   const openModal = useUiStore((s) => s.openModal)
-  const libraryQuery = useLibraryStore((s) => s.query)
-  const librarySort = useLibraryStore((s) => s.sort)
-  const libraryTagFilter = useLibraryStore((s) => s.tagFilter)
-  const setLibraryItems = useLibraryStore((s) => s.setItems)
   const setLibraryStats = useLibraryStore((s) => s.setStats)
 
   useUpdateNotice()
@@ -73,18 +69,12 @@ function AppMain() {
     })()
   }, [openModal])
 
+  // My Stash fetches its own list, with its view and filters, whenever it shows: only the counts
+  // are refreshed here.
   const refreshLibrary = useCallback(async () => {
-    const [listRes, statsRes] = await Promise.all([
-      window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
-        tagIds: libraryTagFilter.length ? libraryTagFilter : undefined,
-        query: libraryQuery || undefined,
-        sort: librarySort
-      }),
-      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
-    ])
-    if (listRes.success) setLibraryItems(listRes.data.items)
+    const statsRes = await window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
     if (statsRes.success) setLibraryStats(statsRes.data)
-  }, [libraryQuery, librarySort, libraryTagFilter, setLibraryItems, setLibraryStats])
+  }, [setLibraryStats])
 
   // The Sort board works on an import batch; Look it over works on the whole queue main holds, piles first.
   const batchOf = (items: InboxItem[]) =>

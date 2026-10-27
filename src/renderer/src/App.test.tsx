@@ -238,6 +238,62 @@ describe('App', () => {
     })
   })
 
+  it('closing Look it over never fetches a list without the Starred view and category filter', async () => {
+    useUiStore.setState({ view: 'starred' })
+    useLibraryStore.setState({ categoryIds: [5] })
+    const base = window.api.invoke as ReturnType<typeof vi.fn>
+    const previous = base.getMockImplementation() as (c: string, r: unknown) => unknown
+    base.mockImplementation(async (channel: string, request: unknown) => {
+      if (channel === IPC_CHANNELS.INBOX_COUNTS)
+        return { success: true, data: { toSort: 0, toStash: 1, sniffing: 0, trash: 0 } }
+      if (channel === IPC_CHANNELS.INBOX_LIST)
+        return {
+          success: true,
+          data: {
+            items: [
+              {
+                id: 4,
+                title: 'Poster',
+                description: null,
+                coverPath: '/c/p.webp',
+                coverSource: 'embedded',
+                coverMissing: false,
+                favourite: false,
+                createdAt: '2026-10-11',
+                pile: null,
+                pileId: null,
+                variation: null,
+                tags: [],
+                stage: 'to_stash',
+                aiStatus: 'ready',
+                sizeBytes: 1,
+                batchId: 'b1'
+              }
+            ]
+          }
+        }
+      // Nothing left by the time it opens, so Look it over closes at once, as Finish later would.
+      if (channel === IPC_CHANNELS.LOOK_OVER_OPEN)
+        return { success: true, data: { units: [], checksEdits: false, resume: null } }
+      return previous(channel, request)
+    })
+    const sent = (channel: string) => base.mock.calls.filter(([c]) => c === channel)
+
+    render(<App />)
+    await waitFor(() => expect(sent(IPC_CHANNELS.LIBRARY_LIST).length).toBeGreaterThan(0))
+    fireEvent.click(await screen.findByRole('button', { name: /To stash/ }))
+    const lookThemOver = await screen.findByRole('button', { name: 'Look them over' })
+    const statsBefore = sent(IPC_CHANNELS.LIBRARY_STATS).length
+    fireEvent.click(lookThemOver)
+    await waitFor(() => expect(sent(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1))
+    await waitFor(() =>
+      expect(sent(IPC_CHANNELS.LIBRARY_STATS).length).toBeGreaterThan(statsBefore)
+    )
+    for (const [, request] of sent(IPC_CHANNELS.LIBRARY_LIST)) {
+      expect(request).toMatchObject({ starredOnly: true, categoryIds: [5] })
+    }
+  })
+
   it('blocking reconciliation modal appears when boot scan finds drift', async () => {
     ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
       if (channel === IPC_CHANNELS.SETTINGS_GET)

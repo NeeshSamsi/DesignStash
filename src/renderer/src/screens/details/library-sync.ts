@@ -3,25 +3,16 @@ import { useDetailEffects } from '../../stores/detailEffectsStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 
 /**
- * Tell the library that Detail changed something it shows. Pages that read `useDetailEffects`
- * reload from the revision; the shared library store is refreshed here for the views that still
- * read it. A failed refresh is not Detail's problem, so it stays quiet.
+ * Tell the library that Detail changed something it shows. The page reloads its list from the
+ * revision, with its own view and filters; the counts are refreshed here. A failed refresh is not
+ * Detail's problem, so it stays quiet.
  */
 export async function syncLibrary(): Promise<void> {
   useDetailEffects.getState().notifyChanged()
-  const { query, sort, tagFilter, setItems, setStats } = useLibraryStore.getState()
   try {
-    const [list, stats] = await Promise.all([
-      window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
-        ...(tagFilter.length > 0 ? { tagIds: tagFilter } : {}),
-        ...(query ? { query } : {}),
-        sort
-      }),
-      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
-    ])
-    if (list.success) setItems(list.data.items)
-    if (stats.success) setStats(stats.data)
+    const stats = await window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
+    if (stats.success) useLibraryStore.getState().setStats(stats.data)
   } catch {
-    // The grid reloads itself next time it is shown.
+    // The counts catch up with the next change.
   }
 }
