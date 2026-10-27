@@ -83,16 +83,7 @@ export default function InboxPage({
     await refresh()
     const { tossedIds, undoEntryId } = res.data
     if (tossedIds.length === 0) return
-    undoToast(
-      `Tossed ${mockups(tossedIds.length)}`,
-      () =>
-        void (async () => {
-          await window.api.invoke(IPC_CHANNELS.TRASH_RESTORE, { ids: tossedIds })
-          await refresh()
-        })(),
-      'They’re in Trash',
-      undoEntryId
-    )
+    undoToast(`Tossed ${mockups(tossedIds.length)}`, undoEntryId, 'They’re in Trash')
   }
 
   // An undo from the app's history (⌘Z, a toast's Undo) can bring tossed cards back.

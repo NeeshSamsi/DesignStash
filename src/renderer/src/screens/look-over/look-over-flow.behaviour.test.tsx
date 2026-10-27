@@ -252,7 +252,7 @@ describe('Look it over · a stash is one action with its history entry (undo.md)
     await titleField()
     fireEvent.click(screen.getByRole('button', { name: 'Stash & next' }))
     await titleIs('poster 31')
-    expect(toasts.undoToast).toHaveBeenCalledWith('Stashed', expect.any(Function), undefined, 5)
+    expect(toasts.undoToast).toHaveBeenCalledWith('Stashed', 5)
     history([5])
 
     await menu('undo')

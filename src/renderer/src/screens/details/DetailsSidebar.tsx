@@ -70,10 +70,5 @@ async function keepDiscarded(mockupId: number, values: DiscardedEdit) {
   const res = await window.api
     .invoke(IPC_CHANNELS.UNDO_RECORD_DISCARD, { mockupId, values })
     .catch(() => null)
-  undoToast(
-    'Discarded your changes',
-    () => restoreEdit(mockupId, values),
-    undefined,
-    res?.success ? res.data.undoEntryId : undefined
-  )
+  undoToast('Discarded your changes', res?.success ? res.data.undoEntryId : undefined)
 }

@@ -154,8 +154,7 @@ function setup(overrides: Record<string, Handler> = {}) {
       (p as { confirmed?: boolean; id: string }).id === 'qwen3b' &&
       !(p as { confirmed?: boolean }).confirmed
         ? ok({ deleted: false, inUse: true, undoable: true })
-        : ok({ deleted: true, inUse: false, undoable: true }),
-    [IPC_CHANNELS.AI_RESTORE_MODEL]: () => ok({ restored: true }),
+        : ok({ deleted: true, inUse: false, undoable: true, undoEntryId: 50 }),
     [IPC_CHANNELS.TAG_TREE]: () =>
       ok({
         tree: [
@@ -166,17 +165,16 @@ function setup(overrides: Record<string, Handler> = {}) {
     [IPC_CHANNELS.TAG_CREATE]: () => ok({ tagId: 1, label: 'Beige', categoryId: 1 }),
     [IPC_CHANNELS.CATEGORY_CREATE]: () => ok({ categoryId: 5, label: 'Mood' }),
     [IPC_CHANNELS.TAG_DELETE]: () =>
-      ok({ affectedMockups: 4, snapshot: { tag: { id: 7 }, mockupIds: [1] } }),
-    [IPC_CHANNELS.TAG_RESTORE]: () => ok({ tagId: 7, restoredMockups: 4 }),
+      ok({ affectedMockups: 4, snapshot: { tag: { id: 7 }, mockupIds: [1] }, undoEntryId: 51 }),
     [IPC_CHANNELS.TAG_MERGE_PREVIEW]: () => ok({ affectedMockups: 2 }),
     [IPC_CHANNELS.TAG_MERGE]: () => ok({ affectedMockups: 2 }),
     [IPC_CHANNELS.CATEGORY_DELETE]: () =>
       ok({
         deleted: true,
         movedTags: 0,
-        snapshot: { id: 9, label: 'Empty', sortOrder: 1, isCanonical: false }
+        snapshot: { id: 9, label: 'Empty', sortOrder: 1, isCanonical: false },
+        undoEntryId: 52
       }),
-    [IPC_CHANNELS.CATEGORY_RESTORE]: () => ok({ categoryId: 9 }),
     [IPC_CHANNELS.TELEMETRY_GET_CONSENT]: () => ok({ enabled: true }),
     [IPC_CHANNELS.TELEMETRY_SET_CONSENT]: (p) => ok(p),
     [IPC_CHANNELS.APP_INFO]: () =>
@@ -596,18 +594,11 @@ describe('Settings · AI model', () => {
       })
     )
     expect(screen.queryByRole('alertdialog')).toBeNull()
+    // Its Undo is the delete's entry in main, which brings it back in use.
     expect(toasts.undoToast).toHaveBeenCalledWith(
       'Qwen 2.5 VL 3B deleted',
-      expect.any(Function),
-      'AI titles and tags stop until you pick another model.',
-      undefined
-    )
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_RESTORE_MODEL, {
-        id: 'qwen3b',
-        makeActive: true
-      })
+      50,
+      'AI titles and tags stop until you pick another model.'
     )
   })
 
@@ -622,16 +613,7 @@ describe('Settings · AI model', () => {
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen7b' })
     )
     expect(screen.queryByRole('alertdialog')).toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith(
-      'Qwen 2.5 VL 7B deleted',
-      expect.any(Function),
-      undefined,
-      undefined
-    )
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen7b' })
-    )
+    expect(toasts.undoToast).toHaveBeenCalledWith('Qwen 2.5 VL 7B deleted', 50, undefined)
   })
 
   it('offers Apple’s built-in model as its own card, with nothing to download or delete', async () => {
@@ -738,13 +720,8 @@ describe('Settings · Tags', () => {
     fireEvent.click(await screen.findByText('delete tag'))
     await waitFor(() => expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.TAG_DELETE, { tagId: 7 }))
     expect(screen.queryByRole('alertdialog')).toBeNull()
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    expect(toasts.undoToast.mock.calls[0]![0]).toBe('Deleted “Clay”')
-    toasts.undoToast.mock.calls[0]![1]()
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.TAG_RESTORE, {
-        snapshot: { tag: { id: 7 }, mockupIds: [1] }
-      })
+      expect(toasts.undoToast).toHaveBeenCalledWith('Deleted “Clay”', 51, 'Removed from 4 mockups')
     )
   })
 
@@ -786,9 +763,7 @@ describe('Settings · Tags', () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.CATEGORY_DELETE, { categoryId: 9 })
     )
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() => expect(calls(IPC_CHANNELS.CATEGORY_RESTORE)).toHaveLength(1))
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalledWith('Deleted “Empty”', 52))
   })
 
   it('tells the person and keeps going when a tag change fails', async () => {
@@ -1056,13 +1031,6 @@ describe('Meaning search row', () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'nomic-embed-v1.5' })
     )
-    await waitFor(() =>
-      expect(toasts.undoToast).toHaveBeenCalledWith(
-        'Meaning search deleted',
-        expect.any(Function),
-        undefined,
-        undefined
-      )
-    )
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalledWith('Meaning search deleted', 50))
   })
 })

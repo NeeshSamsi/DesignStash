@@ -203,8 +203,7 @@ describe('To stash', () => {
   it('Toss these moves them to Trash at once, with Undo (undo.md)', async () => {
     setup({
       ...listOf(stash),
-      [IPC_CHANNELS.INBOX_TOSS]: () => ok({ tossedIds: [1, 2], skippedIds: [], undoEntryId: 8 }),
-      [IPC_CHANNELS.TRASH_RESTORE]: () => ok({ restoredIds: [1, 2], missing: [] })
+      [IPC_CHANNELS.INBOX_TOSS]: () => ok({ tossedIds: [1, 2], skippedIds: [], undoEntryId: 8 })
     })
     render(<InboxPage stage="to_stash" />)
     await screen.findByText('Clay pile')
@@ -212,16 +211,8 @@ describe('To stash', () => {
     await waitFor(() => expect(sent(IPC_CHANNELS.INBOX_TOSS)).toEqual([{ ids: [1, 2] }]))
     expect(screen.queryByRole('alertdialog')).toBeNull()
     await waitFor(() =>
-      expect(toasts.undoToast).toHaveBeenCalledWith(
-        'Tossed 2 mockups',
-        expect.any(Function),
-        'They’re in Trash',
-        8
-      )
+      expect(toasts.undoToast).toHaveBeenCalledWith('Tossed 2 mockups', 8, 'They’re in Trash')
     )
-    // Without an entry, Undo restores them from Trash to where they came from.
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() => expect(sent(IPC_CHANNELS.TRASH_RESTORE)).toEqual([{ ids: [1, 2] }]))
   })
 
   it('tells an empty page what it is for', async () => {
@@ -294,29 +285,24 @@ describe('Trash', () => {
     expect(card(4).textContent).not.toContain('Trashed')
     fireEvent.click(within(card(4)).getByRole('button', { name: 'Restore' }))
     await waitFor(() =>
-      expect(toasts.undoToast).toHaveBeenCalledWith(
-        'Restored to To sort',
-        expect.any(Function),
-        '1 item',
-        12
-      )
+      expect(toasts.undoToast).toHaveBeenCalledWith('Restored to To sort', 12, '1 item')
     )
   })
 
   it('Restore all needs no confirm and its toast offers Undo', async () => {
     setup(
       handlers({
-        [IPC_CHANNELS.TRASH_RESTORE_ALL]: () => ok({ restoredIds: [1, 2, 3], missing: [] })
+        [IPC_CHANNELS.TRASH_RESTORE_ALL]: () =>
+          ok({ restoredIds: [1, 2, 3], missing: [], undoEntryId: 13 })
       })
     )
     render(<TrashPage />)
     await screen.findByText('Newest')
     fireEvent.click(screen.getByRole('button', { name: 'Restore all' }))
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(toasts.undoToast).toHaveBeenCalledWith('Restored to My Stash', 13, '3 items')
+    )
     expect(screen.queryByRole('alertdialog')).toBeNull()
-    const onUndo = toasts.undoToast.mock.calls[0]?.[1] as () => void
-    onUndo()
-    await waitFor(() => expect(sent(IPC_CHANNELS.MOCKUP_TRASH)).toEqual([{ ids: [1, 2, 3] }]))
   })
 
   it('names the selection: "Restore 2"', async () => {

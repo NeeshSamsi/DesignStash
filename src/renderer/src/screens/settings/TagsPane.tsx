@@ -85,9 +85,8 @@ export function TagsPane() {
     await load()
     undoToast(
       `Deleted “${tag.label}”`,
-      () => void ipc(IPC_CHANNELS.TAG_RESTORE, { snapshot: data.snapshot }).then(() => load()),
-      `Removed from ${mockups(data.affectedMockups)}`,
-      data.undoEntryId
+      data.undoEntryId,
+      `Removed from ${mockups(data.affectedMockups)}`
     )
   }
   const createCategory = async (label: string) => {
@@ -143,14 +142,7 @@ export function TagsPane() {
       ipc(IPC_CHANNELS.CATEGORY_DELETE, { categoryId: category.categoryId })
     )
     await load()
-    undoToast(
-      `Deleted “${category.categoryLabel}”`,
-      () => {
-        void ipc(IPC_CHANNELS.CATEGORY_RESTORE, { snapshot: data.snapshot }).then(() => load())
-      },
-      undefined,
-      data.undoEntryId
-    )
+    undoToast(`Deleted “${category.categoryLabel}”`, data.undoEntryId)
   }
   const confirmDropping = async () => {
     if (!dropping || dropping.to === '') return

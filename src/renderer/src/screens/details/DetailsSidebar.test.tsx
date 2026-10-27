@@ -249,7 +249,7 @@ describe('details sidebar · editing', () => {
     })
     await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull())
     expect(screen.getByText('Hero Screen 2')).not.toBeNull()
-    expect(toasts.toast).toHaveBeenCalledWith('Saved your changes', 'success')
+    expect(toasts.undoToast).toHaveBeenCalledWith('Saved your changes', undefined)
   })
 
   it('says why Save is off when the title is emptied', async () => {
@@ -293,14 +293,7 @@ describe('details sidebar · editing', () => {
         [IPC_CHANNELS.UNDO_RECORD_DISCARD, { mockupId: 42, values }]
       ])
     )
-    await waitFor(() =>
-      expect(toasts.undoToast).toHaveBeenCalledWith(
-        'Discarded your changes',
-        expect.any(Function),
-        undefined,
-        5
-      )
-    )
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalledWith('Discarded your changes', 5))
     expect(calls(IPC_CHANNELS.MOCKUP_UPDATE)).toHaveLength(0)
 
     // Edit › Undo: main hands back the discarded values for the window to put back.
@@ -578,61 +571,17 @@ describe('details sidebar · cover', () => {
     await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/new.png')))
     expect(screen.getByText('Uploaded')).not.toBeNull()
     expect(screen.getByText('Cropped to 4:3')).not.toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith(
-      'Cover replaced',
-      expect.any(Function),
-      undefined,
-      undefined
-    )
+    expect(toasts.undoToast).toHaveBeenCalledWith('Cover replaced', undefined)
     // A cover change is not a form edit.
     expect((button('Save') as HTMLButtonElement).disabled).toBe(true)
     expect(useDetailsStore.getState().dirty).toBe(false)
   })
 
-  it('undoes a replace back to the PSD’s preview', async () => {
-    setup({
-      [IPC_CHANNELS.MOCKUP_SET_COVER]: () => ok(change()),
-      [IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER]: () =>
-        ok(
-          change({
-            coverPath: '/lib/hero.png',
-            coverSource: 'embedded',
-            previous: { coverPath: '/lib/new.png', coverSource: 'user-uploaded' }
-          })
-        )
-    })
+  it('a cover change’s toast undoes its own entry in main (undo.md)', async () => {
+    setup({ [IPC_CHANNELS.MOCKUP_SET_COVER]: () => ok({ ...change(), undoEntryId: 17 }) })
     await editing()
     choose()
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: 42 })
-    )
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png')))
-    expect(screen.queryByText('Uploaded')).toBeNull()
-  })
-
-  it('undoes a replace back to the earlier uploaded cover', async () => {
-    setup({
-      [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(uploaded),
-      [IPC_CHANNELS.MOCKUP_SET_COVER]: (p) =>
-        ok(
-          (p as { filePath: string }).filePath === '/lib/hero.png'
-            ? change({ coverPath: '/lib/hero.png' })
-            : change({ previous: { coverPath: '/lib/hero.png', coverSource: 'user-uploaded' } })
-        )
-    })
-    await editing()
-    choose()
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_SET_COVER, {
-        mockupId: 42,
-        filePath: '/lib/hero.png'
-      })
-    )
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png')))
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalledWith('Cover replaced', 17))
   })
 
   it('keeps the cover and shows an error Banner when the image is refused', async () => {
@@ -669,19 +618,7 @@ describe('details sidebar · cover', () => {
     )
     await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/psd.png')))
     expect(button('Use the PSD’s preview')).toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith(
-      'Using the PSD’s preview',
-      expect.any(Function),
-      undefined,
-      undefined
-    )
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_SET_COVER, {
-        mockupId: 42,
-        filePath: '/lib/hero.png'
-      })
-    )
+    expect(toasts.undoToast).toHaveBeenCalledWith('Using the PSD’s preview', undefined)
   })
 
   it('says why main kept the cover when the PSD’s own preview is only the kit’s notice', async () => {

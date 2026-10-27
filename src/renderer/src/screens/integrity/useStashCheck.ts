@@ -126,25 +126,15 @@ export function useStashCheck(opts: {
     if (report && mine === latest.current) apply(report)
   }
 
-  // An add or ignore undone from the app's history brings its files back to the lists.
-  useUndoRan(() => void load())
+  // An add or ignore undone from the app's history brings its files back to the lists. The check
+  // waits behind any action still running, so it never blanks the rows mid-action.
+  useUndoRan(() => void enqueue(() => load()))
 
   const without = (ids: string[]) =>
     setLists((l) => ({
       found: l.found.filter((i) => !ids.includes(i.id)),
       gone: l.gone.filter((i) => !ids.includes(i.id))
     }))
-
-  const undoWith = (channel: 'add' | 'ignore', payload: unknown) =>
-    void enqueue(async () => {
-      const undone = await (
-        channel === 'add'
-          ? window.api.invoke(IPC_CHANNELS.INTEGRITY_UNDO_ADD, payload as { mockupIds: number[] })
-          : window.api.invoke(IPC_CHANNELS.INTEGRITY_UNIGNORE, payload as { ids: string[] })
-      ).catch(() => null)
-      if (!undone?.success) return toast({ variant: 'error', message: copy.couldNotUndo })
-      if (live.current) await load()
-    })
 
   const add = (ids: string[] | 'all') =>
     enqueue(() =>
@@ -159,12 +149,7 @@ export function useStashCheck(opts: {
         without(targets)
         const { mockupIds, undoEntryId } = res.data
         if (mockupIds.length === 0) return
-        undoToast(
-          copy.added(mockupIds.length),
-          () => undoWith('add', { mockupIds }),
-          undefined,
-          undoEntryId
-        )
+        undoToast(copy.added(mockupIds.length), undoEntryId)
       })
     )
 
@@ -180,12 +165,7 @@ export function useStashCheck(opts: {
         const { ignoredIds, undoEntryId } = res.data
         without(ignoredIds)
         if (ignoredIds.length === 0) return
-        undoToast(
-          copy.ignored(ignoredIds.length),
-          () => undoWith('ignore', { ids: ignoredIds }),
-          undefined,
-          undoEntryId
-        )
+        undoToast(copy.ignored(ignoredIds.length), undoEntryId)
       })
     )
 

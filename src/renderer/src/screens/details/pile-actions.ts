@@ -19,18 +19,10 @@ export async function disbandPile(pileId: number): Promise<boolean> {
     })
     return false
   }
-  const { snapshot, freedIds, undoEntryId } = res.data
+  const { freedIds, undoEntryId } = res.data
   useDetailEffects.getState().selectAfterReload(freedIds)
   void syncLibrary()
-  undoToast(
-    'Pile disbanded',
-    () => {
-      useDetailEffects.getState().selectAfterReload([])
-      void window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot }).then(() => syncLibrary())
-    },
-    `${freedIds.length} mockups are on their own`,
-    undoEntryId
-  )
+  undoToast('Pile disbanded', undoEntryId, `${freedIds.length} mockups are on their own`)
   return true
 }
 
@@ -54,16 +46,9 @@ export async function putOnTop(
     })
     return null
   }
-  const { pileId: next, snapshot, undoEntryId } = res.data
+  const { pileId: next, undoEntryId } = res.data
   void syncLibrary()
-  undoToast(
-    `${label} is on top`,
-    () => {
-      void window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot }).then(() => syncLibrary())
-    },
-    undefined,
-    undoEntryId
-  )
+  undoToast(`${label} is on top`, undoEntryId)
   return next
 }
 
@@ -88,15 +73,12 @@ export async function removeFromPile(
     })
     return undefined
   }
-  const { pileId: next, snapshot, undoEntryId } = res.data
+  const { pileId: next, undoEntryId } = res.data
   void syncLibrary()
   undoToast(
     'Removed from the pile',
-    () => {
-      void window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot }).then(() => syncLibrary())
-    },
-    next === null ? `${label} and the other mockup are on their own` : `${label} is on its own`,
-    undoEntryId
+    undoEntryId,
+    next === null ? `${label} and the other mockup are on their own` : `${label} is on its own`
   )
   return { pileId: next }
 }

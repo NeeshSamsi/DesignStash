@@ -106,23 +106,25 @@ export function toast(arg: string | ToastOptions, kind: ToastKind = 'info') {
 
 /**
  * Reversible-action toast: "Moved to Trash · Undo". A done action reads as done, so it wears the
- * check. With the entry the action recorded in the app's history (its reply's undoEntryId), Undo
- * undoes that entry (undo:entry); without one, it runs `onUndo`.
+ * check. Its Undo undoes the entry the action recorded in the app's history (its reply's
+ * undoEntryId, through undo:entry). An action that recorded none changed nothing worth undoing,
+ * so its toast has no Undo.
  */
-export function undoToast(
-  message: string,
-  onUndo: () => void,
-  description?: string,
-  entryId?: number
-) {
+export function undoToast(message: string, entryId: number | undefined, description?: string) {
   return show({
     variant: 'success',
     message,
     ...(description !== undefined ? { description } : {}),
-    action: {
-      label: 'Undo',
-      onClick: entryId === undefined ? onUndo : () => void undoEntry(entryId)
-    },
-    entryId
+    ...(entryId !== undefined
+      ? { action: { label: 'Undo', onClick: () => void undoEntry(entryId) }, entryId }
+      : {})
   })
+}
+
+/**
+ * A step in an open flow, outside the app's history (the Sort board's "New pile of 2 · Undo"):
+ * Undo runs `onUndo`, the flow's own step back.
+ */
+export function stepToast(message: string, onUndo: () => void) {
+  return show({ variant: 'success', message, action: { label: 'Undo', onClick: onUndo } })
 }

@@ -89,16 +89,7 @@ export default function TrashPage() {
     selection.clear()
     await refresh()
     if (restoredIds.length > 0) {
-      undoToast(
-        restoredTo(origins),
-        () =>
-          void (async () => {
-            await window.api.invoke(IPC_CHANNELS.MOCKUP_TRASH, { ids: restoredIds })
-            await refresh()
-          })(),
-        pluralise(restoredIds.length, 'item'),
-        undoEntryId
-      )
+      undoToast(restoredTo(origins), undoEntryId, pluralise(restoredIds.length, 'item'))
     }
     if (missing.length > 0) {
       const gone = useInboxStore.getState().trash?.filter((t) => missing.includes(t.id)) ?? []

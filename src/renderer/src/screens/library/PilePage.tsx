@@ -115,13 +115,8 @@ export function PilePage({ pile }: { pile: OpenPile }) {
     void syncLibrary()
     undoToast(
       'Moved to Trash',
-      () =>
-        void (async () => {
-          await window.api.invoke(IPC_CHANNELS.MOCKUP_RESTORE, { ids })
-          await syncLibrary()
-        })().catch(() => {}),
-      targets.length === 1 ? itemName(first) : pluralise(targets.length, 'mockup'),
-      res.data.undoEntryId
+      res.data.undoEntryId,
+      targets.length === 1 ? itemName(first) : pluralise(targets.length, 'mockup')
     )
     // A pile left with one mockup is gone: back to My Stash. Taking the top makes the next one,
     // in the pile's order, the top, and the pile carries on under its id.

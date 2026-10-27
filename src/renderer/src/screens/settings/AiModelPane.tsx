@@ -93,16 +93,8 @@ export function AiModelPane() {
     if (res.data.undoable) {
       undoToast(
         `${model.name} deleted`,
-        () => {
-          void window.api
-            .invoke(IPC_CHANNELS.AI_RESTORE_MODEL, {
-              id: model.id,
-              ...(inUse ? { makeActive: true } : {})
-            })
-            .then(() => load())
-        },
-        inUse ? 'AI titles and tags stop until you pick another model.' : undefined,
-        res.data.undoEntryId
+        res.data.undoEntryId,
+        inUse ? 'AI titles and tags stop until you pick another model.' : undefined
       )
     }
   }
@@ -120,16 +112,7 @@ export function AiModelPane() {
     }
     void load()
     if (res.data.undoable) {
-      undoToast(
-        'Meaning search deleted',
-        () => {
-          void window.api
-            .invoke(IPC_CHANNELS.AI_RESTORE_MODEL, { id: meaning.id })
-            .then(() => load())
-        },
-        undefined,
-        res.data.undoEntryId
-      )
+      undoToast('Meaning search deleted', res.data.undoEntryId)
     }
   }
 

@@ -252,9 +252,8 @@ export function useDetailsData(id: number) {
             }
           : current
       )
-      // With the entry the save recorded, its toast can take the edit back (field by field, in main).
-      if (res.data.undoEntryId === undefined) toast('Saved your changes', 'success')
-      else undoToast('Saved your changes', () => {}, undefined, res.data.undoEntryId)
+      // Its toast takes the edit back, field by field, in main.
+      undoToast('Saved your changes', res.data.undoEntryId)
       void syncLibrary()
       return true
     }
@@ -346,24 +345,7 @@ export function useDetailsData(id: number) {
     }
     applyCover(change)
     if (change.ok) {
-      undoToast(
-        message,
-        () => {
-          const { previous } = change
-          const revert =
-            previous.coverSource === 'embedded'
-              ? window.api.invoke(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: item.id })
-              : window.api.invoke(IPC_CHANNELS.MOCKUP_SET_COVER, {
-                  mockupId: item.id,
-                  filePath: previous.coverPath
-                })
-          void revert.then((res) => {
-            if (res.success) applyCover(res.data)
-          })
-        },
-        undefined,
-        change.undoEntryId
-      )
+      undoToast(message, change.undoEntryId)
     }
   }
 

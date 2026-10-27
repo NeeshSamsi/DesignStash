@@ -60,7 +60,7 @@ const drop = (activeId: number, overId: number | null) =>
 
 const pileOk = (pileId = 2, ids = [1, 2]) => ({
   success: true,
-  data: { pileId, snapshot: snapshot(...ids) }
+  data: { pileId, snapshot: snapshot(...ids), undoEntryId: 31 }
 })
 
 beforeEach(() => {
@@ -86,9 +86,8 @@ describe('piles by shortcut', () => {
     // Selected in grid order (1, 2, 3): the first selected card is on top.
     expect(api.calls(IPC_CHANNELS.PILE_CREATE)[0]).toEqual({ memberIds: [1, 2, 3], topId: 1 })
     await waitFor(() => expect(undoToast).toHaveBeenCalledTimes(1))
-    expect(vi.mocked(undoToast).mock.calls[0]!.slice(0, 1)).toEqual(['Pile made'])
-    await act(async () => vi.mocked(undoToast).mock.calls[0]![1]())
-    expect(api.calls(IPC_CHANNELS.PILE_RESTORE)).toEqual([{ snapshot: snapshot(1, 2, 3) }])
+    // Its Undo is the pile's entry in the app's history.
+    expect(undoToast).toHaveBeenCalledWith('Pile made', 31, '3 mockups')
   })
 
   it('needs two or more', async () => {
@@ -139,7 +138,10 @@ describe('piles by shortcut', () => {
         }),
         [IPC_CHANNELS.PILE_DISBAND]: () => {
           disbanded = true
-          return { success: true, data: { snapshot: snapshot(1, 11), freedIds: [1, 11] } }
+          return {
+            success: true,
+            data: { snapshot: snapshot(1, 11), freedIds: [1, 11], undoEntryId: 32 }
+          }
         },
         [IPC_CHANNELS.PILE_RESTORE]: () => ({ success: true, data: { restoredIds: [1, 11] } })
       },
@@ -152,14 +154,7 @@ describe('piles by shortcut', () => {
     fireEvent.keyDown(cards()[0]!, { key: 'g', metaKey: true, shiftKey: true })
     await waitFor(() => expect(api.calls(IPC_CHANNELS.PILE_DISBAND)).toEqual([{ pileIds: [1] }]))
     await waitFor(() => expect(screen.getByText('2 of 2 selected')).toBeTruthy())
-    expect(undoToast).toHaveBeenCalledWith(
-      'Pile disbanded',
-      expect.any(Function),
-      '2 mockups are on their own',
-      undefined
-    )
-    await act(async () => vi.mocked(undoToast).mock.calls[0]![1]())
-    expect(api.calls(IPC_CHANNELS.PILE_RESTORE)).toEqual([{ snapshot: snapshot(1, 11) }])
+    expect(undoToast).toHaveBeenCalledWith('Pile disbanded', 32, '2 mockups are on their own')
   })
 
   it('Disband pile in the menu works too, and does nothing on a single mockup', async () => {
@@ -196,8 +191,7 @@ describe('piles by drag', () => {
       expect(api.calls(IPC_CHANNELS.PILE_CREATE)).toEqual([{ memberIds: [2, 1], topId: 2 }])
     )
     await waitFor(() => expect(undoToast).toHaveBeenCalledTimes(1))
-    await act(async () => vi.mocked(undoToast).mock.calls[0]![1]())
-    expect(api.calls(IPC_CHANNELS.PILE_RESTORE)).toHaveLength(1)
+    expect(vi.mocked(undoToast).mock.calls[0]![1]).toBe(31)
   })
 
   it('the target shows “Start a pile” while a card is over it, and the dragged card leaves a slot', async () => {

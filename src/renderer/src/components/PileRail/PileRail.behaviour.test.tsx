@@ -67,7 +67,6 @@ function setup(overrides: Record<string, Handler> = {}, queue: unknown = queueOf
       }),
     [IPC_CHANNELS.MOCKUP_STASH]: () =>
       ok({ ok: true, stashedIds: [30], snapshot: { mockups: [], drafts: [], resume: null } }),
-    [IPC_CHANNELS.PILE_UNSTASH]: () => ok({ restoredIds: [10, 11, 12] }),
     [IPC_CHANNELS.TAG_TREE]: () => ok({ tree: [] }),
     ...overrides
   }
@@ -384,6 +383,15 @@ describe('Piles · drafts until Stash pile', () => {
   })
 
   it('reviews the pile as MockupCards and commits it all with Stash pile (N), undoable', async () => {
+    setup({
+      [IPC_CHANNELS.PILE_STASH]: () =>
+        ok({
+          ok: true,
+          stashedIds: [10, 11, 12],
+          snapshot: { mockups: [], drafts: [], resume: null },
+          undoEntryId: 70
+        })
+    })
     await start()
     await toReview()
     expect(document.querySelectorAll('[data-ds="MockupCard"]')).toHaveLength(3)
@@ -391,31 +399,10 @@ describe('Piles · drafts until Stash pile', () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.PILE_STASH, { pileId: 10 })
     )
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    expect(toasts.undoToast.mock.calls[0]![0]).toBe('Pile stashed · 3 mockups')
-    toasts.undoToast.mock.calls[0]![1]()
+    // Its Undo is the stash's entry in the app's history.
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.PILE_UNSTASH, {
-        snapshot: { mockups: [], drafts: [], resume: null }
-      })
+      expect(toasts.undoToast).toHaveBeenCalledWith('Pile stashed · 3 mockups', 70)
     )
-  })
-
-  it('keeps the pile stashed and says so when Undo fails', async () => {
-    setup({ [IPC_CHANNELS.PILE_UNSTASH]: () => ({ success: false, error: 'nope' }) })
-    await start()
-    await toReview()
-    fireEvent.click(btn('Stash pile (3)'))
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    expect(calls(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1)
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(toasts.toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'error', message: 'Couldn’t undo that' })
-      )
-    )
-    expect(calls(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1)
-    expect(document.body.textContent).toContain('Pile 2 of 2')
   })
 
   it('keeps all drafts and parks the pile in To stash on Finish later', async () => {

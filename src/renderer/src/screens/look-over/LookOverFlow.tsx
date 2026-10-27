@@ -673,38 +673,6 @@ function Session({ queue, others, onClose, onBackToSort }: SessionProps) {
     }
   }
 
-  const undoStash = async (
-    snapshot: Parameters<typeof window.api.invoke<'pile:unstash'>>[1]['snapshot'],
-    unitId: number,
-    count: number
-  ) => {
-    const res = await window.api.invoke(IPC_CHANNELS.PILE_UNSTASH, { snapshot }).catch(() => null)
-    if (!res?.success) {
-      toast({
-        variant: 'error',
-        message: 'Couldn’t undo that',
-        description: 'It is still stashed. Try again from My Stash.'
-      })
-      return
-    }
-    stashedCount.current -= count
-    const fresh = await window.api.invoke(IPC_CHANNELS.LOOK_OVER_OPEN, undefined).catch(() => null)
-    if (!fresh?.success) return
-    dispatch({ type: 'items', items: fresh.data.units.flatMap((u) => u.items) })
-    setFlow((current) => {
-      const index = current.units.findIndex((u) => u.unitId === unitId)
-      const stashed = new Set([...current.stashed].filter((id) => id !== unitId))
-      const target = fresh.data.units.find((u) => u.unitId === unitId)
-      const units = current.units.map((u) => (u.unitId === unitId && target ? target : u))
-      return {
-        ...current,
-        units,
-        stashed,
-        position: { unit: index, step: target && target.kind === 'pile' ? target.items.length : 0 }
-      }
-    })
-  }
-
   const stash = async () => {
     if (!(await saveCurrent())) return
     setBusy(true)
@@ -731,7 +699,7 @@ function Session({ queue, others, onClose, onBackToSort }: SessionProps) {
       if (first !== -1) setFlow((s) => jumpTo(s, first))
       return
     }
-    const { snapshot, stashedIds, undoEntryId } = res.data
+    const { stashedIds, undoEntryId } = res.data
     stashedCount.current += stashedIds.length
     const unitId = unit.unitId
     const advanced = afterStash(flow)
@@ -745,12 +713,7 @@ function Session({ queue, others, onClose, onBackToSort }: SessionProps) {
         count: stashedIds.length
       })
     }
-    undoToast(
-      pile ? `Pile stashed · ${stashedIds.length} mockups` : 'Stashed',
-      () => void undoStash(snapshot, unitId, stashedIds.length),
-      undefined,
-      undoEntryId
-    )
+    undoToast(pile ? `Pile stashed · ${stashedIds.length} mockups` : 'Stashed', undoEntryId)
     finish(advanced)
   }
 

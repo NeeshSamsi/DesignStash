@@ -10,7 +10,7 @@ const sonner = vi.hoisted(() => ({
 }))
 vi.mock('sonner', () => ({ toast: sonner }))
 
-import { toast, undoToast } from './toastStore'
+import { stepToast, toast, undoToast } from './toastStore'
 
 /** Render the element the store handed to Sonner. */
 function mount(callIndex = 0, id = 'toast-1') {
@@ -35,7 +35,7 @@ describe('toastStore', () => {
   })
 
   it('an Undo toast reads as a done action: the success check and a hairline Undo', () => {
-    undoToast('Moved to Trash', () => {})
+    stepToast('Moved to Trash', () => {})
     mount()
     expect(document.querySelector('[data-ds="Toast"]')?.getAttribute('data-variant')).toBe(
       'success'
@@ -60,19 +60,26 @@ describe('toastStore', () => {
     expect(sonner.dismiss).toHaveBeenCalledWith('toast-1')
   })
 
-  it('undoToast offers Undo, calls onUndo once and dismisses', () => {
+  it('a flow’s step toast offers Undo, takes the step back once and dismisses', () => {
     const onUndo = vi.fn()
-    undoToast('Moved to Trash', onUndo, '3 mockups')
+    stepToast('New pile of 2.', onUndo)
     mount()
-    expect(screen.getByText('3 mockups')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(onUndo).toHaveBeenCalledTimes(1)
     expect(sonner.dismiss).toHaveBeenCalledWith('toast-1')
   })
 
+  it('an action that recorded no entry reads as done, with no Undo', () => {
+    undoToast('Saved your changes', undefined, 'Just now')
+    mount()
+    expect(screen.getByText('Just now')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
+  })
+
   it('the close button dismisses without running the action', () => {
     const onUndo = vi.fn()
-    undoToast('Moved to Trash', onUndo)
+    stepToast('Moved to Trash', onUndo)
     mount()
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
     expect(onUndo).not.toHaveBeenCalled()
@@ -81,7 +88,7 @@ describe('toastStore', () => {
 
   it('leaves ⌘Z to the Edit menu: a toast never answers the key itself (undo.md)', () => {
     const onUndo = vi.fn()
-    undoToast('Moved', onUndo)
+    stepToast('Moved', onUndo)
     mount(0, 'c')
     document.body.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true })
@@ -111,30 +118,21 @@ describe('an Undo toast for an entry in the app’s history (undo.md)', () => {
 
   const undo = () => screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement
 
-  it('undoes its own entry through main, not the old closure, and the screens reload', async () => {
-    const closure = vi.fn()
+  it('undoes its own entry through main, and the screens reload', async () => {
     const ran = vi.fn()
     const { unmount } = render(<Listener onRan={ran} />)
-    undoToast('Moved to Trash', closure, undefined, 7)
+    undoToast('Moved to Trash', 7, '3 mockups')
     mount()
+    expect(screen.getByText('3 mockups')).toBeTruthy()
     fireEvent.click(undo())
     await waitFor(() => expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.UNDO_ENTRY, { id: 7 }))
     await waitFor(() => expect(ran).toHaveBeenCalledTimes(1))
-    expect(closure).not.toHaveBeenCalled()
+    expect(sonner.dismiss).toHaveBeenCalledWith('toast-1')
     unmount()
   })
 
-  it('without an entry (a handler not recording yet) runs its closure as before', () => {
-    const closure = vi.fn()
-    undoToast('Moved to Trash', closure)
-    mount()
-    fireEvent.click(undo())
-    expect(closure).toHaveBeenCalledTimes(1)
-    expect(invoke).not.toHaveBeenCalled()
-  })
-
   it('is disabled, saying why, once a newer action touched the same things', async () => {
-    undoToast('Moved to Trash', vi.fn(), 'Clay phone', 7)
+    undoToast('Moved to Trash', 7, 'Clay phone')
     mount()
     expect(undo().disabled).toBe(false)
     act(() => push?.({ undoLabel: 'Star', entries: [{ id: 7, blockedBy: 9 }, { id: 9 }] }))
@@ -146,7 +144,7 @@ describe('an Undo toast for an entry in the app’s history (undo.md)', () => {
   })
 
   it('goes once its entry has left the history (undone with ⌘Z, or dropped)', async () => {
-    undoToast('Moved to Trash', vi.fn(), undefined, 7)
+    undoToast('Moved to Trash', 7)
     mount()
     act(() => push?.({ entries: [{ id: 7 }] }))
     expect(sonner.dismiss).not.toHaveBeenCalled()

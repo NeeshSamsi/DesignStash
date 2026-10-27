@@ -327,12 +327,7 @@ describe('LibraryPage stars', () => {
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: /Remove star from Mockup 1/ }))
     await waitFor(() => expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toHaveLength(1))
-    expect(undoToast).toHaveBeenCalledWith(
-      'Removed from Starred',
-      expect.any(Function),
-      undefined,
-      undefined
-    )
+    expect(undoToast).toHaveBeenCalledWith('Removed from Starred', undefined)
     // The list is refetched (say, a sort change): the card is still there, unstarred.
     act(() => useLibraryStore.getState().setSort('name'))
     await ready()
@@ -346,32 +341,19 @@ describe('LibraryPage stars', () => {
     await waitFor(() => expect(titles()).toEqual(['2']))
   })
 
-  it('Undo on the Starred toast stars it again', async () => {
+  it('the Starred toast undoes the unstar’s own entry', async () => {
     const starred = [item(1, { favourite: true })]
-    const api = setupApi(starred, {
-      [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: (request) => {
-        const { ids, favourite } = request as { ids: number[]; favourite: boolean }
-        for (const id of ids) starred.find((i) => i.id === id)!.favourite = favourite
-        return { success: true, data: { favourite } }
-      },
-      [IPC_CHANNELS.LIBRARY_LIST]: () => ({
+    setupApi(starred, {
+      [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: () => ({
         success: true,
-        data: { items: starred.filter((i) => i.favourite) }
-      })
+        data: { favourite: false, undoEntryId: 40 }
+      }),
+      [IPC_CHANNELS.LIBRARY_LIST]: () => ({ success: true, data: { items: starred } })
     })
     render(<LibraryPage starredOnly />)
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: /Remove star from Mockup 1/ }))
-    await waitFor(() => expect(undoToast).toHaveBeenCalledTimes(1))
-    const undo = vi.mocked(undoToast).mock.calls[0]![1]
-    await act(async () => undo())
-    await waitFor(() =>
-      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE).at(-1)).toEqual({
-        ids: [1],
-        favourite: true
-      })
-    )
-    expect(useLibraryStore.getState().items[0]!.favourite).toBe(true)
+    await waitFor(() => expect(undoToast).toHaveBeenCalledWith('Removed from Starred', 40))
   })
 
   it('a failed star puts it back and says so', async () => {

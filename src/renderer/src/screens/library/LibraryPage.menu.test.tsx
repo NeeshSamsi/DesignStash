@@ -199,8 +199,13 @@ describe('trash', () => {
     expect(vi.mocked(undoToast).mock.calls[0]![0]).toBe('Moved to Trash')
   })
 
-  it('Undo restores exactly what was trashed and reloads', async () => {
-    const api = setupApi([item(1), item(2)], trashOk)
+  it('trashing a selection is one change: its toast undoes the one entry it recorded', async () => {
+    const api = setupApi([item(1), item(2)], {
+      [IPC_CHANNELS.MOCKUP_TRASH]: () => ({
+        success: true,
+        data: { ok: true, count: 2, undoEntryId: 14 }
+      })
+    })
     page()
     await ready()
     fireEvent.click(cards()[0]!)
@@ -209,10 +214,7 @@ describe('trash', () => {
     fireEvent.keyDown(cards()[0]!, { key: 'Backspace', metaKey: true })
     await waitFor(() => expect(undoToast).toHaveBeenCalledTimes(1))
     expect(api.calls(IPC_CHANNELS.MOCKUP_TRASH)).toEqual([{ ids: [1, 2] }])
-    const listsBefore = api.calls(IPC_CHANNELS.LIBRARY_LIST).length
-    await act(async () => vi.mocked(undoToast).mock.calls[0]![1]())
-    expect(api.calls(IPC_CHANNELS.MOCKUP_RESTORE)).toEqual([{ ids: [1, 2] }])
-    expect(api.calls(IPC_CHANNELS.LIBRARY_LIST).length).toBeGreaterThan(listsBefore)
+    expect(undoToast).toHaveBeenCalledWith('Moved to Trash', 14, '2 mockups')
   })
 
   it('moves to Trash from Cmd+Backspace and Backspace, each with Undo', async () => {
@@ -273,19 +275,13 @@ describe('trash', () => {
     await waitFor(() => expect(api.calls(IPC_CHANNELS.UNDO_RUN)).toHaveLength(1))
   })
 
-  it('the empty-space menu names the last change and can undo it', async () => {
-    const api = setupApi([item(1)], trashOk)
+  it('with nothing done yet, the empty-space menu’s Undo is off', async () => {
+    setupApi([item(1)])
     page()
     await ready()
-    fireEvent.contextMenu(cards()[0]!)
-    fireEvent.click(await screen.findByRole('menuitem', { name: /Move to Trash/ }))
-    await waitFor(() => expect(undoToast).toHaveBeenCalled())
     fireEvent.contextMenu(document.querySelector('[data-ds="MockupGrid"]')!)
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Undo move to Trash⌘Z' }))
-    await waitFor(() => expect(api.calls(IPC_CHANNELS.MOCKUP_RESTORE)).toEqual([{ ids: [1] }]))
-    // The toast's own Undo no longer repeats it.
-    await act(async () => vi.mocked(undoToast).mock.calls[0]![1]())
-    expect(api.calls(IPC_CHANNELS.MOCKUP_RESTORE)).toHaveLength(1)
+    const undo = await screen.findByRole('menuitem', { name: /^Undo/ })
+    expect(undo.getAttribute('aria-disabled')).toBe('true')
   })
 })
 

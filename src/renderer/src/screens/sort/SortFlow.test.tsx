@@ -10,13 +10,13 @@ import {
   type SortBoard
 } from '@shared/grouping'
 import { useShortcutDispatcher } from '@renderer/lib/shortcuts'
-import { toast, undoToast } from '@renderer/stores/toastStore'
+import { toast, stepToast } from '@renderer/stores/toastStore'
 import { runMenuCommand } from '@renderer/lib/menu-commands'
 import { SortFlow } from './SortFlow'
 
 const menuActions = { focusSearch: () => {} }
 
-vi.mock('@renderer/stores/toastStore', () => ({ toast: vi.fn(), undoToast: vi.fn() }))
+vi.mock('@renderer/stores/toastStore', () => ({ toast: vi.fn(), stepToast: vi.fn() }))
 
 // dnd-kit's pointer sensor needs real pointer events; drive its callbacks directly instead.
 const dnd = vi.hoisted(() => ({ props: null as DndContextProps | null }))
@@ -143,7 +143,7 @@ const dragEnd = (active: string, over: string | null) =>
 
 beforeEach(() => {
   vi.mocked(toast).mockClear()
-  vi.mocked(undoToast).mockClear()
+  vi.mocked(stepToast).mockClear()
 })
 
 describe('opening the board (S1)', () => {
@@ -291,7 +291,7 @@ describe('selection and menus', () => {
     const made = document.querySelector<HTMLElement>('[data-pile-id]')!
     expect(tileIds(made)).toEqual([9, 10])
     expect(within(made).getByText('solo_9.psd')).toBeTruthy()
-    expect(vi.mocked(undoToast).mock.calls[0]![0]).toBe('New pile of 2 mockups.')
+    expect(vi.mocked(stepToast).mock.calls[0]![0]).toBe('New pile of 2 mockups.')
     expect(tileIds(tray())).toEqual([8])
   })
 
@@ -308,7 +308,7 @@ describe('selection and menus', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Make pile' }))
     const made = document.querySelector<HTMLElement>('[data-pile-id]')!
     expect(tileIds(made)).toEqual([9, 10])
-    expect(vi.mocked(undoToast).mock.calls[0]![0]).toBe('New pile of 2 mockups.')
+    expect(vi.mocked(stepToast).mock.calls[0]![0]).toBe('New pile of 2 mockups.')
   })
 
   it('does nothing for ⌘G on one tile', async () => {
@@ -318,7 +318,7 @@ describe('selection and menus', () => {
     fireEvent.click(tile(9))
     key('g', { metaKey: true })
     expect(pileIds()).toEqual(['phones', 'mugs'])
-    expect(undoToast).not.toHaveBeenCalled()
+    expect(stepToast).not.toHaveBeenCalled()
   })
 
   it('⇧⌘G disbands the selected pile, Edit › Undo (⌘Z) brings it back and Redo (⇧⌘Z) breaks it up again (S8.E2, S8.E1, undo.md)', async () => {
@@ -353,7 +353,7 @@ describe('selection and menus', () => {
     await ready()
     fireEvent.click(header('mugs'))
     key('g', { metaKey: true, shiftKey: true })
-    const undo = vi.mocked(undoToast).mock.calls[0]![1]
+    const undo = vi.mocked(stepToast).mock.calls[0]![1]
     act(() => undo())
     expect(pileIds()).toEqual(['phones', 'mugs'])
   })
@@ -458,7 +458,7 @@ describe('drag and drop (S3, S5, S7, S8)', () => {
     dragEnd('tile:8', 'pile:mugs')
     expect(tileIds(pile('mugs'))).toEqual([5, 6, 7, 8])
     expect(tileIds(tray())).toEqual([9, 10])
-    expect(vi.mocked(undoToast).mock.calls[0]![0]).toMatch(/^Added 1 mockup to /)
+    expect(vi.mocked(stepToast).mock.calls[0]![0]).toMatch(/^Added 1 mockup to /)
   })
 
   it('dropping on a tile on its own starts a pile led by that tile, shown first (S5.1, S5.2)', async () => {
@@ -493,7 +493,7 @@ describe('drag and drop (S3, S5, S7, S8)', () => {
     dragStart('tile:8')
     dragEnd('tile:8', null)
     expect(tileIds(tray())).toEqual([8, 9, 10])
-    expect(undoToast).not.toHaveBeenCalled()
+    expect(stepToast).not.toHaveBeenCalled()
   })
 
   it('cancelling a drag leaves the board as it was (S3.E5)', async () => {
@@ -512,7 +512,7 @@ describe('drag and drop (S3, S5, S7, S8)', () => {
     await ready()
     dragStart('tile:1')
     dragEnd('tile:1', 'tray')
-    expect(vi.mocked(undoToast).mock.calls[0]![0]).toContain('phone_2.psd is now the top mockup')
+    expect(vi.mocked(stepToast).mock.calls[0]![0]).toContain('phone_2.psd is now the top mockup')
   })
 
   it('a pile down to one tile dissolves into On its own (S3.E2)', async () => {

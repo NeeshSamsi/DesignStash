@@ -90,8 +90,7 @@ export default function LibraryPage({
   const categoryIds = useLibraryStore((s) => s.categoryIds)
   const setCategoryIds = useLibraryStore((s) => s.setCategoryIds)
 
-  const { loaded, failed, refresh, keepLingering, releaseLingering, tagCategories } =
-    useLibraryData(starredOnly)
+  const { loaded, failed, refresh, keepLingering, tagCategories } = useLibraryData(starredOnly)
 
   const ids = useMemo(() => items.map((item) => String(item.id)), [items])
   const rawSelection = useGridSelection(ids)
@@ -163,17 +162,13 @@ export default function LibraryPage({
     starredOnly,
     refresh,
     keepLingering,
-    releaseLingering,
     clearSelection: rawSelection.clear
   })
   const { openInPhotoshop } = actions
-  // The empty-space menu's Undo is the app's, as Edit › Undo is, once main has named its last
-  // action; until then, the page's own last change.
+  // The empty-space menu's Undo is the app's last action, as Edit › Undo is.
   const { undoLabel } = useUndoLabels()
   const lastUndo =
-    undoLabel !== undefined
-      ? { name: undoLabel, run: () => ipcUndoRoutes.app('undo') }
-      : actions.lastUndo
+    undoLabel !== undefined ? { name: undoLabel, run: () => ipcUndoRoutes.app('undo') } : null
 
   const itemById = (id: string) => items.find((item) => String(item.id) === id)
   const selectedItems = selection.selectedIds
@@ -230,7 +225,7 @@ export default function LibraryPage({
     })
   }
 
-  const piles = useLibraryPiles({ refresh, offerUndo: actions.offerUndo })
+  const piles = useLibraryPiles({ refresh })
   const newPile = (targets: LibraryItem[]) => {
     const intent = planNewPile(targets)
     if (intent) void piles.run(intent)

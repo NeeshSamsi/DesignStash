@@ -15,7 +15,7 @@ import { FlowModal } from '@renderer/components/FlowModal'
 import { useShortcut } from '@renderer/lib/shortcuts'
 import { useFlowUndo } from '@renderer/lib/undo-router'
 import { useFlowOpen } from '@renderer/stores/copyStore'
-import { toast, undoToast } from '@renderer/stores/toastStore'
+import { stepToast, toast } from '@renderer/stores/toastStore'
 import { Button } from '@renderer/ui/button'
 import { Skeleton } from '@renderer/ui/skeleton'
 import {
@@ -107,7 +107,7 @@ function SortSession({ initial, whole, copying, onClose, onLookThemOver }: Sessi
     (action: BoardAction) => {
       let next = boardReducer(latest.current, action)
       if (next.notice) {
-        undoToast(next.notice, () => apply({ type: 'undo' }))
+        stepToast(next.notice, () => apply({ type: 'undo' }))
         next = { ...next, notice: null }
       }
       latest.current = next
