@@ -1,15 +1,17 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { UndoRunResult } from '@shared/ipc/undo'
 import type { HandlerContext } from './context'
-import { countsChanged } from './library-effects'
+import { countsChanged, mockupsTouched } from './library-effects'
 import { registerIpcHandler } from './register'
 
 /**
  * The app's undo history (design/specs/undo.md): ⌘Z and ⇧⌘Z outside a field or flow, a toast's
  * own Undo, where ⌘Z lands now, a field's own undo through the window, and Discard your changes.
  */
-export function registerUndoHandlers(ctx: Pick<HandlerContext, 'undo' | 'repo' | 'push'>): void {
+export function registerUndoHandlers(ctx: HandlerContext): void {
   const { undo } = ctx
+  // What a step brings back to an inbox gets its suggestions now; what it takes away stops.
+  undo.onTouched((ids) => mockupsTouched(ctx, ids))
   /** A step that ran may have moved mockups between the inboxes, Trash and My Stash. */
   const ran = (result: UndoRunResult): UndoRunResult => {
     if (result.status === 'done' || result.status === 'dropped') countsChanged(ctx)

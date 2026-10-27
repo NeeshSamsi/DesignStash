@@ -32,7 +32,9 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
       onStatus: (event) => {
         ctx.push(IPC_CHANNELS.AI_STATUS, event)
         if (event.updates.some((u) => u.status === 'ready')) {
-          reportFirstSuggestion(ctx.settings, (name, props) => ctx.telemetry.get().track(name, props))
+          reportFirstSuggestion(ctx.settings, (name, props) =>
+            ctx.telemetry.get().track(name, props)
+          )
         }
         // "Still sniffing" also rides on the inbox counts.
         countsChanged(ctx)
@@ -47,9 +49,13 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
 
 /** The queue is done with these mockups: Look it over drafts waiting for them take what they got. */
 function settleDrafts(ctx: HandlerContext, updates: AiStatusEvent['updates']): void {
-  const done = updates.filter((u) => u.status === 'ready' || u.status === 'failed' || u.status === 'off')
+  const done = updates.filter(
+    (u) => u.status === 'ready' || u.status === 'failed' || u.status === 'off'
+  )
   if (done.length === 0) return
-  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider(), { aiStatusOf: (id) => inferenceQueueFor(ctx).statusOf(id) })
+  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider(), {
+    aiStatusOf: (id) => inferenceQueueFor(ctx).statusOf(id)
+  })
   // A suggestion that replaced an offered variant's words makes its offer's version again.
   lookOver.onItem = (item) => ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item)
   for (const { mockupId } of done) {
@@ -71,7 +77,9 @@ function settleDrafts(ctx: HandlerContext, updates: AiStatusEvent['updates']): v
 
 /** A pile's variations landed (design L8): Look it over shows each changed mockup's new words. */
 function pushDrafts(ctx: HandlerContext, mockupIds: number[]): void {
-  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider(), { aiStatusOf: (id) => inferenceQueueFor(ctx).statusOf(id) })
+  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider(), {
+    aiStatusOf: (id) => inferenceQueueFor(ctx).statusOf(id)
+  })
   for (const id of mockupIds) {
     if (ctx.repo.mockups.getMockup(id)?.stage !== 'to_stash') continue
     lookOver
@@ -99,6 +107,21 @@ export function mockupsArrived(ctx: HandlerContext, ids: number[]): void {
   inferenceQueueFor(ctx)
     .enqueue(withPileMembers(ctx, ids))
     .catch((err: unknown) => console.error('[AI] Could not queue suggestions:', err))
+}
+
+/**
+ * An undo or redo touched these mockups: the ones it brought back to an inbox are queued for their
+ * suggestions now, and the ones it took away (to Trash, My Stash, or gone) leave the queue.
+ */
+export function mockupsTouched(ctx: HandlerContext, ids: number[]): void {
+  const inInbox = (id: number) => {
+    const m = ctx.repo.mockups.getMockup(id)
+    return m !== undefined && m.deletedAt === null && m.stage !== 'stashed'
+  }
+  const back = ids.filter(inInbox)
+  const away = ids.filter((id) => !inInbox(id))
+  if (away.length > 0) mockupsLeft(ctx, away)
+  if (back.length > 0) mockupsArrived(ctx, back)
 }
 
 /** Tell the renderer the sidebar counts after anything that moves mockups between inboxes, My Stash and Trash. */

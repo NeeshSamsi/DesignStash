@@ -165,4 +165,13 @@ describe('the undo service', () => {
       reason: 'that model was deleted for good'
     })
   })
+
+  it('tells its listeners which mockups a step touched', async () => {
+    const { undo } = setup()
+    const touched = vi.fn()
+    undo.onTouched(touched)
+    undo.record(trashRecord(4))
+    await undo.history.undo()
+    expect(touched).toHaveBeenCalledWith([4])
+  })
 })

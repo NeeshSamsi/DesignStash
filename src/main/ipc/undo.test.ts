@@ -53,7 +53,12 @@ beforeEach(() => {
   })
   pushed = vi.fn()
   // Only the counts are read: the sidebar is told after every step that ran.
-  const repo = { inbox: { getCounts: () => ({ toSort: 1, toStash: 0, sniffing: 0, trash: 2 }) } }
+  const repo = {
+    inbox: { getCounts: () => ({ toSort: 1, toStash: 0, sniffing: 0, trash: 2 }) },
+    // The fake ops change nothing, so the AI queue only hears that these mockups left.
+    mockups: { getMockup: () => undefined },
+    piles: { collectGroupIds: (id: number) => [id] }
+  }
   registerUndoHandlers({ undo, repo, push: pushed } as unknown as HandlerContext)
 })
 

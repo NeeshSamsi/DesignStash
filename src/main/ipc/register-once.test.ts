@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { createSettingsStore } from '../settings'
 import { createTestDb } from '../db/repositories/__tests__/setup'
 import { LibraryService } from '../library/library-service'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const registered = vi.hoisted(() => [] as string[])
@@ -30,7 +31,7 @@ import { registerAllHandlers, registerPreAppHandlers } from './index'
 describe('handler registration', () => {
   it('registers every channel exactly once across the pre-app set and the library set', () => {
     const base = mkdtempSync(join(tmpdir(), 'ds-register-once-'))
-    const { sqlite, repo } = createTestDb()
+    const { sqlite, repo, db } = createTestDb()
     const settings = createSettingsStore(base)
     registerPreAppHandlers({ settings, repo: null })
     // Only registration is under test, so the AI runtime is a stub whose methods do nothing.
@@ -39,6 +40,7 @@ describe('handler registration', () => {
       settings,
       telemetry: { get: () => quiet, rebuild: vi.fn() },
       repo,
+      ...undoForTests(repo, db, settings),
       library: new LibraryService(repo, settings.getLibraryRoot(), { openPath: vi.fn() }),
       ai: {
         modelsDir: base,

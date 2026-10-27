@@ -2,7 +2,13 @@ import type { DiscardedEdit, RendererUndoOp, UndoContext, UndoState } from '@sha
 import type { PendingStash, SettingsStore } from '../settings'
 import { undoMenuItems, type UndoMenuItems } from './menu-items'
 import type { DataOp } from './ops'
-import { UndoHistory, type OpOutcome, type OpRunner, type UndoRecord } from './undo-history'
+import {
+  UndoHistory,
+  type OpOutcome,
+  type OpRunner,
+  type UndoRecord,
+  type UndoTarget
+} from './undo-history'
 
 /**
  * Every op the app's history runs: data's, on the library's rows, and two of its own: a step the
@@ -33,6 +39,8 @@ export interface UndoService {
   setContext(context: UndoContext): void
   /** A focused field's own undo or redo, through the window. */
   editField(direction: 'undo' | 'redo'): void
+  /** Hears which mockups each undo or redo touched. Returns a function that stops it. */
+  onTouched(listener: (mockupIds: number[]) => void): () => void
 }
 
 /** Every mockup in the piles (or singles) of `ids`, once each: an action's scope. */
@@ -119,7 +127,15 @@ export function createUndoService(deps: UndoServiceDeps): UndoService {
     refreshMenu()
   }
 
-  const history = new UndoHistory<AppOp>(runner, { onChange: changed })
+  const touchedListeners = new Set<(mockupIds: number[]) => void>()
+  const touched = (targets: UndoTarget[]): void => {
+    const ids = targets.flatMap((t) =>
+      t.kind === 'mockup' && typeof t.id === 'number' ? [t.id] : []
+    )
+    if (ids.length > 0) for (const listener of touchedListeners) listener(ids)
+  }
+
+  const history = new UndoHistory<AppOp>(runner, { onChange: changed, onStep: touched })
 
   return {
     history,
@@ -153,6 +169,10 @@ export function createUndoService(deps: UndoServiceDeps): UndoService {
       context = next
       refreshMenu()
     },
-    editField: deps.editField
+    editField: deps.editField,
+    onTouched(listener) {
+      touchedListeners.add(listener)
+      return () => void touchedListeners.delete(listener)
+    }
   }
 }

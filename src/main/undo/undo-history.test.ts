@@ -380,4 +380,29 @@ describe('UndoHistory', () => {
     history.clear()
     expect(history.state()).toMatchObject({ undo: null, redo: null })
   })
+
+  it('says which things each step touched, once it has run', async () => {
+    const onStep = vi.fn()
+    const history = new UndoHistory<FakeOp>(fakeRunner(), { onStep })
+    const older = titleEdit(history, 1, 'Tote', 'Tote bag')
+    titleEdit(history, 2, 'Mug', 'Coffee mug')
+
+    await history.undo()
+    await history.redo()
+    await history.undoEntry(older)
+
+    expect(onStep.mock.calls).toEqual([[[mockup(2)]], [[mockup(2)]], [[mockup(1)]]])
+  })
+
+  it('says nothing for a step that did not run', async () => {
+    const onStep = vi.fn()
+    const history = new UndoHistory<FakeOp>(
+      fakeRunner(() => ({ ok: false, missing: mockup(1) })),
+      { onStep }
+    )
+    await history.undo()
+    titleEdit(history, 1, 'Tote', 'Tote bag')
+    await history.undo()
+    expect(onStep).not.toHaveBeenCalled()
+  })
 })

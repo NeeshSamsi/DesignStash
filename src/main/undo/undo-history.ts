@@ -83,13 +83,20 @@ export class UndoHistory<Op extends { kind: string }> {
   private queue: Promise<unknown> = Promise.resolve()
   private readonly now: () => Date
   private readonly onChange: () => void
+  private readonly onStep: (targets: UndoTarget[]) => void
 
   constructor(
     private readonly runner: OpRunner<Op>,
-    options: { now?: () => Date; onChange?: () => void } = {}
+    options: {
+      now?: () => Date
+      onChange?: () => void
+      /** After a step has run: what it touched, so the app can follow (the AI queue). */
+      onStep?: (targets: UndoTarget[]) => void
+    } = {}
   ) {
     this.now = options.now ?? (() => new Date())
     this.onChange = options.onChange ?? (() => {})
+    this.onStep = options.onStep ?? (() => {})
   }
 
   /**
@@ -137,6 +144,7 @@ export class UndoHistory<Op extends { kind: string }> {
         )
       }
       this.onChange()
+      this.onStep(entry.targets)
       return this.doneResult(entry, outcome)
     })
   }
@@ -232,6 +240,7 @@ export class UndoHistory<Op extends { kind: string }> {
       }
     }
     this.onChange()
+    this.onStep(entry.targets)
     return this.doneResult(entry, outcome)
   }
 
