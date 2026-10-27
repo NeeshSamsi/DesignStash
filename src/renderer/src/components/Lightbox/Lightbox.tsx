@@ -13,6 +13,7 @@ import { guardToaster } from '@renderer/lib/toast-layer'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/ui/button'
 import { Dialog as DialogPrimitive } from 'radix-ui'
+import { SHORTCUT_BOUNDARY_ATTR } from '@renderer/lib/shortcuts'
 import { LIGHTBOX_DEFAULTS, type LightboxContractProps } from './Lightbox.types'
 import { lightboxCoverClass, lightboxVariants } from './Lightbox.variants'
 
@@ -206,6 +207,8 @@ export function Lightbox({
           data-ds="Lightbox"
           data-mode={props.mode}
           data-state={props.state}
+          // The window's shortcuts stay behind it, as behind every DialogFrame.
+          {...{ [SHORTCUT_BOUNDARY_ATTR]: '' }}
           aria-describedby={undefined}
           onInteractOutside={guardToaster()}
           onOpenAutoFocus={() => {

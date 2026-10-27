@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { variantMatrix } from '@renderer/design-system/matrix'
+import { ShortcutRegistry } from '@renderer/lib/shortcuts'
 import { Lightbox, type LightboxProps } from './Lightbox'
 import { LIGHTBOX_CONTRACT } from './Lightbox.types'
 
@@ -145,5 +146,22 @@ describe('Lightbox', () => {
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     await waitFor(() => expect(document.activeElement).toBe(card))
     card.remove()
+  })
+})
+
+describe('Lightbox and the window’s shortcuts (F-080)', () => {
+  it('keeps them behind it while it is open, as any dialog does, and its own arrows still work', () => {
+    const registry = new ShortcutRegistry()
+    const remove = registry.install()
+    const addFiles = vi.fn()
+    registry.register({ id: 'import.add-files', combo: 'mod+o', handler: addFiles })
+    const onNext = vi.fn()
+    render(<Lightbox open mode="group" src="a.webp" onNext={onNext} onClose={vi.fn()} />)
+    const inside = document.querySelector<HTMLElement>('[data-ds="Lightbox"]')!
+    fireEvent.keyDown(inside, { key: 'o', metaKey: true })
+    expect(addFiles).not.toHaveBeenCalled()
+    fireEvent.keyDown(inside, { key: 'ArrowRight' })
+    expect(onNext).toHaveBeenCalledTimes(1)
+    remove()
   })
 })
