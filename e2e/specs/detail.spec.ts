@@ -5,8 +5,9 @@ import sharp from 'sharp'
 import { test, expect } from '../fixtures/app'
 // Real mockups from the test set when it is there, else generated ones (seedStash).
 import { CARD_TITLE, seedStash, showMyStash } from '../fixtures/seed'
+import { clickUndo } from '../fixtures/toast'
 
-/** The details sidebar: a click opens it, Edit turns it into fields, and leaving with changes asks first. */
+/** The details sidebar: a click opens it, Edit turns it into fields, and leaving with changes discards them, with Undo. */
 
 test.describe('Details sidebar', () => {
   test.describe.configure({ timeout: 90_000 })
@@ -370,7 +371,9 @@ test.describe('Details sidebar', () => {
     await expect(panel(window)).toHaveCount(0)
   })
 
-  test('leaving with changes asks Keep editing or Discard', async ({ app }) => {
+  test('leaving with changes discards them at once with Undo, from the toast or Edit › Undo, which brings them back', async ({
+    app
+  }) => {
     const { window } = app
     const [only] = await seedStash(app, ['laptop'])
     await showMyStash(app)
@@ -378,22 +381,44 @@ test.describe('Details sidebar', () => {
     await panel(window).getByRole('button', { name: 'Edit', exact: true }).click()
     const title = panel(window).getByRole('textbox', { name: 'Title' })
     await title.fill('Something else')
+    const oldTitleOnCard = () =>
+      window.locator('[data-mockup-id]').getByText(only!.title, { exact: true })
 
-    await test.step('Keep editing leaves the edits where they were', async () => {
+    /** The Edit menu's Undo as it reads now, clicked when `click` is set. */
+    const editMenuUndo = (click: boolean) =>
+      app.app.evaluate(({ Menu }, press) => {
+        const edit = Menu.getApplicationMenu()?.items.find((item) => item.label === 'Edit')
+        const undo = edit?.submenu?.items.find((item) => item.label.startsWith('Undo'))
+        if (press) undo?.click()
+        return undo?.label ?? null
+      }, click)
+
+    await test.step('Close discards at once, with no ask, and the card keeps its old title', async () => {
       await panel(window).getByRole('button', { name: 'Close' }).click()
-      const ask = window.getByRole('alertdialog')
-      await expect(ask.getByText('Discard your changes?')).toBeVisible()
-      await ask.getByRole('button', { name: 'Keep editing' }).click()
       await expect(window.getByRole('alertdialog')).toHaveCount(0)
+      await expect(panel(window)).toHaveCount(0)
+      await expect(window.getByText('Discarded your changes')).toBeVisible()
+      await expect(oldTitleOnCard()).toBeVisible()
+      await expect(window.getByText('Something else', { exact: true })).toHaveCount(0)
+    })
+
+    await test.step('the toast’s Undo opens the fields again, holding the edits', async () => {
+      await clickUndo(window)
       await expect(title).toHaveValue('Something else')
     })
 
-    await test.step('Discard closes without saving', async () => {
+    await test.step('Esc with changes does the same as Close', async () => {
       await title.press('Escape')
-      await window.getByRole('alertdialog').getByRole('button', { name: 'Discard' }).click()
+      await expect(window.getByRole('alertdialog')).toHaveCount(0)
       await expect(panel(window)).toHaveCount(0)
-      await expect(window.getByText(only!.title, { exact: true }).first()).toBeVisible()
+      await expect(oldTitleOnCard()).toBeVisible()
       await expect(window.getByText('Something else', { exact: true })).toHaveCount(0)
+    })
+
+    await test.step('Edit › Undo in the menu names the discard and brings the edits back too', async () => {
+      await expect.poll(() => editMenuUndo(false)).toBe('Undo Discard changes')
+      await editMenuUndo(true)
+      await expect(title).toHaveValue('Something else')
     })
   })
 
