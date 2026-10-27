@@ -47,6 +47,7 @@ export interface CopyQueueDeps {
   /** Remove a folder once it is empty; fails when it is not. */
   rmdir: (path: string) => Promise<void>
   mkdir: (path: string) => Promise<void>
+  rename: (from: string, to: string) => Promise<void>
   /** Room kept free beyond the file itself, for its cover and thumbnail. */
   reserveBytes: number
   newId: () => string
@@ -71,6 +72,7 @@ const defaultDeps: CopyQueueDeps = {
   mkdir: async (p) => {
     await fs.mkdir(p, { recursive: true })
   },
+  rename: (from, to) => fs.rename(from, to),
   reserveBytes: 64 * 1024 * 1024,
   newId: randomUUID,
   now: Date.now
@@ -100,6 +102,10 @@ class Pause extends Error {
 }
 
 const codeOf = (err: unknown): string => (err as NodeJS.ErrnoException | null)?.code ?? ''
+
+/** A PSD is copied under this name and renamed once whole, so a copy cut off is never taken for one. */
+const PSD_FILE = 'original.psd'
+const PART_FILE = `${PSD_FILE}.part`
 
 /**
  * Copies dropped PSDs into the stash one at a time. Every file is a saved job, so a restart carries on
@@ -256,8 +262,22 @@ export class CopyQueue {
     await this.cleanStaging()
     const haul = this.repo.copyJobs.getActiveHaul()
     if (!haul) return
+    // A file was mid-copy when the app stopped: what it had written goes before it is copied again.
+    if (this.repo.copyJobs.getJobs(haul.id).some((j) => j.status === 'copying')) {
+      await this.clearCutOffCopies()
+    }
     this.repo.copyJobs.resetCopying(haul.id)
     if (haul.state === 'running') this.pump()
+  }
+
+  /** Mockup folders holding only part of a PSD: copies a crash cut off. A folder with a whole PSD stays. */
+  private async clearCutOffCopies(): Promise<void> {
+    const mockups = join(this.root, 'mockups')
+    for (const name of await this.deps.readdir(mockups)) {
+      const dir = join(mockups, name)
+      const files = await this.deps.readdir(dir)
+      if (files.includes(PART_FILE) && !files.includes(PSD_FILE)) await this.deps.rm(dir).catch(() => {})
+    }
   }
 
   async idle(): Promise<void> {
@@ -343,11 +363,12 @@ export class CopyQueue {
     const destDir = join(this.root, 'mockups', this.deps.newId())
     try {
       await this.deps.mkdir(destDir)
-      const libraryPath = join(destDir, 'original.psd')
+      const libraryPath = join(destDir, PSD_FILE)
+      const partPath = join(destDir, PART_FILE)
       // One pass over the original: it is copied and hashed together, and every chunk moves the bar.
       const source: CopySource =
         entry === null ? job.sourcePath : () => this.deps.openArchiveEntry(job.sourcePath, entry)
-      const { sha256 } = await this.deps.copyHashed(source, libraryPath, (written) => {
+      const { sha256 } = await this.deps.copyHashed(source, partPath, (written) => {
         this.live = { jobId: job.id, bytes: written }
         this.emitThrottled(haulId, job.id)
       })
@@ -357,6 +378,7 @@ export class CopyQueue {
         await this.deps.rm(destDir).catch(() => {})
         return skip('duplicate')
       }
+      await this.deps.rename(partPath, libraryPath)
 
       // The preview is read from the stash's copy; sidecars are matched against where the PSD came from.
       // A kit's preview image is often packed beside the PSD, so a zip's own images are offered too.

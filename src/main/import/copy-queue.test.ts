@@ -583,6 +583,52 @@ describe('resuming at launch', () => {
     await expect(queue().resume()).resolves.toBeUndefined()
     expect(await queue().status()).toBeNull()
   })
+
+  it('clears a copy a crash cut off, then copies the file again', async () => {
+    const source = psd('a.psd', 'AAAA')
+    repo.copyJobs.createHaul('crashed', [], 0)
+    repo.copyJobs.addJobs('crashed', [{ sourcePath: source, fileName: 'a.psd', folderTrail: [], sizeBytes: 4 }])
+    const job = repo.copyJobs.getJobs('crashed')[0]!
+    repo.copyJobs.setJobState(job.id, { status: 'copying' })
+    // Half of a.psd, written before the crash; and a PSD someone put in the stash by hand.
+    const cutOff = join(root, 'mockups', 'cut-off')
+    mkdirSync(cutOff, { recursive: true })
+    writeFileSync(join(cutOff, 'original.psd.part'), 'AA')
+    const theirs = join(root, 'mockups', 'theirs')
+    mkdirSync(theirs, { recursive: true })
+    writeFileSync(join(theirs, 'original.psd'), 'MINE')
+
+    const restarted = queue()
+    await restarted.resume()
+    await restarted.idle()
+
+    expect(existsSync(cutOff)).toBe(false)
+    expect(readFileSync(join(theirs, 'original.psd'), 'utf8')).toBe('MINE')
+    const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
+    expect(readFileSync(m.libraryPath, 'utf8')).toBe('AAAA')
+  })
+})
+
+describe('a copy in progress', () => {
+  it('writes under a .part name, so a copy cut off is never taken for a PSD, and lands as original.psd', async () => {
+    psd('a.psd', 'AAAA')
+    const written: string[] = []
+    const q = queue({
+      copyHashed: async (src, dest, onBytes) => {
+        written.push(dest)
+        return copyWithHash(src, dest, onBytes)
+      }
+    })
+
+    await q.start([drop])
+    await q.idle()
+
+    expect(written).toHaveLength(1)
+    expect(written[0]!.endsWith(join('original.psd.part'))).toBe(true)
+    const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
+    expect(m.libraryPath).toBe(written[0]!.slice(0, -'.part'.length))
+    expect(readdirSync(join(m.libraryPath, '..'))).not.toContain('original.psd.part')
+  })
 })
 
 describe('byte progress', () => {
