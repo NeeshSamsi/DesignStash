@@ -7,7 +7,7 @@
 
 - **Add card first:** `AddMockupCard` is the first card in **My Stash › All** (the inline-add rule from `tags.md`: add where the result appears). It's hidden in search results, while filtering and in Starred.
 - **Empty library:** just the Add card, top-left. There's no centred empty page.
-- **Add card actions:** click it (or press ↵ on it) to open the same Add menu as the sidebar button: Add files… and Add folder…. Dragging PSDs over the window shows `DropOverlay`, so the card has no drag state of its own.
+- **Add card actions:** click it (or press ↵ on it) to open its menu: Add files… and Add folder…, the same as File › Add Files… (⌘O) and Add Folder… (⇧⌘O). Dragging PSDs over the window shows `DropOverlay`, so the card has no drag state of its own.
 - **Loading:** the Add card shows straight away (it isn't data), followed by 10 `MockupCard` loading cards in the same wrap and size, so nothing jumps when the real cards arrive. No spinner.
 - **Other states:** no-results and error sit at the top under the toolbar, never vertically centred. The toolbar always shows, even at 0 items, so content starts at the same height on every screen.
 

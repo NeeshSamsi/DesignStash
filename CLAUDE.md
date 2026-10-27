@@ -22,5 +22,5 @@ A local-first macOS (Electron, Apple Silicon) app for designers to organise and 
 
 - **Package manager:** pnpm. **State:** Zustand. **Validation/IPC contracts:** zod. **DB:** SQLite (better-sqlite3).
 - **Process isolation:** all privileged work in the main process; renderer talks only via the typed preload bridge (`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`). Never expand the preload surface beyond typed, validated channels.
-- **Test-first** for main-process modules (DB, PSD, import, inference, entitlements): interface-driven, unit-tested with stubs. No real model or network calls in tests/CI.
+- **Test-first** for main-process modules (DB, PSD, import, inference): interface-driven, unit-tested with stubs. No real model or network calls in tests/CI.
 - **No Reveal-in-Finder for the Library** — all file operations go through the app (see spec §3.5).
