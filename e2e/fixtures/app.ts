@@ -1,4 +1,5 @@
-/* eslint-disable no-empty-pattern, react-hooks/rules-of-hooks -- Playwright fixtures take an empty destructuring pattern and call `use`, which is not a React hook. */
+/* eslint-disable react-hooks/rules-of-hooks -- Playwright fixtures call `use`, which is not a React hook. */
+/// <reference lib="dom" />
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -28,9 +29,19 @@ function launchTarget(userData: string): { executablePath?: string; args: string
   }
 }
 
+export interface WindowSize {
+  width: number
+  height: number
+}
+
+/** Figma's reference window, and the size every test runs at unless it asks for another. */
+export const REFERENCE_WINDOW: WindowSize = { width: 1440, height: 900 }
+
 export interface LaunchOptions {
   /** Skip onboarding by seeding settings as a finished first run. Default true. */
   onboarded?: boolean
+  /** The window's size for the test. Default REFERENCE_WINDOW. */
+  size?: WindowSize
   /** Extra environment for the app process, on top of the e2e defaults (stub AI, test mode). */
   env?: Record<string, string>
   /** Name the userData folder itself, inside a fresh temp parent. Used to put awkward characters in the stash path. */
@@ -72,13 +83,36 @@ export function makePsds(dir: string, names: string[]): string[] {
 }
 
 /**
+ * Sizes the window and waits until the page has the new size, so a test never measures the old
+ * one. The window opens at 1440×900 clamped to the display, so the size is always set explicitly.
+ */
+export async function setWindowSize(
+  app: Pick<E2EApp, 'app' | 'window'>,
+  { width, height }: WindowSize
+): Promise<void> {
+  await app.app.evaluate(
+    ({ BrowserWindow }, [w, h]) => {
+      const win = BrowserWindow.getAllWindows()[0]
+      win?.setSize(w as number, h as number)
+      win?.center()
+    },
+    [width, height] as const
+  )
+  await expect
+    .poll(() => app.window.evaluate(() => [window.innerWidth, window.innerHeight]), {
+      message: `the window is ${width}×${height} (is the display big enough?)`
+    })
+    .toEqual([width, height])
+}
+
+/**
  * Launch the built app (`pnpm build` first) with a fresh userData folder. Nothing is shared between
  * tests and nothing touches the real user's stash.
  */
 export async function launchApp(
   opts: LaunchOptions = {}
 ): Promise<E2EApp & { close: () => Promise<void> }> {
-  const { onboarded = true, env, userDataName, onClose } = opts
+  const { onboarded = true, size = REFERENCE_WINDOW, env, userDataName, onClose } = opts
   const root = mkdtempSync(join(tmpdir(), 'designstash-e2e-'))
   const userData = userDataName ? join(root, userDataName) : root
   const stash = join(userData, 'Library')
@@ -109,8 +143,7 @@ export async function launchApp(
   })
   const window = await app.firstWindow()
   await window.waitForLoadState('domcontentloaded')
-  // The flow modals are wider than the default 1200x800 window.
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setSize(1800, 1100))
+  await setWindowSize({ app, window }, size)
 
   return {
     app,
@@ -133,15 +166,19 @@ export async function launchApp(
   }
 }
 
-/** `test` with an `app` fixture (already onboarded) and an `unboarded` one (first run). */
-export const test = base.extend<{ app: E2EApp; firstRun: E2EApp }>({
-  app: async ({}, use) => {
-    const launched = await launchApp({ onboarded: true })
+/**
+ * `test` with an `app` fixture (already onboarded) and a `firstRun` one. Both open at `windowSize`,
+ * the reference 1440×900 unless a spec needs more room: `test.use({ windowSize: { … } })`.
+ */
+export const test = base.extend<{ app: E2EApp; firstRun: E2EApp; windowSize: WindowSize }>({
+  windowSize: [REFERENCE_WINDOW, { option: true }],
+  app: async ({ windowSize }, use) => {
+    const launched = await launchApp({ onboarded: true, size: windowSize })
     await use(launched)
     await launched.close()
   },
-  firstRun: async ({}, use) => {
-    const launched = await launchApp({ onboarded: false })
+  firstRun: async ({ windowSize }, use) => {
+    const launched = await launchApp({ onboarded: false, size: windowSize })
     await use(launched)
     await launched.close()
   }
