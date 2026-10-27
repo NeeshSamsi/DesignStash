@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { promises as fs } from 'node:fs'
+import { createWriteStream, promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { Readable } from 'node:stream'
+import { Readable, Writable } from 'node:stream'
 import { createHash } from 'node:crypto'
 import { classifyDownloadError, DownloadError, ModelDownloader, type DownloadProgress } from './download'
 import * as registry from './registry'
@@ -176,6 +176,46 @@ describe('ModelDownloader', () => {
     const downloader = new ModelDownloader(tempModelsDir, { fetchImpl: createMockFetch() })
     await downloader.download('test-model-nohash')
     expect(await downloader.isInstalled('test-model-nohash')).toBe(true)
+  })
+})
+
+describe('a disk slower than the network', () => {
+  it('waits for the disk, so the download never piles up in memory', async () => {
+    // The network hands over every 10-byte chunk at once; the disk holds 16 bytes and writes one chunk every few ms.
+    const HOLDS = 16
+    let written = 0
+    let ahead = 0
+    const slowDisk = (path: string, flags: string) => {
+      const file = createWriteStream(path, { flags })
+      return new Writable({
+        highWaterMark: HOLDS,
+        write(chunk: Buffer, _encoding, done) {
+          setTimeout(() => {
+            file.write(chunk, (err) => {
+              written += chunk.length
+              done(err)
+            })
+          }, 5)
+        },
+        final(done) {
+          file.end(done)
+        }
+      })
+    }
+    const downloader = new ModelDownloader(tempModelsDir, {
+      fetchImpl: createMockFetch(),
+      createWriteStream: slowDisk
+    })
+
+    await downloader.download('test-model', {
+      onProgress: (p) => {
+        if (p.phase === 'downloading') ahead = Math.max(ahead, p.receivedBytes - written)
+      }
+    })
+
+    // What the disk holds, plus the chunk that filled it.
+    expect(ahead).toBeLessThanOrEqual(HOLDS + 10)
+    expect(await downloader.isInstalled('test-model')).toBe(true)
   })
 })
 

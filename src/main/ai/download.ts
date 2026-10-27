@@ -1,6 +1,8 @@
 import { createWriteStream, promises as fs } from 'node:fs'
+import { once } from 'node:events'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
+import type { Writable } from 'node:stream'
 import type { ModelFile } from './registry'
 import { MEANING_MODEL, MODEL_FILE_NAMES, getModel, isMeaningModel } from './registry'
 
@@ -42,6 +44,8 @@ export interface DownloaderOpts {
   /** Free bytes on the volume holding `path`. */
   freeBytes?: (path: string) => Promise<number>
   now?: () => number
+  /** Where a download's bytes go. A file on disk by default; tests hand in a slow one. */
+  createWriteStream?: (path: string, flags: string) => Writable
 }
 
 /** Speed is measured over this many milliseconds, so it settles instead of jumping. */
@@ -171,7 +175,8 @@ export class ModelDownloader {
       flags = 'w'
     }
 
-    const writeStream = createWriteStream(destPath, { flags })
+    const writeStream =
+      this.opts?.createWriteStream?.(destPath, flags) ?? createWriteStream(destPath, { flags })
     let writeError: unknown = null
     writeStream.on('error', (e) => (writeError = e))
     const reader = response.body.getReader()
@@ -182,7 +187,10 @@ export class ModelDownloader {
         if (done) break
         if (opts.signal?.aborted) throw new DOMException('This operation was aborted', 'AbortError')
         if (writeError) throw writeError
-        writeStream.write(value)
+        // A disk slower than the network: wait for it, so the rest of the file never piles up in memory.
+        if (!writeStream.write(value)) {
+          await once(writeStream, 'drain', opts.signal ? { signal: opts.signal } : {})
+        }
         receivedBytes += value.length
         opts.onProgress(receivedBytes)
       }
