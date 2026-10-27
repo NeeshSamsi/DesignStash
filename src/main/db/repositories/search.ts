@@ -31,8 +31,9 @@ export function singular(word: string): string {
  * form matches, so "fries" still finds "fries". Null when nothing is left.
  */
 function ftsTerm(word: string): string | null {
+  // Letters of any script with their marks (the index's unicode61 tokenizer keeps them as words).
   const parts = word
-    .replace(/[^a-zA-Z0-9\-_]/g, '')
+    .replace(/[^\p{L}\p{M}\p{N}_-]/gu, '')
     .split('-')
     .filter(Boolean)
   if (parts.length === 0) return null
@@ -51,8 +52,8 @@ const FILLER = new Set(['on', 'in', 'with', 'the', 'a', 'and', 'of', 'for', 'at'
 
 /**
  * The FTS5 MATCH expression for a free-text query: each word prefix-matched, with everything but
- * letters, digits, hyphens and underscores dropped, and filler words left out unless the query is
- * only filler. Null when no word is left.
+ * letters (of any script), digits, hyphens and underscores dropped, and filler words left out
+ * unless the query is only filler. Null when no word is left.
  */
 export function ftsMatchQuery(query: string): string | null {
   const words = query.split(/\s+/).filter(Boolean)
@@ -147,7 +148,7 @@ export class SearchRepository {
 
   /**
    * Prefix-match a free-text query. Returns mockup id → weighted bm25 rank (lower is better), or null when the query
-   * has no searchable terms (so the caller skips the filter).
+   * has no searchable terms (nothing to match: the caller finds nothing by keyword).
    */
   rankMatches(query: string): Map<number, number> | null {
     const ftsTerms = ftsMatchQuery(query)

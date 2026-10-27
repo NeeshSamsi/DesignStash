@@ -185,7 +185,30 @@ describe('ftsMatchQuery', () => {
   })
 
   it('keeps letters, digits and underscores, and drops the rest', () => {
-    expect(ftsMatchQuery('  café  "poster"! 3D_render ')).toBe('caf* poster* 3D_render*')
+    expect(ftsMatchQuery('  café  "poster"! 3D_render ')).toBe('café* poster* 3D_render*')
+  })
+
+  it('keeps letters from every script, accents and all', () => {
+    expect(ftsMatchQuery('日本')).toBe('日本*')
+    expect(ftsMatchQuery('Ünal')).toBe('Ünal*')
+    expect(ftsMatchQuery('हिंदी')).toBe('हिंदी*')
+  })
+
+  it('finds a word in any script, and an accented word without its look-alikes', () => {
+    ensureSearchIndex(db)
+    const make = (title: string, path: string) => {
+      const m = repo.mockups.createMockup({ ...sample, title, libraryPath: `/lib/fts/${path}.psd` })
+      repo.mockups.setStage([m.id], 'stashed')
+      repo.search.upsertSearchIndex(m.id)
+      return m.id
+    }
+    const japanese = make('日本 poster', 'jp')
+    const cafe = make('Café menu', 'cafe')
+    make('Caffeine label', 'caffeine')
+    const ids = (q: string) => [...(repo.search.rankMatches(q) ?? new Map()).keys()]
+
+    expect(ids('日本')).toEqual([japanese])
+    expect(ids('café')).toEqual([cafe])
   })
 
   it('searches a hyphenated word as a phrase, the way the index splits it', () => {

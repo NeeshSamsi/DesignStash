@@ -238,6 +238,22 @@ describe('getLibrary', () => {
     expect(prefixResult.map((r) => r.id)).toContain(a.id)
   })
 
+  it('a search with no word to look for finds nothing, never the whole library', () => {
+    repo.mockups.createMockup(approvedMockup({ title: 'Mug', libraryPath: '/lib/nothing-1.psd' }))
+    repo.mockups.createMockup(approvedMockup({ title: 'Cup', libraryPath: '/lib/nothing-2.psd' }))
+
+    expect(repo.library.getLibrary({ query: '!!', sort: 'date' })).toEqual([])
+    expect(repo.library.getLibrary({ query: '  ', sort: 'date' })).toHaveLength(2)
+  })
+
+  it('finds a title written in another script', () => {
+    const jp = repo.mockups.createMockup(approvedMockup({ title: '日本 poster', libraryPath: '/lib/jp.psd' }))
+    const other = repo.mockups.createMockup(approvedMockup({ title: 'Mug', libraryPath: '/lib/mug.psd' }))
+    for (const m of [jp, other]) repo.search.upsertSearchIndex(m.id)
+
+    expect(repo.library.getLibrary({ query: '日本', sort: 'date' }).map((r) => r.id)).toEqual([jp.id])
+  })
+
   it('sort:name orders A to Z and sort:date newest first', () => {
     const z = repo.mockups.createMockup(approvedMockup({ title: 'Zebra', libraryPath: '/lib/z.psd' }))
     const ap = repo.mockups.createMockup(approvedMockup({ title: 'Apple', libraryPath: '/lib/ap.psd' }))

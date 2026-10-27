@@ -129,7 +129,10 @@ export class LibraryQueryRepository {
     // FTS filter + rank map. A hit on a mockup in a pile finds the pile: its top shows, ranked by
     // the best of its mockups, so a word only one variation has ("wavy") still finds it.
     const piles = rawQuery ? this.pileOfMembers() : new Map<number, number>()
-    const ftsRankMap = rawQuery ? rollUp(this.search.rankMatches(rawQuery), piles, Math.min) : null
+    // A query with no word left to match ("!!") finds nothing by keyword, never the whole library.
+    const ftsRankMap = rawQuery
+      ? rollUp(this.search.rankMatches(rawQuery) ?? new Map(), piles, Math.min)
+      : null
     const meaning = rollUp(opts.meaning ?? null, piles, Math.max)
     // The closest meaning hit among the mockups shown (a pile member is not one; its top is), then
     // dropped if keyword search found it already.
