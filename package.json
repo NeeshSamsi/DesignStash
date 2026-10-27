@@ -37,6 +37,8 @@
     "seed:dev": "tsx --tsconfig tsconfig.node.json scripts/seed-dev/seed.ts",
     "predev:ingest": "node scripts/rebuild-better-sqlite3.mjs node",
     "dev:reset": "node scripts/dev-reset.mjs",
+    "dev:move-library": "tsx --tsconfig tsconfig.node.json scripts/dev-move-library/run.ts",
+    "predev:move-library": "node scripts/rebuild-better-sqlite3.mjs node",
     "ai-eval:covers": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/covers.ts",
     "ai-eval:run": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/run.ts",
     "ai-eval:score": "tsx --tsconfig tsconfig.node.json scripts/ai-eval/score.ts",

@@ -28,6 +28,7 @@
     "e2e/**/*",
     "scripts/ai-eval/**/*",
     "scripts/seed-dev/**/*",
+    "scripts/dev-move-library/**/*",
     "scripts/helper-try.ts"
   ]
 }

@@ -25,6 +25,27 @@ const PATH_COLUMNS = [
   ['variants', 'cover_path']
 ] as const
 
+/**
+ * Points the paths in a closed database at another folder: every stash path that starts with
+ * `from` starts with `to` instead. Also used by the dev tool that moves dev's library.
+ */
+export function rewriteStashPaths(dbPath: string, from: string, to: string): void {
+  const db = new Database(dbPath, { nativeBinding: nativeBinding() })
+  try {
+    const prefix = from.endsWith(sep) ? from : from + sep
+    const next = to.endsWith(sep) ? to : to + sep
+    db.transaction(() => {
+      for (const [table, column] of PATH_COLUMNS) {
+        db.prepare(
+          `UPDATE ${table} SET ${column} = ? || substr(${column}, ?) WHERE substr(${column}, 1, ?) = ?`
+        ).run(next, prefix.length + 1, prefix.length, prefix)
+      }
+    })()
+  } finally {
+    db.close()
+  }
+}
+
 export interface StashFolderDeps {
   stat: (path: string) => Promise<{ size: number }>
   copyFile: (src: string, dest: string) => Promise<void>
@@ -51,22 +72,7 @@ const defaultDeps: StashFolderDeps = {
   backupDb: async (dest) => {
     await getSqlite().backup(dest)
   },
-  rewritePaths: (dbPath, from, to) => {
-    const db = new Database(dbPath, { nativeBinding: nativeBinding() })
-    try {
-      const prefix = from.endsWith(sep) ? from : from + sep
-      const next = to.endsWith(sep) ? to : to + sep
-      db.transaction(() => {
-        for (const [table, column] of PATH_COLUMNS) {
-          db.prepare(
-            `UPDATE ${table} SET ${column} = ? || substr(${column}, ?) WHERE substr(${column}, 1, ?) = ?`
-          ).run(next, prefix.length + 1, prefix.length, prefix)
-        }
-      })()
-    } finally {
-      db.close()
-    }
-  },
+  rewritePaths: rewriteStashPaths,
   referencedPaths: (dbPath) => {
     const db = new Database(dbPath, { readonly: true, nativeBinding: nativeBinding() })
     try {
