@@ -9,6 +9,16 @@ files:
   - out/**
   - package.json
 publish: null # releases are made by .github/workflows/release.yml, not by electron-builder
+# Burnt into the Electron binary before signing (scripts/packaging/fuses.test.ts). The app never
+# runs as plain Node (ELECTRON_RUN_AS_NODE) or takes code from NODE_OPTIONS, and it loads only its
+# own app.asar, checked against the hash electron-builder writes into Info.plist. --inspect stays:
+# Playwright drives the packaged app through it in e2e (DESIGNSTASH_E2E_APP).
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: true
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
 artifactName: DesignStash-${version}-${arch}.${ext}
 mac:
   target:
