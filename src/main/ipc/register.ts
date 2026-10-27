@@ -7,6 +7,7 @@ import {
   type IpcResult
 } from '@shared/ipc'
 import { ZodError } from 'zod'
+import { logger } from '../logger'
 
 /**
  * Register a typed IPC handler in the main process.
@@ -32,7 +33,7 @@ export function registerIpcHandler<C extends InvokeChannel>(
 
       const parsedResponse = contract.response.safeParse(result)
       if (!parsedResponse.success) {
-        console.error(`[IPC] Response validation failed for ${channel}:`, parsedResponse.error)
+        logger.error(`[IPC] Response validation failed for ${channel}:`, parsedResponse.error)
         return {
           success: false,
           error: { code: 'INTERNAL_ERROR', message: 'Response validation failed' }
@@ -41,7 +42,7 @@ export function registerIpcHandler<C extends InvokeChannel>(
 
       return { success: true, data: parsedResponse.data as IpcResponse<C> }
     } catch (err) {
-      console.error(`[IPC] Error in handler for ${channel}:`, err)
+      logger.error(`[IPC] Error in handler for ${channel}:`, err)
       return {
         success: false,
         error: {
