@@ -5,6 +5,8 @@
 
 All three pages use the same grid, cards, action bar and selection as My Stash: click, ⌘-click, ⇧-click, marquee, ⌘A and Esc. The action bar's buttons act on the selection when there is one (“Look over 3”, “Toss 3”, “Restore 3”).
 
+**Toss** (Toss these, Toss this haul, Toss 3) moves the cards to Trash at once, with no confirm: the toast reads “Tossed 3 mockups · They’re in Trash · Undo”, and ⌘Z undoes it however long ago (undo.md). Emptying Trash is the only place the app's copies are deleted.
+
 ## To sort
 
 - **Cards:** file names only, singles (no +N yet).
@@ -26,9 +28,9 @@ All three pages use the same grid, cards, action bar and selection as My Stash: 
 
 ## Trash
 
-- **Layout:** the same grid as My Stash, with no Add card. Cards show the cover (+N on piles), the title and when it was trashed (“Trashed 2 days ago”), newest first. A pile comes back whole.
+- **Layout:** the same grid as My Stash, with no Add card. Cards show the cover (+N on piles), the title, and where each came from and when: “Trashed 2 days ago” from My Stash, “Tossed from To sort · 2 min ago” (or To stash) from an inbox, “From an undone import · 1 hour ago” for what an undone import brought in. Newest first. A pile comes back whole.
 - **Hover:** Restore (primary, full width) with Delete for good under it, the same stack as Open in Photoshop and Edit details on My Stash cards. Right-click offers the same two.
-- **Action bar:** Empty Trash (secondary) · Restore all (primary). Restore all needs no confirm: it's undoable from the toast. Empty Trash asks once for the whole Trash, naming the count and the space it frees.
+- **Action bar:** Empty Trash (secondary) · Restore all (primary). Restore all needs no confirm: it's undoable from the toast. Restore puts each card back where it came from, and the toast says where (“Restored to To sort”), or plain “Restored” when they went back to different places. Empty Trash, Delete for good and Delete entry are the only permanent actions: each asks once, in red, with the line “This can’t be undone.”
 - **Loading:** the action bar with both buttons disabled, then the grid's loading cards.
 - **Delete for good:** a ConfirmDialog naming the item. There's no undo.
 - **Restore failed:** the PSD is gone from the stash folder; the card says so, and the dialog offers Keep in Trash or Delete entry.

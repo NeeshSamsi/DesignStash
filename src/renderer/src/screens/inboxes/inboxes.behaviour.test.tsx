@@ -200,26 +200,28 @@ describe('To stash', () => {
     expect(onLookOver).toHaveBeenLastCalledWith({ kind: 'only', unitIds: [2] })
   })
 
-  it('Toss these asks, then sends INBOX_TOSS with the ids', async () => {
+  it('Toss these moves them to Trash at once, with Undo (undo.md)', async () => {
     setup({
       ...listOf(stash),
-      [IPC_CHANNELS.INBOX_TOSS]: () => ok({ tossedIds: [1, 2], skippedIds: [] })
+      [IPC_CHANNELS.INBOX_TOSS]: () => ok({ tossedIds: [1, 2], skippedIds: [], undoEntryId: 8 }),
+      [IPC_CHANNELS.TRASH_RESTORE]: () => ok({ restoredIds: [1, 2], missing: [] })
     })
     render(<InboxPage stage="to_stash" />)
     await screen.findByText('Clay pile')
     fireEvent.click(screen.getByRole('button', { name: 'Toss these' }))
-    expect(sent(IPC_CHANNELS.INBOX_TOSS)).toEqual([])
-    const dialog = await screen.findByRole('alertdialog')
-    expect(dialog.textContent).toContain('Toss these?')
-    expect(dialog.textContent).toContain(
-      'This deletes the 2 sorted mockups and their PSDs from your stash folder. Your originals stay right where they are.'
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
-    fireEvent.click(screen.getByRole('button', { name: 'Toss these' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Discard 2 mockups' }))
     await waitFor(() => expect(sent(IPC_CHANNELS.INBOX_TOSS)).toEqual([{ ids: [1, 2] }]))
-    await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    await waitFor(() =>
+      expect(toasts.undoToast).toHaveBeenCalledWith(
+        'Tossed 2 mockups',
+        expect.any(Function),
+        'They’re in Trash',
+        8
+      )
+    )
+    // Without an entry, Undo restores them from Trash to where they came from.
+    toasts.undoToast.mock.calls[0]![1]()
+    await waitFor(() => expect(sent(IPC_CHANNELS.TRASH_RESTORE)).toEqual([{ ids: [1, 2] }]))
   })
 
   it('tells an empty page what it is for', async () => {
@@ -242,16 +244,16 @@ describe('Add card', () => {
     expect(first?.getAttribute('data-ds')).toBe('AddMockupCard')
   })
 
-  it('To sort offers Toss this haul, and its confirm shows the size', async () => {
-    setup(listOf([inbox(1, { sizeBytes: 3 * 1024 * 1024 }), inbox(2, { sizeBytes: 1024 * 1024 })]))
+  it('To sort offers Toss this haul, which goes straight to Trash', async () => {
+    setup({
+      ...listOf([inbox(1), inbox(2)]),
+      [IPC_CHANNELS.INBOX_TOSS]: () => ok({ tossedIds: [1, 2], skippedIds: [] })
+    })
     render(<InboxPage stage="to_sort" />)
     await screen.findByText('file-1.psd')
     fireEvent.click(screen.getByRole('button', { name: 'Toss this haul' }))
-    const dialog = await screen.findByRole('alertdialog')
-    expect(dialog.textContent).toContain('Toss this haul?')
-    expect(dialog.textContent).toContain('2 mockups')
-    expect(dialog.textContent).toContain('4 MB')
-    expect(screen.getByRole('button', { name: 'Discard 2 mockups' })).toBeTruthy()
+    await waitFor(() => expect(sent(IPC_CHANNELS.INBOX_TOSS)).toEqual([{ ids: [1, 2] }]))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 })
 
