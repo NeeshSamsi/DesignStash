@@ -1,6 +1,6 @@
 # Undo
 
-**Status:** decided by Neesh 2026-10-27 (audit decision F-010); not built yet. It is built as its own batch once the audit fixes land, because it touches files several fix batches own.
+**Status:** decided by Neesh 2026-10-27 (audit decision F-010); built 2026-10-27 as its own batch after the audit fixes (U ids in `tmp/audit/fixes.jsonl`, through 8ddb581). How it is built: Technical guide (scratchpad 62), 6.9 Undo.
 **Figma:** none yet. The changes needed are the Edit menu labels, the Trash card's "Tossed from…" caption, and the copy of the three permanent-action confirms (see "Design to update").
 
 Neesh: "I want the undo to be contextual and powerful. If inside an input, undo that input. If it's not within a selection, undo EVERYTHING, including toast notifications & dangerous things that have been confirmed in the past. The only thing this doesn't cover is for example emptying the trash or something genuinely permanent, these actions should have a clear warning that this cannot be undone."
