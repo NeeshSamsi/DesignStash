@@ -47,6 +47,7 @@ function harness(
     startTimeoutMs?: number
     extraArgs?: string[]
     tracker?: { record: (pid: number) => void; clear: () => void }
+    log?: (line: string) => void
   } = {}
 ): Harness {
   const processes: FakeProcess[] = []
@@ -73,7 +74,8 @@ function harness(
     onParentExit: (listener) => {
       parentExit.listeners.add(listener)
       return () => parentExit.listeners.delete(listener)
-    }
+    },
+    ...(opts.log && { log: opts.log })
   }
 
   const server = new LlamaServer(
@@ -228,6 +230,34 @@ describe('LlamaServer', () => {
 
     await expect(h.server.chat({})).resolves.toBe('{"title":"t"}')
     expect(h.spawnArgs).toHaveLength(2)
+  })
+
+  it('logs each start, a start that fails, a stop, and an exit on its own, so a problem report shows every restart (F-075)', async () => {
+    const lines: string[] = []
+    let failFirst = true
+    const h = harness({
+      log: (line) => lines.push(line),
+      health: () => {
+        if (!failFirst) return json({ status: 'ok' })
+        failFirst = false
+        h.processes[0]!.exit(1)
+        return json({ error: 'Loading model' }, 503)
+      }
+    })
+
+    await expect(h.server.chat({})).rejects.toThrow(/exited while loading/)
+    await h.server.chat({})
+    h.processes[1]!.exit(139)
+    await h.server.chat({})
+    await h.server.stop()
+
+    expect(lines).toEqual([
+      expect.stringMatching(/^\[AI\] llama-server for m couldn't start: llama-server exited while loading \(code 1\)/),
+      expect.stringMatching(/^\[AI\] llama-server for m is up after \d+\.\d s\.$/),
+      '[AI] llama-server for m exited on its own (code 139). The next request starts it again.',
+      expect.stringMatching(/^\[AI\] llama-server for m is up after \d+\.\d s\.$/),
+      '[AI] llama-server for m stopped.'
+    ])
   })
 
   it('gives up and kills the server when it never becomes ready', async () => {

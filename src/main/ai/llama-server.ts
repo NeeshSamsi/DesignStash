@@ -1,5 +1,7 @@
 import { spawn as nodeSpawn } from 'node:child_process'
 import { createServer } from 'node:net'
+import { basename, dirname } from 'node:path'
+import { logger } from '../logger'
 
 /** The parts of a child process the server uses, so tests can hand in a fake. */
 export interface ServerProcess {
@@ -40,6 +42,8 @@ export interface LlamaServerDeps {
   sleep(ms: number): Promise<void>
   /** Kill the child if the app quits under it. Returns a function that unregisters. */
   onParentExit(listener: () => void): () => void
+  /** Where each start, stop and exit is written down, so a problem report shows every restart. */
+  log?(line: string): void
 }
 
 /** The parts of an OpenAI-compatible chat completion reply that llama-server fills in. */
@@ -53,6 +57,7 @@ const HOST = '127.0.0.1'
 const HEALTH_POLL_MS = 250
 const STOP_GRACE_MS = 5_000
 const STDERR_TAIL_LINES = 20
+const IDLE_MS = 5 * 60_000
 
 /** A free TCP port on 127.0.0.1, found by binding port 0 and letting it go. */
 export function findFreePort(): Promise<number> {
@@ -75,7 +80,8 @@ export const defaultLlamaServerDeps: LlamaServerDeps = {
   onParentExit: (listener) => {
     process.once('exit', listener)
     return () => process.off('exit', listener)
-  }
+  },
+  log: (line) => logger.info(line)
 }
 
 /**
@@ -166,13 +172,14 @@ export class LlamaServer {
   }
 
   /** Stop the child: SIGTERM, then SIGKILL if it hasn't gone after a grace period. */
-  async stop(): Promise<void> {
+  async stop(why: 'asked' | 'idle' = 'asked'): Promise<void> {
     this.clearIdle()
     const child = this.child
     this.child = null
     this.starting = null
     this.healthy = false
     if (!child || child.exitCode !== null) return
+    this.deps.log?.(`[AI] llama-server for ${this.name} stopped${why === 'idle' ? ` after ${Math.round((this.config.idleMs ?? IDLE_MS) / 60_000)} min idle` : ''}.`)
 
     const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()))
     child.kill('SIGTERM')
@@ -183,10 +190,16 @@ export class LlamaServer {
     if (!gone) child.kill('SIGKILL')
   }
 
+  /** The model's folder, which names it in the log without a path ("qwen3.5-9b"). */
+  private get name(): string {
+    return basename(dirname(this.config.modelPath))
+  }
+
   private ensureStarted(): Promise<string> {
     if (!this.starting) {
       this.starting = this.launch().catch((err) => {
         this.starting = null
+        this.deps.log?.(`[AI] llama-server for ${this.name} couldn't start: ${err instanceof Error ? err.message : String(err)}`)
         throw err
       })
     }
@@ -215,6 +228,7 @@ export class LlamaServer {
     ]
 
     this.stderrTail = []
+    const startedAt = performance.now()
     const child = this.deps.spawn(binaryPath, args)
     this.child = child
     let exitCode: number | null | undefined
@@ -239,6 +253,7 @@ export class LlamaServer {
       void this.config.tracker?.clear()
       // Crashed or stopped: the next request starts a fresh one.
       if (this.child === child) {
+        if (this.healthy) this.deps.log?.(`[AI] llama-server for ${this.name} exited on its own (code ${code}). The next request starts it again.`)
         this.child = null
         this.starting = null
         this.healthy = false
@@ -260,6 +275,7 @@ export class LlamaServer {
         const res = await this.deps.fetch(`${baseUrl}/health`)
         if (res.ok) {
           this.healthy = this.child === child
+          this.deps.log?.(`[AI] llama-server for ${this.name} is up after ${((performance.now() - startedAt) / 1000).toFixed(1)} s.`)
           return baseUrl
         }
       } catch {
@@ -273,7 +289,7 @@ export class LlamaServer {
 
   private armIdle(): void {
     if (!this.child) return
-    this.idleTimer = setTimeout(() => void this.stop(), this.config.idleMs ?? 5 * 60_000)
+    this.idleTimer = setTimeout(() => void this.stop('idle'), this.config.idleMs ?? IDLE_MS)
   }
 
   private clearIdle(): void {

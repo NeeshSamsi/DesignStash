@@ -609,6 +609,30 @@ describe('what Look it over is told about a run (design L6)', () => {
       expect(stub.calls.map((i) => i.fileName)).toEqual(['a.psd', 'b.psd'])
     })
 
+    it('logs a hard stop: the mockup, how long it ran on which model, its threshold, and that the model starts again (F-075)', async () => {
+      let now = 0
+      const stuck = later<InferenceResult>()
+      const stub = stubProvider(() => stuck.promise)
+      const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
+      const times = memoryRunTimes()
+      // A median of 14 s: the 9B's slow threshold is its floor, 35 s, and the stop is at 105 s.
+      times.set({ 'qwen3.5-9b': [14_000, 14_000, 14_000, 14_000, 14_000] })
+      const hand = handTimer()
+      const log = vi.fn<(line: string) => void>()
+      const queue = queueWith({ ...stub.provider, stop }, { model: () => 'qwen3.5-9b', timing: new RunTimes(times), timer: hand.timer, now: () => now, log })
+      const a = imported('a')
+
+      await queue.enqueue([a.id])
+      await vi.waitFor(() => expect(hand.set).toHaveLength(1))
+      now = 105_000
+      hand.set[0]!.fire()
+      await queue.idle()
+
+      expect(log.mock.calls.map(([line]) => line)).toEqual([
+        `[AI] Hard stop: mockup ${a.id} ran 105.0 s on qwen3.5-9b, 3 times its slow threshold of 35.0 s. The model is stopped, and starts again on the next request.`
+      ])
+    })
+
     it('clears the stop when the run ends in time', async () => {
       const stop = vi.fn(async () => {})
       const stub = stubProvider(() => result('a'))
@@ -692,7 +716,8 @@ describe('what Look it over is told about a run (design L6)', () => {
       const stuck = later<InferenceResult>()
       const stub = stubProvider((input) => (input.fileName === 'a.psd' ? stuck.promise : result('b')))
       const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
-      const queue = queueWith({ ...stub.provider, stop })
+      const log = vi.fn<(line: string) => void>()
+      const queue = queueWith({ ...stub.provider, stop }, { log })
       const [a, b] = [imported('a'), imported('b')]
       await queue.enqueue([a.id, b.id])
       await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
@@ -701,6 +726,10 @@ describe('what Look it over is told about a run (design L6)', () => {
       await queue.idle()
 
       expect(stop).toHaveBeenCalledTimes(1)
+      // It restarts the model, so the log says so (F-075).
+      expect(log.mock.calls.map(([line]) => line)).toEqual([
+        `[AI] Mockup ${a.id} was filled in by the person while it was being written. The model is stopped, and starts again on the next request.`
+      ])
       expect(status(a.id)).toBe('opted_out')
       expect(status(b.id)).toBe('ready')
       expect(stub.calls.map((i) => i.fileName)).toEqual(['a.psd', 'b.psd'])
@@ -890,20 +919,33 @@ describe('what Look it over is told about a run (design L6)', () => {
       const named = namer(() => stuck.promise)
       const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
       const timers: (() => void)[] = []
+      let now = 0
+      const times = memoryRunTimes()
+      times.set({ 'qwen3.5-9b': [14_000, 14_000, 14_000, 14_000, 14_000] })
+      const log = vi.fn<(line: string) => void>()
       const queue = queueWith({ ...named.provider, stop }, {
         timer: (_ms, fire) => {
           timers.push(fire)
           return () => {}
-        }
+        },
+        model: () => 'qwen3.5-9b',
+        timing: new RunTimes(times),
+        now: () => now,
+        log
       })
       const other = imported('other')
 
       await queue.enqueue([top!.id, side!.id, other.id])
       await vi.waitFor(() => expect(named.pileVariations).toHaveBeenCalledOnce())
+      now += 105_000
       timers.at(-1)!()
       await queue.idle()
 
       expect(stop).toHaveBeenCalledOnce()
+      // Logged, with the pile and how long it ran (F-075).
+      expect(log.mock.calls.map(([line]) => line)).toEqual([
+        `[AI] Hard stop: the variations for pile ${top!.id} ran 105.0 s on qwen3.5-9b, 3 times its slow threshold of 35.0 s. The model is stopped, and starts again on the next request.`
+      ])
       expect(variation(top!.id)).toBeNull()
       expect(status(other.id)).toBe('ready')
     })

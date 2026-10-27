@@ -10,6 +10,7 @@ import { tidyWords } from '@shared/pile-variation'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
 import { PileTitles } from '../library/pile-titles'
+import { logger } from '../logger'
 import { HARD_STOP_FACTOR, RunTimes, memoryRunTimes } from './run-timing'
 
 /**
@@ -47,6 +48,8 @@ export interface InferenceQueueDeps {
   timer?: (ms: number, fire: () => void) => () => void
   /** A pile's variations landed (design L8): the mockups whose words or base changed. */
   onVariations?: (pileId: number, mockupIds: number[]) => void
+  /** Where a hard stop, and every stop of the model, is written down for a problem report. Default: the app's log. */
+  log?: (line: string) => void
 }
 
 const realTimer = (ms: number, fire: () => void) => {
@@ -56,6 +59,9 @@ const realTimer = (ms: number, fire: () => void) => {
 
 /** Tries per mockup: the first, and one retry. */
 const ATTEMPTS = 2
+
+/** Seconds, to a tenth, for the log. */
+const secs = (ms: number) => (ms / 1000).toFixed(1)
 
 /**
  * Makes AI suggestions in the background as files land: first in, first out, one at a time.
@@ -83,11 +89,20 @@ export class InferenceQueue {
   private readonly timing: RunTimes
   private readonly now: () => number
   private readonly timer: NonNullable<InferenceQueueDeps['timer']>
+  private readonly log: (line: string) => void
 
   constructor(private readonly deps: InferenceQueueDeps) {
     this.timing = deps.timing ?? new RunTimes(memoryRunTimes())
     this.now = deps.now ?? Date.now
     this.timer = deps.timer ?? realTimer
+    this.log = deps.log ?? ((line) => logger.info(line))
+  }
+
+  /** Stops the model after a run was cut off, and says so in the log: the next request starts it again. */
+  private async stopModel(provider: InferenceProvider, why: string): Promise<void> {
+    if (!provider.stop) return this.log(why)
+    this.log(`${why} The model is stopped, and starts again on the next request.`)
+    await provider.stop().catch((err: unknown) => this.log(`[AI] Couldn't stop the model: ${err instanceof Error ? err.message : String(err)}`))
   }
 
   /**
@@ -305,6 +320,7 @@ export class InferenceQueue {
     if (!provider?.pileVariations || !pile || pile.length < 2) return
     const ids = pile.map((p) => p.mockup.id).join(',')
     this.named.set(pileId, ids)
+    const started = this.now()
     const topTitle = this.baseFrom(pileId, provider)?.topTitle
     if (topTitle !== undefined) this.based.set(pileId, `${ids}\n${topTitle}`)
     const slowAfterMs = this.timing.slowAfterMs(this.deps.model?.() ?? null)
@@ -322,7 +338,13 @@ export class InferenceQueue {
     )
     const named = await Promise.race([asked.catch(() => null), stopped])
     clear()
-    if (stuck) await provider.stop?.().catch(() => {})
+    if (stuck) {
+      const model = this.deps.model?.() ?? 'the active model'
+      await this.stopModel(
+        provider,
+        `[AI] Hard stop: the variations for pile ${pileId} ran ${secs(this.now() - started)} s on ${model}, ${HARD_STOP_FACTOR} times its slow threshold of ${secs(slowAfterMs)} s.`
+      )
+    }
     if (!named) return
     const titles = new PileTitles(this.deps.repo)
     const changed = new Set(titles.landAi(pileId, new Map(pile.map((p, i) => [p.mockup.id, named.variations[i] ?? null]))))
@@ -359,7 +381,7 @@ export class InferenceQueue {
     const since = this.now()
     this.run = { phase: 'writing', writingSince: since, slowAfterMs }
     this.emit([{ ...(cold ? { mockupId: id, status: 'sniffing' as const } : this.setStatus(id, 'sniffing')), run: this.run }])
-    const result = await this.suggestBy(provider, m, since + HARD_STOP_FACTOR * slowAfterMs)
+    const result = await this.suggestBy(provider, m, since, slowAfterMs)
 
     // Tossed or trashed while it was being read: nothing to write to. Filled in by the person: theirs.
     const now = this.deps.repo.mockups.getMockup(id)
@@ -379,24 +401,34 @@ export class InferenceQueue {
   }
 
   /**
-   * The suggestion, or null when there is none by `stopAt` (the hard stop): the model is stopped so
-   * the next mockup doesn't wait behind it, it isn't tried again, and its late answer goes nowhere.
+   * The suggestion, or null when there is none by the hard stop, `HARD_STOP_FACTOR` times
+   * `slowAfterMs` after `since`: the model is stopped so the next mockup doesn't wait behind it, it
+   * isn't tried again, and its late answer goes nowhere. Fill it myself stops it the same way.
    */
-  private async suggestBy(provider: InferenceProvider, m: Mockup, stopAt: number): Promise<InferenceResult | null> {
-    const run = { stopped: false }
+  private async suggestBy(provider: InferenceProvider, m: Mockup, since: number, slowAfterMs: number): Promise<InferenceResult | null> {
+    const run: { stopped: boolean; why?: 'hard stop' | 'filled in' } = { stopped: false }
     let clear = () => {}
     const stopped = new Promise<null>((resolve) => {
-      const stop = () => {
+      const stop = (why: 'hard stop' | 'filled in') => {
         run.stopped = true
+        run.why ??= why
         resolve(null)
       }
-      this.stopRun = stop
-      clear = this.timer(Math.max(0, stopAt - this.now()), stop)
+      this.stopRun = () => stop('filled in')
+      clear = this.timer(Math.max(0, since + HARD_STOP_FACTOR * slowAfterMs - this.now()), () => stop('hard stop'))
     })
     const result = await Promise.race([this.suggest(provider, m, run), stopped])
     clear()
     this.stopRun = null
-    if (run.stopped) await provider.stop?.().catch(() => {})
+    if (run.stopped) {
+      const model = this.deps.model?.() ?? 'the active model'
+      await this.stopModel(
+        provider,
+        run.why === 'hard stop'
+          ? `[AI] Hard stop: mockup ${m.id} ran ${secs(this.now() - since)} s on ${model}, ${HARD_STOP_FACTOR} times its slow threshold of ${secs(slowAfterMs)} s.`
+          : `[AI] Mockup ${m.id} was filled in by the person while it was being written.`
+      )
+    }
     return run.stopped ? null : result
   }
 
