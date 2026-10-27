@@ -1,0 +1,81 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type Database from 'better-sqlite3'
+import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
+import { watchCovers, type WatchFn } from './cover-watch'
+
+const cleanup: (() => void)[] = []
+afterEach(() => {
+  for (const undo of cleanup.splice(0).reverse()) undo()
+})
+
+describe('a cover deleted mid-session (F-012, design/specs/cover.md)', () => {
+  it('shows as missing at the next list, without the list checking every cover on disk', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-covers-'))
+    cleanup.push(() => rmSync(root, { recursive: true, force: true }))
+    mkdirSync(join(root, 'mockups', 'poster'), { recursive: true })
+    const cover = join(root, 'mockups', 'poster', 'cover.webp')
+    writeFileSync(cover, 'webp')
+    const { sqlite, repo } = createTestDb()
+    cleanup.push(() => (sqlite as Database.Database).close())
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Poster', coverPath: cover }))
+    const coverMissing = () => repo.library.getLibrary({ sort: 'date' }).find((r) => r.id === m.id)?.coverMissing
+
+    expect(coverMissing()).toBe(false)
+    cleanup.push(watchCovers(root, (path) => repo.library.forgetCoversUnder(path)))
+    rmSync(cover)
+
+    await expect.poll(coverMissing, { timeout: 5_000, interval: 50 }).toBe(true)
+  })
+})
+
+describe('watchCovers', () => {
+  /** A watch that hands its listener to the test. */
+  const fakeWatch = () => {
+    let listener: ((event: string, filename: string | null) => void) | undefined
+    const close = vi.fn()
+    const watch: WatchFn = (_root, _opts, l) => {
+      listener = l
+      return { close, on: vi.fn(), unref: vi.fn() } as unknown as ReturnType<WatchFn>
+    }
+    return { watch, close, fire: (event: string, filename: string | null) => listener!(event, filename) }
+  }
+
+  it('says which path under the stash folder changed', () => {
+    const fake = fakeWatch()
+    const changed = vi.fn()
+    watchCovers('/stash', changed, fake.watch)
+
+    fake.fire('rename', join('mockups', 'a', 'cover.webp'))
+
+    expect(changed).toHaveBeenCalledWith(join('/stash', 'mockups', 'a', 'cover.webp'))
+  })
+
+  it('names the whole folder when the event can’t say what changed', () => {
+    const fake = fakeWatch()
+    const changed = vi.fn()
+    watchCovers('/stash', changed, fake.watch)
+
+    fake.fire('rename', null)
+
+    expect(changed).toHaveBeenCalledWith('/stash')
+  })
+
+  it('stops when told', () => {
+    const fake = fakeWatch()
+    const stop = watchCovers('/stash', vi.fn(), fake.watch)
+    stop()
+    expect(fake.close).toHaveBeenCalled()
+  })
+
+  it('does nothing when the folder can’t be watched, so covers are checked once a launch as before', () => {
+    const changed = vi.fn()
+    const stop = watchCovers('/stash', changed, () => {
+      throw new Error('ENOENT')
+    })
+    expect(() => stop()).not.toThrow()
+    expect(changed).not.toHaveBeenCalled()
+  })
+})

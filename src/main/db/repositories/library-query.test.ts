@@ -385,6 +385,27 @@ describe('a big library', () => {
     expect(library.getLibrary({ sort: 'date' })).toMatchObject([{ id: m.id, coverMissing: false }])
   })
 
+  it('checks a cover again once the stash folder says it changed, and every cover in a folder that did', () => {
+    const covers = ['/s/mockups/a/cover.webp', '/s/mockups/b/cover.webp', '/s/mockups/bb/cover.webp']
+    const [a, b, bb] = covers.map((coverPath, i) =>
+      repo.mockups.createMockup(approvedMockup({ title: `C${i}`, libraryPath: `/lib/c${i}.psd`, coverPath }))
+    )
+    const present = new Set(covers)
+    const { fileExists, library } = withCoverCheck((path) => present.has(path))
+    const missing = () =>
+      Object.fromEntries(library.getLibrary({ sort: 'date' }).map((r) => [r.id, r.coverMissing]))
+    expect(missing()).toEqual({ [a!.id]: false, [b!.id]: false, [bb!.id]: false })
+    for (const path of covers) present.delete(path)
+    fileExists.mockClear()
+
+    library.forgetCoversUnder('/s/mockups/a/cover.webp')
+    expect(missing()).toEqual({ [a!.id]: true, [b!.id]: false, [bb!.id]: false })
+    expect(fileExists).toHaveBeenCalledTimes(1)
+
+    library.forgetCoversUnder('/s/mockups/b')
+    expect(missing()).toEqual({ [a!.id]: true, [b!.id]: true, [bb!.id]: false })
+  })
+
   it('filters by tag and category in the query, so only the matches are read further', () => {
     const tags = repo.tags.getAllTags()
     const laptop = tags.find((t) => t.label === 'Laptop')!

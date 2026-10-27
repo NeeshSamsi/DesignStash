@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs'
+import { sep } from 'node:path'
 import { and, asc, eq, exists, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags, tagCategories } from '../schema'
@@ -60,8 +61,8 @@ const LOOKUP_CHUNK = 500
 export class LibraryQueryRepository {
   /**
    * Covers found on disk. The app writes each cover to a path of its own and never removes one a
-   * record still uses, so a found cover is checked once per launch instead of on every list. One
-   * deleted by hand in the stash folder shows as missing from the next launch.
+   * record still uses, so a found cover isn't checked again on every list. One deleted outside the
+   * app is forgotten when the stash folder says so (`forgetCoversUnder`), and checked at the next list.
    */
   private readonly coversFound = new Set<string>()
 
@@ -72,6 +73,16 @@ export class LibraryQueryRepository {
     private readonly search: SearchRepository,
     private readonly fileExists: (path: string) => boolean = existsSync
   ) {}
+
+  /**
+   * Something under `path` changed on disk: a file, or a folder and everything in it. Its covers are
+   * checked again at the next list, so one deleted outside the app shows as missing (cover-watch).
+   */
+  forgetCoversUnder(path: string): void {
+    if (this.coversFound.delete(path)) return
+    const folder = path.endsWith(sep) ? path : path + sep
+    for (const found of this.coversFound) if (found.startsWith(folder)) this.coversFound.delete(found)
+  }
 
   /** Whether a cover file is gone. A missing one is checked again each time, so it shows once it's back. */
   private coverMissing(path: string): boolean {

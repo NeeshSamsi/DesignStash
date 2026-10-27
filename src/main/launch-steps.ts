@@ -16,6 +16,7 @@ import { Repository } from './db/repository'
 import { createIntegrityService, createStashCheck } from './ipc/integrity'
 import { applyPendingStash } from './library/stash-folder-service'
 import { PileTitles } from './library/pile-titles'
+import { watchCovers } from './library/cover-watch'
 import { createTelemetry, scrubText, type Telemetry } from './telemetry'
 import { telemetryBuildConfig } from './telemetry/build-config'
 import { noteProcessGone, recentCrashLine, takeNewCrashes } from './telemetry/crash'
@@ -175,11 +176,14 @@ export function launchSteps(opts: { devUrl: string | undefined }): LaunchSteps {
     },
 
     registerLibraryHandlers(settings, services, getWindow) {
+      const repo = new Repository(getDb())
+      // A cover deleted outside the app (in Finder) shows as missing at the next list (F-012).
+      watchCovers(settings.getLibraryRoot(), (path) => repo.library.forgetCoversUnder(path))
       registerAllHandlers(
         createHandlerContext({
           settings,
           telemetry: services.telemetry,
-          repo: new Repository(getDb()),
+          repo,
           getWindow
         })
       )
