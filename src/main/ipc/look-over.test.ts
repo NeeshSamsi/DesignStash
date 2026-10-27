@@ -421,14 +421,16 @@ describe('stash with real cover files', () => {
       const [top, side, alone] = [mk('top'), mk('side'), mk('alone')]
       r.piles.createPile([top.id, side.id], top.id)
 
-      const pile = await call<{
-        ok: true
-        stashedIds: number[]
-        snapshot: unknown
-        undoEntryId: number
-      }>(IPC_CHANNELS.PILE_STASH, { pileId: top.id })
+      const pile = await call<{ ok: true; stashedIds: number[]; undoEntryId: number }>(
+        IPC_CHANNELS.PILE_STASH,
+        { pileId: top.id }
+      )
+      // What was stashed and the entry that undoes it, and nothing else.
+      expect(pile).toEqual({
+        success: true,
+        data: { ok: true, stashedIds: expect.any(Array), undoEntryId: expect.any(Number) }
+      })
       expect(pile.success && pile.data.stashedIds.sort()).toEqual([top.id, side.id].sort())
-      expect(pile.success && pile.data.undoEntryId).toEqual(expect.any(Number))
       expect(undoing.undo.history.state().undo).toMatchObject({ label: 'Stash pile' })
       expect(pushed).toHaveBeenLastCalledWith(
         IPC_CHANNELS.INBOX_COUNTS_CHANGED,

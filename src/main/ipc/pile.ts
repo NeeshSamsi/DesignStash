@@ -75,11 +75,7 @@ export function registerPileHandlers(ctx: HandlerContext): void {
       args.pileIds.length > 1 ? 'Disband piles' : 'Disband pile',
       { mockupIds: pilesOf(ctx.dataOps.scopes, args.pileIds) },
       () => {
-        const done = args.pileIds.map((id) => piles.disband(id))
-        return {
-          snapshot: { rows: done.flatMap((d) => d.snapshot.rows) },
-          freedIds: done.flatMap((d) => d.freedIds)
-        }
+        return { freedIds: args.pileIds.flatMap((id) => piles.disband(id).freedIds) }
       }
     )
     return { ...result, ...undoEntry(ctx.undo.record(record)) }

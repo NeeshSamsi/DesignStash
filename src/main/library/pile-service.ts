@@ -1,20 +1,15 @@
-import type { PileSnapshot } from '@shared/ipc/pile'
 import type { Repository } from '../db/repository'
 import type { PileChange } from '../db/repositories/piles'
 import { PileTitles } from './pile-titles'
 
 export interface PileChangeResult {
   pileId: number
-  snapshot: PileSnapshot
 }
 
-const toResult = (change: PileChange): PileChangeResult => ({
-  pileId: change.pileId,
-  snapshot: { rows: change.before }
-})
+const toResult = (change: PileChange): PileChangeResult => ({ pileId: change.pileId })
 
 /**
- * Pile actions for My Stash. Each returns the snapshot that Undo hands back to `restore`. Titles
+ * Pile actions for My Stash. Each is one entry in the undo history (the handlers record it). Titles
  * follow the pile (design/specs/pile-titles.md): a mockup that joins takes the pile's base and its
  * file marker or number, keeping words a person typed, and one that leaves keeps its full title.
  */
@@ -47,31 +42,18 @@ export class PileService {
     return toResult(this.repo.piles.setPileTop(pileId, topId))
   }
 
-  disband(pileId: number): { snapshot: PileSnapshot; freedIds: number[] } {
-    const { before, freedIds } = this.repo.piles.disbandPile(pileId)
+  disband(pileId: number): { freedIds: number[] } {
+    const { freedIds } = this.repo.piles.disbandPile(pileId)
     this.titles.leave(freedIds)
-    return { snapshot: { rows: before }, freedIds }
+    return { freedIds }
   }
 
   removeFromPile(
     pileId: number,
     mockupId: number
-  ): { pileId: number | null; snapshot: PileSnapshot; freedIds: number[] } {
-    const { before, ...rest } = this.repo.piles.removeFromPile(pileId, mockupId)
-    this.titles.leave(rest.freedIds)
-    return { ...rest, snapshot: { rows: before } }
-  }
-
-  /** Undo: put every mockup in the snapshot back as it was. Mockups deleted since are skipped. */
-  restore(snapshot: PileSnapshot): { restoredIds: number[] } {
-    const existing = new Set(this.repo.piles.getPileRows(snapshot.rows.map((r) => r.id)).map((r) => r.id))
-    this.repo.piles.restorePileRows(snapshot.rows)
-    const restoredIds = snapshot.rows.map((r) => r.id).filter((id) => existing.has(id))
-    // Their titles came back too: search knows them by their full titles.
-    for (const id of restoredIds) {
-      const m = this.repo.mockups.getMockup(id)
-      if (m?.stage === 'stashed' && m.deletedAt === null) this.repo.search.upsertSearchIndex(id)
-    }
-    return { restoredIds }
+  ): { pileId: number | null; freedIds: number[] } {
+    const { pileId: after, freedIds } = this.repo.piles.removeFromPile(pileId, mockupId)
+    this.titles.leave(freedIds)
+    return { pileId: after, freedIds }
   }
 }

@@ -55,14 +55,10 @@ beforeEach(() => {
 afterEach(() => sqlite.close())
 
 describe('pile handlers', () => {
-  it('creates a pile and returns its id and an undo snapshot', async () => {
+  it('creates a pile and replies with its id and its undo entry, and nothing else', async () => {
     const [a, b] = [make('a'), make('b')]
-    const res = await call<{ pileId: number; snapshot: { rows: unknown[] } }>(
-      IPC_CHANNELS.PILE_CREATE,
-      { memberIds: [a, b], topId: b }
-    )
-    expect(res).toMatchObject({ success: true, data: { pileId: b } })
-    expect(res.success && res.data.snapshot.rows).toHaveLength(2)
+    const res = await call(IPC_CHANNELS.PILE_CREATE, { memberIds: [a, b], topId: b })
+    expect(res).toEqual({ success: true, data: { pileId: b, undoEntryId: expect.any(Number) } })
     expect(repo.mockups.getMockup(a)?.groupId).toBe(b)
   })
 
@@ -103,10 +99,13 @@ describe('pile handlers', () => {
       data: { pileId: d }
     })
 
-    const disbanded = await call<{ snapshot: unknown; freedIds: number[] }>(
-      IPC_CHANNELS.PILE_DISBAND,
-      { pileIds: [d] }
-    )
+    const disbanded = await call<{ freedIds: number[] }>(IPC_CHANNELS.PILE_DISBAND, {
+      pileIds: [d]
+    })
+    expect(disbanded).toEqual({
+      success: true,
+      data: { freedIds: expect.any(Array), undoEntryId: expect.any(Number) }
+    })
     expect(disbanded.success && disbanded.data.freedIds.sort()).toEqual([a, b, c, d, e].sort())
     expect(repo.library.getLibrary({ sort: 'name' })).toHaveLength(5)
 
@@ -125,11 +124,11 @@ describe('pile handlers', () => {
     })
 
     // The top leaves: the next mockup takes over.
-    const removed = await call<{ pileId: number | null; snapshot: unknown; freedIds: number[] }>(
-      IPC_CHANNELS.PILE_REMOVE,
-      { pileId: a, mockupId: a }
-    )
-    expect(removed).toMatchObject({ success: true, data: { pileId: b, freedIds: [a] } })
+    const removed = await call(IPC_CHANNELS.PILE_REMOVE, { pileId: a, mockupId: a })
+    expect(removed).toEqual({
+      success: true,
+      data: { pileId: b, freedIds: [a], undoEntryId: expect.any(Number) }
+    })
     expect(repo.mockups.getMockup(b)).toMatchObject({ isGroup: true })
     expect(repo.mockups.getMockup(c)).toMatchObject({ groupId: b })
 

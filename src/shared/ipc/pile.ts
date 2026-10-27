@@ -5,32 +5,12 @@ import { LibraryItemSchema } from '../library'
 import { VariationSchema, VariationSourceSchema } from '../pile-variation'
 import { withUndoEntry } from './undo'
 
-/**
- * One mockup's place in a pile, and its titles, which joining or leaving a pile changes. A snapshot
- * of these brings a pile back (Undo). The titles are left out of snapshots from before base titles.
- */
-export const PileRowSchema = z.object({
-  id: z.number(),
-  isGroup: z.boolean(),
-  groupId: z.number().nullable(),
-  title: z.string().optional(),
-  variation: z.string().nullable().optional(),
-  variationSource: VariationSourceSchema.nullable().optional()
-})
-export type PileRow = z.infer<typeof PileRowSchema>
-
-/** The state of every mockup a pile action touched, from before the action. */
-export const PileSnapshotSchema = z.object({ rows: z.array(PileRowSchema) })
-export type PileSnapshot = z.infer<typeof PileSnapshotSchema>
-
 const PileChangeSchema = z.object({
   /** The pile's id after the change (its top mockup). */
-  pileId: z.number(),
-  /** The rows as they were. Undo goes through the action's history entry. */
-  snapshot: PileSnapshotSchema
+  pileId: z.number()
 })
 
-/** Piles in My Stash. Every action returns a snapshot so the renderer can offer Undo. */
+/** Piles in My Stash. Each action is one entry in the undo history (`undoEntryId`). */
 export const pileContract = {
   [IPC_CHANNELS.PILE_CREATE]: {
     request: z.object({ memberIds: z.array(z.number()).min(2), topId: z.number() }),
@@ -53,7 +33,6 @@ export const pileContract = {
     request: z.object({ pileIds: z.array(z.number()).min(1) }),
     response: withUndoEntry(
       z.object({
-        snapshot: PileSnapshotSchema,
         /** Every mockup that is now on its own, the old top included. */
         freedIds: z.array(z.number())
       })
@@ -65,7 +44,6 @@ export const pileContract = {
       z.object({
         /** The pile's id afterwards (the next mockup when the top left); null when it is no longer a pile. */
         pileId: z.number().nullable(),
-        snapshot: PileSnapshotSchema,
         /** The mockups that are now on their own: the one removed, and the last one when the pile dissolved. */
         freedIds: z.array(z.number())
       })

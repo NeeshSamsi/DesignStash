@@ -197,7 +197,7 @@ export type LookOverProgress = z.infer<typeof LookOverProgressSchema>
 
 // ---- Stash pile (commit the whole pile at once) ----
 
-/** What a stash replaced, so Undo can put every mockup back exactly as it was. */
+/** What a stash replaced (the drafts repository keeps it this way). */
 export const StashSnapshotSchema = z.object({
   mockups: z.array(
     z.object({
@@ -236,9 +236,7 @@ export const StashResultSchema = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(true),
     /** Everything now in My Stash: the top and its variants, or the one mockup. */
-    stashedIds: z.array(z.number()),
-    /** The rows as they were. Undo goes through the stash's history entry. */
-    snapshot: StashSnapshotSchema
+    stashedIds: z.array(z.number())
   }),
   z.object({
     ok: z.literal(false),

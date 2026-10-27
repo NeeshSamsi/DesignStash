@@ -4,6 +4,9 @@ import type { Repository } from '../db/repository'
 import { seedTaxonomy } from '../db/bootstrap'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, sample } from '../db/repositories/__tests__/setup'
+import type { DataOps } from '../undo/ops'
+import { undoForTests } from '../undo/test-support'
+import type { UndoService } from '../undo/undo-service'
 import { LookOverService } from './look-over-service'
 import { StashService } from './stash-service'
 
@@ -12,6 +15,8 @@ let repo: Repository
 let missing: Set<string>
 let lookOver: LookOverService
 let stash: StashService
+let undo: UndoService
+let dataOps: DataOps
 
 beforeEach(() => {
   const test = createTestDb()
@@ -25,6 +30,7 @@ beforeEach(() => {
   }
   lookOver = new LookOverService(repo, async () => null, deps)
   stash = new StashService(repo, lookOver, { exists: deps.exists })
+  ;({ undo, dataOps } = undoForTests(repo, test.db))
 })
 
 afterEach(async () => {
@@ -46,8 +52,21 @@ const waiting = (name: string, extra = {}) => {
 }
 const pile = (...names: string[]) => {
   const rows = names.map((n) => waiting(n))
-  repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+  repo.piles.createPile(
+    rows.map((r) => r.id),
+    rows[0]!.id
+  )
   return rows
+}
+/** Stash pile as its handler does it: one entry in the undo history, over the whole pile. */
+const stashPileUndoably = async (pileId: number) => {
+  const { result, record } = await dataOps.track(
+    'Stash pile',
+    { mockupIds: dataOps.scopes.pile(pileId) },
+    () => stash.stashPile(pileId)
+  )
+  undo.record(record)
+  return result
 }
 const phone = () => repo.tags.getAllTags().find((t) => t.label === 'Phone')!
 const search = (q: string) => repo.library.getLibrary({ query: q, sort: 'date' }).map((r) => r.id)
@@ -56,7 +75,12 @@ describe('stash a pile', () => {
   it('writes every draft to its mockup at once and moves the pile into My Stash', async () => {
     const [top, side] = pile('phone_front', 'phone_side')
     await lookOver.open()
-    await lookOver.saveDraft({ mockupId: top!.id, title: 'Clay phone', description: 'On a stand', tagIds: [phone().id] })
+    await lookOver.saveDraft({
+      mockupId: top!.id,
+      title: 'Clay phone',
+      description: 'On a stand',
+      tagIds: [phone().id]
+    })
 
     const res = await stash.stashPile(top!.id)
 
@@ -68,8 +92,17 @@ describe('stash a pile', () => {
       stage: 'stashed'
     })
     // The top's edit was only offered on the variant, and nobody took it: it is stashed with its own words.
-    expect(repo.mockups.getMockup(side!.id)).toMatchObject({ title: 'Clay phone', variation: 'side', variationSource: 'marker', description: '', stage: 'stashed' })
-    expect(repo.mockups.getMockup(top!.id)).toMatchObject({ variation: 'front', variationSource: 'marker' })
+    expect(repo.mockups.getMockup(side!.id)).toMatchObject({
+      title: 'Clay phone',
+      variation: 'side',
+      variationSource: 'marker',
+      description: '',
+      stage: 'stashed'
+    })
+    expect(repo.mockups.getMockup(top!.id)).toMatchObject({
+      variation: 'front',
+      variationSource: 'marker'
+    })
     expect(repo.mockups.getTagsForMockup(side!.id)).toEqual([])
     expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([top!.id])
     expect(repo.inbox.getCounts()).toMatchObject({ toStash: 0 })
@@ -78,19 +111,33 @@ describe('stash a pile', () => {
   it('stashes the base and every variation, finds the pile by a variation, and Undo puts the drafts back', async () => {
     const [top, side] = pile('scroll_front', 'scroll_side')
     await lookOver.open()
-    await lookOver.saveDraft({ mockupId: side!.id, title: 'Long scroll MacBook', variation: 'wavy surface', description: '', tagIds: [] })
+    await lookOver.saveDraft({
+      mockupId: side!.id,
+      title: 'Long scroll MacBook',
+      variation: 'wavy surface',
+      description: '',
+      tagIds: []
+    })
 
-    const res = await stash.stashPile(top!.id)
+    await stashPileUndoably(top!.id)
 
-    expect([top!.id, side!.id].map((id) => repo.mockups.getMockup(id)).map((m) => [m!.title, m!.variation])).toEqual([
+    expect(
+      [top!.id, side!.id]
+        .map((id) => repo.mockups.getMockup(id))
+        .map((m) => [m!.title, m!.variation])
+    ).toEqual([
       ['Long scroll MacBook', 'front'],
       ['Long scroll MacBook', 'wavy surface']
     ])
     expect(search('wavy')).toEqual([top!.id])
 
-    await stash.unstash(res.ok ? res.snapshot : (null as never))
+    expect(await undo.history.undo()).toMatchObject({ status: 'done', label: 'Stash pile' })
     expect(repo.mockups.getMockup(side!.id)).toMatchObject({ stage: 'to_stash', variation: null })
-    expect(repo.drafts.getDraft(side!.id)).toMatchObject({ title: 'Long scroll MacBook', variation: 'wavy surface', variationSource: 'typed' })
+    expect(repo.drafts.getDraft(side!.id)).toMatchObject({
+      title: 'Long scroll MacBook',
+      variation: 'wavy surface',
+      variationSource: 'typed'
+    })
     expect(search('wavy')).toEqual([])
   })
 
@@ -126,16 +173,32 @@ describe('stash a pile', () => {
   it('refuses a mockup with no cover at all', async () => {
     const [top] = pile('a', 'b')
     repo.mockups.updateMockup(top!.id, { coverSource: 'none' })
-    expect(await stash.stashPile(top!.id)).toMatchObject({ ok: false, reason: 'no-cover', mockupIds: [top!.id] })
+    expect(await stash.stashPile(top!.id)).toMatchObject({
+      ok: false,
+      reason: 'no-cover',
+      mockupIds: [top!.id]
+    })
   })
 
   it('refuses something that is not a pile waiting in To stash', async () => {
     const single = waiting('single')
     const [top] = pile('a', 'b')
     repo.mockups.setStage([top!.id], 'stashed')
-    expect(await stash.stashPile(single.id)).toEqual({ ok: false, reason: 'not-ready', mockupIds: [single.id] })
-    expect(await stash.stashPile(top!.id)).toEqual({ ok: false, reason: 'not-ready', mockupIds: [top!.id] })
-    expect(await stash.stashPile(9999)).toEqual({ ok: false, reason: 'not-ready', mockupIds: [9999] })
+    expect(await stash.stashPile(single.id)).toEqual({
+      ok: false,
+      reason: 'not-ready',
+      mockupIds: [single.id]
+    })
+    expect(await stash.stashPile(top!.id)).toEqual({
+      ok: false,
+      reason: 'not-ready',
+      mockupIds: [top!.id]
+    })
+    expect(await stash.stashPile(9999)).toEqual({
+      ok: false,
+      reason: 'not-ready',
+      mockupIds: [9999]
+    })
   })
 
   it('is all or nothing if the database refuses part way', async () => {
@@ -143,10 +206,20 @@ describe('stash a pile', () => {
     await lookOver.open()
     // Break the second mockup's draft so the commit fails after the first one was written.
     sqlite.prepare('DELETE FROM drafts WHERE mockup_id = ?').run(side!.id)
-    const failing = new StashService(repo, { ...lookOver, draftsFor: async () => [
-      { mockup: repo.mockups.getMockup(top!.id)!, draft: repo.drafts.getDraft(top!.id)! },
-      { mockup: repo.mockups.getMockup(side!.id)!, draft: { ...repo.drafts.getDraft(top!.id)!, mockupId: side!.id } }
-    ] } as unknown as LookOverService, { exists: async () => true })
+    const failing = new StashService(
+      repo,
+      {
+        ...lookOver,
+        draftsFor: async () => [
+          { mockup: repo.mockups.getMockup(top!.id)!, draft: repo.drafts.getDraft(top!.id)! },
+          {
+            mockup: repo.mockups.getMockup(side!.id)!,
+            draft: { ...repo.drafts.getDraft(top!.id)!, mockupId: side!.id }
+          }
+        ]
+      } as unknown as LookOverService,
+      { exists: async () => true }
+    )
 
     await expect(failing.stashPile(top!.id)).rejects.toThrow()
 
@@ -167,7 +240,12 @@ describe('stash a mockup on its own', () => {
   it('stashes it and refuses a pile or a member', async () => {
     const single = waiting('single')
     const [top, side] = pile('a', 'b')
-    await lookOver.saveDraft({ mockupId: single.id, title: 'Solo', description: 'd', tagIds: [phone().id] })
+    await lookOver.saveDraft({
+      mockupId: single.id,
+      title: 'Solo',
+      description: 'd',
+      tagIds: [phone().id]
+    })
 
     expect(await stash.stashSingle(top!.id)).toMatchObject({ ok: false, reason: 'not-ready' })
     expect(await stash.stashSingle(side!.id)).toMatchObject({ ok: false, reason: 'not-ready' })
@@ -179,46 +257,33 @@ describe('stash a mockup on its own', () => {
   })
 })
 
-describe('undo', () => {
+describe('undo, through the stash’s history entry', () => {
   it('puts a stashed pile back with its drafts, tags, stage and the pointer', async () => {
     const [top, side] = pile('a', 'b')
-    await lookOver.saveDraft({ mockupId: top!.id, title: 'Edited', description: 'Words', tagIds: [phone().id] })
+    await lookOver.saveDraft({
+      mockupId: top!.id,
+      title: 'Edited',
+      description: 'Words',
+      tagIds: [phone().id]
+    })
     await lookOver.setResume(top!.id, side!.id)
     await lookOver.whenIdle()
     const before = await lookOver.open()
     // The top's edit is on offer on the variant, and comes back with it.
-    expect(before.units[0]!.items[1]!.carry).toMatchObject({ state: 'offered', after: { description: 'Words', via: 'copy' } })
+    expect(before.units[0]!.items[1]!.carry).toMatchObject({
+      state: 'offered',
+      after: { description: 'Words', via: 'copy' }
+    })
 
-    const res = await stash.stashPile(top!.id)
-    expect(res.ok).toBe(true)
-    if (!res.ok) return
+    expect(await stashPileUndoably(top!.id)).toMatchObject({ ok: true })
     expect(search('Edited')).toEqual([top!.id])
 
-    const back = await stash.unstash(res.snapshot)
+    expect(await undo.history.undo()).toMatchObject({ status: 'done', label: 'Stash pile' })
 
-    expect(back.restoredIds.sort()).toEqual([top!.id, side!.id].sort())
     expect(repo.mockups.getMockup(top!.id)).toMatchObject({ title: 'a', stage: 'to_stash' })
     expect(repo.mockups.getTagsForMockup(top!.id)).toEqual([])
     expect(search('Edited')).toEqual([])
     expect(repo.inbox.getCounts()).toMatchObject({ toStash: 1 })
     expect(await lookOver.open()).toEqual(before)
-  })
-
-  it('leaves out mockups that were deleted since', async () => {
-    const [top, side] = pile('a', 'b')
-    const res = await stash.stashPile(top!.id)
-    if (!res.ok) throw new Error('expected ok')
-    repo.trash.deleteMockupsHard([side!.id])
-
-    expect((await stash.unstash(res.snapshot)).restoredIds).toEqual([top!.id])
-  })
-
-  it('does not clash when the same stash is undone twice', async () => {
-    const [top] = pile('a', 'b')
-    const res = await stash.stashPile(top!.id)
-    if (!res.ok) throw new Error('expected ok')
-    await stash.unstash(res.snapshot)
-    await expect(stash.unstash(res.snapshot)).resolves.toBeDefined()
-    expect(repo.mockups.getMockup(top!.id)?.stage).toBe('to_stash')
   })
 })
