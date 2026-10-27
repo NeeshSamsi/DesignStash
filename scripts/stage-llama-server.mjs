@@ -16,7 +16,8 @@ import {
   readlinkSync,
   realpathSync,
   rmSync,
-  statSync
+  statSync,
+  symlinkSync
 } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
@@ -45,12 +46,19 @@ mkdirSync(dirname(to), { recursive: true })
 cpSync(realpathSync(from), to, { recursive: true, verbatimSymlinks: true })
 chmodSync(join(to, 'llama-server'), 0o755)
 
+// Every link must land on a file in the staged folder. One written as an absolute path into the
+// fetch folder is re-pointed at its neighbour, relatively; one that leaves the folder is refused.
+const source = realpathSync(from)
 const escaping = readdirSync(to).filter((name) => {
   const path = join(to, name)
   if (!lstatSync(path).isSymbolicLink()) return false
-  const target = readlinkSync(path)
-  if (isAbsolute(target) || !existsSync(path)) return true
-  return relative(realpathSync(to), realpathSync(path)).startsWith('..')
+  const target = resolve(source, readlinkSync(path))
+  if (!existsSync(target)) return true
+  const inside = relative(source, realpathSync(target))
+  if (inside.startsWith('..') || isAbsolute(inside)) return true
+  rmSync(path)
+  symlinkSync(inside, path)
+  return !existsSync(path)
 })
 if (escaping.length > 0) {
   rmSync(to, { recursive: true, force: true })
