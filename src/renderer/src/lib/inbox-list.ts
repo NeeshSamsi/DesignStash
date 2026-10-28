@@ -2,7 +2,7 @@ import type { AiStatus, InboxItem } from '@shared/inbox'
 
 /** Pure copy and rules for To sort, To stash and Trash. The pages wire these to IPC. */
 
-import { mockups, pluralise } from './plural'
+import { pluralise } from './plural'
 
 /** Cards still waiting on an AI suggestion get the quiet badge. Ready, failed and off get none. */
 export function sniffingBadge(status: AiStatus): string | undefined {
@@ -72,46 +72,4 @@ export function formatBytes(bytes: number): string {
 /** Newest trashed first. */
 export function newestFirst<T extends { trashedAt: string }>(items: readonly T[]): T[] {
   return [...items].sort((a, b) => Date.parse(b.trashedAt) - Date.parse(a.trashedAt))
-}
-
-
-export interface TossCopy {
-  title: string
-  description: string
-  confirmLabel: string
-  /** The "N mockups · size" row. Left out when the size can't be measured. */
-  detailTitle?: string
-  detailMeta?: string
-}
-
-/** The Toss confirm, worded as in Figma I1.E2 (To sort) and I2.E1 (To stash). */
-export function tossCopy(stage: 'to_sort' | 'to_stash', items: readonly InboxItem[]): TossCopy {
-  const n = items.length
-  const discard = `Discard ${mockups(n)}`
-  if (stage === 'to_stash') {
-    return {
-      title: 'Toss these?',
-      description:
-        n === 1
-          ? 'This deletes the sorted mockup and its PSD from your stash folder. Your original stays right where it is.'
-          : `This deletes the ${n} sorted mockups and their PSDs from your stash folder. Your originals stay right where they are.`,
-      confirmLabel: discard
-    }
-  }
-  const sizes = items.map((item) => item.sizeBytes)
-  const measured = sizes.every((size): size is number => size !== null)
-  return {
-    title: 'Toss this haul?',
-    description:
-      n === 1
-        ? 'This deletes the copied PSD and its cover from your stash folder. Your original stays right where it is.'
-        : `This deletes the ${n} copied PSDs and their covers from your stash folder. Your originals stay right where they are.`,
-    confirmLabel: discard,
-    ...(measured
-      ? {
-          detailTitle: mockups(n),
-          detailMeta: formatBytes(sizes.reduce((sum, size) => sum + size, 0))
-        }
-      : {})
-  }
 }

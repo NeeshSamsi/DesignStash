@@ -3,7 +3,8 @@ import { Separator as SeparatorPrimitive } from "radix-ui"
 
 import { cn } from "@renderer/lib/utils"
 
-// Figma Separator 211:87: a 1px line in border/subtle (drawn as a border, since it is a border token).
+// A 1px line in border/subtle (drawn as a border, since it is a border token). It has no
+// design-system component: Popover uses it between its regions.
 function Separator({
   className,
   orientation = "horizontal",
