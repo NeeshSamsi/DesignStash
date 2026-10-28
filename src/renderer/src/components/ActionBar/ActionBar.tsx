@@ -1,6 +1,6 @@
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/Button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
+import { Tooltip } from '@renderer/components/Tooltip'
 import { ACTION_BAR_DEFAULTS, type ActionBarContractProps } from './ActionBar.types'
 import { actionBarVariants } from './ActionBar.variants'
 
@@ -119,11 +119,8 @@ export function ActionBar({
         )}
         {primaryButton &&
           (primaryDisabled && primaryDisabledReason ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span tabIndex={0}>{primaryButton}</span>
-              </TooltipTrigger>
-              <TooltipContent>{primaryDisabledReason}</TooltipContent>
+            <Tooltip arrow="bottom" label={primaryDisabledReason}>
+              <span tabIndex={0}>{primaryButton}</span>
             </Tooltip>
           ) : (
             primaryButton

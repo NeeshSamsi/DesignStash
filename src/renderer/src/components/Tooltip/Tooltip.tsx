@@ -14,6 +14,11 @@ export interface TooltipProps extends TooltipContractProps {
   /** The element the tooltip labels. Without it the tooltip renders in place (catalog). */
   children?: ReactNode
   className?: string
+  /** Controlled: the caller says when it shows (a cut-off title opens only when cut off). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** How long a hover waits before it opens, in ms. Focus opens it at once. */
+  delayDuration?: number
 }
 
 type Side = 'top' | 'right' | 'bottom' | 'left'
@@ -36,7 +41,14 @@ export function tooltipPlacement(arrow: TooltipArrow): { side: Side; align: Alig
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=232-4742
  * Adapter over ui/tooltip.tsx: `arrow` becomes Radix side + align.
  */
-export function Tooltip({ className, children, ...rest }: TooltipProps) {
+export function Tooltip({
+  className,
+  children,
+  open,
+  onOpenChange,
+  delayDuration,
+  ...rest
+}: TooltipProps) {
   const props = { ...TOOLTIP_DEFAULTS, ...rest }
   const body = (
     <>
@@ -48,7 +60,11 @@ export function Tooltip({ className, children, ...rest }: TooltipProps) {
   if (children !== undefined) {
     const { side, align } = tooltipPlacement(props.arrow)
     return (
-      <UiTooltip>
+      <UiTooltip
+        {...(open !== undefined ? { open } : {})}
+        {...(onOpenChange ? { onOpenChange } : {})}
+        {...(delayDuration !== undefined ? { delayDuration } : {})}
+      >
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent
           data-ds="Tooltip"

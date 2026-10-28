@@ -1,6 +1,6 @@
 import { useRef, useState, type ElementType } from 'react'
 import { cn } from '@renderer/lib/utils'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
+import { Tooltip } from '@renderer/components/Tooltip'
 import { TRUNCATED_TOOLTIP_MS } from './truncated-text'
 
 /** Names this short stay whole. */
@@ -41,21 +41,18 @@ export function MiddleTruncatedText({
     headRef.current !== null && headRef.current.scrollWidth > headRef.current.clientWidth
   return (
     <Tooltip
+      arrow="bottom-left"
+      label={children}
       delayDuration={TRUNCATED_TOOLTIP_MS}
       open={open}
       onOpenChange={(next) => setOpen(next && cut())}
     >
-      <TooltipTrigger asChild>
-        <Tag className={cn('flex min-w-0', className)}>
-          <span ref={headRef} className="truncate">
-            {head}
-          </span>
-          {tail && <span className="shrink-0 whitespace-pre">{tail}</span>}
-        </Tag>
-      </TooltipTrigger>
-      <TooltipContent side="top" align="start">
-        {children}
-      </TooltipContent>
+      <Tag className={cn('flex min-w-0', className)}>
+        <span ref={headRef} className="truncate">
+          {head}
+        </span>
+        {tail && <span className="shrink-0 whitespace-pre">{tail}</span>}
+      </Tag>
     </Tooltip>
   )
 }

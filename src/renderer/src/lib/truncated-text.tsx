@@ -1,6 +1,6 @@
 import { useRef, useState, type ElementType } from 'react'
 import { cn } from '@renderer/lib/utils'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
+import { Tooltip } from '@renderer/components/Tooltip'
 
 /** How long a hover waits before the full text shows. */
 export const TRUNCATED_TOOLTIP_MS = 600
@@ -22,18 +22,15 @@ export function TruncatedText({ children, as: Tag = 'span', className }: Truncat
   const cut = () => ref.current !== null && ref.current.scrollWidth > ref.current.clientWidth
   return (
     <Tooltip
+      arrow="bottom-left"
+      label={children}
       delayDuration={TRUNCATED_TOOLTIP_MS}
       open={open}
       onOpenChange={(next) => setOpen(next && cut())}
     >
-      <TooltipTrigger asChild>
-        <Tag ref={ref} className={cn('truncate', className)}>
-          {children}
-        </Tag>
-      </TooltipTrigger>
-      <TooltipContent side="top" align="start">
+      <Tag ref={ref} className={cn('truncate', className)}>
         {children}
-      </TooltipContent>
+      </Tag>
     </Tooltip>
   )
 }

@@ -4,7 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { AiMagicIcon, Cancel01Icon, PlusSignIcon, Tick02Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@renderer/lib/utils'
 import { WRITING_PLACEHOLDER } from '@renderer/lib/writing-field'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
+import { Tooltip } from '@renderer/components/Tooltip'
 import { TAG_CHIP_DEFAULTS, type TagChipContractProps } from './TagChip.types'
 import { tagChipVariants } from './TagChip.variants'
 
@@ -30,18 +30,17 @@ function TagLabel({ children, className }: { children: string; className: string
   const [open, setOpen] = useState(false)
   return (
     <Tooltip
+      arrow="none"
+      label={children}
       open={open}
       onOpenChange={(next) => {
         const el = ref.current
         setOpen(next && !!el && el.scrollWidth > el.clientWidth)
       }}
     >
-      <TooltipTrigger asChild>
-        <span ref={ref} className={cn('max-w-tag-label truncate', className)}>
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent showArrow={false}>{children}</TooltipContent>
+      <span ref={ref} className={cn('max-w-tag-label truncate', className)}>
+        {children}
+      </span>
     </Tooltip>
   )
 }

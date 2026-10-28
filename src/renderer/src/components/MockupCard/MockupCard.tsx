@@ -4,7 +4,7 @@ import type { ComponentProps, MouseEvent, ReactNode, SyntheticEvent } from 'reac
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Layers01Icon, MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { Badge } from '@renderer/components/Badge'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
+import { Tooltip } from '@renderer/components/Tooltip'
 import { Skeleton } from '@renderer/components/Skeleton'
 import { Button } from '@renderer/components/Button'
 import { CoverImage } from '@renderer/components/CoverImage'
@@ -344,18 +344,15 @@ function CardTitle({ title, fileName }: { title: string; fileName: boolean }) {
   }
   return (
     <Tooltip
+      arrow="bottom-left"
+      label={title}
       delayDuration={TITLE_TOOLTIP_MS}
       open={open}
       onOpenChange={(next) => setOpen(next && cut())}
     >
-      <TooltipTrigger asChild>
-        <p ref={ref} className="truncate type-body-sm-medium text-foreground">
-          {title}
-        </p>
-      </TooltipTrigger>
-      <TooltipContent side="top" align="start">
+      <p ref={ref} className="truncate type-body-sm-medium text-foreground">
         {title}
-      </TooltipContent>
+      </p>
     </Tooltip>
   )
 }
