@@ -5,6 +5,7 @@ import {
   backupProblems,
   confirmFromProposal,
   diskIsTight,
+  freeBytesAt,
   freshBackupDir,
   leftoverFolders,
   pileRequests,
@@ -259,5 +260,20 @@ describe('diskIsTight', () => {
   it('is tight when the copy would leave less than 10 GB free', () => {
     expect(diskIsTight(125 * GB, 7.5 * GB)).toBe(false)
     expect(diskIsTight(17 * GB, 7.5 * GB)).toBe(true)
+  })
+})
+
+describe('freeBytesAt', () => {
+  it("makes a fresh profile's library folder before it reads the disk", () => {
+    const made = new Set<string>()
+    const disk = {
+      mkdir: (dir: string) => void made.add(dir),
+      statfs: (dir: string) => {
+        if (!made.has(dir)) throw new Error(`ENOENT: no such file or directory, statfs '${dir}'`)
+        return { bavail: 3, bsize: 4096 }
+      }
+    }
+    expect(freeBytesAt('/userdata/Library', disk)).toBe(3 * 4096)
+    expect([...made]).toEqual(['/userdata/Library'])
   })
 })

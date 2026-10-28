@@ -94,6 +94,19 @@ export function diskIsTight(freeBytes: number, neededBytes: number): boolean {
   return freeBytes - neededBytes < 10 * 1024 ** 3
 }
 
+/**
+ * Free bytes on the library's disk. statfs needs a folder that exists, and a fresh profile has no
+ * library folder until the app's first launch, so it is made first, as the app makes it.
+ */
+export function freeBytesAt(
+  libraryRoot: string,
+  disk: { mkdir: (dir: string) => void; statfs: (dir: string) => { bavail: number; bsize: number } }
+): number {
+  disk.mkdir(libraryRoot)
+  const st = disk.statfs(libraryRoot)
+  return st.bavail * st.bsize
+}
+
 /** A library as a backup check sees it: its mockups, its mockup folders and SQLite's quick_check. */
 export interface LibraryShape {
   mockups: number

@@ -65,6 +65,7 @@ import {
   backupProblems,
   confirmFromProposal,
   diskIsTight,
+  freeBytesAt,
   freshBackupDir,
   leftoverFolders,
   pileRequests,
@@ -340,8 +341,10 @@ async function runImport(own: string[]): Promise<void> {
   for (const path of own) if (!existsSync(path)) throw new Error(`Nothing at ${path} to drop.`)
 
   const needed = drops.flatMap((d) => d.paths).reduce((sum, p) => sum + sizeOf(p), 0)
-  const st = statfsSync(libraryRoot())
-  const free = st.bavail * st.bsize
+  const free = freeBytesAt(libraryRoot(), {
+    mkdir: (dir) => mkdirSync(dir, { recursive: true }),
+    statfs: (dir) => statfsSync(dir)
+  })
   log(`Disk: ${(free / GB).toFixed(1)} GB free, the drops are ${(needed / GB).toFixed(1)} GB.`)
   if (diskIsTight(free, needed)) throw new Error('Not enough free disk space for the seed.')
 
