@@ -6,7 +6,7 @@ import { Button } from '@renderer/components/Button'
 import { Progress } from '@renderer/components/Progress'
 import { StepBar, type StepBarValue } from '@renderer/components/StepBar'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import { MODEL_CARD_DEFAULTS, type ModelCardContractProps } from './ModelCard.types'
 import { modelCardVariants } from './ModelCard.variants'
 

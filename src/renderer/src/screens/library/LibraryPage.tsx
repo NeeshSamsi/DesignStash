@@ -13,7 +13,7 @@ import { ArrowLeft01Icon, Cancel01Icon, Search02Icon, StarIcon } from '@hugeicon
 import { coverDisplay, type LibraryItem } from '@shared/library'
 import { PageBar } from '@renderer/components/AppWindow/PageBar'
 import { Banner } from '@renderer/components/Banner'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { LibraryToolbar } from '@renderer/components/LibraryToolbar'

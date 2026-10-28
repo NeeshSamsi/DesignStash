@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import { SECTION_HEADER_DEFAULTS, type SectionHeaderContractProps } from './SectionHeader.types'
 import { sectionHeaderVariants } from './SectionHeader.variants'
 

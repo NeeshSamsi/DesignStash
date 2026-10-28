@@ -1,6 +1,6 @@
 import type { ComponentProps, MouseEvent } from 'react'
 import { PauseCircleIcon, PlayCircleIcon } from '@hugeicons/core-free-icons'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import { Button } from '@renderer/components/Button'
 import { Spinner } from '@renderer/components/Spinner'
 import { cn } from '@renderer/lib/utils'

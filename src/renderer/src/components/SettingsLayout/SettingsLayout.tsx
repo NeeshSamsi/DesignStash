@@ -18,7 +18,7 @@ import { ModelCard } from '@renderer/components/ModelCard'
 import { SidebarNavItem } from '@renderer/components/SidebarNavItem'
 import { Switch } from '@renderer/components/Switch'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import {
   SETTINGS_LAYOUT_DEFAULTS,
   type SettingsLayoutContractProps,

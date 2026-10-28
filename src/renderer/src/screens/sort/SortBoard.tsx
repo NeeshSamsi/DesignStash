@@ -26,7 +26,7 @@ import {
 import { GroupCard } from '@renderer/components/GroupCard'
 import { GroupMemberThumb } from '@renderer/components/GroupMemberThumb'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import {
   countLabel,
   getPile,
@@ -523,7 +523,7 @@ export function SortBoard({
           <div className="relative w-32">
             <GroupMemberThumb state="lifted" filename={grabbed.fileName} />
             {draggedTiles.length > 1 && (
-              <Badge variant="default" className="absolute -top-2 -right-2">
+              <Badge variant="primary" className="absolute -top-2 -right-2">
                 {draggedTiles.length}
               </Badge>
             )}

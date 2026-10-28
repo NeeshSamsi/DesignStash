@@ -6,7 +6,7 @@ import { SettingsGroup, SettingsRow } from '../../components/SettingsLayout'
 import { DialogFrame, DialogHeading } from '../../lib/dialog-shell'
 import { toast } from '../../stores/toastStore'
 import { useUiStore } from '../../stores/uiStore'
-import { Badge } from '../../ui/badge'
+import { Badge } from '../../components/Badge'
 import { ReportDialog } from './ReportDialog'
 import { formatWhen } from './settings-copy'
 

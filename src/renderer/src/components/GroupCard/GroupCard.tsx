@@ -5,7 +5,7 @@ import { Folder01Icon, MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { GroupMemberThumb } from '@renderer/components/GroupMemberThumb'
 import { mockups } from '@renderer/lib/plural'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import { Button } from '@renderer/components/Button'
 import { GROUP_CARD_DEFAULTS, type GroupCardContractProps } from './GroupCard.types'
 import { GROUP_MEMBERS, groupCardHeaderVariants, groupCardVariants } from './GroupCard.variants'
@@ -91,7 +91,7 @@ export function GroupCard({
             {title}
           </p>
           {merge ? (
-            <Badge variant="default">{mergeHint}</Badge>
+            <Badge variant="primary">{mergeHint}</Badge>
           ) : (
             <>
               <Badge variant="secondary">{mockups(total)}</Badge>

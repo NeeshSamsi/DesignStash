@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, type ComponentProps } from 'react'
 import { Image01Icon, Refresh01Icon, ZoomInAreaIcon } from '@hugeicons/core-free-icons'
 import { coverFit } from '@shared/cover-fit'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import { Banner } from '@renderer/components/Banner'
 import { Button } from '@renderer/components/Button'
 import { CoverDropZone } from '@renderer/components/CoverDropZone'
