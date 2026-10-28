@@ -34,13 +34,7 @@ const UI_IMPORTS = {
   'AppShell.tsx': ['sonner'],
   'screens/errors/CrashScreen.tsx': ['sonner'],
   // The dev catalog's scrolling lists: ScrollArea has no design-system component.
-  'design-system/DesignSystemCatalog.tsx': ['scroll-area'],
-  // Waiting on a Figma decision. Its suggestions are a menu-styled panel around a Command list
-  // whose input is the tag chip; Figma's Popover and Command have neither form.
-  'components/TagEditor/TagEditor.tsx': ['popover', 'command'],
-  // Waiting on a Figma decision. Figma draws it as its own one-column panel, and its search field
-  // has a clear button and no shortcut hint; Figma's Popover and Input have neither form.
-  'components/TagFilterPopover/TagFilterPopover.tsx': ['popover', 'input']
+  'design-system/DesignSystemCatalog.tsx': ['scroll-area']
 }
 const UI_GROUP = ['@renderer/ui/*', '**/ui/*']
 const uiImportRule = (allowed = []) => [

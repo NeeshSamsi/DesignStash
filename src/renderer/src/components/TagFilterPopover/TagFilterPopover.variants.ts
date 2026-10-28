@@ -1,7 +1,8 @@
 import { cva } from 'class-variance-authority'
 
 // The panel and width come from ui/popover.tsx; its padding and spacing are its own.
-export const tagFilterPopoverVariants = cva('gap-3 p-4', {
+// The panel's padding and gap come from Popover's one-column layout.
+export const tagFilterPopoverVariants = cva('', {
   variants: {
     state: {
       open: '',
