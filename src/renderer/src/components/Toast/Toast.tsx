@@ -7,7 +7,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { TOAST_DEFAULTS, type ToastContractProps, type ToastVariant } from './Toast.types'
 import { toastIconVariants, toastVariants } from './Toast.variants'
 
@@ -67,9 +67,13 @@ export function Toast({
           {actionLabel ?? (props.variant === 'error' ? 'Retry' : 'Undo')}
         </Button>
       )}
-      <Button variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={onClose}>
-        <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
-      </Button>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        aria-label="Dismiss"
+        onClick={onClose}
+        iconStart={Cancel01Icon}
+      />
     </div>
   )
 }

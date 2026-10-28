@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { Spinner } from '@renderer/ui/spinner'
 import { LIST_ROW_DEFAULTS, type ListRowContractProps } from './ListRow.types'
 import { listRowMediaVariants, listRowVariants } from './ListRow.variants'
@@ -78,9 +78,13 @@ export function ListRow({
                   {actionLabel}
                 </Button>
                 {onMore && (
-                  <Button variant="ghost" size="icon" aria-label="More actions" onClick={onMore}>
-                    <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={ICON_STROKE} />
-                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="More actions"
+                    onClick={onMore}
+                    iconStart={MoreHorizontalIcon}
+                  />
                 )}
               </>
             )}

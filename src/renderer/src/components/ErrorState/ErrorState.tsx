@@ -3,7 +3,7 @@ import { Alert02Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Banner } from '@renderer/components/Banner'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { ERROR_STATE_DEFAULTS, type ErrorStateContractProps } from './ErrorState.types'
 import { errorStateVariants } from './ErrorState.variants'
 

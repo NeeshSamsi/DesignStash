@@ -1,5 +1,5 @@
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
 import { ACTION_BAR_DEFAULTS, type ActionBarContractProps } from './ActionBar.types'
 import { actionBarVariants } from './ActionBar.variants'

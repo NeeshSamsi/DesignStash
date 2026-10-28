@@ -21,7 +21,7 @@ import type { TagTree as TagTreeData, TagTreeNode } from '@shared/tags'
 import { DropdownMenu, DropdownMenuDivider } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { Skeleton } from '@renderer/ui/skeleton'
 import { TAG_TREE_DEFAULTS, type TagTreeContractProps, type TagTreeState } from './TagTree.types'
 import { sampleTreeFor } from './TagTree.samples'
@@ -170,9 +170,8 @@ function MoreButton({
         !always && 'hidden group-focus-within/row:flex group-hover/row:flex data-[state=open]:flex',
         className
       )}
-    >
-      <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={ICON_STROKE} />
-    </Button>
+      iconStart={MoreHorizontalIcon}
+    />
   )
 }
 
@@ -450,9 +449,7 @@ export function TagTree({
             <span className="min-w-0 flex-1 truncate type-body-sm-regular text-foreground">
               {tag.label}
             </span>
-            <span className={cn(rowHintClass, 'whitespace-nowrap')}>
-              {mockups(tag.usageCount)}
-            </span>
+            <span className={cn(rowHintClass, 'whitespace-nowrap')}>{mockups(tag.usageCount)}</span>
             <DropdownMenu
               align="end"
               {...menuProps('tag', tag.tagId)}

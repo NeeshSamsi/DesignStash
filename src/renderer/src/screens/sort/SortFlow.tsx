@@ -16,7 +16,7 @@ import { useShortcut } from '@renderer/lib/shortcuts'
 import { useFlowUndo } from '@renderer/lib/undo-router'
 import { useFlowOpen } from '@renderer/stores/copyStore'
 import { stepToast, toast } from '@renderer/stores/toastStore'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { Skeleton } from '@renderer/ui/skeleton'
 import {
   boardFromProposal,

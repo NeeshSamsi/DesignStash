@@ -6,7 +6,7 @@ import { TagChip } from '@renderer/components/TagChip'
 import { TagFilterPopover, type TagFilterPopoverProps } from '@renderer/components/TagFilterPopover'
 import { cn } from '@renderer/lib/utils'
 import { Badge } from '@renderer/components/Badge'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { LIBRARY_TOOLBAR_DEFAULTS, type LibraryToolbarContractProps } from './LibraryToolbar.types'
 import { libraryToolbarVariants } from './LibraryToolbar.variants'
 

@@ -18,7 +18,7 @@ import {
   type FilterCategory
 } from '@renderer/lib/tag-filter'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { InputGroup, InputGroupInput } from '@renderer/ui/input'
 import {
   Popover,

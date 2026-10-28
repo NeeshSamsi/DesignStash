@@ -1,7 +1,7 @@
 import { Progress } from '@renderer/components/Progress'
 import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { Spinner } from '@renderer/ui/spinner'
 import { PROGRESS_DIALOG_DEFAULTS, type ProgressDialogContractProps } from './ProgressDialog.types'
 import { progressDialogVariants } from './ProgressDialog.variants'

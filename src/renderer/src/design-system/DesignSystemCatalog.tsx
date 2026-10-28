@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { Badge } from '@renderer/components/Badge'
 import { Input } from '@renderer/ui/input'
 import { ScrollArea } from '@renderer/ui/scroll-area'

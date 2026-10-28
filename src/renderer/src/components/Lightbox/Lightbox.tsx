@@ -1,4 +1,3 @@
-import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useRef, useState } from 'react'
 import {
   ArrowLeft01Icon,
@@ -7,11 +6,10 @@ import {
   ZoomInAreaIcon,
   ZoomOutAreaIcon
 } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { CoverImage } from '@renderer/components/CoverImage'
 import { guardToaster } from '@renderer/lib/toast-layer'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { Dialog as DialogPrimitive } from 'radix-ui'
 import { SHORTCUT_BOUNDARY_ATTR } from '@renderer/lib/shortcuts'
 import { LIGHTBOX_DEFAULTS, type LightboxContractProps } from './Lightbox.types'
@@ -131,17 +129,15 @@ export function Lightbox({
           size="icon"
           aria-label="Zoom out"
           onClick={() => setZoom(zoomedOut(zoom))}
-        >
-          <HugeiconsIcon icon={ZoomOutAreaIcon} strokeWidth={ICON_STROKE} />
-        </Button>
+          iconStart={ZoomOutAreaIcon}
+        />
         <Button
           variant="ghost"
           size="icon"
           aria-label="Zoom in"
           onClick={() => setZoom(zoomedIn(zoom))}
-        >
-          <HugeiconsIcon icon={ZoomInAreaIcon} strokeWidth={ICON_STROKE} />
-        </Button>
+          iconStart={ZoomInAreaIcon}
+        />
         <Button
           variant="ghost"
           size="sm"
@@ -153,9 +149,13 @@ export function Lightbox({
         <Button variant="ghost" size="sm" aria-pressed={zoom === 1} onClick={() => setZoom(1)}>
           100%
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
-          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
-        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Close"
+          onClick={onClose}
+          iconStart={Cancel01Icon}
+        />
       </div>
     </div>
   )
@@ -169,9 +169,8 @@ export function Lightbox({
           aria-label="Previous"
           disabled={!hasPrev}
           onClick={onPrev}
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={ICON_STROKE} />
-        </Button>
+          iconStart={ArrowLeft01Icon}
+        />
       )}
       {cover}
       {showArrows && (
@@ -181,9 +180,8 @@ export function Lightbox({
           aria-label="Next"
           disabled={!hasNext}
           onClick={onNext}
-        >
-          <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={ICON_STROKE} />
-        </Button>
+          iconStart={ArrowRight01Icon}
+        />
       )}
     </div>
   )

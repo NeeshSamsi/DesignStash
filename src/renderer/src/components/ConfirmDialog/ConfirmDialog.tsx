@@ -4,7 +4,7 @@ import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
 import { AlertDialogCancel } from '@renderer/ui/alert-dialog'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { Spinner } from '@renderer/ui/spinner'
 import { CONFIRM_DIALOG_DEFAULTS, type ConfirmDialogContractProps } from './ConfirmDialog.types'
 import { confirmDialogVariants } from './ConfirmDialog.variants'
@@ -91,7 +91,7 @@ export function ConfirmDialog({
       <div className="flex items-center justify-end gap-2">
         {cancel}
         <Button
-          variant={destructive ? 'destructive' : 'default'}
+          variant={destructive ? 'destructive' : 'primary'}
           size="sm"
           aria-busy={props.working || undefined}
           disabled={props.working}

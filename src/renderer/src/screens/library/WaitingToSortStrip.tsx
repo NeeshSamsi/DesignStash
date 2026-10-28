@@ -6,7 +6,7 @@ import { useInboxCounts } from '@renderer/hooks/use-inbox-counts'
 import { mockups } from '@renderer/lib/plural'
 import { useCopyStore } from '@renderer/stores/copyStore'
 import { useWaitingStripStore } from '@renderer/stores/waitingStripStore'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { useInboxList } from '../inboxes/useInboxList'
 
 const COVERS = 3

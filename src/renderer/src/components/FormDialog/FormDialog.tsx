@@ -1,12 +1,10 @@
-import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ReactNode } from 'react'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { Banner } from '@renderer/components/Banner'
 import { Field } from '@renderer/components/Field'
 import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { Spinner } from '@renderer/ui/spinner'
 import { FORM_DIALOG_DEFAULTS, type FormDialogContractProps } from './FormDialog.types'
 import { formDialogVariants } from './FormDialog.variants'
@@ -77,9 +75,14 @@ export function FormDialog({
         <div className="flex items-start justify-between gap-4">
           <DialogHeading title={props.title} description={props.description} />
           {isStatic && (
-            <Button variant="ghost" size="icon" type="button" aria-label="Close" onClick={onCancel}>
-              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
-            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              aria-label="Close"
+              onClick={onCancel}
+              iconStart={Cancel01Icon}
+            />
           )}
         </div>
         {children ?? (isStatic ? sample : null)}

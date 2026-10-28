@@ -1,7 +1,7 @@
 import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
 import { AlertDialogCancel } from '@renderer/ui/alert-dialog'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { CHOICE_DIALOG_DEFAULTS, type ChoiceDialogContractProps } from './ChoiceDialog.types'
 import { choiceDialogVariants } from './ChoiceDialog.variants'
 
@@ -69,7 +69,7 @@ export function ChoiceDialog({
               {secondaryLabel}
             </Button>
           )}
-          <Button variant={destructive ? 'destructive' : 'default'} size="sm" onClick={onPrimary}>
+          <Button variant={destructive ? 'destructive' : 'primary'} size="sm" onClick={onPrimary}>
             {primaryLabel}
           </Button>
         </div>
