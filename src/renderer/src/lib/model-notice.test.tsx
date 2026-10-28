@@ -101,6 +101,25 @@ describe('a runtime that breaks while the window is open (F-038)', () => {
   })
 })
 
+describe('a model that stops being able to run while the window is open (H-1)', () => {
+  it('says so at once when suggestions start waiting for the model, without waiting for focus', async () => {
+    invoke.mockResolvedValueOnce(listing(null))
+    renderHook(() => useActiveModelNotice())
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1))
+
+    invoke.mockResolvedValue(listing('apple-intelligence-off'))
+    act(() =>
+      pushed!({
+        updates: [{ mockupId: 7, status: 'pending' }],
+        totals: { total: 3, remaining: 1 },
+        modelUnavailable: true
+      })
+    )
+    await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
+    expect(toast.mock.calls[0]![0]).toMatchObject({ action: { label: 'Choose a model' } })
+  })
+})
+
 describe('activeProblemCopy', () => {
   it('words every problem plainly, without em dashes', () => {
     for (const problem of ['apple-intelligence-off', 'apple-model-not-ready', 'apple-unavailable', 'runtime-failed', 'runtime-missing'] as const) {

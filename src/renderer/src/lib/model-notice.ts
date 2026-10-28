@@ -42,7 +42,8 @@ export function activeProblemCopy(problem: AiActiveProblem): { title: string; me
 /**
  * The app-wide notice for an active model that can't run (Apple's, with Apple Intelligence turned
  * off, or a runtime that won't start or is missing): one toast with Choose a model, at launch, when
- * the window comes back and when a mockup couldn't be written, only when the problem is new.
+ * the window comes back, when a mockup couldn't be written, and when suggestions start waiting for
+ * the model, only when the problem is new.
  * Settings › AI model shows the same words while it lasts.
  */
 export function useActiveModelNotice(): void {
@@ -70,9 +71,10 @@ export function useActiveModelNotice(): void {
     void check()
     const onFocus = () => void check()
     window.addEventListener('focus', onFocus)
-    // A mockup the AI couldn't write may be the runtime itself failing (F-038).
+    // A mockup the AI couldn't write may be the runtime itself failing (F-038), and suggestions
+    // waiting for a model that stopped being able to run say so straight away (H-1).
     const unsubscribe = subscribePush(IPC_CHANNELS.AI_STATUS, (event) => {
-      if (event.updates.some((u) => u.status === 'failed')) void check()
+      if (event.modelUnavailable || event.updates.some((u) => u.status === 'failed')) void check()
     })
     return () => {
       window.removeEventListener('focus', onFocus)
