@@ -93,20 +93,11 @@ describe('pile operations', () => {
       const [a, b, c] = [standalone('a'), standalone('b'), standalone('c')]
       const result = repo.piles.createPile([a!.id, b!.id, c!.id], b!.id)
 
-      expect(result.pileId).toBe(b!.id)
+      expect(result).toEqual({ pileId: b!.id })
       expect(state([a!.id, b!.id, c!.id])).toEqual([
         { id: a!.id, isGroup: false, groupId: b!.id },
         { id: b!.id, isGroup: true, groupId: null },
         { id: c!.id, isGroup: false, groupId: b!.id }
-      ])
-    })
-
-    it('returns the earlier state of every row it touched, titles included', () => {
-      const [a, b] = [standalone('a'), standalone('b')]
-      const { before } = repo.piles.createPile([a!.id, b!.id], a!.id)
-      expect(before).toEqual([
-        { id: a!.id, isGroup: false, groupId: null, title: a!.title, variation: null, variationSource: null },
-        { id: b!.id, isGroup: false, groupId: null, title: b!.title, variation: null, variationSource: null }
       ])
     })
 
@@ -137,17 +128,13 @@ describe('pile operations', () => {
 
       const result = repo.piles.addToPile(pileId, [c!.id, d!.id])
 
-      expect(result.pileId).toBe(a!.id)
+      expect(result).toEqual({ pileId: a!.id })
       expect(
         repo
           .piles.getMockupsByGroupId(a!.id)
           .map((m) => m.id)
           .sort()
       ).toEqual([b!.id, c!.id, d!.id].sort())
-      expect(result.before).toMatchObject([
-        { id: c!.id, isGroup: false, groupId: null },
-        { id: d!.id, isGroup: false, groupId: null }
-      ])
     })
 
     it('refuses a target that is not a pile, or members that are not on their own', () => {
@@ -178,6 +165,19 @@ describe('pile operations', () => {
         { id: c!.id, isGroup: false, groupId: a!.id },
         { id: d!.id, isGroup: false, groupId: a!.id },
         { id: e!.id, isGroup: false, groupId: null }
+      ])
+    })
+
+    it('returns the earlier state of every row it moved, titles included', () => {
+      const [a, b, c, d] = ['a', 'b', 'c', 'd'].map(standalone)
+      const target = repo.piles.createPile([a!.id, b!.id], a!.id)
+      const source = repo.piles.createPile([c!.id, d!.id], c!.id)
+
+      const { before } = repo.piles.mergePiles([source.pileId], target.pileId)
+
+      expect(before).toEqual([
+        { id: c!.id, isGroup: true, groupId: null, title: c!.title, variation: null, variationSource: null },
+        { id: d!.id, isGroup: false, groupId: c!.id, title: d!.title, variation: null, variationSource: null }
       ])
     })
 
@@ -214,7 +214,7 @@ describe('pile operations', () => {
 
       const result = repo.piles.setPileTop(pileId, c!.id)
 
-      expect(result.pileId).toBe(c!.id)
+      expect(result).toEqual({ pileId: c!.id })
       expect(state([a!.id, b!.id, c!.id])).toEqual([
         { id: a!.id, isGroup: false, groupId: c!.id },
         { id: b!.id, isGroup: false, groupId: c!.id },
@@ -237,7 +237,7 @@ describe('pile operations', () => {
       const [a, b] = [standalone('a'), standalone('b')]
       const { pileId } = repo.piles.createPile([a!.id, b!.id], a!.id)
       const result = repo.piles.setPileTop(pileId, a!.id)
-      expect(result.pileId).toBe(a!.id)
+      expect(result).toEqual({ pileId: a!.id })
       expect(state([a!.id, b!.id])).toEqual([
         { id: a!.id, isGroup: true, groupId: null },
         { id: b!.id, isGroup: false, groupId: a!.id }

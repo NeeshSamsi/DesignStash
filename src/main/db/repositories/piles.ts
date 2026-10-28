@@ -7,7 +7,7 @@ import type { VariationSource } from '@shared/pile-variation'
 
 /**
  * A row's place in a pile, with its titles, since joining and leaving a pile changes them (the base
- * and the variation). A pile change returns these from before it (`before`).
+ * and the variation). A merge returns these from before it (`before`).
  */
 export interface PileRow {
   id: number
@@ -45,7 +45,10 @@ export function layOutPile(tx: Pick<AppDatabase, 'update'>, topId: number, ids: 
 export interface PileChange {
   /** The pile's id after the change (its top mockup). */
   pileId: number
-  /** The earlier state of every row the change touched. */
+}
+
+/** A merge, with the earlier state of every row it moved. */
+export interface PileMerge extends PileChange {
   before: PileRow[]
 }
 
@@ -125,9 +128,8 @@ export class PileRepository {
     if (!ids.includes(topId)) throw new Error('The top mockup must be in the pile')
     this.assertOnTheirOwn(ids)
 
-    const before = this.getPileRows(ids)
     this.db.transaction((tx) => layOutPile(tx, topId, ids))
-    return { pileId: topId, before }
+    return { pileId: topId }
   }
 
   /** Put mockups on their own into an existing pile; the top stays on top. */
@@ -137,16 +139,15 @@ export class PileRepository {
     this.assertPile(pileId)
     this.assertOnTheirOwn(ids)
 
-    const before = this.getPileRows(ids)
     this.db.transaction((tx) => layOutPile(tx, pileId, ids))
-    return { pileId, before }
+    return { pileId }
   }
 
   /**
    * Fold piles (or mockups on their own) into a target pile. The target keeps its top;
    * each source's top and members become members of the target.
    */
-  mergePiles(sourceIds: number[], targetId: number): PileChange {
+  mergePiles(sourceIds: number[], targetId: number): PileMerge {
     const sources = [...new Set(sourceIds)]
     if (sources.length === 0) throw new Error('Nothing to merge into the pile')
     if (sources.includes(targetId)) throw new Error('A pile cannot be merged into itself')
@@ -173,14 +174,13 @@ export class PileRepository {
   /** Hand the pile to another of its mockups. The pile's id becomes `topId`. */
   setPileTop(pileId: number, topId: number): PileChange {
     this.assertPile(pileId)
-    if (topId === pileId) return { pileId, before: [] }
+    if (topId === pileId) return { pileId }
 
     const members = this.getMockupsByGroupId(pileId)
     if (!members.some((m) => m.id === topId)) throw new Error('That mockup is not in the pile')
 
     const oldTop = this.requireLive(pileId)
     const ids = [pileId, ...members.map((m) => m.id)]
-    const before = this.getPileRows(ids)
     this.db.transaction((tx) => {
       layOutPile(tx, topId, ids)
       // The star belongs to the pile, so it moves with the top.
@@ -193,7 +193,7 @@ export class PileRepository {
         .where(eq(mockups.id, pileId))
         .run()
     })
-    return { pileId: topId, before }
+    return { pileId: topId }
   }
 
   /** Break a pile up: every mockup lands on its own. */
