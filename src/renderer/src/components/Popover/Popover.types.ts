@@ -10,13 +10,15 @@ export const POPOVER_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=213-341',
   section: '2 · Primitives (shadcn)',
   description:
-    'Anchored panel (tag filter, tag suggestions).\n2026-10-24: content is a real slot, so screens put their content inside the popover. Three regions, separated by dividers. Header: title, an optional description line (show-description) and the link button. Content: the slot. Footer: buttons ordered light to heavy, right-aligned (secondary, primary). No key chips: Return and Esc work as in any macOS dialog. Elevation: shadow/raised.',
+    'Anchored panel (tag filter, tag suggestions).\n2026-10-24: content is a real slot, so screens put their content inside the popover. Three regions, separated by dividers. Header: title, an optional description line (show-description) and the link button. Content: the slot. Footer: buttons ordered light to heavy, right-aligned (secondary, primary). No key chips: Return and Esc work as in any macOS dialog. Elevation: shadow/raised.\nlayout=one-column (2026-10-28, md): one padded column with no dividers (16 padding, 12 gap), as the tag filter panel draws it. Header, content and footer stack in it; the same booleans apply.',
   code: 'ui/popover.tsx',
   axes: {
-    size: ['md', 'lg']
+    size: ['md', 'lg'],
+    layout: ['regions', 'one-column']
   },
   axisDefaults: {
-    size: 'md'
+    size: 'md',
+    layout: 'regions'
   },
   flags: {},
   interactionStates: [],
@@ -39,10 +41,13 @@ export const POPOVER_CONTRACT = {
 } as const satisfies ComponentContract
 
 export type PopoverSize = 'md' | 'lg'
+export type PopoverLayout = 'regions' | 'one-column'
 
 export interface PopoverContractProps {
   /** Figma `size` (2 options). Default `md`. */
   size?: PopoverSize
+  /** Figma `layout` (2 options). Default `regions`. */
+  layout?: PopoverLayout
   /** Figma boolean. Default `true`. */
   header?: boolean
   /** Figma boolean. Default `false`. */
@@ -64,6 +69,7 @@ export interface PopoverContractProps {
 /** Figma defaults. Slots have none. */
 export const POPOVER_DEFAULTS = {
   size: 'md',
+  layout: 'regions',
   header: true,
   footer: false,
   showDescription: false,

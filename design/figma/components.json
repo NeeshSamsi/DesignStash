@@ -3,7 +3,7 @@
   "source": {
     "fileKey": "fB8PHTrzz89lAQOhXbsHMK",
     "componentsPage": "189:343",
-    "exportedAt": "2026-10-26"
+    "exportedAt": "2026-10-28"
   },
   "components": [
     {
@@ -62,7 +62,7 @@
       "name": "Input",
       "figmaId": "212:190",
       "section": "2 · Primitives (shadcn)",
-      "description": "Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.\nstate=writing (2026-10-24): the AI is writing this field. The placeholder “Writing with AI…” pulses like Skeleton (animate-pulse; static with reduced motion). It stays a real, focusable field: typing makes it a normal field that belongs to the person. state=ai-filled (2026-10-26): as Textarea’s, the background/primary-weak tint on a field the AI just filled; it fades after 1.2s.",
+      "description": "Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.\nstate=writing (2026-10-24): the AI is writing this field. The placeholder “Writing with AI…” pulses like Skeleton (animate-pulse; static with reduced motion). It stays a real, focusable field: typing makes it a normal field that belongs to the person. state=ai-filled (2026-10-26): as Textarea’s, the background/primary-weak tint on a field the AI just filled; it fades after 1.2s.\nshow-hint and show-clear (2026-10-28): on search, the ⌘ hint at the end and the clear button while there is text, both on by default. The leading icon is icon-start, off by default. The tag filter’s search field has no icon and no hint.",
       "code": "ui/input.tsx + input-group",
       "variants": {
         "variant": [
@@ -81,7 +81,9 @@
         ]
       },
       "booleans": {
-        "icon-start": false
+        "icon-start": false,
+        "show-hint": true,
+        "show-clear": true
       },
       "texts": {
         "value": "Mockup title"
@@ -219,34 +221,6 @@
       },
       "texts": {
         "label": "Share anonymous usage data"
-      },
-      "swaps": {},
-      "exposed": []
-    },
-    {
-      "name": "RadioGroup",
-      "figmaId": "212:388",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Single-choice item; card variant hosts rich content (ModelRow).",
-      "code": "ui/radio-group.tsx",
-      "variants": {
-        "variant": [
-          "list",
-          "card"
-        ],
-        "state": [
-          "unselected",
-          "selected",
-          "focus",
-          "disabled"
-        ]
-      },
-      "booleans": {
-        "show-description": true
-      },
-      "texts": {
-        "label": "Qwen3-VL 4B",
-        "description": "1.0 GB · small"
       },
       "swaps": {},
       "exposed": []
@@ -431,12 +405,16 @@
       "name": "Popover",
       "figmaId": "213:341",
       "section": "2 · Primitives (shadcn)",
-      "description": "Anchored panel (tag filter, tag suggestions).\n2026-10-24: content is a real slot, so screens put their content inside the popover. Three regions, separated by dividers. Header: title, an optional description line (show-description) and the link button. Content: the slot. Footer: buttons ordered light to heavy, right-aligned (secondary, primary). No key chips: Return and Esc work as in any macOS dialog. Elevation: shadow/raised.",
+      "description": "Anchored panel (tag filter, tag suggestions).\n2026-10-24: content is a real slot, so screens put their content inside the popover. Three regions, separated by dividers. Header: title, an optional description line (show-description) and the link button. Content: the slot. Footer: buttons ordered light to heavy, right-aligned (secondary, primary). No key chips: Return and Esc work as in any macOS dialog. Elevation: shadow/raised.\nlayout=one-column (2026-10-28, md): one padded column with no dividers (16 padding, 12 gap), as the tag filter panel draws it. Header, content and footer stack in it; the same booleans apply.",
       "code": "ui/popover.tsx",
       "variants": {
         "size": [
           "md",
           "lg"
+        ],
+        "layout": [
+          "regions",
+          "one-column"
         ]
       },
       "booleans": {
@@ -459,12 +437,13 @@
       "name": "Command",
       "figmaId": "213:474",
       "section": "2 · Primitives (shadcn)",
-      "description": "Searchable list with keyboard nav: inline = tag combobox, palette = ⌘K.",
+      "description": "Searchable list with keyboard nav: inline = tag combobox, palette = ⌘K.\nvariant=list (2026-10-28): the list alone, with no input and no panel of its own, for a list inside another panel: the tag editor’s suggestions, where the tag chip is the input and the list sits in a menu-styled popover (surface-3, 4 padding, 260 wide). Its rows go in the items slot; the selected row is surface-4.",
       "code": "ui/command.tsx (cmdk)",
       "variants": {
         "variant": [
           "inline",
-          "palette"
+          "palette",
+          "list"
         ],
         "state": [
           "results",
@@ -477,7 +456,9 @@
         "query": "Add tag…"
       },
       "swaps": {},
-      "exposed": []
+      "exposed": [
+        "items:content"
+      ]
     },
     {
       "name": "DropdownMenu Item",
@@ -533,52 +514,10 @@
       ]
     },
     {
-      "name": "Tabs Trigger",
-      "figmaId": "213:573",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Building block for Tabs.",
-      "code": "TabsTrigger in ui/tabs.tsx",
-      "variants": {
-        "variant": [
-          "line",
-          "pill"
-        ],
-        "state": [
-          "inactive",
-          "active",
-          "hover",
-          "focus"
-        ]
-      },
-      "booleans": {},
-      "texts": {
-        "label": "My Stash"
-      },
-      "swaps": {},
-      "exposed": []
-    },
-    {
-      "name": "Tabs",
-      "figmaId": "213:608",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Settings section switcher.",
-      "code": "ui/tabs.tsx",
-      "variants": {
-        "variant": [
-          "line",
-          "pill"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": []
-    },
-    {
       "name": "Dialog",
       "figmaId": "213:781",
       "section": "2 · Primitives (shadcn)",
-      "description": "Overlay shells. Screens never use these directly — they use Modal / ConfirmDialog / ChoiceDialog.",
+      "description": "Overlay shells. Screens never use these directly — they use ConfirmDialog / ChoiceDialog / FormDialog, or a composed dialog frame in ModalLayer.",
       "code": "ui/dialog.tsx, ui/alert-dialog.tsx, ui/sheet.tsx",
       "variants": {
         "variant": [
@@ -601,7 +540,7 @@
       "name": "Toast",
       "figmaId": "213:905",
       "section": "2 · Primitives (shadcn)",
-      "description": "Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.\nSync 2026-10: done actions (Moved to Trash, Stashed) use the success variant with the check icon. Undo is a hairline outline button (border/subtle, no fill).",
+      "description": "Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.\nSync 2026-10: done actions (Moved to Trash, Stashed) use the success variant with the check icon. Undo is a hairline outline button (border/subtle, no fill).\nstate=action-disabled (2026-10-28, success only): an older toast whose Undo a newer change to the same mockups, piles, tags or covers blocks. Undo is disabled and the line reads “Changed since. Use ⌘Z”, whatever the description (code: actionDisabled, from the undo:state push).",
       "code": "ui/sonner.tsx + stores/toastStore.ts",
       "variants": {
         "variant": [
@@ -609,6 +548,10 @@
           "success",
           "info",
           "error"
+        ],
+        "state": [
+          "default",
+          "action-disabled"
         ]
       },
       "booleans": {
@@ -620,39 +563,6 @@
         "message": "Moved to Trash",
         "description": "Just now"
       },
-      "swaps": {},
-      "exposed": []
-    },
-    {
-      "name": "Separator",
-      "figmaId": "211:87",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Divider line bound to border/subtle.",
-      "code": "ui/separator.tsx",
-      "variants": {
-        "orientation": [
-          "horizontal",
-          "vertical"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": []
-    },
-    {
-      "name": "ScrollArea",
-      "figmaId": "211:101",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Styled scroll region with a thin rounded thumb.",
-      "code": "ui/scroll-area.tsx",
-      "variants": {
-        "orientation": [
-          "vertical"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
       "swaps": {},
       "exposed": []
     },
@@ -785,26 +695,6 @@
       "texts": {},
       "swaps": {},
       "exposed": []
-    },
-    {
-      "name": "AddMenu",
-      "figmaId": "218:1767",
-      "section": "3 · Layout & navigation",
-      "description": "Import entry point: Add files… / Add folder… + drop hint. Disabled while an import runs.\nSync 2026-10-23: the trigger is Button base (16px padding, 20px icon) and fills the sidebar column (152).",
-      "code": "components/AddMenu/AddMenu.tsx",
-      "variants": {
-        "state": [
-          "closed",
-          "open",
-          "disabled"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": [
-        "shortcut:KeyboardShortcut"
-      ]
     },
     {
       "name": "PageHeader",
@@ -1032,37 +922,6 @@
       }
     },
     {
-      "name": "Modal",
-      "figmaId": "216:780",
-      "section": "5 · Overlays & dialogs",
-      "description": "Base content dialog: header, scrolling body slot, ActionBar footer.",
-      "code": "components/Modal/Modal.tsx",
-      "variants": {
-        "size": [
-          "sm",
-          "md",
-          "lg",
-          "xl"
-        ]
-      },
-      "booleans": {
-        "closable": true,
-        "show-description": true,
-        "footer": true
-      },
-      "texts": {
-        "title": "Skipped files",
-        "description": "A short line about what this view is for."
-      },
-      "swaps": {
-        "body": {
-          "kind": "slot",
-          "default": "kind=placeholder"
-        }
-      },
-      "exposed": []
-    },
-    {
       "name": "ModalLayer",
       "figmaId": "252:4600",
       "section": "5 · Overlays & dialogs",
@@ -1259,7 +1118,7 @@
       "name": "MockupCard",
       "figmaId": "217:1492",
       "section": "6 · Library",
-      "description": "A mockup in any grid: an iOS-squircle container (radius 2xl, 60% corner smoothing; surface-2) with CoverImage, “+N variants” badge, favourite, title and tag line. Hover: the cover zooms ~6% (150ms); Star then ⋯ top-right; along the cover's bottom, over a soft scrim, a full-width primary Open in Photoshop with Edit details (ghost) under it. Edit details, double-click and ↵ open Detail; Space previews; ⋯ = the right-click menu. Selected = border/primary ring. left-behind = the slot a dragged card leaves; group-target = a card being dropped on (drop-hint). pending-review (inbox cards): status badge (show-status) and the +N badge share the top-left row; hover shows one full-width primary button (Look it over in To stash). trash: no star or ⋯, a “Trashed 2 days ago” line, hover Restore with Delete for good under it.\nSync 2026-10: selected and group-target ring is border/selected. The pile badge shows the total (a 3-mockup pile reads 3) with the layers icon. In code, file-name titles middle-truncate (Figma text can only cut the end).",
+      "description": "A mockup in any grid: an iOS-squircle container (radius 2xl, 60% corner smoothing; surface-2) with CoverImage, “+N variants” badge, favourite, title and tag line. Hover: the cover zooms ~6% (150ms); Star then ⋯ top-right; along the cover's bottom, over a soft scrim, a full-width primary Open in Photoshop with Edit details (ghost) under it. Edit details, double-click and ↵ open Detail; Space previews; ⋯ = the right-click menu. Selected = border/primary ring. left-behind = the slot a dragged card leaves; group-target = a card being dropped on (drop-hint). pending-review (inbox cards): status badge (show-status) and the +N badge share the top-left row; hover shows one full-width primary button (Look it over in To stash). trash: no star or ⋯, a “Trashed 2 days ago” line, hover Restore with Delete for good under it.\nSync 2026-10: selected and group-target ring is border/selected. The pile badge shows the total (a 3-mockup pile reads 3) with the layers icon. In code, file-name titles middle-truncate (Figma text can only cut the end).\nTrash caption (2026-10-28): on variant=trash the tag line says where the card came from and when (screens/trash/trash-copy.ts): “Tossed from To sort · 2 minutes ago” (or To stash) for a tossed mockup, “Trashed 2 days ago” for one from My Stash.",
       "code": "screens/library/LibraryCard.tsx",
       "variants": {
         "variant": [
@@ -1347,7 +1206,7 @@
       "name": "TagFilterPopover",
       "figmaId": "217:2113",
       "section": "6 · Library",
-      "description": "Tag filter: search on top, CategoryPills with live counts, tags grouped by category (scrolls past ~240px). Rules: design/specs/library.md. Tags are two tiers (category, then tag), so the list is flat. Each group starts with an \"All in <category>\" row: ticking it filters by the whole category and disables that category's tag rows (state=category-picked); hidden while searching.",
+      "description": "Tag filter: search on top, CategoryPills with live counts, tags grouped by category (scrolls past ~240px). Rules: design/specs/library.md. Tags are two tiers (category, then tag), so the list is flat. Each group starts with an \"All in <category>\" row: ticking it filters by the whole category and disables that category's tag rows (state=category-picked); hidden while searching.\nPanel (2026-10-28): 16 padding and 12 gap, like Popover layout=one-column; its search field is Input search with no icon and no ⌘ hint.",
       "code": "screens/library/LibraryPage.tsx",
       "variants": {
         "state": [
@@ -1587,7 +1446,7 @@
       "name": "TagEditor",
       "figmaId": "222:2959",
       "section": "8 · Approval & editing",
-      "description": "Tags field with inline add: “+ Add tag” is first and becomes the input in place; added tags append at the end; AI suggestions sit after a divider and move into your tags when accepted. Rules: design/specs/tags.md.",
+      "description": "Tags field with inline add: “+ Add tag” is first and becomes the input in place; added tags append at the end; AI suggestions sit after a divider and move into your tags when accepted. Rules: design/specs/tags.md.\nSuggestions (2026-10-28): a Command list (variant=list) in a menu-styled popover: surface-3, 4 padding, 260 wide, shadow/raised; a note line above it and the key hint below.",
       "code": "components/TagEditor/TagEditor.tsx",
       "variants": {
         "variant": [
@@ -2048,34 +1907,6 @@
       "exposed": []
     },
     {
-      "name": "ListGroup",
-      "figmaId": "267:4998",
-      "section": "11 · Lists, trash, integrity & recovery",
-      "description": "A titled list: SectionHeader + N ListRows.",
-      "code": null,
-      "variants": {
-        "density": [
-          "regular",
-          "compact"
-        ],
-        "rows": [
-          "3",
-          "5"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": [
-        "header:SectionHeader",
-        "row-1:ListRow",
-        "row-2:ListRow",
-        "row-3:ListRow",
-        "row-4:ListRow",
-        "row-5:ListRow"
-      ]
-    },
-    {
       "name": "SectionHeader",
       "figmaId": "214:1350",
       "section": "11 · Lists, trash, integrity & recovery",
@@ -2111,27 +1942,6 @@
           "rescanning",
           "all-resolved",
           "removing"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": []
-    },
-    {
-      "name": "ProGate",
-      "figmaId": "223:6940",
-      "section": "11 · Lists, trash, integrity & recovery",
-      "description": "Wraps a Pro feature: unlocked renders the child (everything is unlocked in Phase 1); locked shows the lock, a plain Pro tag, one line on what the feature does, and Upgrade. No crown (it means top of the pile) and no Learn more until there's somewhere to learn more. inline or page.",
-      "code": "components/ProGate/ProGate.tsx (dormant, decision D7)",
-      "variants": {
-        "variant": [
-          "inline",
-          "page"
-        ],
-        "state": [
-          "locked",
-          "unlocked"
         ]
       },
       "booleans": {},

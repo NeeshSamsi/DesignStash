@@ -63,6 +63,34 @@ describe('Popover', () => {
     expect(screen.queryByText('A short line under the title.')).toBeNull()
   })
 
+  it('one-column: the title row, the content and the footer stack in one padded column, with no dividers', () => {
+    const { container } = render(
+      <Popover
+        layout="one-column"
+        title="Tags"
+        headerAction={<Button variant="link" size="xs" label="Clear all" />}
+        footer
+        primary={<Button size="sm" label="Done" />}
+      >
+        <p>The list</p>
+      </Popover>
+    )
+    const panel = container.querySelector('[data-ds="Popover"]')!
+    expect(panel.className.split(' ')).toEqual(expect.arrayContaining(['gap-3', 'p-4']))
+    expect([...panel.children].map((el) => el.getAttribute('data-slot') ?? el.tagName)).toEqual([
+      'popover-header',
+      'P',
+      'popover-footer'
+    ])
+    expect(panel.querySelector('[data-slot="separator"]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Clear all' })).toBeTruthy()
+  })
+
+  it('one-column: the description sits under the title, in the same column', () => {
+    render(<Popover layout="one-column" title="Tags" showDescription description="Pick any." />)
+    expect(screen.getByText('Pick any.').className).toContain('text-muted-foreground')
+  })
+
   it('anchored: hangs from its trigger without the trigger opening or closing it', () => {
     const { rerender } = render(
       <Popover

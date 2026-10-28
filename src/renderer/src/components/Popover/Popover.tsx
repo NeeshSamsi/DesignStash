@@ -37,7 +37,7 @@ export interface PopoverProps extends PopoverContractProps {
     'children' | 'size' | 'align' | 'sideOffset' | 'className'
   >
   className?: string
-  /** Classes for the body region. */
+  /** Classes for the body region (the regions layout; one-column has none). */
   bodyClassName?: string
 }
 
@@ -65,40 +65,63 @@ export function Popover({
   ...rest
 }: PopoverProps) {
   const props = { ...POPOVER_DEFAULTS, ...rest }
-  const panel = (
+  const titleRow = (
+    <PopoverHeader>
+      <PopoverTitle>{props.title}</PopoverTitle>
+      {headerAction}
+    </PopoverHeader>
+  )
+  const description = props.showDescription && (
+    <p className="type-caption-xs-regular text-muted-foreground">{props.description}</p>
+  )
+  const actions = (
     <>
-      {props.header && (
-        <>
-          <div data-slot="popover-header" className="flex flex-col gap-1 px-4 pt-4 pb-3">
-            <PopoverHeader>
-              <PopoverTitle>{props.title}</PopoverTitle>
-              {headerAction}
-            </PopoverHeader>
-            {props.showDescription && (
-              <p className="type-caption-xs-regular text-muted-foreground">{props.description}</p>
-            )}
-          </div>
-          <Separator />
-        </>
-      )}
-      <div
-        data-slot="popover-body"
-        className={cn('flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4', bodyClassName)}
-      >
-        {children ?? props.content}
-      </div>
-      {props.footer && (
-        <>
-          <Separator />
-          <PopoverFooter className="gap-3 px-4 py-3">
-            {props.secondary}
-            {props.primary}
-          </PopoverFooter>
-        </>
-      )}
+      {props.secondary}
+      {props.primary}
     </>
   )
-  const classes = cn(popoverVariants({ size: props.size }), className)
+  const panel =
+    props.layout === 'one-column' ? (
+      // One padded column (the panel's own gap and padding), with no dividers and no body wrapper.
+      <>
+        {props.header &&
+          (props.showDescription ? (
+            <div className="flex flex-col gap-1">
+              {titleRow}
+              {description}
+            </div>
+          ) : (
+            titleRow
+          ))}
+        {children ?? props.content}
+        {props.footer && <PopoverFooter className="gap-3">{actions}</PopoverFooter>}
+      </>
+    ) : (
+      <>
+        {props.header && (
+          <>
+            <div data-slot="popover-header" className="flex flex-col gap-1 px-4 pt-4 pb-3">
+              {titleRow}
+              {description}
+            </div>
+            <Separator />
+          </>
+        )}
+        <div
+          data-slot="popover-body"
+          className={cn('flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4', bodyClassName)}
+        >
+          {children ?? props.content}
+        </div>
+        {props.footer && (
+          <>
+            <Separator />
+            <PopoverFooter className="gap-3 px-4 py-3">{actions}</PopoverFooter>
+          </>
+        )}
+      </>
+    )
+  const classes = cn(popoverVariants({ size: props.size, layout: props.layout }), className)
 
   if (trigger !== undefined) {
     return (

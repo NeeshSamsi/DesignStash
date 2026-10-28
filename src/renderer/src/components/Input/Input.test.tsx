@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { variantMatrix } from '@renderer/design-system/matrix'
 import { Input, type InputProps } from './Input'
@@ -16,6 +16,39 @@ describe('Input', () => {
     for (const text of Object.values<string>(INPUT_CONTRACT.texts)) {
       expect(screen.getByDisplayValue(text)).not.toBeNull()
     }
+  })
+
+  describe('search', () => {
+    it('shows the ⌘ hint and, while there is text, the clear button, by default', () => {
+      const onClear = vi.fn()
+      const { container } = render(
+        <Input
+          variant="search"
+          value="clay"
+          onChange={() => {}}
+          onClear={onClear}
+          aria-label="Search"
+        />
+      )
+      expect(container.querySelector('[data-ds="KeyboardShortcut"]')).not.toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+      expect(onClear).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves out the hint and the clear button when asked, as the tag filter does', () => {
+      const { container } = render(
+        <Input
+          variant="search"
+          value="clay"
+          onChange={() => {}}
+          showHint={false}
+          showClear={false}
+          aria-label="Search"
+        />
+      )
+      expect(container.querySelector('[data-ds="KeyboardShortcut"]')).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Clear search' })).toBeNull()
+    })
   })
 
   describe('writing', () => {

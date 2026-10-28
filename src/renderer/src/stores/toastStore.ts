@@ -4,7 +4,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { Toast } from '@renderer/components/Toast'
 import type { ToastVariant } from '@renderer/components/Toast/Toast.types'
 import { subscribePush } from '@renderer/lib/subscribe'
-import { CHANGED_SINCE, undoEntry } from '@renderer/lib/undo-router'
+import { undoEntry } from '@renderer/lib/undo-router'
 
 export type ToastKind = 'info' | 'success' | 'error'
 
@@ -30,7 +30,6 @@ export interface ToastOptions {
 function EntryToast({
   toastId,
   entryId,
-  description,
   showDescription,
   ...rest
 }: ComponentProps<typeof Toast> & { toastId: string | number; entryId: number }) {
@@ -49,11 +48,11 @@ function EntryToast({
       }),
     [entryId, toastId]
   )
+  // A blocked toast says why itself (the Toast's action-disabled state).
   return createElement(Toast, {
     ...rest,
     actionDisabled: blocked,
-    showDescription: blocked || (showDescription ?? false),
-    ...(blocked ? { description: CHANGED_SINCE } : description !== undefined ? { description } : {})
+    showDescription: showDescription ?? false
   })
 }
 

@@ -11,11 +11,12 @@ import { Button } from '@renderer/components/Button'
 import { TOAST_DEFAULTS, type ToastContractProps, type ToastVariant } from './Toast.types'
 import { toastIconVariants, toastVariants } from './Toast.variants'
 
+/** The line an action-disabled toast shows: a newer action touched the same things. */
+export const CHANGED_SINCE = 'Changed since. Use ⌘Z'
+
 export interface ToastProps extends ToastContractProps {
   /** Action button label. Defaults to Retry on `error`, otherwise Undo. */
   actionLabel?: string
-  /** The action can't run now; the description line says why (an Undo a newer change blocks). */
-  actionDisabled?: boolean
   onAction?: () => void
   onClose?: () => void
   className?: string
@@ -33,14 +34,7 @@ const ICONS = {
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=213-905
  * Presentational body; stores/toastStore.ts mounts it through Sonner (ui/sonner.tsx).
  */
-export function Toast({
-  className,
-  actionLabel,
-  actionDisabled = false,
-  onAction,
-  onClose,
-  ...rest
-}: ToastProps) {
+export function Toast({ className, actionLabel, onAction, onClose, ...rest }: ToastProps) {
   const props = { ...TOAST_DEFAULTS, ...rest }
   return (
     <div
@@ -58,12 +52,19 @@ export function Toast({
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="type-body-sm-medium text-foreground">{props.message}</p>
-        {props.showDescription && (
-          <p className="type-caption-xs-regular text-muted-foreground">{props.description}</p>
+        {(props.showDescription || props.actionDisabled) && (
+          <p className="type-caption-xs-regular text-muted-foreground">
+            {props.actionDisabled ? CHANGED_SINCE : props.description}
+          </p>
         )}
       </div>
       {props.action && (
-        <Button variant="outline-subtle" size="xs" disabled={actionDisabled} onClick={onAction}>
+        <Button
+          variant="outline-subtle"
+          size="xs"
+          disabled={props.actionDisabled}
+          onClick={onAction}
+        >
           {actionLabel ?? (props.variant === 'error' ? 'Retry' : 'Undo')}
         </Button>
       )}

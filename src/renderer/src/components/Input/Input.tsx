@@ -13,9 +13,9 @@ export interface InputProps
   extends
     InputContractProps,
     Omit<ComponentProps<'input'>, keyof InputContractProps | 'defaultValue'> {
-  /** search: called by the clear button (shown while there is text). */
+  /** search: called by the clear button (shown while there is text, with `showClear`). */
   onClear?: () => void
-  /** search: the hint at the end of the field. */
+  /** search: the hint at the end of the field (with `showHint`). */
   shortcut?: string
 }
 
@@ -29,7 +29,7 @@ export interface InputProps
  * `ai-filled` tints a field the AI just filled.
  */
 export function Input({ className, onChange, onClear, shortcut = '⌘K', ...rest }: InputProps) {
-  const { variant, showIconStart, value, iconStart, state, ...props } = {
+  const { variant, showIconStart, showHint, showClear, value, iconStart, state, ...props } = {
     ...INPUT_DEFAULTS,
     ...rest
   }
@@ -80,7 +80,7 @@ export function Input({ className, onChange, onClear, shortcut = '⌘K', ...rest
         {...props}
         {...ai.props}
       />
-      {search && current !== '' && (
+      {search && showClear && current !== '' && (
         <button
           type="button"
           aria-label="Clear search"
@@ -91,7 +91,7 @@ export function Input({ className, onChange, onClear, shortcut = '⌘K', ...rest
           <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} className="size-4" />
         </button>
       )}
-      {search && <KeyboardShortcut variant="plain" keys={shortcut} />}
+      {search && showHint && <KeyboardShortcut variant="plain" keys={shortcut} />}
     </InputGroup>
   )
 }

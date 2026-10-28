@@ -6,7 +6,12 @@ export const popoverVariants = cva('', {
     size: {
       md: '',
       lg: ''
+    },
+    layout: {
+      regions: '',
+      // One padded column: header, content and footer stack with no dividers (the tag filter).
+      'one-column': 'gap-3 p-4'
     }
   },
-  defaultVariants: { size: 'md' }
+  defaultVariants: { size: 'md', layout: 'regions' }
 })

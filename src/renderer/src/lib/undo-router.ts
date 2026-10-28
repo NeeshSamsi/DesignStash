@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { RendererUndoOp, UndoContext, UndoRunResult } from '@shared/ipc/undo'
+import { CHANGED_SINCE } from '@renderer/components/Toast'
 import { toast } from '@renderer/stores/toastStore'
 import { subscribePush } from './subscribe'
 
@@ -142,8 +143,8 @@ export function afterUndo(result: UndoRunResult, direction: UndoDirection): void
   }
 }
 
-/** Why a toast's Undo is disabled: a newer action touched the same things. */
-export const CHANGED_SINCE = 'Changed since. Use ⌘Z'
+/** Why a toast's Undo is disabled: a newer action touched the same things. The Toast owns the copy. */
+export { CHANGED_SINCE }
 
 /**
  * Undoes one action's own entry (a toast's Undo, the library's "Undo …"): main undoes it, out of
