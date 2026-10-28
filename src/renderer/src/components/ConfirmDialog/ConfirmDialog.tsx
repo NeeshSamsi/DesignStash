@@ -1,9 +1,8 @@
 import { ICON_STROKE } from '@renderer/design-system/icon'
 import { Layers01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
-import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
+import { DialogCancel, DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
-import { AlertDialogCancel } from '@renderer/ui/alert-dialog'
 import { Button } from '@renderer/components/Button'
 import { Spinner } from '@renderer/components/Spinner'
 import { CONFIRM_DIALOG_DEFAULTS, type ConfirmDialogContractProps } from './ConfirmDialog.types'
@@ -51,9 +50,11 @@ export function ConfirmDialog({
   const destructive = props.variant === 'destructive'
 
   const cancel = isLive ? (
-    <AlertDialogCancel variant="secondary" size="sm" disabled={props.working}>
-      {cancelLabel}
-    </AlertDialogCancel>
+    <DialogCancel>
+      <Button variant="secondary" size="sm" disabled={props.working}>
+        {cancelLabel}
+      </Button>
+    </DialogCancel>
   ) : (
     <Button variant="secondary" size="sm" disabled={props.working} onClick={onCancel}>
       {cancelLabel}

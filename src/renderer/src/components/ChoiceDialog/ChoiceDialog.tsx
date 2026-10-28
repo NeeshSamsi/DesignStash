@@ -1,6 +1,5 @@
-import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
+import { DialogCancel, DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
-import { AlertDialogCancel } from '@renderer/ui/alert-dialog'
 import { Button } from '@renderer/components/Button'
 import { CHOICE_DIALOG_DEFAULTS, type ChoiceDialogContractProps } from './ChoiceDialog.types'
 import { choiceDialogVariants } from './ChoiceDialog.variants'
@@ -43,9 +42,11 @@ export function ChoiceDialog({
   const props = { ...CHOICE_DIALOG_DEFAULTS, ...rest }
   const tertiary =
     open !== undefined ? (
-      <AlertDialogCancel variant="ghost" size="sm">
-        {tertiaryLabel}
-      </AlertDialogCancel>
+      <DialogCancel>
+        <Button variant="ghost" size="sm">
+          {tertiaryLabel}
+        </Button>
+      </DialogCancel>
     ) : (
       <Button variant="ghost" size="sm" onClick={onTertiary}>
         {tertiaryLabel}

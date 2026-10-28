@@ -1,7 +1,6 @@
 import type { DriftReport } from '@shared/integrity'
 import { ReconciliationPanel } from '@renderer/components/ReconciliationPanel'
-import { DialogFrame } from '@renderer/lib/dialog-shell'
-import { DialogDescription, DialogTitle } from '@renderer/ui/dialog'
+import { DialogDescription, DialogFrame, DialogTitle } from '@renderer/lib/dialog-shell'
 import { useStashCheck } from './useStashCheck'
 
 export interface StashCheckModalProps {
