@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { Repository } from '../db/repository'
 import type { NewMockup } from '../db/schema'
@@ -120,6 +120,90 @@ describe('PileTitles.renameBase', () => {
   it('refuses an empty base', () => {
     const [a] = pile('tote-a.psd', 'tote-b.psd')
     expect(() => titles.renameBase(a!, '   ')).toThrow()
+  })
+})
+
+describe('a write that fails part-way changes nothing', () => {
+  /** Lets the first write to a mockup through and fails the second, as a crash part-way would. */
+  function failSecondWrite() {
+    const write = repo.mockups.updateMockup.bind(repo.mockups)
+    let n = 0
+    vi.spyOn(repo.mockups, 'updateMockup').mockImplementation((id, data) => {
+      if (++n === 2) throw new Error('disk full')
+      write(id, data)
+    })
+  }
+
+  it('renameBase: every mockup keeps its old title', () => {
+    const ids = pile('tote-a.psd', 'tote-b.psd', 'tote-c.psd')
+    titles.fill(ids[0]!)
+    failSecondWrite()
+
+    expect(() => titles.renameBase(ids[0]!, 'Canvas tote')).toThrow('disk full')
+
+    expect(ids.map((id) => row(id).title)).toEqual(['tote-a', 'tote-a', 'tote-a'])
+    expect(ftsTitle(ids[0]!)?.title).toBe('tote-a · A')
+  })
+
+  it('renameBase: a search update that fails leaves the old titles', () => {
+    const [a, b] = pile('tote-a.psd', 'tote-b.psd')
+    titles.fill(a!)
+    vi.spyOn(repo.search, 'upsertSearchIndex').mockImplementation(() => {
+      throw new Error('disk full')
+    })
+
+    expect(() => titles.renameBase(a!, 'Canvas tote')).toThrow('disk full')
+
+    expect([row(a!).title, row(b!).title]).toEqual(['tote-a', 'tote-a'])
+  })
+
+  it('fill: no mockup takes its base or variation', () => {
+    const [a, b] = pile('tote-a.psd', 'tote-b.psd')
+    repo.mockups.updateMockup(a!, { title: 'Canvas tote' })
+    failSecondWrite()
+
+    expect(() => titles.fill(a!)).toThrow('disk full')
+
+    expect([row(a!), row(b!)]).toEqual([
+      { title: 'Canvas tote', variation: null, source: null },
+      { title: 'tote-b', variation: null, source: null }
+    ])
+  })
+
+  it('landAi: every mockup keeps its variation', () => {
+    const [a, b] = pile('tote-a.psd', 'tote-b.psd')
+    titles.fill(a!)
+    failSecondWrite()
+
+    expect(() => titles.landAi(a!, new Map([[a!, 'front'], [b!, 'side']]))).toThrow('disk full')
+
+    expect(variations([a!, b!])).toEqual(['A', 'B'])
+  })
+
+  it('leave: every mockup keeps its variation', () => {
+    const [a, b] = pile('tote-a.psd', 'tote-b.psd')
+    titles.fill(a!)
+    repo.piles.disbandPile(a!)
+    failSecondWrite()
+
+    expect(() => titles.leave([a!, b!])).toThrow('disk full')
+
+    expect([row(a!), row(b!)]).toEqual([
+      { title: 'tote-a', variation: 'A', source: 'marker' },
+      { title: 'tote-a', variation: 'B', source: 'marker' }
+    ])
+  })
+
+  it('setVariation: a search update that fails leaves the old variation', () => {
+    const [a, b] = pile('tote-a.psd', 'tote-b.psd')
+    titles.fill(a!)
+    vi.spyOn(repo.search, 'upsertSearchIndex').mockImplementation(() => {
+      throw new Error('disk full')
+    })
+
+    expect(() => titles.setVariation(b!, 'side')).toThrow('disk full')
+
+    expect(row(b!).variation).toBe('B')
   })
 })
 
@@ -277,6 +361,22 @@ describe('a pile waiting in To stash: its titles live in its drafts', () => {
     expect([draft(a!).title, draft(b!).title]).toEqual(['Canvas tote', 'Canvas tote'])
     expect(draft(a!).keptFields).toContain('title')
     expect(draft(b!).keptFields).toContain('title')
+  })
+
+  it('a rename that fails part-way leaves every draft its old title', () => {
+    const [a, b] = waitingPile('tote-a.psd', 'tote-b.psd')
+    titles.fill(a!)
+    const write = repo.drafts.updateDraft.bind(repo.drafts)
+    let n = 0
+    vi.spyOn(repo.drafts, 'updateDraft').mockImplementation((id, patch) => {
+      if (++n === 2) throw new Error('disk full')
+      write(id, patch)
+    })
+
+    expect(() => titles.renameBase(a!, 'Canvas tote')).toThrow('disk full')
+
+    expect([draft(a!).title, draft(b!).title]).toEqual([`draft ${a}`, `draft ${a}`])
+    expect(draft(a!).keptFields).not.toContain('title')
   })
 
   it('an AI base renames the drafts without keeping it', () => {

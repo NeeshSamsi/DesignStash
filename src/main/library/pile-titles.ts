@@ -66,7 +66,8 @@ const asTitle = (name: string) =>
  * A pile's base title and each mockup's variation (design/specs/pile-titles.md, "Base title and
  * variations"). The base belongs to the pile: every row in a pile holds it as its `title`, and
  * renaming it renames them all, exactly. The variation belongs to the mockup. While a pile waits in
- * To stash both live in its drafts, and Stash pile writes them to the mockups.
+ * To stash both live in its drafts, and Stash pile writes them to the mockups. Each change runs in
+ * one transaction with its search updates, so one that fails part-way leaves every title as it was.
  */
 export class PileTitles {
   constructor(private readonly repo: Repository) {}
@@ -88,18 +89,20 @@ export class PileTitles {
     const words = numberRepeats(kept, filling.map((r) => fallbacks[rows.indexOf(r)]!.words))
 
     const changed = new Set<number>()
-    filling.forEach((r, i) => {
-      const next = { words: words[i]!, source: fallbacks[rows.indexOf(r)]!.source }
-      if (r.variation?.words === next.words && r.variation.source === next.source) return
-      this.writeVariation(pile, r, next)
-      changed.add(r.id)
+    this.repo.transaction(() => {
+      filling.forEach((r, i) => {
+        const next = { words: words[i]!, source: fallbacks[rows.indexOf(r)]!.source }
+        if (r.variation?.words === next.words && r.variation.source === next.source) return
+        this.writeVariation(pile, r, next)
+        changed.add(r.id)
+      })
+      for (const r of rows) {
+        if (r.title === base) continue
+        this.writeTitle(pile, r, base, false)
+        changed.add(r.id)
+      }
+      this.reindex(pile, [...changed])
     })
-    for (const r of rows) {
-      if (r.title === base) continue
-      this.writeTitle(pile, r, base, false)
-      changed.add(r.id)
-    }
-    this.reindex(pile, [...changed])
     return [...changed]
   }
 
@@ -114,12 +117,14 @@ export class PileTitles {
     if (!pile) throw new Error(`Mockup ${pileId} is not a pile`)
     const previous = pile.rows[0]!.title
     const mockupIds: number[] = []
-    for (const r of pile.rows) {
-      if (r.title === words) continue
-      this.writeTitle(pile, r, words, by === 'person')
-      mockupIds.push(r.id)
-    }
-    this.reindex(pile, mockupIds)
+    this.repo.transaction(() => {
+      for (const r of pile.rows) {
+        if (r.title === words) continue
+        this.writeTitle(pile, r, words, by === 'person')
+        mockupIds.push(r.id)
+      }
+      this.reindex(pile, mockupIds)
+    })
     return { pileId, base: words, previous, mockupIds }
   }
 
@@ -150,8 +155,10 @@ export class PileTitles {
       next = { words: tidy, source: 'typed' }
     }
     if (next !== previous) {
-      this.writeVariation(pile, row, next)
-      this.reindex(pile, [row.id])
+      this.repo.transaction(() => {
+        this.writeVariation(pile, row, next)
+        this.reindex(pile, [row.id])
+      })
     }
     return { mockupId, variation: next, previous }
   }
@@ -174,24 +181,28 @@ export class PileTitles {
     const kept = rows.filter((r) => !landing.includes(r) && r.variation).map((r) => r.variation!.words)
     const words = numberRepeats(kept, offered.map((v) => v.words))
     const changed: number[] = []
-    landing.forEach((r, i) => {
-      const next = { words: words[i]!, source: offered[i]!.source }
-      if (r.variation?.words === next.words && r.variation.source === next.source) return
-      this.writeVariation(pile, r, next)
-      changed.push(r.id)
+    this.repo.transaction(() => {
+      landing.forEach((r, i) => {
+        const next = { words: words[i]!, source: offered[i]!.source }
+        if (r.variation?.words === next.words && r.variation.source === next.source) return
+        this.writeVariation(pile, r, next)
+        changed.push(r.id)
+      })
+      this.reindex(pile, changed)
     })
-    this.reindex(pile, changed)
     return changed
   }
 
   /** Mockups now on their own: each keeps its full title (`base · variation`) as its own. */
   leave(ids: number[]): void {
-    for (const id of ids) {
-      const m = this.repo.mockups.getMockup(id)
-      if (!m?.variation) continue
-      this.repo.mockups.updateMockup(id, { title: fullTitle(m.title, { words: m.variation }), variation: null, variationSource: null })
-      this.reindexMockups([id])
-    }
+    this.repo.transaction(() => {
+      for (const id of ids) {
+        const m = this.repo.mockups.getMockup(id)
+        if (!m?.variation) continue
+        this.repo.mockups.updateMockup(id, { title: fullTitle(m.title, { words: m.variation }), variation: null, variationSource: null })
+        this.reindexMockups([id])
+      }
+    })
   }
 
   /**
