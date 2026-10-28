@@ -42,6 +42,10 @@ describe('nameKeywords', () => {
     expect(nameKeywords('\u0421lay_mug.psd', ['\u039cockups \u0421eramics'])).toEqual(['clay', 'mug', 'ceramics'])
   })
 
+  it('drops "psb" like "psd", and a .psb extension (H-12)', () => {
+    expect(nameKeywords('Billboard_PSB.psb', ['PSB Files'])).toEqual(['billboard'])
+  })
+
   it('leaves a word wholly in Cyrillic or Greek as it is written', () => {
     expect(nameKeywords('Москва_poster.psd', ['Αθήνα'])).toEqual(['москва', 'poster', 'αθήνα'])
   })

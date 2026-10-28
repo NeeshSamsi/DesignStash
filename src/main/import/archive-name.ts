@@ -13,7 +13,8 @@ const GENERIC_WORDS = new Set([
   'free',
   'mockup',
   'mockups',
-  'psd'
+  'psd',
+  'psb'
 ])
 
 /** A download site's random ID before the real name: 16 or more letters and digits, with at least one of each. */
@@ -24,7 +25,7 @@ function words(name: string): string {
   return name
     .trim()
     .replace(/\.zip$/i, '')
-    .replace(/\.psd$/i, '')
+    .replace(/\.ps[db]$/i, '')
     .replace(ID_PREFIX, '')
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')

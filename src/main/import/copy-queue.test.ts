@@ -8,7 +8,7 @@ import {
   readFileSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { CopyProgress } from '@shared/ipc/import'
@@ -681,6 +681,47 @@ describe('a file whose mockup is in Trash', () => {
 })
 
 describe('a copy in progress', () => {
+  it('keeps a PSB a PSB: lands it as original.psb, by way of original.psb.part, titled without the extension (H-12)', async () => {
+    psd('Billboard.psb', 'BBBB')
+    const written: string[] = []
+    const q = queue({
+      copyHashed: async (src, dest, onBytes) => {
+        written.push(dest)
+        return copyWithHash(src, dest, onBytes)
+      }
+    })
+
+    await q.start([drop])
+    await q.idle()
+
+    expect(written[0]!.endsWith('original.psb.part')).toBe(true)
+    const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
+    expect(basename(m.libraryPath)).toBe('original.psb')
+    expect(readFileSync(m.libraryPath, 'utf8')).toBe('BBBB')
+    expect(m.title).toBe('Billboard')
+    // The cover is read from the PSB's own copy.
+    expect(resolveCover).toHaveBeenCalledWith(expect.objectContaining({ psdPath: m.libraryPath }))
+  })
+
+  it('clears a PSB copy a crash cut off too, and leaves a whole one (H-12)', async () => {
+    repo.copyJobs.createHaul('crashed', [], 0)
+    repo.copyJobs.addJobs('crashed', [{ sourcePath: psd('b.psb', 'BB'), fileName: 'b.psb', folderTrail: [], sizeBytes: 2 }])
+    repo.copyJobs.setJobState(repo.copyJobs.getJobs('crashed')[0]!.id, { status: 'copying' })
+    const cutOff = join(root, 'mockups', 'cut-off')
+    mkdirSync(cutOff, { recursive: true })
+    writeFileSync(join(cutOff, 'original.psb.part'), 'B')
+    const whole = join(root, 'mockups', 'whole')
+    mkdirSync(whole, { recursive: true })
+    writeFileSync(join(whole, 'original.psb'), 'MINE')
+
+    const restarted = queue()
+    await restarted.resume()
+    await restarted.idle()
+
+    expect(existsSync(cutOff)).toBe(false)
+    expect(readFileSync(join(whole, 'original.psb'), 'utf8')).toBe('MINE')
+  })
+
   it('writes under a .part name, so a copy cut off is never taken for a PSD, and lands as original.psd', async () => {
     psd('a.psd', 'AAAA')
     const written: string[] = []

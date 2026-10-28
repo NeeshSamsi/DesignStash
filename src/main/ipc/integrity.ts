@@ -7,6 +7,7 @@ import { undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { countsChanged, mockupsArrived, mockupsLeft } from './library-effects'
 import { registerIpcHandler } from './register'
+import { PHOTOSHOP_EXTENSIONS } from '../psd/photoshop-file'
 
 /** The ignore list lives in settings, so it survives a restart. */
 function ignoredStore(settings: HandlerContext['settings']): IntegrityDeps['ignored'] {
@@ -39,7 +40,7 @@ export function createStashCheck(
 async function pickPsd(): Promise<string | null> {
   const result = await dialog.showOpenDialog({
     properties: ['openFile'],
-    filters: [{ name: 'PSD Files', extensions: ['psd'] }]
+    filters: [{ name: 'PSD Files', extensions: [...PHOTOSHOP_EXTENSIONS] }]
   })
   return result.canceled ? null : (result.filePaths[0] ?? null)
 }

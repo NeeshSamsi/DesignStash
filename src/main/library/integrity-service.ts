@@ -7,6 +7,7 @@ import { readEmbeddedPreviewInWorker } from '../psd/embedded-worker'
 import type { ResolveCoverInput, CoverResolution } from '../psd/types'
 import type { DriftReport, FoundFile, GoneRecord, RelinkOutcome } from '@shared/integrity'
 import { defaultAppFileOps, isInside, removeAppCopies, type AppFileOps } from './app-files'
+import { isPhotoshopFile, originalFileFor } from '../psd/photoshop-file'
 
 export interface IntegrityDeps {
   /** Recursive list of absolute file paths under dir. Default walks the real fs. */
@@ -79,13 +80,6 @@ async function defaultExists(p: string): Promise<boolean> {
   }
 }
 
-/**
- * Only a PSD can turn up: the check looks for PSDs put in the stash folder by hand, which it can add
- * as mockups. Everything else beside a mockup is the app's own (cover, thumbnail, slot-mask.png, the
- * AI's masked covers) or not a mockup at all.
- */
-const PSD = /\.psd$/i
-
 const hashId = (text: string): string =>
   `f${createHash('sha256').update(text).digest('hex').slice(0, 16)}`
 /** A found file's id comes from its path inside the stash, so it stays the same when the stash moves. */
@@ -136,7 +130,7 @@ export class IntegrityService {
   private drawingNow = 0
   private readonly waitingToDraw: (() => void)[] = []
 
-  /** Mockups live under <libraryRoot>/mockups/<uuid>/original.psd (matches ImportService). */
+  /** Mockups live under <libraryRoot>/mockups/<uuid>/original.psd, or original.psb for a PSB (as the copy queue lands them). */
   private mockupsDir(): string {
     return join(this.libraryRoot, 'mockups')
   }
@@ -156,7 +150,9 @@ export class IntegrityService {
     const known = new Set(rows.map((p) => p.libraryPath))
     const found = new Map<string, string>()
     for (const f of await this.deps.listFiles(this.mockupsDir())) {
-      if (!PSD.test(f) || known.has(f)) continue
+      // Only a PSD or a PSB put here by hand can turn up. Everything else beside a mockup is the
+      // app's own (cover, thumbnail, slot-mask.png, the AI's masked covers) or not a mockup at all.
+      if (!isPhotoshopFile(f) || known.has(f)) continue
       found.set(foundId(this.libraryRoot, f), f)
     }
     this.keepEarlierIgnores(found)
@@ -354,7 +350,7 @@ export class IntegrityService {
 
     const picked = await this.deps.pickFile()
     if (picked === null) return { outcome: 'cancelled' }
-    if (!PSD.test(picked)) return { outcome: 'not-psd' }
+    if (!isPhotoshopFile(picked)) return { outcome: 'not-psd' }
     if (this.repo.mockups.getAllLibraryPaths().some((p) => p.libraryPath === picked)) {
       return { outcome: 'already-in-stash' }
     }
@@ -362,7 +358,7 @@ export class IntegrityService {
     let target = picked
     try {
       if (!isInside(this.mockupsDir(), picked)) {
-        target = join(this.mockupsDir(), randomUUID(), 'original.psd')
+        target = join(this.mockupsDir(), randomUUID(), originalFileFor(picked))
         await this.deps.copyInto(picked, target)
       }
       const { size } = await this.deps.stat(target)

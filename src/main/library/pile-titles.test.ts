@@ -425,4 +425,11 @@ describe('PileTitles.provisionalBase: the pile’s name until the AI writes one'
     repo.piles.createPile([c, d], c)
     expect(titles.provisionalBase(c)).toBe('poster a3')
   })
+
+  it('takes a PSB’s extension off the same way (H-12)', () => {
+    const a = waiting('billboard_a3.psb')
+    const b = waiting('flyer.psb')
+    repo.piles.createPile([a, b], a)
+    expect(titles.provisionalBase(a)).toBe('billboard a3')
+  })
 })

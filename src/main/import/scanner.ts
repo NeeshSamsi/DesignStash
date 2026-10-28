@@ -1,10 +1,11 @@
 import { createWriteStream, mkdirSync, promises as fs, type Dirent } from 'node:fs'
-import { extname, join, basename, sep, relative } from 'node:path'
+import { join, basename, sep, relative } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { imagesNamedFor, isSidecarImage, leadsToFile } from '../psd/sidecar'
 import { archiveKindOf, classifyEntry, entryPath, listArchive, openArchiveEntry } from './archive'
 import type { ArchiveEntry } from './archive'
 import { archiveFolderTrail } from './archive-name'
+import { isPhotoshopFile } from '../psd/photoshop-file'
 
 export interface ScannedPsd {
   /** The PSD on disk, or for a PSD inside a zip, the zip's path joined with the entry's (never opened as is). */
@@ -76,7 +77,7 @@ export async function scanForPsds(droppedPaths: string[], opts: ScanOptions): Pr
 
   function addFile(path: string, root: string) {
     const archive = archiveKindOf(path)
-    if (extname(path).toLowerCase() === '.psd') {
+    if (isPhotoshopFile(path)) {
       result.psds.push({
         psdPath: path,
         importContext: {
@@ -202,7 +203,7 @@ export async function scanForPsds(droppedPaths: string[], opts: ScanOptions): Pr
     if (stat.isDirectory()) {
       await walk(path, root)
     } else {
-      if (extname(path).toLowerCase() === '.psd') {
+      if (isPhotoshopFile(path)) {
         for (const imagePath of await imagesNamedFor(path)) candidateImages.add(imagePath)
       }
       addFile(path, root)

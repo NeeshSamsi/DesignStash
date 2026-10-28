@@ -181,6 +181,11 @@ describe('classifyEntry', () => {
     expect(classifyEntry(file('CAP.PSD'))).toBe('psd')
   })
 
+  it('finds PSBs (Large Document Format) as PSDs, in any case (H-12)', () => {
+    expect(classifyEntry(file('Billboard/Billboard.psb'))).toBe('psd')
+    expect(classifyEntry(file('BILLBOARD.PSB'))).toBe('psd')
+  })
+
   it('finds zips inside the zip', () => {
     expect(classifyEntry(file('Business Cards/Envelope.zip'))).toBe('zip')
   })

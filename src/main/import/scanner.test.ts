@@ -40,6 +40,23 @@ describe('scanForPsds', () => {
     expect(file2?.importContext.folderTrail).toEqual(['nested', 'sub'])
   })
 
+  it('takes PSBs (Large Document Format) like PSDs: dropped, in a folder, and with a sidecar named for them (H-12)', async () => {
+    const d = join(TEST_DIR, 'psb')
+    mkdirSync(join(d, 'Big'), { recursive: true })
+    writeFileSync(join(d, 'Billboard.psb'), '')
+    writeFileSync(join(d, 'Billboard.jpg'), '')
+    writeFileSync(join(d, 'Big', 'Wall.PSB'), '')
+
+    const dropped = await scanForPsds([join(d, 'Billboard.psb')], { stagingDir: STAGING })
+    expect(dropped.psds.map((p) => p.importContext.originalFileName)).toEqual(['Billboard.psb'])
+    expect(dropped.skippedCount).toBe(0)
+    expect(dropped.candidateImagePaths).toEqual([join(d, 'Billboard.jpg')])
+
+    const folder = await scanForPsds([join(d, 'Big')], { stagingDir: STAGING })
+    expect(folder.psds.map((p) => p.importContext.originalFileName)).toEqual(['Wall.PSB'])
+    expect(folder.skippedCount).toBe(0)
+  })
+
   it('handles single dropped PSD file', async () => {
     const singlePsd = join(TEST_DIR, 'single.psd')
     writeFileSync(singlePsd, '')
@@ -189,6 +206,14 @@ describe('scanForPsds', () => {
       mkdirSync(d, { recursive: true })
       return d
     }
+
+    it('turns a PSB inside a dropped zip into a scanned PSD too (H-12)', async () => {
+      const d = fresh()
+      const zip = await makeZip(join(d, 'Billboard.zip'), [{ name: 'Billboard/Billboard.psb', data: 'x'.repeat(10) }])
+      const result = await scanForPsds([zip], { stagingDir: join(d, '.staging') })
+      expect(result.psds.map((p) => p.archive?.entry)).toEqual(['Billboard/Billboard.psb'])
+      expect(result.skippedCount).toBe(0)
+    })
 
     it('turns each PSD inside a dropped zip into a scanned PSD, without extracting it', async () => {
       const d = fresh()

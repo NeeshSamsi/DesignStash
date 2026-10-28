@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import sharp from 'sharp'
-import type { Layer, Psd } from 'ag-psd'
+import { writePsdBuffer, type Layer, type Psd } from 'ag-psd'
 import { SLOT_MASK_NONE, designSlotMask, slotMaskSettled, writeDesignSlotMask } from './design-slot'
 
 const W = 20
@@ -135,6 +135,19 @@ describe('writeDesignSlotMask', () => {
     expect(await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), out, { header, read: broken })).toBe('unreadable')
     expect(await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), out, { header: broken, read: async () => doc })).toBe('unreadable')
     expect(existsSync(out)).toBe(false)
+  })
+
+  it('reads the slot of a PSB (Large Document Format) from the file itself, as of a PSD (H-12)', async () => {
+    const dir = tempDir()
+    const slotted = psd([so('Change This', [0, 0, 10, 10], { placedLayer: { id: '20953ddb-9391-11ec-b4f1-c15674f50bc4', type: 'raster', transform: [0, 0, 10, 0, 10, 10, 0, 10], width: 10, height: 10 } as unknown as NonNullable<Layer['placedLayer']> })])
+    for (const [name, psb] of [['original.psd', false], ['original.psb', true]] as const) {
+      const path = join(dir, name)
+      writeFileSync(path, Buffer.from(writePsdBuffer(slotted, { psb })))
+      const out = join(dir, `${name}-slot-mask.png`)
+      expect(await writeDesignSlotMask(path, await cover(dir, 40, 20), out)).toBe('written')
+      const { channels } = await sharp(out).stats()
+      expect(channels[0]!.mean / 255).toBeCloseTo(0.5, 1)
+    }
   })
 
   it('settles another shape from the header alone, without reading the layers', async () => {

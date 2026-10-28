@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import sharp from 'sharp'
 import { resolveCover } from './cover-resolver'
-import { buildPsdWithComposite, buildDroppedTree, buildSidecarImage } from './__fixtures__/build'
+import { buildLayeredPsd, buildPsdWithComposite, buildDroppedTree, buildSidecarImage } from './__fixtures__/build'
 
 const dirs: string[] = []
 function tempDir(): string {
@@ -36,6 +36,17 @@ describe('resolveCover — embedded branch', () => {
       expect(existsSync(result.coverPath)).toBe(true)
       expect(existsSync(result.thumbPath)).toBe(true)
     }
+  })
+
+  it('draws the cover of a PSB (Large Document Format) from its composite the same way (H-12)', async () => {
+    const dir = tempDir()
+    const psbPath = join(dir, 'original.psb')
+    buildLayeredPsd(psbPath, { layers: 2, psb: true })
+
+    const result = await resolveCover({ psdPath: psbPath, candidateImagePaths: [], outDir: join(dir, 'out') })
+
+    expect(result.source).toBe('embedded')
+    if (result.source === 'embedded') expect(existsSync(result.coverPath)).toBe(true)
   })
 
   it('writes cover.webp and thumb.webp for embedded result', async () => {

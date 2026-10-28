@@ -171,6 +171,19 @@ describe('resolving changes', () => {
     expect(result).toEqual({ success: true, data: { outcome: 'cancelled' } })
   })
 
+  it('Relink takes a PSB, copied in as original.psb (H-12)', async () => {
+    const gone = goneRow()
+    const elsewhere = join(base, 'elsewhere')
+    mkdirSync(elsewhere, { recursive: true })
+    picked = join(elsewhere, 'Glass iPhone 14.psb')
+    writeFileSync(picked, 'a psb')
+    expect(await call(IPC_CHANNELS.INTEGRITY_RELINK, { id: `m${gone.id}` })).toMatchObject({
+      success: true,
+      data: { outcome: 'relinked' }
+    })
+    expect(ctx.repo.mockups.getMockup(gone.id)!.libraryPath.endsWith('original.psb')).toBe(true)
+  })
+
   it('Relink refuses a file that is not a PSD', async () => {
     const gone = goneRow()
     picked = '/x/photo.png'

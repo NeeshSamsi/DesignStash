@@ -57,7 +57,7 @@ const variationOf = (row: { variation: string | null; variationSource: Variation
 const asTitle = (name: string) =>
   name
     .replace(/…$/, '')
-    .replace(/\.psd$/i, '')
+    .replace(/\.ps[db]$/i, '')
     .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

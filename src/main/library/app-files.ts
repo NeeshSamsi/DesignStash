@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs'
 import { basename, dirname, join, relative, isAbsolute } from 'node:path'
 import type { Repository } from '../db/repository'
+import { isOriginalFile } from '../psd/photoshop-file'
 
 /** True when `path` is the folder itself or sits inside it. */
 export function isInside(folder: string, path: string): boolean {
@@ -25,7 +26,7 @@ export const defaultAppFileOps: AppFileOps = {
 /** What the app writes beside a cover: its thumbnail, the design slot mask and the AI's masked covers. */
 const BESIDE_COVER = /^(thumb\.webp|slot-mask\.(?:png|none)|cover-ai-[\w-]+\.png)$/i
 /** Every name the app gives a file in a folder of its own: the PSD's copy, covers and the files beside them. */
-const APP_FILE = /^(original\.psd|cover\.\w+|thumb\.webp|slot-mask\.(?:png|none)|cover-ai-[\w-]+\.png)$/i
+const APP_FILE = /^(original\.ps[db]|cover\.\w+|thumb\.webp|slot-mask\.(?:png|none)|cover-ai-[\w-]+\.png)$/i
 
 /**
  * Remove the app's own files for mockups deleted for good: the PSD's copy in the stash folder, its
@@ -71,7 +72,7 @@ export async function removeAppCopies(
     // The app's own folders for this mockup: the import's, and its cover folders.
     const own = [
       ...(dirname(dirname(m.libraryPath)) === mockupsDir &&
-      basename(m.libraryPath) === 'original.psd'
+      isOriginalFile(basename(m.libraryPath))
         ? [dirname(m.libraryPath)]
         : []),
       ...coverFolders

@@ -199,7 +199,7 @@ export function buildRequest(input: AnalysisInput, imageUrl: string | null): Cha
  * Words every file in a mockup library shares, plus the stock sites they come from. They match every
  * search, so they say nothing; the models copy them from file names and from text printed on covers.
  */
-export const JUNK_WORDS = /\b(free|mockups?|psd|templates?|pixeden|pixelbuddha|freepik|mockupfree|ls\.?graphics)\b/gi
+export const JUNK_WORDS = /\b(free|mockups?|ps[db]|templates?|pixeden|pixelbuddha|freepik|mockupfree|ls\.?graphics)\b/gi
 
 /** Takes the junk words out of a title or label and tidies what's left. */
 function stripJunk(text: string): string {

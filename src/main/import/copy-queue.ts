@@ -19,6 +19,7 @@ import {
 import { cleanArchiveName } from './archive-name'
 import { scanForPsds } from './scanner'
 import { copyWithHash, type CopySource } from './stream-copy'
+import { isCutOffOriginal, isOriginalFile, originalFileFor } from '../psd/photoshop-file'
 
 export interface CopyQueueDeps {
   resolveCover: (input: ResolveCoverInput) => Promise<CoverResolution>
@@ -110,8 +111,6 @@ class Pause extends Error {
 const codeOf = (err: unknown): string => (err as NodeJS.ErrnoException | null)?.code ?? ''
 
 /** A PSD is copied under this name and renamed once whole, so a copy cut off is never taken for one. */
-const PSD_FILE = 'original.psd'
-const PART_FILE = `${PSD_FILE}.part`
 
 /**
  * Copies dropped PSDs into the stash one at a time. Every file is a saved job, so a restart carries on
@@ -278,7 +277,7 @@ export class CopyQueue {
     for (const name of await this.deps.readdir(mockups)) {
       const dir = join(mockups, name)
       const files = await this.deps.readdir(dir)
-      if (files.includes(PART_FILE) && !files.includes(PSD_FILE))
+      if (files.some(isCutOffOriginal) && !files.some(isOriginalFile))
         await this.deps.rm(dir).catch(() => {})
     }
   }
@@ -367,8 +366,10 @@ export class CopyQueue {
     const destDir = join(this.root, 'mockups', this.deps.newId())
     try {
       await this.deps.mkdir(destDir)
-      const libraryPath = join(destDir, PSD_FILE)
-      const partPath = join(destDir, PART_FILE)
+      // original.psd, or original.psb for a PSB, so Photoshop opens the copy as it is (H-12).
+      const original = originalFileFor(job.fileName)
+      const libraryPath = join(destDir, original)
+      const partPath = join(destDir, `${original}.part`)
       // One pass over the original: it is copied and hashed together, and every chunk moves the bar.
       const source: CopySource =
         entry === null ? job.sourcePath : () => this.deps.openArchiveEntry(job.sourcePath, entry)
