@@ -5,7 +5,6 @@ import { TagEditor, type TagEditorProps } from '@renderer/components/TagEditor'
 import { TitlePair, type TitlePairProps } from '@renderer/components/TitlePair'
 import { Textarea } from '@renderer/components/Textarea'
 import { cn } from '@renderer/lib/utils'
-import { FieldTitle, Field as UiField } from '@renderer/ui/field'
 import { MOCKUP_META_FORM_DEFAULTS, type MockupMetaFormContractProps } from './MockupMetaForm.types'
 import { mockupMetaFormVariants } from './MockupMetaForm.variants'
 
@@ -128,8 +127,7 @@ export function MockupMetaForm({
           })}
         />
       </Field>
-      <UiField>
-        <FieldTitle id={`${id}-tags`}>Tags</FieldTitle>
+      <Field label="Tags" labelId={`${id}-tags`} required={false} showDescription={false}>
         <div inert={saving || undefined}>
           <TagEditor
             aria-labelledby={`${id}-tags`}
@@ -137,7 +135,7 @@ export function MockupMetaForm({
             {...(writes('tags') && { thinking: true, tags: [], suggestions: [] })}
           />
         </div>
-      </UiField>
+      </Field>
     </div>
   )
 }
