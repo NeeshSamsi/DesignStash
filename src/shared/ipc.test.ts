@@ -90,7 +90,7 @@ describe('copy status wire shape', () => {
     ).toBe(false)
   })
 
-  it.each(['running', 'done', 'cancelled', 'undone'] as const)(
+  it.each(['running', 'done', 'cancelled'] as const)(
     'a %s haul carries no pause reason',
     (state) => {
       const parsed = response.parse({ ...counts, state, pauseReason: 'disk-full', files: [] })
@@ -99,8 +99,9 @@ describe('copy status wire shape', () => {
     }
   )
 
-  it('rejects a state that does not exist', () => {
+  it('rejects a state that does not exist, and the retired undone', () => {
     expect(payload.safeParse({ ...counts, state: 'sleeping', file: null }).success).toBe(false)
+    expect(payload.safeParse({ ...counts, state: 'undone', file: null }).success).toBe(false)
   })
 })
 

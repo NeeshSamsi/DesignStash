@@ -230,7 +230,7 @@ export const lookOverResume = sqliteTable('look_over_resume', {
  */
 export const copyHauls = sqliteTable('copy_hauls', {
   id: text('id').primaryKey(),
-  state: text('state', { enum: ['running', 'paused', 'done', 'cancelled', 'undone'] })
+  state: text('state', { enum: ['running', 'paused', 'done', 'cancelled'] })
     .notNull()
     .default('running'),
   /** Why it is paused. Null unless `state` is 'paused'. */

@@ -85,7 +85,6 @@ describe('widget', () => {
     expect(widgetState(haul({ state: 'paused', pauseReason: 'disk-full' }))).toBe('error')
     expect(widgetState(haul({ state: 'done' }))).toBe('done')
     expect(widgetState(haul({ state: 'cancelled' }))).toBe('stopped')
-    expect(widgetState(haul({ state: 'undone' }))).toBeNull()
   })
 
   it('counts landed plus duplicates and unreadable files, never non-PSDs', () => {

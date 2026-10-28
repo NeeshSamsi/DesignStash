@@ -222,3 +222,25 @@ describe('migration: where a mockup in Trash came from', () => {
     ])
   })
 })
+
+describe('migration: retire the haul state undone', () => {
+  it('marks a haul undone before the app history as done, and leaves every other haul alone', () => {
+    const { sqlite, migrateRest } = databaseBefore('_retire_undone_haul')
+    sqlite.exec(`
+      INSERT INTO copy_hauls (id, state, pause_reason) VALUES
+        ('a', 'undone', NULL),
+        ('b', 'cancelled', NULL),
+        ('c', 'paused', 'disk-full'),
+        ('d', 'done', NULL);
+    `)
+
+    migrateRest()
+
+    expect(sqlite.prepare('SELECT id, state, pause_reason FROM copy_hauls ORDER BY id').all()).toEqual([
+      { id: 'a', state: 'done', pause_reason: null },
+      { id: 'b', state: 'cancelled', pause_reason: null },
+      { id: 'c', state: 'paused', pause_reason: 'disk-full' },
+      { id: 'd', state: 'done', pause_reason: null }
+    ])
+  })
+})

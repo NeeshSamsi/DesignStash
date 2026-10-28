@@ -22,7 +22,7 @@ export function processed(haul: CopyStatus): number {
   )
 }
 
-export function widgetState(haul: CopyStatus): CopyWidgetState | null {
+export function widgetState(haul: CopyStatus): CopyWidgetState {
   switch (haul.state) {
     case 'running':
       return 'copying'
@@ -32,8 +32,6 @@ export function widgetState(haul: CopyStatus): CopyWidgetState | null {
       return 'done'
     case 'cancelled':
       return 'stopped'
-    case 'undone':
-      return null
   }
 }
 

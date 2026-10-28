@@ -73,7 +73,7 @@ const copyCountsShape = {
  */
 const copyCountsVariants = [
   z.object({ ...copyCountsShape, state: z.literal('paused'), pauseReason: CopyPauseReasonSchema }),
-  z.object({ ...copyCountsShape, state: z.enum(['running', 'done', 'cancelled', 'undone']) })
+  z.object({ ...copyCountsShape, state: z.enum(['running', 'done', 'cancelled']) })
 ] as const
 
 /** The overall figures plus whatever else rides with them, as one union on `state`. */
