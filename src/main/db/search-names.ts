@@ -1,3 +1,4 @@
+import { latinLookalikes } from '@shared/pile-variation'
 import { JUNK_WORDS } from '../ai/vision-provider'
 
 /** Words a file or folder name carries that say nothing about the mockup. */
@@ -32,9 +33,12 @@ function wordsOf(name: string): string[] {
 
 /**
  * Hidden search words from where a mockup came from: its original file name (extension cut) and
- * its folder trail. Numbers, hashes, ids, junk words and filler are left out. Deduplicated.
+ * its folder trail. Numbers, hashes, ids, junk words and filler are left out. Deduplicated. Letters
+ * that only look Latin are read as Latin first, as the model is told them, so "Сlay" with a
+ * Cyrillic С is found by "clay" (H-4).
  */
 export function nameKeywords(fileName: string, folderTrail: readonly string[]): string[] {
-  const stem = fileName.replace(/\.[a-z0-9]{2,5}$/i, '')
-  return [...new Set([...wordsOf(stem), ...folderTrail.flatMap(wordsOf)])]
+  const stem = latinLookalikes(fileName).replace(/\.[a-z0-9]{2,5}$/i, '')
+  const folders = folderTrail.map(latinLookalikes)
+  return [...new Set([...wordsOf(stem), ...folders.flatMap(wordsOf)])]
 }

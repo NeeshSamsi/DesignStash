@@ -2,9 +2,10 @@ import type Database from 'better-sqlite3'
 
 /**
  * Bump when the words the keyword index keeps for a mockup change (`searchTitle`, `searchKeywords`,
- * `nameKeywords`), so every library rebuilds its index once on its next launch.
+ * `nameKeywords`), so every library rebuilds its index once on its next launch. 2: name words read
+ * lookalike letters as Latin (H-4).
  */
-export const SEARCH_INDEX_VERSION = 1
+export const SEARCH_INDEX_VERSION = 2
 
 /**
  * Bump when the rules that make a pile's titles whole change (`PileTitles.fill` and `leave`), so

@@ -6,7 +6,7 @@ import type { Repository } from './repository'
 import { ensureSearchIndex } from './search-index'
 import { approvedMockup, createTestDb } from './repositories/__tests__/setup'
 import { PileTitles } from '../library/pile-titles'
-import { runLaunchUpkeep, type UpkeepSteps } from './launch-upkeep'
+import { SEARCH_INDEX_VERSION, runLaunchUpkeep, type UpkeepSteps } from './launch-upkeep'
 
 let sqlite: Database.Database
 let db: BetterSQLite3Database<typeof schema>
@@ -128,5 +128,11 @@ describe('runLaunchUpkeep', () => {
     const steps = spies()
     expect(runLaunchUpkeep(sqlite, steps)).toBe(true)
     expect(steps.settlePileTitles).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('SEARCH_INDEX_VERSION', () => {
+  it('is past the version whose name words kept lookalike letters, so those libraries rebuild once (H-4)', () => {
+    expect(SEARCH_INDEX_VERSION).toBeGreaterThanOrEqual(2)
   })
 })
