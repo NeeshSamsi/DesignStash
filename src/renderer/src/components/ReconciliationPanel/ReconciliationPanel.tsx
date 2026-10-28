@@ -3,7 +3,7 @@ import { Button } from '@renderer/components/Button'
 import { CoverImage } from '@renderer/components/CoverImage'
 import { mockups, pluralise } from '@renderer/lib/plural'
 import { cn } from '@renderer/lib/utils'
-import { Skeleton } from '@renderer/ui/skeleton'
+import { Skeleton } from '@renderer/components/Skeleton'
 import {
   RECONCILIATION_PANEL_DEFAULTS,
   type ReconciliationPanelContractProps

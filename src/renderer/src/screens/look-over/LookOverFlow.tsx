@@ -19,7 +19,7 @@ import { subscribePush } from '@renderer/lib/subscribe'
 import { useFlowOpen } from '@renderer/stores/copyStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { useUiStore } from '@renderer/stores/uiStore'
-import { Skeleton } from '@renderer/ui/skeleton'
+import { Skeleton } from '@renderer/components/Skeleton'
 import { checkLibrary } from '../details/check-library'
 import { aiReducer, createAiState, keepOf } from './ai-state'
 import {
@@ -130,7 +130,11 @@ const panelSource = (cover: Cover): 'embedded' | 'sidecar' | 'uploaded' | 'none'
 function Skeletons() {
   return (
     <div aria-hidden className="flex gap-6">
-      <Skeleton className="aspect-card w-detail-media rounded-xl" />
+      {/* The width sits on a wrapper: class merging can't tell w-detail-media is a width, so the
+          Skeleton's own default width would stay beside it. */}
+      <div className="flex w-detail-media">
+        <Skeleton className="aspect-card h-auto w-full rounded-xl" />
+      </div>
       <div className="flex flex-1 flex-col gap-4">
         <Skeleton className="h-10 w-full rounded-lg" />
         <Skeleton className="h-24 w-full rounded-lg" />

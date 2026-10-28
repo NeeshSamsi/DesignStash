@@ -4,7 +4,7 @@ import { MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/Button'
-import { Spinner } from '@renderer/ui/spinner'
+import { Spinner } from '@renderer/components/Spinner'
 import { LIST_ROW_DEFAULTS, type ListRowContractProps } from './ListRow.types'
 import { listRowMediaVariants, listRowVariants } from './ListRow.variants'
 

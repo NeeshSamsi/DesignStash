@@ -5,7 +5,7 @@ import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
 import { AlertDialogCancel } from '@renderer/ui/alert-dialog'
 import { Button } from '@renderer/components/Button'
-import { Spinner } from '@renderer/ui/spinner'
+import { Spinner } from '@renderer/components/Spinner'
 import { CONFIRM_DIALOG_DEFAULTS, type ConfirmDialogContractProps } from './ConfirmDialog.types'
 import { confirmDialogVariants } from './ConfirmDialog.variants'
 

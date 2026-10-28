@@ -4,7 +4,7 @@ import { Button } from '@renderer/components/Button'
 import { Popover } from '@renderer/components/Popover'
 import { Spinner } from '@renderer/components/Spinner'
 import { TagChip } from '@renderer/components/TagChip'
-import { Skeleton } from '@renderer/ui/skeleton'
+import { Skeleton } from '@renderer/components/Skeleton'
 import type { OfferPreview } from './edit-offer'
 import type { DiffPart } from './word-diff'
 
@@ -96,7 +96,7 @@ function Body({ preview }: { preview: OfferPreview }) {
               Preparing this one’s version…
             </p>
           </div>
-          <Skeleton aria-hidden className="h-3 w-full rounded-full" />
+          <Skeleton className="h-3 w-full rounded-full" />
         </>
       ) : (
         body.diff &&

@@ -17,7 +17,7 @@ import { useFlowUndo } from '@renderer/lib/undo-router'
 import { useFlowOpen } from '@renderer/stores/copyStore'
 import { stepToast, toast } from '@renderer/stores/toastStore'
 import { Button } from '@renderer/components/Button'
-import { Skeleton } from '@renderer/ui/skeleton'
+import { Skeleton } from '@renderer/components/Skeleton'
 import {
   boardFromProposal,
   boardFromSaved,
@@ -70,9 +70,9 @@ function BoardSkeleton() {
   return (
     <div aria-hidden className="grid grid-cols-2 gap-6">
       {[0, 1].map((n) => (
-        <Skeleton key={n} className="h-56 rounded-xl" />
+        <Skeleton key={n} className="h-56 w-full rounded-xl" />
       ))}
-      <Skeleton className="col-span-2 h-40 rounded-xl" />
+      <Skeleton className="col-span-2 h-40 w-full rounded-xl" />
     </div>
   )
 }

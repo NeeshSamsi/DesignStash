@@ -22,7 +22,7 @@ import { DropdownMenu, DropdownMenuDivider } from '@renderer/components/Dropdown
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/Button'
-import { Skeleton } from '@renderer/ui/skeleton'
+import { Skeleton } from '@renderer/components/Skeleton'
 import { TAG_TREE_DEFAULTS, type TagTreeContractProps, type TagTreeState } from './TagTree.types'
 import { sampleTreeFor } from './TagTree.samples'
 import {

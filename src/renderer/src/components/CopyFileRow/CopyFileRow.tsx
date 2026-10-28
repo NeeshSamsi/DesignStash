@@ -11,7 +11,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { MiddleTruncatedText } from '@renderer/lib/middle-truncated-text'
 import { cn } from '@renderer/lib/utils'
-import { Progress as UiProgress } from '@renderer/ui/progress'
+import { Progress } from '@renderer/components/Progress'
 import {
   COPY_FILE_ROW_DEFAULTS,
   type CopyFileRowContractProps,
@@ -77,7 +77,13 @@ export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFi
           {name}
         </MiddleTruncatedText>
         {copying && detail === undefined ? (
-          <UiProgress size="sm" value={percent} aria-label={`Copying ${name}`} />
+          <Progress
+            size="sm"
+            showLabel={false}
+            percent={percent}
+            label={`Copying ${name}`}
+            className="w-full"
+          />
         ) : (
           <p className={copyFileRowDetailVariants({ state })}>
             {detail ?? (copying ? '' : DETAIL[state])}

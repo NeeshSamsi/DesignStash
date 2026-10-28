@@ -1,6 +1,6 @@
 import { cn } from '@renderer/lib/utils'
 import { Skeleton } from '@renderer/components/Skeleton'
-import { Spinner } from '@renderer/ui/spinner'
+import { Spinner } from '@renderer/components/Spinner'
 import { LOADING_STATE_DEFAULTS, type LoadingStateContractProps } from './LoadingState.types'
 import { loadingStateVariants } from './LoadingState.variants'
 

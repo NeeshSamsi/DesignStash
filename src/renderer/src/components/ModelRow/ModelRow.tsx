@@ -4,7 +4,7 @@ import { Badge } from '@renderer/components/Badge'
 import { Button } from '@renderer/components/Button'
 import { Spinner } from '@renderer/components/Spinner'
 import { cn } from '@renderer/lib/utils'
-import { Progress as UiProgress } from '@renderer/ui/progress'
+import { Progress } from '@renderer/components/Progress'
 import { MODEL_ROW_DEFAULTS, type ModelRowContractProps } from './ModelRow.types'
 import { modelRowRadioVariants, modelRowVariants } from './ModelRow.variants'
 
@@ -112,7 +112,13 @@ export function ModelRow({
                 </p>
                 <p className="shrink-0 text-tertiary">{Math.round(percent)}%</p>
               </div>
-              <UiProgress size="sm" value={percent} aria-label={`Downloading ${name}`} />
+              <Progress
+                size="sm"
+                showLabel={false}
+                percent={percent}
+                label={`Downloading ${name}`}
+                className="w-full"
+              />
             </div>
             {state === 'downloading' ? (
               <Button
@@ -144,7 +150,13 @@ export function ModelRow({
             <p role="status" className="type-caption-xs-regular text-muted-foreground">
               {verifyingText}
             </p>
-            <UiProgress size="sm" state="indeterminate" aria-label={verifyingText} />
+            <Progress
+              size="sm"
+              state="indeterminate"
+              showLabel={false}
+              label={verifyingText}
+              className="w-full"
+            />
           </div>
         )}
       </div>
