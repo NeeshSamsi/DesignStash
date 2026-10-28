@@ -3,8 +3,7 @@ import type { AppDatabase } from '../connection'
 import { drafts, mockups, tags, mockupTags, tagCategories } from '../schema'
 import type { Tag, NewTag, TagCategory } from '../schema'
 import type { ApprovalTag } from '@shared/approval'
-import { normaliseTagLabel, type CategorySnapshot, type TagMatch, type TagSnapshot } from '@shared/tags'
-import type { MockupRepository } from './mockups'
+import { normaliseTagLabel, type TagMatch } from '@shared/tags'
 import type { SearchRepository } from './search'
 
 /** The handle inside a transaction. */
@@ -74,7 +73,6 @@ export function pruneSuggestions(db: Pick<AppDatabase, 'select' | 'delete'>): vo
 export class TagRepository {
   constructor(
     private readonly db: AppDatabase,
-    private readonly mockups: MockupRepository,
     private readonly search: SearchRepository
   ) {}
 
@@ -243,11 +241,8 @@ export class TagRepository {
     return affected
   }
 
-  /**
-   * Delete a tag; mockup_tags cascade-deletes. Reindex FTS for affected mockups.
-   * Returns a snapshot so the delete can be undone with restoreTag.
-   */
-  deleteTag(tagId: number): { affectedMockups: number; snapshot: TagSnapshot } {
+  /** Delete a tag; mockup_tags cascade-deletes. Reindex FTS for affected mockups. */
+  deleteTag(tagId: number): { affectedMockups: number } {
     const tag = this.db.select().from(tags).where(eq(tags.id, tagId)).get()
     if (!tag) throw new Error(`Tag ${tagId} not found`)
     const affected = this.mockupIdsForTag(tagId)
@@ -256,55 +251,14 @@ export class TagRepository {
       tx.delete(tags).where(eq(tags.id, tagId)).run()
       for (const mockupId of affected) this.search.upsertSearchIndex(mockupId)
     })
-    return {
-      affectedMockups: affected.length,
-      snapshot: {
-        tag: {
-          id: tag.id,
-          label: tag.label,
-          categoryId: tag.categoryId,
-          isCanonical: tag.isCanonical,
-          // A suggestion isn't listed, so Settings can't delete one; were it deleted, it comes back as the AI's.
-          createdBy: tag.createdBy === 'suggestion' ? 'ai' : tag.createdBy
-        },
-        mockupIds: affected
-      }
-    }
-  }
-
-  /**
-   * Undo a tag delete: recreate the tag (or reuse a same-named one made since) and put it back
-   * on every mockup that still exists.
-   */
-  restoreTag(snapshot: TagSnapshot): { tagId: number; restoredMockups: number } {
-    const { tag } = snapshot
-    const category = this.db
-      .select()
-      .from(tagCategories)
-      .where(eq(tagCategories.id, tag.categoryId))
-      .get()
-    if (!category) throw new Error(`Category ${tag.categoryId} not found`)
-
-    const restored = snapshot.mockupIds.filter((id) => this.mockups.getMockup(id) !== undefined)
-    const tagId = this.db.transaction((tx) => {
-      const id =
-        this.getTagByLabel(tag.categoryId, tag.label)?.id ??
-        tx.insert(tags).values(tag).returning({ id: tags.id }).get().id
-      for (const mockupId of restored) this.mockups.addTagToMockup(mockupId, id)
-      for (const mockupId of restored) this.search.upsertSearchIndex(mockupId)
-      return id
-    })
-    return { tagId, restoredMockups: restored.length }
+    return { affectedMockups: affected.length }
   }
 
   /**
    * Delete a category. A category with tags needs moveTagsTo: its tags move there (merging into
-   * a same-named tag) and mockups keep them. Returns a snapshot of the category row for Undo.
+   * a same-named tag) and mockups keep them.
    */
-  deleteCategory(
-    categoryId: number,
-    moveTagsTo?: number
-  ): { deleted: true; movedTags: number; snapshot: CategorySnapshot } {
+  deleteCategory(categoryId: number, moveTagsTo?: number): { deleted: true; movedTags: number } {
     const category = this.db
       .select()
       .from(tagCategories)
@@ -338,22 +292,7 @@ export class TagRepository {
       this.db.delete(tagCategories).where(eq(tagCategories.id, categoryId)).run()
     }
 
-    return {
-      deleted: true,
-      movedTags: tagsIn.length,
-      snapshot: {
-        id: category.id,
-        label: category.label,
-        sortOrder: category.sortOrder,
-        isCanonical: category.isCanonical
-      }
-    }
-  }
-
-  /** Undo deleting an empty category. */
-  restoreCategory(snapshot: CategorySnapshot): { categoryId: number } {
-    const row = this.db.insert(tagCategories).values(snapshot).returning().get()
-    return { categoryId: row.id }
+    return { deleted: true, movedTags: tagsIn.length }
   }
 
   /**

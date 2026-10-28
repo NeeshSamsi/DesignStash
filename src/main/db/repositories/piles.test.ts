@@ -253,7 +253,7 @@ describe('pile operations', () => {
   })
 
   describe('disbandPile', () => {
-    it('frees every mockup and returns the rows that bring the pile back', () => {
+    it('frees every mockup', () => {
       const [a, b, c] = ['a', 'b', 'c'].map(standalone)
       const { pileId } = repo.piles.createPile([a!.id, b!.id, c!.id], b!.id)
       const ids = [a!.id, b!.id, c!.id]

@@ -197,12 +197,11 @@ export class PileRepository {
   }
 
   /** Break a pile up: every mockup lands on its own. */
-  disbandPile(pileId: number): PileChange & { freedIds: number[] } {
+  disbandPile(pileId: number): { freedIds: number[] } {
     this.assertPile(pileId)
     const freedIds = this.collectGroupIds(pileId)
-    const before = this.getPileRows(freedIds)
     this.ungroupGroup(pileId)
-    return { pileId, before, freedIds }
+    return { freedIds }
   }
 
   /**
@@ -210,23 +209,19 @@ export class PileRepository {
    * lowest id, the order the pile lists them). A pile left with one mockup stops being a pile. Each
    * mockup keeps its own star. `pileId` is the pile's id afterwards, or null when it no longer exists.
    */
-  removeFromPile(
-    pileId: number,
-    mockupId: number
-  ): { pileId: number | null; before: PileRow[]; freedIds: number[] } {
+  removeFromPile(pileId: number, mockupId: number): { pileId: number | null; freedIds: number[] } {
     this.assertPile(pileId)
     const members = this.getMockupsByGroupId(pileId).sort((a, b) => a.id - b.id)
     const inPile = mockupId === pileId || members.some((m) => m.id === mockupId)
     if (!inPile) throw new Error('That mockup is not in the pile')
 
     const all = [pileId, ...members.map((m) => m.id)]
-    const before = this.getPileRows(all)
     const rest = all.filter((id) => id !== mockupId)
 
     // One left: no pile any more, both are on their own.
     if (rest.length < 2) {
       this.ungroupGroup(pileId)
-      return { pileId: null, before, freedIds: all }
+      return { pileId: null, freedIds: all }
     }
 
     const newTop = mockupId === pileId ? (rest[0] as number) : pileId
@@ -234,7 +229,7 @@ export class PileRepository {
       tx.update(mockups).set(PLACE_ALONE).where(eq(mockups.id, mockupId)).run()
       layOutPile(tx, newTop, rest)
     })
-    return { pileId: newTop, before, freedIds: [mockupId] }
+    return { pileId: newTop, freedIds: [mockupId] }
   }
 
   private requireLive(id: number): Mockup {
