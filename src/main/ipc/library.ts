@@ -10,9 +10,18 @@ export function registerLibraryHandlers({ telemetry, repo, ai }: HandlerContext)
     // A search being typed starts the meaning model, so it is up when the search gets long enough.
     if (query.length > 0 && query.length < MEANING_MIN_QUERY_CHARS) ai.embeddings.warm()
     // Meaning search: how close each mockup is to the search. Null (no model, no vectors, a
-    // failure, or slower than MEANING_WAIT_MS) leaves keyword results, as before.
+    // failure, or slower than MEANING_WAIT_MS) leaves keyword results, as before. Slower means the
+    // model was starting or busy, so the reply says so and the window asks once more (H-3).
+    let meaningSkipped = false
     const meaning =
-      query.length >= MEANING_MIN_QUERY_CHARS ? await ai.embeddings.similarities(query, { within: MEANING_WAIT_MS }) : null
+      query.length >= MEANING_MIN_QUERY_CHARS
+        ? await ai.embeddings.similarities(query, {
+            within: MEANING_WAIT_MS,
+            onLate: () => {
+              meaningSkipped = true
+            }
+          })
+        : null
     const { rows: items, meaningHit } = repo.library.queryLibrary({
       meaning,
       ...(args.tagIds !== undefined && { tagIds: args.tagIds }),
@@ -32,7 +41,7 @@ export function registerLibraryHandlers({ telemetry, repo, ai }: HandlerContext)
         meaning_hit: meaningHit
       })
     }
-    return { items }
+    return { items, ...(meaningSkipped ? { meaningSkipped: true as const } : {}) }
   })
 
   registerIpcHandler(IPC_CHANNELS.LIBRARY_STATS, () => repo.library.getLibraryStats())

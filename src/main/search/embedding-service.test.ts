@@ -215,6 +215,35 @@ describe('EmbeddingService', () => {
     expect((await svc.similarities('bag', { within: 1_000 }))?.get(m.id)).toBeCloseTo(1)
   })
 
+  it('says when a search ran out of time, and only then, so the window can ask again (H-3)', async () => {
+    const embedder = fakeEmbedder()
+    let release = () => {}
+    const slow = new Promise<void>((resolve) => (release = resolve))
+    const fast = embedder.embedQuery
+    embedder.embedQuery = async (q) => {
+      await slow
+      return fast(q)
+    }
+    const svc = new EmbeddingService({ repo, available: () => true, embedder: () => embedder, sleep: async () => {} })
+    const m = stashed('Tote bag', '/lib/s/w.psd')
+    repo.embeddings.upsert(m.id, MEANING_MODEL_ID, normalise([0, 1]), 'h')
+
+    const late = vi.fn()
+    expect(await svc.similarities('bag', { within: 10, onLate: late })).toBeNull()
+    expect(late).toHaveBeenCalledOnce()
+
+    release()
+    const inTime = vi.fn()
+    expect(await svc.similarities('bag', { within: 1_000, onLate: inTime })).not.toBeNull()
+    expect(inTime).not.toHaveBeenCalled()
+
+    // No model at all is no reason to ask again.
+    const none = new EmbeddingService({ repo, available: () => false, embedder: () => embedder })
+    const noModel = vi.fn()
+    expect(await none.similarities('bag', { within: 10, onLate: noModel })).toBeNull()
+    expect(noModel).not.toHaveBeenCalled()
+  })
+
   it('starts the model before a search when asked to warm it, and only when it can run (F-017)', async () => {
     const start = vi.fn(async () => {})
     const embedder = { ...fakeEmbedder(), start }

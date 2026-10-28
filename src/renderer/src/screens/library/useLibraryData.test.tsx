@@ -108,3 +108,54 @@ describe('skeleton grace period', () => {
     expect(css).toMatch(/animation:\s*ds-loading-grace 1ms linear 150ms backwards/)
   })
 })
+
+describe('useLibraryData and a meaning model that was still starting (H-3)', () => {
+  /** library:list answers in turn from `answers`, the last one again once they run out. */
+  const listAnswering = (answers: { items: number[]; meaningSkipped?: boolean }[]) => {
+    let call = 0
+    return {
+      [IPC_CHANNELS.LIBRARY_LIST]: () => {
+        const answer = answers[Math.min(call++, answers.length - 1)]!
+        return {
+          success: true,
+          data: { items: answer.items.map((id) => item(id)), ...(answer.meaningSkipped && { meaningSkipped: true }) }
+        }
+      }
+    }
+  }
+
+  it('asks once more for the same search when meaning was skipped, and shows the fuller answer', async () => {
+    useLibraryStore.setState({ query: 'jumper' })
+    const api = setupApi([], listAnswering([{ items: [1], meaningSkipped: true }, { items: [1, 2] }]))
+    renderHook(() => useLibraryData(false))
+
+    await waitFor(() => expect(useLibraryStore.getState().items.map((i) => i.id)).toEqual([1, 2]), { timeout: 3000 })
+    const asked = api.calls(IPC_CHANNELS.LIBRARY_LIST)
+    expect(asked).toHaveLength(2)
+    expect(asked[1]).toEqual(asked[0])
+  })
+
+  it('asks again only once for a search, even when the second answer skipped meaning too', async () => {
+    useLibraryStore.setState({ query: 'jumper' })
+    const api = setupApi([], listAnswering([{ items: [1], meaningSkipped: true }]))
+    renderHook(() => useLibraryData(false))
+
+    await waitFor(() => expect(api.calls(IPC_CHANNELS.LIBRARY_LIST)).toHaveLength(2), { timeout: 3000 })
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    expect(api.calls(IPC_CHANNELS.LIBRARY_LIST)).toHaveLength(2)
+  })
+
+  it('drops the second ask when the search changed in the meantime', async () => {
+    useLibraryStore.setState({ query: 'jumper' })
+    const api = setupApi([], listAnswering([{ items: [1], meaningSkipped: true }, { items: [3] }]))
+    renderHook(() => useLibraryData(false))
+    await waitFor(() => expect(api.calls(IPC_CHANNELS.LIBRARY_LIST)).toHaveLength(1))
+
+    act(() => useLibraryStore.setState({ query: 'tote' }))
+    await waitFor(() => expect(api.calls(IPC_CHANNELS.LIBRARY_LIST)).toHaveLength(2))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    // Only the new search's own fetch went out; the old one's second ask never did.
+    expect(api.calls(IPC_CHANNELS.LIBRARY_LIST).map((r) => (r as { query?: string }).query)).toEqual(['jumper', 'tote'])
+  })
+})

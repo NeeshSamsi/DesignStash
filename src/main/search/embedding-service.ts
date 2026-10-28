@@ -156,12 +156,19 @@ export class EmbeddingService {
    * Given `within` ms, null when the answer takes longer, so keyword results never wait for the
    * model to start (F-017); the answer still runs on and warms it for the next search.
    */
-  async similarities(query: string, { within }: { within?: number } = {}): Promise<Map<number, number> | null> {
+  async similarities(
+    query: string,
+    { within, onLate }: { within?: number; onLate?: () => void } = {}
+  ): Promise<Map<number, number> | null> {
     const answer = this.answer(query)
     if (within === undefined) return answer
     let timer: ReturnType<typeof setTimeout> | undefined
+    // Out of time while the model was still starting or answering: the caller may ask again (H-3).
     const late = new Promise<null>((resolve) => {
-      timer = setTimeout(() => resolve(null), within)
+      timer = setTimeout(() => {
+        onLate?.()
+        resolve(null)
+      }, within)
     })
     return Promise.race([answer, late]).finally(() => clearTimeout(timer))
   }

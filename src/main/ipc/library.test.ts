@@ -60,11 +60,25 @@ describe('search telemetry', () => {
 })
 
 describe('meaning search through the handler', () => {
+  it('says when meaning was skipped because the model was late, so the window can ask again (H-3)', async () => {
+    similarities.mockImplementation(async (_query: string, opts: { onLate?: () => void }) => {
+      opts.onLate?.()
+      return null
+    })
+    const res = await call<{ meaningSkipped?: boolean }>(IPC_CHANNELS.LIBRARY_LIST, { query: 'jumper', sort: 'date' })
+    expect(res).toMatchObject({ success: true, data: { meaningSkipped: true } })
+  })
+
+  it('says nothing of the kind when meaning answered, or there is no model to wait for', async () => {
+    const res = await call<{ items: unknown[] }>(IPC_CHANNELS.LIBRARY_LIST, { query: 'jumper', sort: 'date' })
+    expect(res).toEqual({ success: true, data: { items: [] } })
+  })
+
   it('asks for similarities only for a search of 3 or more characters', async () => {
     await call(IPC_CHANNELS.LIBRARY_LIST, { query: 'ab', sort: 'date' })
     expect(similarities).not.toHaveBeenCalled()
     await call(IPC_CHANNELS.LIBRARY_LIST, { query: ' abc ', sort: 'date' })
-    expect(similarities).toHaveBeenCalledWith('abc', { within: 300 })
+    expect(similarities).toHaveBeenCalledWith('abc', expect.objectContaining({ within: 300 }))
     await call(IPC_CHANNELS.LIBRARY_LIST, { sort: 'date' })
     expect(similarities).toHaveBeenCalledTimes(1)
   })
