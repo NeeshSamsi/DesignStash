@@ -253,7 +253,7 @@ export function overlayFor(input: {
     return {
       state: 'rejected',
       title: 'Those aren’t PSDs or zips',
-      description: 'DesignStash only takes .psd and .zip files, so there’s nothing to add.'
+      description: 'DesignStash only takes .psd, .psb and .zip files, so there’s nothing to add.'
     }
   }
   if (input.copying) {

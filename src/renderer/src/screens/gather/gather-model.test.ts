@@ -203,7 +203,13 @@ describe('widget', () => {
   })
 
   it('says a file brought its mockup back from Trash', () => {
-    const restored: CopyFile = { jobId: 1, name: 'a.psd', status: 'done', size: 312_000_000, restored: true }
+    const restored: CopyFile = {
+      jobId: 1,
+      name: 'a.psd',
+      status: 'done',
+      size: 312_000_000,
+      restored: true
+    }
     expect(rowDetail(restored, haul())).toBe('Already in Trash · restored')
     expect(rowDetail({ ...restored, archiveName: 'Free_Cap_Mockup.zip' }, haul())).toBe(
       'Already in Trash · restored · From Free_Cap_Mockup.zip'
@@ -347,7 +353,8 @@ describe('overlay copy', () => {
   it('rejects non-PSDs', () => {
     expect(overlayFor({ ...base, verdict: 'rejected' })).toMatchObject({
       state: 'rejected',
-      title: 'Those aren’t PSDs or zips'
+      title: 'Those aren’t PSDs or zips',
+      description: 'DesignStash only takes .psd, .psb and .zip files, so there’s nothing to add.'
     })
   })
 

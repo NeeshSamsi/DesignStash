@@ -510,6 +510,12 @@ describe('drops', () => {
     render(<Harness />)
     fire(dragEvent('drop', [{ kind: 'file', type: 'image/png' }], [new File([''], 'x.png')]))
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
+    expect(toasts.toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Those aren’t PSDs or zips',
+        description: 'DesignStash only takes .psd, .psb and .zip files, so there’s nothing to add.'
+      })
+    )
     expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([])
   })
 
