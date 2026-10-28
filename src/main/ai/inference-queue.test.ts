@@ -8,6 +8,7 @@ import { approvedMockup, createTestDb, sample } from '../db/repositories/__tests
 import { PileTitles } from '../library/pile-titles'
 import { InferenceQueue, analysisInputFor } from './inference-queue'
 import { LlamaStartError } from './llama-server'
+import { ModelUnavailableError } from './model-unavailable'
 import { HARD_STOP_FACTOR, RunTimes, memoryRunTimes } from './run-timing'
 
 const result = (title: string): InferenceResult => ({
@@ -330,7 +331,9 @@ describe('InferenceQueue', () => {
 
     expect(status(side.id)).toBe('ready')
     expect(status(back.id)).toBe('ready')
-    expect(stub.calls.map((c) => c.fileName).sort()).toEqual(['back.psd', 'side.psd'])
+    // The top was never asked (a new row reads off), so the restart, with a model ready, asks it too (H-2).
+    expect(status(top.id)).toBe('ready')
+    expect(stub.calls.map((c) => c.fileName).sort()).toEqual(['back.psd', 'side.psd', 'top.psd'])
   })
 
   it('on restart with no provider, marks what was waiting as off', async () => {
@@ -1170,3 +1173,163 @@ describe('what Look it over is told about a run (design L6)', () => {
     })
   })
 })
+
+describe('mockups marked off, once a model is usable (H-2)', () => {
+  it('at launch with a model ready, queues the ones marked off too, and leaves out the ones a person filled in', async () => {
+    const [a, b, mine, gone] = [imported('a'), imported('b'), imported('mine'), imported('gone')]
+    repo.mockups.updateMockup(a.id, { aiStatus: 'off' })
+    repo.mockups.updateMockup(b.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(mine.id, { aiStatus: 'opted_out' })
+    repo.mockups.updateMockup(gone.id, { aiStatus: 'off', deletedAt: new Date().toISOString() })
+
+    const stub = stubProvider((input) => result(input.fileName))
+    const restarted = queueWith(stub.provider)
+    await restarted.resume()
+    await restarted.idle()
+
+    expect(stub.calls.map((c) => c.fileName)).toEqual(['a.psd', 'b.psd'])
+    expect([a, b, mine, gone].map((m) => status(m.id))).toEqual(['ready', 'ready', 'opted_out', 'off'])
+  })
+
+  it('at launch with no model, leaves them off and tells the window nothing new', async () => {
+    const a = imported('a')
+    repo.mockups.updateMockup(a.id, { aiStatus: 'off' })
+
+    const restarted = queueWith(null)
+    await restarted.resume()
+    await restarted.idle()
+
+    expect(status(a.id)).toBe('off')
+    expect(events).toEqual([])
+  })
+
+  it('queues the ones marked off when the active model changes to one that can run', async () => {
+    const a = imported('a')
+    let provider: InferenceProvider | null = null
+    const stub = stubProvider((input) => result(input.fileName))
+    const queue = queueWith(null, { getProvider: async () => provider })
+    await queue.enqueue([a.id])
+    await queue.idle()
+    expect(status(a.id)).toBe('off')
+
+    provider = stub.provider
+    await queue.modelChanged()
+    await queue.idle()
+
+    expect(status(a.id)).toBe('ready')
+  })
+})
+
+describe('a model that stops being able to run mid-session (H-1)', () => {
+  /** Apple's model with Apple Intelligence switched off: every describe answers unavailable. */
+  const switchedOff = () => {
+    let calls = 0
+    const provider: InferenceProvider = {
+      id: 'apple',
+      name: 'Apple',
+      analyze: async () => {
+        calls++
+        throw new ModelUnavailableError('Apple Intelligence is off')
+      }
+    }
+    return { provider, calls: () => calls }
+  }
+  /** A timer the test fires by hand: the queue's recheck while it waits. */
+  const handTimer = () => {
+    const pending: (() => void)[] = []
+    return {
+      timer: (_ms: number, fire: () => void) => {
+        pending.push(fire)
+        return () => {}
+      },
+      fire: () => pending.splice(0).forEach((fire) => fire())
+    }
+  }
+
+  it('waits at the first unavailable: asks once, marks nothing failed, and says so once', async () => {
+    const off = switchedOff()
+    const onModelUnavailable = vi.fn()
+    const [a, b] = [imported('a'), imported('b')]
+    const queue = queueWith(off.provider, { onModelUnavailable, timer: handTimer().timer })
+
+    await queue.enqueue([a.id, b.id])
+    await queue.idle()
+
+    expect(off.calls()).toBe(1)
+    expect([status(a.id), status(b.id)]).toEqual(['pending', 'pending'])
+    expect(onModelUnavailable).toHaveBeenCalledTimes(1)
+    expect(events.filter((e) => e.modelUnavailable)).toHaveLength(1)
+    // Nothing runs while it waits, so meaning search's embeddings don't wait behind it.
+    expect(queue.busy).toBe(false)
+  })
+
+  it('picks the waiting ones up, in order, once the model can run again', async () => {
+    const off = switchedOff()
+    const stub = stubProvider((input) => result(input.fileName))
+    let provider: InferenceProvider | null = off.provider
+    const clock = handTimer()
+    const [a, b] = [imported('a'), imported('b')]
+    const queue = queueWith(null, {
+      getProvider: async () => provider,
+      onModelUnavailable: () => {
+        provider = null
+      },
+      timer: clock.timer
+    })
+    await queue.enqueue([a.id, b.id])
+    await queue.idle()
+
+    // Still off at the first look: it keeps waiting.
+    clock.fire()
+    await queue.idle()
+    expect([status(a.id), status(b.id)]).toEqual(['pending', 'pending'])
+
+    provider = stub.provider
+    clock.fire()
+    await vi.waitFor(() => expect(status(b.id)).toBe('ready'))
+    expect(stub.calls.map((c) => c.fileName)).toEqual(['a.psd', 'b.psd'])
+  })
+
+  it('picks them up at once when the person chooses another model', async () => {
+    const off = switchedOff()
+    const stub = stubProvider((input) => result(input.fileName))
+    let provider: InferenceProvider | null = off.provider
+    const a = imported('a')
+    const queue = queueWith(null, {
+      getProvider: async () => provider,
+      onModelUnavailable: () => {
+        provider = null
+      },
+      timer: handTimer().timer
+    })
+    await queue.enqueue([a.id])
+    await queue.idle()
+
+    provider = stub.provider
+    await queue.modelChanged()
+    await queue.idle()
+
+    expect(status(a.id)).toBe('ready')
+  })
+
+  it('keeps a mockup that lands while it waits waiting too, instead of marking it off', async () => {
+    const off = switchedOff()
+    let provider: InferenceProvider | null = off.provider
+    const [a, b] = [imported('a'), imported('b')]
+    const queue = queueWith(null, {
+      getProvider: async () => provider,
+      onModelUnavailable: () => {
+        provider = null
+      },
+      timer: handTimer().timer
+    })
+    await queue.enqueue([a.id])
+    await queue.idle()
+
+    await queue.enqueue([b.id])
+    await queue.idle()
+
+    expect([status(a.id), status(b.id)]).toEqual(['pending', 'pending'])
+  })
+})
+

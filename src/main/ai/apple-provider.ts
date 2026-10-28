@@ -1,5 +1,6 @@
 import type { AnalysisInput, InferenceProvider, InferenceResult, PileEdit, PileEditEntry, PileEditSteps } from '../../shared/inference'
-import type { DescribeRequest, NativeHelper } from '../native/helper'
+import { HelperError, type DescribeRequest, type NativeHelper } from '../native/helper'
+import { ModelUnavailableError } from './model-unavailable'
 import type { PromptProfile } from './prompts/profile'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
 import { ENTRY_SCHEMA, PILE_EDIT_SYSTEM, readRewrite, rewritePrompt } from './pile-edit'
@@ -100,7 +101,11 @@ export class AppleInferenceProvider implements InferenceProvider {
     const masked = usable && prompt.mask ? await (this.deps.maskedCover ?? maskedCoverPath)(input.imagePath, prompt.mask) : null
     const asked = masked ? { ...input, slotMasked: true } : input
     const request = { imagePath: usable ? (masked ?? input.imagePath) : null, ...appleDescribeRequest(asked, usable, prompt) }
-    let answer = prompt.parseResult((await this.deps.helper.describe(request)).text)
+    const reply = await this.deps.helper.describe(request).catch((err: unknown) => {
+      // Apple Intelligence switched off while the app runs: the model can't run, whatever the mockup (H-1).
+      throw err instanceof HelperError && err.code === 'unavailable' ? new ModelUnavailableError(err.message) : err
+    })
+    let answer = prompt.parseResult(reply.text)
     if (!usable) return answer
     // The check looks at the cover as it is, so a thing read into the painted slot is checked against the real scene.
     const refused: string[] = []

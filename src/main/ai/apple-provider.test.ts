@@ -7,6 +7,7 @@ import type { AnalysisInput } from '../../shared/inference'
 import { HelperError, NativeHelper, type DescribeRequest } from '../native/helper'
 import { SCENE_THINGS } from './scene-check'
 import { AppleInferenceProvider, appleDescribeRequest, withoutPatterns } from './apple-provider'
+import { ModelUnavailableError } from './model-unavailable'
 import type { PromptProfile } from './prompts'
 import { RESULT_JSON_SCHEMA, buildRequest, parseResult, type ChatContentPart } from './vision-provider'
 
@@ -48,6 +49,26 @@ const textOf = (input: AnalysisInput, hasImage: boolean) =>
     .join('\n')
 
 describe('AppleInferenceProvider', () => {
+  it('says the model is unavailable, as its own error, when the helper says so (H-1)', async () => {
+    const off = {
+      describe: vi.fn(async () => {
+        throw new HelperError('unavailable', 'Apple Intelligence is not enabled')
+      })
+    }
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper: off, hasUsableCover: async () => true })
+    await expect(provider.analyze(INPUT)).rejects.toBeInstanceOf(ModelUnavailableError)
+  })
+
+  it('leaves any other helper failure as it is', async () => {
+    const crashed = {
+      describe: vi.fn(async () => {
+        throw new HelperError('crashed', 'gone')
+      })
+    }
+    const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper: crashed, hasUsableCover: async () => true })
+    await expect(provider.analyze(INPUT)).rejects.toMatchObject({ code: 'crashed' })
+  })
+
   it('asks the helper with the cover and returns the parsed suggestion', async () => {
     const provider = new AppleInferenceProvider({ prompt: SHIPPED, helper, hasUsableCover: async () => true })
     const result = await provider.analyze(INPUT)
@@ -107,13 +128,13 @@ describe('AppleInferenceProvider', () => {
     expect(sent()[0]).toMatchObject({ instructions: 'Tuned instructions.', maxTokens: 300 })
   })
 
-  it('passes a helper failure on to the queue', async () => {
+  it('passes a missing helper on to the queue as the model being unable to run (H-1)', async () => {
     const provider = new AppleInferenceProvider({
       prompt: SHIPPED,
       helper: new NativeHelper({ binaryPath: null }),
       hasUsableCover: async () => true
     })
-    await expect(provider.analyze(INPUT)).rejects.toBeInstanceOf(HelperError)
+    await expect(provider.analyze(INPUT)).rejects.toBeInstanceOf(ModelUnavailableError)
   })
 
   it("takes the object's colours out of its answers and leaves the setting's (round 4)", async () => {

@@ -13,16 +13,21 @@ export interface AppleStatus {
 export interface AppleAvailability {
   available(): Promise<boolean>
   status(): Promise<AppleStatus>
+  /** Forget the answer, so the next question asks the helper (the model just said it can't run, H-1). */
+  refresh(): void
 }
 
 export interface AppleAvailabilityDeps {
   helper: Pick<NativeHelper, 'info'>
   /** How long one answer is kept. Apple Intelligence can be switched on or off while the app runs. */
   ttlMs?: number
+  /** How long an unavailable answer is kept, so a model switched back on is noticed soon. */
+  unavailableTtlMs?: number
   now?: () => number
 }
 
 const FIVE_MINUTES = 5 * 60 * 1000
+const ONE_MINUTE = 60 * 1000
 
 /**
  * Asks the Swift helper's `info` whether Foundation Models is available (macOS 27, an eligible Mac,
@@ -31,19 +36,31 @@ const FIVE_MINUTES = 5 * 60 * 1000
  */
 export function createAppleAvailability(deps: AppleAvailabilityDeps): AppleAvailability {
   const ttlMs = deps.ttlMs ?? FIVE_MINUTES
+  const unavailableTtlMs = Math.min(deps.unavailableTtlMs ?? ONE_MINUTE, ttlMs)
   const now = deps.now ?? Date.now
-  let cached: { at: number; answer: Promise<AppleStatus> } | null = null
+  let cached: { at: number; answer: Promise<AppleStatus>; available?: boolean } | null = null
 
   function status(): Promise<AppleStatus> {
-    if (cached && now() - cached.at < ttlMs) return cached.answer
-    const answer = deps.helper.info().then(
-      ({ foundationModels: fm }): AppleStatus =>
-        fm.available ? { available: true, reason: null } : { available: false, reason: fm.reason ?? 'unknown' },
-      (): AppleStatus => ({ available: false, reason: 'unknown' })
-    )
-    cached = { at: now(), answer }
-    return answer
+    const keep = cached?.available === false ? unavailableTtlMs : ttlMs
+    if (cached && now() - cached.at < keep) return cached.answer
+    const entry: NonNullable<typeof cached> = {
+      at: now(),
+      answer: deps.helper.info().then(
+        ({ foundationModels: fm }): AppleStatus =>
+          fm.available ? { available: true, reason: null } : { available: false, reason: fm.reason ?? 'unknown' },
+        (): AppleStatus => ({ available: false, reason: 'unknown' })
+      )
+    }
+    void entry.answer.then((s) => (entry.available = s.available))
+    cached = entry
+    return entry.answer
   }
 
-  return { status, available: () => status().then((s) => s.available) }
+  return {
+    status,
+    available: () => status().then((s) => s.available),
+    refresh: () => {
+      cached = null
+    }
+  }
 }

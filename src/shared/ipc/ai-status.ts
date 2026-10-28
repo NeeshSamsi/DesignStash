@@ -27,6 +27,11 @@ export const AiStatusEventSchema = z.object({
   /** Mockups whose status just changed. */
   updates: z.array(AiStatusUpdateSchema),
   /** For "Still sniffing 7 of 38": `remaining` of the `total` mockups in To sort still have no suggestion. */
-  totals: z.object({ total: z.number(), remaining: z.number() })
+  totals: z.object({ total: z.number(), remaining: z.number() }),
+  /**
+   * The active model just stopped being able to run (Apple Intelligence switched off): suggestions
+   * wait for it. Sent once each time; `ai:list-models` says why, for the notice (H-1).
+   */
+  modelUnavailable: z.literal(true).optional()
 })
 export type AiStatusEvent = z.infer<typeof AiStatusEventSchema>

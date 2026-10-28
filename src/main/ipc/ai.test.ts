@@ -8,6 +8,7 @@ import { ModelDownloader } from '../ai/download'
 import { createUndoService, type UndoService } from '../undo/undo-service'
 import { modelUndoOps } from '../undo/model-ops'
 import type { HandlerContext } from './context'
+import { inferenceQueueFor } from './library-effects'
 
 const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
@@ -26,6 +27,7 @@ let base: string
 let modelsDir: string
 let settings: SettingsStore
 let push: ReturnType<typeof vi.fn>
+let ctx: HandlerContext
 let activeDownloads: Map<string, AbortController>
 let appleReady: boolean
 let appleReason: string
@@ -77,8 +79,7 @@ beforeEach(() => {
       settings
     })
   })
-  registerAiHandlers(
-    {
+  ctx = {
       settings,
       push,
       undo,
@@ -93,9 +94,8 @@ beforeEach(() => {
             : { available: false, reason: appleReason },
         embeddings
       }
-    } as unknown as HandlerContext,
-    { llamaServerPath: () => llamaServer, runtimeProblem: () => runtime }
-  )
+    } as unknown as HandlerContext
+  registerAiHandlers(ctx, { llamaServerPath: () => llamaServer, runtimeProblem: () => runtime })
 })
 
 afterEach(() => rmSync(base, { recursive: true, force: true }))
@@ -406,3 +406,28 @@ describe('the meaning-search model', () => {
     expect(embeddings.backfill).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('a model chosen or downloaded asks the queue again for what waited for one (H-2)', () => {
+  it('choosing a model', async () => {
+    const changed = vi.spyOn(inferenceQueueFor(ctx), 'modelChanged').mockResolvedValue()
+    await call(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'qwen3-vl-4b' })
+    expect(changed).toHaveBeenCalledOnce()
+  })
+
+  it('the active model finishing its download, and no other model', async () => {
+    handlers.clear()
+    const downloaded = {
+      ...ctx,
+      ai: { ...ctx.ai, downloader: { purgeSetAside: async () => {}, download: async () => {} } }
+    } as unknown as HandlerContext
+    registerAiHandlers(downloaded)
+    const changed = vi.spyOn(inferenceQueueFor(downloaded), 'modelChanged').mockResolvedValue()
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+
+    await call(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: 'qwen3.5-9b' })
+    await call(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: 'qwen3-vl-4b' })
+
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce())
+  })
+})
+

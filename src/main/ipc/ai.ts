@@ -46,6 +46,12 @@ export function registerAiHandlers(
   // Meaning-search vectors wait for suggestions to finish first.
   ai.embeddings.setBusyCheck(() => inferenceQueueFor(ctx).busy)
 
+  /** The active model changed or arrived: the queue asks again for what waited for a model. */
+  const modelChanged = () =>
+    void inferenceQueueFor(ctx)
+      .modelChanged()
+      .catch((err: unknown) => console.error('[AI] Could not queue suggestions:', err))
+
   // Models deleted last session can no longer be undone.
   void downloader.purgeSetAside().catch(() => {})
 
@@ -127,6 +133,8 @@ export function registerAiHandlers(
       .then(() => {
         // Meaning search catches up on the library now that its model is there.
         if (isMeaningModel(args.id)) ai.embeddings.backfill()
+        // The active model is there now: what waited for one gets its suggestions (H-2).
+        if (args.id === settings.get().activeModelId) modelChanged()
         telemetry.get().track(TELEMETRY_EVENTS.MODEL_DOWNLOAD_FINISHED, {
           model_id: args.id,
           size_mb: sizeMb,
@@ -199,6 +207,8 @@ export function registerAiHandlers(
     // The meaning-search model is not a vision model; it can never be the active one.
     if (args.id && isMeaningModel(args.id)) return { modelId: settings.get().activeModelId }
     settings.update({ activeModelId: args.id })
+    // A model chosen that can run picks up what waited for one; one that can't leaves it off (H-1, H-2).
+    modelChanged()
     // Telemetry: hardware/model tier enum only — never the model id beyond its tier.
     if (args.id) {
       const tier = MODEL_REGISTRY.find((m) => m.id === args.id)?.tier

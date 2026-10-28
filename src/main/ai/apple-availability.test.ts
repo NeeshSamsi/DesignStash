@@ -70,6 +70,28 @@ describe('createAppleAvailability', () => {
     expect(helper.info).toHaveBeenCalledTimes(2)
   })
 
+  it('asks again a minute after an unavailable answer, since Apple Intelligence can come back on (H-1)', async () => {
+    let now = 0
+    const helper = stubHelper(async () => info(false, 'appleIntelligenceNotEnabled'))
+    const apple = createAppleAvailability({ helper, now: () => now })
+    await apple.available()
+    now = 59_999
+    await apple.available()
+    expect(helper.info).toHaveBeenCalledOnce()
+    now = 60_000
+    await apple.available()
+    expect(helper.info).toHaveBeenCalledTimes(2)
+  })
+
+  it('forgets its answer on refresh, so the next question asks the helper (H-1)', async () => {
+    const helper = stubHelper(async () => info(true))
+    const apple = createAppleAvailability({ helper })
+    await apple.available()
+    apple.refresh()
+    await apple.available()
+    expect(helper.info).toHaveBeenCalledTimes(2)
+  })
+
   it('reads the real answer through the fake helper', async () => {
     real = new NativeHelper({
       binaryPath: process.execPath,

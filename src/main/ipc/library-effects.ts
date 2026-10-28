@@ -40,7 +40,10 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
         countsChanged(ctx)
         settleDrafts(ctx, event.updates)
       },
-      onVariations: (_pileId, mockupIds) => pushDrafts(ctx, mockupIds)
+      onVariations: (_pileId, mockupIds) => pushDrafts(ctx, mockupIds),
+      // Apple Intelligence switched off mid-session (H-1): a fresh provider and a fresh answer next time.
+      onModelUnavailable: () =>
+        void ctx.ai.modelUnavailable().catch((err: unknown) => console.error('[AI] Could not drop the model:', err))
     })
     queues.set(ctx, queue)
   }

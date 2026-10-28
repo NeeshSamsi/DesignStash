@@ -11,6 +11,8 @@ export function modelUndoOps(deps: {
   downloader: Pick<ModelDownloader, 'restoreSetAside' | 'setAside'>
   embeddings: Pick<EmbeddingService, 'backfill' | 'modelRemoved'>
   settings: Pick<SettingsStore, 'get' | 'update'>
+  /** A model is active again (an undone Delete model): the queue asks for what waited for one (H-2). */
+  activeModelBack?: () => void
 }): {
   restore(id: string, makeActive: boolean): Promise<boolean>
   setAside(id: string): Promise<boolean>
@@ -20,7 +22,10 @@ export function modelUndoOps(deps: {
     async restore(id, makeActive) {
       const restored = await downloader.restoreSetAside(id)
       if (restored && isMeaningModel(id)) embeddings.backfill()
-      if (restored && makeActive) settings.update({ activeModelId: id })
+      if (restored && makeActive) {
+        settings.update({ activeModelId: id })
+        deps.activeModelBack?.()
+      }
       return restored
     },
     async setAside(id) {

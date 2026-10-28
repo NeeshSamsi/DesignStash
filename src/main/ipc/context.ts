@@ -28,6 +28,7 @@ import { getDb } from '../db/connection'
 import { createDataOps, type DataOps } from '../undo/ops'
 import { createUndoService, type UndoService } from '../undo/undo-service'
 import { modelUndoOps } from '../undo/model-ops'
+import { inferenceQueueFor } from './library-effects'
 import type { UndoMenuItems } from '../undo/menu-items'
 
 /**
@@ -49,6 +50,8 @@ export interface AiRuntime {
   activeProvider(): Promise<InferenceProvider | null>
   /** Whether Apple's on-device model can run here, and why not (the Swift helper's `info`, cached a while). */
   appleStatus(): Promise<AppleStatus>
+  /** The active model said it can't run: drop the provider built for it and ask afresh whether it can (H-1). */
+  modelUnavailable(): Promise<void>
   /** Meaning search: the vectors, their queue, and the closeness of each mockup to a search. */
   embeddings: EmbeddingService
 }
@@ -148,6 +151,10 @@ export function createAiRuntime(
     // End-to-end runs never ask the real helper, so what they see doesn't depend on the Mac.
     appleStatus: () =>
       stubAiEnabled() ? Promise.resolve({ available: false, reason: 'unknown' }) : apple.status(),
+    async modelUnavailable() {
+      apple.refresh()
+      await providers.dispose()
+    },
     embeddings
   }
 }
@@ -176,7 +183,7 @@ export function createHandlerContext(opts: {
   const dataOps = createDataOps({ repo: opts.repo, db: getDb() })
   const ai = createAiRuntime(opts.settings, opts.repo, app.getPath('userData'))
   const { settings } = opts
-  return {
+  const ctx: HandlerContext = {
     settings,
     telemetry: opts.telemetry,
     repo: opts.repo,
@@ -192,7 +199,15 @@ export function createHandlerContext(opts: {
       push: (state) => push(IPC_CHANNELS.UNDO_STATE, state),
       menu: opts.undoMenu ?? (() => {}),
       // Delete model sets a model aside until quit; its undo brings it back.
-      models: modelUndoOps({ downloader: ai.downloader, embeddings: ai.embeddings, settings }),
+      models: modelUndoOps({
+        downloader: ai.downloader,
+        embeddings: ai.embeddings,
+        settings,
+        activeModelBack: () =>
+          void inferenceQueueFor(ctx)
+            .modelChanged()
+            .catch((err: unknown) => console.error('[AI] Could not queue suggestions:', err))
+      }),
       editField: (direction) => {
         const window = opts.getWindow()
         if (!window || window.isDestroyed()) return
@@ -201,4 +216,5 @@ export function createHandlerContext(opts: {
       }
     })
   }
+  return ctx
 }
