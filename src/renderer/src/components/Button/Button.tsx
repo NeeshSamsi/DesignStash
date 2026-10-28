@@ -51,11 +51,13 @@ export function Button({ children, ...rest }: ButtonProps) {
     ...props
   } = { ...BUTTON_DEFAULTS, ...rest }
   const iconOnly = size === 'icon' || size === 'icon-xs' || size === 'icon-sm'
+  // Hidden: aria-busy already says it is working, and the label says what.
   const spinner = (
     <Spinner
       size={
         size === 'xs' || size === 'sm' || size === 'icon-xs' || size === 'icon-sm' ? 'sm' : 'base'
       }
+      aria-hidden
     />
   )
 

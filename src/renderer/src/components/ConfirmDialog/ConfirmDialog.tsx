@@ -4,7 +4,6 @@ import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { DialogCancel, DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/Button'
-import { Spinner } from '@renderer/components/Spinner'
 import { CONFIRM_DIALOG_DEFAULTS, type ConfirmDialogContractProps } from './ConfirmDialog.types'
 import { confirmDialogVariants } from './ConfirmDialog.variants'
 
@@ -94,18 +93,13 @@ export function ConfirmDialog({
         <Button
           variant={destructive ? 'destructive' : 'primary'}
           size="sm"
-          aria-busy={props.working || undefined}
+          loading={props.working}
           disabled={props.working}
           onClick={onConfirm}
         >
-          {props.working ? (
-            <>
-              <Spinner size="sm" aria-hidden />
-              {workingLabel ?? WORKING[props.variant]}
-            </>
-          ) : (
-            (confirmLabel ?? CONFIRM[props.variant])
-          )}
+          {props.working
+            ? (workingLabel ?? WORKING[props.variant])
+            : (confirmLabel ?? CONFIRM[props.variant])}
         </Button>
       </div>
     </DialogFrame>

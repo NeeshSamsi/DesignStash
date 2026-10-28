@@ -2,7 +2,6 @@ import { Progress } from '@renderer/components/Progress'
 import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/Button'
-import { Spinner } from '@renderer/components/Spinner'
 import { PROGRESS_DIALOG_DEFAULTS, type ProgressDialogContractProps } from './ProgressDialog.types'
 import { progressDialogVariants } from './ProgressDialog.variants'
 
@@ -78,8 +77,7 @@ export function ProgressDialog({
           </Button>
         )}
         {props.state === 'cancelling' && (
-          <Button variant="secondary" size="sm" disabled aria-busy>
-            <Spinner size="sm" aria-hidden />
+          <Button variant="secondary" size="sm" loading disabled>
             Cancelling…
           </Button>
         )}

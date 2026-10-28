@@ -5,7 +5,6 @@ import { Field } from '@renderer/components/Field'
 import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/Button'
-import { Spinner } from '@renderer/components/Spinner'
 import { FORM_DIALOG_DEFAULTS, type FormDialogContractProps } from './FormDialog.types'
 import { formDialogVariants } from './FormDialog.variants'
 
@@ -101,15 +100,8 @@ export function FormDialog({
           <Button variant="secondary" size="sm" type="button" onClick={onCancel}>
             Cancel
           </Button>
-          <Button size="sm" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
-            {submitting ? (
-              <>
-                <Spinner size="sm" aria-hidden />
-                {submittingLabel}
-              </>
-            ) : (
-              submitLabel
-            )}
+          <Button size="sm" type="submit" loading={submitting} disabled={submitting}>
+            {submitting ? submittingLabel : submitLabel}
           </Button>
         </div>
       </form>

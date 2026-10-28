@@ -25,6 +25,18 @@ describe('Button', () => {
     expect(button.className).not.toMatch(/(^|\s)bg-/)
   })
 
+  it('keeps its own name while loading: the spinner says nothing to screen readers', () => {
+    render(
+      <Button size="sm" loading disabled>
+        Merging…
+      </Button>
+    )
+    const button = screen.getByRole('button', { name: 'Merging…' })
+    expect(button.getAttribute('aria-busy')).toBe('true')
+    expect(button.querySelector('[data-ds="Spinner"]')).not.toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
   it('draws the two small icon sizes at the ui sizes', () => {
     for (const size of ['icon-xs', 'icon-sm'] as const) {
       const { container, unmount } = render(<Button size={size} aria-label="Dismiss" />)
