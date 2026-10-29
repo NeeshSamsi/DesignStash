@@ -37,3 +37,6 @@ dev-fixtures/
 # SwiftPM build output
 .build/
 .swiftpm/
+
+# Demo videos (internal test clips and capture work files)
+demo/out/

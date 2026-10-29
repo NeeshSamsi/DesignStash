@@ -23,6 +23,7 @@
     "postpackage:mac": "node scripts/rebuild-better-sqlite3.mjs node",
     "package:mac:signed": "electron-builder --mac -c.mac.notarize=true",
     "package": "pnpm package:stage && pnpm build && pnpm package:mac",
+    "demo:render": "tsx --tsconfig tsconfig.node.json scripts/demo-render.ts",
     "helper:build": "node scripts/build-helper.mjs",
     "helper:try": "tsx --tsconfig tsconfig.node.json scripts/helper-try.ts",
     "test:e2e": "playwright test",
