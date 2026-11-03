@@ -50,6 +50,7 @@
   --radius-2xl: var(--ds-radius-2xl);
   --radius-3xl: var(--ds-radius-3xl);
   --radius-4xl: var(--ds-radius-4xl);
+  --radius-card-ring: var(--ds-radius-card-ring);
   --font-sans: var(--ds-font-body);
   --font-heading: var(--ds-font-display);
 }

@@ -11,19 +11,23 @@ export const INPUT_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=212-190',
   section: '2 · Primitives (shadcn)',
   description:
-    'Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.',
+    'Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.\nstate=writing (2026-10-24): the AI is writing this field. The placeholder “Writing with AI…” pulses like Skeleton (animate-pulse; static with reduced motion). It stays a real, focusable field: typing makes it a normal field that belongs to the person. state=ai-filled (2026-10-26): as Textarea’s, the background/primary-weak tint on a field the AI just filled; it fades after 1.2s.\nshow-hint and show-clear (2026-10-28): on search, the ⌘ hint at the end and the clear button while there is text, both on by default. The leading icon is icon-start, off by default. The tag filter’s search field has no icon and no hint.',
   code: 'ui/input.tsx + input-group',
   axes: {
-    variant: ['text', 'search', 'inline-title']
+    variant: ['text', 'search', 'inline-title'],
+    state: ['default', 'writing', 'ai-filled']
   },
   axisDefaults: {
-    variant: 'text'
+    variant: 'text',
+    state: 'default'
   },
   flags: {},
   interactionStates: ['focus'],
   disabled: true,
   booleans: {
-    showIconStart: false
+    showIconStart: false,
+    showHint: true,
+    showClear: true
   },
   texts: {
     value: 'Mockup title'
@@ -35,14 +39,21 @@ export const INPUT_CONTRACT = {
 } as const satisfies ComponentContract
 
 export type InputVariant = 'text' | 'search' | 'inline-title'
+export type InputState = 'default' | 'writing' | 'ai-filled'
 
 export interface InputContractProps {
   /** Figma `variant` (3 options). Default `text`. */
   variant?: InputVariant
+  /** Figma `state` (3 options). Default `default`. */
+  state?: InputState
   /** Figma `state=disabled`. */
   disabled?: boolean
   /** Figma boolean. Default `false`. */
   showIconStart?: boolean
+  /** Figma boolean. Default `true`. */
+  showHint?: boolean
+  /** Figma boolean. Default `true`. */
+  showClear?: boolean
   /** Figma text. Default "Mockup title". */
   value?: string
   /** Figma icon swap. Default `search-02`. */
@@ -52,8 +63,11 @@ export interface InputContractProps {
 /** Figma defaults. Slots have none. */
 export const INPUT_DEFAULTS = {
   variant: 'text',
+  state: 'default',
   disabled: false,
   showIconStart: false,
+  showHint: true,
+  showClear: true,
   value: 'Mockup title',
   iconStart: Search02Icon
 } satisfies InputContractProps

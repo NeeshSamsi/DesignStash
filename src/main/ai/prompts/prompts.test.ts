@@ -44,6 +44,18 @@ describe('prompt profiles', () => {
     }
   })
 
+  it("names a pile's variations with the 4B and the 9B, and leaves Apple's piles to the fallback (round 4 B)", () => {
+    expect(qwen3vl.variations).toBe(true)
+    expect(qwen35.variations).toBe(true)
+    expect(apple.variations).toBeUndefined()
+  })
+
+  it("has only the 9B write a pile's base in that request; the 4B and Apple keep the top's own title (round 4 B)", () => {
+    expect(qwen35.pileBase).toBe(true)
+    expect(qwen3vl.pileBase).toBeUndefined()
+    expect(apple.pileBase).toBeUndefined()
+  })
+
   it('checks the scene things from the tuning, for every model', () => {
     for (const profile of [qwen3vl, qwen35, apple]) expect(profile.sceneThings).toBe(SCENE_THINGS)
   })
@@ -96,6 +108,12 @@ describe('prompt profiles', () => {
     expect(qwen35.blankFallback).toBeUndefined()
     expect(textOf(qwen35.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))).toContain(`${SHIPPED.printedRule}\n${MASK_RULE}`)
     expect(textOf(qwen35.buildRequest(INPUT, IMAGE))).not.toContain(MASK_RULE)
+  })
+
+  it("checks the 4B's scene things on the cover scaled to 512 px, and every other model's at full size (round 4)", () => {
+    expect(qwen3vl.checkEdge).toBe(512)
+    expect(PROMPT_PROFILES.apple.checkEdge).toBeUndefined()
+    expect(PROMPT_PROFILES['qwen3.5-9b'].checkEdge).toBeUndefined()
   })
 
   it('looks a profile up by id, and has none for an unknown id', () => {

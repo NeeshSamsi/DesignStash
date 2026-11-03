@@ -5,6 +5,11 @@ import { isStashed } from './stashed'
 import { searchKeywords } from '../search-keywords'
 import { nameKeywords } from '../search-names'
 import { meaningDocument } from '../../search/meaning'
+import { fullTitle } from '@shared/pile-variation'
+import type { Mockup } from '../schema'
+
+/** What search knows a mockup by: its full title, `base · variation` in a pile. */
+const searchTitle = (m: Pick<Mockup, 'title' | 'variation'>) => fullTitle(m.title, m.variation ? { words: m.variation } : null)
 
 /**
  * An English plural folded to its singular ("bags" → "bag", "boxes" → "box", "stationeries" →
@@ -26,8 +31,9 @@ export function singular(word: string): string {
  * form matches, so "fries" still finds "fries". Null when nothing is left.
  */
 function ftsTerm(word: string): string | null {
+  // Letters of any script with their marks (the index's unicode61 tokenizer keeps them as words).
   const parts = word
-    .replace(/[^a-zA-Z0-9\-_]/g, '')
+    .replace(/[^\p{L}\p{M}\p{N}_-]/gu, '')
     .split('-')
     .filter(Boolean)
   if (parts.length === 0) return null
@@ -46,8 +52,8 @@ const FILLER = new Set(['on', 'in', 'with', 'the', 'a', 'and', 'of', 'for', 'at'
 
 /**
  * The FTS5 MATCH expression for a free-text query: each word prefix-matched, with everything but
- * letters, digits, hyphens and underscores dropped, and filler words left out unless the query is
- * only filler. Null when no word is left.
+ * letters (of any script), digits, hyphens and underscores dropped, and filler words left out
+ * unless the query is only filler. Null when no word is left.
  */
 export function ftsMatchQuery(query: string): string | null {
   const words = query.split(/\s+/).filter(Boolean)
@@ -93,7 +99,7 @@ export class SearchRepository {
       .from(mockups)
       .where(and(isStashed, isNull(mockups.deletedAt)))
       .all()
-      .map((m) => ({ id: m.id, text: meaningDocument(m.title, m.description, this.tagLabelsOf(m.id)) }))
+      .map((m) => ({ id: m.id, text: meaningDocument(searchTitle(m), m.description, this.tagLabelsOf(m.id)) }))
   }
 
   upsertSearchIndex(mockupId: number): void {
@@ -104,13 +110,14 @@ export class SearchRepository {
     const names = ctx?.originalFilename
       ? nameKeywords(ctx.originalFilename, ctx.folderTrail ?? [])
       : []
-    const keywords = searchKeywords(m.title, m.description ?? '', tagLabels, names).join(' ')
+    const title = searchTitle(m)
+    const keywords = searchKeywords(title, m.description ?? '', tagLabels, names).join(' ')
     this.db.run(sql`DELETE FROM mockups_fts WHERE rowid = ${mockupId}`)
     this.db.run(
       sql`INSERT INTO mockups_fts(rowid, title, description, tags, keywords)
-          VALUES (${mockupId}, ${m.title}, ${m.description ?? ''}, ${tagLabels.join(' ')}, ${keywords})`
+          VALUES (${mockupId}, ${title}, ${m.description ?? ''}, ${tagLabels.join(' ')}, ${keywords})`
     )
-    this.indexListener?.(mockupId, meaningDocument(m.title, m.description, tagLabels))
+    this.indexListener?.(mockupId, meaningDocument(title, m.description, tagLabels))
   }
 
   /** Whether the mockup is in the index (stashed and not in Trash). */
@@ -141,7 +148,7 @@ export class SearchRepository {
 
   /**
    * Prefix-match a free-text query. Returns mockup id → weighted bm25 rank (lower is better), or null when the query
-   * has no searchable terms (so the caller skips the filter).
+   * has no searchable terms (nothing to match: the caller finds nothing by keyword).
    */
   rankMatches(query: string): Map<number, number> | null {
     const ftsTerms = ftsMatchQuery(query)

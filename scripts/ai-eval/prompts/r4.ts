@@ -24,6 +24,8 @@ export interface R4Options {
    * one mockup: the answer's image is kept there for a check that wants it.
    */
   transform?: (request: Record<string, unknown>, memo: { answerImage?: string }) => Record<string, unknown> | Promise<Record<string, unknown>>
+  /** Asked about after the answer as the shipped scene things are, and redone and cut the same way on a "no". */
+  moreSceneThings?: readonly string[]
 }
 
 /** The shipped request's text with the swaps made. */
@@ -46,7 +48,11 @@ export function appR4(options: R4Options): AnalyzeVersion {
     async analyze(ctx: AnalyzeContext) {
       if (!shipped) throw new Error(`No app prompt profile for ${model}`)
       const swap = options.swap ?? []
-      const profile: PromptProfile = { ...shipped, buildRequest: (input, imageUrl) => swapped(shipped.buildRequest(input, imageUrl), swap) }
+      const profile: PromptProfile = {
+        ...shipped,
+        buildRequest: (input, imageUrl) => swapped(shipped.buildRequest(input, imageUrl), swap),
+        ...(options.moreSceneThings && { sceneThings: [...(shipped.sceneThings ?? []), ...options.moreSceneThings] })
+      }
       const memo: { answerImage?: string } = {}
       if (model === 'apple') {
         helper ??= new NativeHelper({ binaryPath: resolveHelperPath(), idleMs: 3_000 })
@@ -117,4 +123,42 @@ export async function smaller(url: string, edge: number): Promise<string> {
   const bytes = Buffer.from(url.slice(url.indexOf(',') + 1), 'base64')
   const jpeg = await sharp(bytes).resize(edge, edge, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer()
   return `data:image/jpeg;base64,${jpeg.toString('base64')}`
+}
+
+/**
+ * Round 4's 512 px hint experiments: the object hint on the cover scaled to `hintEdge` px, with its
+ * question swapped for `hintText` when given, and the scene checks on the cover scaled to 512 px.
+ * The 4B's profile scales its checks to 512 px itself now (`checkEdge`, with the same function), so
+ * a check that already fits is left as it is.
+ */
+export function smallerHint(hintEdge: number, hintText?: string): NonNullable<R4Options['transform']> {
+  return async (request) => {
+    const kind = requestKind(request)
+    const url = imageOf(request)
+    if (!url || (kind !== 'hint' && kind !== 'check')) return request
+    if (kind === 'check' && (await fits(url, 512))) return request
+    const resized = withImage(request, await smaller(url, kind === 'hint' ? hintEdge : 512))
+    return kind === 'hint' && hintText ? withHintText(resized, hintText) : resized
+  }
+}
+
+/** The hint's question, naming each kind of object in a set ("notebook and business cards"), so a set stays a set. */
+export const EVERY_OBJECT_HINT =
+  'What kind of object is this mockup of? Give its everyday name in one to three words, plural if there are several of it. When it shows a set of different objects, name each kind, joined by "and" (notebook and business cards). No colours, brands, printed words or setting.'
+
+/** Whether a data-URL image already fits in `edge` pixels. */
+async function fits(url: string, edge: number): Promise<boolean> {
+  const { default: sharp } = await import('sharp')
+  const { width = 0, height = 0 } = await sharp(Buffer.from(url.slice(url.indexOf(',') + 1), 'base64')).metadata()
+  return Math.max(width, height) <= edge
+}
+
+/** The hint request asking `text`, with room for a longer name. */
+function withHintText(request: Record<string, unknown>, text: string): Record<string, unknown> {
+  const messages = (request.messages as Message[]).map((m) =>
+    m.role === 'user' && Array.isArray(m.content) ? { ...m, content: m.content.map((p) => (p.type === 'text' ? { ...p, text } : p)) } : m
+  )
+  const format = structuredClone(request.response_format) as { json_schema: { schema: { properties: { object: { maxLength: number } } } } }
+  format.json_schema.schema.properties.object.maxLength = 60
+  return { ...request, messages, response_format: format, max_tokens: 40 }
 }

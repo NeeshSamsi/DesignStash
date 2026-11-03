@@ -1,7 +1,7 @@
 import { cva } from 'class-variance-authority'
 
 // Figma 222:3346. Fields sit 20px apart; the variants only decide which fields show, so the
-// class slots stay empty (approval: hint, title, description, tags; detail: description, tags).
+// class slots stay empty (approval: title, description, tags; detail: description, tags).
 export const mockupMetaFormVariants = cva('flex w-full flex-col gap-5', {
   variants: {
     variant: {
@@ -13,7 +13,8 @@ export const mockupMetaFormVariants = cva('flex w-full flex-col gap-5', {
       invalid: '',
       edited: '',
       saving: '',
-      thinking: ''
+      thinking: '',
+      writing: ''
     }
   },
   defaultVariants: { variant: 'approval', state: 'pristine' }

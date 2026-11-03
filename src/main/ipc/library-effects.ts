@@ -32,12 +32,18 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
       onStatus: (event) => {
         ctx.push(IPC_CHANNELS.AI_STATUS, event)
         if (event.updates.some((u) => u.status === 'ready')) {
-          reportFirstSuggestion(ctx.settings, (name, props) => ctx.telemetry.get().track(name, props))
+          reportFirstSuggestion(ctx.settings, (name, props) =>
+            ctx.telemetry.get().track(name, props)
+          )
         }
         // "Still sniffing" also rides on the inbox counts.
         countsChanged(ctx)
         settleDrafts(ctx, event.updates)
-      }
+      },
+      onVariations: (_pileId, mockupIds) => pushDrafts(ctx, mockupIds),
+      // Apple Intelligence switched off mid-session (H-1): a fresh provider and a fresh answer next time.
+      onModelUnavailable: () =>
+        void ctx.ai.modelUnavailable().catch((err: unknown) => console.error('[AI] Could not drop the model:', err))
     })
     queues.set(ctx, queue)
   }
@@ -46,16 +52,43 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
 
 /** The queue is done with these mockups: Look it over drafts waiting for them take what they got. */
 function settleDrafts(ctx: HandlerContext, updates: AiStatusEvent['updates']): void {
-  const done = updates.filter((u) => u.status === 'ready' || u.status === 'failed' || u.status === 'off')
+  const done = updates.filter(
+    (u) => u.status === 'ready' || u.status === 'failed' || u.status === 'off'
+  )
   if (done.length === 0) return
-  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider())
+  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider(), {
+    aiStatusOf: (id) => inferenceQueueFor(ctx).statusOf(id)
+  })
   // A suggestion that replaced an offered variant's words makes its offer's version again.
   lookOver.onItem = (item) => ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item)
   for (const { mockupId } of done) {
     lookOver
       .settle(mockupId)
-      .then((item) => item && ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item))
+      .then((item) => {
+        if (!item) return
+        ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item)
+        // The top's suggestion just named its pile: a model that names bases (the 9B) makes it what every mockup shares.
+        if (item.role === 'top') {
+          inferenceQueueFor(ctx)
+            .askPile(mockupId)
+            .catch((err: unknown) => console.error('[AI] Could not ask a pile for its base:', err))
+        }
+      })
       .catch((err: unknown) => console.error('[AI] Could not fill in a draft:', err))
+  }
+}
+
+/** A pile's variations landed (design L8): Look it over shows each changed mockup's new words. */
+function pushDrafts(ctx: HandlerContext, mockupIds: number[]): void {
+  const lookOver = new LookOverService(ctx.repo, () => ctx.ai.activeProvider(), {
+    aiStatusOf: (id) => inferenceQueueFor(ctx).statusOf(id)
+  })
+  for (const id of mockupIds) {
+    if (ctx.repo.mockups.getMockup(id)?.stage !== 'to_stash') continue
+    lookOver
+      .item(id)
+      .then((item) => item && ctx.push(IPC_CHANNELS.LOOK_OVER_DRAFT, item))
+      .catch((err: unknown) => console.error('[AI] Could not show a pile variation:', err))
   }
 }
 
@@ -77,6 +110,21 @@ export function mockupsArrived(ctx: HandlerContext, ids: number[]): void {
   inferenceQueueFor(ctx)
     .enqueue(withPileMembers(ctx, ids))
     .catch((err: unknown) => console.error('[AI] Could not queue suggestions:', err))
+}
+
+/**
+ * An undo or redo touched these mockups: the ones it brought back to an inbox are queued for their
+ * suggestions now, and the ones it took away (to Trash, My Stash, or gone) leave the queue.
+ */
+export function mockupsTouched(ctx: HandlerContext, ids: number[]): void {
+  const inInbox = (id: number) => {
+    const m = ctx.repo.mockups.getMockup(id)
+    return m !== undefined && m.deletedAt === null && m.stage !== 'stashed'
+  }
+  const back = ids.filter(inInbox)
+  const away = ids.filter((id) => !inInbox(id))
+  if (away.length > 0) mockupsLeft(ctx, away)
+  if (back.length > 0) mockupsArrived(ctx, back)
 }
 
 /** Tell the renderer the sidebar counts after anything that moves mockups between inboxes, My Stash and Trash. */

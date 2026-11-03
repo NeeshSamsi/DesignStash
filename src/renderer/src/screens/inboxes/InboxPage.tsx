@@ -1,38 +1,37 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { FileAddIcon, Layers01Icon } from '@hugeicons/core-free-icons'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { InboxItem, InboxStage } from '@shared/inbox'
 import { ActionBar } from '@renderer/components/ActionBar'
 import { Banner } from '@renderer/components/Banner'
-import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { MockupCard } from '@renderer/components/MockupCard'
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
-import {
-  aiTotals,
-  pluralise,
-  sniffingBadge,
-  sniffingLine,
-  tossCopy,
-  verbFor
-} from '@renderer/lib/inbox-list'
+import { aiTotals, sniffingBadge, sniffingLine, verbFor } from '@renderer/lib/inbox-list'
 import { HeaderActions, useHeaderStatus } from '@renderer/lib/page-header-slot'
+import { mockups } from '@renderer/lib/plural'
 import { useInboxStore } from '@renderer/stores/inboxStore'
-import { toast } from '@renderer/stores/toastStore'
+import { toast, undoToast } from '@renderer/stores/toastStore'
+import { useUndoRan } from '@renderer/lib/undo-router'
 import { AddCardMenu } from '../gather/AddCardMenu'
+import type { LookOverScope } from '../look-over'
+import type { SortScope } from '../sort'
 import { useInboxList } from './useInboxList'
 import { coverUrl } from '@shared/cover-url'
 import { coverDisplay } from '@shared/library'
 
 export interface InboxPageProps {
   stage: InboxStage
-  /** Opens the Sort board (To sort) for these cards: the selection, or all of them. */
-  onSort?: (items: InboxItem[]) => void
-  /** Opens the legacy approval stepper (To stash) for these cards, until Look it over lands. */
-  onLookOver?: (items: InboxItem[]) => void
+  /** Opens the Sort board (To sort): on everything waiting, or on just the cards picked (“Sort 3”). */
+  onSort?: (scope: SortScope) => void
+  /**
+   * Opens Look it over (To stash): on everything, from a card's own Look it over, or on just the
+   * cards picked (“Look over 3”).
+   */
+  onLookOver?: (scope: LookOverScope) => void
   /** The import entry points behind the Add card (and the empty page's button). */
   onAddFiles?: () => void
   onAddFolder?: () => void
@@ -61,8 +60,6 @@ export default function InboxPage({
     .filter((item): item is InboxItem => item !== undefined)
   const targets = selected.length > 0 ? selected : (items ?? [])
 
-  const [tossing, setTossing] = useState<InboxItem[] | null>(null)
-  const [working, setWorking] = useState(false)
   const state: MockupGridState =
     items === null
       ? failed
@@ -72,25 +69,28 @@ export default function InboxPage({
         ? 'no-results'
         : 'populated'
 
+  /**
+   * Toss moves them to Trash at once, with Undo (design/specs/undo.md): no confirm, since Trash
+   * keeps them, marked with the inbox they came from, until it's emptied.
+   */
   const toss = async (list: InboxItem[]) => {
-    setWorking(true)
     const res = await window.api.invoke(IPC_CHANNELS.INBOX_TOSS, { ids: list.map((i) => i.id) })
-    setWorking(false)
-    setTossing(null)
     if (!res.success) {
       toast({ variant: 'error', message: 'Couldn’t toss those. Try again.' })
       return
     }
     selection.clear()
     await refresh()
-    const n = res.data.tossedIds.length
-    toast({ variant: 'success', message: `Tossed ${pluralise(n, 'mockup', 'mockups')}` })
+    const { tossedIds, undoEntryId } = res.data
+    if (tossedIds.length === 0) return
+    undoToast(`Tossed ${mockups(tossedIds.length)}`, undoEntryId, 'They’re in Trash')
   }
+
+  // An undo from the app's history (⌘Z, a toast's Undo) can bring tossed cards back.
+  useUndoRan(() => void refresh())
 
   // Both inboxes start with the Add card, as in Figma I1.1 and I2.1.
   const addCard = <AddCardMenu onAddFiles={onAddFiles} onAddFolder={onAddFolder} />
-
-  const tossText = tossing ? tossCopy(stage, tossing) : null
 
   const line = toSortPage ? sniffingLine(aiTotals(items ?? [], pushedTotals)) : undefined
   useHeaderStatus(state === 'populated' ? line : undefined)
@@ -167,7 +167,9 @@ export default function InboxPage({
               showStatus={badge !== undefined}
               {...(badge ? { status: badge } : {})}
               state={coverDisplay(item, selection.isSelected(key))}
-              {...(!toSortPage && onLookOver ? { onLookItOver: () => onLookOver([item]) } : {})}
+              {...(!toSortPage && onLookOver
+                ? { onLookItOver: () => onLookOver({ kind: 'from', unitId: item.id }) }
+                : {})}
             />
           )
         })}
@@ -184,27 +186,24 @@ export default function InboxPage({
                   ? 'Toss this haul'
                   : 'Toss these'
             }
-            onCancel={() => setTossing(targets)}
+            onCancel={() => void toss(targets)}
             primaryLabel={primary}
-            onPrimary={() => (toSortPage ? onSort?.(targets) : onLookOver?.(targets))}
+            onPrimary={() =>
+              toSortPage
+                ? onSort?.(
+                    selected.length > 0
+                      ? { kind: 'only', mockupIds: selected.map((item) => item.id) }
+                      : { kind: 'all' }
+                  )
+                : onLookOver?.(
+                    selected.length > 0
+                      ? { kind: 'only', unitIds: selected.map((item) => item.id) }
+                      : { kind: 'all' }
+                  )
+            }
           />
         </HeaderActions>
       )}
-      <ConfirmDialog
-        open={tossing !== null}
-        variant="destructive"
-        working={working}
-        detail={tossText?.detailTitle !== undefined}
-        title={tossText?.title ?? ''}
-        description={tossText?.description ?? ''}
-        detailTitle={tossText?.detailTitle ?? ''}
-        detailMeta={tossText?.detailMeta ?? ''}
-        confirmLabel={tossText?.confirmLabel ?? 'Discard'}
-        workingLabel="Discarding…"
-        cancelLabel="Cancel"
-        onCancel={() => setTossing(null)}
-        onConfirm={() => tossing && void toss(tossing)}
-      />
     </div>
   )
 }

@@ -1,9 +1,9 @@
 import { cva } from 'class-variance-authority'
 
-// Figma 217:1203. Solid = your tag, dashed = not a tag yet. The focus ring is the shared
-// `ring-ring` (border/focus); the dashed chips keep their border so they don't jump on focus.
+// Figma 217:1203. Solid = your tag, dashed = not a tag yet. Focus is the shared focus-ring, 2px clear
+// of the chip, and every chip keeps its own border, so nothing jumps on focus.
 export const tagChipVariants = cva(
-  'group/chip relative inline-flex max-w-full shrink-0 items-center gap-1 rounded-full px-2 py-0.5 type-caption-xs-regular whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-ring data-highlighted:ring-2 data-highlighted:ring-ring',
+  'group/chip relative inline-flex max-w-full shrink-0 items-center gap-1 rounded-full px-2 py-0.5 type-caption-xs-regular whitespace-nowrap outline-none focus-visible:focus-ring data-highlighted:focus-ring',
   {
     variants: {
       variant: {
@@ -14,7 +14,9 @@ export const tagChipVariants = cva(
           'cursor-pointer border border-dashed border-base hover:border-strong hover:bg-surface-3',
         new: 'border border-primary bg-surface-3 hover:bg-surface-3-hover',
         add: 'cursor-pointer border border-dashed border-strong hover:border-primary',
-        input: 'min-w-tag-input border border-focus bg-surface-1'
+        input: 'min-w-tag-input border border-focus bg-surface-1',
+        // A tag an edit takes out: struck and muted (look-over.md, L7).
+        removed: 'bg-surface-3 line-through'
       },
       state: {
         default: '',

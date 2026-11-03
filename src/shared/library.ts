@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { VariationSchema } from './pile-variation'
 
 export const LibraryTagSchema = z.object({
   id: z.number(),
@@ -22,7 +23,15 @@ export const LibraryItemSchema = z.object({
   createdAt: z.string(),
   /** Set when this row is a pile's top: `memberCount` counts the top too. Null for a mockup on its own. */
   pile: z.object({ memberCount: z.number() }).nullable(),
-  tags: z.array(LibraryTagSchema)
+  tags: z.array(LibraryTagSchema),
+  /**
+   * The pile it's in (its top's id, the row's own id on a top), or null on its own. In a pile
+   * `title` is the pile's base: the pile card shows it, and the line under the sidebar's heading
+   * names the pile with it ("Variant in …" when `pileId` isn't the row's id, "Top of …" when it is).
+   */
+  pileId: z.number().nullable(),
+  /** In a pile, its own part of its title: the opened pile's card title and the sidebar heading. Null on its own. */
+  variation: VariationSchema.nullable()
 })
 export type LibraryItem = z.infer<typeof LibraryItemSchema>
 
@@ -48,7 +57,10 @@ export type LibraryStats = z.infer<typeof LibraryStatsSchema>
 
 export const VariantSchema = z.object({
   id: z.number(),
+  /** The pile's base. */
   title: z.string(),
+  /** Its own part of its title. */
+  variation: VariationSchema.nullable(),
   coverPath: z.string(),
   coverMissing: z.boolean(),
   coverSource: CoverSourceSchema,
@@ -91,7 +103,12 @@ export const CoverChangeSchema = z.discriminatedUnion('ok', [
   }),
   z.object({
     ok: z.literal(false),
-    reason: z.enum(['not-image', 'too-large', 'unreadable', 'no-embedded'])
+    /**
+     * `no-embedded`: the PSD has no preview of its own (or one too small). `placeholder`: its own
+     * preview is only the kit's notice ("Delete this layer"), which import already replaced with
+     * the image shipped beside it, so the cover stays.
+     */
+    reason: z.enum(['not-image', 'too-large', 'unreadable', 'no-embedded', 'placeholder'])
   })
 ])
 export type CoverChange = z.infer<typeof CoverChangeSchema>

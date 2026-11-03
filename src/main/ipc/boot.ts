@@ -5,6 +5,7 @@ import { buildReport, buildReportDetails, REPORT_LOG_LINES, type ReportFacts } f
 import { logTail } from '../logger'
 import type { ProblemReporter } from '../telemetry/problem-reporter'
 import { checkFolder, getBootStatus } from '../boot-status'
+import { stashMockupCount } from '../library/stash-folder-service'
 import type { Repository } from '../db/repository'
 import type { SettingsStore } from '../settings'
 import { registerIpcHandler } from './register'
@@ -42,7 +43,10 @@ export function registerBootHandlers({ settings, repo, ...deps }: BootHandlerDep
     }
   })
 
-  registerIpcHandler(IPC_CHANNELS.BOOT_CHECK_FOLDER, (args) => checkFolder(args.path))
+  registerIpcHandler(IPC_CHANNELS.BOOT_CHECK_FOLDER, (args) => {
+    const check = checkFolder(args.path)
+    return { ...check, mockupCount: check.hasLibrary ? stashMockupCount(args.path) : null }
+  })
 
   registerIpcHandler(IPC_CHANNELS.SETTINGS_GET, () => settings.get())
 

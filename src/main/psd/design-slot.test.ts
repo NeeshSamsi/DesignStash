@@ -1,10 +1,10 @@
-import { describe, it, expect, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, existsSync } from 'node:fs'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import sharp from 'sharp'
-import type { Layer, Psd } from 'ag-psd'
-import { designSlotMask, writeDesignSlotMask } from './design-slot'
+import { writePsdBuffer, type Layer, type Psd } from 'ag-psd'
+import { SLOT_MASK_NONE, designSlotMask, slotMaskSettled, writeDesignSlotMask } from './design-slot'
 
 const W = 20
 const H = 10
@@ -103,36 +103,120 @@ describe('writeDesignSlotMask', () => {
     dirs.push(d)
     return d
   }
+  /** A white cover of this size; each size its own file, since sharp keeps what it read of a path. */
   const cover = async (dir: string, w: number, h: number) => {
-    const p = join(dir, 'cover.webp')
+    const p = join(dir, `cover-${w}x${h}.webp`)
     await sharp({ create: { width: w, height: h, channels: 3, background: '#ffffff' } }).webp().toFile(p)
     return p
   }
   const doc = psd([so('Change This', [0, 0, 10, 10])])
+  /** The PSD's header says it is W by H, like `psd()`. */
+  const header = async () => ({ width: W, height: H })
+  const reading = (d: Psd) => ({ header, read: async () => d })
 
   it('writes a cover-sized mask when the cover has the document shape', async () => {
     const dir = tempDir()
     const out = join(dir, 'slot-mask.png')
-    const wrote = await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), out, { read: async () => doc })
-    expect(wrote).toBe(true)
+    expect(await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), out, reading(doc))).toBe('written')
     const meta = await sharp(out).metadata()
     expect([meta.width, meta.height]).toEqual([40, 20])
     const { channels } = await sharp(out).stats()
     expect(channels[0]!.mean / 255).toBeCloseTo(0.5, 1)
   })
 
-  it('writes nothing when the cover has another shape, there is no slot, or the PSD cannot be read', async () => {
+  it('writes nothing, and says why, when the cover has another shape, there is no slot, or the PSD cannot be read', async () => {
     const dir = tempDir()
     const out = join(dir, 'slot-mask.png')
-    expect(await writeDesignSlotMask('x.psd', await cover(dir, 30, 30), out, { read: async () => doc })).toBe(false)
-    expect(await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), out, { read: async () => psd([]) })).toBe(false)
-    expect(
-      await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), out, {
-        read: async () => {
-          throw new Error('bad psd')
-        }
-      })
-    ).toBe(false)
+    expect(await writeDesignSlotMask('x.psd', await cover(dir, 30, 30), out, reading(doc))).toBe('other-shape')
+    expect(await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), out, reading(psd([])))).toBe('no-slot')
+    const broken = async () => {
+      throw new Error('bad psd')
+    }
+    expect(await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), out, { header, read: broken })).toBe('unreadable')
+    expect(await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), out, { header: broken, read: async () => doc })).toBe('unreadable')
     expect(existsSync(out)).toBe(false)
+  })
+
+  it('reads the slot of a PSB (Large Document Format) from the file itself, as of a PSD (H-12)', async () => {
+    const dir = tempDir()
+    const slotted = psd([so('Change This', [0, 0, 10, 10], { placedLayer: { id: '20953ddb-9391-11ec-b4f1-c15674f50bc4', type: 'raster', transform: [0, 0, 10, 0, 10, 10, 0, 10], width: 10, height: 10 } as unknown as NonNullable<Layer['placedLayer']> })])
+    for (const [name, psb] of [['original.psd', false], ['original.psb', true]] as const) {
+      const path = join(dir, name)
+      writeFileSync(path, Buffer.from(writePsdBuffer(slotted, { psb })))
+      const out = join(dir, `${name}-slot-mask.png`)
+      expect(await writeDesignSlotMask(path, await cover(dir, 40, 20), out)).toBe('written')
+      const { channels } = await sharp(out).stats()
+      expect(channels[0]!.mean / 255).toBeCloseTo(0.5, 1)
+    }
+  })
+
+  it('settles another shape from the header alone, without reading the layers', async () => {
+    const dir = tempDir()
+    const read = vi.fn(async () => doc)
+    expect(await writeDesignSlotMask('x.psd', await cover(dir, 30, 30), join(dir, 'slot-mask.png'), { header, read })).toBe('other-shape')
+    expect(read).not.toHaveBeenCalled()
+  })
+
+  /** A layer read without its pixels, as the raw read leaves it; `decode` gives them. */
+  const bare = (l: Layer): Layer => {
+    const rest = { ...l }
+    delete rest.imageData
+    return rest
+  }
+
+  it('decodes only the layers the mask needs: the slot, its clipping base and what is painted over it', async () => {
+    const dir = tempDir()
+    const full = {
+      floor: layer('Floor', [0, 0, 20, 10]),
+      base: layer('Screen base', [0, 0, 10, 10]),
+      slot: so('Change This', [0, 0, 10, 10], { clipping: true }),
+      hand: layer('Hand', [5, 0, 8, 10]),
+      far: layer('Plant', [12, 0, 20, 10])
+    }
+    const read = async () => psd([bare(full.floor), bare(full.base), bare(full.slot), bare(full.hand), bare(full.far)])
+    const decoded: string[] = []
+    const decode = (l: Layer) => {
+      decoded.push(l.name ?? '')
+      l.imageData = Object.values(full).find((f) => f.name === l.name)!.imageData!
+    }
+
+    expect(await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), join(dir, 'slot-mask.png'), { header, read, decode })).toBe('written')
+
+    expect(decoded.sort()).toEqual(['Change This', 'Hand', 'Screen base'])
+    // The slot is the cover's left half (x 0 to 19 of 40), less the hand over it (x 10 to 15).
+    const { data, info } = await sharp(join(dir, 'slot-mask.png')).greyscale().raw().toBuffer({ resolveWithObject: true })
+    const at = (x: number) => data[10 * info.width + x]
+    expect([at(4), at(13), at(18), at(30)]).toEqual([255, 0, 255, 0])
+  })
+
+  it('skips a PSD whose needed layers would take more than its budget to decode', async () => {
+    const dir = tempDir()
+    const decode = vi.fn()
+    const read = async () => psd([bare(so('Change This', [0, 0, 10, 10]))])
+    expect(
+      await writeDesignSlotMask('x.psd', await cover(dir, 40, 20), join(dir, 'slot-mask.png'), { header, read, decode, budgetBytes: 100 })
+    ).toBe('too-large')
+    expect(decode).not.toHaveBeenCalled()
+  })
+
+  it('remembers beside the cover that a PSD gave no mask, and forgets it once one is written', async () => {
+    const dir = tempDir()
+    const out = join(dir, 'slot-mask.png')
+    const c = await cover(dir, 40, 20)
+    expect(slotMaskSettled(dir)).toBe(false)
+
+    await writeDesignSlotMask('x.psd', c, out, reading(psd([])))
+    expect(JSON.parse(readFileSync(join(dir, SLOT_MASK_NONE), 'utf8'))).toMatchObject({ outcome: 'no-slot' })
+    expect(slotMaskSettled(dir)).toBe(true)
+
+    await writeDesignSlotMask('x.psd', c, out, reading(doc))
+    expect(existsSync(join(dir, SLOT_MASK_NONE))).toBe(false)
+    expect(slotMaskSettled(dir)).toBe(true)
+  })
+
+  it('never remembers a failure that may pass, and asks again after the detector changes', async () => {
+    const dir = tempDir()
+    writeFileSync(join(dir, SLOT_MASK_NONE), JSON.stringify({ outcome: 'no-slot', version: 0 }))
+    expect(slotMaskSettled(dir)).toBe(false)
   })
 })

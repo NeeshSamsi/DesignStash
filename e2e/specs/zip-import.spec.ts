@@ -9,7 +9,8 @@ import { makeMockupZip, makeZip } from '../fixtures/zips'
  * Zips as downloaded from free mockup sites go straight in: the PSDs inside are copied into the
  * stash and the zip is left as it was. Imports come from the DesignStash test set: its generated
  * `invalid/` and `edge/` cases (outcomes from its MANIFEST.md), `folders/Mixed Drop/` and one small
- * real zip. Started through copy:start, as the journey does; the drop and the Add menu call it too.
+ * real zip. Started through copy:start directly: the journey's gather tests cover the ways in
+ * (File › Add Files…, the Add card, ⌘O and drops), which all end in that call.
  */
 
 interface File {
@@ -76,7 +77,7 @@ test.describe('zip import on the test set', () => {
   test.skip(!testSet.available, TEST_SET_MISSING)
   test.describe.configure({ timeout: 120_000 })
 
-  test('archives that give no PSD are skipped with their reasons, and nothing lands', async ({
+  test('archives that give no PSD are skipped with their reasons, and a PSB inside a zip lands', async ({
     app
   }) => {
     const invalid = testSet.generated('invalid')
@@ -88,20 +89,27 @@ test.describe('zip import on the test set', () => {
       'Rar_Mockup.rar': 'archive-unsupported',
       'No_PSD_Inside.zip': 'no-psd-in-archive',
       'Empty.zip': 'no-psd-in-archive',
-      'Only_PSB_Inside.zip': 'no-psd-in-archive',
       // The PSD is one zip deeper than the one level that is opened.
       'Three_Levels_Deep.zip': 'no-psd-in-archive',
       'Truncated_Download.zip': 'unreadable',
       'Not_Really_A_Zip.zip': 'unreadable'
     })
+    // A PSB, Photoshop's Large Document Format, is taken like a PSD (H-12): the zip's one lands. Its
+    // composite reads as a near-blank canvas and the zip has no preview image, so that is its cover.
+    expect(skipped(haul)).not.toHaveProperty(['Only_PSB_Inside.zip'])
+    expect(haul.files.find((f) => f.name === 'Huge Canvas Mockup.psb')).toMatchObject({ status: 'done' })
+    expect((await toSort(app)).find((i) => i.title === 'Huge Canvas Mockup')).toMatchObject({
+      coverSource: 'embedded'
+    })
+
     // The corrupt PSD may land with no preview, or be skipped as unreadable. It must not stop the haul.
     const broken = haul.files.find((f) => f.name === 'Broken Mockup.psd')
     expect(broken?.status === 'done' || broken?.skipReason === 'unreadable').toBe(true)
-    expect(haul.landed).toBe(broken?.status === 'done' ? 1 : 0)
-    expect(haul.skipped).toMatchObject({ archiveUnsupported: 3, noPsdInArchive: 4 })
+    expect(haul.landed).toBe(broken?.status === 'done' ? 2 : 1)
+    expect(haul.skipped).toMatchObject({ archiveUnsupported: 3, noPsdInArchive: 3 })
 
     // An unreadable file keeps the summary up until it is dismissed.
-    await expect(app.window.getByText(/^[01] copied · (9|10) skipped$/)).toBeVisible()
+    await expect(app.window.getByText(/^(1 copied · 9|2 copied · 8) skipped$/)).toBeVisible()
     // Three_Levels_Deep was staged to look inside; nothing is left behind.
     await expect.poll(() => existsSync(join(app.stash, '.staging'))).toBe(false)
   })

@@ -39,11 +39,19 @@ describe('plain copy', () => {
       'not-writable',
       'no-space',
       'verify-failed',
+      'busy',
+      'no-stash',
       'failed'
     ] as const) {
       const { description } = stashFailureCopy(reason)
       expect(description).not.toMatch(/[/\\]|_|failed:|ENOENT/)
     }
+    expect(stashFailureCopy('no-stash').description).toBe(
+      'There’s no stash in that folder. Pick it again to move your stash there.'
+    )
+    expect(stashFailureCopy('busy').description).toBe(
+      'Mockups are still copying into your stash. Try again once the copy finishes or you cancel it.'
+    )
     for (const reason of ['offline', 'disk-full', 'checksum', 'server', undefined] as const) {
       expect(downloadFailureCopy(reason)).toMatch(/try again|Try again/)
     }

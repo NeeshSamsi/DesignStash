@@ -1,19 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { variantMatrix } from '@renderer/design-system/matrix'
-import { Dialog, type DialogProps } from './Dialog'
-import { DIALOG_CONTRACT } from './Dialog.types'
+import { Dialog } from './Dialog'
+
+const buttons = () => screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent)
 
 describe('Dialog', () => {
-  it.each(variantMatrix(DIALOG_CONTRACT))('renders %s', (_label, props) => {
-    const { baseElement } = render(<Dialog {...(props as DialogProps)} />)
-    expect(baseElement.querySelector('[data-ds="Dialog"]')).not.toBeNull()
+  it('gives a dialog a Close button, a content area and Confirm', () => {
+    render(<Dialog variant="dialog" title="Move your stash?" />)
+    expect(screen.getByText('Move your stash?')).toBeTruthy()
+    expect(screen.getByText('Content slot')).toBeTruthy()
+    expect(buttons()).toEqual(['Close', 'Cancel', 'Confirm'])
   })
 
-  it('renders the Figma default text', () => {
-    render(<Dialog />)
-    for (const text of Object.values<string>(DIALOG_CONTRACT.texts)) {
-      expect(screen.getAllByText(text).length).toBeGreaterThan(0)
-    }
+  it('gives an alert dialog no Close button and no content area, and a destructive action', () => {
+    render(<Dialog variant="alert-dialog" />)
+    expect(screen.queryByText('Content slot')).toBeNull()
+    expect(buttons()).toEqual(['Cancel', 'Move to Trash'])
+  })
+
+  it('shows the description only when asked', () => {
+    const { rerender } = render(<Dialog description="What this is for." />)
+    expect(screen.getByText('What this is for.')).toBeTruthy()
+    rerender(<Dialog description="What this is for." showDescription={false} />)
+    expect(screen.queryByText('What this is for.')).toBeNull()
   })
 })

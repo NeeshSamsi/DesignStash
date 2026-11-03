@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
 import { TrashItemSchema, TrashStatsSchema } from '../inbox'
+import { withUndoEntry } from './undo'
 
 /** Mockups or piles to move to Trash or bring back. */
 const TrashTargetsSchema = z.object({ ids: z.array(z.number()).min(1) })
@@ -16,11 +17,11 @@ const RestoreResultSchema = z.object({
 export const trashContract = {
   [IPC_CHANNELS.MOCKUP_TRASH]: {
     request: TrashTargetsSchema,
-    response: z.object({ ok: z.boolean(), count: z.number() })
+    response: withUndoEntry(z.object({ ok: z.boolean(), count: z.number() }))
   },
   [IPC_CHANNELS.MOCKUP_RESTORE]: {
     request: TrashTargetsSchema,
-    response: z.object({ ok: z.boolean(), count: z.number() })
+    response: withUndoEntry(z.object({ ok: z.boolean(), count: z.number() }))
   },
   [IPC_CHANNELS.TRASH_LIST]: {
     request: z.void(),
@@ -32,11 +33,11 @@ export const trashContract = {
   },
   [IPC_CHANNELS.TRASH_RESTORE]: {
     request: z.object({ ids: z.array(z.number()).min(1) }),
-    response: RestoreResultSchema
+    response: withUndoEntry(RestoreResultSchema)
   },
   [IPC_CHANNELS.TRASH_RESTORE_ALL]: {
     request: z.void(),
-    response: RestoreResultSchema
+    response: withUndoEntry(RestoreResultSchema)
   },
   [IPC_CHANNELS.TRASH_EMPTY]: {
     request: z.void(),

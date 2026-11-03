@@ -93,20 +93,11 @@ describe('pile operations', () => {
       const [a, b, c] = [standalone('a'), standalone('b'), standalone('c')]
       const result = repo.piles.createPile([a!.id, b!.id, c!.id], b!.id)
 
-      expect(result.pileId).toBe(b!.id)
+      expect(result).toEqual({ pileId: b!.id })
       expect(state([a!.id, b!.id, c!.id])).toEqual([
         { id: a!.id, isGroup: false, groupId: b!.id },
         { id: b!.id, isGroup: true, groupId: null },
         { id: c!.id, isGroup: false, groupId: b!.id }
-      ])
-    })
-
-    it('returns the earlier state of every row it touched', () => {
-      const [a, b] = [standalone('a'), standalone('b')]
-      const { before } = repo.piles.createPile([a!.id, b!.id], a!.id)
-      expect(before).toEqual([
-        { id: a!.id, isGroup: false, groupId: null },
-        { id: b!.id, isGroup: false, groupId: null }
       ])
     })
 
@@ -137,17 +128,13 @@ describe('pile operations', () => {
 
       const result = repo.piles.addToPile(pileId, [c!.id, d!.id])
 
-      expect(result.pileId).toBe(a!.id)
+      expect(result).toEqual({ pileId: a!.id })
       expect(
         repo
           .piles.getMockupsByGroupId(a!.id)
           .map((m) => m.id)
           .sort()
       ).toEqual([b!.id, c!.id, d!.id].sort())
-      expect(result.before).toEqual([
-        { id: c!.id, isGroup: false, groupId: null },
-        { id: d!.id, isGroup: false, groupId: null }
-      ])
     })
 
     it('refuses a target that is not a pile, or members that are not on their own', () => {
@@ -181,6 +168,19 @@ describe('pile operations', () => {
       ])
     })
 
+    it('returns the earlier state of every row it moved, titles included', () => {
+      const [a, b, c, d] = ['a', 'b', 'c', 'd'].map(standalone)
+      const target = repo.piles.createPile([a!.id, b!.id], a!.id)
+      const source = repo.piles.createPile([c!.id, d!.id], c!.id)
+
+      const { before } = repo.piles.mergePiles([source.pileId], target.pileId)
+
+      expect(before).toEqual([
+        { id: c!.id, isGroup: true, groupId: null, title: c!.title, variation: null, variationSource: null },
+        { id: d!.id, isGroup: false, groupId: c!.id, title: d!.title, variation: null, variationSource: null }
+      ])
+    })
+
     it('takes a mockup on its own as a source too, and several sources at once', () => {
       const [a, b, c, d, e] = ['a', 'b', 'c', 'd', 'e'].map(standalone)
       const target = repo.piles.createPile([a!.id, b!.id], a!.id)
@@ -194,19 +194,6 @@ describe('pile operations', () => {
           .map((m) => m.id)
           .sort()
       ).toEqual([b!.id, c!.id, d!.id, e!.id].sort())
-    })
-
-    it('restores to the earlier state from the returned rows', () => {
-      const [a, b, c, d] = ['a', 'b', 'c', 'd'].map(standalone)
-      const target = repo.piles.createPile([a!.id, b!.id], a!.id)
-      const source = repo.piles.createPile([c!.id, d!.id], c!.id)
-      const ids = [a!.id, b!.id, c!.id, d!.id]
-      const earlier = state(ids)
-
-      const { before } = repo.piles.mergePiles([source.pileId], target.pileId)
-      repo.piles.restorePileRows(before)
-
-      expect(state(ids)).toEqual(earlier)
     })
 
     it('refuses a target that is not a pile, itself as a source, or no sources', () => {
@@ -227,7 +214,7 @@ describe('pile operations', () => {
 
       const result = repo.piles.setPileTop(pileId, c!.id)
 
-      expect(result.pileId).toBe(c!.id)
+      expect(result).toEqual({ pileId: c!.id })
       expect(state([a!.id, b!.id, c!.id])).toEqual([
         { id: a!.id, isGroup: false, groupId: c!.id },
         { id: b!.id, isGroup: false, groupId: c!.id },
@@ -250,7 +237,7 @@ describe('pile operations', () => {
       const [a, b] = [standalone('a'), standalone('b')]
       const { pileId } = repo.piles.createPile([a!.id, b!.id], a!.id)
       const result = repo.piles.setPileTop(pileId, a!.id)
-      expect(result.pileId).toBe(a!.id)
+      expect(result).toEqual({ pileId: a!.id })
       expect(state([a!.id, b!.id])).toEqual([
         { id: a!.id, isGroup: true, groupId: null },
         { id: b!.id, isGroup: false, groupId: a!.id }
@@ -266,19 +253,15 @@ describe('pile operations', () => {
   })
 
   describe('disbandPile', () => {
-    it('frees every mockup and returns the rows that bring the pile back', () => {
+    it('frees every mockup', () => {
       const [a, b, c] = ['a', 'b', 'c'].map(standalone)
       const { pileId } = repo.piles.createPile([a!.id, b!.id, c!.id], b!.id)
       const ids = [a!.id, b!.id, c!.id]
-      const pileState = state(ids)
 
       const result = repo.piles.disbandPile(pileId)
 
       expect(result.freedIds.sort()).toEqual(ids.sort())
       expect(state(ids)).toEqual(ids.map((id) => ({ id, isGroup: false, groupId: null })))
-
-      repo.piles.restorePileRows(result.before)
-      expect(state(ids)).toEqual(pileState)
     })
 
     it('refuses something that is not a pile', () => {
@@ -351,34 +334,11 @@ describe('pile operations', () => {
       expect(state(ids)).toEqual(ids.map((id) => ({ id, isGroup: false, groupId: null })))
     })
 
-    it('returns the rows that bring the pile back', () => {
-      for (const removed of [0, 1, 2]) {
-        const made = ['x', 'y', 'z'].map((t) => standalone(`${t}${removed}`))
-        const ids = made.map((m) => m.id)
-        const { pileId } = repo.piles.createPile(ids, ids[0]!)
-        const before = state(ids)
-        const result = repo.piles.removeFromPile(pileId, ids[removed]!)
-        repo.piles.restorePileRows(result.before)
-        expect(state(ids)).toEqual(before)
-      }
-    })
-
     it('refuses something that is not a pile, or a mockup that is not in it', () => {
       const [a, b, c, d] = ['a', 'b', 'c', 'd'].map(standalone)
       const { pileId } = repo.piles.createPile([a!.id, b!.id], a!.id)
       expect(() => repo.piles.removeFromPile(c!.id, d!.id)).toThrow()
       expect(() => repo.piles.removeFromPile(pileId, c!.id)).toThrow()
-    })
-  })
-
-  describe('restorePileRows', () => {
-    it('skips rows that no longer exist', () => {
-      const [a, b] = [standalone('a'), standalone('b')]
-      const { before } = repo.piles.createPile([a!.id, b!.id], a!.id)
-      repo.trash.deleteMockupsHard([b!.id])
-
-      expect(() => repo.piles.restorePileRows(before)).not.toThrow()
-      expect(state([a!.id])).toEqual([{ id: a!.id, isGroup: false, groupId: null }])
     })
   })
 })

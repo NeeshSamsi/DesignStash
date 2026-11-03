@@ -27,6 +27,33 @@ async function openTagMenu(row: Locator): Promise<void> {
   await row.click({ button: 'right' })
 }
 
+/**
+ * Opens a menu row's submenu from the keyboard, once the menu has stopped moving, and waits for the
+ * submenu to stop moving too. Menus zoom and slide in, so a click aimed at a row while they move
+ * can find it moved or gone. Hovering the row opened it before, and that click was flaky.
+ */
+async function openSubmenu(window: Page, item: string): Promise<Locator> {
+  const settled = () =>
+    expect
+      .poll(
+        () =>
+          window.evaluate(
+            () =>
+              [...document.querySelectorAll('[role="menu"]')]
+                .flatMap((menu) => menu.getAnimations({ subtree: true }))
+                .filter((animation) => animation.playState === 'running').length
+          ),
+        { message: 'the open menus have stopped moving' }
+      )
+      .toBe(0)
+  await settled()
+  await window.getByRole('menuitem', { name: item, exact: true }).press('ArrowRight')
+  const submenu = window.locator('[data-slot="dropdown-menu-sub-content"]')
+  await expect(submenu).toBeVisible()
+  await settled()
+  return submenu
+}
+
 /** Right-click a tag, then pick a row of its menu. */
 async function tagMenu(window: Page, row: Locator, item: string): Promise<void> {
   await openTagMenu(row)
@@ -133,8 +160,8 @@ test.describe('Settings › Tags', () => {
     const { window } = app
     const dialog = await openTags(window)
     await openTagMenu(tagRow(dialog, 'Zephyr Pad'))
-    await window.getByRole('menuitem', { name: 'Move to', exact: true }).hover()
-    await window.getByRole('menuitem', { name: 'Style', exact: true }).click()
+    const moveTo = await openSubmenu(window, 'Move to')
+    await moveTo.getByRole('menuitem', { name: 'Style', exact: true }).click()
 
     await expect(
       dialog
@@ -156,8 +183,8 @@ test.describe('Settings › Tags', () => {
     const { window } = app
     const dialog = await openTags(window)
     await openTagMenu(tagRow(dialog, 'Zephyr Phone'))
-    await window.getByRole('menuitem', { name: 'Merge into…', exact: true }).hover()
-    await window.getByRole('menuitem', { name: 'Device · Zephyr Pad', exact: true }).click()
+    const mergeInto = await openSubmenu(window, 'Merge into…')
+    await mergeInto.getByRole('menuitem', { name: 'Device · Zephyr Pad', exact: true }).click()
 
     const ask = window
       .getByRole('dialog')
@@ -167,13 +194,16 @@ test.describe('Settings › Tags', () => {
 
     await test.step('Cancel changes nothing', async () => {
       await ask.getByRole('button', { name: 'Cancel' }).click()
+      // The ask animates out, its title already blank, so this waits on its description: the menu
+      // opens again only once the ask has left the page.
+      await expect(window.getByText('Use this when two names mean the same thing.')).toHaveCount(0)
       await expect(tagRow(dialog, 'Zephyr Phone')).toBeVisible()
     })
 
     await test.step('Merge moves the mockup and removes the source tag', async () => {
       await openTagMenu(tagRow(dialog, 'Zephyr Phone'))
-      await window.getByRole('menuitem', { name: 'Merge into…', exact: true }).hover()
-      await window.getByRole('menuitem', { name: 'Device · Zephyr Pad', exact: true }).click()
+      const mergeInto = await openSubmenu(window, 'Merge into…')
+      await mergeInto.getByRole('menuitem', { name: 'Device · Zephyr Pad', exact: true }).click()
       await window
         .getByRole('dialog')
         .filter({ hasText: 'Merge “Zephyr Phone” into “Zephyr Pad”?' })

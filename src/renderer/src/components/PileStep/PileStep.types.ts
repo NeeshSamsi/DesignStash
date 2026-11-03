@@ -9,7 +9,7 @@ export const PILE_STEP_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=566-15523',
   section: '8 · Approval & editing',
   description:
-    'One mockup in a pile, in PileRail: done (draft ready) · current · todo · skipped. show-connector draws the line to the next step. Rules: design/specs/piles.md.',
+    'One mockup in a pile, in PileRail: done (draft ready) · current · todo · skipped. show-connector draws the line to the next step. Rules: design/specs/piles.md.\nshow-note (2026-10-23, Look it over): a caption under the label for what the AI is doing on that step: “Writing with AI…” on the one being written, “Suggestions on the way” on queued ones, “Checking your edits…”, “Edits applied”, “Edits reworded”. The connector stretches with the step. Rules: design/specs/look-over.md.',
   code: null,
   axes: {
     status: ['done', 'current', 'todo', 'skipped']
@@ -21,10 +21,12 @@ export const PILE_STEP_CONTRACT = {
   interactionStates: [],
   disabled: false,
   booleans: {
-    showConnector: true
+    showConnector: true,
+    showNote: false
   },
   texts: {
-    label: 'Variant · phone_side'
+    label: 'Variant · phone_side',
+    note: 'Writing with AI…'
   },
   icons: {},
   slots: {}
@@ -37,13 +39,19 @@ export interface PileStepContractProps {
   status?: PileStepStatus
   /** Figma boolean. Default `true`. */
   showConnector?: boolean
+  /** Figma boolean. Default `false`. */
+  showNote?: boolean
   /** Figma text. Default "Variant · phone_side". */
   label?: string
+  /** Figma text. Default "Writing with AI…". */
+  note?: string
 }
 
 /** Figma defaults. Slots have none. */
 export const PILE_STEP_DEFAULTS = {
   status: 'done',
   showConnector: true,
-  label: 'Variant · phone_side'
+  showNote: false,
+  label: 'Variant · phone_side',
+  note: 'Writing with AI…'
 } satisfies PileStepContractProps

@@ -3,20 +3,25 @@ import type { ApprovalTag } from '@shared/approval'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { CoverChange, MockupDetail } from '@shared/library'
 import type { TagTree } from '@shared/tags'
+import { coverRefusal } from '@renderer/components/CoverPanel/cover-refusal'
 import type { NewTagRequest, TagVocabularyCategory } from '@renderer/components/TagEditor'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
 import { useTagTreeStore } from '@renderer/stores/tagTreeStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import {
+  discardedOf,
   draftOf,
   formFromDetail,
+  formWithEdit,
   isDirty,
   saveBlockedReason,
   type DetailDraft,
   type DetailForm
 } from './detail-edits'
 import { syncLibrary } from './library-sync'
+import { noteEdit, onEditUndo, takeRestored } from './discarded-edit'
+import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { disbandPile } from './pile-actions'
 
 type Status = 'loading' | 'ready' | 'error'
@@ -54,13 +59,28 @@ export function useDetailsData(id: number) {
   const [detail, setDetail] = useState<MockupDetail | null>(null)
   const tagTree = useTagTreeStore((s) => s.tree)
   const vocabulary = useMemo(() => toVocabulary(tagTree ?? []), [tagTree])
-  const [form, setForm] = useState<DetailForm>({ title: '', description: '', tags: [] })
-  const [saved, setSaved] = useState<DetailDraft>({ title: '', description: '', tagIds: [] })
+  const [form, setForm] = useState<DetailForm>({
+    title: '',
+    variation: null,
+    description: '',
+    tags: []
+  })
+  const [saved, setSaved] = useState<DetailDraft>({
+    title: '',
+    variation: null,
+    description: '',
+    tagIds: []
+  })
   const [saving, setSaving] = useState(false)
-  const [photoshop, setPhotoshop] = useState<PhotoshopFailure | null>(null)
+  /** Photoshop didn't open: why, and which mockup, so Try again opens the same one. */
+  const [photoshop, setPhotoshop] = useState<{ reason: PhotoshopFailure; mockupId: number } | null>(
+    null
+  )
   /** Bumps when a cover changed, so the <img> asks for the new file. */
   const [coverVersion, setCoverVersion] = useState(0)
   const [coverUi, setCoverUi] = useState<CoverUi>('default')
+  /** Why main kept the cover (a PSD preview that is only the kit's notice, or none); the panel's error line. */
+  const [coverError, setCoverError] = useState<string | undefined>(undefined)
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | undefined>()
   // A replace the person cancelled with Esc: its result must not touch the screen.
   const replaceToken = useRef(0)
@@ -79,8 +99,10 @@ export function useDetailsData(id: number) {
         return
       }
       const next = formFromDetail(loaded.detail, loaded.tree)
+      // Undo of a discard opened this mockup again: its fields take the discarded edits.
+      const back = takeRestored(id)
       setDetail(loaded.detail)
-      setForm(next)
+      setForm(back ? formWithEdit(next, back, loaded.tree) : next)
       setSaved(draftOf(next))
       setStatus('ready')
     })()
@@ -128,28 +150,77 @@ export function useDetailsData(id: number) {
   const dirty = status === 'ready' && isDirty(saved, draft)
   const blocked = saveBlockedReason(draft)
 
+  // What a discard would throw away, so it can keep it for Undo.
+  const discarded = dirty ? discardedOf(form) : null
+  const discardedKey = JSON.stringify(discarded)
+  useEffect(() => {
+    noteEdit(id, discarded)
+    return () => noteEdit(id, null)
+    // The key stands for the values: a new object each render must not re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, discardedKey])
+
   /** Put the form back to what was last saved. */
   const reset = useCallback(() => {
     setForm((current) => {
       if (!detail) return current
       return {
         title: saved.title,
+        variation: saved.variation,
         description: saved.description,
         tags: current.tags.filter((tag) => saved.tagIds.includes(tag.tagId))
       }
     })
   }, [detail, saved])
 
+  // Undo of a discard on this mockup puts the edits back in the open fields; Redo drops them again.
+  const formRef = useRef({ status, detail, tagTree })
+  useEffect(() => {
+    formRef.current = { status, detail, tagTree }
+  })
+  useEffect(
+    () =>
+      onEditUndo(
+        (mockupId) => {
+          if (mockupId !== id || formRef.current.status !== 'ready') return
+          const back = takeRestored(id)
+          if (back) setForm((current) => formWithEdit(current, back, formRef.current.tagTree ?? []))
+        },
+        (mockupId) => {
+          const { detail: shown, tagTree: tree } = formRef.current
+          if (mockupId !== id || !shown) return
+          setForm(formFromDetail(shown, tree ?? []))
+          useDetailsStore.getState().setEditing(false)
+        }
+      ),
+    [id]
+  )
+
+  /**
+   * A pile mockup's variation left empty: when focus leaves it takes its last saved words back, so
+   * every mockup in a pile keeps one (pile-titles.md). Nothing saves until Save.
+   */
+  const restoreVariation = () =>
+    setForm((current) =>
+      current.variation !== null && current.variation.trim() === ''
+        ? { ...current, variation: saved.variation }
+        : current
+    )
+
   /** Saves the form. True once it is saved; on failure the edits stay and Save is the retry. */
   const save = async (): Promise<boolean> => {
     const item = detail?.item
     if (!item || saving || !dirty || blocked !== null) return false
     setSaving(true)
-    const next = { ...draft, title: draft.title.trim() }
+    // In a pile the title is the base (renaming every mockup in it) and the variation its own words,
+    // never saved empty.
+    const variation = draft.variation === null ? null : draft.variation.trim() || saved.variation
+    const next = { ...draft, title: draft.title.trim(), variation }
     const res = await window.api
       .invoke(IPC_CHANNELS.MOCKUP_UPDATE, {
         mockupId: item.id,
         title: next.title,
+        ...(variation !== null ? { variation } : {}),
         description: next.description,
         tagIds: next.tagIds
       })
@@ -157,7 +228,7 @@ export function useDetailsData(id: number) {
     setSaving(false)
     if (res?.success) {
       setSaved(next)
-      setForm((current) => ({ ...current, title: next.title }))
+      setForm((current) => ({ ...current, title: next.title, variation }))
       setDetail((current) =>
         current
           ? {
@@ -165,6 +236,12 @@ export function useDetailsData(id: number) {
               item: {
                 ...current.item,
                 title: next.title,
+                variation:
+                  variation === null
+                    ? null
+                    : variation === saved.variation && current.item.variation
+                      ? current.item.variation
+                      : { words: variation, source: 'typed' },
                 description: next.description,
                 tags: form.tags.map((tag) => ({
                   id: tag.tagId,
@@ -175,7 +252,8 @@ export function useDetailsData(id: number) {
             }
           : current
       )
-      toast('Saved your changes', 'success')
+      // Its toast takes the edit back, field by field, in main.
+      undoToast('Saved your changes', res.data.undoEntryId)
       void syncLibrary()
       return true
     }
@@ -196,7 +274,7 @@ export function useDetailsData(id: number) {
       )
     set(favourite)
     const res = await window.api
-      .invoke(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, { mockupId: item.id, favourite })
+      .invoke(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, { ids: [item.id], favourite })
       .catch(() => null)
     if (res?.success) void syncLibrary()
     else set(!favourite)
@@ -209,8 +287,8 @@ export function useDetailsData(id: number) {
     const res = await window.api
       .invoke(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, { mockupId: target })
       .catch(() => null)
-    if (!res?.success) setPhotoshop('failed')
-    else if (!res.data.opened) setPhotoshop(res.data.reason)
+    if (!res?.success) setPhotoshop({ reason: 'failed', mockupId: target })
+    else if (!res.data.opened) setPhotoshop({ reason: res.data.reason, mockupId: target })
   }
 
   /** Breaks the pile up into its mockups, with an Undo toast. True once it is done. */
@@ -221,9 +299,11 @@ export function useDetailsData(id: number) {
 
   const applyCover = (change: CoverChange) => {
     if (!change.ok) {
+      setCoverError(coverRefusal(change.reason))
       setCoverUi('error')
       return
     }
+    setCoverError(undefined)
     setCoverUi('default')
     setImageSize({ width: change.width, height: change.height })
     setCoverVersion((version) => version + 1)
@@ -243,7 +323,10 @@ export function useDetailsData(id: number) {
     void syncLibrary()
   }
 
-  const changeCover = async (run: () => Promise<CoverChange | null>, message: string) => {
+  const changeCover = async (
+    run: () => Promise<(CoverChange & { undoEntryId?: number | undefined }) | null>,
+    message: string
+  ) => {
     const item = detail?.item
     if (!item) return
     const token = ++replaceToken.current
@@ -256,24 +339,13 @@ export function useDetailsData(id: number) {
       return
     }
     if (!change) {
+      setCoverError(undefined)
       setCoverUi('error')
       return
     }
     applyCover(change)
     if (change.ok) {
-      undoToast(message, () => {
-        const { previous } = change
-        const revert =
-          previous.coverSource === 'embedded'
-            ? window.api.invoke(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: item.id })
-            : window.api.invoke(IPC_CHANNELS.MOCKUP_SET_COVER, {
-                mockupId: item.id,
-                filePath: previous.coverPath
-              })
-        void revert.then((res) => {
-          if (res.success) applyCover(res.data)
-        })
-      })
+      undoToast(message, change.undoEntryId)
     }
   }
 
@@ -355,13 +427,21 @@ export function useDetailsData(id: number) {
     vocabulary,
     form,
     setForm,
+    restoreVariation,
     dirty,
     blocked,
     saving,
-    photoshop,
+    photoshop: photoshop?.reason ?? null,
     dismissPhotoshop: () => setPhotoshop(null),
+    /** Try again: opens the mockup that didn't open, in a pile too. */
+    retryPhotoshop: () => {
+      const failed = photoshop
+      setPhotoshop(null)
+      if (failed) void openInPhotoshop(failed.mockupId)
+    },
     coverVersion,
     coverUi,
+    coverError,
     imageSize,
     replaceCover,
     useEmbeddedCover,

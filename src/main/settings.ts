@@ -1,6 +1,18 @@
-import { join } from 'node:path'
-import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
+import {
+  closeSync,
+  copyFileSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeSync
+} from 'node:fs'
 import { randomUUID } from 'node:crypto'
+import { checkFolder } from './boot-status'
 
 /**
  * App-level settings. These live in a FIXED location (Electron's userData) — outside the
@@ -65,6 +77,8 @@ export interface SettingsLoadIssue {
 export interface SettingsStoreOptions {
   now?: () => Date
   copyFile?: (from: string, to: string) => void
+  /** Writes one whole file. The store writes beside the real file with it, then renames over. */
+  writeFile?: (path: string, data: string) => void
 }
 
 export interface SettingsStore {
@@ -73,6 +87,17 @@ export interface SettingsStore {
   loadIssue(): SettingsLoadIssue | null
   update(patch: Partial<AppSettings>): AppSettings
   getLibraryRoot(): string
+}
+
+/** Writes the file and flushes it to disk before it is renamed into place. */
+function writeDurably(path: string, data: string): void {
+  const fd = openSync(path, 'w')
+  try {
+    writeSync(fd, data)
+    fsyncSync(fd)
+  } finally {
+    closeSync(fd)
+  }
 }
 
 /** Factory takes the userData dir explicitly so it stays free of `electron` and is unit-testable. */
@@ -98,8 +123,51 @@ export function createSettingsStore(
   }
   const now = options.now ?? (() => new Date())
   const copyFile = options.copyFile ?? copyFileSync
+  const writeFile = options.writeFile ?? writeDurably
+  // The stash folder on its own, so an unreadable settings file never loses where the library is.
+  const stashNotePath = join(userDataDir, 'stash-root')
   let cache: AppSettings | null = null
   let issue: SettingsLoadIssue | null = null
+  /** What the stash note holds, once read. */
+  let notedStash: string | null | undefined
+
+  /** Writes beside the file, then renames over it: a crash part-way leaves the old file whole. */
+  function save(path: string, data: string): void {
+    const temp = `${path}.tmp`
+    try {
+      writeFile(temp, data)
+    } catch (err) {
+      rmSync(temp, { force: true })
+      throw err
+    }
+    renameSync(temp, path)
+  }
+
+  function readStashNote(): string | null {
+    try {
+      const path = readFileSync(stashNotePath, 'utf-8').trim()
+      return isAbsolute(path) ? path : null
+    } catch {
+      return null
+    }
+  }
+
+  function noteStash(libraryRoot: string): void {
+    if (notedStash === undefined) notedStash = readStashNote()
+    if (notedStash === libraryRoot) return
+    try {
+      save(stashNotePath, libraryRoot)
+      notedStash = libraryRoot
+    } catch {
+      // Written again with the next settings change.
+    }
+  }
+
+  /** The stash folder from the note, when a library is still there. */
+  function recoveredStash(): string | null {
+    const path = readStashNote()
+    return path && checkFolder(path).hasLibrary ? path : null
+  }
 
   /** Keep the unreadable file next to the settings, never over an earlier backup. Returns whether it was kept. */
   function backUpCorruptFile(): boolean {
@@ -128,13 +196,17 @@ export function createSettingsStore(
       } catch {
         // Fall through: unreadable is handled below.
       }
-      // Corrupt settings: keep the file, then start again from defaults rather than crash.
+      // Corrupt settings: keep the file, then start again from defaults rather than crash. The
+      // stash folder comes back from its note, so the library opens where it was.
       issue = { kind: 'corrupt', backedUp: backUpCorruptFile() }
+      const stash = recoveredStash()
+      const reset = stash ? { ...defaults, libraryRoot: stash } : { ...defaults }
       try {
-        writeFileSync(filePath, JSON.stringify(defaults, null, 2), 'utf-8')
+        save(filePath, JSON.stringify(reset, null, 2))
       } catch {
         // The reset is written again on the next update.
       }
+      return reset
     }
     return { ...defaults }
   }
@@ -154,6 +226,7 @@ export function createSettingsStore(
       return cache
     }
     cache = loaded
+    noteStash(loaded.libraryRoot)
     return cache
   }
 
@@ -161,8 +234,9 @@ export function createSettingsStore(
   function update(patch: Partial<AppSettings>, base?: AppSettings): AppSettings {
     const next = { ...(base ?? get()), ...patch }
     mkdirSync(userDataDir, { recursive: true })
-    writeFileSync(filePath, JSON.stringify(next, null, 2), 'utf-8')
+    save(filePath, JSON.stringify(next, null, 2))
     cache = next
+    noteStash(next.libraryRoot)
     return next
   }
 

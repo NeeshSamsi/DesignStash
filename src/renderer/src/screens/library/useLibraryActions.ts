@@ -1,13 +1,13 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem } from '@shared/library'
 import { toast, undoToast } from '@renderer/stores/toastStore'
 import { openInPhotoshop } from './open-in-photoshop'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
 
-/** The last change that can still be undone, for “Undo …” in the empty-space menu. */
+/** The app's last action, for “Undo …” in the empty-space menu. */
 export interface UndoEntry {
-  /** Names the change: “move to Trash”. The menu reads “Undo move to Trash”. */
+  /** Names the action: “Move to Trash”. The menu reads “Undo Move to Trash”. */
   name: string
   run: () => Promise<void>
 }
@@ -16,7 +16,6 @@ export interface LibraryActionsInput {
   starredOnly: boolean
   refresh: () => Promise<void>
   keepLingering: (id: number) => void
-  releaseLingering: (id: number) => void
   clearSelection: () => void
 }
 
@@ -25,80 +24,44 @@ export function useLibraryActions({
   starredOnly,
   refresh,
   keepLingering,
-  releaseLingering,
   clearSelection
 }: LibraryActionsInput) {
-  const [lastUndo, setLastUndo] = useState<UndoEntry | null>(null)
-  const latest = useRef<UndoEntry | null>(null)
-
   /**
-   * Shows the Undo toast and remembers the change for the menu. Undo runs once, from whichever
-   * of the two is used first.
+   * Stars or unstars these in one call, so it's one change and one undo entry. The cards change at
+   * once and change back if main refuses. Gives the entry, or false when it failed.
    */
-  const offerUndo = useCallback(
-    (name: string, message: string, run: () => Promise<void>, description?: string) => {
-      let used = false
-      const entry: UndoEntry = {
-        name,
-        run: async () => {
-          if (used) return
-          used = true
-          if (latest.current === entry) {
-            latest.current = null
-            setLastUndo(null)
-          }
-          await run()
-        }
-      }
-      latest.current = entry
-      setLastUndo(entry)
-      undoToast(message, () => void entry.run(), description)
-    },
-    []
-  )
-
-  const undoLast = useCallback(async () => {
-    await latest.current?.run()
-  }, [])
-
-  const setFavourite = useCallback(async (id: number, favourite: boolean) => {
+  const setFavourite = useCallback(async (ids: readonly number[], favourite: boolean) => {
     const patch = (value: boolean) => {
       const state = useLibraryStore.getState()
-      state.setItems(state.items.map((i) => (i.id === id ? { ...i, favourite: value } : i)))
+      state.setItems(state.items.map((i) => (ids.includes(i.id) ? { ...i, favourite: value } : i)))
     }
     patch(favourite)
     const res = await window.api.invoke(IPC_CHANNELS.MOCKUP_SET_FAVOURITE, {
-      mockupId: id,
+      ids: [...ids],
       favourite
     })
     if (!res.success) {
       patch(!favourite)
       toast({ variant: 'error', message: 'Couldn’t update the star. Try again.' })
-      return false
+      return false as const
     }
     const stats = await window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
     if (stats.success) useLibraryStore.getState().setStats(stats.data)
-    return true
+    return { undoEntryId: res.data.undoEntryId }
   }, [])
 
   /** Stars or unstars. In Starred an unstarred card stays until you leave, with Undo. */
   const setFavouriteFor = useCallback(
     async (targets: readonly LibraryItem[], favourite: boolean) => {
-      const changed: LibraryItem[] = []
-      for (const item of targets) {
-        if (item.favourite === favourite) continue
-        if (await setFavourite(item.id, favourite)) changed.push(item)
-      }
-      if (changed.length === 0 || !(starredOnly && !favourite)) return
-      for (const item of changed) keepLingering(item.id)
-      offerUndo('unstar', 'Removed from Starred', async () => {
-        for (const item of changed) {
-          releaseLingering(item.id)
-          await setFavourite(item.id, true)
-        }
-      })
+      const changed = targets.filter((item) => item.favourite !== favourite)
+      if (changed.length === 0) return
+      const ids = changed.map((item) => item.id)
+      const done = await setFavourite(ids, favourite)
+      if (!done || !(starredOnly && !favourite)) return
+      for (const id of ids) keepLingering(id)
+      undoToast('Removed from Starred', done.undoEntryId)
     },
-    [starredOnly, setFavourite, keepLingering, releaseLingering, offerUndo]
+    [starredOnly, setFavourite, keepLingering]
   )
 
   const trash = useCallback(
@@ -119,23 +82,12 @@ export function useLibraryActions({
           : first && first.pile
             ? `${first.title} and ${first.pile.memberCount - 1} more in the pile`
             : (first?.title ?? '')
-      offerUndo(
-        'move to Trash',
-        'Moved to Trash',
-        async () => {
-          await window.api.invoke(IPC_CHANNELS.MOCKUP_RESTORE, { ids })
-          await refresh()
-        },
-        description
-      )
+      undoToast('Moved to Trash', res.data.undoEntryId, description)
     },
-    [clearSelection, refresh, offerUndo]
+    [clearSelection, refresh]
   )
 
   return {
-    lastUndo,
-    undoLast,
-    offerUndo,
     setFavouriteFor,
     trash,
     openInPhotoshop

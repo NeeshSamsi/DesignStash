@@ -17,15 +17,3 @@ export const modelCardVariants = cva('flex w-full flex-col gap-3 rounded-xl bord
   },
   defaultVariants: { state: 'in-use' }
 })
-
-/** One of the five steps of a quality or speed bar: 12×4. Filled steps are orange on the model in use. */
-export const modelCardStepVariants = cva('h-1 w-3 rounded-xs', {
-  variants: {
-    filled: {
-      none: 'bg-surface-3',
-      muted: 'bg-input',
-      accent: 'bg-primary'
-    }
-  },
-  defaultVariants: { filled: 'none' }
-})

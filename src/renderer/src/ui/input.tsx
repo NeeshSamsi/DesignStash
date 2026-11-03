@@ -42,14 +42,33 @@ function Input({
   )
 }
 
-/** The Input box holding an icon, a bare InputGroupInput and trailing controls (search field). */
-function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
+/**
+ * The Input box holding an icon, a bare InputGroupInput and trailing controls (search field). The whole
+ * box is the field: a press on its border, padding, icon or hint focuses the input, with the caret at the
+ * start when pressed left of the text and at the end otherwise. Its buttons keep their own presses.
+ */
+function InputGroup({ className, onMouseDown, ...props }: React.ComponentProps<"div">) {
+  const focusInput = (event: React.MouseEvent<HTMLDivElement>) => {
+    onMouseDown?.(event)
+    const target = event.target as Element
+    if (event.defaultPrevented || event.button !== 0 || target.closest("input, button, a")) return
+    const input = event.currentTarget.querySelector<HTMLInputElement>(
+      '[data-slot="input-group-control"]'
+    )
+    if (!input || input.disabled) return
+    // Keeps the press from moving focus to the box or starting a text selection on it.
+    event.preventDefault()
+    input.focus()
+    const at = event.clientX < input.getBoundingClientRect().left ? 0 : input.value.length
+    input.setSelectionRange(at, at)
+  }
   return (
     <div
       data-slot="input-group"
+      onMouseDown={focusInput}
       className={cn(
         inputBox,
-        "flex items-center gap-2 px-3 py-2 has-focus-visible:focus-ring has-aria-invalid:border-error has-disabled:opacity-50 [&_svg]:shrink-0",
+        "flex cursor-text items-center gap-2 px-3 py-2 has-focus-visible:focus-ring has-aria-invalid:border-error has-disabled:opacity-50 [&_svg]:shrink-0",
         className
       )}
       {...props}

@@ -1,14 +1,15 @@
 import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useRef, useState } from 'react'
-import type { ComponentProps, KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import type { ComponentProps, MouseEvent, ReactNode, SyntheticEvent } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Layers01Icon, MoreHorizontalIcon } from '@hugeicons/core-free-icons'
-import { Badge } from '@renderer/ui/badge'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
-import { Skeleton } from '@renderer/ui/skeleton'
+import { Badge } from '@renderer/components/Badge'
+import { Tooltip } from '@renderer/components/Tooltip'
+import { Skeleton } from '@renderer/components/Skeleton'
 import { Button } from '@renderer/components/Button'
 import { CoverImage } from '@renderer/components/CoverImage'
 import { FavouriteToggle } from '@renderer/components/FavouriteToggle'
+import { useGridCard } from '@renderer/components/MockupGrid/grid-card'
 import { MiddleTruncatedText } from '@renderer/lib/middle-truncated-text'
 import { cn } from '@renderer/lib/utils'
 import {
@@ -53,11 +54,17 @@ export interface MockupCardProps
   onDeleteForever?: () => void
 }
 
-/** Card body is selection: clicks, double-clicks and keys from the action controls never reach it. */
+/**
+ * Card body is selection: clicks, double-clicks and keys on the action buttons never reach it. Only the buttons
+ * keep them: the scrim under the hover buttons and the gaps between controls are the card like the rest of it.
+ */
+const stopAtButton = (event: SyntheticEvent) => {
+  if (event.target instanceof Element && event.target.closest('button')) event.stopPropagation()
+}
 const keepToControl = {
-  onClick: (event: MouseEvent) => event.stopPropagation(),
-  onDoubleClick: (event: MouseEvent) => event.stopPropagation(),
-  onKeyDown: (event: KeyboardEvent) => event.stopPropagation()
+  onClick: stopAtButton,
+  onDoubleClick: stopAtButton,
+  onKeyDown: stopAtButton
 }
 
 const COVER_STATE: Record<MockupCardState, 'loaded' | 'loading' | 'no-preview' | 'missing-file'> = {
@@ -114,16 +121,50 @@ export function MockupCard({
   const memberCount = pile?.memberCount ?? 0
   const stacked = memberCount > 1 && !compact && !loading && !leftBehind
   const tagLine = variant === 'trash' && trashedAgo ? `Trashed ${trashedAgo}` : tags
+  const pileLabel = showVariants && memberCount > 1 ? `${memberCount} mockups in this pile` : null
+
+  // In a selectable grid the selection comes from the grid, so a selected card with no cover is
+  // still ringed and announced: its state only says what is wrong with the cover.
+  const inGrid = useGridCard(loading ? undefined : mockupId)
+  // A cover that fails to load is gone (deleted in Finder since launch, so the launch check never
+  // saw it): show it as missing, as the next launch would. A different cover is a fresh try.
+  const [failedCover, setFailedCover] = useState<string | null>(null)
+  const coverState =
+    coverSrc !== undefined && failedCover === coverSrc && COVER_STATE[state] === 'loaded'
+      ? 'missing-file'
+      : COVER_STATE[state]
+  const ringed =
+    state === 'selected' ||
+    (inGrid?.selected === true && (state === 'cover-missing' || state === 'no-preview'))
+  const faceState: MockupCardState = ringed ? 'selected' : state
+  // The card's own words, without the names of the buttons inside it.
+  const optionLabel = [
+    title,
+    pileLabel,
+    variant === 'pending-review' && showStatus ? status : null,
+    showTags ? tagLine : null
+  ]
+    .filter(Boolean)
+    .join(', ')
 
   return (
     <div
       data-ds="MockupCard"
       data-mockup-id={mockupId}
       data-variant={variant}
-      data-state={state === 'selected' ? 'selected' : undefined}
+      data-state={ringed ? 'selected' : undefined}
       data-pile={stacked || undefined}
       aria-busy={loading || undefined}
       tabIndex={interactive ? 0 : undefined}
+      {...(inGrid
+        ? {
+            role: 'option',
+            'aria-selected': inGrid.selected,
+            'aria-posinset': inGrid.position,
+            'aria-setsize': inGrid.count,
+            'aria-label': optionLabel
+          }
+        : {})}
       className={cn(mockupCardVariants({ variant, pile: stacked }), className)}
       {...props}
     >
@@ -135,14 +176,19 @@ export function MockupCard({
       )}
       <div
         className={cn(
-          mockupCardFaceVariants({ state }),
+          mockupCardFaceVariants({ state: faceState }),
           stacked && 'delay-100 group-hover/card:delay-0'
         )}
       >
-        <div className={mockupCardCoverVariants({ hidden: leftBehind })}>
+        <div
+          className={mockupCardCoverVariants({ hidden: leftBehind })}
+          onError={(event) => {
+            if (event.target instanceof HTMLImageElement && coverSrc) setFailedCover(coverSrc)
+          }}
+        >
           <CoverImage
             size="md"
-            state={COVER_STATE[state]}
+            state={coverState}
             {...(coverSrc ? { src: coverSrc } : {})}
             imageClassName="group-hover/card:scale-105"
             className="size-full rounded-none"
@@ -152,11 +198,11 @@ export function MockupCard({
             {variant === 'pending-review' && showStatus && status && (
               <Badge variant="warning">{status}</Badge>
             )}
-            {showVariants && memberCount > 1 && !loading && (
+            {pileLabel && !loading && (
               // The whole pile, top included, so a pile of three reads 3.
               <Badge
                 variant="count"
-                aria-label={`${memberCount} mockups in this pile`}
+                aria-label={pileLabel}
                 className="gap-1 px-2 text-muted-foreground"
               >
                 <HugeiconsIcon
@@ -298,18 +344,15 @@ function CardTitle({ title, fileName }: { title: string; fileName: boolean }) {
   }
   return (
     <Tooltip
+      arrow="bottom-left"
+      label={title}
       delayDuration={TITLE_TOOLTIP_MS}
       open={open}
       onOpenChange={(next) => setOpen(next && cut())}
     >
-      <TooltipTrigger asChild>
-        <p ref={ref} className="truncate type-body-sm-medium text-foreground">
-          {title}
-        </p>
-      </TooltipTrigger>
-      <TooltipContent side="top" align="start">
+      <p ref={ref} className="truncate type-body-sm-medium text-foreground">
         {title}
-      </TooltipContent>
+      </p>
     </Tooltip>
   )
 }

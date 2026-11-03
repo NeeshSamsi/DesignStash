@@ -6,6 +6,7 @@ import { coverDisplay } from '@shared/library'
 import { ActionBar } from '@renderer/components/ActionBar'
 import { Banner } from '@renderer/components/Banner'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
+import { useUndoRan } from '@renderer/lib/undo-router'
 import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import { EmptyState } from '@renderer/components/EmptyState'
@@ -14,7 +15,9 @@ import { MockupCard } from '@renderer/components/MockupCard'
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
-import { agoText, formatBytes, newestFirst, pluralise } from '@renderer/lib/inbox-list'
+import { agoText, formatBytes, newestFirst } from '@renderer/lib/inbox-list'
+import { restoredTo, trashCaption } from './trash-copy'
+import { pluralise } from '@renderer/lib/plural'
 import { HeaderActions } from '@renderer/lib/page-header-slot'
 import { useInboxStore } from '@renderer/stores/inboxStore'
 import { useUiStore } from '@renderer/stores/uiStore'
@@ -48,6 +51,8 @@ export default function TrashPage() {
     } else setFailed('trash', true)
   }, [setTrash, setFailed])
   useEffect(() => void refresh(), [refresh])
+  // ⌘Z or a toast's Undo can send things back to Trash, or take them out again.
+  useUndoRan(() => void refresh())
 
   const ids = useMemo(() => (items ?? []).map((item) => String(item.id)), [items])
   const selection = useGridSelection(ids)
@@ -76,19 +81,15 @@ export default function TrashPage() {
       toast({ variant: 'error', message: 'Couldn’t restore that. Try again.' })
       return
     }
-    const { restoredIds, missing } = res.data
+    const { restoredIds, missing, undoEntryId } = res.data
+    // Each card goes back where it came from; the toast says where, read before the list reloads.
+    const origins = (useInboxStore.getState().trash ?? [])
+      .filter((t) => restoredIds.includes(t.id))
+      .map((t) => t.origin)
     selection.clear()
     await refresh()
     if (restoredIds.length > 0) {
-      undoToast(
-        'Restored to My Stash',
-        () =>
-          void (async () => {
-            await window.api.invoke(IPC_CHANNELS.MOCKUP_TRASH, { ids: restoredIds })
-            await refresh()
-          })(),
-        pluralise(restoredIds.length, 'item', 'items')
-      )
+      undoToast(restoredTo(origins), undoEntryId, pluralise(restoredIds.length, 'item'))
     }
     if (missing.length > 0) {
       const gone = useInboxStore.getState().trash?.filter((t) => missing.includes(t.id)) ?? []
@@ -111,7 +112,7 @@ export default function TrashPage() {
     await refresh()
     toast({
       variant: 'success',
-      message: `Deleted ${pluralise(targets.length, 'item', 'items')} for good`
+      message: `Deleted ${pluralise(targets.length, 'item')} for good`
     })
   }
 
@@ -135,7 +136,7 @@ export default function TrashPage() {
     toast({
       variant: 'success',
       message: 'Trash emptied',
-      description: `${pluralise(res.data.deletedCount, 'item', 'items')} gone, ${formatBytes(res.data.bytesFreed)} freed`
+      description: `${pluralise(res.data.deletedCount, 'item')} gone, ${formatBytes(res.data.bytesFreed)} freed`
     })
   }
 
@@ -212,7 +213,8 @@ export default function TrashPage() {
               mockupId={key}
               variant="trash"
               title={item.title}
-              trashedAgo={agoText(item.trashedAt)}
+              // Where it came from and when: "Tossed from To sort · 2 min ago".
+              tags={trashCaption(item.origin, agoText(item.trashedAt))}
               {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
               pile={item.pile}
               state={coverDisplay(item, selection.isSelected(key))}
@@ -297,7 +299,7 @@ export default function TrashPage() {
         title="Empty Trash?"
         description={
           ask?.kind === 'empty'
-            ? `${pluralise(ask.stats.count, 'item', 'items')} will be deleted for good, freeing ${formatBytes(ask.stats.bytes)}. This can’t be undone.`
+            ? `${pluralise(ask.stats.count, 'item')} will be deleted for good, freeing ${formatBytes(ask.stats.bytes)}. This can’t be undone.`
             : ''
         }
         confirmLabel="Empty Trash"
@@ -311,7 +313,7 @@ export default function TrashPage() {
         working={working}
         detail={false}
         title={missingTitle}
-        description="The PSD is gone from your stash folder. You can keep the entry in Trash or delete it."
+        description="The PSD is gone from your stash folder. You can keep the entry in Trash or delete it. This can’t be undone."
         confirmLabel="Delete entry"
         cancelLabel="Keep in Trash"
         workingLabel="Deleting…"

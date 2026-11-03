@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { coverUrl } from '@shared/cover-url'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { shortcuts } from '@renderer/lib/shortcuts'
+import { afterUndo } from '@renderer/lib/undo-router'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
@@ -143,7 +144,7 @@ describe('details sidebar · one mockup, read-only', () => {
     fireEvent.click(button(/Star Hero Screen/)!)
     await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toHaveLength(1))
     expect(calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)[0]![1]).toEqual({
-      mockupId: 42,
+      ids: [42],
       favourite: true
     })
   })
@@ -157,6 +158,7 @@ describe('details sidebar · one mockup, read-only', () => {
     expect(within(ask).getByText('Photoshop isn’t installed')).not.toBeNull()
     fireEvent.click(within(ask).getByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toHaveLength(2))
+    expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)[1]![1]).toEqual({ mockupId: 42 })
   })
 
   it('opens the full-screen viewer from the cover', async () => {
@@ -247,7 +249,7 @@ describe('details sidebar · editing', () => {
     })
     await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull())
     expect(screen.getByText('Hero Screen 2')).not.toBeNull()
-    expect(toasts.toast).toHaveBeenCalledWith('Saved your changes', 'success')
+    expect(toasts.undoToast).toHaveBeenCalledWith('Saved your changes', undefined)
   })
 
   it('says why Save is off when the title is emptied', async () => {
@@ -277,46 +279,122 @@ describe('details sidebar · editing', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
-  it('asks before Cancel, ✕ or another card throws edits away; Keep editing keeps them', async () => {
+  it('Cancel with edits discards them at once, with Undo; Undo brings them back and Redo drops them again (undo.md)', async () => {
+    setup({ [IPC_CHANNELS.UNDO_RECORD_DISCARD]: () => ok({ undoEntryId: 5 }) })
     const title = await edit()
     fireEvent.change(title, { target: { value: 'Changed' } })
-
     fireEvent.click(button('Cancel')!)
-    let ask = await screen.findByRole('alertdialog')
-    expect(within(ask).getByText('Discard your changes?')).not.toBeNull()
-    fireEvent.click(within(ask).getByRole('button', { name: 'Keep editing' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
-    expect(title.value).toBe('Changed')
-    expect(useDetailsStore.getState().target).toEqual({ id: 42, edit: true })
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull())
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByText('Hero Screen')).not.toBeNull()
+    const values = { title: 'Changed', description: 'The main hero mockup', tagIds: [7] }
+    await waitFor(() =>
+      expect(calls(IPC_CHANNELS.UNDO_RECORD_DISCARD)).toEqual([
+        [IPC_CHANNELS.UNDO_RECORD_DISCARD, { mockupId: 42, values }]
+      ])
+    )
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalledWith('Discarded your changes', 5))
+    expect(calls(IPC_CHANNELS.MOCKUP_UPDATE)).toHaveLength(0)
 
-    fireEvent.click(button('Close')!)
-    ask = await screen.findByRole('alertdialog')
-    fireEvent.click(within(ask).getByRole('button', { name: 'Keep editing' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
-    expect(useDetailsStore.getState().target?.id).toBe(42)
+    // Edit › Undo: main hands back the discarded values for the window to put back.
+    act(() =>
+      afterUndo(
+        {
+          status: 'done',
+          label: 'Discard your changes',
+          renderer: { kind: 'reopen-editor', mockupId: 42, values }
+        },
+        'undo'
+      )
+    )
+    const back = (await screen.findByRole('textbox', { name: 'Title' })) as HTMLInputElement
+    await waitFor(() => expect(back.value).toBe('Changed'))
+    expect(useDetailsStore.getState().dirty).toBe(true)
 
-    // Another card is a way out too.
+    // Edit › Redo discards them again.
+    act(() =>
+      afterUndo(
+        {
+          status: 'done',
+          label: 'Discard your changes',
+          renderer: { kind: 'discard-editor', mockupId: 42 }
+        },
+        'redo'
+      )
+    )
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull())
+    expect(screen.getByText('Hero Screen')).not.toBeNull()
+  })
+
+  it('✕ and another card are ways out too: each discards at once, and nothing saves', async () => {
+    const title = await edit()
+    fireEvent.change(title, { target: { value: 'Changed' } })
     act(() => useDetailsStore.getState().guard(() => useDetailsStore.getState().syncTarget(43)))
-    ask = await screen.findByRole('alertdialog')
-    fireEvent.click(within(ask).getByRole('button', { name: 'Discard' }))
-    expect(useDetailsStore.getState().target?.id).toBe(43)
+    await waitFor(() => expect(useDetailsStore.getState().target?.id).toBe(43))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(calls(IPC_CHANNELS.MOCKUP_UPDATE)).toHaveLength(0)
   })
 
-  it('Discard on Cancel puts the saved values back', async () => {
-    const title = await edit()
-    fireEvent.change(title, { target: { value: 'Changed' } })
+  it('without edits, Cancel just closes the fields and records nothing', async () => {
+    await edit()
     fireEvent.click(button('Cancel')!)
-    const ask = await screen.findByRole('alertdialog')
-    fireEvent.click(within(ask).getByRole('button', { name: 'Discard' }))
     await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull())
-    expect(screen.getByText('Hero Screen')).not.toBeNull()
+    expect(calls(IPC_CHANNELS.UNDO_RECORD_DISCARD)).toHaveLength(0)
   })
 
   it('opens straight into fields when edit was asked for', async () => {
     useDetailsStore.getState().requestEdit(42)
     await show()
     expect(await screen.findByRole('textbox', { name: 'Title' })).not.toBeNull()
+  })
+})
+
+describe('details sidebar · a mockup in a pile (pile-titles.md)', () => {
+  const inPile = {
+    item: {
+      ...single.item,
+      id: 100,
+      title: 'Clay iPhone 15 Pro',
+      pileId: 99,
+      variation: { words: 'side', source: 'ai' }
+    },
+    variants: []
+  }
+  const shown = () => setup({ [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(inPile) })
+
+  it('D3.2: is headed by its variation, and the line under it names the pile', async () => {
+    shown()
+    await show(100)
+    expect(screen.getByRole('heading', { name: 'Side' })).toBeTruthy()
+    expect(screen.getByText(/^Variant in Clay iPhone 15 Pro · added /)).toBeTruthy()
+  })
+
+  it('D3.3: edits the title as the compact base and variation, and Save sends both', async () => {
+    shown()
+    useDetailsStore
+      .getState()
+      .openPile({ id: 99, title: 'Clay iPhone 15 Pro', count: 4, select: 100, edit: false })
+    await show(100)
+    fireEvent.click(button('Edit')!)
+    const base = screen.getByRole('textbox', { name: 'Base title' }) as HTMLInputElement
+    const variation = screen.getByRole('textbox', { name: 'Variation' }) as HTMLInputElement
+    expect(base.value).toBe('Clay iPhone 15 Pro')
+    expect(variation.value).toBe('side')
+    expect(variation.className).toContain('w-30')
+    fireEvent.focus(base)
+    expect(screen.getByText('Renames the pile: all 4 mockups.')).toBeTruthy()
+    // An emptied variation takes its words back when focus leaves.
+    fireEvent.change(variation, { target: { value: '' } })
+    fireEvent.blur(variation)
+    expect(variation.value).toBe('side')
+    fireEvent.change(variation, { target: { value: 'side view' } })
+    fireEvent.click(button('Save')!)
+    await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_UPDATE)).toHaveLength(1))
+    expect(calls(IPC_CHANNELS.MOCKUP_UPDATE)[0]![1]).toMatchObject({
+      mockupId: 100,
+      title: 'Clay iPhone 15 Pro',
+      variation: 'side view'
+    })
   })
 })
 
@@ -330,6 +408,25 @@ describe('details sidebar · a pile', () => {
     expect(cards[0]!.textContent).toContain('front')
     expect(cards[0]!.textContent).toContain('Top')
     expect(screen.queryByRole('tab')).toBeNull()
+  })
+
+  it('names each mockup in the pile by its variation, with a capital', async () => {
+    const titled = {
+      ...pile,
+      variants: pile.variants.map((v) => ({
+        ...v,
+        title: 'Login Pile',
+        variation: { words: v.title, source: 'ai' }
+      }))
+    }
+    setup({ [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(titled) })
+    await show(99)
+    await screen.findByText('Login Pile')
+    const names = [...document.querySelectorAll('[data-ds="MockupCard"] p')].map(
+      (p) => p.textContent
+    )
+    expect(names).toEqual(expect.arrayContaining(['Front', 'Side', 'Back']))
+    expect(names).not.toContain('Login Pile')
   })
 
   it('has the expand icon before ✕, and Disband pile above Edit pile details', async () => {
@@ -380,6 +477,25 @@ describe('details sidebar · a pile', () => {
     await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toHaveLength(1))
     expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)[0]![1]).toEqual({ mockupId: 100 })
     expect(useDetailsStore.getState().pile).toBeNull()
+  })
+
+  it('Try again after Photoshop didn’t open retries the mockup in the pile that failed', async () => {
+    setup({ [IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL]: () => ok({ opened: false, reason: 'failed' }) })
+    await show(99)
+    await screen.findByText('Login Pile')
+    const side = [...document.querySelectorAll('[data-ds="MockupCard"]')].find((c) =>
+      c.textContent?.includes('side')
+    )!
+    fireEvent.click(within(side as HTMLElement).getByRole('button', { name: /Photoshop/ }))
+    const ask = await screen.findByRole('alertdialog')
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Try again' }))
+
+    await waitFor(() => expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL)).toHaveLength(2))
+    expect(calls(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL).map(([, r]) => r)).toEqual([
+      { mockupId: 100 },
+      { mockupId: 100 }
+    ])
   })
 
   it('disbands instantly with an Undo toast', async () => {
@@ -455,56 +571,17 @@ describe('details sidebar · cover', () => {
     await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/new.png')))
     expect(screen.getByText('Uploaded')).not.toBeNull()
     expect(screen.getByText('Cropped to 4:3')).not.toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Cover replaced', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith('Cover replaced', undefined)
     // A cover change is not a form edit.
     expect((button('Save') as HTMLButtonElement).disabled).toBe(true)
     expect(useDetailsStore.getState().dirty).toBe(false)
   })
 
-  it('undoes a replace back to the PSD’s preview', async () => {
-    setup({
-      [IPC_CHANNELS.MOCKUP_SET_COVER]: () => ok(change()),
-      [IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER]: () =>
-        ok(
-          change({
-            coverPath: '/lib/hero.png',
-            coverSource: 'embedded',
-            previous: { coverPath: '/lib/new.png', coverSource: 'user-uploaded' }
-          })
-        )
-    })
+  it('a cover change’s toast undoes its own entry in main (undo.md)', async () => {
+    setup({ [IPC_CHANNELS.MOCKUP_SET_COVER]: () => ok({ ...change(), undoEntryId: 17 }) })
     await editing()
     choose()
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: 42 })
-    )
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png')))
-    expect(screen.queryByText('Uploaded')).toBeNull()
-  })
-
-  it('undoes a replace back to the earlier uploaded cover', async () => {
-    setup({
-      [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(uploaded),
-      [IPC_CHANNELS.MOCKUP_SET_COVER]: (p) =>
-        ok(
-          (p as { filePath: string }).filePath === '/lib/hero.png'
-            ? change({ coverPath: '/lib/hero.png' })
-            : change({ previous: { coverPath: '/lib/hero.png', coverSource: 'user-uploaded' } })
-        )
-    })
-    await editing()
-    choose()
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_SET_COVER, {
-        mockupId: 42,
-        filePath: '/lib/hero.png'
-      })
-    )
-    await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png')))
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalledWith('Cover replaced', 17))
   })
 
   it('keeps the cover and shows an error Banner when the image is refused', async () => {
@@ -541,14 +618,36 @@ describe('details sidebar · cover', () => {
     )
     await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/psd.png')))
     expect(button('Use the PSD’s preview')).toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Using the PSD’s preview', expect.any(Function))
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_SET_COVER, {
-        mockupId: 42,
-        filePath: '/lib/hero.png'
-      })
+    expect(toasts.undoToast).toHaveBeenCalledWith('Using the PSD’s preview', undefined)
+  })
+
+  it('says why main kept the cover when the PSD’s own preview is only the kit’s notice', async () => {
+    setup({
+      [IPC_CHANNELS.MOCKUP_DETAIL]: () => ok(uploaded),
+      [IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER]: () => ok({ ok: false, reason: 'placeholder' })
+    })
+    await editing()
+    fireEvent.click(button('Use the PSD’s preview')!)
+    const banner = await waitFor(() => {
+      const found = document.querySelector('[data-ds="Banner"]')
+      expect(found).not.toBeNull()
+      return found!
+    })
+    expect(banner.textContent).toContain(
+      'The PSD’s own preview is only the kit’s “Delete this layer” notice, so this cover stays.'
     )
+    expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png'))
+    expect(toasts.undoToast).not.toHaveBeenCalled()
+  })
+
+  it('never offers the PSD’s preview on a sidecar cover', async () => {
+    setup({
+      [IPC_CHANNELS.MOCKUP_DETAIL]: () =>
+        ok({ ...single, item: { ...single.item, coverSource: 'sidecar' } })
+    })
+    await editing()
+    expect(button('Replace')).not.toBeNull()
+    expect(button('Use the PSD’s preview')).toBeNull()
   })
 
   it('Esc while a cover is being replaced cancels that and leaves the sidebar open', async () => {

@@ -1,5 +1,14 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { installOverlayScrollbars } from './overlay-scrollbars'
+
+const css = readFileSync(join(process.cwd(), 'src/renderer/src/assets/main.css'), 'utf8')
+/** The declarations of every rule in main.css whose selector mentions `part`. */
+const rulesFor = (part: string) =>
+  [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selector]) => selector!.includes(part))
+    .map(([, , body]) => body!)
 
 let uninstall: () => void
 let area: HTMLElement
@@ -42,7 +51,7 @@ describe('overlay scrollbars', () => {
     expect(document.querySelectorAll('.ds-scrollbar')).toHaveLength(0)
   })
 
-  it('pointer over a scroll area slides the gutter in, and away slides it out', () => {
+  it('pointer over a scroll area opens the gutter, and away closes it', () => {
     over(area.firstElementChild!)
     expect(lane().dataset.state).toBe('open')
     over(outside)
@@ -73,6 +82,30 @@ describe('overlay scrollbars', () => {
     expect(thumb().style.height).toBe('160px') // 400 * 400 / 1000
     expect(thumb().style.transform).toBe('translate(-50%, 120px)') // half of 400 - 160
     expect(lane().style.height).toBe('400px')
+  })
+
+  it('starts the vertical bar below the page’s fixed bar when the area says how tall it is', () => {
+    area.style.setProperty('--scrollbar-inset-top', '60px')
+    area.getBoundingClientRect = () => ({ top: 100, left: 0 }) as DOMRect
+    scroll(300)
+    expect(lane().style.top).toBe('160px')
+    expect(lane().style.height).toBe('340px')
+    expect(thumb().style.height).toBe('136px') // 340 * 400 / 1000
+  })
+
+  it('fades the gutter in and out where it stands: no slide, and nothing under reduced motion', () => {
+    const track = rulesFor('.ds-scrollbar-track').join('\n')
+    expect(track).not.toMatch(/transform|translate/)
+    expect(track).toMatch(/transition: opacity/)
+    // The gutter's fades sit only where motion is allowed: an open-state rule outside would outrank the reset.
+    const allowed = css.match(
+      /prefers-reduced-motion: no-preference\)\s*\{((?:[^{}]*\{[^{}]*\})*)\s*\}/
+    )
+    expect(allowed?.[1]).toMatch(/\.ds-scrollbar-track[^{]*\{\s*transition: opacity/)
+    const elsewhere = rulesFor('.ds-scrollbar-track')
+      .filter((body) => !allowed?.[1]?.includes(body))
+      .join('\n')
+    expect(elsewhere).not.toMatch(/transition: opacity/)
   })
 
   it('never makes the thumb shorter than 32px', () => {

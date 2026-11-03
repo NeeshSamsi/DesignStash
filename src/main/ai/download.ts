@@ -1,6 +1,8 @@
 import { createWriteStream, promises as fs } from 'node:fs'
-import { join } from 'node:path'
+import { once } from 'node:events'
+import { join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
+import type { Writable } from 'node:stream'
 import type { ModelFile } from './registry'
 import { MEANING_MODEL, MODEL_FILE_NAMES, getModel, isMeaningModel } from './registry'
 
@@ -42,6 +44,10 @@ export interface DownloaderOpts {
   /** Free bytes on the volume holding `path`. */
   freeBytes?: (path: string) => Promise<number>
   now?: () => number
+  /** Where a download's bytes go. A file on disk by default; tests hand in a slow one. */
+  createWriteStream?: (path: string, flags: string) => Writable
+  /** Rename a folder. Tests make it fail the way it does across disks. */
+  rename?: (from: string, to: string) => Promise<void>
 }
 
 /** Speed is measured over this many milliseconds, so it settles instead of jumping. */
@@ -71,6 +77,8 @@ export function classifyDownloadError(err: unknown): Error {
 }
 
 const ASIDE_SUFFIX = '.deleted'
+/** A model being copied in from another disk. It only becomes the model's folder once it is whole. */
+const MOVING_SUFFIX = '.moving'
 
 /** A model id is a folder name: letters, digits, dots, dashes and underscores, never a path. */
 export function assertSafeId(id: string): void {
@@ -87,10 +95,57 @@ async function folderSize(dir: string): Promise<number> {
 }
 
 export class ModelDownloader {
+  /** Settles once `adopt` has moved models in. Reads and downloads wait for it. */
+  private moving: Promise<void> = Promise.resolve()
+
   constructor(
     private modelsDir: string,
     private opts?: DownloaderOpts
   ) {}
+
+  /**
+   * Earlier versions kept models beside the stash folder. Move each catalogue model found in `dir`
+   * into this folder, unless it is already here. Anything else in `dir` stays where it is, and `dir`
+   * itself goes only when moving the models out leaves it empty.
+   */
+  adopt(dir: string): Promise<void> {
+    this.moving = this.moving.then(() => this.moveIn(dir)).catch(() => {})
+    return this.moving
+  }
+
+  private async moveIn(dir: string): Promise<void> {
+    if (resolve(dir) === resolve(this.modelsDir)) return
+    let moved = 0
+    for (const entry of await fs.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+      if (!entry.isDirectory() || !(getModel(entry.name) || isMeaningModel(entry.name))) continue
+      const target = this.modelPath(entry.name)
+      if (await fs.stat(target).then(() => true, () => false)) continue
+      await fs.mkdir(this.modelsDir, { recursive: true })
+      await this.moveFolder(join(dir, entry.name), target).then(() => moved++, () => {})
+    }
+    if (moved > 0) await fs.rmdir(dir).catch(() => {})
+  }
+
+  /** A rename on the same disk. From another disk, a whole copy first, then the original goes. */
+  private async moveFolder(from: string, to: string): Promise<void> {
+    const rename = this.opts?.rename ?? fs.rename
+    try {
+      await rename(from, to)
+      return
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err
+    }
+    const copy = `${to}${MOVING_SUFFIX}`
+    await fs.rm(copy, { recursive: true, force: true })
+    try {
+      await fs.cp(from, copy, { recursive: true })
+      await rename(copy, to)
+    } catch (err) {
+      await fs.rm(copy, { recursive: true, force: true })
+      throw err
+    }
+    await fs.rm(from, { recursive: true, force: true })
+  }
 
   private get fetch() {
     return this.opts?.fetchImpl ?? fetch
@@ -127,6 +182,7 @@ export class ModelDownloader {
 
   /** Bytes already on disk for a model, finished or partial. A stopped download resumes from here. */
   async downloadedBytes(id: string): Promise<number> {
+    await this.moving
     let sum = 0
     for (const { fileName } of downloadFilesOf(id) ?? []) {
       const final = await this.sizeOf(join(this.modelPath(id), fileName))
@@ -171,7 +227,8 @@ export class ModelDownloader {
       flags = 'w'
     }
 
-    const writeStream = createWriteStream(destPath, { flags })
+    const writeStream =
+      this.opts?.createWriteStream?.(destPath, flags) ?? createWriteStream(destPath, { flags })
     let writeError: unknown = null
     writeStream.on('error', (e) => (writeError = e))
     const reader = response.body.getReader()
@@ -182,7 +239,10 @@ export class ModelDownloader {
         if (done) break
         if (opts.signal?.aborted) throw new DOMException('This operation was aborted', 'AbortError')
         if (writeError) throw writeError
-        writeStream.write(value)
+        // A disk slower than the network: wait for it, so the rest of the file never piles up in memory.
+        if (!writeStream.write(value)) {
+          await once(writeStream, 'drain', opts.signal ? { signal: opts.signal } : {})
+        }
         receivedBytes += value.length
         opts.onProgress(receivedBytes)
       }
@@ -202,6 +262,7 @@ export class ModelDownloader {
    * meaning-search model's one GGUF. A built-in model has none.
    */
   async isInstalled(id: string): Promise<boolean> {
+    await this.moving
     const files = downloadFilesOf(id)
     if (!files) return false
     try {
@@ -213,6 +274,7 @@ export class ModelDownloader {
   }
 
   async listInstalled(): Promise<string[]> {
+    await this.moving
     const installed: string[] = []
     try {
       const dirs = await fs.readdir(this.modelsDir, { withFileTypes: true })
@@ -262,9 +324,11 @@ export class ModelDownloader {
 
   /** Folders left by earlier versions (the old text models): not in the catalogue, ignored, and deletable. */
   async listLegacy(): Promise<{ id: string; sizeBytes: number }[]> {
+    await this.moving
     const out: { id: string; sizeBytes: number }[] = []
     for (const name of await this.folderNames()) {
-      if (name.endsWith(ASIDE_SUFFIX) || getModel(name) || isMeaningModel(name)) continue
+      if (name.endsWith(ASIDE_SUFFIX) || name.endsWith(MOVING_SUFFIX)) continue
+      if (getModel(name) || isMeaningModel(name)) continue
       out.push({ id: name, sizeBytes: await folderSize(join(this.modelsDir, name)) })
     }
     return out
@@ -292,6 +356,7 @@ export class ModelDownloader {
     if (!model && !isMeaningModel(id)) throw new Error(`Model not found: ${id}`)
     const listed = downloadFilesOf(id)
     if (!listed) throw new Error(`${model?.name ?? id} is built into macOS; there is nothing to download`)
+    await this.moving
 
     const modelDir = this.modelPath(id)
     await fs.mkdir(modelDir, { recursive: true })

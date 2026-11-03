@@ -4,6 +4,7 @@ import { ChoiceDialog } from '@renderer/components/ChoiceDialog'
 import { OnboardingStep } from '@renderer/components/OnboardingStep'
 import { PathField } from '@renderer/components/PathField'
 import type { PathFieldState } from '@renderer/components/PathField/PathField.types'
+import { mockups } from '@renderer/lib/plural'
 import { folderHint, friendlyPath, locationTrail, shortPath, STASH_STEP } from './onboarding-copy'
 
 export interface StashStepProps {
@@ -20,7 +21,7 @@ type Choice =
   | { kind: 'current' }
   | { kind: 'checking'; before: Choice }
   | { kind: 'ready'; path: string }
-  | { kind: 'unconfirmed'; path: string; before: Choice }
+  | { kind: 'unconfirmed'; path: string; count: number | null; before: Choice }
   | { kind: 'blocked'; path: string; hint: string }
 
 const pathOf = (choice: Choice, current: string | null): string | null =>
@@ -58,6 +59,7 @@ export function StashStep({ onBack, onNext }: StashStepProps) {
       setChoice((before) => ({
         kind: 'unconfirmed',
         path,
+        count: check.data.mockupCount ?? null,
         before: before.kind === 'checking' ? before.before : before
       }))
     } else {
@@ -74,7 +76,15 @@ export function StashStep({ onBack, onNext }: StashStepProps) {
         : choice.kind === 'unconfirmed'
           ? 'existing-library'
           : 'default'
-  const hint = choice.kind === 'blocked' ? choice.hint : undefined
+  // A stash whose database can't be read has no count, so the line leaves it out.
+  const hint =
+    choice.kind === 'blocked'
+      ? choice.hint
+      : choice.kind === 'unconfirmed'
+        ? choice.count === null
+          ? 'There’s already a stash in here.'
+          : `There’s already a stash in here (${mockups(choice.count)}).`
+        : undefined
   const blocked = shown === null || choice.kind === 'blocked' || choice.kind === 'unconfirmed'
 
   const proceed = async () => {

@@ -1,5 +1,9 @@
 import {
+  Children,
+  Fragment,
+  isValidElement,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentProps,
@@ -15,9 +19,12 @@ import {
   marqueeHits,
   marqueeRect,
   type HitTarget,
+  type Point,
   type Rect
 } from '@renderer/lib/marquee'
 import { cn } from '@renderer/lib/utils'
+import { GridCardContext, type GridCard } from './grid-card'
+import { trackCount, useCardWindow, WINDOW_FROM } from './use-card-window'
 import { MOCKUP_GRID_DEFAULTS, type MockupGridContractProps } from './MockupGrid.types'
 import { MOCKUP_GRID_CARDS, MOCKUP_GRID_MARQUEE, mockupGridVariants } from './MockupGrid.variants'
 
@@ -51,6 +58,8 @@ export interface MockupGridProps
   error?: ReactNode
   /** Cards per row for ↑ ↓. Measured from the layout when omitted. */
   columns?: number
+  /** What assistive tech calls the list of cards. */
+  listLabel?: string
 }
 
 function cardElements(root: HTMLElement): HTMLElement[] {
@@ -64,8 +73,11 @@ function cardRects(root: HTMLElement): HitTarget[] {
   }))
 }
 
-/** Cards that share the first card's row. */
+/** The grid's column tracks; where nothing lays out, the cards that share the first card's row. */
 function measureColumns(root: HTMLElement): number {
+  const list = root.querySelector('[data-slot="mockup-cards"]')
+  const tracks = list ? trackCount(list) : 0
+  if (tracks > 0) return tracks
   const cards = cardElements(root)
   if (cards.length === 0) return 1
   const firstTop = cards[0]?.getBoundingClientRect().top
@@ -87,6 +99,7 @@ export function MockupGrid({
   noResults,
   error,
   columns,
+  listLabel = 'Mockups',
   onClick,
   onKeyDown,
   onMouseDown,
@@ -94,6 +107,7 @@ export function MockupGrid({
 }: MockupGridProps) {
   const { state, showAdd, ...props } = { ...MOCKUP_GRID_DEFAULTS, ...rest }
   const rootRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState<Rect | null>(null)
 
   // Handlers read the latest selection without re-binding the window listeners mid-drag.
@@ -153,28 +167,115 @@ export function MockupGrid({
     const additive = event.metaKey || event.ctrlKey
     const base = additive ? selection.selectedIds : []
     let dragging = false
+    // The cards are measured once a drag, and again only when they move under the box.
+    let rects: HitTarget[] | null = null
+    let to: Point = start
+    let frame: number | null = null
 
-    const move = (e: MouseEvent) => {
-      const to = { x: e.clientX, y: e.clientY }
-      if (!dragging && !exceedsDragThreshold(start, to)) return
-      dragging = true
+    // At most once a frame, however fast the pointer reports.
+    const apply = () => {
+      frame = null
       const next = marqueeRect(start, to)
+      rects ??= cardRects(root)
       setBox(next)
-      selectionRef.current?.marquee(marqueeHits(next, cardRects(root)), base, additive)
+      selectionRef.current?.marquee(marqueeHits(next, rects), base, additive)
+    }
+    const schedule = () => {
+      frame ??= requestAnimationFrame(apply)
+    }
+    const move = (e: MouseEvent) => {
+      const point = { x: e.clientX, y: e.clientY }
+      if (!dragging && !exceedsDragThreshold(start, point)) return
+      dragging = true
+      to = point
+      schedule()
+    }
+    // A scroll or resize moves the cards under the box.
+    const remeasure = () => {
+      rects = null
+      if (dragging) schedule()
     }
     const up = () => {
       window.removeEventListener('mousemove', move)
       window.removeEventListener('mouseup', up)
+      window.removeEventListener('scroll', remeasure, true)
+      window.removeEventListener('resize', remeasure)
+      // The last position still counts when the button comes up before its frame.
+      if (frame !== null) {
+        cancelAnimationFrame(frame)
+        apply()
+      }
       setBox(null)
       // A press on empty space that never became a drag deselects, as in Finder.
       if (!dragging && !additive) selectionRef.current?.clear()
     }
     window.addEventListener('mousemove', move)
     window.addEventListener('mouseup', up)
+    window.addEventListener('scroll', remeasure, true)
+    window.addEventListener('resize', remeasure)
   }
+
+  // With a selection the cards are a multi-select list: each says whether it is selected and "3 of 128".
+  const ids = selection?.ids
+  const positions = useMemo(() => new Map(ids?.map((id, index) => [id, index + 1])), [ids])
+  const cardLookup = useMemo(() => {
+    if (!selection) return null
+    return (id: string): GridCard | null => {
+      const position = positions.get(id)
+      if (position === undefined) return null
+      return { selected: selection.isSelected(id), position, count: positions.size }
+    }
+  }, [selection, positions])
+  const listbox = cardLookup !== null && state === 'populated'
 
   const add = addCard ?? <AddMockupCard onClick={onAdd} />
   const withCards = state === 'populated' || state === 'loading' || state === 'empty'
+  const populated = state === 'populated'
+  const withAdd = state === 'empty' || showAdd
+
+  // Every cell in grid order. A big grid mounts only the rows near the view (F-071), and always
+  // the selection cursor's, so arrow keys, focus and Reveal find its card.
+  const cards = populated ? Children.toArray(children) : []
+  const cells: ReactNode[] = [
+    ...(withAdd ? [<Fragment key="add-card">{add}</Fragment>] : []),
+    ...cards,
+    ...(state === 'loading'
+      ? Array.from({ length: LOADING_CARD_COUNT }, (_, index) => (
+          <MockupCard key={`loading-${index}`} state="loading" />
+        ))
+      : [])
+  ]
+  // Each card's cell, by mockup id: the cursor's row stays mounted, and a reflow keeps its place.
+  const cellIndex = new Map<string, number>()
+  if (populated && cells.length >= WINDOW_FROM) {
+    cards.forEach((card, at) => {
+      if (isValidElement<{ mockupId?: string }>(card) && card.props.mockupId !== undefined)
+        cellIndex.set(card.props.mockupId, at + (withAdd ? 1 : 0))
+    })
+  }
+  const parts = useCardWindow(
+    listRef,
+    cells.length,
+    populated,
+    cursor ? (cellIndex.get(cursor) ?? null) : null,
+    (mockupId) => cellIndex.get(mockupId)
+  )
+  const mounted: ReactNode[] = parts
+    ? parts.flatMap<ReactNode>((part) =>
+        part.kind === 'cells'
+          ? cells.slice(part.from, part.to)
+          : [
+              // Stands in for rows that are not mounted; never a scroll anchor, so the view holds still.
+              <div
+                key={part.key}
+                aria-hidden
+                data-grid-rows=""
+                className="col-span-full"
+                style={{ height: part.height, overflowAnchor: 'none' }}
+              />
+            ]
+      )
+    : cells
 
   return (
     <div
@@ -188,13 +289,15 @@ export function MockupGrid({
       {...props}
     >
       {withCards && (
-        <div className={MOCKUP_GRID_CARDS}>
-          {(state === 'empty' || showAdd) && add}
-          {state === 'populated' && children}
-          {state === 'loading' &&
-            Array.from({ length: LOADING_CARD_COUNT }, (_, index) => (
-              <MockupCard key={index} state="loading" />
-            ))}
+        <div
+          ref={listRef}
+          data-slot="mockup-cards"
+          className={MOCKUP_GRID_CARDS}
+          {...(listbox
+            ? { role: 'listbox', 'aria-multiselectable': true, 'aria-label': listLabel }
+            : {})}
+        >
+          <GridCardContext.Provider value={cardLookup}>{mounted}</GridCardContext.Provider>
         </div>
       )}
       {state === 'no-results' && noResults}

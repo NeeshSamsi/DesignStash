@@ -4,10 +4,11 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Alert02Icon, Download04Icon, Globe02Icon, HardDriveIcon } from '@hugeicons/core-free-icons'
 import { Button } from '@renderer/components/Button'
 import { Progress } from '@renderer/components/Progress'
+import { StepBar, type StepBarValue } from '@renderer/components/StepBar'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import { MODEL_CARD_DEFAULTS, type ModelCardContractProps } from './ModelCard.types'
-import { modelCardStepVariants, modelCardVariants } from './ModelCard.variants'
+import { modelCardVariants } from './ModelCard.variants'
 
 export interface ModelCardProps
   extends
@@ -43,22 +44,17 @@ export interface ModelCardProps
 
 const FAILURE = 'The download stopped. Check your connection, then try again.'
 
-/** Five 12×4 steps; the first `value` are filled in the brand colour, on every card. */
+/** A label and a StepBar: the first `value` of five steps filled in the brand colour, on every card. */
 function Bar({ label, value }: { label: string; value: number }) {
   const filled = Math.max(0, Math.min(5, Math.round(value)))
   return (
     <div className="flex items-center gap-2">
       <span className="h-4 w-11 text-right type-caption-xs-regular text-tertiary">{label}</span>
-      <div role="img" aria-label={`${label} ${filled} of 5`} className="flex items-start gap-0.5">
-        {[0, 1, 2, 3, 4].map((step) => (
-          <span
-            key={step}
-            className={modelCardStepVariants({
-              filled: step >= filled ? 'none' : 'accent'
-            })}
-          />
-        ))}
-      </div>
+      <StepBar
+        value={String(filled) as StepBarValue}
+        role="img"
+        aria-label={`${label} ${filled} of 5`}
+      />
     </div>
   )
 }
@@ -98,6 +94,8 @@ export function ModelCard({
     languages,
     size,
     resumeNote: figmaResumeNote,
+    qualityBar,
+    speedBar,
     ...props
   } = {
     ...MODEL_CARD_DEFAULTS,
@@ -132,8 +130,8 @@ export function ModelCard({
           <p className="type-body-sm-regular text-muted-foreground">{description}</p>
         </div>
         <div className="flex shrink-0 flex-col gap-1.5">
-          <Bar label="quality" value={quality} />
-          <Bar label="speed" value={speed} />
+          {qualityBar ?? <Bar label="quality" value={quality} />}
+          {speedBar ?? <Bar label="speed" value={speed} />}
         </div>
       </div>
 

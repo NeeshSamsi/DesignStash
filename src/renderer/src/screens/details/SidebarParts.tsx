@@ -103,6 +103,8 @@ export interface EditableCoverProps {
   coverSource: CoverSource
   missing: boolean
   ui: CoverUi
+  /** Why main kept the cover, in place of the panel's usual error line. */
+  errorMessage?: string | undefined
   imageSize: { width: number; height: number } | undefined
   onCover: (file: File) => void
   onUsePsdPreview: () => void
@@ -121,6 +123,7 @@ export function EditableCover({
   coverSource,
   missing,
   ui,
+  errorMessage,
   imageSize,
   onCover,
   onUsePsdPreview,
@@ -132,6 +135,7 @@ export function EditableCover({
       <CoverPanel
         source={panelSource(coverPath, coverSource)}
         state={ui}
+        {...(errorMessage ? { errorMessage } : {})}
         coverMissing={missing}
         showDeck={false}
         {...(src ? { coverSrc: src } : {})}

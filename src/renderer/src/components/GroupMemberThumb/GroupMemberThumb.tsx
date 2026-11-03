@@ -5,7 +5,7 @@ import { MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { CoverImage } from '@renderer/components/CoverImage'
 import { MiddleTruncatedText } from '@renderer/lib/middle-truncated-text'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import {
   GROUP_MEMBER_THUMB_DEFAULTS,
   type GroupMemberThumbContractProps
@@ -70,8 +70,8 @@ export function GroupMemberThumb({
           <div
             className={cn('absolute inset-x-1 top-1 flex items-center gap-1', away && 'opacity-0')}
           >
-            {primary && <Badge variant="default">Top</Badge>}
-            {state === 'pile-target' && <Badge variant="default">{dropHint}</Badge>}
+            {primary && <Badge variant="primary">Top</Badge>}
+            {state === 'pile-target' && <Badge variant="primary">{dropHint}</Badge>}
             <span className="flex-1" />
             {showMore && (
               <button

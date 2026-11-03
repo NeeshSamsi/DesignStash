@@ -62,10 +62,26 @@ export function summarisePlaceholders(checks: PlaceholderCheck[]): PlaceholderSu
  * for ("a laptop, also called a computer", "a MacBook, also called a website"). Measured on the
  * round 2 answers (design/research/ai-round3.md).
  */
-const BAD_ALTERNATE =
-  /\balso (?:called|known as) (?:an? |the )?(?:(?:printed|packaging|screen|touchscreen|digital|small) )?(?:design|product|prop|mock-?up|thing|item|object|container|computer|website|document|devices?|template|piece|accessory|surface)s?\b/i
+const BAD_NAME =
+  String.raw`also (?:called|known as) (?:an? |the )?(?:(?:printed|packaging|product|screen|touchscreen|digital|small) )?(?:design|product|prop|mock-?up|thing|item|object|container|computer|website|document|devices?|template|piece|accessory|surface)s?\b`
+const BAD_ALTERNATE = new RegExp(String.raw`\b${BAD_NAME}`, 'i')
 
 /** The bad "also called" phrase in a description, or null. */
 export function badAlternate(description: string): string | null {
   return BAD_ALTERNATE.exec(description)?.[0] ?? null
+}
+
+/**
+ * The bad name as a clause the sentence reads on without (", also called a computer,"), with the
+ * comma before it, and the one after it unless the sentence ends there.
+ */
+const BAD_CLAUSE = new RegExp(String.raw`,?\s*\b${BAD_NAME}(?:,(?=\s)|(?=[.!?]|\s*$))`, 'gi')
+
+/**
+ * Round 4, Apple's code cut: the answer with every bad "also called" name taken out of its
+ * description ("A laptop, also called a computer, resting on…" becomes "A laptop resting on…"). A
+ * bad name that runs on into more words stays, since cutting it would break the sentence.
+ */
+export function withoutBadAlternate<T extends { description: string }>(answer: T): T {
+  return { ...answer, description: answer.description.replace(BAD_CLAUSE, '') }
 }

@@ -1,5 +1,7 @@
 import { spawn as nodeSpawn } from 'node:child_process'
 import { createServer } from 'node:net'
+import { basename, dirname } from 'node:path'
+import { logger } from '../logger'
 
 /** The parts of a child process the server uses, so tests can hand in a fake. */
 export interface ServerProcess {
@@ -7,6 +9,8 @@ export interface ServerProcess {
   readonly exitCode: number | null
   kill(signal?: NodeJS.Signals): boolean
   once(event: 'exit', listener: (code: number | null) => void): unknown
+  /** A spawn that fails (no file, no execute bit) emits this and never 'exit'. */
+  on(event: 'error', listener: (err: Error) => void): unknown
   stderr?: { on(event: 'data', listener: (chunk: Buffer | string) => void): unknown } | null
 }
 
@@ -38,6 +42,8 @@ export interface LlamaServerDeps {
   sleep(ms: number): Promise<void>
   /** Kill the child if the app quits under it. Returns a function that unregisters. */
   onParentExit(listener: () => void): () => void
+  /** Where each start, stop and exit is written down, so a problem report shows every restart. */
+  log?(line: string): void
 }
 
 /** The parts of an OpenAI-compatible chat completion reply that llama-server fills in. */
@@ -47,10 +53,20 @@ export interface ChatCompletion {
   timings?: Record<string, number>
 }
 
+/**
+ * A start of llama-server that failed: it couldn't be spawned, exited while loading, or never became
+ * ready. The runtime's trouble, never the request's: the queue counts these to tell that the
+ * runtime itself is broken (F-038).
+ */
+export class LlamaStartError extends Error {
+  override name = 'LlamaStartError'
+}
+
 const HOST = '127.0.0.1'
 const HEALTH_POLL_MS = 250
 const STOP_GRACE_MS = 5_000
 const STDERR_TAIL_LINES = 20
+const IDLE_MS = 5 * 60_000
 
 /** A free TCP port on 127.0.0.1, found by binding port 0 and letting it go. */
 export function findFreePort(): Promise<number> {
@@ -73,7 +89,8 @@ export const defaultLlamaServerDeps: LlamaServerDeps = {
   onParentExit: (listener) => {
     process.once('exit', listener)
     return () => process.off('exit', listener)
-  }
+  },
+  log: (line) => logger.info(line)
 }
 
 /**
@@ -125,9 +142,12 @@ export class LlamaServer {
     return content
   }
 
-  /** POST a chat completion and return the whole reply (every choice, logprobs, usage, timings). */
-  async complete(body: object): Promise<ChatCompletion> {
-    return (await this.post('/v1/chat/completions', body)) as ChatCompletion
+  /**
+   * POST a chat completion and return the whole reply (every choice, logprobs, usage, timings).
+   * Aborting `signal` cancels it, which frees the server's one slot for the next request (F-035).
+   */
+  async complete(body: object, signal?: AbortSignal): Promise<ChatCompletion> {
+    return (await this.post('/v1/chat/completions', body, signal)) as ChatCompletion
   }
 
   /** Vectors for texts, in order, from an embedding server. Starts the server if it isn't running. */
@@ -142,7 +162,7 @@ export class LlamaServer {
     return rows.map((r) => r.embedding as number[])
   }
 
-  private async post(path: string, body: object): Promise<unknown> {
+  private async post(path: string, body: object, signal?: AbortSignal): Promise<unknown> {
     this.clearIdle()
     this.inFlight++
     try {
@@ -151,7 +171,7 @@ export class LlamaServer {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.config.requestTimeoutMs ?? 180_000)
+        signal: this.requestSignal(signal)
       })
       if (!res.ok) {
         throw new Error(`llama-server answered ${res.status}: ${(await res.text()).slice(0, 200)}`)
@@ -163,14 +183,21 @@ export class LlamaServer {
     }
   }
 
+  /** The request's own time limit, and the caller's signal when there is one. */
+  private requestSignal(signal?: AbortSignal): AbortSignal {
+    const timeout = AbortSignal.timeout(this.config.requestTimeoutMs ?? 180_000)
+    return signal ? AbortSignal.any([signal, timeout]) : timeout
+  }
+
   /** Stop the child: SIGTERM, then SIGKILL if it hasn't gone after a grace period. */
-  async stop(): Promise<void> {
+  async stop(why: 'asked' | 'idle' = 'asked'): Promise<void> {
     this.clearIdle()
     const child = this.child
     this.child = null
     this.starting = null
     this.healthy = false
     if (!child || child.exitCode !== null) return
+    this.deps.log?.(`[AI] llama-server for ${this.name} stopped${why === 'idle' ? ` after ${Math.round((this.config.idleMs ?? IDLE_MS) / 60_000)} min idle` : ''}.`)
 
     const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()))
     child.kill('SIGTERM')
@@ -181,10 +208,16 @@ export class LlamaServer {
     if (!gone) child.kill('SIGKILL')
   }
 
+  /** The model's folder, which names it in the log without a path ("qwen3.5-9b"). */
+  private get name(): string {
+    return basename(dirname(this.config.modelPath))
+  }
+
   private ensureStarted(): Promise<string> {
     if (!this.starting) {
       this.starting = this.launch().catch((err) => {
         this.starting = null
+        this.deps.log?.(`[AI] llama-server for ${this.name} couldn't start: ${err instanceof Error ? err.message : String(err)}`)
         throw err
       })
     }
@@ -213,18 +246,32 @@ export class LlamaServer {
     ]
 
     this.stderrTail = []
+    const startedAt = performance.now()
     const child = this.deps.spawn(binaryPath, args)
     this.child = child
     let exitCode: number | null | undefined
     if (child.pid !== undefined) void this.config.tracker?.record(child.pid)
     const unregister = this.deps.onParentExit(() => child.kill('SIGKILL'))
     child.stderr?.on('data', (chunk) => this.recordStderr(String(chunk)))
+    let failed: Error | undefined
+    child.on('error', (err) => {
+      failed ??= err
+      this.recordStderr(`process error: ${err.message}`)
+      // Never spawned: there is no process to exit, so forget it here.
+      if (child.pid === undefined && this.child === child) {
+        unregister()
+        this.child = null
+        this.healthy = false
+        this.clearIdle()
+      }
+    })
     child.once('exit', (code) => {
       exitCode = code
       unregister()
       void this.config.tracker?.clear()
       // Crashed or stopped: the next request starts a fresh one.
       if (this.child === child) {
+        if (this.healthy) this.deps.log?.(`[AI] llama-server for ${this.name} exited on its own (code ${code}). The next request starts it again.`)
         this.child = null
         this.starting = null
         this.healthy = false
@@ -234,14 +281,19 @@ export class LlamaServer {
 
     const polls = Math.ceil((this.config.startTimeoutMs ?? 120_000) / HEALTH_POLL_MS)
     for (let i = 0; i < polls; i++) {
+      if (failed) {
+        if (child.pid !== undefined) await this.stop()
+        throw new LlamaStartError(`llama-server couldn't start: ${failed.message}. ${this.tail()}`)
+      }
       if (exitCode !== undefined) {
-        throw new Error(`llama-server exited while loading (code ${exitCode}). ${this.tail()}`)
+        throw new LlamaStartError(`llama-server exited while loading (code ${exitCode}). ${this.tail()}`)
       }
       try {
         // 503 while the model loads, 200 once it's ready.
         const res = await this.deps.fetch(`${baseUrl}/health`)
         if (res.ok) {
           this.healthy = this.child === child
+          this.deps.log?.(`[AI] llama-server for ${this.name} is up after ${((performance.now() - startedAt) / 1000).toFixed(1)} s.`)
           return baseUrl
         }
       } catch {
@@ -250,12 +302,12 @@ export class LlamaServer {
       await this.deps.sleep(HEALTH_POLL_MS)
     }
     await this.stop()
-    throw new Error(`llama-server didn't become ready in time. ${this.tail()}`)
+    throw new LlamaStartError(`llama-server didn't become ready in time. ${this.tail()}`)
   }
 
   private armIdle(): void {
     if (!this.child) return
-    this.idleTimer = setTimeout(() => void this.stop(), this.config.idleMs ?? 5 * 60_000)
+    this.idleTimer = setTimeout(() => void this.stop('idle'), this.config.idleMs ?? IDLE_MS)
   }
 
   private clearIdle(): void {

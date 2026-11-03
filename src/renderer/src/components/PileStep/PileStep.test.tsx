@@ -32,6 +32,28 @@ describe('PileStep', () => {
     expect(container.querySelector('[aria-hidden]')).toBeNull()
   })
 
+  it('shows the note under the label only when asked, as a tertiary caption', () => {
+    const { rerender } = render(<PileStep note="Suggestions on the way" />)
+    expect(screen.queryByText('Suggestions on the way')).toBeNull()
+    rerender(<PileStep showNote note="Suggestions on the way" />)
+    const note = screen.getByText('Suggestions on the way')
+    expect(note.className).toContain('type-caption-xs-regular')
+    expect(note.className).toContain('text-tertiary')
+    expect(
+      screen.getByRole('button', {
+        name: 'Variant · phone_side',
+        description: 'Suggestions on the way'
+      })
+    ).toBeTruthy()
+  })
+
+  it('stretches the connector from under the marker to the next step, so a note never breaks it', () => {
+    const { container } = render(<PileStep showNote />)
+    const line = container.querySelector('[data-slot="connector"]')!
+    expect(line.className).toContain('top-5')
+    expect(line.className).toContain('-bottom-2')
+  })
+
   it('is clickable in every status, since everything is a draft', () => {
     const onClick = vi.fn()
     const { rerender } = render(<PileStep status="todo" onClick={onClick} />)

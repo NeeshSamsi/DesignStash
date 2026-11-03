@@ -11,10 +11,10 @@ export const BUTTON_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=211-2091',
   section: '2 · Primitives (shadcn)',
   description:
-    'Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = 2px border/focus ring outside.\nSync 2026-10: sizes icon-xs (24px, 16px icon: Toast and Banner dismiss, TagTree row menu) and icon-sm (32px, 16px icon) match ui/button.tsx.',
+    'Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = the shared focus ring (below).\nSync 2026-10: sizes icon-xs (24px, 16px icon: Toast and Banner dismiss, TagTree row menu) and icon-sm (32px, 16px icon) match ui/button.tsx.\nvariant=outline-subtle (2026-10-24): the quiet outline, border/subtle with no fill, border/input on hover. Used for toolbar and toast actions (Filter, Make pile, Disband pile, Undo, Retry); code sets it today with a className on LibraryToolbar and Toast.\nFocus ring (2026-10-24), on every focusable component: the focus state keeps the resting border and adds a separate 2px border/focus ring 2px outside the control (radius = the control’s + 4; radius/card-ring for cards), matching the code’s focus-ring utility. It never changes the control’s size.',
   code: 'ui/button.tsx (variant="default" ↔ primary, size="default" ↔ base)',
   axes: {
-    variant: ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link'],
+    variant: ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link', 'outline-subtle'],
     size: ['xs', 'sm', 'base', 'lg', 'icon', 'icon-xs', 'icon-sm']
   },
   axisDefaults: {
@@ -39,11 +39,18 @@ export const BUTTON_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link'
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'ghost'
+  | 'destructive'
+  | 'link'
+  | 'outline-subtle'
 export type ButtonSize = 'xs' | 'sm' | 'base' | 'lg' | 'icon' | 'icon-xs' | 'icon-sm'
 
 export interface ButtonContractProps {
-  /** Figma `variant` (6 options). Default `primary`. */
+  /** Figma `variant` (7 options). Default `primary`. */
   variant?: ButtonVariant
   /** Figma `size` (7 options). Default `base`. */
   size?: ButtonSize

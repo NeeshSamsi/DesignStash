@@ -8,6 +8,8 @@ import type { CopyStatus } from '@shared/ipc/import'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb } from '../db/repositories/__tests__/setup'
+import { undoForTests } from '../undo/test-support'
+import type { UndoService } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -36,12 +38,16 @@ vi.mock('../psd', () => ({
   SLOT_MASK_FILE: 'slot-mask.png'
 }))
 // The slot mask runs in a worker thread, which needs the built app.
-vi.mock('../psd/design-slot-worker', () => ({ writeDesignSlotMaskInWorker: async () => false, ensureSlotMask: async () => {} }))
+vi.mock('../psd/design-slot-worker', () => ({
+  writeDesignSlotMaskInWorker: async () => false,
+  ensureSlotMask: async () => {}
+}))
 
 import { registerImportHandlers } from './import'
 
 let sqlite: Database.Database
 let repo: Repository
+let undo: UndoService
 let base: string
 let drop: string
 let push: ReturnType<typeof vi.fn>
@@ -70,12 +76,19 @@ beforeEach(() => {
   ensureSearchIndex(test.db)
   push = vi.fn()
   analyze = vi.fn(async () => ({ title: 'T', description: '', tags: [] }))
+  const undoing = undoForTests(repo, test.db)
+  undo = undoing.undo
   registerImportHandlers({
     repo,
     push,
-    settings: { getLibraryRoot: () => join(base, 'Library'), get: () => ({ activeModelId: null, aiRunTimes: {} }), update: vi.fn() },
+    settings: {
+      getLibraryRoot: () => join(base, 'Library'),
+      get: () => ({ activeModelId: null, aiRunTimes: {} }),
+      update: vi.fn()
+    },
     telemetry: { get: () => ({ track: vi.fn() }) },
-    ai: { activeProvider: async () => ({ id: 's', name: 's', analyze }) }
+    ai: { activeProvider: async () => ({ id: 's', name: 's', analyze }) },
+    ...undoing
   } as unknown as HandlerContext)
 })
 
@@ -109,21 +122,20 @@ describe('copy channels', () => {
     expect(JSON.stringify(push.mock.calls)).not.toContain(base)
   })
 
-  it('Undo all removes what landed and pushes the counts', async () => {
+  it('an import is one history entry: its undo moves what landed to Trash', async () => {
     writeFileSync(join(drop, 'a.psd'), 'AAAA')
-    const started = await call<CopyStatus>(IPC_CHANNELS.COPY_START, { paths: [drop] })
+    await call<CopyStatus>(IPC_CHANNELS.COPY_START, { paths: [drop] })
     await settle()
+    const status = await call<{ haul: CopyStatus }>(IPC_CHANNELS.COPY_STATUS)
+    const id = status.success ? status.data.haul.undoEntryId : undefined
+    expect(id).toEqual(expect.any(Number))
 
-    const res = await call<{ tossedIds: number[] }>(IPC_CHANNELS.COPY_UNDO_ALL, {
-      haulId: started.success ? started.data.haulId : ''
+    expect(await undo.history.undoEntry(id!)).toMatchObject({
+      status: 'done',
+      label: 'Import of 1 mockup'
     })
-
-    expect(res.success && res.data.tossedIds).toHaveLength(1)
     expect(repo.inbox.list('to_sort')).toEqual([])
-    expect(push).toHaveBeenLastCalledWith(
-      IPC_CHANNELS.INBOX_COUNTS_CHANGED,
-      expect.objectContaining({ toSort: 0 })
-    )
+    expect(repo.trash.getTrashEntries().map((e) => e.origin)).toEqual(['import'])
   })
 
   it('Cancel answers with what landed so far, and Retry on an unknown haul is an error', async () => {
@@ -158,7 +170,13 @@ describe('copy channels', () => {
         bytesCopied: 100,
         bytesPerSecond: 0,
         secondsLeft: null,
-        skipped: { notPsd: 0, duplicate: 1, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 },
+        skipped: {
+          notPsd: 0,
+          duplicate: 1,
+          unreadable: 0,
+          archiveUnsupported: 0,
+          noPsdInArchive: 0
+        },
         file: null
       }).success
     ).toBe(true)

@@ -3,7 +3,7 @@ import type { MenuItemConstructorOptions } from 'electron'
 
 vi.mock('electron', () => ({ Menu: { buildFromTemplate: vi.fn(), setApplicationMenu: vi.fn() } }))
 
-import { GUIDE_URL, buildMenuTemplate, type MenuDeps } from './menu'
+import { GUIDE_URL, buildMenuTemplate, undoMenuItems, type MenuDeps } from './menu'
 
 const GUIDE = 'https://example.com/guide'
 
@@ -32,7 +32,7 @@ describe('buildMenuTemplate', () => {
     expect(template.map((m) => m.label ?? m.role)).toEqual([
       'DesignStash',
       'File',
-      'editMenu',
+      'Edit',
       'View',
       'windowMenu',
       'Help'
@@ -90,17 +90,56 @@ describe('buildMenuTemplate', () => {
     }
   })
 
-  it('leaves every app shortcut to the window, so a key never fires twice', () => {
+  it('leaves every app shortcut but Undo and Redo to the window, so a key never fires twice', () => {
     const { template } = setup()
-    const custom = template.flatMap((m) => submenu(m)).filter((i) => i.click && i.accelerator)
+    const custom = template
+      .flatMap((m) => submenu(m))
+      .filter((i) => i.click && i.accelerator && i.label !== 'Undo' && i.label !== 'Redo')
     expect(custom.length).toBeGreaterThan(0)
     for (const item of custom) expect(item.registerAccelerator).toBe(false)
   })
 
-  it('Edit and Window are the standard menus', () => {
+  it('Edit starts with Undo and Redo, then the standard text items; Window is the standard menu', () => {
     const { template } = setup()
-    expect(template[2]!.role).toBe('editMenu')
+    expect(submenu(template[2]!).map((i) => i.label ?? i.role ?? i.type)).toEqual([
+      'Undo',
+      'Redo',
+      'separator',
+      'cut',
+      'copy',
+      'paste',
+      'pasteAndMatchStyle',
+      'delete',
+      'selectAll'
+    ])
     expect(template[4]!.role).toBe('windowMenu')
+  })
+
+  it('Undo and Redo own ⌘Z and ⇧⌘Z, and send undo and redo to the window', () => {
+    const { deps, template } = setup()
+    const undo = find(template, 'Edit', 'Undo')
+    const redo = find(template, 'Edit', 'Redo')
+    // Registered with the menu, so the key reaches the window as a command, even in a dialog.
+    expect([undo.accelerator, undo.registerAccelerator]).toEqual(['CmdOrCtrl+Z', undefined])
+    expect([redo.accelerator, redo.registerAccelerator]).toEqual(['Shift+CmdOrCtrl+Z', undefined])
+    click(undo)
+    click(redo)
+    expect(deps.send).toHaveBeenNthCalledWith(1, 'undo')
+    expect(deps.send).toHaveBeenNthCalledWith(2, 'redo')
+  })
+
+  it('names Undo and Redo as the history says', () => {
+    const deps: MenuDeps = {
+      send: vi.fn(),
+      openExternal: vi.fn(),
+      undo: {
+        undo: { label: 'Undo Move to Trash', enabled: true },
+        redo: { label: 'Redo', enabled: false }
+      }
+    }
+    const template = buildMenuTemplate(deps)
+    expect(find(template, 'Edit', 'Undo Move to Trash').enabled).toBe(true)
+    expect(find(template, 'Edit', 'Redo').enabled).toBe(false)
   })
 
   it('Help › DesignStash Guide opens the guide in the browser', () => {
@@ -123,5 +162,41 @@ describe('buildMenuTemplate', () => {
     const dev = buildMenuTemplate({ send: vi.fn(), openExternal: vi.fn(), dev: true })
     expect(roles(dev)).toContain('toggleDevTools')
     expect(roles(dev)).toContain('reload')
+  })
+})
+
+describe('undoMenuItems', () => {
+  const entry = (label: string, reversal = false) => ({ label, reversal })
+
+  it('names the app’s next undo and redo', () => {
+    expect(
+      undoMenuItems('app', { undo: entry('Move to Trash'), redo: entry('Disband pile') })
+    ).toEqual({
+      undo: { label: 'Undo Move to Trash', enabled: true },
+      redo: { label: 'Redo Disband pile', enabled: true }
+    })
+  })
+
+  it('is plain and disabled when there is nothing to undo or redo', () => {
+    expect(undoMenuItems('app', { undo: null, redo: null })).toEqual({
+      undo: { label: 'Undo', enabled: false },
+      redo: { label: 'Redo', enabled: false }
+    })
+  })
+
+  it('reads plain Undo and Redo in a field or a flow, which keep their own steps', () => {
+    for (const context of ['field', 'flow'] as const) {
+      expect(undoMenuItems(context, { undo: entry('Move to Trash'), redo: null })).toEqual({
+        undo: { label: 'Undo', enabled: true },
+        redo: { label: 'Redo', enabled: true }
+      })
+    }
+  })
+
+  it('reads plain Undo for a toast’s out-of-order undo, where ⌘Z puts things back', () => {
+    expect(undoMenuItems('app', { undo: entry('Move to Trash', true), redo: null }).undo).toEqual({
+      label: 'Undo',
+      enabled: true
+    })
   })
 })

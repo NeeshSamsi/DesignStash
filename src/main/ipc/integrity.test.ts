@@ -8,6 +8,7 @@ import type { StashCheckStatus } from '@shared/stash'
 import { createSettingsStore } from '../settings'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, approvedMockup } from '../db/repositories/__tests__/setup'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 import { inferenceQueueFor } from './library-effects'
 
@@ -35,8 +36,14 @@ beforeEach(() => {
   const test = createTestDb()
   sqlite = test.sqlite
   const settings = createSettingsStore(base)
-  test.repo.mockups.createMockup(approvedMockup({ title: 'Gone', libraryPath: join(base, 'missing.psd') }))
-  registerIntegrityHandlers({ settings, repo: test.repo } as unknown as HandlerContext)
+  test.repo.mockups.createMockup(
+    approvedMockup({ title: 'Gone', libraryPath: join(base, 'missing.psd') })
+  )
+  registerIntegrityHandlers({
+    settings,
+    repo: test.repo,
+    ...undoForTests(test.repo, test.db, settings)
+  } as unknown as HandlerContext)
 })
 
 afterEach(() => {
@@ -84,7 +91,8 @@ describe('resolving changes', () => {
       settings,
       repo: test.repo,
       ai: { activeProvider: async () => null },
-      push: (channel: string, payload: unknown) => void pushed.push({ channel, payload })
+      push: (channel: string, payload: unknown) => void pushed.push({ channel, payload }),
+      ...undoForTests(test.repo, test.db, settings)
     } as unknown as HandlerContext
     registerIntegrityHandlers(ctx, async () => picked)
   })
@@ -115,9 +123,7 @@ describe('resolving changes', () => {
     const report = await call<{ gone: unknown[] }>(IPC_CHANNELS.INTEGRITY_REPORT)
     expect(report.success && report.data.gone).toEqual([])
 
-    await call(IPC_CHANNELS.INTEGRITY_UNIGNORE, {
-      ids: ignored.success ? ignored.data.ignoredIds : []
-    })
+    await ctx.undo.history.undo()
     const back = await call<{ gone: unknown[] }>(IPC_CHANNELS.INTEGRITY_REPORT)
     expect(back.success && back.data.gone).toHaveLength(1)
   })
@@ -165,6 +171,19 @@ describe('resolving changes', () => {
     expect(result).toEqual({ success: true, data: { outcome: 'cancelled' } })
   })
 
+  it('Relink takes a PSB, copied in as original.psb (H-12)', async () => {
+    const gone = goneRow()
+    const elsewhere = join(base, 'elsewhere')
+    mkdirSync(elsewhere, { recursive: true })
+    picked = join(elsewhere, 'Glass iPhone 14.psb')
+    writeFileSync(picked, 'a psb')
+    expect(await call(IPC_CHANNELS.INTEGRITY_RELINK, { id: `m${gone.id}` })).toMatchObject({
+      success: true,
+      data: { outcome: 'relinked' }
+    })
+    expect(ctx.repo.mockups.getMockup(gone.id)!.libraryPath.endsWith('original.psb')).toBe(true)
+  })
+
   it('Relink refuses a file that is not a PSD', async () => {
     const gone = goneRow()
     picked = '/x/photo.png'
@@ -172,6 +191,41 @@ describe('resolving changes', () => {
       success: true,
       data: { outcome: 'not-psd' }
     })
+  })
+
+  it('Ignore all is one entry: undo shows the drift again, redo hides it', async () => {
+    goneRow()
+    const ignored = await call<{ undoEntryId: number }>(IPC_CHANNELS.INTEGRITY_IGNORE_ALL)
+    expect(ignored.success && ignored.data.undoEntryId).toEqual(expect.any(Number))
+    expect(ctx.undo.history.state().undo).toMatchObject({ label: 'Ignore all' })
+
+    await ctx.undo.history.undo()
+    const back = await call<{ gone: unknown[] }>(IPC_CHANNELS.INTEGRITY_REPORT)
+    expect(back.success && back.data.gone).toHaveLength(1)
+    await ctx.undo.history.redo()
+    const hidden = await call<{ gone: unknown[] }>(IPC_CHANNELS.INTEGRITY_REPORT)
+    expect(hidden.success && hidden.data.gone).toEqual([])
+  })
+
+  it('Add is one entry: undo takes the record away, redo puts it back', async () => {
+    const dir = join(base, 'Library', 'mockups', 'x2')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'poster_new.psd'), 'not a real psd')
+    const report = await call<{ found: { id: string }[] }>(IPC_CHANNELS.INTEGRITY_REPORT)
+    const id = report.success ? report.data.found[0]!.id : ''
+
+    const added = await call<{ mockupIds: number[]; undoEntryId: number }>(
+      IPC_CHANNELS.INTEGRITY_ADD,
+      { ids: [id] }
+    )
+    const [mockupId] = added.success ? added.data.mockupIds : []
+    expect(added.success && added.data.undoEntryId).toEqual(expect.any(Number))
+    expect(ctx.undo.history.state().undo).toMatchObject({ label: 'Add found PSDs' })
+
+    await ctx.undo.history.undo()
+    expect(ctx.repo.mockups.getMockup(mockupId!)).toBeUndefined()
+    await ctx.undo.history.redo()
+    expect(ctx.repo.mockups.getMockup(mockupId!)).toMatchObject({ title: 'poster_new' })
   })
 
   it('Add puts a found file in To sort, pushes the counts and can be undone', async () => {
@@ -190,7 +244,7 @@ describe('resolving changes', () => {
     })
     expect(pushed.some((p) => p.channel === IPC_CHANNELS.INBOX_COUNTS_CHANGED)).toBe(true)
 
-    await call(IPC_CHANNELS.INTEGRITY_UNDO_ADD, { mockupIds })
+    await ctx.undo.history.undo()
     expect(ctx.repo.mockups.getMockup(mockupIds[0]!)).toBeUndefined()
   })
 })

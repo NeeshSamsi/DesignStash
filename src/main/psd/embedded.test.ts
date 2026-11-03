@@ -1,9 +1,10 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { readEmbeddedPreview } from './embedded'
-import { buildPsdWithComposite, buildPsdSmallComposite } from './__fixtures__/build'
+import { readPsd } from 'ag-psd'
+import { readCompositeSections, readEmbeddedPreview } from './embedded'
+import { buildLayeredPsd, buildPsdWithComposite, buildPsdSmallComposite } from './__fixtures__/build'
 
 const dirs: string[] = []
 function tempDir(): string {
@@ -76,5 +77,54 @@ describe('readEmbeddedPreview', () => {
     expect(result!.width).toBe(2048)
     expect(result!.height).toBe(1536)
     expect(result!.data.length).toBe(2048 * 1536 * 4)
+  })
+})
+
+describe('reading only what the composite needs', () => {
+  /** ag-psd's own read of the whole file: what the composite should come out as. */
+  const wholeFileComposite = (path: string) => {
+    const bytes = readFileSync(path)
+    const psd = readPsd(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), {
+      skipLayerImageData: true,
+      skipCompositeImageData: false,
+      useImageData: true
+    })
+    return Buffer.from(psd.imageData!.data.buffer)
+  }
+
+  it('leaves the layers’ pixels on disk and gives the same composite as reading the whole file', async () => {
+    const psdPath = join(tempDir(), 'layered.psd')
+    buildLayeredPsd(psdPath, { layers: 3 })
+
+    const sections = await readCompositeSections(psdPath)
+    const preview = await readEmbeddedPreview(psdPath)
+
+    expect(sections.bytes.byteLength).toBeLessThan(statSync(psdPath).size / 2)
+    expect(preview!.data.equals(wholeFileComposite(psdPath))).toBe(true)
+  })
+
+  it('reads a Large Document Format file (.psb) the same way', async () => {
+    const psdPath = join(tempDir(), 'layered.psb')
+    buildLayeredPsd(psdPath, { layers: 2, psb: true })
+
+    const preview = await readEmbeddedPreview(psdPath)
+
+    expect(preview).toMatchObject({ width: 1024, height: 768 })
+    expect(preview!.data.equals(wholeFileComposite(psdPath))).toBe(true)
+  })
+
+  it('treats a see-through composite as reading the whole file does', async () => {
+    const psdPath = join(tempDir(), 'clear.psd')
+    buildLayeredPsd(psdPath, { layers: 1, transparent: true })
+
+    const preview = await readEmbeddedPreview(psdPath)
+
+    expect(preview!.data.equals(wholeFileComposite(psdPath))).toBe(true)
+  })
+
+  it('refuses a file that is not a PSD', async () => {
+    const path = join(tempDir(), 'fake.psd')
+    writeFileSync(path, 'not a photoshop file at all, just text')
+    await expect(readEmbeddedPreview(path)).rejects.toThrow()
   })
 })

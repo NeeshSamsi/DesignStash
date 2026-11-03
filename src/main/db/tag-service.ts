@@ -18,9 +18,11 @@ export class TagService {
       // 1. Find or create category
       let category = this.repo.tags.getCategoryByNormalisedLabel(aiTag.category)
       if (!category) {
+        // A suggestion until one of its tags lands on a mockup (F-034).
         category = this.repo.tags.createCategory({
           label: aiTag.category.trim(),
-          isCanonical: false // AI-created categories are not canonical by default
+          isCanonical: false, // AI-created categories are not canonical by default
+          suggestion: true
         })
       }
 
@@ -33,7 +35,8 @@ export class TagService {
           label: aiTag.label.trim().replace(/\s+/g, ' '),
           categoryId: category.id,
           isCanonical: false,
-          createdBy: 'ai'
+          // Not a tag yet: it turns 'ai' when it lands on a mockup (F-034).
+          createdBy: 'suggestion'
         })
       }
 
@@ -47,14 +50,9 @@ export class TagService {
 
   deleteTag: Handler<Channels['TAG_DELETE']> = ({ tagId }) => this.repo.tags.deleteTag(tagId)
 
-  restoreTag: Handler<Channels['TAG_RESTORE']> = ({ snapshot }) => this.repo.tags.restoreTag(snapshot)
-
   previewMergeTags: Handler<Channels['TAG_MERGE_PREVIEW']> = ({ sourceTagId, targetTagId }) =>
     this.repo.tags.previewMergeTags(sourceTagId, targetTagId)
 
   deleteCategory: Handler<Channels['CATEGORY_DELETE']> = ({ categoryId, moveTagsTo }) =>
     this.repo.tags.deleteCategory(categoryId, moveTagsTo)
-
-  restoreCategory: Handler<Channels['CATEGORY_RESTORE']> = ({ snapshot }) =>
-    this.repo.tags.restoreCategory(snapshot)
 }

@@ -1,4 +1,5 @@
 import type { LookOverItem, LookOverQueue, LookOverUnit } from '@shared/approval'
+import { variationHeading } from '@shared/pile-variation'
 
 /**
  * The pure model of Look it over (design/specs/piles.md): where you are, what Back and Next do,
@@ -29,8 +30,31 @@ export const isPile = (unit: LookOverUnit) => unit.kind === 'pile'
 
 /** Steps in a unit: every item, then a pile's review. */
 const stepCount = (unit: LookOverUnit) => unit.items.length + (isPile(unit) ? 1 : 0)
-const isReview = (unit: LookOverUnit, step: number) =>
-  isPile(unit) && step === unit.items.length
+const isReview = (unit: LookOverUnit, step: number) => isPile(unit) && step === unit.items.length
+
+/**
+ * What Look it over opens on (inboxes.md): the whole queue (Look them over), the whole queue from
+ * one card (that card's Look it over) or only the cards picked (Look over 3).
+ */
+export type LookOverScope =
+  | { kind: 'all' }
+  | { kind: 'from'; unitId: number }
+  | { kind: 'only'; unitIds: readonly number[] }
+
+/**
+ * The queue main sent, cut to what this opening covers. A card's own Look it over starts on it,
+ * ahead of where Finish later left off; a card that has gone since keeps that place instead.
+ */
+export function scopeQueue(queue: LookOverQueue, scope: LookOverScope): LookOverQueue {
+  if (scope.kind === 'all') return queue
+  if (scope.kind === 'from') {
+    const unit = queue.units.find((u) => u.unitId === scope.unitId)
+    if (!unit) return queue
+    return { ...queue, resume: { unitId: unit.unitId, mockupId: unit.items[0]!.mockupId } }
+  }
+  const picked = new Set(scope.unitIds)
+  return { ...queue, units: queue.units.filter((u) => picked.has(u.unitId)) }
+}
 
 /** A fresh flow from the queue main sent, resuming where Finish later left off. */
 export function createFlow(queue: LookOverQueue): FlowState {
@@ -103,14 +127,20 @@ export function jumpTo(s: FlowState, step: number): FlowState {
   return open({ ...from, skipped }, { unit: s.position.unit, step })
 }
 
-/** After Stash pile (or Stash on a single): the next unit starts on its first mockup. */
+/**
+ * After Stash pile (or Stash on a single): the next unit starts on its first mockup. After the
+ * last one, a flow that opened partway through goes round to the first one still waiting.
+ */
 export function afterStash(s: FlowState): FlowState {
   const unit = currentUnit(s)
   const stashed = new Set([...s.stashed, unit.unitId])
   const checked = new Set([...s.checked, ...unit.items.map((i) => i.mockupId)])
   const base = { ...s, stashed, checked }
-  const following = s.position.unit + 1
-  if (following >= s.units.length) return base
+  const following =
+    s.position.unit + 1 < s.units.length
+      ? s.position.unit + 1
+      : s.units.findIndex((u) => !stashed.has(u.unitId))
+  if (following === -1) return base
   return open(base, { unit: following, step: 0 })
 }
 
@@ -219,10 +249,16 @@ export interface Rail {
 
 /**
  * The rail for the current pile: the top mockup, the variants, then Review & stash pile. Null for a
- * single. `titles` are the drafts as edited (by mockup id), so the labels follow the typing; a
- * blank draft keeps the title the mockup opened with.
+ * single. The header names the pile by its base; each step by its variation alone ("Top ·
+ * three-quarter", "Variant · side", pile-titles.md). `titles` (the base) and `variations` are the
+ * drafts as edited (by mockup id), so the labels follow the typing; a blank one keeps what the
+ * mockup opened with. An item from before base titles has no variation and is named by its title.
  */
-export function rail(s: FlowState, titles: Readonly<Record<number, string>> = {}): Rail | null {
+export function rail(
+  s: FlowState,
+  titles: Readonly<Record<number, string>> = {},
+  variations: Readonly<Record<number, string | null>> = {}
+): Rail | null {
   const unit = currentUnit(s)
   if (!isPile(unit)) return null
   const n = piles(s).findIndex((p) => p.unitId === unit.unitId) + 1
@@ -235,11 +271,17 @@ export function rail(s: FlowState, titles: Readonly<Record<number, string>> = {}
           ? 'skipped'
           : 'todo'
   const titleOf = (item: LookOverItem) => titles[item.mockupId]?.trim() || item.title
+  const variationOf = (item: LookOverItem) =>
+    variations[item.mockupId]?.trim() || item.variation?.words || null
+  const labelOf = (item: LookOverItem, step: number) => {
+    const variation = variationOf(item)
+    if (variation) return `${item.role === 'top' ? 'Top' : 'Variant'} · ${variation}`
+    return item.role === 'top' ? `Top · ${titleOf(item)}` : `Variant · ${titleOf(item)} · ${step}`
+  }
   const steps: RailStep[] = unit.items.map((item, step) => ({
     key: String(item.mockupId),
     mockupId: item.mockupId,
-    label:
-      item.role === 'top' ? `Top · ${titleOf(item)}` : `Variant · ${titleOf(item)} · ${step}`,
+    label: labelOf(item, step),
     status: statusOf(item.mockupId, step),
     showConnector: true,
     step
@@ -279,7 +321,10 @@ export type PrimaryKind = 'next' | 'stash-pile' | 'stash' | 'save-next'
  */
 export function primary(s: FlowState): { kind: PrimaryKind; label: string } {
   const unit = currentUnit(s)
-  const last = s.position.unit === s.units.length - 1
+  // The last unit, with nothing before it still waiting for the flow to go round to.
+  const last =
+    s.position.unit === s.units.length - 1 &&
+    s.units.every((u, i) => i === s.position.unit || s.stashed.has(u.unitId))
   const saved = s.stashed.has(unit.unitId)
   if (isPile(unit)) {
     if (!onReview(s)) return { kind: 'next', label: 'Next' }
@@ -332,37 +377,60 @@ export function progress(s: FlowState): number {
   return Math.min(1, seen.size / total)
 }
 
-/** What the form shows for one mockup. */
+/** What the form shows for one mockup. In a pile `title` is the pile's base and `variation` its own words. */
 export interface DraftForm {
   title: string
+  /** Null on a mockup on its own. */
+  variation: string | null
   description: string
   tags: LookOverItem['tags']
 }
 
 export const formOf = (item: LookOverItem): DraftForm => ({
   title: item.title,
+  variation: item.variation?.words ?? null,
   description: item.description,
   tags: item.tags
 })
+
+/** A review card's title: a pile mockup's variation on its own, with a capital ("Side"); else its title. */
+export const cardTitle = (form: Pick<DraftForm, 'title' | 'variation'>): string =>
+  form.variation?.trim() ? variationHeading(form.variation.trim()) : form.title
 
 const tagKey = (form: DraftForm) => form.tags.map((t) => t.tagId).join()
 
 /**
  * A draft main filled in after the flow opened (a late AI suggestion). Each field the user hasn't
- * changed since the last save takes main's value; one they are editing keeps their words. `saved`
- * becomes what main now holds, so the next save counts only their edits.
+ * changed since the last save takes main's value; one they are editing keeps their words, and so
+ * does every field in `keep` (typed in while the AI wrote, or all three after Fill it myself), even
+ * when it still reads as main had it. `saved` becomes what main now holds, so the next save counts
+ * only their edits.
  */
 export function landedDraft(
   form: DraftForm,
   saved: DraftForm,
-  item: LookOverItem
+  item: LookOverItem,
+  keep: readonly ('title' | 'description' | 'tags')[] = []
 ): { form: DraftForm; saved: DraftForm } {
   const fresh = formOf(item)
+  const theirs = (field: 'title' | 'description' | 'tags', same: boolean) =>
+    keep.includes(field) || !same
+  // In a pile the AI writes the variation, so typing there is what `keep` means by the title; the
+  // base follows the top's suggestion unless the person renamed the pile.
+  const inPile = fresh.variation !== null
+  const base = inPile ? form.title !== saved.title : theirs('title', form.title === saved.title)
   return {
     form: {
-      title: form.title === saved.title ? fresh.title : form.title,
-      description: form.description === saved.description ? fresh.description : form.description,
-      tags: tagKey(form) === tagKey(saved) ? fresh.tags : form.tags
+      title: base ? form.title : fresh.title,
+      variation: inPile
+        ? theirs('title', form.variation === saved.variation)
+          ? form.variation
+          : fresh.variation
+        : null,
+      description: theirs('description', form.description === saved.description)
+        ? form.description
+        : fresh.description,
+      tags: theirs('tags', tagKey(form) === tagKey(saved)) ? form.tags : fresh.tags
     },
     saved: fresh
   }

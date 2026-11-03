@@ -13,7 +13,10 @@ import {
   DOCUMENT_PREFIX,
   QUERY_PREFIX,
   appendMeaningHits,
-  meaningHits
+  compactCosine,
+  compactVector,
+  meaningHits,
+  shortVector
 } from '../../src/main/search/meaning'
 
 export interface EmbedModel {
@@ -187,17 +190,27 @@ export class TextEmbedder {
 export type Similarities = (query: string) => Map<string, number>
 
 /** Cosine between each query and each document text, built for one pass of one run. */
+/**
+ * Each query's similarity to each document. `compact` scores as the app keeps vectors since F-070:
+ * the documents cut to 256 numbers and kept as bytes, the queries cut to 256 (`src/main/search/meaning.ts`).
+ */
 export async function textSimilarities(
   embedder: TextEmbedder,
   docs: { id: string; text: string }[],
-  queries: string[]
+  queries: string[],
+  { compact = false }: { compact?: boolean } = {}
 ): Promise<Similarities> {
   const { documentPrefix, queryPrefix } = embedder.model
   const docVecs = await embedder.embed(docs.map((d) => documentPrefix + d.text))
   const queryVecs = await embedder.embed(queries.map((q) => queryPrefix + q))
-  const byQuery = new Map(
-    queries.map((q, i) => [q, new Map(docs.map((d, j) => [d.id, dot(queryVecs[i]!, docVecs[j]!)]))])
-  )
+  const score: (q: number, d: number) => number = compact
+    ? (() => {
+        const compactDocs = docVecs.map((v) => compactVector(v))
+        const shortQueries = queryVecs.map((v) => shortVector(v))
+        return (q: number, d: number) => compactCosine(shortQueries[q]!, compactDocs[d]!)
+      })()
+    : (q, d) => dot(queryVecs[q]!, docVecs[d]!)
+  const byQuery = new Map(queries.map((q, i) => [q, new Map(docs.map((d, j) => [d.id, score(i, j)]))]))
   return (q) => byQuery.get(q) ?? new Map()
 }
 

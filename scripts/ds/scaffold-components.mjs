@@ -5,7 +5,8 @@
 //   index.ts            GENERATED every run
 //   <Name>.tsx          created once — ScaffoldStub body until ported (then yours)
 //   <Name>.variants.ts  created once — cva with an empty class slot per variant option
-//   <Name>.test.tsx     created once — renders every variant × state combination
+//   <Name>.test.tsx     created with a new component only — a starter that renders every variant;
+//                       swap it for real behaviour tests, and it isn't made again once gone
 // Plus (GENERATED): components/index.ts, design-system/catalog.generated.ts,
 // design-system/screens.generated.ts.
 //
@@ -15,7 +16,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import prettier from 'prettier'
-import { ROOT, camel, loadContracts, loadSnapshot, pascal } from './contract.mjs'
+import { FIGMA_ONLY, NOT_IN_CODE, ROOT, camel, loadContracts, loadSnapshot, pascal } from './contract.mjs'
 
 const CHECK = process.argv.includes('--check')
 const RENDERER = resolve(ROOT, 'src/renderer/src')
@@ -265,9 +266,12 @@ for (const c of contracts) {
   const dir = resolve(COMPONENTS, c.name)
   await emit(resolve(dir, `${c.name}.types.ts`), typesFile(c))
   await emit(resolve(dir, 'index.ts'), indexFile(c))
+  const isNew = !existsSync(resolve(dir, `${c.name}.tsx`))
   await emit(resolve(dir, `${c.name}.tsx`), componentFile(c), { once: true })
   await emit(resolve(dir, `${c.name}.variants.ts`), variantsFile(c), { once: true })
-  await emit(resolve(dir, `${c.name}.test.tsx`), testFile(c), { once: true })
+  // Only a new component gets the starter test. A render-only one goes once the component's
+  // behaviour tests, or the screens', cover it (audit F-066), and isn't missing after that.
+  if (isNew) await emit(resolve(dir, `${c.name}.test.tsx`), testFile(c), { once: true })
   checkVariantsCoverage(c)
 }
 
@@ -326,7 +330,7 @@ export const SCREENS: ScreenEntry[] = ${JSON.stringify(
       flow: s.flow,
       page: s.page,
       components: s.components
-        .filter((n) => !['ContentSlot', 'ModalLayer'].includes(n))
+        .filter((n) => !FIGMA_ONLY.has(n) && !NOT_IN_CODE.has(n))
         .map(codeName)
     })),
     null,

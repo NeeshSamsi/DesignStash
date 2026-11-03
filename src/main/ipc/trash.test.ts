@@ -8,6 +8,7 @@ import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
 import { LibraryService } from '../library/library-service'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -42,7 +43,8 @@ beforeEach(() => {
     push,
     ai: { activeProvider: async () => null },
     settings: { getLibraryRoot: () => root },
-    library: new LibraryService(repo, root)
+    library: new LibraryService(repo, root),
+    ...undoForTests(repo, test.db)
   } as unknown as HandlerContext)
 })
 

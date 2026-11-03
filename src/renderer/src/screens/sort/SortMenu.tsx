@@ -13,6 +13,10 @@ export interface SortMenuProps {
   onAction: (action: BoardAction) => void
 }
 
+/** A row's words: a disabled one says why after its label (“New pile · needs 2 or more”). */
+const labelOf = (row: { label: string; reason?: string }) =>
+  row.reason ? `${row.label} · ${row.reason}` : row.label
+
 /**
  * SortMenu — the one menu behind ⋯ and right-click on a tile, a selection, a pile or empty board
  * space. It is the shared DropdownMenu anchored to a point, so Radix flips it, and its submenus,
@@ -41,7 +45,7 @@ export function SortMenu({ state, target, at, onClose, onAction }: SortMenuProps
               return (
                 <DropdownMenuItem
                   key={row.key}
-                  label={row.label}
+                  label={labelOf(row)}
                   icon={row.icon}
                   submenu
                   disabled={row.disabled ?? false}
@@ -60,7 +64,7 @@ export function SortMenu({ state, target, at, onClose, onAction }: SortMenuProps
             return (
               <DropdownMenuItem
                 key={row.key}
-                label={row.label}
+                label={labelOf(row)}
                 icon={row.icon}
                 variant={row.destructive ? 'destructive' : 'neutral'}
                 disabled={row.disabled ?? false}

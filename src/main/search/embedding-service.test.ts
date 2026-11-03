@@ -132,25 +132,56 @@ describe('EmbeddingService', () => {
     expect(repo.embeddings.count(MEANING_MODEL_ID)).toBe(0)
   })
 
-  it('gives up on a failed batch without throwing, and the next backfill tries again', async () => {
+  it('puts a failed batch at the back after a pause, and the next batch still runs, so one failure loses nothing (F-027)', async () => {
     const embedder = fakeEmbedder()
-    const failing = vi.spyOn(embedder, 'embedDocuments').mockRejectedValueOnce(new Error('down'))
+    const tries = vi.spyOn(embedder, 'embedDocuments').mockRejectedValueOnce(new Error('down'))
+    const sleeps: number[] = []
     const log = vi.fn()
     const svc = new EmbeddingService({
       repo,
       available: () => true,
       embedder: () => embedder,
-      sleep: async () => {},
+      sleep: async (ms) => {
+        sleeps.push(ms)
+      },
       log
+    })
+    for (let i = 0; i < 10; i++) stashed(`Bag ${i}`, `/lib/s/r${i}.psd`)
+    svc.backfill()
+    await svc.idle()
+
+    expect(repo.embeddings.count(MEANING_MODEL_ID)).toBe(10)
+    expect(tries).toHaveBeenCalledTimes(3)
+    // The 2 that were behind it lead the next batch, and the failed 8 follow.
+    expect(embedder.documentBatches.map((b) => b.length)).toEqual([8, 2])
+    expect(embedder.documentBatches[0]!.slice(0, 2)).toEqual([expect.stringMatching(/^Bag 8/), expect.stringMatching(/^Bag 9/)])
+    expect(sleeps).toContain(30_000)
+    expect(log).toHaveBeenCalledWith(expect.stringMatching(/again in 30 s/), expect.any(Error))
+  })
+
+  it('tries a mockup three times, waiting longer each time, then leaves it to the next backfill (F-027)', async () => {
+    const embedder = fakeEmbedder()
+    const tries = vi.spyOn(embedder, 'embedDocuments').mockRejectedValue(new Error('down'))
+    const sleeps: number[] = []
+    const svc = new EmbeddingService({
+      repo,
+      available: () => true,
+      embedder: () => embedder,
+      sleep: async (ms) => {
+        sleeps.push(ms)
+      },
+      log: () => {}
     })
     stashed('Tote bag', '/lib/s/h.psd')
     svc.backfill()
     await svc.idle()
-    expect(log).toHaveBeenCalled()
+    expect(tries).toHaveBeenCalledTimes(3)
+    expect(sleeps.filter((ms) => ms >= 30_000)).toEqual([30_000, 120_000])
     expect(repo.embeddings.count(MEANING_MODEL_ID)).toBe(0)
+
+    tries.mockRestore()
     svc.backfill()
     await svc.idle()
-    expect(failing).toHaveBeenCalledTimes(2)
     expect(repo.embeddings.count(MEANING_MODEL_ID)).toBe(1)
   })
 
@@ -163,6 +194,63 @@ describe('EmbeddingService', () => {
     const sims = (await svc.similarities('jumper'))!
     expect(sims.get(sweat.id)).toBeCloseTo(1)
     expect(sims.get(bag.id)).toBeCloseTo(0)
+  })
+
+  it('answers within the time it is given, and keyword results go without it when the model is slower (F-017)', async () => {
+    const embedder = fakeEmbedder()
+    let release = () => {}
+    const slow = new Promise<void>((resolve) => (release = resolve))
+    const fast = embedder.embedQuery
+    embedder.embedQuery = async (q) => {
+      await slow
+      return fast(q)
+    }
+    const svc = new EmbeddingService({ repo, available: () => true, embedder: () => embedder, sleep: async () => {} })
+    const m = stashed('Tote bag', '/lib/s/w.psd')
+    repo.embeddings.upsert(m.id, MEANING_MODEL_ID, normalise([0, 1]), 'h')
+
+    expect(await svc.similarities('bag', { within: 10 })).toBeNull()
+    // The slow answer still lands, and warms the model for the next search.
+    release()
+    expect((await svc.similarities('bag', { within: 1_000 }))?.get(m.id)).toBeCloseTo(1)
+  })
+
+  it('says when a search ran out of time, and only then, so the window can ask again (H-3)', async () => {
+    const embedder = fakeEmbedder()
+    let release = () => {}
+    const slow = new Promise<void>((resolve) => (release = resolve))
+    const fast = embedder.embedQuery
+    embedder.embedQuery = async (q) => {
+      await slow
+      return fast(q)
+    }
+    const svc = new EmbeddingService({ repo, available: () => true, embedder: () => embedder, sleep: async () => {} })
+    const m = stashed('Tote bag', '/lib/s/w.psd')
+    repo.embeddings.upsert(m.id, MEANING_MODEL_ID, normalise([0, 1]), 'h')
+
+    const late = vi.fn()
+    expect(await svc.similarities('bag', { within: 10, onLate: late })).toBeNull()
+    expect(late).toHaveBeenCalledOnce()
+
+    release()
+    const inTime = vi.fn()
+    expect(await svc.similarities('bag', { within: 1_000, onLate: inTime })).not.toBeNull()
+    expect(inTime).not.toHaveBeenCalled()
+
+    // No model at all is no reason to ask again.
+    const none = new EmbeddingService({ repo, available: () => false, embedder: () => embedder })
+    const noModel = vi.fn()
+    expect(await none.similarities('bag', { within: 10, onLate: noModel })).toBeNull()
+    expect(noModel).not.toHaveBeenCalled()
+  })
+
+  it('starts the model before a search when asked to warm it, and only when it can run (F-017)', async () => {
+    const start = vi.fn(async () => {})
+    const embedder = { ...fakeEmbedder(), start }
+    new EmbeddingService({ repo, available: () => true, embedder: () => embedder }).warm()
+    expect(start).toHaveBeenCalledOnce()
+    new EmbeddingService({ repo, available: () => false, embedder: () => embedder }).warm()
+    expect(start).toHaveBeenCalledOnce()
   })
 
   it('answers null for a query when the embedder fails', async () => {

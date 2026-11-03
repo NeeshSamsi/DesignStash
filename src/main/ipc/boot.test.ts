@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import Database from 'better-sqlite3'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
@@ -78,17 +79,41 @@ describe('BOOT_STATUS', () => {
 })
 
 describe('BOOT_CHECK_FOLDER', () => {
-  it('says whether a chosen folder is usable and holds a library', async () => {
+  it('says whether a chosen folder is usable and holds a library, and how many mockups it has', async () => {
+    const stash = join(dir, 'Old stash')
+    mkdirSync(stash)
+    const db = new Database(join(stash, 'designstash.db'))
+    db.exec('CREATE TABLE mockups (id integer primary key, deleted_at text)')
+    const add = db.prepare('INSERT INTO mockups (deleted_at) VALUES (NULL)')
+    for (let i = 0; i < 12; i++) add.run()
+    db.close()
+
+    expect(await call(IPC_CHANNELS.BOOT_CHECK_FOLDER, { path: stash })).toEqual({
+      success: true,
+      data: { state: 'ok', hasLibrary: true, mockupCount: 12 }
+    })
+  })
+
+  it('has no count for a library it cannot read, or a folder without one', async () => {
     writeFileSync(join(dir, 'designstash.db'), '')
     expect(await call(IPC_CHANNELS.BOOT_CHECK_FOLDER, { path: dir })).toEqual({
       success: true,
-      data: { state: 'ok', hasLibrary: true }
+      data: { state: 'ok', hasLibrary: true, mockupCount: null }
+    })
+    const empty = join(dir, 'Empty')
+    mkdirSync(empty)
+    expect(await call(IPC_CHANNELS.BOOT_CHECK_FOLDER, { path: empty })).toEqual({
+      success: true,
+      data: { state: 'ok', hasLibrary: false, mockupCount: null }
     })
   })
 
   it('says missing for a folder that is not there, and never echoes the path', async () => {
     const result = await call(IPC_CHANNELS.BOOT_CHECK_FOLDER, { path: join(dir, 'gone') })
-    expect(result).toEqual({ success: true, data: { state: 'missing', hasLibrary: false } })
+    expect(result).toEqual({
+      success: true,
+      data: { state: 'missing', hasLibrary: false, mockupCount: null }
+    })
     expect(JSON.stringify(result)).not.toContain(dir)
   })
 

@@ -1,6 +1,14 @@
-import { mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
+import {
+  mkdtempSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+  existsSync,
+  readFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { CopyProgress } from '@shared/ipc/import'
@@ -43,11 +51,16 @@ beforeEach(() => {
   free = 10_000_000
   resolveCover = vi.fn(async (input): Promise<CoverResolution> => {
     writeFileSync(join(input.outDir, 'cover.webp'), 'cover')
-    return { source: 'embedded', coverPath: join(input.outDir, 'cover.webp'), thumbPath: join(input.outDir, 'thumb.webp') }
+    return {
+      source: 'embedded',
+      coverPath: join(input.outDir, 'cover.webp'),
+      thumbPath: join(input.outDir, 'thumb.webp')
+    }
   })
 })
 
 afterEach(async () => {
+  stopped = []
   // A queue can still have a pump scheduled; let every one settle before the database closes.
   for (const q of queues.splice(0)) await q.idle()
   sqlite.close()
@@ -55,12 +68,15 @@ afterEach(async () => {
 })
 
 const queues: CopyQueue[] = []
+/** Every haul that stopped having landed something, as the undo history is told about it. */
+let stopped: number[][] = []
 const queue = (over: Partial<CopyQueueDeps> = {}) => {
   const q = new CopyQueue({
     repo,
     libraryRoot: root,
     onProgress: (e) => events.push(e),
     onLanded: (ids) => landed.push(ids),
+    onStopped: (ids) => stopped.push(ids),
     deps: {
       resolveCover: async (input) => {
         // The real resolver writes into outDir, so make it first like the real one does.
@@ -124,7 +140,9 @@ describe('landing files', () => {
     const names = events.flatMap((e) => (e.file ? [e.file.name] : []))
     expect(new Set(names)).toEqual(new Set(['a.psd', 'b.psd']))
     expect(events.some((e) => e.file?.status === 'copying')).toBe(true)
-    expect(events.some((e) => e.file?.status === 'done' && e.file.mockupId !== undefined)).toBe(true)
+    expect(events.some((e) => e.file?.status === 'done' && e.file.mockupId !== undefined)).toBe(
+      true
+    )
     expect(JSON.stringify(events)).not.toContain(base)
     const landedCounts = events.map((e) => e.landed)
     expect(landedCounts).toEqual([...landedCounts].sort((x, y) => x - y))
@@ -162,7 +180,9 @@ describe('skipping', () => {
     const status = (await q.status())!
     expect(status.landed).toBe(2)
     expect(status.skipped.duplicate).toBe(1)
-    expect(status.files.find((f) => f.skipReason === 'duplicate')?.name).toBe('three.psd'.replace('three', 'two'))
+    expect(status.files.find((f) => f.skipReason === 'duplicate')?.name).toBe(
+      'three.psd'.replace('three', 'two')
+    )
 
     // Dropped again in a later haul: all duplicates.
     const again = queue()
@@ -190,12 +210,16 @@ describe('skipping', () => {
 
   it('writes the design slot mask beside the cover, for the AI', async () => {
     psd('a.psd')
-    const writeSlotMask = vi.fn(async () => true)
+    const writeSlotMask = vi.fn(async () => 'written' as const)
     const q = queue({ writeSlotMask })
     await q.start([join(drop, 'a.psd')])
     await q.idle()
     const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
-    expect(writeSlotMask).toHaveBeenCalledWith(m.libraryPath, m.coverPath, join(m.coverPath, '..', 'slot-mask.png'))
+    expect(writeSlotMask).toHaveBeenCalledWith(
+      m.libraryPath,
+      m.coverPath,
+      join(m.coverPath, '..', 'slot-mask.png')
+    )
   })
 
   it('writes no slot mask without a cover, and lands the file when writing one fails', async () => {
@@ -411,7 +435,48 @@ describe('a drop that is still being read', () => {
 })
 
 describe('cancel and undo', () => {
-  it('stops and gives back what had landed, which stays until Undo all', async () => {
+  it('a haul that lands its files is one undo entry, and its figures carry the entry', async () => {
+    psd('a.psd', 'A')
+    psd('b.psd', 'B')
+    const q = queue()
+
+    await q.start([drop])
+    await q.idle()
+
+    const ids = repo.inbox.list('to_sort').map((r) => r.id)
+    expect(stopped).toEqual([expect.arrayContaining(ids)])
+    expect(last()).toMatchObject({ state: 'done', undoEntryId: 1 })
+    expect(await q.status()).toMatchObject({ undoEntryId: 1 })
+  })
+
+  it('a cancelled haul is one undo entry for what had landed', async () => {
+    psd('a.psd', 'A')
+    psd('b.psd', 'B')
+    let calls = 0
+    const q: CopyQueue = queue({
+      copyHashed: async (src, dest, onBytes) => {
+        const res = await copyWithHash(src, dest, onBytes)
+        if (++calls === 1) await q.cancel(events[0]!.haulId)
+        return res
+      }
+    })
+    await q.start([drop])
+    await q.idle()
+
+    expect(stopped).toHaveLength(1)
+    expect(stopped[0]).toHaveLength(1)
+  })
+
+  it('a haul that lands nothing records nothing', async () => {
+    mkdirSync(drop, { recursive: true })
+    writeFileSync(join(drop, 'notes.txt'), 'n')
+    const q = queue()
+    await q.start([drop])
+    await q.idle()
+    expect(stopped).toEqual([])
+  })
+
+  it('stops and gives back what had landed, which stays in To sort', async () => {
     psd('a.psd', 'A')
     psd('b.psd', 'B')
     psd('c.psd', 'C')
@@ -449,92 +514,9 @@ describe('cancel and undo', () => {
     expect(repo.copyJobs.getJobs(haulId).map((j) => j.sourcePath)).toEqual(['', '', ''])
   })
 
-  it('forgets the way back to waiting files when a paused haul is undone', async () => {
-    psd('a.psd', 'A')
-    psd('b.psd', 'B')
-    free = 1
-    const q = queue()
-    const { haulId } = await q.start([drop])
-    await q.idle()
-
-    await q.undoAll(haulId)
-
-    expect(repo.copyJobs.getJobs(haulId).map((j) => j.sourcePath)).toEqual(['', ''])
-    expect((await q.status())!.state).toBe('undone')
-  })
-
-  it('Undo all removes the records and the app copies and never touches the originals', async () => {
-    const a = psd('a.psd', 'A')
-    const b = psd('b.psd', 'B')
-    const q = queue()
-    const { haulId } = await q.start([drop])
-    await q.idle()
-    const folders = readdirSync(join(root, 'mockups'))
-    expect(folders).toHaveLength(2)
-
-    const res = await q.undoAll(haulId)
-
-    expect(res.tossedIds).toHaveLength(2)
-    expect(repo.inbox.list('to_sort')).toEqual([])
-    expect(readdirSync(join(root, 'mockups')).flatMap((d) => readdirSync(join(root, 'mockups', d)))).toEqual([])
-    expect(existsSync(a) && existsSync(b)).toBe(true)
-    expect((await q.status())!.state).toBe('undone')
-  })
-
-  it('Undo all waits for its own haul\'s file in flight, not for a haul dropped after it', async () => {
-    const a = psd('a.psd', 'A')
-    const b = psd('b.psd', 'B')
-    const open: Record<string, () => void> = {}
-    const started: Record<string, Promise<void>> = {}
-    const gate = (path: string) => {
-      let begin!: () => void
-      started[path] = new Promise<void>((r) => (begin = r))
-      return { begin, wait: new Promise<void>((r) => (open[path] = r)) }
-    }
-    const gates = { [a]: gate(a), [b]: gate(b) }
-    const q = queue({
-      copyHashed: async (src, dest, onBytes) => {
-        gates[src as string]!.begin()
-        await gates[src as string]!.wait
-        return copyWithHash(src, dest, onBytes)
-      }
-    })
-    const first = await q.start([a])
-    await started[a]
-
-    const undone = q.undoAll(first.haulId)
-    const second = await q.start([b])
-    expect(second.haulId).not.toBe(first.haulId)
-    open[a]!()
-    await started[b]
-    const outcome = await Promise.race([undone.then(() => 'undone'), new Promise((r) => setTimeout(() => r('waiting'), 200))])
-
-    expect(outcome).toBe('undone')
-    expect((await undone).tossedIds).toHaveLength(1)
-    open[b]!()
-    await q.idle()
-    expect(last()).toMatchObject({ haulId: second.haulId, state: 'done', landed: 1 })
-  })
-
-  it('Undo all leaves alone anything already looked over and stashed', async () => {
-    psd('a.psd', 'A')
-    psd('b.psd', 'B')
-    const q = queue()
-    const { haulId } = await q.start([drop])
-    await q.idle()
-    const [first] = repo.inbox.list('to_sort')
-    repo.mockups.setStage([first!.id], 'stashed')
-
-    const res = await q.undoAll(haulId)
-
-    expect(res.tossedIds).toHaveLength(1)
-    expect(repo.mockups.getMockup(first!.id)).toBeDefined()
-  })
-
   it('ignores a haul id it does not know', async () => {
     const q = queue()
     expect(await q.cancel('nope')).toEqual({ landedIds: [] })
-    expect(await q.undoAll('nope')).toEqual({ tossedIds: [] })
     await expect(q.retry('nope')).rejects.toThrow()
   })
 })
@@ -583,11 +565,191 @@ describe('resuming at launch', () => {
     await expect(queue().resume()).resolves.toBeUndefined()
     expect(await queue().status()).toBeNull()
   })
+
+  it('clears a copy a crash cut off, then copies the file again', async () => {
+    const source = psd('a.psd', 'AAAA')
+    repo.copyJobs.createHaul('crashed', [], 0)
+    repo.copyJobs.addJobs('crashed', [
+      { sourcePath: source, fileName: 'a.psd', folderTrail: [], sizeBytes: 4 }
+    ])
+    const job = repo.copyJobs.getJobs('crashed')[0]!
+    repo.copyJobs.setJobState(job.id, { status: 'copying' })
+    // Half of a.psd, written before the crash; and a PSD someone put in the stash by hand.
+    const cutOff = join(root, 'mockups', 'cut-off')
+    mkdirSync(cutOff, { recursive: true })
+    writeFileSync(join(cutOff, 'original.psd.part'), 'AA')
+    const theirs = join(root, 'mockups', 'theirs')
+    mkdirSync(theirs, { recursive: true })
+    writeFileSync(join(theirs, 'original.psd'), 'MINE')
+
+    const restarted = queue()
+    await restarted.resume()
+    await restarted.idle()
+
+    expect(existsSync(cutOff)).toBe(false)
+    expect(readFileSync(join(theirs, 'original.psd'), 'utf8')).toBe('MINE')
+    const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
+    expect(readFileSync(m.libraryPath, 'utf8')).toBe('AAAA')
+  })
+})
+
+describe('a file whose mockup is in Trash', () => {
+  /** Land one dropped file and give back its mockup's id. */
+  const landed1 = async (rel: string, content: string) => {
+    const path = psd(rel, content)
+    const q = queue()
+    await q.start([path])
+    await q.idle()
+    return repo.copyJobs.getJobs(last().haulId)[0]!.mockupId!
+  }
+  const dropAgain = async (rel: string) => {
+    const q = queue()
+    await q.start([join(drop, rel)])
+    await q.idle()
+    return (await q.status())!
+  }
+  const mockupFolders = () => readdirSync(join(root, 'mockups')).sort()
+
+  it('brings it back with its title, description and tags, and keeps no second copy', async () => {
+    const id = await landed1('a.psd', 'SAME')
+    repo.mockups.updateMockup(id, { title: 'Glass iPhone', description: 'On a desk' })
+    const style = repo.tags.createCategory({ label: 'Mood' })
+    const calm = repo.tags.createTag({ label: 'Calm', categoryId: style.id })
+    repo.mockups.addTagToMockup(id, calm.id)
+    repo.trash.moveToTrash(id)
+    const folders = mockupFolders()
+    landed.length = 0
+
+    const status = await dropAgain('a.psd')
+
+    expect(repo.mockups.getMockup(id)).toMatchObject({
+      deletedAt: null,
+      title: 'Glass iPhone',
+      description: 'On a desk'
+    })
+    expect(repo.mockups.getTagsForMockup(id).map((t) => t.label)).toEqual(['Calm'])
+    expect(mockupFolders()).toEqual(folders)
+    expect(status.files[0]).toMatchObject({ status: 'done', mockupId: id, restored: true })
+    expect(status.skipped.duplicate).toBe(0)
+    expect(landed).toEqual([[id]])
+  })
+
+  it('marks only the row of a file that brought its mockup back, after a restart too', async () => {
+    const id = await landed1('a.psd', 'SAME')
+    expect((await queue().status())!.files[0]).not.toHaveProperty('restored')
+    repo.trash.moveToTrash(id)
+    psd('b.psd', 'NEW')
+
+    const q = queue()
+    await q.start([join(drop, 'a.psd'), join(drop, 'b.psd')])
+    await q.idle()
+
+    const rows = (await queue().status())!.files
+    expect(rows.find((f) => f.name === 'a.psd')).toMatchObject({ restored: true })
+    expect(rows.find((f) => f.name === 'b.psd')).not.toHaveProperty('restored')
+  })
+
+  it('brings back the whole pile it went to Trash with', async () => {
+    const top = await landed1('top.psd', 'TOP')
+    const member = await landed1('member.psd', 'MEMBER')
+    repo.piles.createPile([top, member], top)
+    repo.trash.moveToTrash(top)
+
+    await dropAgain('member.psd')
+
+    expect(repo.mockups.getMockup(top)!.deletedAt).toBeNull()
+    expect(repo.mockups.getMockup(member)).toMatchObject({ deletedAt: null, groupId: top })
+  })
+
+  it('takes the new copy as its PSD when its own went missing while it sat in Trash', async () => {
+    const id = await landed1('a.psd', 'SAME')
+    repo.trash.moveToTrash(id)
+    rmSync(repo.mockups.getMockup(id)!.libraryPath)
+
+    await dropAgain('a.psd')
+
+    const m = repo.mockups.getMockup(id)!
+    expect(m.deletedAt).toBeNull()
+    expect(readFileSync(m.libraryPath, 'utf8')).toBe('SAME')
+  })
+
+  it('still skips a file whose mockup is in the library, as a duplicate', async () => {
+    await landed1('a.psd', 'SAME')
+    const status = await dropAgain('a.psd')
+    expect(status.skipped.duplicate).toBe(1)
+  })
+})
+
+describe('a copy in progress', () => {
+  it('keeps a PSB a PSB: lands it as original.psb, by way of original.psb.part, titled without the extension (H-12)', async () => {
+    psd('Billboard.psb', 'BBBB')
+    const written: string[] = []
+    const q = queue({
+      copyHashed: async (src, dest, onBytes) => {
+        written.push(dest)
+        return copyWithHash(src, dest, onBytes)
+      }
+    })
+
+    await q.start([drop])
+    await q.idle()
+
+    expect(written[0]!.endsWith('original.psb.part')).toBe(true)
+    const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
+    expect(basename(m.libraryPath)).toBe('original.psb')
+    expect(readFileSync(m.libraryPath, 'utf8')).toBe('BBBB')
+    expect(m.title).toBe('Billboard')
+    // The cover is read from the PSB's own copy.
+    expect(resolveCover).toHaveBeenCalledWith(expect.objectContaining({ psdPath: m.libraryPath }))
+  })
+
+  it('clears a PSB copy a crash cut off too, and leaves a whole one (H-12)', async () => {
+    repo.copyJobs.createHaul('crashed', [], 0)
+    repo.copyJobs.addJobs('crashed', [{ sourcePath: psd('b.psb', 'BB'), fileName: 'b.psb', folderTrail: [], sizeBytes: 2 }])
+    repo.copyJobs.setJobState(repo.copyJobs.getJobs('crashed')[0]!.id, { status: 'copying' })
+    const cutOff = join(root, 'mockups', 'cut-off')
+    mkdirSync(cutOff, { recursive: true })
+    writeFileSync(join(cutOff, 'original.psb.part'), 'B')
+    const whole = join(root, 'mockups', 'whole')
+    mkdirSync(whole, { recursive: true })
+    writeFileSync(join(whole, 'original.psb'), 'MINE')
+
+    const restarted = queue()
+    await restarted.resume()
+    await restarted.idle()
+
+    expect(existsSync(cutOff)).toBe(false)
+    expect(readFileSync(join(whole, 'original.psb'), 'utf8')).toBe('MINE')
+  })
+
+  it('writes under a .part name, so a copy cut off is never taken for a PSD, and lands as original.psd', async () => {
+    psd('a.psd', 'AAAA')
+    const written: string[] = []
+    const q = queue({
+      copyHashed: async (src, dest, onBytes) => {
+        written.push(dest)
+        return copyWithHash(src, dest, onBytes)
+      }
+    })
+
+    await q.start([drop])
+    await q.idle()
+
+    expect(written).toHaveLength(1)
+    expect(written[0]!.endsWith(join('original.psd.part'))).toBe(true)
+    const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
+    expect(m.libraryPath).toBe(written[0]!.slice(0, -'.part'.length))
+    expect(readdirSync(join(m.libraryPath, '..'))).not.toContain('original.psd.part')
+  })
 })
 
 describe('byte progress', () => {
   /** A copy that writes `steps` equal chunks, moving a fake clock `stepMs` for each. */
-  const steppedCopy = (clock: { t: number }, steps: number, stepMs: number): Partial<CopyQueueDeps> => ({
+  const steppedCopy = (
+    clock: { t: number },
+    steps: number,
+    stepMs: number
+  ): Partial<CopyQueueDeps> => ({
     now: () => clock.t,
     copyHashed: async (src, dest, onBytes) => {
       const data = readFileSync(src as string)
@@ -613,7 +775,9 @@ describe('byte progress', () => {
     await q.start([drop])
     await q.idle()
 
-    const while_ = events.filter((e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0)
+    const while_ = events.filter(
+      (e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0
+    )
     expect(while_.length).toBeGreaterThanOrEqual(5)
     const overall = while_.map((e) => e.bytesCopied)
     expect(overall).toEqual([...overall].sort((a, b) => a - b))
@@ -634,7 +798,9 @@ describe('byte progress', () => {
     await q.start([drop])
     await q.idle()
 
-    const copying = events.filter((e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0)
+    const copying = events.filter(
+      (e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0
+    )
     expect(copying.length).toBeGreaterThanOrEqual(8)
     expect(copying.length).toBeLessThanOrEqual(12)
   })
@@ -664,7 +830,10 @@ describe('byte progress', () => {
     const row = (e: (typeof events)[number]) => e.file?.bytesCopied ?? 0
     const mid = events.filter((e) => e.file?.status === 'copying' && row(e) > 0 && row(e) < 800)
     expect(mid.length).toBeGreaterThan(0)
-    expect(events.filter((e) => e.file?.status === 'done').at(-1)?.file).toMatchObject({ bytesCopied: 800, size: 800 })
+    expect(events.filter((e) => e.file?.status === 'done').at(-1)?.file).toMatchObject({
+      bytesCopied: 800,
+      size: 800
+    })
   })
 
   it('says nothing about time left until it has measured for a moment, then counts it down at the speed it sees', async () => {
@@ -675,7 +844,9 @@ describe('byte progress', () => {
     await q.start([drop])
     await q.idle()
 
-    const during = events.filter((e) => e.state === 'running' && e.file?.status === 'copying' && e.bytesCopied > 0)
+    const during = events.filter(
+      (e) => e.state === 'running' && e.file?.status === 'copying' && e.bytesCopied > 0
+    )
     expect(during[0]!.secondsLeft).toBeNull()
     expect(during[0]!.bytesPerSecond).toBe(0)
     const measured = during.filter((e) => e.secondsLeft !== null)
@@ -722,7 +893,9 @@ describe('byte progress', () => {
     await q.start([drop])
     await q.idle()
 
-    const partial = events.filter((e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0)
+    const partial = events.filter(
+      (e) => e.file?.status === 'copying' && (e.file.bytesCopied ?? 0) > 0
+    )
     expect(partial.length).toBeGreaterThanOrEqual(3)
     expect(last()).toMatchObject({ state: 'done', bytesCopied: 6 * 1024 * 1024 })
   })
@@ -756,7 +929,9 @@ describe('zips', () => {
     const rows = repo.inbox.list('to_sort')
     expect(rows.map((r) => r.title).sort()).toEqual(['Back', 'Free_Cap_Mockup'])
     expect(rows.map((r) => r.sizeBytes).sort()).toEqual([10, 9])
-    const contents = rows.map((r) => readFileSync(repo.mockups.getMockup(r.id)!.libraryPath, 'utf8'))
+    const contents = rows.map((r) =>
+      readFileSync(repo.mockups.getMockup(r.id)!.libraryPath, 'utf8')
+    )
     expect(contents.sort()).toEqual(['CAP-BACK!!', 'CAP-FRONT'])
     expect(repo.mockups.getMockup(rows[0]!.id)!.importContext).toMatchObject({
       folderTrail: ['Free Cap Mockup'],
@@ -945,13 +1120,17 @@ describe('zips', () => {
 
     const rows = repo.inbox.list('to_sort')
     expect(rows).toHaveLength(2)
-    const contents = rows.map((r) => readFileSync(repo.mockups.getMockup(r.id)!.libraryPath, 'utf8'))
+    const contents = rows.map((r) =>
+      readFileSync(repo.mockups.getMockup(r.id)!.libraryPath, 'utf8')
+    )
     expect(contents.sort()).toEqual(['AAA', 'BBB'])
   })
 
   describe('a zip inside a zip', () => {
     const nested = async () => {
-      const inner = await zipBytes(join(base, 'inner-src.zip'), [{ name: 'Cards/Notebook.psd', data: 'NOTE' }])
+      const inner = await zipBytes(join(base, 'inner-src.zip'), [
+        { name: 'Cards/Notebook.psd', data: 'NOTE' }
+      ])
       return zip('Free_3_Cards_Mockup.zip', [
         { name: 'Free_3_Cards_Mockup/File/Free_3_Cards_Mockup.psd.zip', data: inner }
       ])

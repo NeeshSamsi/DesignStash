@@ -34,6 +34,41 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const TIMEOUT_MS = 5000
 const MAX_NOTES = 8000
 
+/** A heading's words in sentence case, as the app writes headings ("Bug Fixes" reads "Bug fixes"). */
+const sentenceCase = (text: string) =>
+  text.replace(/(?<=\s)([A-Z])([a-z]+)\b/g, (_m, first: string, rest: string) => first.toLowerCase() + rest)
+
+/** Markdown's inline marks taken out: commit and issue links go, other links read as their words. */
+function plainInline(text: string): string {
+  return text
+    .replace(/\s*\(\[(?:[0-9a-f]{7,40}|#\d+)\]\([^)]*\)\)/gi, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\*\*([^*]+)\*\*|__([^_]+)__/g, (_m, bold: string | undefined, under: string | undefined) => bold ?? under ?? '')
+    .replace(/(^|[^\w*])\*([^*\s][^*]*)\*/g, '$1$2')
+    .replace(/`([^`]*)`/g, '$1')
+    .trimEnd()
+}
+
+/**
+ * A release's notes as What's new shows them, in plain text (F-056). GitHub gives them as markdown
+ * (release-please writes "## [0.2.0](…) (date)", "### Features" and "* **scope:** text ([abc1234](…))"):
+ * headings lose their marks, bullets become dots, links read as their words, commit and issue links
+ * go, and a run of blank lines becomes one.
+ */
+export function plainNotes(markdown: string): string {
+  const lines = markdown
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => {
+      const heading = /^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$/.exec(line)
+      if (heading) return sentenceCase(plainInline(heading[1] ?? ''))
+      const bullet = /^(\s*)[*+-]\s+(.*)$/.exec(line)
+      if (bullet) return `${bullet[1] ?? ''}• ${plainInline(bullet[2] ?? '')}`
+      return plainInline(line)
+    })
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
 /** Negative when `a` is older than `b`. Numbers compare as numbers; a prerelease ranks below its release. */
 export function compareVersions(a: string, b: string): number {
   const parse = (v: string) => {
@@ -80,7 +115,8 @@ export class GithubUpdateService implements UpdateService {
     const { updatesCheckedAt: lastCheckedAt, updatesLatest: latest } = this.deps.settings.get()
     if (this.failed) return { state: 'check-failed', lastCheckedAt }
     if (latest && compareVersions(latest.version, this.deps.currentVersion) > 0) {
-      return { state: 'available', ...latest, lastCheckedAt }
+      // Notes an earlier check saved as markdown read plain too.
+      return { state: 'available', ...latest, notes: plainNotes(latest.notes), lastCheckedAt }
     }
     return { state: 'up-to-date', lastCheckedAt }
   }

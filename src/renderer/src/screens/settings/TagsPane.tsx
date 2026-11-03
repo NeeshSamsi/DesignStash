@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import type { NameChange } from '@shared/ipc/tags'
 import type { TagTree as TagTreeData, TagTreeNode } from '@shared/tags'
 import { FormDialog } from '../../components/FormDialog'
 import { Select } from '../../components/Select'
 import { TagTree } from '../../components/TagTree'
 import { useTagTreeStore } from '../../stores/tagTreeStore'
 import { toast, undoToast } from '../../stores/toastStore'
-import { mockupCount } from './settings-copy'
+import { useUndoRan } from '../../lib/undo-router'
+import { mockups } from '@renderer/lib/plural'
 
 type Category = TagTreeData[number]
 interface Merge {
@@ -19,6 +21,8 @@ interface Merge {
 export function TagsPane() {
   const tree = useTagTreeStore((s) => s.tree)
   const load = useTagTreeStore((s) => s.load)
+  // ⌘Z or a toast's Undo can bring back a tag or category, or rename one back.
+  useUndoRan(() => void load())
   const [merge, setMerge] = useState<Merge | null>(null)
   const [dropping, setDropping] = useState<{ category: Category; to: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -39,18 +43,39 @@ export function TagsPane() {
 
   const ipc = window.api.invoke
 
+  /**
+   * A rename or move main refused because the name is taken: say what is there, and reject so the
+   * tree keeps its input open.
+   */
+  const unlessTaken = (change: NameChange, description: string) => {
+    if (change.ok) return
+    toast({
+      variant: 'error',
+      message:
+        change.categoryLabel === undefined
+          ? `There’s already a category called “${change.label}”`
+          : `“${change.label}” is already a tag in ${change.categoryLabel}`,
+      description
+    })
+    throw new Error('That name is taken')
+  }
+
   const addTag = async (categoryId: number, label: string) => {
     await run('Couldn’t add that tag', () => ipc(IPC_CHANNELS.TAG_CREATE, { label, categoryId }))
     await load()
   }
   const moveTag = async (tagId: number, categoryId: number) => {
-    await run('Couldn’t move that tag', () =>
+    const change = await run<NameChange>('Couldn’t move that tag', () =>
       ipc(IPC_CHANNELS.TAG_SET_CATEGORY, { tagId, categoryId })
     )
+    unlessTaken(change, 'Merge the two, or rename one first.')
     await load()
   }
   const renameTag = async (tagId: number, label: string) => {
-    await run('Couldn’t rename that tag', () => ipc(IPC_CHANNELS.TAG_RENAME, { tagId, label }))
+    const change = await run<NameChange>('Couldn’t rename that tag', () =>
+      ipc(IPC_CHANNELS.TAG_RENAME, { tagId, label })
+    )
+    unlessTaken(change, 'Pick another name.')
     await load()
   }
   const deleteTag = async (tag: TagTreeNode) => {
@@ -60,8 +85,8 @@ export function TagsPane() {
     await load()
     undoToast(
       `Deleted “${tag.label}”`,
-      () => void ipc(IPC_CHANNELS.TAG_RESTORE, { snapshot: data.snapshot }).then(() => load()),
-      `Removed from ${mockupCount(data.affectedMockups)}`
+      data.undoEntryId,
+      `Removed from ${mockups(data.affectedMockups)}`
     )
   }
   const createCategory = async (label: string) => {
@@ -69,9 +94,10 @@ export function TagsPane() {
     await load()
   }
   const renameCategory = async (categoryId: number, label: string) => {
-    await run('Couldn’t rename that category', () =>
+    const change = await run<NameChange>('Couldn’t rename that category', () =>
       ipc(IPC_CHANNELS.CATEGORY_RENAME, { categoryId, label })
     )
+    unlessTaken(change, 'Pick another name.')
     await load()
   }
 
@@ -116,9 +142,7 @@ export function TagsPane() {
       ipc(IPC_CHANNELS.CATEGORY_DELETE, { categoryId: category.categoryId })
     )
     await load()
-    undoToast(`Deleted “${category.categoryLabel}”`, () => {
-      void ipc(IPC_CHANNELS.CATEGORY_RESTORE, { snapshot: data.snapshot }).then(() => load())
-    })
+    undoToast(`Deleted “${category.categoryLabel}”`, data.undoEntryId)
   }
   const confirmDropping = async () => {
     if (!dropping || dropping.to === '') return
@@ -171,7 +195,7 @@ export function TagsPane() {
         <p role="status" className="type-body-sm-regular text-muted-foreground">
           {merge?.count === null || merge === null
             ? 'Counting mockups…'
-            : `${mockupCount(merge.count)} will move to “${merge.target.label}”. “${merge.source.label}” goes away.`}
+            : `${mockups(merge.count)} will move to “${merge.target.label}”. “${merge.source.label}” goes away.`}
         </p>
       </FormDialog>
 

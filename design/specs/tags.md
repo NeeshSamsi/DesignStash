@@ -27,6 +27,8 @@ Tags
 
 **Solid means your tag; dashed means not a tag yet.** The add chip is an empty dashed slot, and a suggestion is a filled one (fainter dash, sparkle). Accepting or adding makes it solid. Don't use a brand-coloured outline for suggestions; that's the `new` (just added) state.
 
+**A suggestion becomes a tag only when it lands on a mockup** (Neesh, 2026-10-27, audit F-034): accepted, or stashed with its mockup. Until then Settings › Tags, the tag filter and the matches popover don't list it, and neither do they list a category the AI made only for suggestions. A suggestion that's dismissed, or whose mockup leaves without being stashed (tossed or deleted), leaves nothing behind. A dismissed one stays while its mockup is still waiting, so ⌘Z can bring it back. Typing a suggestion's name makes it yours at once. Tags a person makes are never removed for being unused, and neither is a tag that has landed on a mockup once.
+
 ## Behaviour
 
 - **Order:** add chip, your tags (oldest → newest), a divider, then AI suggestions. New tags append to the end of your tags.

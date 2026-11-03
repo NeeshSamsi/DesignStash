@@ -8,12 +8,15 @@ export const TEXTAREA_CONTRACT = {
   figmaId: '212:205',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=212-205',
   section: '2 · Primitives (shadcn)',
-  description: 'Multi-line description field (auto-grow is behaviour).',
+  description:
+    'Multi-line description field (auto-grow is behaviour).\nstate=ai-filled (2026-10-24): the background/primary-weak tint on a field the AI just filled; it fades after 1.2s. state=writing (2026-10-24): as Input’s writing state.',
   code: 'ui/textarea.tsx',
   axes: {
+    state: ['default', 'ai-filled', 'writing'],
     rowRange: ['3', '4-6']
   },
   axisDefaults: {
+    state: 'default',
     rowRange: '3'
   },
   flags: {},
@@ -27,9 +30,12 @@ export const TEXTAREA_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
+export type TextareaState = 'default' | 'ai-filled' | 'writing'
 export type TextareaRowRange = '3' | '4-6'
 
 export interface TextareaContractProps {
+  /** Figma `state` (3 options). Default `default`. */
+  state?: TextareaState
   /** Figma `rowRange` (2 options). Default `3`. */
   rowRange?: TextareaRowRange
   /** Figma `state=disabled`. */
@@ -40,6 +46,7 @@ export interface TextareaContractProps {
 
 /** Figma defaults. Slots have none. */
 export const TEXTAREA_DEFAULTS = {
+  state: 'default',
   rowRange: '3',
   disabled: false,
   value: 'Short description…'

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { promises as fs } from 'node:fs'
+import { createWriteStream, promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { Readable } from 'node:stream'
+import { Readable, Writable } from 'node:stream'
 import { createHash } from 'node:crypto'
 import { classifyDownloadError, DownloadError, ModelDownloader, type DownloadProgress } from './download'
 import * as registry from './registry'
@@ -176,6 +176,139 @@ describe('ModelDownloader', () => {
     const downloader = new ModelDownloader(tempModelsDir, { fetchImpl: createMockFetch() })
     await downloader.download('test-model-nohash')
     expect(await downloader.isInstalled('test-model-nohash')).toBe(true)
+  })
+})
+
+describe('a disk slower than the network', () => {
+  it('waits for the disk, so the download never piles up in memory', async () => {
+    // The network hands over every 10-byte chunk at once; the disk holds 16 bytes and writes one chunk every few ms.
+    const HOLDS = 16
+    let written = 0
+    let ahead = 0
+    const slowDisk = (path: string, flags: string) => {
+      const file = createWriteStream(path, { flags })
+      return new Writable({
+        highWaterMark: HOLDS,
+        write(chunk: Buffer, _encoding, done) {
+          setTimeout(() => {
+            file.write(chunk, (err) => {
+              written += chunk.length
+              done(err)
+            })
+          }, 5)
+        },
+        final(done) {
+          file.end(done)
+        }
+      })
+    }
+    const downloader = new ModelDownloader(tempModelsDir, {
+      fetchImpl: createMockFetch(),
+      createWriteStream: slowDisk
+    })
+
+    await downloader.download('test-model', {
+      onProgress: (p) => {
+        if (p.phase === 'downloading') ahead = Math.max(ahead, p.receivedBytes - written)
+      }
+    })
+
+    // What the disk holds, plus the chunk that filled it.
+    expect(ahead).toBeLessThanOrEqual(HOLDS + 10)
+    expect(await downloader.isInstalled('test-model')).toBe(true)
+  })
+})
+
+describe('models left beside the stash folder by earlier versions', () => {
+  let oldDir: string
+  beforeEach(async () => {
+    oldDir = await fs.mkdtemp(join(tmpdir(), 'designstash-old-models-'))
+  })
+  afterEach(async () => {
+    await fs.rm(oldDir, { recursive: true, force: true })
+  })
+
+  const put = async (dir: string, id: string, files = ['model.gguf', 'mmproj.gguf'], text = 'x') => {
+    await fs.mkdir(join(dir, id), { recursive: true })
+    for (const f of files) await fs.writeFile(join(dir, id, f), text)
+  }
+  const exists = (path: string) => fs.stat(path).then(() => true, () => false)
+
+  it('moves each catalogue model into the models folder, where it is installed again', async () => {
+    await put(oldDir, 'test-model')
+    await put(oldDir, 'test-model-nohash', ['model.gguf.part'])
+    const downloader = new ModelDownloader(tempModelsDir)
+
+    await downloader.adopt(oldDir)
+
+    expect(await downloader.isInstalled('test-model')).toBe(true)
+    // A download stopped part way moves too, so it can resume.
+    expect(await downloader.downloadedBytes('test-model-nohash')).toBe(1)
+    // Emptied, the old folder goes.
+    expect(await exists(oldDir)).toBe(false)
+  })
+
+  it('leaves everything that is not a catalogue model where it is', async () => {
+    await put(oldDir, 'test-model')
+    await put(oldDir, 'car-renders', ['wheel.obj'])
+    await fs.writeFile(join(oldDir, 'notes.txt'), 'mine')
+
+    await new ModelDownloader(tempModelsDir).adopt(oldDir)
+
+    expect((await fs.readdir(oldDir)).sort()).toEqual(['car-renders', 'notes.txt'])
+    expect(await fs.readdir(tempModelsDir)).toEqual(['test-model'])
+  })
+
+  it('keeps the copy already in the models folder and leaves the other one', async () => {
+    await put(tempModelsDir, 'test-model', undefined, 'here')
+    await put(oldDir, 'test-model', undefined, 'old')
+
+    await new ModelDownloader(tempModelsDir).adopt(oldDir)
+
+    expect(await fs.readFile(join(tempModelsDir, 'test-model', 'model.gguf'), 'utf8')).toBe('here')
+    expect(await exists(join(oldDir, 'test-model', 'model.gguf'))).toBe(true)
+  })
+
+  it('copies a model from another disk, where it cannot simply be renamed', async () => {
+    await put(oldDir, 'test-model')
+    const crossDevice = Object.assign(new Error('cross-device link'), { code: 'EXDEV' })
+    const downloader = new ModelDownloader(tempModelsDir, {
+      rename: async (from, to) => {
+        if (from.startsWith(oldDir)) throw crossDevice
+        await fs.rename(from, to)
+      }
+    })
+
+    await downloader.adopt(oldDir)
+
+    expect(await downloader.isInstalled('test-model')).toBe(true)
+    expect(await exists(oldDir)).toBe(false)
+    expect(await fs.readdir(tempModelsDir)).toEqual(['test-model'])
+  })
+
+  it('never lists a half-made copy from an interrupted move as an old model', async () => {
+    await put(tempModelsDir, 'test-model.moving', ['model.gguf'])
+    expect(await new ModelDownloader(tempModelsDir).listLegacy()).toEqual([])
+  })
+
+  it('answers what is installed only once the move is done', async () => {
+    await put(oldDir, 'test-model')
+    const downloader = new ModelDownloader(tempModelsDir)
+
+    void downloader.adopt(oldDir)
+
+    expect(await downloader.isInstalled('test-model')).toBe(true)
+    expect(await downloader.listInstalled()).toEqual(['test-model'])
+  })
+
+  it('does nothing when the old folder is this one, or is not there', async () => {
+    await put(tempModelsDir, 'test-model')
+    const downloader = new ModelDownloader(tempModelsDir)
+
+    await downloader.adopt(tempModelsDir)
+    await downloader.adopt(join(oldDir, 'gone'))
+
+    expect(await downloader.isInstalled('test-model')).toBe(true)
   })
 })
 

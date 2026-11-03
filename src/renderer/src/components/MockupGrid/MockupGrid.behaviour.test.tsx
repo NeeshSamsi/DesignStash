@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MockupCard } from '@renderer/components/MockupCard'
 import { TagFilterPopover } from '@renderer/components/TagFilterPopover'
 import { matchesFilter, type FilterCategory } from '@renderer/lib/tag-filter'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
+import { DialogFrame } from '@renderer/lib/dialog-shell'
 import { MockupGrid, type MockupGridProps } from './MockupGrid'
 
 const IDS = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
@@ -27,10 +28,40 @@ function stubLayout() {
   })
 }
 
-function Harness(props: MockupGridProps) {
+function Harness({
+  coverState,
+  ...props
+}: MockupGridProps & { coverState?: 'cover-missing' | 'no-preview' }) {
   const selection = useGridSelection(IDS)
   return (
     <MockupGrid selection={selection} {...props}>
+      {IDS.map((id) => (
+        <MockupCard
+          key={id}
+          mockupId={id}
+          title={`Mockup ${id}`}
+          tags={`Tags ${id}`}
+          // As coverDisplay does: a card with no cover says so instead of 'selected'.
+          state={coverState ?? (selection.isSelected(id) ? 'selected' : 'default')}
+          {...(id === 'b' ? { pile: { memberCount: 3 } } : {})}
+        />
+      ))}
+    </MockupGrid>
+  )
+}
+
+/** Counts the grid's live marquee updates. */
+function CountingHarness({ onMarquee }: { onMarquee: () => void }) {
+  const selection = useGridSelection(IDS)
+  const counted = {
+    ...selection,
+    marquee: (...args: Parameters<typeof selection.marquee>) => {
+      onMarquee()
+      selection.marquee(...args)
+    }
+  }
+  return (
+    <MockupGrid selection={counted}>
       {IDS.map((id) => (
         <MockupCard
           key={id}
@@ -55,6 +86,7 @@ describe('Library · grid, selection, loading and empty', () => {
     stubLayout()
   })
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 
@@ -129,6 +161,113 @@ describe('Library · grid, selection, loading and empty', () => {
     expect(add.closest('[data-mockup-id]')).toBeNull()
     expect(within(add).queryByText(/selected/i)).toBeNull()
   })
+
+  it('measures the cards once a drag and moves the selection at most once a frame', () => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] })
+    const onMarquee = vi.fn()
+    const { container } = render(<CountingHarness onMarquee={onMarquee} />)
+    const root = container.querySelector<HTMLElement>('[data-ds="MockupGrid"]')!
+    const measure = vi.mocked(HTMLElement.prototype.getBoundingClientRect)
+    const cardMeasures = () =>
+      measure.mock.contexts.filter((el) => (el as HTMLElement).dataset.mockupId).length
+    measure.mockClear()
+
+    fireEvent.mouseDown(root, { clientX: 400, clientY: 400, button: 0 })
+    for (let i = 0; i < 100; i++) {
+      fireEvent.mouseMove(window, { clientX: 400 - i * 4, clientY: 400 - i * 4 })
+    }
+    expect(onMarquee).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersToNextFrame())
+    expect(onMarquee).toHaveBeenCalledOnce()
+    expect(cardMeasures()).toBe(IDS.length)
+    expect(selected(container)).toEqual(IDS)
+
+    // A scroll moves the cards under the box: they are measured again and the box re-applied.
+    fireEvent.scroll(window)
+    act(() => vi.advanceTimersToNextFrame())
+    expect(cardMeasures()).toBe(IDS.length * 2)
+    expect(onMarquee).toHaveBeenCalledTimes(2)
+
+    fireEvent.mouseUp(window)
+  })
+
+  it('tells assistive tech which cards are selected and where each one sits', () => {
+    const { container } = render(<Harness />)
+    const list = screen.getByRole('listbox', { name: 'Mockups' })
+    expect(list.getAttribute('aria-multiselectable')).toBe('true')
+    const options = within(list).getAllByRole('option')
+    expect(options.map((o) => o.getAttribute('aria-posinset'))).toEqual(
+      IDS.map((_, i) => String(i + 1))
+    )
+    options.forEach((o) => expect(o.getAttribute('aria-setsize')).toBe(String(IDS.length)))
+    // The name is the card's words, not its buttons'.
+    expect(screen.getByRole('option', { name: 'Mockup a, Tags a' })).toBe(card(container, 'a'))
+    expect(screen.getByRole('option', { name: 'Mockup b, 3 mockups in this pile, Tags b' })).toBe(
+      card(container, 'b')
+    )
+    expect(screen.queryAllByRole('option', { selected: true })).toHaveLength(0)
+
+    fireEvent.click(card(container, 'c'))
+    expect(screen.getByRole('option', { selected: true })).toBe(card(container, 'c'))
+    fireEvent.keyDown(card(container, 'c'), { key: 'a', metaKey: true })
+    expect(screen.getAllByRole('option', { selected: true })).toHaveLength(IDS.length)
+    // The Add card is in the list but is never an option.
+    expect(
+      within(list)
+        .getByRole('button', { name: /Add mockup/ })
+        .closest('[role="option"]')
+    ).toBeNull()
+  })
+
+  it('is not taken for an open menu: a dialog over the grid still closes on an outside press', async () => {
+    const onDismiss = vi.fn()
+    render(
+      <>
+        <Harness />
+        <DialogFrame open dataDs="Probe" onDismiss={onDismiss}>
+          <p>Over the grid</p>
+        </DialogFrame>
+      </>
+    )
+    // Radix starts listening for outside presses a tick after the dialog opens.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]')!
+    fireEvent.pointerDown(overlay, { button: 0, pointerType: 'mouse' })
+    fireEvent.pointerUp(overlay, { button: 0, pointerType: 'mouse' })
+    fireEvent.click(overlay)
+    expect(onDismiss).toHaveBeenCalledOnce()
+  })
+
+  it('is a plain grid while loading, when empty and without a selection', () => {
+    const { rerender } = render(<MockupGrid state="loading" />)
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(screen.queryByRole('option')).toBeNull()
+    rerender(<MockupGrid state="empty" />)
+    expect(screen.queryByRole('listbox')).toBeNull()
+    rerender(
+      <MockupGrid>
+        <MockupCard mockupId="a" />
+      </MockupGrid>
+    )
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(screen.queryByRole('option')).toBeNull()
+  })
+
+  it.each(['cover-missing', 'no-preview'] as const)(
+    'rings a selected card whose cover is %s, and says it is selected',
+    (coverState) => {
+      const { container } = render(<Harness coverState={coverState} />)
+      fireEvent.click(card(container, 'd'))
+      expect(card(container, 'd').getAttribute('aria-selected')).toBe('true')
+      expect(selected(container)).toEqual(['d'])
+      expect(card(container, 'd').querySelector('.ring-selected')).not.toBeNull()
+      expect(card(container, 'e').querySelector('.ring-selected')).toBeNull()
+      // The cover still says what is wrong with it.
+      expect(
+        card(container, 'd').querySelector('[data-ds="CoverImage"]')?.getAttribute('data-state')
+      ).toBe(coverState === 'cover-missing' ? 'missing-file' : 'no-preview')
+    }
+  )
 
   it('does not change the selection from a card button', () => {
     const onOpenInPhotoshop = vi.fn()

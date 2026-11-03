@@ -8,7 +8,7 @@ import { createSettingsStore, type SettingsStore } from '../settings'
 import { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb } from '../db/repositories/__tests__/setup'
-import { applyPendingStash, StashFolderService, type StashFolderDeps } from './stash-folder-service'
+import { applyPendingStash, StashFolderService, stashMockupCount, type StashFolderDeps } from './stash-folder-service'
 
 let base: string
 let root: string
@@ -84,6 +84,31 @@ describe('info', () => {
     settings.update({ pendingStash: { path: '/new/place', mode: 'point', oldRoot: root } })
     expect(await service().info()).toMatchObject({ path: '/new/place', restartRequired: true })
   })
+
+  it('sizes a big stash from its records, without reading them one at a time', async () => {
+    for (let i = 0; i < 1000; i++) {
+      repo.mockups.createMockup(
+        approvedMockup({ title: `m${i}`, libraryPath: join(root, `mockups/${i}/original.psd`), sizeBytes: 2 })
+      )
+    }
+    const stat = vi.fn(async () => ({ size: 1 }))
+    const getMockup = vi.spyOn(repo.mockups, 'getMockup')
+
+    const info = await service({ stat }).info()
+
+    expect(info).toMatchObject({ count: 1000, bytes: 2000 })
+    expect(stat).not.toHaveBeenCalled()
+    expect(getMockup).not.toHaveBeenCalled()
+  })
+
+  it('measures a PSD with no size once, and remembers it', async () => {
+    repo.mockups.createMockup(approvedMockup({ title: 'a', libraryPath: join(root, 'mockups/a/original.psd') }))
+    const stat = vi.fn(async () => ({ size: 700 }))
+
+    expect(await service({ stat }).info()).toMatchObject({ count: 1, bytes: 700 })
+    expect(await service({ stat }).info()).toMatchObject({ count: 1, bytes: 700 })
+    expect(stat).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('change: move', () => {
@@ -124,6 +149,70 @@ describe('change: move', () => {
     expect(last.copiedFiles).toBe(last.totalFiles)
     expect(last.copiedBytes).toBe(last.totalBytes)
     expect(progress.some((p) => p.phase === 'verifying')).toBe(true)
+  })
+
+  it('brings along what an import landed while the copy ran, once the database copy has its record', async () => {
+    const target = join(base, 'Moved')
+    const late = join(root, 'mockups', 'b')
+    let landed = false
+    const result = await service({
+      copyFile: async (src, dest) => {
+        writeFileSync(dest, readFileSync(src))
+        if (landed) return
+        landed = true
+        // A haul still running: its files land after the list was made, its record before the backup.
+        write(join(late, 'original.psd'), 'psd-b')
+        write(join(late, 'cover.webp'), 'cover-b')
+        write(join(late, 'slot-mask.png'), 'mask-b')
+      },
+      backupDb: async (dest) => {
+        await makeDeps().backupDb!(dest)
+        const db = new Database(dest)
+        db.prepare('INSERT INTO mockups VALUES (3, ?, ?)').run(join(late, 'original.psd'), join(late, 'cover.webp'))
+        db.close()
+      }
+    }).change(target, 'move')
+
+    expect(result).toEqual({ ok: true, restartRequired: true })
+    expect(tree(join(target, 'mockups', 'b')).sort()).toEqual(['cover.webp', 'original.psd', 'slot-mask.png'])
+    expect(readFileSync(join(target, 'mockups/b/original.psd'), 'utf8')).toBe('psd-b')
+    const last = progress.at(-1)!
+    expect(last.copiedFiles).toBe(last.totalFiles)
+    expect(last.copiedBytes).toBe(last.totalBytes)
+  })
+
+  it('leaves behind a file whose record came after the database copy, for its import to redo', async () => {
+    const target = join(base, 'Moved')
+    let landed = false
+    await service({
+      copyFile: async (src, dest) => {
+        writeFileSync(dest, readFileSync(src))
+        if (landed) return
+        landed = true
+        write(join(root, 'mockups', 'c', 'original.psd'), 'psd-c')
+      }
+    }).change(target, 'move')
+
+    // The database copy has no record of it, so the stash check would only find a stray PSD there.
+    expect(existsSync(join(target, 'mockups', 'c'))).toBe(false)
+  })
+
+  it('waits for a copy that is still running or paused, and writes nothing', async () => {
+    const target = join(base, 'Moved')
+    repo.copyJobs.createHaul('running', [], 0)
+    expect(await service().change(target, 'move')).toEqual({ ok: false, reason: 'busy' })
+
+    repo.copyJobs.setHaulState('running', { state: 'paused', pauseReason: 'disk-full' })
+    expect(await service().change(target, 'move')).toEqual({ ok: false, reason: 'busy' })
+
+    expect(existsSync(target)).toBe(false)
+    expect(settings.get().pendingStash).toBeNull()
+  })
+
+  it('moves once the copy is done', async () => {
+    repo.copyJobs.createHaul('finished', [], 0)
+    repo.copyJobs.setHaulState('finished', { state: 'done' })
+    expect(await service().change(join(base, 'Moved'), 'move')).toEqual({ ok: true, restartRequired: true })
   })
 
   it('moves into an empty existing folder', async () => {
@@ -237,6 +326,33 @@ describe('change: point', () => {
     expect(await service().change(join(base, 'nope'), 'point')).toEqual({ ok: false, reason: 'not-a-folder' })
     expect(await service().change(root, 'point')).toEqual({ ok: false, reason: 'same-folder' })
   })
+
+  it('refuses a folder with no stash in it, which would start an empty library', async () => {
+    const empty = join(base, 'Empty')
+    mkdirSync(empty)
+
+    expect(await service().change(empty, 'point')).toEqual({ ok: false, reason: 'no-stash' })
+    expect(settings.get().pendingStash).toBeNull()
+  })
+})
+
+describe('stashMockupCount', () => {
+  it('counts the mockups in a stash, leaving out Trash', () => {
+    const other = join(base, 'Other')
+    mkdirSync(other)
+    const db = new Database(join(other, 'designstash.db'))
+    db.exec(`CREATE TABLE mockups (id integer primary key, deleted_at text);
+             INSERT INTO mockups VALUES (1, NULL), (2, NULL), (3, '2026-10-01T09:00:00Z');`)
+    db.close()
+
+    expect(stashMockupCount(other)).toBe(2)
+  })
+
+  it('has no count when there is no stash, or its database cannot be read', () => {
+    expect(stashMockupCount(join(base, 'Nowhere'))).toBeNull()
+    write(join(base, 'Broken', 'designstash.db'), 'not a database')
+    expect(stashMockupCount(join(base, 'Broken'))).toBeNull()
+  })
 })
 
 describe('applyPendingStash (at the next launch)', () => {
@@ -263,6 +379,25 @@ describe('applyPendingStash (at the next launch)', () => {
     expect(existsSync(root)).toBe(false)
   })
 
+  it('also clears the covers the stash check made, and an empty models folder, out of the old one', async () => {
+    write(join(root, 'cache', 'f0123', 'cover.webp'), 'cover')
+    mkdirSync(join(root, 'models'))
+    await service().change(join(base, 'Moved'), 'move')
+
+    applyPendingStash(settings)
+
+    expect(existsSync(root)).toBe(false)
+  })
+
+  it('keeps a models folder in the old one that has something in it', async () => {
+    write(join(root, 'models', 'mine.txt'), 'not ours')
+    await service().change(join(base, 'Moved'), 'move')
+
+    applyPendingStash(settings)
+
+    expect(readFileSync(join(root, 'models', 'mine.txt'), 'utf8')).toBe('not ours')
+  })
+
   it('keeps the old folder and drops the change if the new copy has gone missing', async () => {
     const target = join(base, 'Moved')
     await service().change(target, 'move')
@@ -277,7 +412,7 @@ describe('applyPendingStash (at the next launch)', () => {
 
   it('just switches for point, and removes nothing', async () => {
     const existing = join(base, 'Other stash')
-    mkdirSync(existing)
+    write(join(existing, 'designstash.db'), 'theirs')
     await service().change(existing, 'point')
 
     applyPendingStash(settings)

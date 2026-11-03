@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { TooltipProvider } from '@renderer/ui/tooltip'
 import { PageHeader } from '@renderer/components/PageHeader'
 import { TRUNCATED_TOOLTIP_MS, TruncatedText } from './truncated-text'
 
@@ -19,11 +18,7 @@ const hover = async (el: HTMLElement) => {
 
 describe('TruncatedText', () => {
   it('shows the full text in a tooltip, only when it is cut off', async () => {
-    render(
-      <TooltipProvider>
-        <TruncatedText>A very long mockup title</TruncatedText>
-      </TooltipProvider>
-    )
+    render(<TruncatedText>A very long mockup title</TruncatedText>)
     const text = screen.getByText('A very long mockup title')
     expect(text.className).toContain('truncate')
     widths(text, 100, 100)
@@ -32,11 +27,7 @@ describe('TruncatedText', () => {
   })
 
   it('opens the tooltip when the text does not fit', async () => {
-    render(
-      <TooltipProvider>
-        <TruncatedText>A very long mockup title</TruncatedText>
-      </TooltipProvider>
-    )
+    render(<TruncatedText>A very long mockup title</TruncatedText>)
     const text = screen.getByText('A very long mockup title')
     widths(text, 240, 100)
     await hover(text)
@@ -47,9 +38,7 @@ describe('TruncatedText', () => {
 describe('PageHeader crumbs', () => {
   it('cuts the parent crumb before the current title, and both can show the full name', () => {
     render(
-      <TooltipProvider>
-        <PageHeader current="A pile with a very long title" parent="My Stash" onParent={() => {}} />
-      </TooltipProvider>
+      <PageHeader current="A pile with a very long title" parent="My Stash" onParent={() => {}} />
     )
     const parent = screen.getByRole('button', { name: 'My Stash' })
     expect(parent.className).toContain('shrink-3')

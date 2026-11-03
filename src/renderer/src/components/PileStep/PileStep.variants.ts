@@ -1,8 +1,9 @@
 import { cva } from 'class-variance-authority'
 
-// Figma PileStep 566:15523: a 16px marker, a 12px label, and a connector down to the next step.
+// Figma PileStep 566:15523: a 16px marker, a 12px label (and the note under it), and a connector
+// from under the marker down to the next step's.
 export const pileStepVariants = cva(
-  'relative flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  'relative flex w-full items-start gap-2 rounded-lg px-2 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring',
   {
     variants: {
       status: {
@@ -31,7 +32,7 @@ export const pileStepMarkerVariants = cva(
   }
 )
 
-export const pileStepLabelVariants = cva('min-w-0 flex-1 truncate type-label-xs-medium', {
+export const pileStepLabelVariants = cva('truncate type-label-xs-medium', {
   variants: {
     status: {
       done: 'text-foreground',

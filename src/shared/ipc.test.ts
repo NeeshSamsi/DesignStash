@@ -90,7 +90,7 @@ describe('copy status wire shape', () => {
     ).toBe(false)
   })
 
-  it.each(['running', 'done', 'cancelled', 'undone'] as const)(
+  it.each(['running', 'done', 'cancelled'] as const)(
     'a %s haul carries no pause reason',
     (state) => {
       const parsed = response.parse({ ...counts, state, pauseReason: 'disk-full', files: [] })
@@ -99,8 +99,9 @@ describe('copy status wire shape', () => {
     }
   )
 
-  it('rejects a state that does not exist', () => {
+  it('rejects a state that does not exist, and the retired undone', () => {
     expect(payload.safeParse({ ...counts, state: 'sleeping', file: null }).success).toBe(false)
+    expect(payload.safeParse({ ...counts, state: 'undone', file: null }).success).toBe(false)
   })
 })
 
@@ -189,9 +190,9 @@ describe('IPC Contract', () => {
       }
       expect(response.parse(valid)).toEqual(valid)
       expect(() => response.parse({ ...valid, meaning: undefined })).toThrow()
-      expect(response.parse({ ...valid, activeProblem: 'apple-intelligence-off' }).activeProblem).toBe(
-        'apple-intelligence-off'
-      )
+      expect(
+        response.parse({ ...valid, activeProblem: 'apple-intelligence-off' }).activeProblem
+      ).toBe('apple-intelligence-off')
       expect(() => response.parse({ ...valid, activeProblem: 'gone' })).toThrow()
     })
   })
@@ -432,27 +433,13 @@ describe('IPC Contract', () => {
   })
 
   describe('TagTree operation channels', () => {
-    const snapshot = {
-      tag: { id: 7, label: 'laptop', categoryId: 1, isCanonical: true, createdBy: 'seed' as const },
-      mockupIds: [3, 4]
-    }
-
-    it('TAG_DELETE returns the affected count and an undo snapshot', () => {
+    it('TAG_DELETE returns the affected count and its undo entry', () => {
       const { response } = IPC_CONTRACT[IPC_CHANNELS.TAG_DELETE]
-      expect(response.parse({ affectedMockups: 2, snapshot })).toEqual({
+      expect(response.parse({ affectedMockups: 2, undoEntryId: 4 })).toEqual({
         affectedMockups: 2,
-        snapshot
+        undoEntryId: 4
       })
-      expect(() => response.parse({ affectedMockups: 2 })).toThrow()
-    })
-
-    it('TAG_RESTORE takes the snapshot back', () => {
-      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.TAG_RESTORE]
-      expect(request.parse({ snapshot })).toEqual({ snapshot })
-      expect(response.parse({ tagId: 7, restoredMockups: 2 })).toEqual({
-        tagId: 7,
-        restoredMockups: 2
-      })
+      expect(() => response.parse({ undoEntryId: 4 })).toThrow()
     })
 
     it('TAG_MERGE_PREVIEW mirrors TAG_MERGE', () => {
@@ -464,26 +451,15 @@ describe('IPC Contract', () => {
       expect(response.parse({ affectedMockups: 5 })).toEqual({ affectedMockups: 5 })
     })
 
-    it('CATEGORY_DELETE takes an optional move target and returns a snapshot', () => {
+    it('CATEGORY_DELETE takes an optional move target and returns what moved', () => {
       const { request, response } = IPC_CONTRACT[IPC_CHANNELS.CATEGORY_DELETE]
       expect(request.parse({ categoryId: 1 })).toEqual({ categoryId: 1 })
       expect(request.parse({ categoryId: 1, moveTagsTo: 2 })).toEqual({
         categoryId: 1,
         moveTagsTo: 2
       })
-      const valid = {
-        deleted: true,
-        movedTags: 3,
-        snapshot: { id: 1, label: 'Angle', sortOrder: 5, isCanonical: true }
-      }
+      const valid = { deleted: true, movedTags: 3, undoEntryId: 4 }
       expect(response.parse(valid)).toEqual(valid)
-    })
-
-    it('CATEGORY_RESTORE takes a category snapshot', () => {
-      const { request, response } = IPC_CONTRACT[IPC_CHANNELS.CATEGORY_RESTORE]
-      const snap = { id: 1, label: 'Mood', sortOrder: 6, isCanonical: false }
-      expect(request.parse({ snapshot: snap })).toEqual({ snapshot: snap })
-      expect(response.parse({ categoryId: 1 })).toEqual({ categoryId: 1 })
     })
   })
 
@@ -555,7 +531,9 @@ describe('IPC Contract', () => {
             favourite: false,
             createdAt: '2025-01-01T00:00:00',
             pile: null,
-            tags: []
+            tags: [],
+            pileId: null,
+            variation: null
           }
         ]
       }
@@ -600,19 +578,6 @@ describe('IPC Contract', () => {
       expect(response.parse({ enabled: true })).toEqual({ enabled: true })
     })
   })
-
-  describe('ENTITLEMENTS_SNAPSHOT channel', () => {
-    const { response } = IPC_CONTRACT[IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT]
-
-    it('parses a valid snapshot response', () => {
-      const valid = { tier: 'free', enabled: { 'app.core': true, 'search.semantic': true } }
-      expect(response.parse(valid)).toEqual(valid)
-    })
-
-    it('rejects an invalid tier', () => {
-      expect(() => response.parse({ tier: 'enterprise', enabled: {} })).toThrow()
-    })
-  })
 })
 
 describe('menu:command push', () => {
@@ -637,17 +602,30 @@ describe('look-over:draft push', () => {
     pileId: 13,
     role: 'variant',
     title: 'Blue scroll Macbook',
+    variation: { words: 'side', source: 'marker' },
     description: 'A long page',
     tags: [],
     touched: false,
     checked: false,
     waitingForAi: false,
     carry: null,
+    ai: { status: 'ready' },
     cover: { path: '/lib/c.webp', source: 'embedded', missing: false, width: 10, height: 10 }
   }
 
   it('is a push channel the preload relays', () => {
     expect(isPushChannel(IPC_CHANNELS.LOOK_OVER_DRAFT)).toBe(true)
+  })
+
+  it("says where the item's suggestion is: writing with its run, couldn't write, or filled in by the person (L6)", () => {
+    const run = { phase: 'writing', writingSince: 1_000, slowAfterMs: 20_000 }
+    expect(payload.parse({ ...item, ai: { status: 'sniffing', run } })).toMatchObject({
+      ai: { status: 'sniffing', run }
+    })
+    for (const status of ['pending', 'failed', 'opted_out', 'off'])
+      expect(payload.safeParse({ ...item, ai: { status } }).success).toBe(true)
+    expect(payload.safeParse({ ...item, ai: undefined }).success).toBe(false)
+    expect(payload.safeParse({ ...item, ai: { status: 'stopped' } }).success).toBe(false)
   })
 
   it('carries one Look it over item, saying whether it still waits for the AI', () => {
@@ -659,11 +637,69 @@ describe('look-over:draft push', () => {
     const tag = { tagId: 3, label: 'bench', categoryId: 1, categoryLabel: 'Environment' }
     const offered = {
       ...item,
-      carry: { state: 'offered', reason: 'this one is on a mesh floor', after: { description: 'A long page on a bench', via: 'rewrite' }, tagsAdded: [tag], tagsRemoved: [] }
+      carry: {
+        state: 'offered',
+        reason: 'this one is on a mesh floor',
+        why: 'refused',
+        after: { description: 'A long page on a bench', via: 'rewrite' },
+        tagsAdded: [tag],
+        tagsRemoved: []
+      }
     }
     expect(payload.parse(offered)).toEqual(offered)
-    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, after: null } }).success).toBe(true)
-    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'copied' } }).success).toBe(false)
+    expect(
+      payload.safeParse({ ...offered, carry: { ...offered.carry, after: null } }).success
+    ).toBe(true)
+    expect(
+      payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'copied' } }).success
+    ).toBe(false)
+  })
+
+  it('says why an edit is on offer: not judged, refused, slow, failed or undone, and null while checking or once in (L7)', () => {
+    const offered = {
+      ...item,
+      carry: {
+        state: 'offered',
+        reason: null,
+        why: 'unjudged',
+        after: null,
+        tagsAdded: [],
+        tagsRemoved: []
+      }
+    }
+    for (const why of ['unjudged', 'refused', 'slow', 'failed', 'undone'])
+      expect(payload.safeParse({ ...offered, carry: { ...offered.carry, why } }).success).toBe(true)
+    expect(
+      payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'checking', why: null } })
+        .success
+    ).toBe(true)
+    expect(
+      payload.safeParse({ ...offered, carry: { ...offered.carry, why: 'timeout' } }).success
+    ).toBe(false)
+  })
+})
+
+describe('look-over:open', () => {
+  const { response } = IPC_CONTRACT[IPC_CHANNELS.LOOK_OVER_OPEN]
+
+  it('says whether the active model checks an edit to a pile top (L7.1)', () => {
+    expect(response.safeParse({ units: [], checksEdits: true, resume: null }).success).toBe(true)
+    expect(response.safeParse({ units: [], resume: null }).success).toBe(false)
+  })
+})
+
+describe('look-over:fill-myself and look-over:write', () => {
+  it('take one mockup and answer with its item, or null when it is not waiting in To stash (L6.E1, L6.E3)', () => {
+    for (const channel of [
+      IPC_CHANNELS.LOOK_OVER_FILL_MYSELF,
+      IPC_CHANNELS.LOOK_OVER_WRITE
+    ] as const) {
+      const { request, response } = IPC_CONTRACT[channel]
+      expect(request.parse({ mockupId: 4 })).toEqual({ mockupId: 4 })
+      expect(request.safeParse({}).success).toBe(false)
+      expect(response.safeParse(null).success).toBe(true)
+      expect(isPushChannel(channel)).toBe(false)
+    }
   })
 })
 
@@ -693,13 +729,33 @@ describe('look-over:showing', () => {
   })
 
   it('answers with where its suggestion is: waiting its turn, its run, or how it ended; null when it is gone', () => {
-    expect(response.parse({ mockupId: 3, status: 'pending' })).toEqual({ mockupId: 3, status: 'pending' })
-    const queued = { mockupId: 3, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs: 20_000 } }
+    expect(response.parse({ mockupId: 3, status: 'pending' })).toEqual({
+      mockupId: 3,
+      status: 'pending'
+    })
+    const queued = {
+      mockupId: 3,
+      status: 'pending',
+      run: { phase: 'queued', writingSince: null, slowAfterMs: 20_000 }
+    }
     expect(response.parse(queued)).toEqual(queued)
     const run = { phase: 'writing', writingSince: 1_700_000_000_000, slowAfterMs: 35_000 }
-    expect(response.parse({ mockupId: 3, status: 'sniffing', run })).toEqual({ mockupId: 3, status: 'sniffing', run })
-    expect(response.parse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'starting', writingSince: null } })?.run?.phase).toBe('starting')
-    expect(response.safeParse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'loading' } }).success).toBe(false)
+    expect(response.parse({ mockupId: 3, status: 'sniffing', run })).toEqual({
+      mockupId: 3,
+      status: 'sniffing',
+      run
+    })
+    expect(
+      response.parse({
+        mockupId: 3,
+        status: 'sniffing',
+        run: { ...run, phase: 'starting', writingSince: null }
+      })?.run?.phase
+    ).toBe('starting')
+    expect(
+      response.safeParse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'loading' } })
+        .success
+    ).toBe(false)
     expect(response.parse(null)).toBeNull()
   })
 })
@@ -708,7 +764,14 @@ describe('ai:status with a run', () => {
   it("carries a started run's phase, its clock and its threshold", () => {
     const { payload } = PUSH_CONTRACT[IPC_CHANNELS.AI_STATUS]
     const event = {
-      updates: [{ mockupId: 1, status: 'sniffing', run: { phase: 'starting', writingSince: null, slowAfterMs: 90_000 } }, { mockupId: 2, status: 'pending' }],
+      updates: [
+        {
+          mockupId: 1,
+          status: 'sniffing',
+          run: { phase: 'starting', writingSince: null, slowAfterMs: 90_000 }
+        },
+        { mockupId: 2, status: 'pending' }
+      ],
       totals: { total: 2, remaining: 2 }
     }
     expect(payload.parse(event)).toEqual(event)

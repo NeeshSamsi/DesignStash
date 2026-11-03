@@ -399,6 +399,36 @@ describe('TagTree · categories', () => {
     expect(category('Look')).toBeTruthy()
   })
 
+  it('renames a category to a name one of the tags has, since a tag and a category may share it', async () => {
+    const onRenameCategory = vi.fn()
+    render(<Harness onRenameCategory={onRenameCategory} />)
+    fireEvent.contextMenu(category('Style').querySelector('h3')!)
+    await pick('Rename')
+    const input = (await screen.findByRole('textbox', { name: 'Rename Style' })) as HTMLInputElement
+    type(input, 'Clay')
+    key(input, 'Enter')
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(onRenameCategory).toHaveBeenCalledWith(2, 'Clay')
+  })
+
+  it('won’t rename a category to another category’s name, whatever its casing', async () => {
+    const onRenameCategory = vi.fn()
+    render(<Harness onRenameCategory={onRenameCategory} />)
+    fireEvent.contextMenu(category('Style').querySelector('h3')!)
+    await pick('Rename')
+    const input = (await screen.findByRole('textbox', { name: 'Rename Style' })) as HTMLInputElement
+    type(input, 'device')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    key(input, 'Enter')
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(onRenameCategory).not.toHaveBeenCalled()
+    expect(screen.getByRole('textbox', { name: 'Rename Style' })).toBeTruthy()
+  })
+
   it('hands Delete category to the owner, which asks where the tags go', async () => {
     const onDeleteCategory = vi.fn()
     render(<Harness onDeleteCategory={onDeleteCategory} />)

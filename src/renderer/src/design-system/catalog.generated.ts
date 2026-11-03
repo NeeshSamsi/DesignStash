@@ -5,9 +5,9 @@ import { Button, BUTTON_CONTRACT } from '@renderer/components/Button'
 import { Input, INPUT_CONTRACT } from '@renderer/components/Input'
 import { Textarea, TEXTAREA_CONTRACT } from '@renderer/components/Textarea'
 import { Field, FIELD_CONTRACT } from '@renderer/components/Field'
+import { TitlePair, TITLE_PAIR_CONTRACT } from '@renderer/components/TitlePair'
 import { Checkbox, CHECKBOX_CONTRACT } from '@renderer/components/Checkbox'
 import { Switch, SWITCH_CONTRACT } from '@renderer/components/Switch'
-import { RadioGroup, RADIO_GROUP_CONTRACT } from '@renderer/components/RadioGroup'
 import { Select, SELECT_CONTRACT } from '@renderer/components/Select'
 import { Badge, BADGE_CONTRACT } from '@renderer/components/Badge'
 import { Progress, PROGRESS_CONTRACT } from '@renderer/components/Progress'
@@ -22,18 +22,13 @@ import {
   DROPDOWN_MENU_ITEM_CONTRACT
 } from '@renderer/components/DropdownMenuItem'
 import { DropdownMenu, DROPDOWN_MENU_CONTRACT } from '@renderer/components/DropdownMenu'
-import { TabsTrigger, TABS_TRIGGER_CONTRACT } from '@renderer/components/TabsTrigger'
-import { Tabs, TABS_CONTRACT } from '@renderer/components/Tabs'
 import { Dialog, DIALOG_CONTRACT } from '@renderer/components/Dialog'
 import { Toast, TOAST_CONTRACT } from '@renderer/components/Toast'
-import { Separator, SEPARATOR_CONTRACT } from '@renderer/components/Separator'
-import { ScrollArea, SCROLL_AREA_CONTRACT } from '@renderer/components/ScrollArea'
 import { AppWindow, APP_WINDOW_CONTRACT } from '@renderer/components/AppWindow'
 import { GlobalSearch, GLOBAL_SEARCH_CONTRACT } from '@renderer/components/GlobalSearch'
 import { SidebarNavItem, SIDEBAR_NAV_ITEM_CONTRACT } from '@renderer/components/SidebarNavItem'
 import { SidebarNav, SIDEBAR_NAV_CONTRACT } from '@renderer/components/SidebarNav'
 import { TreeBranch, TREE_BRANCH_CONTRACT } from '@renderer/components/TreeBranch'
-import { AddMenu, ADD_MENU_CONTRACT } from '@renderer/components/AddMenu'
 import { PageHeader, PAGE_HEADER_CONTRACT } from '@renderer/components/PageHeader'
 import { CenteredLayout, CENTERED_LAYOUT_CONTRACT } from '@renderer/components/CenteredLayout'
 import { ActivityDock, ACTIVITY_DOCK_CONTRACT } from '@renderer/components/ActivityDock'
@@ -43,7 +38,6 @@ import { LoadingState, LOADING_STATE_CONTRACT } from '@renderer/components/Loadi
 import { ErrorState, ERROR_STATE_CONTRACT } from '@renderer/components/ErrorState'
 import { Banner, BANNER_CONTRACT } from '@renderer/components/Banner'
 import { DropHint, DROP_HINT_CONTRACT } from '@renderer/components/DropHint'
-import { Modal, MODAL_CONTRACT } from '@renderer/components/Modal'
 import { ConfirmDialog, CONFIRM_DIALOG_CONTRACT } from '@renderer/components/ConfirmDialog'
 import { ChoiceDialog, CHOICE_DIALOG_CONTRACT } from '@renderer/components/ChoiceDialog'
 import { FormDialog, FORM_DIALOG_CONTRACT } from '@renderer/components/FormDialog'
@@ -84,20 +78,20 @@ import {
   MEANING_SEARCH_CARD_CONTRACT
 } from '@renderer/components/MeaningSearchCard'
 import { ModelCard, MODEL_CARD_CONTRACT } from '@renderer/components/ModelCard'
+import { StepBar, STEP_BAR_CONTRACT } from '@renderer/components/StepBar'
 import { ModelPicker, MODEL_PICKER_CONTRACT } from '@renderer/components/ModelPicker'
 import { ConsentPanel, CONSENT_PANEL_CONTRACT } from '@renderer/components/ConsentPanel'
 import { SettingsLayout, SETTINGS_LAYOUT_CONTRACT } from '@renderer/components/SettingsLayout'
 import { TagTree, TAG_TREE_CONTRACT } from '@renderer/components/TagTree'
 import { ListRow, LIST_ROW_CONTRACT } from '@renderer/components/ListRow'
-import { ListGroup, LIST_GROUP_CONTRACT } from '@renderer/components/ListGroup'
 import { SectionHeader, SECTION_HEADER_CONTRACT } from '@renderer/components/SectionHeader'
 import {
   ReconciliationPanel,
   RECONCILIATION_PANEL_CONTRACT
 } from '@renderer/components/ReconciliationPanel'
-import { ProGate, PRO_GATE_CONTRACT } from '@renderer/components/ProGate'
 import { PileStep, PILE_STEP_CONTRACT } from '@renderer/components/PileStep'
 import { PileRail, PILE_RAIL_CONTRACT } from '@renderer/components/PileRail'
+import { AiStatus, AI_STATUS_CONTRACT } from '@renderer/components/AiStatus'
 import { AddMockupCard, ADD_MOCKUP_CARD_CONTRACT } from '@renderer/components/AddMockupCard'
 import { CategoryPill, CATEGORY_PILL_CONTRACT } from '@renderer/components/CategoryPill'
 
@@ -116,9 +110,9 @@ export const CATALOG: CatalogEntry[] = [
   entry(INPUT_CONTRACT, Input),
   entry(TEXTAREA_CONTRACT, Textarea),
   entry(FIELD_CONTRACT, Field),
+  entry(TITLE_PAIR_CONTRACT, TitlePair),
   entry(CHECKBOX_CONTRACT, Checkbox),
   entry(SWITCH_CONTRACT, Switch),
-  entry(RADIO_GROUP_CONTRACT, RadioGroup),
   entry(SELECT_CONTRACT, Select),
   entry(BADGE_CONTRACT, Badge),
   entry(PROGRESS_CONTRACT, Progress),
@@ -130,18 +124,13 @@ export const CATALOG: CatalogEntry[] = [
   entry(COMMAND_CONTRACT, Command),
   entry(DROPDOWN_MENU_ITEM_CONTRACT, DropdownMenuItem),
   entry(DROPDOWN_MENU_CONTRACT, DropdownMenu),
-  entry(TABS_TRIGGER_CONTRACT, TabsTrigger),
-  entry(TABS_CONTRACT, Tabs),
   entry(DIALOG_CONTRACT, Dialog),
   entry(TOAST_CONTRACT, Toast),
-  entry(SEPARATOR_CONTRACT, Separator),
-  entry(SCROLL_AREA_CONTRACT, ScrollArea),
   entry(APP_WINDOW_CONTRACT, AppWindow),
   entry(GLOBAL_SEARCH_CONTRACT, GlobalSearch),
   entry(SIDEBAR_NAV_ITEM_CONTRACT, SidebarNavItem),
   entry(SIDEBAR_NAV_CONTRACT, SidebarNav),
   entry(TREE_BRANCH_CONTRACT, TreeBranch),
-  entry(ADD_MENU_CONTRACT, AddMenu),
   entry(PAGE_HEADER_CONTRACT, PageHeader),
   entry(CENTERED_LAYOUT_CONTRACT, CenteredLayout),
   entry(ACTIVITY_DOCK_CONTRACT, ActivityDock),
@@ -151,7 +140,6 @@ export const CATALOG: CatalogEntry[] = [
   entry(ERROR_STATE_CONTRACT, ErrorState),
   entry(BANNER_CONTRACT, Banner),
   entry(DROP_HINT_CONTRACT, DropHint),
-  entry(MODAL_CONTRACT, Modal),
   entry(CONFIRM_DIALOG_CONTRACT, ConfirmDialog),
   entry(CHOICE_DIALOG_CONTRACT, ChoiceDialog),
   entry(FORM_DIALOG_CONTRACT, FormDialog),
@@ -183,17 +171,17 @@ export const CATALOG: CatalogEntry[] = [
   entry(MODEL_ROW_CONTRACT, ModelRow),
   entry(MEANING_SEARCH_CARD_CONTRACT, MeaningSearchCard),
   entry(MODEL_CARD_CONTRACT, ModelCard),
+  entry(STEP_BAR_CONTRACT, StepBar),
   entry(MODEL_PICKER_CONTRACT, ModelPicker),
   entry(CONSENT_PANEL_CONTRACT, ConsentPanel),
   entry(SETTINGS_LAYOUT_CONTRACT, SettingsLayout),
   entry(TAG_TREE_CONTRACT, TagTree),
   entry(LIST_ROW_CONTRACT, ListRow),
-  entry(LIST_GROUP_CONTRACT, ListGroup),
   entry(SECTION_HEADER_CONTRACT, SectionHeader),
   entry(RECONCILIATION_PANEL_CONTRACT, ReconciliationPanel),
-  entry(PRO_GATE_CONTRACT, ProGate),
   entry(PILE_STEP_CONTRACT, PileStep),
   entry(PILE_RAIL_CONTRACT, PileRail),
+  entry(AI_STATUS_CONTRACT, AiStatus),
   entry(ADD_MOCKUP_CARD_CONTRACT, AddMockupCard),
   entry(CATEGORY_PILL_CONTRACT, CategoryPill)
 ]

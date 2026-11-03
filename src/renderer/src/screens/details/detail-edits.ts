@@ -1,10 +1,13 @@
 import type { ApprovalTag } from '@shared/approval'
 import type { CoverSource, MockupDetail } from '@shared/library'
 import type { TagTree } from '@shared/tags'
+import type { DiscardedEdit } from '@shared/ipc/undo'
 
-/** The three things Detail edits. */
+/** What Detail edits. In a pile `title` is the pile's base and `variation` this mockup's own words. */
 export interface DetailDraft {
   title: string
+  /** Null on a mockup on its own. */
+  variation: string | null
   description: string
   tagIds: number[]
 }
@@ -12,6 +15,7 @@ export interface DetailDraft {
 /** What the person has typed, with the tags as the editor holds them. */
 export interface DetailForm {
   title: string
+  variation: string | null
   description: string
   tags: ApprovalTag[]
 }
@@ -20,6 +24,7 @@ export const EMPTY_TITLE_REASON = 'Add a title to save'
 
 export const draftOf = (form: DetailForm): DetailDraft => ({
   title: form.title,
+  variation: form.variation,
   description: form.description,
   tagIds: form.tags.map((tag) => tag.tagId)
 })
@@ -34,6 +39,7 @@ const sameTagIds = (a: readonly number[], b: readonly number[]) => {
 export function isDirty(saved: DetailDraft, current: DetailDraft): boolean {
   return (
     saved.title !== current.title ||
+    saved.variation !== current.variation ||
     saved.description !== current.description ||
     !sameTagIds(saved.tagIds, current.tagIds)
   )
@@ -49,6 +55,7 @@ export function formFromDetail(detail: MockupDetail, tree: TagTree): DetailForm 
   const categoryIds = new Map(tree.map((category) => [category.categoryLabel, category.categoryId]))
   return {
     title: detail.item.title,
+    variation: detail.item.variation?.words ?? null,
     description: detail.item.description ?? '',
     tags: detail.item.tags.map((tag) => ({
       tagId: tag.id,
@@ -56,6 +63,37 @@ export function formFromDetail(detail: MockupDetail, tree: TagTree): DetailForm 
       categoryId: categoryIds.get(tag.categoryLabel) ?? 0,
       categoryLabel: tag.categoryLabel
     }))
+  }
+}
+
+/** What a discard keeps of the form (undo:record-discard): the fields mockup:update saves. */
+export function discardedOf(form: DetailForm): DiscardedEdit {
+  return {
+    title: form.title,
+    description: form.description,
+    tagIds: form.tags.map((tag) => tag.tagId),
+    ...(form.variation !== null ? { variation: form.variation } : {})
+  }
+}
+
+/**
+ * The form with discarded edits put back (Undo of Discard your changes). A tag that has gone from
+ * the tree since is left out.
+ */
+export function formWithEdit(form: DetailForm, values: DiscardedEdit, tree: TagTree): DetailForm {
+  const tags = tree.flatMap((category) =>
+    category.tags.map((tag) => ({
+      tagId: tag.tagId,
+      label: tag.label,
+      categoryId: category.categoryId,
+      categoryLabel: category.categoryLabel
+    }))
+  )
+  return {
+    title: values.title,
+    variation: values.variation ?? form.variation,
+    description: values.description,
+    tags: values.tagIds.flatMap((id) => tags.filter((tag) => tag.tagId === id))
   }
 }
 

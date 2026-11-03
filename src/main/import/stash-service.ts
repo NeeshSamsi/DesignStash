@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs'
-import type { StashResult, StashSnapshot } from '@shared/approval'
+import type { StashResult } from '@shared/approval'
 import type { Repository } from '../db/repository'
 import type { LookOverService } from './look-over-service'
 
@@ -11,8 +11,8 @@ const defaultDeps: StashDeps = { exists: (p) => fs.access(p).then(() => true, ()
 
 /**
  * Stash pile and Stash for a mockup on its own. A pile is committed whole: every draft is written
- * to its mockup in one transaction, so My Stash never holds half a pile. Undo hands back exactly
- * what was there before.
+ * to its mockup in one transaction, so My Stash never holds half a pile. Its undo is the stash's
+ * entry in the undo history.
  */
 export class StashService {
   private readonly deps: StashDeps
@@ -37,13 +37,6 @@ export class StashService {
     return this.stashUnit(mockupId)
   }
 
-  /** Undo a stash. Mockups deleted since are left out. */
-  async unstash(snapshot: StashSnapshot): Promise<{ restoredIds: number[] }> {
-    const restoredIds = this.repo.drafts.unstash(snapshot)
-    for (const id of restoredIds) this.repo.search.removeSearchIndex(id)
-    return { restoredIds }
-  }
-
   private async stashUnit(unitId: number): Promise<StashResult> {
     const root = this.repo.mockups.getMockup(unitId)
     if (!root || root.deletedAt !== null || root.stage !== 'to_stash' || root.groupId !== null) {
@@ -60,9 +53,9 @@ export class StashService {
     }
     if (noCover.length > 0) return { ok: false, reason: 'no-cover', mockupIds: noCover }
 
-    const snapshot = this.repo.drafts.stash(unitId, ids)
+    this.repo.drafts.stash(unitId, ids)
     // The search index can't be written inside the transaction.
     for (const id of ids) this.repo.search.upsertSearchIndex(id)
-    return { ok: true, stashedIds: ids, snapshot }
+    return { ok: true, stashedIds: ids }
   }
 }

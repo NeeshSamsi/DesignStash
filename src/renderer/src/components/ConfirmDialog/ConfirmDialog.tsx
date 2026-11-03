@@ -1,11 +1,9 @@
 import { ICON_STROKE } from '@renderer/design-system/icon'
 import { Layers01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
-import { DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
+import { DialogCancel, DialogFrame, DialogHeading } from '@renderer/lib/dialog-shell'
 import { cn } from '@renderer/lib/utils'
-import { AlertDialogCancel } from '@renderer/ui/alert-dialog'
-import { Button } from '@renderer/ui/button'
-import { Spinner } from '@renderer/ui/spinner'
+import { Button } from '@renderer/components/Button'
 import { CONFIRM_DIALOG_DEFAULTS, type ConfirmDialogContractProps } from './ConfirmDialog.types'
 import { confirmDialogVariants } from './ConfirmDialog.variants'
 
@@ -51,9 +49,11 @@ export function ConfirmDialog({
   const destructive = props.variant === 'destructive'
 
   const cancel = isLive ? (
-    <AlertDialogCancel variant="secondary" size="sm" disabled={props.working}>
-      {cancelLabel}
-    </AlertDialogCancel>
+    <DialogCancel>
+      <Button variant="secondary" size="sm" disabled={props.working}>
+        {cancelLabel}
+      </Button>
+    </DialogCancel>
   ) : (
     <Button variant="secondary" size="sm" disabled={props.working} onClick={onCancel}>
       {cancelLabel}
@@ -91,20 +91,15 @@ export function ConfirmDialog({
       <div className="flex items-center justify-end gap-2">
         {cancel}
         <Button
-          variant={destructive ? 'destructive' : 'default'}
+          variant={destructive ? 'destructive' : 'primary'}
           size="sm"
-          aria-busy={props.working || undefined}
+          loading={props.working}
           disabled={props.working}
           onClick={onConfirm}
         >
-          {props.working ? (
-            <>
-              <Spinner size="sm" aria-hidden />
-              {workingLabel ?? WORKING[props.variant]}
-            </>
-          ) : (
-            (confirmLabel ?? CONFIRM[props.variant])
-          )}
+          {props.working
+            ? (workingLabel ?? WORKING[props.variant])
+            : (confirmLabel ?? CONFIRM[props.variant])}
         </Button>
       </div>
     </DialogFrame>

@@ -11,17 +11,20 @@ import {
 import type {
   AnswerEditRequest,
   LookOverCarry,
+  OfferWhy,
   LookOverItem,
   LookOverProgress,
   LookOverQueue,
   LookOverUnit,
   SaveDraftRequest
 } from '@shared/approval'
+import type { AiStatusUpdate } from '@shared/ipc/ai-status'
 import { analysisInputFor } from '../ai/inference-queue'
 import { editDiff, editReaches } from '../ai/pile-edit'
 import type { Repository } from '../db/repository'
 import type { CarryState, Draft, DraftCarry, DraftField, DraftWords, Mockup } from '../db/schema'
 import { TagService } from '../db/tag-service'
+import { PileTitles } from '../library/pile-titles'
 
 export interface LookOverDeps {
   exists: (path: string) => Promise<boolean>
@@ -30,6 +33,8 @@ export interface LookOverDeps {
   judgeMs: number
   /** How long the rewrite for one variant may take before the top's description stands in. */
   rewriteMs: number
+  /** Where the background queue is with a mockup (`InferenceQueue.statusOf`); null for its saved status. */
+  aiStatusOf: (mockupId: number) => AiStatusUpdate | null
 }
 
 const defaultDeps: LookOverDeps = {
@@ -40,7 +45,8 @@ const defaultDeps: LookOverDeps = {
     return { width, height }
   },
   judgeMs: 20_000,
-  rewriteMs: 20_000
+  rewriteMs: 20_000,
+  aiStatusOf: () => null
 }
 
 interface Fields {
@@ -70,17 +76,28 @@ export function changedTagIds(own: number[], top: DraftCarry['top']): number[] {
   return [...kept, ...added.filter((id) => !kept.includes(id))]
 }
 
-/** The promise, or a rejection once `ms` have passed. */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+/** What `withTimeout` rejects with once its time is up. */
+class TimedOut extends Error {}
+
+/**
+ * What `run` gives, or a rejection once `ms` have passed. Then `run`'s signal is aborted too, which
+ * cancels the model's request: left running, it would hold the model's one slot and the next
+ * mockup's suggestion would wait behind it (F-035).
+ */
+function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+  const controller = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error('Timed out')), Math.max(0, ms))
+    timer = setTimeout(() => {
+      controller.abort()
+      reject(new TimedOut('Timed out'))
+    }, Math.max(0, ms))
   })
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+  return Promise.race([run(controller.signal), timeout]).finally(() => clearTimeout(timer))
 }
 
-/** What judging one variant came to. */
-type Verdict = { take: Prepared } | { offer: string | null; prepared?: Prepared }
+/** What judging one variant came to: the edit worked in, or offered, with the model's reason on a no. */
+type Verdict = { take: Prepared } | { offer: string | null; why: OfferWhy; prepared?: Prepared }
 type Prepared = NonNullable<DraftCarry['prepared']>
 
 /** The title a mockup gets when there is no suggestion: its file name without the extension. */
@@ -89,12 +106,15 @@ export const stemOf = (fileName: string) => fileName.replace(/\.[^/.]+$/, '').re
 /**
  * Look it over, on the main side. Everything the user does in a pile is a draft until Stash pile
  * (see `stash-service.ts`), so a mockup never reaches My Stash one at a time. The queue is piles
- * first, then mockups on their own, and suggestions come from the background AI queue's cache.
- * A draft made before its suggestion is ready waits for it: `settle` fills it in when it lands.
+ * first, then mockups on their own, and suggestions come only from the background AI queue: tops
+ * and mockups on their own wait in it like variants (design L6). A draft made before its
+ * suggestion is ready waits for it: `settle` fills it in when it lands.
  */
 export class LookOverService {
   private readonly deps: LookOverDeps
   private readonly tagService: TagService
+  /** A pile's base title and each mockup's variation (design/specs/pile-titles.md). */
+  private readonly titles: PileTitles
   /** Told which parts of a suggestion a save changed (names only, never the text). Set by the IPC layer for telemetry. */
   onEdited: (fields: ('title' | 'description' | 'tags')[]) => void = () => {}
   /** Told when background work changes a variant (judged, offered, a version prepared). Set by the IPC layer for the `look-over:draft` push. */
@@ -116,31 +136,73 @@ export class LookOverService {
   ) {
     this.deps = { ...defaultDeps, ...deps }
     this.tagService = new TagService(repo)
+    this.titles = new PileTitles(repo)
   }
 
   async open(): Promise<LookOverQueue> {
+    // Suggestions a mockup left behind when it went (tossed, trashed or deleted) go now (F-034).
+    this.repo.tags.pruneSuggestions()
     const provider = await this.getProvider()
     const units: LookOverUnit[] = []
 
     for (const root of this.repo.drafts.getQueueRoots()) {
       const members = root.isGroup ? this.members(root.id) : []
-      const top = await this.draftFor(root, provider, null)
-      const items = [await this.toItem(root, top, root.isGroup ? 'top' : 'single', root.isGroup ? root.id : null)]
-      for (const member of members) {
-        const draft = this.unstuck(root.id, await this.draftFor(member, provider, top))
-        items.push(await this.toItem(member, draft, 'variant', root.id))
-      }
+      const top = await this.draftFor(root, null)
+      for (const member of members) this.unstuck(root.id, await this.draftFor(member, top))
+      if (root.isGroup) this.titles.fill(root.id)
+      const items = [await this.toItem(root, this.repo.drafts.getDraft(root.id)!, root.isGroup ? 'top' : 'single', root.isGroup ? root.id : null)]
+      for (const member of members) items.push(await this.toItem(member, this.repo.drafts.getDraft(member.id)!, 'variant', root.id))
       units.push({ unitId: root.id, kind: root.isGroup ? 'pile' : 'single', items })
     }
-    return { units, resume: this.validResume(units) }
+    return { units, checksEdits: !!provider?.pileEdits?.check, resume: this.validResume(units) }
+  }
+
+  /** The mockups Look it over shows that the AI was never asked about, for the queue to take when it opens. */
+  unasked(): number[] {
+    return this.repo.drafts
+      .getQueueRoots()
+      .flatMap((root) => [root, ...(root.isGroup ? this.members(root.id) : [])])
+      .filter((m) => m.aiStatus === 'off')
+      .map((m) => m.id)
+  }
+
+  /**
+   * Fill it myself (design L6.E1): the draft stops waiting for the AI, so no suggestion lands in it,
+   * and every field stays as it is. The queue's side is `InferenceQueue.optOut`. Null when the
+   * mockup isn't waiting in To stash.
+   */
+  async fillMyself(mockupId: number): Promise<LookOverItem | null> {
+    const m = this.waitingMockup(mockupId)
+    if (!m) return null
+    await this.draftFor(m, m.groupId !== null ? (this.repo.drafts.getDraft(m.groupId) ?? null) : null)
+    this.repo.drafts.updateDraft(m.id, { awaitingAi: false })
+    return this.itemFor(m.id)
+  }
+
+  /**
+   * Write suggestions or Try again (L6.E1, L6.E3): the draft waits for the AI again, and its answer
+   * fills every field the person hasn't typed in. The queue's side is `InferenceQueue.askAgain`.
+   * Null when the mockup isn't waiting in To stash.
+   */
+  async waitForAi(mockupId: number): Promise<LookOverItem | null> {
+    const m = this.waitingMockup(mockupId)
+    if (!m) return null
+    await this.draftFor(m, m.groupId !== null ? (this.repo.drafts.getDraft(m.groupId) ?? null) : null)
+    this.repo.drafts.updateDraft(m.id, { awaitingAi: true })
+    return this.itemFor(m.id)
   }
 
   async saveDraft(req: SaveDraftRequest): Promise<{ propagatedIds: number[] }> {
     const m = this.requireWaiting(req.mockupId)
-    const before = await this.draftFor(m, null, null)
+    const before = await this.draftFor(m, null)
     const descriptionChanged = before.description !== req.description
     const tagsChanged = !sameIds(before.tagIds, req.tagIds)
     const changed = before.title !== req.title || descriptionChanged || tagsChanged
+    // In a pile the title is the pile's base: a new one renames every mockup in it, exactly, and
+    // the variation is this mockup's own (design/specs/pile-titles.md).
+    const pileId = m.isGroup ? m.id : m.groupId
+    const renamed = pileId !== null && before.title !== req.title ? this.titles.renameBase(pileId, req.title).mockupIds : []
+    if (pileId !== null && req.variation !== undefined) this.titles.setVariation(m.id, req.variation)
 
     const edited: DraftField[] = [
       ...(before.title !== req.title ? (['title'] as const) : []),
@@ -150,17 +212,18 @@ export class LookOverService {
     if (changed) this.onEdited(edited)
 
     this.repo.drafts.updateDraft(m.id, {
-      title: req.title,
+      ...(pileId === null && { title: req.title }),
       description: req.description,
       tagIds: req.tagIds,
       checked: req.checked ?? true,
-      keptFields: keep(before, edited),
-      // A variant the person edits is theirs: edits to the top leave it alone from now on.
-      ...(m.groupId !== null && changed ? { touched: true, carry: null } : {})
+      keptFields: keep(this.repo.drafts.getDraft(m.id)!, edited),
+      // A variant whose words the person edits is theirs: edits to the top leave it alone from now on.
+      ...(m.groupId !== null && (descriptionChanged || tagsChanged) ? { touched: true, carry: null } : {})
     })
 
-    if (!m.isGroup || !(descriptionChanged || tagsChanged)) return { propagatedIds: [] }
-    return { propagatedIds: await this.carryEdit(m, before, req) }
+    const others = renamed.filter((id) => id !== m.id)
+    if (!m.isGroup || !(descriptionChanged || tagsChanged)) return { propagatedIds: others }
+    return { propagatedIds: [...new Set([...others, ...(await this.carryEdit(m, before, req))])] }
   }
 
   /** The person's answer to the top's edit on one variant, from `look-over:answer-edit`. */
@@ -191,7 +254,7 @@ export class LookOverService {
     const draft = this.carryIn(mockupId, ['applied', 'reworded'])
     const own = draft?.carry?.own
     if (!draft?.carry || !own) return null
-    this.repo.drafts.updateDraft(mockupId, { ...own, carry: { ...draft.carry, state: 'offered', own: null } })
+    this.repo.drafts.updateDraft(mockupId, { ...own, carry: { ...draft.carry, state: 'offered', own: null, why: 'undone' } })
     return this.itemFor(mockupId)
   }
 
@@ -218,15 +281,11 @@ export class LookOverService {
   /** The drafts of a pile (top first) or of a mockup on its own, made if they were not yet. */
   async draftsFor(unitId: number): Promise<{ mockup: Mockup; draft: Draft }[]> {
     const root = this.requireWaiting(unitId)
-    const provider = await this.getProvider()
-    const top = await this.draftFor(root, provider, null)
-    const out = [{ mockup: root, draft: top }]
-    if (root.isGroup) {
-      for (const member of this.members(root.id)) {
-        out.push({ mockup: member, draft: await this.draftFor(member, provider, top) })
-      }
-    }
-    return out
+    const top = await this.draftFor(root, null)
+    const mockups = [root, ...(root.isGroup ? this.members(root.id) : [])]
+    for (const member of mockups.slice(1)) await this.draftFor(member, top)
+    if (root.isGroup) this.titles.fill(root.id)
+    return mockups.map((mockup) => ({ mockup, draft: this.repo.drafts.getDraft(mockup.id)! }))
   }
 
   /**
@@ -250,7 +309,7 @@ export class LookOverService {
     if (!m || m.deletedAt !== null || m.stage !== 'to_stash' || m.isGroup || m.groupId !== null) {
       return { skipped: false }
     }
-    await this.draftFor(m, null, null)
+    await this.draftFor(m, null)
     this.repo.drafts.skip(m.id, this.now().toISOString())
     return { skipped: true }
   }
@@ -293,45 +352,41 @@ export class LookOverService {
   }
 
   private requireWaiting(id: number): Mockup {
-    const m = this.repo.mockups.getMockup(id)
-    if (!m || m.deletedAt !== null || m.stage !== 'to_stash') {
-      throw new Error(`Mockup ${id} is not waiting in To stash`)
-    }
+    const m = this.waitingMockup(id)
+    if (!m) throw new Error(`Mockup ${id} is not waiting in To stash`)
     return m
+  }
+
+  private waitingMockup(id: number): Mockup | null {
+    const m = this.repo.mockups.getMockup(id)
+    return m && m.deletedAt === null && m.stage === 'to_stash' ? m : null
   }
 
   /**
    * The draft for a mockup, made the first time it is needed. One still waiting for the AI is
    * settled first, in case its suggestion landed while nothing was listening.
    */
-  private async draftFor(m: Mockup, provider: InferenceProvider | null, top: Draft | null): Promise<Draft> {
+  private async draftFor(m: Mockup, top: Draft | null): Promise<Draft> {
     const existing = this.repo.drafts.getDraft(m.id)
     if (existing) return existing.awaitingAi ? this.settled(m, existing) : existing
-    return this.repo.drafts.ensureDraft(m.id, await this.defaults(m, provider, top))
+    return this.repo.drafts.ensureDraft(m.id, await this.defaults(m, top))
   }
 
   /**
-   * A new draft's fields: the mockup's own suggestion, title, description and snapped tags alike.
-   * Only a top or a mockup on its own is ever asked for one here; variants are left to the
-   * background queue, because a pile of them on a slow model would hold up opening the pile.
-   * Without a suggestion it falls back to the file name, and a variant to its top's description
-   * and tags, and it waits for the AI if the queue is still on it.
+   * A new draft's fields: the mockup's own suggestion, title, description and snapped tags alike,
+   * except that a variant's title is its pile's base, its top's. Nothing is asked of the model here:
+   * the background queue writes every suggestion, tops and mockups on their own too (design L6), so
+   * opening never waits on a slow model. Without a suggestion it falls back to the file name (a top
+   * to what the Sort board named its pile), and a variant to its top's description and tags, and it
+   * waits for the AI if the queue is still on it.
    */
-  private async defaults(m: Mockup, provider: InferenceProvider | null, top: Draft | null): Promise<Defaults> {
+  private async defaults(m: Mockup, top: Draft | null): Promise<Defaults> {
     const input = analysisInputFor(m)
-    let result = this.cachedSuggestion(m)
-
-    if (!result && !top && provider) {
-      try {
-        result = await provider.analyze(input)
-      } catch {
-        result = null
-      }
-    }
-
-    if (result) return { ...(await this.fieldsFrom(result)), awaitingAi: false }
+    const result = this.cachedSuggestion(m)
+    // A variant's title is its pile's base: its top's.
+    if (result) return { ...(await this.fieldsFrom(result)), ...(top && { title: top.title }), awaitingAi: false }
     return {
-      title: stemOf(input.fileName) || m.title,
+      title: top ? top.title : m.isGroup ? this.titles.provisionalBase(m.id) : stemOf(input.fileName) || m.title,
       description: top?.description ?? '',
       tagIds: top ? [...top.tagIds] : [],
       awaitingAi: aiWorking(m)
@@ -346,7 +401,8 @@ export class LookOverService {
     if (result) {
       const fields = await this.fieldsFrom(result)
       const kept = new Set(draft.keptFields)
-      if (!kept.has('title')) patch.title = fields.title
+      // A variant's title is its pile's base, which only the top's suggestion writes.
+      if (!kept.has('title') && m.groupId === null) patch.title = fields.title
       if (!kept.has('description')) patch.description = fields.description
       if (!kept.has('tags')) patch.tagIds = fields.tagIds
     }
@@ -359,6 +415,11 @@ export class LookOverService {
         (patch.tagIds !== undefined && !sameIds(patch.tagIds, draft.tagIds)))
     this.repo.drafts.updateDraft(m.id, { ...patch, awaitingAi: false, ...(stale && { carry: { ...carry, prepared: null } }) })
     if (stale) this.queue(() => this.prepare(m.id))
+    if (m.isGroup && patch.title !== undefined && patch.title !== draft.title) {
+      // The top's suggestion names the pile: every mockup in it takes the base.
+      const { mockupIds } = this.titles.renameBase(m.id, patch.title, 'ai')
+      for (const id of mockupIds) if (id !== m.id) await this.pushItem(id)
+    }
     return this.repo.drafts.getDraft(m.id)!
   }
 
@@ -393,12 +454,12 @@ export class LookOverService {
     const changed: number[] = []
     const reached: number[] = []
     for (const v of this.members(top.id)) {
-      const draft = await this.draftFor(v, null, topDraft)
+      const draft = await this.draftFor(v, topDraft)
       if (draft.touched) continue
       const pending = draft.carry?.state === 'offered' || draft.carry?.state === 'checking' ? draft.carry : null
       const edit = { before: pending?.top.before ?? { description: before.description, tagIds: before.tagIds }, after: { description: after.description, tagIds: [...after.tagIds] } }
       if (!sameWords(edit.before, edit.after) && editReaches(this.wordsOf(edit), this.entryOf(draft))) {
-        const carry: DraftCarry = { state: judges ? 'checking' : 'offered', top: edit, reason: null, prepared: null, own: null }
+        const carry: DraftCarry = { state: judges ? 'checking' : 'offered', top: edit, reason: null, prepared: null, own: null, ...(!judges && { why: 'unjudged' as const }) }
         this.repo.drafts.updateDraft(v.id, { carry })
         changed.push(v.id)
         reached.push(v.id)
@@ -433,17 +494,23 @@ export class LookOverService {
     const started = Date.now()
     const total = ids.length
     let completed = 0
+    // Why the ones it doesn't get to are offered: out of time, unless the model stopped judging.
+    let unreached: OfferWhy = 'slow'
     if (total > 0) this.onProgress({ pileId, completed, total, phase: 'running' })
     for (const id of ids) {
       const left = this.deps.judgeMs - (Date.now() - started)
-      if (!current() || left <= 0 || !steps?.check) break
+      if (!current() || left <= 0) break
+      if (!steps?.check) {
+        unreached = 'failed'
+        break
+      }
       const draft = this.checking(id)
       if (draft?.carry) {
         const verdict = await this.verdict(id, draft, draft.carry, steps, left)
         const now = current() ? this.checking(id) : undefined
         if (now?.carry) {
           if ('take' in verdict) this.take(now, now.carry, verdict.take, null)
-          else this.repo.drafts.updateDraft(id, { carry: { ...now.carry, state: 'offered', reason: verdict.offer, prepared: verdict.prepared ?? null } })
+          else this.repo.drafts.updateDraft(id, { carry: { ...now.carry, state: 'offered', reason: verdict.offer, why: verdict.why, prepared: verdict.prepared ?? null } })
           await this.pushItem(id)
         }
       }
@@ -455,7 +522,7 @@ export class LookOverService {
     for (const id of ids) {
       const draft = this.checking(id)
       if (!draft?.carry) continue
-      this.repo.drafts.updateDraft(id, { carry: { ...draft.carry, state: 'offered' } })
+      this.repo.drafts.updateDraft(id, { carry: { ...draft.carry, state: 'offered', why: unreached } })
       await this.pushItem(id)
     }
     if (total > 0) this.onProgress({ pileId, completed, total, phase: 'done' })
@@ -468,13 +535,15 @@ export class LookOverService {
     const { added } = editDiff(this.wordsOf(carry.top))
     if (added.length > 0) {
       const cover = this.repo.mockups.getMockup(id)?.coverPath
-      const said = cover && steps.check ? await withTimeout(steps.check(cover, this.wordsOf(carry.top), added), left).catch(() => null) : null
-      if (!said) return { offer: null }
-      if (said.answer === 'no') return { offer: said.reason || null }
+      const check = steps.check
+      if (!cover || !check) return { offer: null, why: 'failed' }
+      const said = await withTimeout((signal) => check(cover, this.wordsOf(carry.top), added, signal), left).catch((err: unknown) => (err instanceof TimedOut ? 'slow' : 'failed') as OfferWhy)
+      if (typeof said === 'string') return { offer: null, why: said }
+      if (said.answer === 'no') return { offer: said.reason || null, why: 'refused' }
     }
     const prepared = await this.version({ pileEdits: steps }, carry, draft)
     // A yes whose rewrite failed is offered, so the top's words never land on a variant unseen.
-    return prepared.via === 'rewrite' ? { take: prepared } : { offer: null, prepared }
+    return prepared.via === 'rewrite' ? { take: prepared } : { offer: null, why: 'failed', prepared }
   }
 
   /** The edit in a variant's words: its version, and only the edit's tag changes. Marked applied when that is the top's own entry. */
@@ -524,7 +593,7 @@ export class LookOverService {
     const rewrite = provider?.pileEdits?.rewrite
     if (rewrite) {
       try {
-        return { description: await withTimeout(rewrite(this.wordsOf(carry.top), this.entryOf(draft)), this.deps.rewriteMs), via: 'rewrite' }
+        return { description: await withTimeout((signal) => rewrite(this.wordsOf(carry.top), this.entryOf(draft), signal), this.deps.rewriteMs), via: 'rewrite' }
       } catch {
         // Falls through to the copy.
       }
@@ -535,7 +604,7 @@ export class LookOverService {
   /** A variant still being checked whose check is no longer running (Look it over was closed before it finished): it gets the offer. */
   private unstuck(pileId: number, draft: Draft): Draft {
     if (draft.carry?.state !== 'checking' || this.runs.has(pileId)) return draft
-    this.repo.drafts.updateDraft(draft.mockupId, { carry: { ...draft.carry, state: 'offered' } })
+    this.repo.drafts.updateDraft(draft.mockupId, { carry: { ...draft.carry, state: 'offered', why: 'slow' } })
     this.queue(() => this.prepare(draft.mockupId))
     return this.repo.drafts.getDraft(draft.mockupId)!
   }
@@ -597,6 +666,11 @@ export class LookOverService {
     this.work = this.work.then(step).catch((err: unknown) => console.warn('[look-over] a pile edit step failed', err))
   }
 
+  /** A mockup as Look it over shows it now, or null when it has no draft. */
+  item(id: number): Promise<LookOverItem | null> {
+    return this.itemFor(id)
+  }
+
   private async itemFor(id: number): Promise<LookOverItem | null> {
     const m = this.repo.mockups.getMockup(id)
     const draft = this.repo.drafts.getDraft(id)
@@ -618,9 +692,12 @@ export class LookOverService {
     const took = c.state === 'applied' || c.state === 'reworded'
     const from = took && c.own ? c.own.tagIds : draft.tagIds
     const to = took ? draft.tagIds : this.acceptedTagIds(draft.mockupId, from, c.top)
+    const onOffer = c.state === 'offered' || c.state === 'dismissed'
     return {
       state: c.state,
       reason: c.reason,
+      // A carry from before `why` was kept: a reason means the model said no.
+      why: onOffer ? (c.why ?? (c.reason ? 'refused' : 'unjudged')) : null,
       after: took ? { description: draft.description, via: c.prepared?.via ?? 'rewrite' } : c.prepared,
       tagsAdded: this.repo.tags.getApprovalTagsByIds(to.filter((id) => !from.includes(id))),
       tagsRemoved: this.repo.tags.getApprovalTagsByIds(from.filter((id) => !to.includes(id)))
@@ -642,12 +719,14 @@ export class LookOverService {
       pileId,
       role,
       title: draft.title,
+      variation: pileId !== null && draft.variation ? { words: draft.variation, source: draft.variationSource ?? 'ai' } : null,
       description: draft.description,
       tags: this.repo.tags.getApprovalTagsByIds(draft.tagIds),
       touched: draft.touched,
       checked: draft.checked,
       waitingForAi: draft.awaitingAi,
       carry: this.carryOf(draft),
+      ai: this.aiOf(m),
       cover: {
         path: m.coverPath,
         source: m.coverSource,
@@ -656,6 +735,12 @@ export class LookOverService {
         height: size?.height ?? null
       }
     }
+  }
+
+  /** Where the queue is with a mockup, or its saved status when the queue has nothing to add. */
+  private aiOf(m: Mockup): LookOverItem['ai'] {
+    const update = this.deps.aiStatusOf(m.id)
+    return update ? { status: update.status, ...(update.run && { run: update.run }) } : { status: m.aiStatus }
   }
 
   /** The saved pointer, if it still points at a step in the queue. A stale one is dropped. */

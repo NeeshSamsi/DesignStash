@@ -3,9 +3,11 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { IntegrityService, type IntegrityDeps } from '../library/integrity-service'
 import { StashCheckStatus } from '../library/stash-check-status'
 import type { Repository } from '../db/repository'
+import { undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { countsChanged, mockupsArrived, mockupsLeft } from './library-effects'
 import { registerIpcHandler } from './register'
+import { PHOTOSHOP_EXTENSIONS } from '../psd/photoshop-file'
 
 /** The ignore list lives in settings, so it survives a restart. */
 function ignoredStore(settings: HandlerContext['settings']): IntegrityDeps['ignored'] {
@@ -38,7 +40,7 @@ export function createStashCheck(
 async function pickPsd(): Promise<string | null> {
   const result = await dialog.showOpenDialog({
     properties: ['openFile'],
-    filters: [{ name: 'PSD Files', extensions: ['psd'] }]
+    filters: [{ name: 'PSD Files', extensions: [...PHOTOSHOP_EXTENSIONS] }]
   })
   return result.canceled ? null : (result.filePaths[0] ?? null)
 }
@@ -68,20 +70,22 @@ export function registerIntegrityHandlers(
 
   registerIpcHandler(IPC_CHANNELS.INTEGRITY_REPORT, () => integrityService.report())
 
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_ADD, async (args) =>
-    added((await integrityService.add(args.ids)).mockupIds)
+  // An add is one entry: its undo takes the new records away, redo puts them back.
+  const recordAdd = async (label: string, run: () => Promise<{ mockupIds: number[] }>) => {
+    const { result, record } = await ctx.dataOps.track(label, {}, run, (r) => ({
+      mockupIds: r.mockupIds
+    }))
+    const reply = await added(result.mockupIds)
+    return { ...reply, ...undoEntry(ctx.undo.record(record)) }
+  }
+
+  registerIpcHandler(IPC_CHANNELS.INTEGRITY_ADD, (args) =>
+    recordAdd('Add found PSDs', () => integrityService.add(args.ids))
   )
 
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_ADD_ALL, async () =>
-    added((await integrityService.addAll()).mockupIds)
+  registerIpcHandler(IPC_CHANNELS.INTEGRITY_ADD_ALL, () =>
+    recordAdd('Add all found PSDs', () => integrityService.addAll())
   )
-
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_UNDO_ADD, async (args) => {
-    mockupsLeft(ctx, args.mockupIds)
-    await integrityService.undoAdd(args.mockupIds)
-    countsChanged(ctx)
-    return recheck({ undone: true })
-  })
 
   /** Removed records leave the AI queue and change the sidebar counts. */
   const removed = async (result: {
@@ -105,16 +109,23 @@ export function registerIntegrityHandlers(
     recheck(await integrityService.relink(args.id))
   )
 
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_IGNORE, async (args) =>
-    recheck(await integrityService.ignore(args.ids))
+  // An ignore is one entry, recorded when the list changed: undo puts the list back.
+  const recordIgnore = async (label: string, run: () => Promise<{ ignoredIds: string[] }>) => {
+    const before = settings.get().ignoredDrift
+    const result = await run()
+    const after = settings.get().ignoredDrift
+    const id =
+      after.length === before.length
+        ? undefined
+        : ctx.undo.record(ctx.undo.ignoredDriftRecord(label, before, after))
+    return recheck({ ...result, ...undoEntry(id) })
+  }
+
+  registerIpcHandler(IPC_CHANNELS.INTEGRITY_IGNORE, (args) =>
+    recordIgnore('Ignore', () => integrityService.ignore(args.ids))
   )
 
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_IGNORE_ALL, async () =>
-    recheck(await integrityService.ignoreAll())
+  registerIpcHandler(IPC_CHANNELS.INTEGRITY_IGNORE_ALL, () =>
+    recordIgnore('Ignore all', () => integrityService.ignoreAll())
   )
-
-  registerIpcHandler(IPC_CHANNELS.INTEGRITY_UNIGNORE, async (args) => {
-    await integrityService.unignore(args.ids)
-    return recheck({ restored: true })
-  })
 }

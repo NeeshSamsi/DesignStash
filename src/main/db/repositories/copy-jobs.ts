@@ -17,7 +17,7 @@ export interface NewJob {
 
 /** A haul's state with the one thing that belongs to it: a pause always has a reason, nothing else does. */
 export type HaulState =
-  | { state: 'running' | 'done' | 'cancelled' | 'undone' }
+  | { state: 'running' | 'done' | 'cancelled' }
   | { state: 'paused'; pauseReason: NonNullable<CopyHaul['pauseReason']> }
 
 /** A job's state with its extras: a skip always has a reason and a done job always has its mockup. */

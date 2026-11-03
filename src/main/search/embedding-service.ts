@@ -16,6 +16,8 @@ export interface EmbeddingServiceDeps {
 
 const BATCH = 8
 const BUSY_POLL_MS = 2_000
+/** The waits after a failed batch before the next try: then a mockup that failed every try waits for the next backfill. */
+const RETRY_AFTER_MS = [30_000, 120_000]
 /** A short wait before the first batch, so a burst of changes (a rebuild, a bulk tag edit) is one batch. */
 const SETTLE_MS = 100
 
@@ -27,6 +29,8 @@ const SETTLE_MS = 100
 export class EmbeddingService {
   /** Mockups waiting for a vector, with the text to embed. Insertion order is the work order. */
   private readonly pending = new Map<number, string>()
+  /** Failed tries per queued mockup (F-027). */
+  private readonly tries = new Map<number, number>()
   private pumping: Promise<void> | null = null
   private cache: Map<number, Float32Array> | null = null
   private embedderInstance: MeaningEmbedder | null = null
@@ -93,23 +97,83 @@ export class EmbeddingService {
       try {
         const vectors = await this.embedder.embedDocuments(live.map(([, text]) => text))
         live.forEach(([id, text], i) => {
+          this.tries.delete(id)
           if (!this.deps.repo.search.isIndexed(id)) return
           this.deps.repo.embeddings.upsert(id, MEANING_MODEL_ID, vectors[i]!, documentHash(text))
         })
         this.cache = null
       } catch (err) {
-        // The next launch (or the model finishing its download) backfills what was missed.
-        this.deps.log?.('Could not embed a batch for meaning search', err)
-        this.pending.clear()
+        await this.failed(live, err, sleep)
       }
     }
   }
 
   /**
+   * A batch that failed goes to the back of the queue, so the ones behind it still run, after a
+   * wait that grows with its tries (F-027). A mockup that failed every try is left to the next
+   * backfill: the next launch, or the model finishing its download.
+   */
+  private async failed(batch: [number, string][], err: unknown, sleep: (ms: number) => Promise<void>): Promise<void> {
+    let worst = 0
+    for (const [id, text] of batch) {
+      const tries = (this.tries.get(id) ?? 0) + 1
+      worst = Math.max(worst, tries)
+      if (tries > RETRY_AFTER_MS.length) {
+        this.tries.delete(id)
+        continue
+      }
+      this.tries.set(id, tries)
+      // A newer text queued meanwhile wins.
+      if (!this.pending.has(id)) this.pending.set(id, text)
+    }
+    const wait = RETRY_AFTER_MS[worst - 1]
+    if (wait === undefined) {
+      this.deps.log?.('Could not embed a batch for meaning search; it waits for the next backfill', err)
+      return
+    }
+    this.deps.log?.(`Could not embed a batch for meaning search; trying it again in ${wait / 1000} s`, err)
+    await sleep(wait)
+  }
+
+  /**
+   * Start the model before a search needs it (the person has begun typing one), with the vectors
+   * read, so the first search doesn't wait for either (F-017).
+   */
+  warm(): void {
+    if (this.stopped || !this.deps.available()) return
+    try {
+      this.cache ??= this.deps.repo.embeddings.vectors(MEANING_MODEL_ID)
+    } catch {
+      // The database is closed: there is nothing to search.
+      return
+    }
+    void this.embedder.start?.().catch((err: unknown) => this.deps.log?.('Could not start meaning search', err))
+  }
+
+  /**
    * How close each mockup is to a search, by cosine, or null when meaning search can't answer
    * (no model, no vectors yet, or the embedder failed): the caller then shows keyword results only.
+   * Given `within` ms, null when the answer takes longer, so keyword results never wait for the
+   * model to start (F-017); the answer still runs on and warms it for the next search.
    */
-  async similarities(query: string): Promise<Map<number, number> | null> {
+  async similarities(
+    query: string,
+    { within, onLate }: { within?: number; onLate?: () => void } = {}
+  ): Promise<Map<number, number> | null> {
+    const answer = this.answer(query)
+    if (within === undefined) return answer
+    let timer: ReturnType<typeof setTimeout> | undefined
+    // Out of time while the model was still starting or answering: the caller may ask again (H-3).
+    const late = new Promise<null>((resolve) => {
+      timer = setTimeout(() => {
+        onLate?.()
+        resolve(null)
+      }, within)
+    })
+    return Promise.race([answer, late]).finally(() => clearTimeout(timer))
+  }
+
+  private async answer(query: string): Promise<Map<number, number> | null> {
     if (this.stopped || !this.deps.available()) return null
     try {
       const vectors = (this.cache ??= this.deps.repo.embeddings.vectors(MEANING_MODEL_ID))

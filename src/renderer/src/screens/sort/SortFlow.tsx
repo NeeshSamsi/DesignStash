@@ -1,21 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
-import { COULDNT_SUGGEST_PILES, type GroupMember } from '@shared/grouping'
-import { mockupCountLabel } from '@shared/pile-title'
+import {
+  COULDNT_SUGGEST_PILES,
+  TO_SORT_BOARD,
+  type GroupMember,
+  type SortBoard as SavedBoard
+} from '@shared/grouping'
+import { mockups } from '@renderer/lib/plural'
 import { ActionBar } from '@renderer/components/ActionBar'
 import { Banner } from '@renderer/components/Banner'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { FlowModal } from '@renderer/components/FlowModal'
 import { useShortcut } from '@renderer/lib/shortcuts'
+import { useFlowUndo } from '@renderer/lib/undo-router'
 import { useFlowOpen } from '@renderer/stores/copyStore'
-import { toast, undoToast } from '@renderer/stores/toastStore'
-import { Button } from '@renderer/ui/button'
-import { Skeleton } from '@renderer/ui/skeleton'
+import { stepToast, toast } from '@renderer/stores/toastStore'
+import { Button } from '@renderer/components/Button'
+import { Skeleton } from '@renderer/components/Skeleton'
 import {
   boardFromProposal,
   boardFromSaved,
   makeBoardReducer,
+  mergeBoard,
   canDisband,
   canNewPile,
   toSortBoard,
@@ -26,24 +33,32 @@ import { SortBoard } from './SortBoard'
 import { SortMenu } from './SortMenu'
 import type { MenuTarget } from './menu-model'
 
+/**
+ * What the board is open on: everything waiting in To sort, whichever import it came in with, or
+ * just the mockups picked (“Sort 3”).
+ */
+export type SortScope = { kind: 'all' } | { kind: 'only'; mockupIds: readonly number[] }
+
 export interface SortFlowProps {
   open: boolean
-  /** The import batch to sort. */
-  batchId: string | null
-  /** The batch is still being copied: the board only has what has arrived so far (S1.E1). */
+  /** Everything in To sort when left out. */
+  scope?: SortScope
+  /** A haul is still being copied: the board only has what has arrived so far (S1.E1). */
   copying?: boolean
   /** Finish later, or the board is done with. */
   onClose: () => void
-  /** The piles are confirmed: carry on to Look it over for this batch. */
-  onLookThemOver: (batchId: string) => void
+  /** The piles are confirmed: carry on to Look it over. */
+  onLookThemOver: () => void
 }
+
+const ALL: SortScope = { kind: 'all' }
 
 const SORT_GUIDANCE = 'Drag mockups together to make a pile. Leave the rest on their own.'
 
 type Loaded =
   | { status: 'loading' }
   | { status: 'failed' }
-  | { status: 'ready'; board: BoardState; suggestionFailed: boolean }
+  | { status: 'ready'; board: BoardState; whole: SavedBoard | null; suggestionFailed: boolean }
 
 /** A fresh id for a pile the user makes. Unique across sessions, since boards are saved. */
 const freshPileId = () =>
@@ -55,23 +70,24 @@ function BoardSkeleton() {
   return (
     <div aria-hidden className="grid grid-cols-2 gap-6">
       {[0, 1].map((n) => (
-        <Skeleton key={n} className="h-56 rounded-xl" />
+        <Skeleton key={n} className="h-56 w-full rounded-xl" />
       ))}
-      <Skeleton className="col-span-2 h-40 rounded-xl" />
+      <Skeleton className="col-span-2 h-40 w-full rounded-xl" />
     </div>
   )
 }
 
 interface SessionProps {
   initial: BoardState
-  batchId: string
+  /** The whole board, when this one holds only the mockups picked: Finish later puts them back in it. */
+  whole: SavedBoard | null
   copying: boolean
   onClose: () => void
-  onLookThemOver: (batchId: string) => void
+  onLookThemOver: () => void
 }
 
 /** The board once it has loaded: owns the state, the menu, the shortcuts and the two exits. */
-function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: SessionProps) {
+function SortSession({ initial, whole, copying, onClose, onLookThemOver }: SessionProps) {
   const [state, setState] = useState(initial)
   const latest = useRef(initial)
   const [menu, setMenu] = useState<{ target: MenuTarget; at: { x: number; y: number } } | null>(
@@ -91,7 +107,7 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
     (action: BoardAction) => {
       let next = boardReducer(latest.current, action)
       if (next.notice) {
-        undoToast(next.notice, () => apply({ type: 'undo' }))
+        stepToast(next.notice, () => apply({ type: 'undo' }))
         next = { ...next, notice: null }
       }
       latest.current = next
@@ -118,11 +134,10 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
     scope: 'sort',
     handler: () => canDisband(latest.current) && send({ type: 'disband' })
   })
-  useShortcut({
-    id: 'sort.undo',
-    combo: 'mod+z',
-    scope: 'sort',
-    handler: () => send({ type: 'undo' })
+  // ⌘Z and ⇧⌘Z (Edit › Undo and Redo) step the board back and forward while it's open.
+  useFlowUndo({
+    undo: () => send({ type: 'undo' }),
+    redo: () => send({ type: 'redo' })
   })
 
   const total = Object.keys(state.tiles).length
@@ -140,9 +155,10 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
 
   const finishLater = async () => {
     setBusy(true)
+    const board = toSortBoard(latest.current, TO_SORT_BOARD)
     const res = await window.api.invoke(
       IPC_CHANNELS.SORT_BOARD_SAVE,
-      toSortBoard(latest.current, batchId)
+      whole ? mergeBoard(whole, board, freshPileId) : board
     )
     setBusy(false)
     if (!res.success) {
@@ -157,7 +173,7 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
     setBusy(true)
     const res = await window.api.invoke(
       IPC_CHANNELS.GROUPING_CONFIRM,
-      toSortBoard(latest.current, batchId)
+      toSortBoard(latest.current, TO_SORT_BOARD)
     )
     setBusy(false)
     if (!res.success) {
@@ -165,14 +181,14 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
       return
     }
     onClose()
-    onLookThemOver(batchId)
+    onLookThemOver()
   }
 
   return (
     <FlowModal
       open
       step="sort"
-      count={mockupCountLabel(total)}
+      count={mockups(total)}
       onRequestClose={requestClose}
       body={
         <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -189,9 +205,8 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
             <p className="type-body-sm-regular text-muted-foreground">{SORT_GUIDANCE}</p>
             {state.selectedTiles.length >= 2 && (
               <Button
-                variant="outline"
+                variant="outline-subtle"
                 size="sm"
-                className="border-subtle hover:border-input"
                 disabled={!canNewPile(state)}
                 onClick={() => send({ type: 'new-pile' })}
               >
@@ -204,6 +219,7 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
               state={state}
               dispatch={send}
               onMenu={(target, at) => setMenu({ target, at })}
+              menuOpen={menu !== null}
             />
           </div>
           <ActionBar
@@ -231,7 +247,7 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
             variant="neutral"
             working={busy}
             title="Your haul isn’t stashed yet"
-            description={`Your piles so far are kept. All ${mockupCountLabel(total)} wait in To sort until you come back.`}
+            description={`Your piles so far are kept. All ${mockups(total)} wait in To sort until you come back.`}
             confirmLabel="Finish later"
             workingLabel="Saving…"
             cancelLabel="Keep going"
@@ -245,25 +261,25 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
 }
 
 /**
- * SortFlow — step 1 of the flow modal: the Sort board for one import batch.
+ * SortFlow — step 1 of the flow modal: the Sort board for everything waiting in To sort, across
+ * imports, or for just the mockups picked (“Sort 3”).
  * Figma: ↳ Sort › B2 · Sort into piles (S1 to S9), Finish later (I3.E2). It opens with the board the
  * user left (Finish later), or the suggested piles. If suggesting fails the board still works, with
- * everything on its own and a toast. Look them over saves the piles and hands the batch on.
+ * everything on its own and a toast. Look them over saves the piles and hands them on.
  */
 export function SortFlow({
   open,
-  batchId,
+  scope = ALL,
   copying = false,
   onClose,
   onLookThemOver
 }: SortFlowProps) {
-  const shown = open && batchId !== null
-  useFlowOpen(shown)
-  if (!shown) return null
+  useFlowOpen(open)
+  if (!open) return null
   return (
     <SortLoader
-      key={batchId}
-      batchId={batchId}
+      key={scope.kind === 'all' ? 'all' : scope.mockupIds.join()}
+      scope={scope}
       copying={copying}
       onClose={onClose}
       onLookThemOver={onLookThemOver}
@@ -271,28 +287,40 @@ export function SortFlow({
   )
 }
 
-function SortLoader({ batchId, copying, onClose, onLookThemOver }: Omit<SessionProps, 'initial'>) {
+function SortLoader({
+  scope,
+  copying,
+  onClose,
+  onLookThemOver
+}: Omit<SessionProps, 'initial' | 'whole'> & { scope: SortScope }) {
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  // Read once per opening: SortFlow keys this by the scope.
+  const opened = useRef(scope)
 
   useEffect(() => {
     let live = true
     void (async () => {
       const [proposed, saved] = await Promise.all([
-        window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, { batchId }),
-        window.api.invoke(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId })
+        window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, { batchId: TO_SORT_BOARD }),
+        window.api.invoke(IPC_CHANNELS.SORT_BOARD_LOAD, { batchId: TO_SORT_BOARD })
       ])
       if (!live) return
       if (!proposed.success) return setLoaded({ status: 'failed' })
       const proposal = proposed.data
-      const members: GroupMember[] = [
+      const all: GroupMember[] = [
         ...proposal.groups.flatMap((g) => g.members),
         ...proposal.singletons
       ]
-      const board = saved.success && saved.data.board
+      const board = saved.success ? saved.data.board : null
+      const whole = board ?? toSortBoard(boardFromProposal(proposal), TO_SORT_BOARD)
+      const picked = opened.current.kind === 'only' ? new Set(opened.current.mockupIds) : null
+      const members = picked ? all.filter((m) => picked.has(m.mockupId)) : all
       setLoaded({
         status: 'ready',
-        board: board ? boardFromSaved(board, members) : boardFromProposal(proposal),
+        // The piles the whole board has, cut to the mockups picked.
+        board: boardFromSaved(whole, members),
+        whole: picked ? whole : null,
         // A saved board is the user's own, so only a fresh suggestion that failed is worth a toast.
         suggestionFailed: !board && proposal.suggestionFailed === true
       })
@@ -300,7 +328,7 @@ function SortLoader({ batchId, copying, onClose, onLookThemOver }: Omit<SessionP
     return () => {
       live = false
     }
-  }, [batchId, attempt])
+  }, [attempt])
 
   const failedToSuggest = loaded.status === 'ready' && loaded.suggestionFailed
   useEffect(() => {
@@ -321,7 +349,7 @@ function SortLoader({ batchId, copying, onClose, onLookThemOver }: Omit<SessionP
     return (
       <SortSession
         initial={loaded.board}
-        batchId={batchId}
+        whole={loaded.whole}
         copying={copying}
         onClose={onClose}
         onLookThemOver={onLookThemOver}

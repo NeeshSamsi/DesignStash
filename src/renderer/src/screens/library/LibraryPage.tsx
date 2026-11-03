@@ -11,8 +11,9 @@ import {
 } from '@dnd-kit/core'
 import { ArrowLeft01Icon, Cancel01Icon, Search02Icon, StarIcon } from '@hugeicons/core-free-icons'
 import { coverDisplay, type LibraryItem } from '@shared/library'
+import { PageBar } from '@renderer/components/AppWindow/PageBar'
 import { Banner } from '@renderer/components/Banner'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { LibraryToolbar } from '@renderer/components/LibraryToolbar'
@@ -31,6 +32,7 @@ import {
 } from '@renderer/lib/library-list'
 import { filterChips, toggleCategory } from '@renderer/lib/tag-filter'
 import { useShortcut } from '@renderer/lib/shortcuts'
+import { ipcUndoRoutes, useUndoLabels } from '@renderer/lib/undo-router'
 import { useDetailEffects } from '@renderer/stores/detailEffectsStore'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
@@ -88,8 +90,7 @@ export default function LibraryPage({
   const categoryIds = useLibraryStore((s) => s.categoryIds)
   const setCategoryIds = useLibraryStore((s) => s.setCategoryIds)
 
-  const { loaded, failed, refresh, keepLingering, releaseLingering, tagCategories } =
-    useLibraryData(starredOnly)
+  const { loaded, failed, refresh, keepLingering, tagCategories } = useLibraryData(starredOnly)
 
   const ids = useMemo(() => items.map((item) => String(item.id)), [items])
   const rawSelection = useGridSelection(ids)
@@ -161,10 +162,13 @@ export default function LibraryPage({
     starredOnly,
     refresh,
     keepLingering,
-    releaseLingering,
     clearSelection: rawSelection.clear
   })
   const { openInPhotoshop } = actions
+  // The empty-space menu's Undo is the app's last action, as Edit › Undo is.
+  const { undoLabel } = useUndoLabels()
+  const lastUndo =
+    undoLabel !== undefined ? { name: undoLabel, run: () => ipcUndoRoutes.app('undo') } : null
 
   const itemById = (id: string) => items.find((item) => String(item.id) === id)
   const selectedItems = selection.selectedIds
@@ -221,7 +225,7 @@ export default function LibraryPage({
     })
   }
 
-  const piles = useLibraryPiles({ refresh, offerUndo: actions.offerUndo })
+  const piles = useLibraryPiles({ refresh })
   const newPile = (targets: LibraryItem[]) => {
     const intent = planNewPile(targets)
     if (intent) void piles.run(intent)
@@ -305,7 +309,7 @@ export default function LibraryPage({
     newPile,
     disband: (item: LibraryItem) => void piles.disband([item]),
     selectAll: selection.selectAll,
-    undo: () => void actions.undoLast(),
+    undo: () => void lastUndo?.run(),
     ...(onAddFiles ? { addFiles: onAddFiles } : {}),
     ...(onAddFolder ? { addFolder: onAddFolder } : {})
   }
@@ -336,14 +340,8 @@ export default function LibraryPage({
   return (
     <div className="flex min-h-full flex-col gap-4">
       {onSortWaiting && showAdd && <WaitingToSortStrip onSort={onSortWaiting} />}
-      {/*
-        Stays put while the grid scrolls. The wrapper paints the panel colour and reaches over the
-        scroller's 8px padding (-top-2, -mx-2), so cards slide under it and nothing shows above it.
-      */}
-      <div
-        data-slot="library-toolbar-sticky"
-        className="sticky -top-2 z-20 -mx-2 bg-surface-1 px-2 pt-2 pb-2"
-      >
+      {/* Stays put while the grid scrolls under it, with the soft scroll edge below it. */}
+      <PageBar className="pb-2">
         <LibraryToolbar
           className="flex-wrap"
           stats={statsText}
@@ -362,7 +360,7 @@ export default function LibraryPage({
             onManageTags: () => openSettings('tags')
           }}
         />
-      </div>
+      </PageBar>
       {failed && items.length > 0 && (
         <Banner
           tone="error"
@@ -476,7 +474,7 @@ export default function LibraryPage({
         at={menu?.at ?? { x: 0, y: 0 }}
         onClose={() => setMenu(null)}
         actions={menuActions}
-        lastUndo={actions.lastUndo}
+        lastUndo={lastUndo}
       />
     </div>
   )

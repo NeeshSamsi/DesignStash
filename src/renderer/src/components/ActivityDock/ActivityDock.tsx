@@ -1,9 +1,7 @@
-import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { CSSProperties, ReactNode } from 'react'
 import { Bug01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { ACTIVITY_DOCK_DEFAULTS, type ActivityDockContractProps } from './ActivityDock.types'
 import { activityDockVariants } from './ActivityDock.variants'
 
@@ -44,9 +42,13 @@ export function ActivityDock({
       {props.toast && toastContent}
       {props.import && importContent}
       {props.build === 'dev' && (
-        <Button variant="secondary" size="icon" aria-label="Open debug panel" onClick={onDebug}>
-          <HugeiconsIcon icon={Bug01Icon} strokeWidth={ICON_STROKE} />
-        </Button>
+        <Button
+          variant="secondary"
+          size="icon"
+          aria-label="Open debug panel"
+          onClick={onDebug}
+          iconStart={Bug01Icon}
+        />
       )}
     </div>
   )

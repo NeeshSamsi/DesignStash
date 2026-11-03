@@ -5,8 +5,13 @@ import { LibraryItemSchema } from './library'
 export const InboxStageSchema = z.enum(['to_sort', 'to_stash'])
 export type InboxStage = z.infer<typeof InboxStageSchema>
 
-/** How far the AI suggestion has got for a mockup. `off` when the AI is not in use. */
-export const AiStatusSchema = z.enum(['pending', 'sniffing', 'ready', 'failed', 'off'])
+/**
+ * How far the AI suggestion has got for a mockup. `pending` is queued and `sniffing` is being
+ * written; `failed` couldn't be written (two tries, or the hard stop at 3 times the slow threshold);
+ * `opted_out` is one the person chose to fill in themselves (Fill it myself), which the queue never
+ * asks about again until Write suggestions; `off` when the AI is not in use.
+ */
+export const AiStatusSchema = z.enum(['pending', 'sniffing', 'ready', 'failed', 'opted_out', 'off'])
 export type AiStatus = z.infer<typeof AiStatusSchema>
 
 /** A card in To sort or To stash. To sort holds mockups on their own; To stash holds piles and singles. */
@@ -34,8 +39,14 @@ export const InboxCountsSchema = z.object({
 export type InboxCounts = z.infer<typeof InboxCountsSchema>
 
 /** A card in Trash: a pile or a single mockup, with when it was trashed and the space it takes. */
+/** Where a mockup in Trash came from: Restore puts it back there. `import`: an undone import's. */
+export const TrashOriginSchema = z.enum(['my-stash', 'to-sort', 'to-stash', 'import'])
+export type TrashOrigin = z.infer<typeof TrashOriginSchema>
+
 export const TrashItemSchema = LibraryItemSchema.extend({
   trashedAt: z.string(),
+  /** Where it came from, for the card's caption ("Tossed from To sort"). */
+  origin: TrashOriginSchema,
   /** The PSDs in the pile or single, in bytes. 0 when they can't be measured. */
   sizeBytes: z.number()
 })

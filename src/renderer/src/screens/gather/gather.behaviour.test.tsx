@@ -244,23 +244,45 @@ describe('the widget', () => {
     api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Keep 12' }))
     expect(screen.queryByText(/Copying stopped/)).toBeNull()
-    expect(api.sent(IPC_CHANNELS.COPY_UNDO_ALL)).toEqual([])
   })
 
-  it('Undo all removes the haul and says so in a toast', async () => {
+  it('Undo all undoes the import’s own entry, so it goes to Trash and Redo can bring it back (undo.md)', async () => {
     const api = installApi(
-      base({ [IPC_CHANNELS.COPY_UNDO_ALL]: () => ok({ tossedIds: [1, 2, 3] }) })
+      base({
+        [IPC_CHANNELS.UNDO_ENTRY]: () => ok({ status: 'done', label: 'Import of 12 mockups' })
+      })
     )
     render(<Harness />)
-    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled' }))
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled', undoEntryId: 21 }))
     fireEvent.click(await screen.findByRole('button', { name: 'Undo all' }))
-    await waitFor(() => expect(api.sent(IPC_CHANNELS.COPY_UNDO_ALL)).toEqual([{ haulId: 'h1' }]))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.UNDO_ENTRY)).toEqual([{ id: 21 }]))
     await waitFor(() =>
-      expect(toasts.toast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'success', message: 'Copy undone' })
-      )
+      expect(toasts.toast).toHaveBeenCalledWith({
+        variant: 'success',
+        message: 'Copy undone',
+        description: '12 mockups moved to Trash. Your originals weren’t touched.'
+      })
     )
     expect(screen.queryByText(/Copying stopped/)).toBeNull()
+  })
+
+  it('Undo all a newer change has touched says to use ⌘Z, and keeps the widget', async () => {
+    const api = installApi(
+      base({
+        [IPC_CHANNELS.UNDO_ENTRY]: () =>
+          ok({ status: 'blocked', label: 'Import of 12 mockups', blockedBy: 30 })
+      })
+    )
+    render(<Harness />)
+    api.push(IPC_CHANNELS.COPY_PROGRESS, progress({ state: 'cancelled', undoEntryId: 21 }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo all' }))
+    await waitFor(() =>
+      expect(toasts.toast).toHaveBeenCalledWith({
+        variant: 'error',
+        message: 'Changed since. Use ⌘Z'
+      })
+    )
+    expect(screen.getByText(/Copying stopped/)).toBeTruthy()
   })
 
   it('a paused copy says why and Retry carries on', async () => {
@@ -466,12 +488,34 @@ describe('drops', () => {
     expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
   })
 
+  it('dropping a folder with a dot in its name starts a copy with it', async () => {
+    const api = installApi(base({ [IPC_CHANNELS.COPY_START]: () => ok(haul()) }))
+    window.api.getPathForFile = vi.fn((f: File) => `/drop/${f.name}`)
+    render(<Harness />)
+    const folder = new File([''], 'Device Mockups 2.0')
+    const drop = dragEvent('drop', [], [folder])
+    ;(drop.dataTransfer as { items: unknown[] }).items = [
+      { kind: 'file', type: '', webkitGetAsEntry: () => ({ isDirectory: true }) }
+    ]
+    fire(drop)
+    await waitFor(() =>
+      expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([{ paths: ['/drop/Device Mockups 2.0'] }])
+    )
+    expect(toasts.toast).not.toHaveBeenCalled()
+  })
+
   it('dropping only non-PSDs adds nothing and says why', async () => {
     const api = installApi(base())
     window.api.getPathForFile = vi.fn((f: File) => `/drop/${f.name}`)
     render(<Harness />)
     fire(dragEvent('drop', [{ kind: 'file', type: 'image/png' }], [new File([''], 'x.png')]))
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
+    expect(toasts.toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Those aren’t PSDs or zips',
+        description: 'DesignStash only takes .psd, .psb and .zip files, so there’s nothing to add.'
+      })
+    )
     expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([])
   })
 

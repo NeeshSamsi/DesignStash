@@ -62,14 +62,17 @@ export class InboxRepository {
     }
   }
 
-  /** Mockups whose suggestion was waiting or half read, e.g. when the app closed. */
+  /**
+   * Mockups in an inbox that still want a suggestion: waiting or half read when the app closed, or
+   * marked off because no model could run then (H-2). One a person filled in themselves is left out.
+   */
   getUnfinishedAiMockups(): Mockup[] {
     return this.db
       .select()
       .from(mockups)
       .where(
         and(
-          inArray(mockups.aiStatus, ['pending', 'sniffing']),
+          inArray(mockups.aiStatus, ['pending', 'sniffing', 'off']),
           isNull(mockups.deletedAt),
           inArray(mockups.stage, ['to_sort', 'to_stash'])
         )

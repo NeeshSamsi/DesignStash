@@ -9,7 +9,7 @@ export const TOAST_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=213-905',
   section: '2 · Primitives (shadcn)',
   description:
-    'Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.\nSync 2026-10: done actions (Moved to Trash, Stashed) use the success variant with the check icon. Undo is a hairline outline button (border/subtle, no fill).',
+    'Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.\nSync 2026-10: done actions (Moved to Trash, Stashed) use the success variant with the check icon. Undo is a hairline outline button (border/subtle, no fill).\nstate=action-disabled (2026-10-28, success only): an older toast whose Undo a newer change to the same mockups, piles, tags or covers blocks. Undo is disabled and the line reads “Changed since. Use ⌘Z”, whatever the description (code: actionDisabled, from the undo:state push).',
   code: 'ui/sonner.tsx + stores/toastStore.ts',
   axes: {
     variant: ['neutral', 'success', 'info', 'error']
@@ -17,7 +17,12 @@ export const TOAST_CONTRACT = {
   axisDefaults: {
     variant: 'neutral'
   },
-  flags: {},
+  flags: {
+    actionDisabled: {
+      on: 'action-disabled',
+      off: 'default'
+    }
+  },
   interactionStates: [],
   disabled: false,
   booleans: {
@@ -38,6 +43,8 @@ export type ToastVariant = 'neutral' | 'success' | 'info' | 'error'
 export interface ToastContractProps {
   /** Figma `variant` (4 options). Default `neutral`. */
   variant?: ToastVariant
+  /** Figma `state=action-disabled` (false = `state=default`). */
+  actionDisabled?: boolean
   /** Figma boolean. Default `true`. */
   showDescription?: boolean
   /** Figma boolean. Default `true`. */
@@ -53,6 +60,7 @@ export interface ToastContractProps {
 /** Figma defaults. Slots have none. */
 export const TOAST_DEFAULTS = {
   variant: 'neutral',
+  actionDisabled: false,
   showDescription: true,
   action: true,
   showIcon: true,

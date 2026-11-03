@@ -21,8 +21,8 @@ import type { TagTree as TagTreeData, TagTreeNode } from '@shared/tags'
 import { DropdownMenu, DropdownMenuDivider } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
-import { Skeleton } from '@renderer/ui/skeleton'
+import { Button } from '@renderer/components/Button'
+import { Skeleton } from '@renderer/components/Skeleton'
 import { TAG_TREE_DEFAULTS, type TagTreeContractProps, type TagTreeState } from './TagTree.types'
 import { sampleTreeFor } from './TagTree.samples'
 import {
@@ -36,6 +36,7 @@ import {
   tagTreeVariants
 } from './TagTree.variants'
 import { pointMenuAlign } from '@renderer/lib/point-menu'
+import { mockups, pluralise } from '@renderer/lib/plural'
 
 type Category = TagTreeData[number]
 type Result = void | Promise<void>
@@ -69,7 +70,6 @@ const FRESH_MS = 2000
 
 const norm = (text: string) => text.trim().toLowerCase()
 const freshKey = (categoryId: number, label: string) => `${categoryId}:${norm(label)}`
-const tagCountText = (n: number) => `${n} ${n === 1 ? 'tag' : 'tags'}`
 
 /** Runs an owner handler; a rejection is the owner's to report, so the input just stays. */
 async function attempt(run: () => Result): Promise<boolean> {
@@ -170,9 +170,8 @@ function MoreButton({
         !always && 'hidden group-focus-within/row:flex group-hover/row:flex data-[state=open]:flex',
         className
       )}
-    >
-      <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={ICON_STROKE} />
-    </Button>
+      iconStart={MoreHorizontalIcon}
+    />
   )
 }
 
@@ -264,10 +263,17 @@ export function TagTree({
     }
   }
 
+  /** Another category already called this, whatever its casing. */
+  const findCategory = (label: string, exceptCategoryId: number) =>
+    tree.find((c) => c.categoryId !== exceptCategoryId && norm(c.categoryLabel) === norm(label))
+
   const saveRename = async () => {
     if (!renaming) return
     const label = renaming.draft.trim()
-    if (!label || findTag(label, renaming.kind === 'tag' ? renaming.id : undefined)) return
+    // A tag's name is checked against tags, a category's against categories.
+    const taken =
+      renaming.kind === 'tag' ? findTag(label, renaming.id) : findCategory(label, renaming.id)
+    if (!label || taken) return
     const run =
       renaming.kind === 'tag'
         ? () => onRenameTag?.(renaming.id, label)
@@ -443,9 +449,7 @@ export function TagTree({
             <span className="min-w-0 flex-1 truncate type-body-sm-regular text-foreground">
               {tag.label}
             </span>
-            <span className={cn(rowHintClass, 'whitespace-nowrap')}>
-              {tag.usageCount} {tag.usageCount === 1 ? 'mockup' : 'mockups'}
-            </span>
+            <span className={cn(rowHintClass, 'whitespace-nowrap')}>{mockups(tag.usageCount)}</span>
             <DropdownMenu
               align="end"
               {...menuProps('tag', tag.tagId)}
@@ -579,11 +583,7 @@ export function TagTree({
               onChange={(draft) => setRenaming({ ...renaming, draft })}
               onSubmit={() => void saveRename()}
               onCancel={() => setRenaming(null)}
-              invalid={tree.some(
-                (c) =>
-                  c.categoryId !== category.categoryId &&
-                  norm(c.categoryLabel) === norm(renaming.draft)
-              )}
+              invalid={!!findCategory(renaming.draft, category.categoryId)}
               hint="↵ to save · Esc to cancel"
             />
           ) : (
@@ -592,7 +592,7 @@ export function TagTree({
                 {category.categoryLabel}
               </h3>
               <p className="min-w-0 flex-1 type-caption-xs-regular text-tertiary">
-                {tagCountText(category.tags.length)}
+                {pluralise(category.tags.length, 'tag')}
               </p>
               <DropdownMenu
                 align="end"

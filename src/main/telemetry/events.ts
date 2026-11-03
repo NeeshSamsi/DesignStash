@@ -5,7 +5,7 @@ type Track = (event: string, props?: TelemetryProps) => void
 /** The haul figures `import_completed` needs. A subset of the copy queue's progress. */
 interface HaulFigures {
   haulId: string
-  state: 'running' | 'paused' | 'done' | 'cancelled' | 'undone'
+  state: 'running' | 'paused' | 'done' | 'cancelled'
   landed: number
   total: number
   skipped: Record<string, number>

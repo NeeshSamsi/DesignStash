@@ -8,7 +8,9 @@ import { syncLibrary } from './library-sync'
  * once the grid has reloaded. True when it worked.
  */
 export async function disbandPile(pileId: number): Promise<boolean> {
-  const res = await window.api.invoke(IPC_CHANNELS.PILE_DISBAND, { pileId }).catch(() => null)
+  const res = await window.api
+    .invoke(IPC_CHANNELS.PILE_DISBAND, { pileIds: [pileId] })
+    .catch(() => null)
   if (!res?.success) {
     toast({
       variant: 'error',
@@ -17,17 +19,10 @@ export async function disbandPile(pileId: number): Promise<boolean> {
     })
     return false
   }
-  const { snapshot, freedIds } = res.data
+  const { freedIds, undoEntryId } = res.data
   useDetailEffects.getState().selectAfterReload(freedIds)
   void syncLibrary()
-  undoToast(
-    'Pile disbanded',
-    () => {
-      useDetailEffects.getState().selectAfterReload([])
-      void window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot }).then(() => syncLibrary())
-    },
-    `${freedIds.length} mockups are on their own`
-  )
+  undoToast('Pile disbanded', undoEntryId, `${freedIds.length} mockups are on their own`)
   return true
 }
 
@@ -51,11 +46,9 @@ export async function putOnTop(
     })
     return null
   }
-  const { pileId: next, snapshot } = res.data
+  const { pileId: next, undoEntryId } = res.data
   void syncLibrary()
-  undoToast(`${label} is on top`, () => {
-    void window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot }).then(() => syncLibrary())
-  })
+  undoToast(`${label} is on top`, undoEntryId)
   return next
 }
 
@@ -80,13 +73,11 @@ export async function removeFromPile(
     })
     return undefined
   }
-  const { pileId: next, snapshot } = res.data
+  const { pileId: next, undoEntryId } = res.data
   void syncLibrary()
   undoToast(
     'Removed from the pile',
-    () => {
-      void window.api.invoke(IPC_CHANNELS.PILE_RESTORE, { snapshot }).then(() => syncLibrary())
-    },
+    undoEntryId,
     next === null ? `${label} and the other mockup are on their own` : `${label} is on its own`
   )
   return { pileId: next }

@@ -24,13 +24,25 @@ interface FigmaComponent {
 }
 
 const FIGMA_ONLY = new Set(['ContentSlot', 'ModalLayer'])
+// Figma components with no code (NOT_IN_CODE in scripts/ds/contract.mjs).
+const NOT_IN_CODE = new Set([
+  'AddMenu',
+  'ListGroup',
+  'Modal',
+  'ProGate',
+  'RadioGroup',
+  'ScrollArea',
+  'Separator',
+  'Tabs',
+  'Tabs Trigger'
+])
 const pascal = (s: string) =>
   s
     .replace(/[^A-Za-z0-9]+(.)?/g, (_: string, c?: string) => (c ? c.toUpperCase() : ''))
     .replace(/^./, (c) => c.toUpperCase())
 
 const figma = snapshot<{ components: FigmaComponent[] }>('components.json').components.filter(
-  (c) => !FIGMA_ONLY.has(c.name) && !c.retired
+  (c) => !FIGMA_ONLY.has(c.name) && !NOT_IN_CODE.has(c.name) && !c.retired
 )
 const byName = new Map(CATALOG.map((e) => [e.contract.name, e]))
 // Axes whose code prop has another name (OVERRIDES.axisNames in scripts/ds/contract.mjs).
@@ -54,7 +66,12 @@ describe('design-system drift', () => {
         const figmaName = AXIS_NAMES[name]?.[axis] ?? axis
         const figmaAxis = Object.entries(c.variants).find(([k]) => pascal(k) === pascal(figmaName))
         expect(figmaAxis, `${name}.${axis}`).toBeDefined()
-        for (const option of options) expect(figmaAxis?.[1]).toContain(option)
+        for (const option of options) {
+          // A state axis's `default` stands for the options derived from data (empty, filled), as
+          // scripts/ds/contract.mjs makes it, so Figma has no option of that name.
+          if (axis === 'state' && option === 'default') continue
+          expect(figmaAxis?.[1]).toContain(option)
+        }
       }
     }
   )

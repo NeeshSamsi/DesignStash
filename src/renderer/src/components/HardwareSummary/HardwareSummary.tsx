@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { CpuIcon, HardDriveIcon, Tick02Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import {
   HARDWARE_SUMMARY_DEFAULTS,
   type HardwareSummaryContractProps
@@ -75,8 +75,12 @@ export function HardwareSummary({
         <p className="type-body-sm-medium text-foreground">{title ?? sample.title}</p>
         <p className="type-caption-xs-regular text-tertiary">{description ?? sample.description}</p>
       </div>
-      <Badge variant={supported ? 'success' : 'warning'} className="shrink-0">
-        {supported && <HugeiconsIcon icon={Tick02Icon} strokeWidth={ICON_STROKE} />}
+      <Badge
+        variant={supported ? 'success' : 'warning'}
+        showIcon={supported}
+        icon={Tick02Icon}
+        className="shrink-0"
+      >
         {badge ?? sample.badge}
       </Badge>
     </div>

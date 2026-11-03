@@ -11,14 +11,14 @@ import {
   Tag01Icon
 } from '@hugeicons/core-free-icons'
 import { Button } from '@renderer/components/Button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
+import { Tooltip } from '@renderer/components/Tooltip'
 import { ConsentPanel } from '@renderer/components/ConsentPanel'
 import { HardwareSummary } from '@renderer/components/HardwareSummary'
 import { ModelCard } from '@renderer/components/ModelCard'
 import { SidebarNavItem } from '@renderer/components/SidebarNavItem'
 import { Switch } from '@renderer/components/Switch'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import {
   SETTINGS_LAYOUT_DEFAULTS,
   type SettingsLayoutContractProps,
@@ -118,11 +118,8 @@ export function SettingsPathField({
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
         <HugeiconsIcon icon={Folder01Icon} strokeWidth={ICON_STROKE} className="size-4 shrink-0" />
         {fullPath && fullPath !== path ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{pathText}</TooltipTrigger>
-            <TooltipContent side="top" align="start">
-              {fullPath}
-            </TooltipContent>
+          <Tooltip arrow="bottom-left" label={fullPath}>
+            {pathText}
           </Tooltip>
         ) : (
           pathText

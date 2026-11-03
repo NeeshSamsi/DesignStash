@@ -3,14 +3,14 @@
   "source": {
     "fileKey": "fB8PHTrzz89lAQOhXbsHMK",
     "componentsPage": "189:343",
-    "exportedAt": "2026-10-23"
+    "exportedAt": "2026-10-28"
   },
   "components": [
     {
       "name": "Button",
       "figmaId": "211:2091",
       "section": "2 · Primitives (shadcn)",
-      "description": "Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = 2px border/focus ring outside.\nSync 2026-10: sizes icon-xs (24px, 16px icon: Toast and Banner dismiss, TagTree row menu) and icon-sm (32px, 16px icon) match ui/button.tsx.",
+      "description": "Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = the shared focus ring (below).\nSync 2026-10: sizes icon-xs (24px, 16px icon: Toast and Banner dismiss, TagTree row menu) and icon-sm (32px, 16px icon) match ui/button.tsx.\nvariant=outline-subtle (2026-10-24): the quiet outline, border/subtle with no fill, border/input on hover. Used for toolbar and toast actions (Filter, Make pile, Disband pile, Undo, Retry); code sets it today with a className on LibraryToolbar and Toast.\nFocus ring (2026-10-24), on every focusable component: the focus state keeps the resting border and adds a separate 2px border/focus ring 2px outside the control (radius = the control’s + 4; radius/card-ring for cards), matching the code’s focus-ring utility. It never changes the control’s size.",
       "code": "ui/button.tsx (variant=\"default\" ↔ primary, size=\"default\" ↔ base)",
       "variants": {
         "variant": [
@@ -19,7 +19,8 @@
           "outline",
           "ghost",
           "destructive",
-          "link"
+          "link",
+          "outline-subtle"
         ],
         "size": [
           "xs",
@@ -61,7 +62,7 @@
       "name": "Input",
       "figmaId": "212:190",
       "section": "2 · Primitives (shadcn)",
-      "description": "Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.",
+      "description": "Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.\nstate=writing (2026-10-24): the AI is writing this field. The placeholder “Writing with AI…” pulses like Skeleton (animate-pulse; static with reduced motion). It stays a real, focusable field: typing makes it a normal field that belongs to the person. state=ai-filled (2026-10-26): as Textarea’s, the background/primary-weak tint on a field the AI just filled; it fades after 1.2s.\nshow-hint and show-clear (2026-10-28): on search, the ⌘ hint at the end and the clear button while there is text, both on by default. The leading icon is icon-start, off by default. The tag filter’s search field has no icon and no hint.",
       "code": "ui/input.tsx + input-group",
       "variants": {
         "variant": [
@@ -74,11 +75,15 @@
           "filled",
           "focus",
           "invalid",
-          "disabled"
+          "disabled",
+          "writing",
+          "ai-filled"
         ]
       },
       "booleans": {
-        "icon-start": false
+        "icon-start": false,
+        "show-hint": true,
+        "show-clear": true
       },
       "texts": {
         "value": "Mockup title"
@@ -95,7 +100,7 @@
       "name": "Textarea",
       "figmaId": "212:205",
       "section": "2 · Primitives (shadcn)",
-      "description": "Multi-line description field (auto-grow is behaviour).",
+      "description": "Multi-line description field (auto-grow is behaviour).\nstate=ai-filled (2026-10-24): the background/primary-weak tint on a field the AI just filled; it fades after 1.2s. state=writing (2026-10-24): as Input’s writing state.",
       "code": "ui/textarea.tsx",
       "variants": {
         "state": [
@@ -103,7 +108,9 @@
           "filled",
           "focus",
           "invalid",
-          "disabled"
+          "disabled",
+          "ai-filled",
+          "writing"
         ],
         "rows": [
           "3",
@@ -145,6 +152,26 @@
       },
       "swaps": {},
       "exposed": []
+    },
+    {
+      "name": "TitlePair",
+      "figmaId": "1160:26996",
+      "section": "2 · Primitives (shadcn)",
+      "description": "The Title control for a mockup in a pile (Neesh, 2026-10-24): the pile’s base title, shared by every mockup in it (pile icon), then this mockup’s variation of 1 to 3 words, joined by a dot. Editing the base renames it on every mockup in the pile; the variation belongs to this mockup. Both Inputs are exposed, so each takes its own state (filled, focus, writing). Mockups on their own keep the single Title Input. size=compact gives the variation 120px, for narrow panels such as the details sidebar. The separator is a 4px round dot in text/secondary (in code: a span, size-1 rounded-full, filled with the text/secondary colour). Rules: design/specs/pile-titles.md.",
+      "code": null,
+      "variants": {
+        "size": [
+          "default",
+          "compact"
+        ]
+      },
+      "booleans": {},
+      "texts": {},
+      "swaps": {},
+      "exposed": [
+        "base:Input",
+        "variation:Input"
+      ]
     },
     {
       "name": "Checkbox",
@@ -194,34 +221,6 @@
       },
       "texts": {
         "label": "Share anonymous usage data"
-      },
-      "swaps": {},
-      "exposed": []
-    },
-    {
-      "name": "RadioGroup",
-      "figmaId": "212:388",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Single-choice item; card variant hosts rich content (ModelRow).",
-      "code": "ui/radio-group.tsx",
-      "variants": {
-        "variant": [
-          "list",
-          "card"
-        ],
-        "state": [
-          "unselected",
-          "selected",
-          "focus",
-          "disabled"
-        ]
-      },
-      "booleans": {
-        "show-description": true
-      },
-      "texts": {
-        "label": "Qwen3-VL 4B",
-        "description": "1.0 GB · small"
       },
       "swaps": {},
       "exposed": []
@@ -406,34 +405,45 @@
       "name": "Popover",
       "figmaId": "213:341",
       "section": "2 · Primitives (shadcn)",
-      "description": "Anchored panel (tag filter, tag suggestions).",
+      "description": "Anchored panel (tag filter, tag suggestions).\n2026-10-24: content is a real slot, so screens put their content inside the popover. Three regions, separated by dividers. Header: title, an optional description line (show-description) and the link button. Content: the slot. Footer: buttons ordered light to heavy, right-aligned (secondary, primary). No key chips: Return and Esc work as in any macOS dialog. Elevation: shadow/raised.\nlayout=one-column (2026-10-28, md): one padded column with no dividers (16 padding, 12 gap), as the tag filter panel draws it. Header, content and footer stack in it; the same booleans apply.",
       "code": "ui/popover.tsx",
       "variants": {
         "size": [
           "md",
           "lg"
+        ],
+        "layout": [
+          "regions",
+          "one-column"
         ]
       },
       "booleans": {
         "header": true,
-        "footer": false
+        "footer": false,
+        "show-description": false
       },
       "texts": {
-        "title": "Tags"
+        "title": "Tags",
+        "description": "A short line under the title."
       },
       "swaps": {},
-      "exposed": []
+      "exposed": [
+        "content:content",
+        "secondary:Button",
+        "primary:Button"
+      ]
     },
     {
       "name": "Command",
       "figmaId": "213:474",
       "section": "2 · Primitives (shadcn)",
-      "description": "Searchable list with keyboard nav: inline = tag combobox, palette = ⌘K.",
+      "description": "Searchable list with keyboard nav: inline = tag combobox, palette = ⌘K.\nvariant=list (2026-10-28): the list alone, with no input and no panel of its own, for a list inside another panel: the tag editor’s suggestions, where the tag chip is the input and the list sits in a menu-styled popover (surface-3, 4 padding, 260 wide). Its rows go in the items slot; the selected row is surface-4.",
       "code": "ui/command.tsx (cmdk)",
       "variants": {
         "variant": [
           "inline",
-          "palette"
+          "palette",
+          "list"
         ],
         "state": [
           "results",
@@ -446,7 +456,9 @@
         "query": "Add tag…"
       },
       "swaps": {},
-      "exposed": []
+      "exposed": [
+        "items:content"
+      ]
     },
     {
       "name": "DropdownMenu Item",
@@ -502,52 +514,10 @@
       ]
     },
     {
-      "name": "Tabs Trigger",
-      "figmaId": "213:573",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Building block for Tabs.",
-      "code": "TabsTrigger in ui/tabs.tsx",
-      "variants": {
-        "variant": [
-          "line",
-          "pill"
-        ],
-        "state": [
-          "inactive",
-          "active",
-          "hover",
-          "focus"
-        ]
-      },
-      "booleans": {},
-      "texts": {
-        "label": "My Stash"
-      },
-      "swaps": {},
-      "exposed": []
-    },
-    {
-      "name": "Tabs",
-      "figmaId": "213:608",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Settings section switcher.",
-      "code": "ui/tabs.tsx",
-      "variants": {
-        "variant": [
-          "line",
-          "pill"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": []
-    },
-    {
       "name": "Dialog",
       "figmaId": "213:781",
       "section": "2 · Primitives (shadcn)",
-      "description": "Overlay shells. Screens never use these directly — they use Modal / ConfirmDialog / ChoiceDialog.",
+      "description": "Overlay shells. Screens never use these directly — they use ConfirmDialog / ChoiceDialog / FormDialog, or a composed dialog frame in ModalLayer.",
       "code": "ui/dialog.tsx, ui/alert-dialog.tsx, ui/sheet.tsx",
       "variants": {
         "variant": [
@@ -570,7 +540,7 @@
       "name": "Toast",
       "figmaId": "213:905",
       "section": "2 · Primitives (shadcn)",
-      "description": "Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.\nSync 2026-10: done actions (Moved to Trash, Stashed) use the success variant with the check icon. Undo is a hairline outline button (border/subtle, no fill).",
+      "description": "Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.\nSync 2026-10: done actions (Moved to Trash, Stashed) use the success variant with the check icon. Undo is a hairline outline button (border/subtle, no fill).\nstate=action-disabled (2026-10-28, success only): an older toast whose Undo a newer change to the same mockups, piles, tags or covers blocks. Undo is disabled and the line reads “Changed since. Use ⌘Z”, whatever the description (code: actionDisabled, from the undo:state push).",
       "code": "ui/sonner.tsx + stores/toastStore.ts",
       "variants": {
         "variant": [
@@ -578,6 +548,10 @@
           "success",
           "info",
           "error"
+        ],
+        "state": [
+          "default",
+          "action-disabled"
         ]
       },
       "booleans": {
@@ -593,43 +567,10 @@
       "exposed": []
     },
     {
-      "name": "Separator",
-      "figmaId": "211:87",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Divider line bound to border/subtle.",
-      "code": "ui/separator.tsx",
-      "variants": {
-        "orientation": [
-          "horizontal",
-          "vertical"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": []
-    },
-    {
-      "name": "ScrollArea",
-      "figmaId": "211:101",
-      "section": "2 · Primitives (shadcn)",
-      "description": "Styled scroll region with a thin rounded thumb.",
-      "code": "ui/scroll-area.tsx",
-      "variants": {
-        "orientation": [
-          "vertical"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": []
-    },
-    {
       "name": "AppWindow",
       "figmaId": "218:2248",
       "section": "3 · Layout & navigation",
-      "description": "The window: traffic lights, centred GlobalSearch, SidebarNav (176), content panel with PageHeader + page slot. modal-open adds the scrim; drag-over adds DropOverlay. Slot: page (screen content inside the window, under the PageHeader).",
+      "description": "The window: traffic lights, centred GlobalSearch, SidebarNav (176), content panel with PageHeader + page slot. modal-open adds the scrim; drag-over adds DropOverlay. Slot: page (screen content inside the window, under the PageHeader).\nScroll area (2026-10-26, library-ui, approved by Neesh): the panel pads only its top (28); the header sits in a row inset 28; the page slot spans the panel edge to edge with the 28 page padding inside, so the page scrolls across the whole panel to its bottom edge. page-bar = the page has a PageBar (My Stash’s toolbar), so the edge and the scrollbar start under it. scroll-edge = content is under the bar: the ScrollEdge band shows (96, spacing/scroll-edge; a progressive blur and an eased fade into surface-1, Figma-only plain component). scrollbar = the pointer is over the page: the overlay gutter (12, surface-3) and thumb (6, text/tertiary) show, flush on the panel’s right edge.",
       "code": "AppShell.tsx",
       "variants": {
         "state": [
@@ -643,7 +584,10 @@
         ]
       },
       "booleans": {
-        "header": true
+        "header": true,
+        "page-bar": false,
+        "scroll-edge": false,
+        "scrollbar": false
       },
       "texts": {},
       "swaps": {},
@@ -751,26 +695,6 @@
       "texts": {},
       "swaps": {},
       "exposed": []
-    },
-    {
-      "name": "AddMenu",
-      "figmaId": "218:1767",
-      "section": "3 · Layout & navigation",
-      "description": "Import entry point: Add files… / Add folder… + drop hint. Disabled while an import runs.\nSync 2026-10-23: the trigger is Button base (16px padding, 20px icon) and fills the sidebar column (152).",
-      "code": "components/AddMenu/AddMenu.tsx",
-      "variants": {
-        "state": [
-          "closed",
-          "open",
-          "disabled"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": [
-        "shortcut:KeyboardShortcut"
-      ]
     },
     {
       "name": "PageHeader",
@@ -998,37 +922,6 @@
       }
     },
     {
-      "name": "Modal",
-      "figmaId": "216:780",
-      "section": "5 · Overlays & dialogs",
-      "description": "Base content dialog: header, scrolling body slot, ActionBar footer.",
-      "code": "components/Modal/Modal.tsx",
-      "variants": {
-        "size": [
-          "sm",
-          "md",
-          "lg",
-          "xl"
-        ]
-      },
-      "booleans": {
-        "closable": true,
-        "show-description": true,
-        "footer": true
-      },
-      "texts": {
-        "title": "Skipped files",
-        "description": "A short line about what this view is for."
-      },
-      "swaps": {
-        "body": {
-          "kind": "slot",
-          "default": "kind=placeholder"
-        }
-      },
-      "exposed": []
-    },
-    {
       "name": "ModalLayer",
       "figmaId": "252:4600",
       "section": "5 · Overlays & dialogs",
@@ -1198,7 +1091,7 @@
       "name": "CoverImage",
       "figmaId": "217:1121",
       "section": "6 · Library",
-      "description": "The one way to render a mockup cover (4:3, squircle mask). loading is a plain skeleton block in background/surface-3, never a spinner.",
+      "description": "The one way to render a mockup cover (4:3, a plain rounded rectangle with no squircle mask). loading is a plain skeleton block in background/surface-3, never a spinner.\nshow-border (2026-10-24): a 1px border/base edge inside the cover, for covers that overlap or sit on the same surface (stacked thumbnails). The sample device scales with the cover at every size (2026-10-24).",
       "code": "components/CoverImage/CoverImage.tsx",
       "variants": {
         "size": [
@@ -1214,7 +1107,9 @@
           "missing-file"
         ]
       },
-      "booleans": {},
+      "booleans": {
+        "show-border": false
+      },
       "texts": {},
       "swaps": {},
       "exposed": []
@@ -1223,7 +1118,7 @@
       "name": "MockupCard",
       "figmaId": "217:1492",
       "section": "6 · Library",
-      "description": "A mockup in any grid: an iOS-squircle container (radius 2xl, 60% corner smoothing; surface-2) with CoverImage, “+N variants” badge, favourite, title and tag line. Hover: the cover zooms ~6% (150ms); Star then ⋯ top-right; along the cover's bottom, over a soft scrim, a full-width primary Open in Photoshop with Edit details (ghost) under it. Edit details, double-click and ↵ open Detail; Space previews; ⋯ = the right-click menu. Selected = border/primary ring. left-behind = the slot a dragged card leaves; group-target = a card being dropped on (drop-hint). pending-review (inbox cards): status badge (show-status) and the +N badge share the top-left row; hover shows one full-width primary button (Look it over in To stash). trash: no star or ⋯, a “Trashed 2 days ago” line, hover Restore with Delete for good under it.\nSync 2026-10: selected and group-target ring is border/selected. The pile badge shows the total (a 3-mockup pile reads 3) with the layers icon. In code, file-name titles middle-truncate (Figma text can only cut the end).",
+      "description": "A mockup in any grid: an iOS-squircle container (radius 2xl, 60% corner smoothing; surface-2) with CoverImage, “+N variants” badge, favourite, title and tag line. Hover: the cover zooms ~6% (150ms); Star then ⋯ top-right; along the cover's bottom, over a soft scrim, a full-width primary Open in Photoshop with Edit details (ghost) under it. Edit details, double-click and ↵ open Detail; Space previews; ⋯ = the right-click menu. Selected = border/primary ring. left-behind = the slot a dragged card leaves; group-target = a card being dropped on (drop-hint). pending-review (inbox cards): status badge (show-status) and the +N badge share the top-left row; hover shows one full-width primary button (Look it over in To stash). trash: no star or ⋯, a “Trashed 2 days ago” line, hover Restore with Delete for good under it.\nSync 2026-10: selected and group-target ring is border/selected. The pile badge shows the total (a 3-mockup pile reads 3) with the layers icon. In code, file-name titles middle-truncate (Figma text can only cut the end).\nTrash caption (2026-10-28): on variant=trash the tag line says where the card came from and when (screens/trash/trash-copy.ts): “Tossed from To sort · 2 minutes ago” (or To stash) for a tossed mockup, “Trashed 2 days ago” for one from My Stash.",
       "code": "screens/library/LibraryCard.tsx",
       "variants": {
         "variant": [
@@ -1311,7 +1206,7 @@
       "name": "TagFilterPopover",
       "figmaId": "217:2113",
       "section": "6 · Library",
-      "description": "Tag filter: search on top, CategoryPills with live counts, tags grouped by category (scrolls past ~240px). Rules: design/specs/library.md. Tags are two tiers (category, then tag), so the list is flat. Each group starts with an \"All in <category>\" row: ticking it filters by the whole category and disables that category's tag rows (state=category-picked); hidden while searching.",
+      "description": "Tag filter: search on top, CategoryPills with live counts, tags grouped by category (scrolls past ~240px). Rules: design/specs/library.md. Tags are two tiers (category, then tag), so the list is flat. Each group starts with an \"All in <category>\" row: ticking it filters by the whole category and disables that category's tag rows (state=category-picked); hidden while searching.\nPanel (2026-10-28): 16 padding and 12 gap, like Popover layout=one-column; its search field is Input search with no icon and no ⌘ hint.",
       "code": "screens/library/LibraryPage.tsx",
       "variants": {
         "state": [
@@ -1526,7 +1421,7 @@
       "name": "MockupMetaForm",
       "figmaId": "222:3346",
       "section": "8 · Approval & editing",
-      "description": "One title / description / tags editor for approval and detail (detail edits the title in the modal header). No status of its own: in Detail an enabled Save means unsaved changes, and a failed save is an error toast. Dirty state drives the unsaved-changes guard. Code: extract from ApprovalStepper ItemEditor + DetailModal.",
+      "description": "One title / description / tags editor for approval and detail (detail edits the title in the modal header). No status of its own: in Detail an enabled Save means unsaved changes, and a failed save is an error toast. Dirty state drives the unsaved-changes guard. Code: extract from ApprovalStepper ItemEditor + DetailModal.\nNo resting hint (retired 2026-10-24): show-hint and hint are gone; AI status lives in AiStatus above the form. state=writing (2026-10-24) replaces state=thinking: every field stays editable and says “Writing with AI…” while the AI writes; typing in one makes that field the person’s. state=thinking (a non-editable skeleton) is superseded, kept only for the superseded L3.E3.",
       "code": null,
       "variants": {
         "variant": [
@@ -1538,15 +1433,12 @@
           "invalid",
           "edited",
           "saving",
-          "thinking"
+          "thinking",
+          "writing"
         ]
       },
-      "booleans": {
-        "show-hint": true
-      },
-      "texts": {
-        "hint": "AI suggested the title, description and tags. Give them a quick check before you stash it."
-      },
+      "booleans": {},
+      "texts": {},
       "swaps": {},
       "exposed": []
     },
@@ -1554,7 +1446,7 @@
       "name": "TagEditor",
       "figmaId": "222:2959",
       "section": "8 · Approval & editing",
-      "description": "Tags field with inline add: “+ Add tag” is first and becomes the input in place; added tags append at the end; AI suggestions sit after a divider and move into your tags when accepted. Rules: design/specs/tags.md.",
+      "description": "Tags field with inline add: “+ Add tag” is first and becomes the input in place; added tags append at the end; AI suggestions sit after a divider and move into your tags when accepted. Rules: design/specs/tags.md.\nSuggestions (2026-10-28): a Command list (variant=list) in a menu-styled popover: surface-3, 4 padding, 260 wide, shadow/raised; a note line above it and the key hint below.",
       "code": "components/TagEditor/TagEditor.tsx",
       "variants": {
         "variant": [
@@ -1582,7 +1474,7 @@
       "name": "TagChip",
       "figmaId": "217:1203",
       "section": "8 · Approval & editing",
-      "description": "Tag pill. Solid = your tag, dashed = not a tag yet. removable: × on hover; focus = keyboard ring; marked = selected by ⌫. suggested = AI suggestion (faint dashed outline, orange sparkle only; hover fills like a tag with ✓/×; clicking accepts); thinking = AI still working. new = just added (brand outline). add = the inline “+ Add tag” chip (stronger, longer dash), always first; input = that chip while typing. Rules: design/specs/tags.md.",
+      "description": "Tag pill. Solid = your tag, dashed = not a tag yet. removable: × on hover; focus = keyboard ring; marked = selected by ⌫. suggested = AI suggestion (faint dashed outline, orange sparkle only; hover fills like a tag with ✓/×; clicking accepts); thinking = AI still working. new = just added (brand outline). add = the inline “+ Add tag” chip (stronger, longer dash), always first; input = that chip while typing. Rules: design/specs/tags.md.\nvariant=removed (2026-10-24): a tag a change takes away, muted and struck, used in the edit preview. variant=suggested, state=thinking reads “Writing with AI…” (the label, pulsing) in place of the grey bar (2026-10-24).",
       "code": null,
       "variants": {
         "variant": [
@@ -1592,7 +1484,8 @@
           "suggested",
           "new",
           "add",
-          "input"
+          "input",
+          "removed"
         ],
         "state": [
           "default",
@@ -1833,7 +1726,7 @@
       "name": "ModelCard",
       "figmaId": "795:9758",
       "section": "9 · Onboarding & AI models",
-      "description": "One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.\nSync 2026-10-22: catalogue is Qwen3-VL 4B, Qwen3.5 9B and Apple’s on-device model. Apple’s card has no Delete and sits under “Built into macOS”. The Meaning search row reuses this card with the bars, the globe and Use this model hidden (MeaningSearchRow).",
+      "description": "One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.\nSync 2026-10-22: catalogue is Qwen3-VL 4B, Qwen3.5 9B and Apple’s on-device model. Apple’s card has no Delete and sits under “Built into macOS”. The Meaning search row reuses this card with the bars, the globe and Use this model hidden (MeaningSearchRow).\nQuality and speed are exposed StepBar instances (value 0 to 5) since 2026-10-24.",
       "code": "screens/settings/AiModelPane.tsx",
       "variants": {
         "state": [
@@ -1856,6 +1749,30 @@
         "size": "3.0 GB",
         "resume-note": "1.2 GB of 3.0 GB downloaded"
       },
+      "swaps": {},
+      "exposed": [
+        "quality-bar:StepBar",
+        "speed-bar:StepBar"
+      ]
+    },
+    {
+      "name": "StepBar",
+      "figmaId": "1151:270293",
+      "section": "9 · Onboarding & AI models",
+      "description": "A five-step rating bar (quality, speed). value = how many of the five 12×4 steps are filled in background/primary; the rest are background/surface-3.",
+      "code": "components/ModelCard/ModelCard.tsx (the inline Bar, 0 to 5)",
+      "variants": {
+        "value": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ]
+      },
+      "booleans": {},
+      "texts": {},
       "swaps": {},
       "exposed": []
     },
@@ -1990,34 +1907,6 @@
       "exposed": []
     },
     {
-      "name": "ListGroup",
-      "figmaId": "267:4998",
-      "section": "11 · Lists, trash, integrity & recovery",
-      "description": "A titled list: SectionHeader + N ListRows.",
-      "code": null,
-      "variants": {
-        "density": [
-          "regular",
-          "compact"
-        ],
-        "rows": [
-          "3",
-          "5"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": [
-        "header:SectionHeader",
-        "row-1:ListRow",
-        "row-2:ListRow",
-        "row-3:ListRow",
-        "row-4:ListRow",
-        "row-5:ListRow"
-      ]
-    },
-    {
       "name": "SectionHeader",
       "figmaId": "214:1350",
       "section": "11 · Lists, trash, integrity & recovery",
@@ -2061,31 +1950,10 @@
       "exposed": []
     },
     {
-      "name": "ProGate",
-      "figmaId": "223:6940",
-      "section": "11 · Lists, trash, integrity & recovery",
-      "description": "Wraps a Pro feature: unlocked renders the child (everything is unlocked in Phase 1); locked shows the lock, a plain Pro tag, one line on what the feature does, and Upgrade. No crown (it means top of the pile) and no Learn more until there's somewhere to learn more. inline or page.",
-      "code": "components/ProGate/ProGate.tsx (dormant, decision D7)",
-      "variants": {
-        "variant": [
-          "inline",
-          "page"
-        ],
-        "state": [
-          "locked",
-          "unlocked"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": []
-    },
-    {
       "name": "PileStep",
       "figmaId": "566:15523",
       "section": "8 · Approval & editing",
-      "description": "One mockup in a pile, in PileRail: done (draft ready) · current · todo · skipped. show-connector draws the line to the next step. Rules: design/specs/piles.md.",
+      "description": "One mockup in a pile, in PileRail: done (draft ready) · current · todo · skipped. show-connector draws the line to the next step. Rules: design/specs/piles.md.\nshow-note (2026-10-23, Look it over): a caption under the label for what the AI is doing on that step: “Writing with AI…” on the one being written, “Suggestions on the way” on queued ones, “Checking your edits…”, “Edits applied”, “Edits reworded”. The connector stretches with the step. Rules: design/specs/look-over.md.",
       "variants": {
         "status": [
           "done",
@@ -2095,10 +1963,12 @@
         ]
       },
       "booleans": {
-        "show-connector": true
+        "show-connector": true,
+        "show-note": false
       },
       "texts": {
-        "label": "Variant · phone_side"
+        "label": "Variant · phone_side",
+        "note": "Writing with AI…"
       },
       "swaps": {},
       "exposed": []
@@ -2121,6 +1991,35 @@
       "swaps": {},
       "exposed": [
         "steps:content"
+      ]
+    },
+    {
+      "name": "AiStatus",
+      "figmaId": "1075:201549",
+      "section": "8 · Approval & editing",
+      "description": "What the AI is doing for the mockup on screen in Look it over: one line above the form, with up to two small actions (secondary = ghost, lighter, on the left; action = secondary button on the right). kind: working (spinner), done (sparkle), off (info), failed (alert, warning colour), none (an empty row of the same height, for a mockup whose line has had its say; the row is never added or removed while the mockup is on screen). dismissible adds Banner’s × after the actions, for the edit offer. It replaces MockupMetaForm’s hint row, in the same place, so the fields never move. Rules: design/specs/look-over.md.",
+      "code": null,
+      "variants": {
+        "kind": [
+          "working",
+          "done",
+          "off",
+          "failed",
+          "none"
+        ]
+      },
+      "booleans": {
+        "action": true,
+        "secondary-action": false,
+        "dismissible": false
+      },
+      "texts": {
+        "message": "Writing with AI…"
+      },
+      "swaps": {},
+      "exposed": [
+        "secondary:Button",
+        "action:Button"
       ]
     },
     {

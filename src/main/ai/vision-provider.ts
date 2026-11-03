@@ -6,9 +6,11 @@ import { normaliseTagLabel } from '../../shared/tags'
 import { maskedCoverPath, type MaskFill } from './masked-cover'
 import { CHECK_SCHEMA, ENTRY_SCHEMA, checkPrompt, pileEditRequest, readCheck, readRewrite, rewritePrompt } from './pile-edit'
 import { objectHintLine, objectHintRequest, readObjectHint } from './object-hint'
+import { askPileVariations, withoutPileWords } from './pile-variations'
 import { draftLine, placeholderQuestion, placeholderWordsIn } from './placeholder-check'
 import type { PromptProfile } from './prompts/profile'
 import { isPlaceholder } from '../psd/placeholder'
+import { startWithCapital, withoutObjectColours } from './object-colour'
 import {
   SCENE_CHECK_THRESHOLD,
   mentionedThings,
@@ -112,7 +114,8 @@ export interface VisionProviderDeps {
   /** The model's own prompt: how it is asked and how its reply is read. */
   prompt: PromptProfile
   /** Send one chat request (an answer, or a scene-thing question) and return the reply. */
-  complete(request: object): Promise<ChatReply>
+  /** `signal` cancels the request (an edit check that ran out of time, F-035). */
+  complete(request: object, signal?: AbortSignal): Promise<ChatReply>
   /** The cover as a data URL the runtime can decode, or null when there isn't one to read. */
   readImage(path: string): Promise<string | null>
   /** Release the runtime (stop the server). */
@@ -196,7 +199,7 @@ export function buildRequest(input: AnalysisInput, imageUrl: string | null): Cha
  * Words every file in a mockup library shares, plus the stock sites they come from. They match every
  * search, so they say nothing; the models copy them from file names and from text printed on covers.
  */
-export const JUNK_WORDS = /\b(free|mockups?|psd|templates?|pixeden|pixelbuddha|freepik|mockupfree|ls\.?graphics)\b/gi
+export const JUNK_WORDS = /\b(free|mockups?|ps[db]|templates?|pixeden|pixelbuddha|freepik|mockupfree|ls\.?graphics)\b/gi
 
 /** Takes the junk words out of a title or label and tidies what's left. */
 function stripJunk(text: string): string {
@@ -249,7 +252,7 @@ function tidySpacing(text: string): string {
 
 /** A title or description starts with a capital, even after its first words were cut; iPhone stays iPhone. */
 function sentence(text: string): string {
-  return tidySpacing(text).replace(/^[a-z](?![A-Z])/, (c) => c.toUpperCase())
+  return startWithCapital(tidySpacing(text))
 }
 
 /** A sentence whose only news is the printed text ("The text around the sticker reads 'X'"). */
@@ -279,6 +282,16 @@ function clip(text: string, max: number): string {
   const cut = t.slice(0, max - 1)
   const space = cut.lastIndexOf(' ')
   return `${(space > 0 ? cut.slice(0, space) : cut).replace(/[\s,;:]+$/, '')}…`
+}
+
+/**
+ * A pile's base as the model gave it (`pileVariations`), tidied as a suggested title is: without the
+ * words for the pile itself (variant, variation), printed words, stock words and the object's
+ * colours, at most 60 characters. Null when nothing is left.
+ */
+export function pileBaseTitle(raw: string): string | null {
+  const title = clip(sentence(stripJunk(stripQuoted(withoutPileWords(raw)))), TITLE_MAX)
+  return withoutObjectColours({ title, description: '', tags: [] }).title || null
 }
 
 /** Parse and tidy the reply: valid shape, clean text, no duplicate tags ("iPhone" and "iphone" are one). */
@@ -349,6 +362,20 @@ export async function readCoverAsDataUrl(path: string): Promise<string | null> {
 }
 
 /**
+ * A data-URL image scaled to fit `edge` pixels, as a JPEG: the 4B's scene checks (`checkEdge`). The
+ * image as it was when it can't be read.
+ */
+export async function scaledDataUrl(url: string, edge: number): Promise<string> {
+  try {
+    const bytes = Buffer.from(url.slice(url.indexOf(',') + 1), 'base64')
+    const jpeg = await sharp(bytes).resize(edge, edge, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer()
+    return `data:image/jpeg;base64,${jpeg.toString('base64')}`
+  } catch {
+    return url
+  }
+}
+
+/**
  * One scene-thing question on the answer's own image (llama-server reuses it from its cache): one
  * greedy token held to "yes" or "no", with logprobs, so `pYes` can read how sure the model is.
  */
@@ -383,6 +410,10 @@ export class VisionInferenceProvider implements InferenceProvider {
   readonly id = 'vision'
   /** As the profile says (`PromptProfile.pileEdits`): the check only for a model that judges, the rewrite unless it copies. */
   readonly pileEdits: PileEditSteps
+  /** A pile's variations in one request, for a profile that names them (`PromptProfile.variations`). */
+  readonly pileVariations?: NonNullable<InferenceProvider['pileVariations']>
+  /** Whether that request also names the pile's base (`PromptProfile.pileBase`). */
+  readonly pileBase?: boolean
 
   constructor(
     readonly name: string,
@@ -390,8 +421,18 @@ export class VisionInferenceProvider implements InferenceProvider {
   ) {
     const how = deps.prompt.pileEdits ?? {}
     this.pileEdits = {
-      ...(how.judge && { check: (coverPath: string, edit: PileEdit, added: string[]) => this.checkEdit(coverPath, edit, added) }),
-      ...(!how.copy && { rewrite: (edit: PileEdit, entry: PileEditEntry) => this.rewriteForEdit(edit, entry) })
+      ...(how.judge && {
+        check: (coverPath: string, edit: PileEdit, added: string[], signal?: AbortSignal) => this.checkEdit(coverPath, edit, added, signal)
+      }),
+      ...(!how.copy && { rewrite: (edit: PileEdit, entry: PileEditEntry, signal?: AbortSignal) => this.rewriteForEdit(edit, entry, signal) })
+    }
+    if (deps.prompt.variations) {
+      const base = deps.prompt.pileBase === true
+      if (base) this.pileBase = true
+      this.pileVariations = async (pile, topTitle) => {
+        const named = await askPileVariations(pile, async (request) => (await this.deps.complete(request)).text, base ? topTitle : undefined)
+        return { ...named, base: named.base === null ? null : pileBaseTitle(named.base) }
+      }
     }
   }
 
@@ -404,20 +445,33 @@ export class VisionInferenceProvider implements InferenceProvider {
   }
 
   /** Whether what a pile edit added is true of a variant's cover as it is. */
-  private async checkEdit(coverPath: string, edit: PileEdit, added: string[]): Promise<{ answer: 'yes' | 'no'; reason: string }> {
+  private async checkEdit(coverPath: string, edit: PileEdit, added: string[], signal?: AbortSignal): Promise<{ answer: 'yes' | 'no'; reason: string }> {
     const url = await this.deps.readImage(coverPath)
     if (!url) throw new Error('No cover to check the edit against')
-    return readCheck((await this.deps.complete(pileEditRequest(checkPrompt(edit, added), CHECK_SCHEMA, url))).text)
+    return readCheck((await this.deps.complete(pileEditRequest(checkPrompt(edit, added), CHECK_SCHEMA, url), signal)).text)
   }
 
   /** The variant's description with the edit's change worked in, from the text alone. */
-  private async rewriteForEdit(edit: PileEdit, entry: PileEditEntry): Promise<string> {
+  private async rewriteForEdit(edit: PileEdit, entry: PileEditEntry, signal?: AbortSignal): Promise<string> {
     const prompt = rewritePrompt(edit, entry)
     if (prompt === null) return entry.description
-    return readRewrite((await this.deps.complete(pileEditRequest(prompt, ENTRY_SCHEMA))).text)
+    return readRewrite((await this.deps.complete(pileEditRequest(prompt, ENTRY_SCHEMA), signal)).text)
   }
 
+  /** Stop the runtime mid-run (the hard stop). The next request starts it again. */
+  async stop(): Promise<void> {
+    await this.deps.dispose?.()
+  }
+
+  /**
+   * The suggestion, with the object's colours taken out last, after every check: the designer sets
+   * those in the PSD (round 4, design/research/ai-round4.md).
+   */
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
+    return withoutObjectColours(await this.answer(input))
+  }
+
+  private async answer(input: AnalysisInput): Promise<InferenceResult> {
     const { prompt } = this.deps
     const masked = prompt.mask ? await (this.deps.maskedCover ?? maskedCoverPath)(input.imagePath, prompt.mask) : null
     let imageUrl = await this.deps.readImage(masked ?? input.imagePath)
@@ -435,7 +489,7 @@ export class VisionInferenceProvider implements InferenceProvider {
     let answer = prompt.parseResult((await this.deps.complete(request)).text)
     if (!imageUrl) return answer
     // The check looks at the cover as it is, so a thing read into the painted slot is checked against the real scene.
-    const checkUrl = coverUrl ?? undefined
+    const checkUrl = prompt.checkEdge ? await scaledDataUrl(coverUrl ?? imageUrl, prompt.checkEdge) : (coverUrl ?? undefined)
     const refused: string[] = []
     for (const thing of mentionedThings(answer, prompt.sceneThings ?? [])) {
       const p = await this.deps

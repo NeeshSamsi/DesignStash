@@ -5,7 +5,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
 import { createSettingsStore, type SettingsStore } from '../settings'
 import { ModelDownloader } from '../ai/download'
+import { createUndoService, type UndoService } from '../undo/undo-service'
+import { modelUndoOps } from '../undo/model-ops'
 import type { HandlerContext } from './context'
+import { inferenceQueueFor } from './library-effects'
 
 const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
@@ -19,13 +22,17 @@ vi.mock('electron', () => ({
 
 import { registerAiHandlers } from './ai'
 
+let undo: UndoService
 let base: string
 let modelsDir: string
 let settings: SettingsStore
 let push: ReturnType<typeof vi.fn>
+let ctx: HandlerContext
 let activeDownloads: Map<string, AbortController>
 let appleReady: boolean
 let appleReason: string
+let llamaServer: string | null
+let runtime: 'runtime-failed' | null
 let embeddings: {
   setBusyCheck: ReturnType<typeof vi.fn>
   backfill: ReturnType<typeof vi.fn>
@@ -57,19 +64,38 @@ beforeEach(() => {
     modelRemoved: vi.fn(async () => {})
   }
   appleReason = 'appleIntelligenceNotEnabled'
-  registerAiHandlers({
+  llamaServer = '/app/llama-server/llama-server'
+  runtime = null
+  const downloader = new ModelDownloader(modelsDir)
+  undo = createUndoService({
+    data: { run: () => ({ ok: true }) },
     settings,
-    push,
-    telemetry: { get: () => ({ track: vi.fn() }) },
-    ai: {
-      modelsDir,
-      downloader: new ModelDownloader(modelsDir),
-      activeDownloads,
-      appleStatus: async () =>
-        appleReady ? { available: true, reason: null } : { available: false, reason: appleReason },
-      embeddings
-    }
-  } as unknown as HandlerContext)
+    push: () => {},
+    menu: () => {},
+    editField: () => {},
+    models: modelUndoOps({
+      downloader,
+      embeddings: embeddings as unknown as Parameters<typeof modelUndoOps>[0]['embeddings'],
+      settings
+    })
+  })
+  ctx = {
+      settings,
+      push,
+      undo,
+      telemetry: { get: () => ({ track: vi.fn() }) },
+      ai: {
+        modelsDir,
+        downloader,
+        activeDownloads,
+        appleStatus: async () =>
+          appleReady
+            ? { available: true, reason: null }
+            : { available: false, reason: appleReason },
+        embeddings
+      }
+    } as unknown as HandlerContext
+  registerAiHandlers(ctx, { llamaServerPath: () => llamaServer, runtimeProblem: () => runtime })
 })
 
 afterEach(() => rmSync(base, { recursive: true, force: true }))
@@ -117,6 +143,30 @@ describe('AI_LIST_MODELS: the active model can’t run', () => {
     settings.update({ activeModelId: 'qwen3-vl-4b' })
     expect(await problem()).toBeNull()
     settings.update({ activeModelId: null })
+    expect(await problem()).toBeNull()
+  })
+
+  it('says the runtime is missing when a downloaded model has no llama-server to run on (F-038)', async () => {
+    install('qwen3-vl-4b')
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+    llamaServer = null
+    expect(await problem()).toBe('runtime-missing')
+  })
+
+  it('says the runtime keeps failing when the queue could not start it twice in a row (F-038)', async () => {
+    install('qwen3-vl-4b')
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+    runtime = 'runtime-failed'
+    expect(await problem()).toBe('runtime-failed')
+  })
+
+  it("has no runtime problem for a model that isn't downloaded yet, or for Apple's", async () => {
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+    llamaServer = null
+    expect(await problem()).toBeNull()
+    settings.update({ activeModelId: 'apple' })
+    appleReady = true
+    runtime = 'runtime-failed'
     expect(await problem()).toBeNull()
   })
 })
@@ -168,14 +218,12 @@ describe('AI_DELETE_MODEL', () => {
 
     expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen3.5-9b' })).toEqual({
       success: true,
-      data: { deleted: true, inUse: false, undoable: true }
+      data: { deleted: true, inUse: false, undoable: true, undoEntryId: expect.any(Number) }
     })
     expect(existsSync(join(modelsDir, 'qwen3.5-9b'))).toBe(false)
+    expect(undo.history.state().undo).toMatchObject({ label: 'Delete model' })
 
-    expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen3.5-9b' })).toEqual({
-      success: true,
-      data: { restored: true }
-    })
+    expect(await undo.history.undo()).toEqual({ status: 'done', label: 'Delete model' })
     expect(existsSync(join(modelsDir, 'qwen3.5-9b', 'model.gguf'))).toBe(true)
   })
 
@@ -199,11 +247,11 @@ describe('AI_DELETE_MODEL', () => {
       await call(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen3-vl-4b', confirmed: true })
     ).toEqual({
       success: true,
-      data: { deleted: true, inUse: true, undoable: true }
+      data: { deleted: true, inUse: true, undoable: true, undoEntryId: expect.any(Number) }
     })
     expect(settings.get().activeModelId).toBeNull()
 
-    await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen3-vl-4b', makeActive: true })
+    await undo.history.undo()
     expect(settings.get().activeModelId).toBe('qwen3-vl-4b')
   })
 
@@ -351,12 +399,35 @@ describe('the meaning-search model', () => {
     install(id, ['model.gguf'])
     expect(await call(IPC_CHANNELS.AI_DELETE_MODEL, { id })).toEqual({
       success: true,
-      data: { deleted: true, inUse: false, undoable: true }
+      data: { deleted: true, inUse: false, undoable: true, undoEntryId: expect.any(Number) }
     })
     expect(embeddings.modelRemoved).toHaveBeenCalledTimes(1)
-    expect(await call(IPC_CHANNELS.AI_RESTORE_MODEL, { id })).toMatchObject({
-      data: { restored: true }
-    })
+    expect(await undo.history.undo()).toMatchObject({ status: 'done', label: 'Delete model' })
     expect(embeddings.backfill).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('a model chosen or downloaded asks the queue again for what waited for one (H-2)', () => {
+  it('choosing a model', async () => {
+    const changed = vi.spyOn(inferenceQueueFor(ctx), 'modelChanged').mockResolvedValue()
+    await call(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'qwen3-vl-4b' })
+    expect(changed).toHaveBeenCalledOnce()
+  })
+
+  it('the active model finishing its download, and no other model', async () => {
+    handlers.clear()
+    const downloaded = {
+      ...ctx,
+      ai: { ...ctx.ai, downloader: { purgeSetAside: async () => {}, download: async () => {} } }
+    } as unknown as HandlerContext
+    registerAiHandlers(downloaded)
+    const changed = vi.spyOn(inferenceQueueFor(downloaded), 'modelChanged').mockResolvedValue()
+    settings.update({ activeModelId: 'qwen3-vl-4b' })
+
+    await call(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: 'qwen3.5-9b' })
+    await call(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: 'qwen3-vl-4b' })
+
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce())
+  })
+})
+

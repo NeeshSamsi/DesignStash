@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, shell, type BrowserWindow } from 'electron'
-import type { PushChannel, PushPayload } from '@shared/ipc'
+import { IPC_CHANNELS, type PushChannel, type PushPayload } from '@shared/ipc'
 import type { InferenceProvider } from '@shared/inference'
 import type { SettingsStore } from '../settings'
 import type { Telemetry } from '../telemetry'
@@ -24,6 +24,12 @@ import { MODEL_FILE_NAMES } from '../ai/registry'
 import { LlamaMeaningEmbedder } from '../search/embedder'
 import { EmbeddingService } from '../search/embedding-service'
 import { MEANING_MODEL_ID } from '../search/meaning'
+import { getDb } from '../db/connection'
+import { createDataOps, type DataOps } from '../undo/ops'
+import { createUndoService, type UndoService } from '../undo/undo-service'
+import { modelUndoOps } from '../undo/model-ops'
+import { inferenceQueueFor } from './library-effects'
+import type { UndoMenuItems } from '../undo/menu-items'
 
 /**
  * Mutable holder for the telemetry instance. Consent can flip at runtime, so
@@ -44,6 +50,8 @@ export interface AiRuntime {
   activeProvider(): Promise<InferenceProvider | null>
   /** Whether Apple's on-device model can run here, and why not (the Swift helper's `info`, cached a while). */
   appleStatus(): Promise<AppleStatus>
+  /** The active model said it can't run: drop the provider built for it and ask afresh whether it can (H-1). */
+  modelUnavailable(): Promise<void>
   /** Meaning search: the vectors, their queue, and the closeness of each mockup to a search. */
   embeddings: EmbeddingService
 }
@@ -58,11 +66,22 @@ export interface HandlerContext {
   library: LibraryService
   /** Send a push event (PUSH_CHANNELS only) to the renderer. */
   push<C extends PushChannel>(channel: C, payload: PushPayload<C>): void
+  /** The app's undo history: each undoable handler records its action here (design/specs/undo.md). */
+  undo: UndoService
+  /** Data's side of undo: runs an action and returns it as an undo record (`track`). */
+  dataOps: DataOps
 }
 
-export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRuntime {
-  const modelsDir = join(settings.getLibraryRoot(), '..', 'models')
+export function createAiRuntime(
+  settings: SettingsStore,
+  repo: Repository,
+  userDataDir: string
+): AiRuntime {
+  // Models are app data, so moving or pointing the stash folder never leaves them behind.
+  const modelsDir = join(userDataDir, 'models')
   const downloader = new ModelDownloader(modelsDir)
+  // Earlier versions kept them beside the stash folder; any found there move in now.
+  void downloader.adopt(join(settings.getLibraryRoot(), '..', 'models'))
   // Qwen 2.5 VL 3B or 7B, chosen before the switch, reads as no model chosen.
   forgetRemovedModel(settings)
 
@@ -72,7 +91,7 @@ export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRu
 
   // A llama-server left running by a crashed or killed app is stopped now, and this run's is
   // remembered so the next launch can do the same.
-  const pidFile = new LlamaPidFile(join(modelsDir, '..', 'llama-server.pid'))
+  const pidFile = new LlamaPidFile(join(userDataDir, 'llama-server.pid'))
   void pidFile.reapStale().catch(() => {})
   const providers = createProviderFactory({
     modelsDir,
@@ -82,7 +101,7 @@ export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRu
   })
 
   // Meaning search runs a second llama-server in embedding mode, with its own pid file.
-  const embedPidFile = new LlamaPidFile(join(modelsDir, '..', 'llama-server-embed.pid'))
+  const embedPidFile = new LlamaPidFile(join(userDataDir, 'llama-server-embed.pid'))
   void embedPidFile.reapStale().catch(() => {})
   const meaningModelPath = join(modelsDir, MEANING_MODEL_ID, MODEL_FILE_NAMES.model)
   const embeddings = new EmbeddingService({
@@ -132,6 +151,10 @@ export function createAiRuntime(settings: SettingsStore, repo: Repository): AiRu
     // End-to-end runs never ask the real helper, so what they see doesn't depend on the Mac.
     appleStatus: () =>
       stubAiEnabled() ? Promise.resolve({ available: false, reason: 'unknown' }) : apple.status(),
+    async modelUnavailable() {
+      apple.refresh()
+      await providers.dispose()
+    },
     embeddings
   }
 }
@@ -153,15 +176,45 @@ export function createHandlerContext(opts: {
   telemetry: TelemetryRef
   repo: Repository
   getWindow: () => BrowserWindow | null
+  /** Puts the history's labels on Edit › Undo and Redo. */
+  undoMenu?: (items: UndoMenuItems) => void
 }): HandlerContext {
-  return {
-    settings: opts.settings,
+  const push = createPush(opts.getWindow)
+  const dataOps = createDataOps({ repo: opts.repo, db: getDb() })
+  const ai = createAiRuntime(opts.settings, opts.repo, app.getPath('userData'))
+  const { settings } = opts
+  const ctx: HandlerContext = {
+    settings,
     telemetry: opts.telemetry,
     repo: opts.repo,
-    ai: createAiRuntime(opts.settings, opts.repo),
+    ai,
     library: new LibraryService(opts.repo, opts.settings.getLibraryRoot(), {
       openPath: (p) => shell.openPath(p)
     }),
-    push: createPush(opts.getWindow)
+    push,
+    dataOps,
+    undo: createUndoService({
+      data: dataOps.runner,
+      settings: opts.settings,
+      push: (state) => push(IPC_CHANNELS.UNDO_STATE, state),
+      menu: opts.undoMenu ?? (() => {}),
+      // Delete model sets a model aside until quit; its undo brings it back.
+      models: modelUndoOps({
+        downloader: ai.downloader,
+        embeddings: ai.embeddings,
+        settings,
+        activeModelBack: () =>
+          void inferenceQueueFor(ctx)
+            .modelChanged()
+            .catch((err: unknown) => console.error('[AI] Could not queue suggestions:', err))
+      }),
+      editField: (direction) => {
+        const window = opts.getWindow()
+        if (!window || window.isDestroyed()) return
+        if (direction === 'undo') window.webContents.undo()
+        else window.webContents.redo()
+      }
+    })
   }
+  return ctx
 }

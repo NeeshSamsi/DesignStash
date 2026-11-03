@@ -6,9 +6,14 @@ import {
 } from '@shared/inference'
 import type { AiStatus } from '@shared/inbox'
 import type { AiRun, AiStatusEvent, AiStatusUpdate } from '@shared/ipc/ai-status'
+import { latinLookalikes, tidyWords } from '@shared/pile-variation'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
-import { RunTimes, memoryRunTimes } from './run-timing'
+import { PileTitles } from '../library/pile-titles'
+import { logger } from '../logger'
+import { LlamaStartError } from './llama-server'
+import { ModelUnavailableError } from './model-unavailable'
+import { HARD_STOP_FACTOR, RunTimes, memoryRunTimes } from './run-timing'
 
 /**
  * What the provider is shown for a mockup: its cover, the file name it came in as, and the folders
@@ -20,8 +25,9 @@ export function analysisInputFor(m: Mockup): AnalysisInput {
   const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
   return {
     imagePath: m.coverPath,
-    fileName: ctx?.originalFilename ?? m.title,
-    folderTrail: ctx?.folderTrail ?? []
+    // Cyrillic letters that look Latin in a Latin name are read as Latin ("Сlay" as "Clay", F-077).
+    fileName: latinLookalikes(ctx?.originalFilename ?? m.title),
+    folderTrail: (ctx?.folderTrail ?? []).map(latinLookalikes)
   }
 }
 
@@ -41,10 +47,41 @@ export interface InferenceQueueDeps {
   /** This Mac's recent run times, and the threshold for "taking a while" they give. Default: kept for this launch only. */
   timing?: RunTimes
   now?: () => number
+  /** Calls `fire` after `ms`, and returns what clears it. Default: `setTimeout`. */
+  timer?: (ms: number, fire: () => void) => () => void
+  /** A pile's variations landed (design L8): the mockups whose words or base changed. */
+  onVariations?: (pileId: number, mockupIds: number[]) => void
+  /** Where a hard stop, and every stop of the model, is written down for a problem report. Default: the app's log. */
+  log?: (line: string) => void
+  /**
+   * The active model said it can't run right now (Apple Intelligence switched off, H-1): drop the
+   * provider built for it and ask again whether it can run. Called once each time the queue starts waiting.
+   */
+  onModelUnavailable?: () => void
+}
+
+const realTimer = (ms: number, fire: () => void) => {
+  const t = setTimeout(fire, ms)
+  return () => clearTimeout(t)
 }
 
 /** Tries per mockup: the first, and one retry. */
 const ATTEMPTS = 2
+
+/** Runs in a row that couldn't start the model's runtime, after which it counts as broken (F-038). */
+const BROKEN_AFTER = 2
+
+/** While it waits for a model that can't run, how often the queue looks again (H-1). */
+const RECHECK_MS = 60_000
+
+/** How one run went for the runtime: whether it started, and whether a start failed. */
+interface RunStart {
+  started: boolean
+  startFailed: boolean
+}
+
+/** Seconds, to a tenth, for the log. */
+const secs = (ms: number) => (ms / 1000).toFixed(1)
 
 /**
  * Makes AI suggestions in the background as files land: first in, first out, one at a time.
@@ -59,25 +96,75 @@ export class InferenceQueue {
   private run: AiRun | null = null
   /** Cancelled while being read: its answer is thrown away. */
   private readonly cancelled = new Set<number>()
+  /** Stops the current run now, as the hard stop does (Fill it myself on the mockup being written). */
+  private stopRun: (() => void) | null = null
+  /** Piles waiting to be asked for their variations; they go before the next mockup, a request each. */
+  private readonly piles: number[] = []
+  /** The mockups each pile was last asked about, so it's asked again only once they change. */
+  private readonly named = new Map<number, string>()
+  /** Runs in a row, on one model, that ended because its runtime couldn't start. */
+  private startFailures: { model: string | null; runs: number } = { model: null, runs: 0 }
+  /** The mockups and the top's own title each pile's base was last asked from, so a base is asked once for each. */
+  private readonly based = new Map<number, string>()
   private pumping: Promise<void> | null = null
+  /** The active model can't run right now: what is queued waits for it, marked neither failed nor off (H-1). */
+  private waitingForModel = false
+  private clearRecheck: (() => void) | null = null
 
   private readonly timing: RunTimes
   private readonly now: () => number
+  private readonly timer: NonNullable<InferenceQueueDeps['timer']>
+  private readonly log: (line: string) => void
 
   constructor(private readonly deps: InferenceQueueDeps) {
     this.timing = deps.timing ?? new RunTimes(memoryRunTimes())
     this.now = deps.now ?? Date.now
+    this.timer = deps.timer ?? realTimer
+    this.log = deps.log ?? ((line) => logger.info(line))
   }
 
-  /** Queue mockups for a suggestion. Ones that have one already, are in My Stash or Trash, or are gone are left out. */
+  /** Stops the model after a run was cut off, and says so in the log: the next request starts it again. */
+  private async stopModel(provider: InferenceProvider, why: string): Promise<void> {
+    if (!provider.stop) return this.log(why)
+    this.log(`${why} The model is stopped, and starts again on the next request.`)
+    await provider.stop().catch((err: unknown) => this.log(`[AI] Couldn't stop the model: ${err instanceof Error ? err.message : String(err)}`))
+  }
+
+  /**
+   * Queue mockups for a suggestion. Ones that have one already, that the person is filling in
+   * themselves, that are in My Stash or Trash, or that are gone are left out.
+   */
   async enqueue(ids: number[]): Promise<void> {
+    await this.add(ids, false)
+  }
+
+  /**
+   * Fill it myself (design L6.E1): no suggestion for this mockup, now or later, until Write
+   * suggestions asks again. It leaves the queue, and a run on it now is stopped, so the queue moves
+   * on. One whose suggestion already landed is left as it is.
+   */
+  optOut(id: number): void {
+    const m = this.deps.repo.mockups.getMockup(id)
+    if (!m || m.aiStatus === 'ready' || m.aiStatus === 'opted_out') return
+    const at = this.fifo.indexOf(id)
+    if (at !== -1) this.fifo.splice(at, 1)
+    this.emit([this.setStatus(id, 'opted_out')])
+    if (this.current === id) this.stopRun?.()
+  }
+
+  /** Write suggestions or Try again (L6.E1, L6.E3): queue again one the person filled in themselves or that couldn't be written. */
+  async askAgain(id: number): Promise<void> {
+    await this.add([id], true)
+  }
+
+  private async add(ids: number[], optedOutToo: boolean): Promise<void> {
     const provider = await this.deps.getProvider()
     const updates: AiStatusEvent['updates'] = []
 
     for (const id of new Set(ids)) {
       const m = this.deps.repo.mockups.getMockup(id)
-      if (!m || !this.inInbox(m) || m.aiStatus === 'ready') continue
-      if (!provider) {
+      if (!m || !this.inInbox(m) || m.aiStatus === 'ready' || (m.aiStatus === 'opted_out' && !optedOutToo)) continue
+      if (!provider && !this.waitingForModel) {
         if (m.aiStatus !== 'off') updates.push(this.setStatus(id, 'off'))
         continue
       }
@@ -92,13 +179,27 @@ export class InferenceQueue {
     this.pump()
   }
 
-  /** After a restart: queue everything that was waiting or half read, in the order it landed. */
+  /**
+   * After a restart: queue everything that was waiting or half read, in the order it landed, and
+   * the ones marked off when a model can run now (H-2). Without one they stay off.
+   */
   async resume(): Promise<void> {
     const waiting = this.deps.repo
       .inbox.getUnfinishedAiMockups()
       .sort((a, b) => a.id - b.id)
       .map((m) => m.id)
     await this.enqueue(waiting)
+  }
+
+  /**
+   * The active model changed, or became usable (chosen, downloaded, or back after Apple Intelligence
+   * was switched on): stop waiting, and queue what waited for a model, the ones marked off included (H-1, H-2).
+   */
+  async modelChanged(): Promise<void> {
+    this.waitingForModel = false
+    this.clearRecheck?.()
+    this.clearRecheck = null
+    await this.resume()
   }
 
   /** Stop work on mockups that were tossed or trashed. Whatever is queued is dropped. */
@@ -123,11 +224,12 @@ export class InferenceQueue {
 
   /**
    * Where one mockup is: waiting its turn (with the threshold, since the renderer counts a wait on
-   * screen too), its run, or the status it ended with. Null when it is gone.
+   * screen too, and while its files are readied), its run, or the status it ended with. Null when
+   * it is gone.
    */
   statusOf(id: number): AiStatusUpdate | null {
     if (this.current === id && this.run) return { mockupId: id, status: 'sniffing', run: this.run }
-    if (this.fifo.includes(id)) {
+    if (this.fifo.includes(id) || this.current === id) {
       const slowAfterMs = this.timing.slowAfterMs(this.deps.model?.() ?? null)
       return { mockupId: id, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs } }
     }
@@ -135,9 +237,33 @@ export class InferenceQueue {
     return m ? { mockupId: id, status: m.aiStatus } : null
   }
 
-  /** Whether a suggestion is being read or waiting its turn. */
+  /**
+   * Ask a pile for its variations (design L8), once nothing in it is waiting for its own suggestion
+   * and its titles are kept (drafts in To stash, its mockups in My Stash), with a model that names
+   * them. A pile is asked again only when its mockups have changed since, as when one joins, and
+   * while one of them still has only the fallback's words or none. With a model that names bases
+   * (the 9B), it is also asked while its base is still its top's own title, once for that title.
+   */
+  async askPile(pileId: number): Promise<void> {
+    const provider = await this.deps.getProvider()
+    if (!provider?.pileVariations || !this.wantsVariations(pileId, provider)) return
+    if (!this.piles.includes(pileId)) this.piles.push(pileId)
+    this.pump()
+  }
+
+  /**
+   * 'runtime-failed' once two runs in a row couldn't start the active model's runtime (llama-server
+   * exited while loading, never became ready, or couldn't be spawned): Settings › AI model and a
+   * toast say so once (F-038). A run that starts it, or another model, clears it.
+   */
+  get runtimeProblem(): 'runtime-failed' | null {
+    const model = this.deps.model?.() ?? null
+    return this.startFailures.model === model && this.startFailures.runs >= BROKEN_AFTER ? 'runtime-failed' : null
+  }
+
+  /** Whether a suggestion is being read or waiting its turn. Waiting for a model that can't run isn't busy. */
   get busy(): boolean {
-    return this.pumping !== null || this.fifo.length > 0
+    return this.pumping !== null || (!this.waitingForModel && (this.fifo.length > 0 || this.piles.length > 0))
   }
 
   /** Resolves when nothing is queued or running. */
@@ -153,7 +279,16 @@ export class InferenceQueue {
   }
 
   private async drain(): Promise<void> {
-    for (let id = this.fifo.shift(); id !== undefined; id = this.fifo.shift()) {
+    for (;;) {
+      if (this.waitingForModel) return
+      const pileId = this.piles.shift()
+      if (pileId !== undefined) {
+        // Never let one pile stop the queue.
+        await this.namePile(pileId).catch((err: unknown) => console.error('[AI] Could not name a pile:', err))
+        continue
+      }
+      const id = this.fifo.shift()
+      if (id === undefined) return
       this.current = id
       try {
         await this.process(id)
@@ -165,7 +300,109 @@ export class InferenceQueue {
         this.run = null
         this.cancelled.delete(id)
       }
+      if (this.waitingForModel) return
+      // The pile's own suggestions are in once its last mockup is done: its variations come next.
+      const m = this.deps.repo.mockups.getMockup(id)
+      const pile = m ? (m.isGroup ? m.id : m.groupId) : null
+      if (pile !== null) await this.askPile(pile)
     }
+  }
+
+  /**
+   * A pile's mockups in pile order (the top first, then the rest by id), each with where its
+   * variation came from, as `PileTitles` keeps them. Null when its titles aren't kept yet: in To
+   * sort, or in To stash before Look it over made the top's draft.
+   */
+  private pileMembers(pileId: number): { mockup: Mockup; source: string | null }[] | null {
+    const { repo } = this.deps
+    const top = repo.mockups.getMockup(pileId)
+    if (!top?.isGroup || top.deletedAt !== null || top.stage === 'to_sort') return null
+    const members = [top, ...repo.piles.getMockupsByGroupId(pileId).sort((a, b) => a.id - b.id)].filter(
+      (m) => m.deletedAt === null && m.stage === top.stage
+    )
+    if (top.stage === 'stashed') return members.map((m) => ({ mockup: m, source: m.variationSource }))
+    const drafts = repo.drafts.getDrafts(members.map((m) => m.id))
+    if (!drafts.has(top.id)) return null
+    return members.flatMap((m) => {
+      const d = drafts.get(m.id)
+      return d ? [{ mockup: m, source: d.variationSource }] : []
+    })
+  }
+
+  private wantsVariations(pileId: number, provider: InferenceProvider): boolean {
+    const pile = this.pileMembers(pileId)
+    if (!pile || pile.length < 2) return false
+    const writing = (m: Mockup) => this.fifo.includes(m.id) || this.current === m.id || m.aiStatus === 'pending' || m.aiStatus === 'sniffing'
+    if (pile.some((p) => writing(p.mockup))) return false
+    const ids = pile.map((p) => p.mockup.id).join(',')
+    // Still to name: a mockup with no words, or only the fallback's.
+    if (this.named.get(pileId) !== ids && pile.some((p) => p.source !== 'ai' && p.source !== 'typed')) return true
+    // Or a base that is still the top's own title, not yet asked from with these mockups.
+    const base = this.baseFrom(pileId, provider)
+    return base !== null && base.now === tidyWords(base.topTitle) && this.based.get(pileId) !== `${ids}\n${base.topTitle}`
+  }
+
+  /**
+   * The top's own suggested title, for a model that names bases (the 9B), while the pile's base can
+   * take the AI's: the pile waits in To stash, nobody typed its base, and the top's suggestion has
+   * landed in its draft (until then Look it over would write the top's title over the base). With
+   * the base as it is now. Null otherwise: a pile in My Stash keeps the name the person saw.
+   */
+  private baseFrom(pileId: number, provider: InferenceProvider): { topTitle: string; now: string } | null {
+    if (!provider.pileBase) return null
+    const top = this.deps.repo.mockups.getMockup(pileId)
+    if (!top?.isGroup || top.deletedAt !== null || top.stage !== 'to_stash' || top.aiStatus !== 'ready') return null
+    const draft = this.deps.repo.drafts.getDraft(pileId)
+    if (!draft || draft.awaitingAi || draft.keptFields.includes('title')) return null
+    const own = InferenceResultSchema.safeParse(top.aiResult)
+    return own.success ? { topTitle: own.data.title, now: tidyWords(draft.title) } : null
+  }
+
+  /**
+   * One request for a pile's variations, landed by `PileTitles.landAi`: typed words stay, "same" or
+   * no answer takes the fallback, and words the app gives twice get a number. With a model that
+   * names bases, the same request gives the pile's base from its top's own title, which renames
+   * every mockup in it unless the person typed a base meanwhile. A request that fails leaves the
+   * fallback and the base; one stuck past the hard stop is stopped, and the queue moves on.
+   */
+  private async namePile(pileId: number): Promise<void> {
+    const provider = await this.deps.getProvider()
+    const pile = this.pileMembers(pileId)
+    if (!provider?.pileVariations || !pile || pile.length < 2) return
+    const ids = pile.map((p) => p.mockup.id).join(',')
+    this.named.set(pileId, ids)
+    const started = this.now()
+    const topTitle = this.baseFrom(pileId, provider)?.topTitle
+    if (topTitle !== undefined) this.based.set(pileId, `${ids}\n${topTitle}`)
+    const slowAfterMs = this.timing.slowAfterMs(this.deps.model?.() ?? null)
+    let stuck = false
+    let clear = () => {}
+    const stopped = new Promise<null>((resolve) => {
+      clear = this.timer(HARD_STOP_FACTOR * slowAfterMs, () => {
+        stuck = true
+        resolve(null)
+      })
+    })
+    const asked = provider.pileVariations(
+      pile.map((p) => ({ coverPath: p.mockup.coverPath, fileName: analysisInputFor(p.mockup).fileName })),
+      topTitle
+    )
+    const named = await Promise.race([asked.catch(() => null), stopped])
+    clear()
+    if (stuck) {
+      const model = this.deps.model?.() ?? 'the active model'
+      await this.stopModel(
+        provider,
+        `[AI] Hard stop: the variations for pile ${pileId} ran ${secs(this.now() - started)} s on ${model}, ${HARD_STOP_FACTOR} times its slow threshold of ${secs(slowAfterMs)} s.`
+      )
+    }
+    if (!named) return
+    const titles = new PileTitles(this.deps.repo)
+    const changed = new Set(titles.landAi(pileId, new Map(pile.map((p, i) => [p.mockup.id, named.variations[i] ?? null]))))
+    if (named.base !== null && topTitle !== undefined && this.baseFrom(pileId, provider)?.topTitle === topTitle) {
+      for (const id of titles.renameBase(pileId, named.base, 'ai').mockupIds) changed.add(id)
+    }
+    if (changed.size > 0) this.deps.onVariations?.(pileId, [...changed])
   }
 
   private async process(id: number): Promise<void> {
@@ -182,22 +419,36 @@ export class InferenceQueue {
     const model = this.deps.model?.() ?? null
     const slowAfterMs = this.timing.slowAfterMs(model)
     const cold = provider.loaded === false
+    const start: RunStart = { started: false, startFailed: false }
     if (cold) {
       this.run = { phase: 'starting', writingSince: null, slowAfterMs }
       this.emit([{ ...this.setStatus(id, 'sniffing'), run: this.run }])
       // A load that fails leaves it to the request, which fails and is tried again.
-      await provider.load?.().catch(() => {})
+      await provider.load?.().catch((err: unknown) => {
+        if (err instanceof LlamaStartError) start.startFailed = true
+      })
     }
+    // Readying its files (the slot mask) is no part of the model's run: the clock starts after.
+    await this.deps.prepare?.(m).catch(() => {})
+    // Filled in by the person while the model loaded or the files were readied: nothing to ask.
+    if (this.deps.repo.mockups.getMockup(id)?.aiStatus === 'opted_out') return
     const since = this.now()
     this.run = { phase: 'writing', writingSince: since, slowAfterMs }
     this.emit([{ ...(cold ? { mockupId: id, status: 'sniffing' as const } : this.setStatus(id, 'sniffing')), run: this.run }])
-    await this.deps.prepare?.(m).catch(() => {})
-    const result = await this.suggest(provider, m)
-    if (result && model) this.timing.record(model, this.now() - since)
+    let result: InferenceResult | null
+    try {
+      result = await this.suggestBy(provider, m, since, slowAfterMs, start)
+    } catch (err) {
+      if (!(err instanceof ModelUnavailableError)) throw err
+      this.waitForModel(id)
+      return
+    }
+    this.noteStart(model, start)
 
-    // Tossed or trashed while it was being read: nothing to write to.
+    // Tossed or trashed while it was being read: nothing to write to. Filled in by the person: theirs.
     const now = this.deps.repo.mockups.getMockup(id)
-    if (!now || now.deletedAt !== null) return
+    if (!now || now.deletedAt !== null || now.aiStatus === 'opted_out') return
+    if (result && model) this.timing.record(model, this.now() - since)
     if (this.cancelled.has(id)) {
       this.emit([this.setStatus(id, 'pending')])
       return
@@ -211,16 +462,101 @@ export class InferenceQueue {
     }
   }
 
-  private async suggest(provider: InferenceProvider, m: Mockup): Promise<InferenceResult | null> {
-    for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+  /**
+   * The suggestion, or null when there is none by the hard stop, `HARD_STOP_FACTOR` times
+   * `slowAfterMs` after `since`: the model is stopped so the next mockup doesn't wait behind it, it
+   * isn't tried again, and its late answer goes nowhere. Fill it myself stops it the same way.
+   */
+  private async suggestBy(provider: InferenceProvider, m: Mockup, since: number, slowAfterMs: number, start: RunStart): Promise<InferenceResult | null> {
+    const run: { stopped: boolean; why?: 'hard stop' | 'filled in' } = { stopped: false }
+    let clear = () => {}
+    const stopped = new Promise<null>((resolve) => {
+      const stop = (why: 'hard stop' | 'filled in') => {
+        run.stopped = true
+        run.why ??= why
+        resolve(null)
+      }
+      this.stopRun = () => stop('filled in')
+      clear = this.timer(Math.max(0, since + HARD_STOP_FACTOR * slowAfterMs - this.now()), () => stop('hard stop'))
+    })
+    let result: InferenceResult | null
+    try {
+      result = await Promise.race([this.suggest(provider, m, run, start), stopped])
+    } finally {
+      clear()
+      this.stopRun = null
+    }
+    if (run.stopped) {
+      const model = this.deps.model?.() ?? 'the active model'
+      await this.stopModel(
+        provider,
+        run.why === 'hard stop'
+          ? `[AI] Hard stop: mockup ${m.id} ran ${secs(this.now() - since)} s on ${model}, ${HARD_STOP_FACTOR} times its slow threshold of ${secs(slowAfterMs)} s.`
+          : `[AI] Mockup ${m.id} was filled in by the person while it was being written.`
+      )
+    }
+    return run.stopped ? null : result
+  }
+
+  private async suggest(provider: InferenceProvider, m: Mockup, run: { stopped: boolean }, start: RunStart): Promise<InferenceResult | null> {
+    for (let attempt = 1; attempt <= ATTEMPTS && !run.stopped; attempt++) {
       try {
-        const parsed = InferenceResultSchema.safeParse(await provider.analyze(analysisInputFor(m)))
+        const answer = await provider.analyze(analysisInputFor(m))
+        start.started = true
+        const parsed = InferenceResultSchema.safeParse(answer)
         if (parsed.success) return parsed.data
-      } catch {
-        // Fall through to the next attempt.
+      } catch (err) {
+        // The model can't run at all right now: no attempt will do better, so the queue waits (H-1).
+        if (err instanceof ModelUnavailableError) throw err
+        // The runtime answered and the reply was no good, or it couldn't start: either way, the next attempt.
+        if (err instanceof LlamaStartError) start.startFailed = true
+        else start.started = true
       }
     }
     return null
+  }
+
+  /** A run that started the runtime clears the count of failed starts; one that couldn't adds to it. */
+  private noteStart(model: string | null, start: RunStart): void {
+    if (start.started) this.startFailures = { model, runs: 0 }
+    else if (start.startFailed) {
+      const runs = this.startFailures.model === model ? this.startFailures.runs + 1 : 1
+      this.startFailures = { model, runs }
+    }
+  }
+
+  /**
+   * The model said it can't run (H-1): this mockup goes back to the head of the queue as waiting,
+   * the queue stops, and the first time it stops the app is told (the notice, a fresh provider) and
+   * a look is booked to see whether the model can run again.
+   */
+  private waitForModel(id: number): void {
+    const first = !this.waitingForModel
+    this.waitingForModel = true
+    this.fifo.unshift(id)
+    // Told first, so the window's look at why (on the push below) already gets the fresh answer.
+    if (first) {
+      this.log(`[AI] ${this.deps.model?.() ?? 'The active model'} can't run right now; suggestions wait until it can.`)
+      this.deps.onModelUnavailable?.()
+      this.bookRecheck()
+    }
+    this.emit([this.setStatus(id, 'pending')], first ? { modelUnavailable: true } : {})
+  }
+
+  private bookRecheck(): void {
+    this.clearRecheck = this.timer(RECHECK_MS, () => {
+      this.clearRecheck = null
+      void this.recheck().catch((err: unknown) => console.error('[AI] Could not look at the model again:', err))
+    })
+  }
+
+  /** While it waits: carry on once the model can run, else look again later. */
+  private async recheck(): Promise<void> {
+    if (!this.waitingForModel) return
+    if (await this.deps.getProvider()) {
+      this.waitingForModel = false
+      this.pump()
+    } else this.bookRecheck()
   }
 
   private inInbox(m: Mockup): boolean {
@@ -232,9 +568,9 @@ export class InferenceQueue {
     return { mockupId: id, status }
   }
 
-  private emit(updates: AiStatusEvent['updates']): void {
+  private emit(updates: AiStatusEvent['updates'], extra: Pick<AiStatusEvent, 'modelUnavailable'> = {}): void {
     if (updates.length === 0) return
     const { toSort, sniffing } = this.deps.repo.inbox.getCounts()
-    this.deps.onStatus({ updates, totals: { total: toSort, remaining: sniffing } })
+    this.deps.onStatus({ updates, totals: { total: toSort, remaining: sniffing }, ...extra })
   }
 }

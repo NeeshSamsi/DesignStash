@@ -34,6 +34,7 @@ describe('the Add menu file picker', () => {
     expect(result).toEqual({ success: true, data: { paths: ['/d/Cap.zip', '/d/a.psd'] } })
     const [options] = showOpenDialog.mock.calls[0]!
     expect(options.properties).toEqual(expect.arrayContaining(['openFile', 'multiSelections']))
-    expect(options.filters).toEqual([{ name: 'PSDs and zips', extensions: ['psd', 'zip'] }])
+    // A PSB (Large Document Format) is taken like a PSD (H-12).
+    expect(options.filters).toEqual([{ name: 'PSDs and zips', extensions: ['psd', 'psb', 'zip'] }])
   })
 })

@@ -2,7 +2,7 @@ import { ICON_STROKE } from '@renderer/design-system/icon'
 import { AddSquareIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { EMPTY_STATE_DEFAULTS, type EmptyStateContractProps } from './EmptyState.types'
 import { emptyStateTileVariants, emptyStateVariants } from './EmptyState.variants'
 

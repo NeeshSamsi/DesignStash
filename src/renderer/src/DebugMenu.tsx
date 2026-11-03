@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
-import { Button } from './ui/button'
+import { Button } from './components/Button'
 
 // DEV-only: the ternary lets the production build drop the catalog chunk entirely.
 const DesignSystemCatalog = import.meta.env.DEV

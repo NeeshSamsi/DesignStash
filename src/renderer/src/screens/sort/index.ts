@@ -1,1 +1,1 @@
-export { SortFlow, type SortFlowProps } from './SortFlow'
+export { SortFlow, type SortFlowProps, type SortScope } from './SortFlow'

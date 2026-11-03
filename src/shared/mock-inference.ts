@@ -15,7 +15,7 @@ export class MockInferenceProvider implements InferenceProvider {
     const contextHint = isNested ? ` [from ${input.folderTrail.join('/')}]` : ''
 
     return {
-      title: `${input.fileName.replace(/\.psd$/i, '')} Mockup`,
+      title: `${input.fileName.replace(/\.ps[db]$/i, '')} Mockup`,
       description: `A professionally rendered mockup of ${input.fileName}.${contextHint}`,
       tags: [
         { category: 'Device', label: 'MacBook' },

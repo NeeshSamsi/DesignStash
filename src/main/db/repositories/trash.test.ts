@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '../schema'
+import type { Mockup } from '../schema'
 import type { Repository } from '../repository'
 import { ensureSearchIndex } from '../search-index'
 import { approvedMockup, createTestDb } from './__tests__/setup'
@@ -145,6 +146,168 @@ describe('moveManyToTrash / restoreMany', () => {
 
     repo.trash.restoreMany([top.id])
     expect(repo.library.getLibrary({ sort: 'date' }).map((r) => r.id)).toEqual([top.id])
+  })
+})
+
+describe('where a mockup in Trash came from (undo spec: Toss goes to Trash)', () => {
+  beforeEach(() => ensureSearchIndex(db))
+
+  const at = (stage: 'stashed' | 'to_sort' | 'to_stash', title: string) =>
+    repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/o-${title}.psd`, stage }))
+
+  it('marks each with the place it left: My Stash, To sort or To stash', () => {
+    const [mine, sorting, stashing] = [at('stashed', 'm'), at('to_sort', 's'), at('to_stash', 't')]
+
+    repo.trash.moveManyToTrash([mine.id, sorting.id, stashing.id])
+
+    const origins = Object.fromEntries(repo.trash.getTrashEntries().map((e) => [e.row.id, e.origin]))
+    expect(origins).toEqual({ [mine.id]: 'my-stash', [sorting.id]: 'to-sort', [stashing.id]: 'to-stash' })
+  })
+
+  it('marks what an undone import brought in as from that import', () => {
+    const m = at('to_sort', 'haul')
+    repo.trash.moveManyToTrash([m.id], { origin: 'import' })
+    expect(repo.trash.getTrashEntries()).toMatchObject([{ row: { id: m.id }, origin: 'import' }])
+  })
+
+  it('Restore puts a tossed mockup back in the inbox it came from, and forgets where it was', () => {
+    const m = at('to_sort', 'back')
+    repo.trash.moveManyToTrash([m.id])
+
+    repo.trash.restoreMany([m.id])
+
+    expect(repo.mockups.getMockup(m.id)).toMatchObject({ stage: 'to_sort', deletedAt: null, trashOrigin: null })
+    expect(repo.inbox.list('to_sort').map((r) => r.id)).toContain(m.id)
+  })
+})
+
+describe('a move that fails part-way changes nothing', () => {
+  beforeEach(() => ensureSearchIndex(db))
+
+  /** Two indexed mockups; SQLite refuses any change to the second. */
+  const twoWithTheSecondStuck = (when: string) => {
+    const [a, b] = ['First', 'Second'].map((title) => {
+      const m = repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/stuck-${title}.psd` }))
+      repo.search.upsertSearchIndex(m.id)
+      return m
+    }) as [Mockup, Mockup]
+    sqlite.exec(`CREATE TRIGGER stuck ${when} ON mockups WHEN OLD.id = ${b.id}
+      BEGIN SELECT RAISE(ABORT, 'stuck'); END`)
+    return [a, b] as const
+  }
+
+  it('moveManyToTrash', () => {
+    const [a, b] = twoWithTheSecondStuck('BEFORE UPDATE OF deleted_at')
+    expect(() => repo.trash.moveManyToTrash([a.id, b.id])).toThrow(/stuck/)
+    expect(repo.mockups.getMockup(a.id)?.deletedAt).toBeNull()
+    expect(repo.search.isIndexed(a.id)).toBe(true)
+  })
+
+  it('restoreMany', () => {
+    const a = repo.mockups.createMockup(approvedMockup({ title: 'First', libraryPath: '/lib/r1.psd' }))
+    const b = repo.mockups.createMockup(approvedMockup({ title: 'Second', libraryPath: '/lib/r2.psd' }))
+    repo.trash.moveManyToTrash([a.id, b.id])
+    sqlite.exec(`CREATE TRIGGER stuck BEFORE UPDATE OF deleted_at ON mockups WHEN OLD.id = ${b.id}
+      BEGIN SELECT RAISE(ABORT, 'stuck'); END`)
+
+    expect(() => repo.trash.restoreMany([a.id, b.id])).toThrow(/stuck/)
+    expect(repo.mockups.getMockup(a.id)?.deletedAt).not.toBeNull()
+    expect(repo.search.isIndexed(a.id)).toBe(false)
+  })
+
+  it('deleteMockupsHard', () => {
+    const [a, b] = twoWithTheSecondStuck('BEFORE DELETE')
+    expect(() => repo.trash.deleteMockupsHard([a.id, b.id])).toThrow(/stuck/)
+    expect(repo.mockups.getMockup(a.id)).toBeDefined()
+    expect(repo.search.isIndexed(a.id)).toBe(true)
+    expect(repo.search.isIndexed(b.id)).toBe(true)
+  })
+})
+
+describe('moveManyToTrash: a mockup inside a pile', () => {
+  beforeEach(() => ensureSearchIndex(db))
+
+  const pileOf = (count: number) => {
+    const top = repo.mockups.createMockup(
+      approvedMockup({ title: 'Clay mug', libraryPath: '/lib/p0.psd', isGroup: true, variation: 'front' })
+    )
+    const members = Array.from({ length: count - 1 }, (_, i) =>
+      repo.mockups.createMockup(
+        approvedMockup({
+          title: 'Clay mug',
+          libraryPath: `/lib/p${i + 1}.psd`,
+          groupId: top.id,
+          variation: `side ${i + 1}`
+        })
+      )
+    )
+    return { top, members }
+  }
+  /** Rows the Trash, the pile page and Empty Trash can't see: in Trash and still in a pile. */
+  const stranded = () =>
+    sqlite.prepare('SELECT id FROM mockups WHERE deleted_at IS NOT NULL AND group_id IS NOT NULL').all()
+
+  it('takes it out of the pile first, so the pile counts one fewer and Trash lists it on its own', () => {
+    const { top, members } = pileOf(3)
+    const [gone, stays] = members as [Mockup, Mockup]
+
+    expect(repo.trash.moveManyToTrash([gone.id])).toBe(1)
+
+    expect(stranded()).toEqual([])
+    expect(repo.piles.getMockupsByGroupId(top.id).map((m) => m.id)).toEqual([stays.id])
+    expect(repo.library.getLibrary({ sort: 'date' })[0]).toMatchObject({
+      id: top.id,
+      pile: { memberCount: 2 }
+    })
+    expect(repo.trash.getTrashEntries()).toMatchObject([{ row: { id: gone.id, pile: null }, ids: [gone.id] }])
+  })
+
+  it('keeps its full title once it is on its own', () => {
+    const { members } = pileOf(3)
+    const gone = members[0]!
+
+    repo.trash.moveManyToTrash([gone.id])
+
+    expect(repo.mockups.getMockup(gone.id)).toMatchObject({
+      title: 'Clay mug · side 1',
+      variation: null,
+      variationSource: null
+    })
+  })
+
+  it('a pile left with one mockup stops being a pile', () => {
+    const { top, members } = pileOf(2)
+
+    repo.trash.moveManyToTrash([members[0]!.id])
+
+    expect(stranded()).toEqual([])
+    expect(repo.mockups.getMockup(top.id)).toMatchObject({ isGroup: false, groupId: null, title: 'Clay mug · front' })
+    expect(repo.library.getLibrary({ sort: 'date' })).toMatchObject([{ id: top.id, pile: null }])
+  })
+
+  it('Restore brings it back on its own and leaves the pile as it is', () => {
+    const { top, members } = pileOf(3)
+    const gone = members[0]!
+    repo.trash.moveManyToTrash([gone.id])
+
+    expect(repo.trash.restoreMany([gone.id])).toBe(1)
+
+    expect(repo.mockups.getMockup(gone.id)).toMatchObject({ deletedAt: null, isGroup: false, groupId: null })
+    expect(repo.piles.getMockupsByGroupId(top.id).map((m) => m.id)).toEqual([members[1]!.id])
+    expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id).sort()).toEqual(
+      [top.id, gone.id].sort()
+    )
+  })
+
+  it('a mockup whose pile goes to Trash in the same move goes with its pile', () => {
+    const { top, members } = pileOf(3)
+
+    expect(repo.trash.moveManyToTrash([members[0]!.id, top.id])).toBe(1)
+
+    expect(stranded()).toEqual([])
+    expect(repo.trash.getTrashEntries()).toMatchObject([
+      { row: { id: top.id }, ids: [top.id, ...members.map((m) => m.id)] }
+    ])
   })
 })
 

@@ -15,6 +15,11 @@ export interface SlowLimits {
 }
 
 export const SLOW_FACTOR = 2.5
+/**
+ * At this many times the threshold the run is stopped and the mockup can't be written (L6.E3), so
+ * one stuck run can't hold up the queue (Neesh, 2026-10-26).
+ */
+export const HARD_STOP_FACTOR = 3
 /** Runs kept per model. */
 export const RECENT_RUNS = 20
 /** With fewer runs than this the median says too little about the Mac, so the ceiling stands. */

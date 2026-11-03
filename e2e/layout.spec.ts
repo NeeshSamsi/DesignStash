@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { join } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
-import { test, expect, type E2EApp } from './fixtures/app'
+import { test, expect, setWindowSize } from './fixtures/app'
 // Real mockups from the test set when it is there, else generated ones: the screenshots should
 // show real covers, tall, wide and with a kit's placeholder screen.
 import { placeMockups } from './fixtures/real-mockups'
@@ -17,18 +17,51 @@ const SIZES = [
   { width: 1440, height: 900 }
 ] as const
 
-async function resize(app: E2EApp, width: number, height: number): Promise<void> {
-  await app.app.evaluate(
-    ({ BrowserWindow }, [w, h]) => {
-      const win = BrowserWindow.getAllWindows()[0]
-      win?.setSize(w as number, h as number)
-      win?.center()
-    },
-    [width, height] as const
-  )
+/** The smallest the window can be. */
+const MINIMUM = SIZES[0]
+
+/** Waits until `target` stops moving (a toast slides in and restacks), then returns its box. */
+async function settledBox(
+  target: Locator
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  let last = ''
   await expect
-    .poll(() => app.window.evaluate(() => [window.innerWidth, window.innerHeight]))
-    .toEqual([width, height])
+    .poll(
+      async () => {
+        const now = JSON.stringify(await target.boundingBox())
+        const still = now === last && now !== 'null'
+        last = now
+        return still
+      },
+      { message: 'the toast settles', intervals: [150] }
+    )
+    .toBe(true)
+  return JSON.parse(last) as { x: number; y: number; width: number; height: number }
+}
+
+/**
+ * A toast raised over a flow: none of the flow's footer buttons sits under it, and the toast's own
+ * button is the topmost thing at its centre, above the modal's layer.
+ */
+async function toastClearOf(toast: Locator, buttons: Locator): Promise<void> {
+  const t = await settledBox(toast)
+  const covered: string[] = []
+  for (const button of await buttons.all()) {
+    const b = await button.boundingBox()
+    if (!b) continue
+    if (b.x < t.x + t.width && t.x < b.x + b.width && b.y < t.y + t.height && t.y < b.y + b.height)
+      covered.push(await button.innerText())
+  }
+  expect(covered, 'footer buttons under the toast').toEqual([])
+  const reachable = await toast
+    .getByRole('button')
+    .first()
+    .evaluate((button) => {
+      const box = button.getBoundingClientRect()
+      const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      return top !== null && (top === button || button.contains(top))
+    })
+  expect(reachable, 'the toast’s button can be pressed').toBe(true)
 }
 
 async function inside(page: Page, target: Locator, what: string): Promise<void> {
@@ -78,7 +111,7 @@ for (const { width, height } of SIZES) {
       await window.waitForTimeout(400)
       await window.screenshot({ path: `test-results/layout/${width}x${height}-${name}.png` })
     }
-    await resize(app, width, height)
+    await setWindowSize(app, { width, height })
 
     const desk = join(app.userData, 'Desktop')
     // A folder of three iMacs makes a pile; the MacBook (wide) and the can (tall) stand alone.
@@ -145,6 +178,21 @@ for (const { width, height } of SIZES) {
       await inside(window, window.getByRole('button', { name: /^Stash pile/ }), 'Stash pile')
       await shot('look-over-review')
       await window.getByRole('button', { name: /^Stash pile/ }).click()
+
+      // At the smallest window the flow fills almost all of it, and its Undo toast lands in the
+      // bottom-right corner, where the flow keeps its main button.
+      if (width === MINIMUM.width && height === MINIMUM.height) {
+        await test.step('the Undo toast over the flow', async () => {
+          const toast = window.locator('[data-ds="Toast"]').filter({ hasText: 'Pile stashed' })
+          await expect(toast).toBeVisible()
+          const footer = dialog.getByRole('button', {
+            name: /^(Back|Skip for now|Finish later|Stash|Stash & next)$/
+          })
+          await expect(footer.first()).toBeVisible()
+          await toastClearOf(toast, footer)
+          await shot('look-over-toast')
+        })
+      }
 
       // The two on their own come next, in either order.
       for (const step of ['look-over-single', 'look-over-last']) {

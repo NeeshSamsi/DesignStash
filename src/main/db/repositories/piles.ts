@@ -1,14 +1,21 @@
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { mockups } from '../schema'
 import type { Mockup } from '../schema'
 import type { ConfirmedGroup } from '@shared/grouping'
+import type { VariationSource } from '@shared/pile-variation'
 
-/** A row's place in a pile. Restoring these rows undoes any pile change. */
+/**
+ * A row's place in a pile, with its titles, since joining and leaving a pile changes them (the base
+ * and the variation). A merge returns these from before it (`before`).
+ */
 export interface PileRow {
   id: number
   isGroup: boolean
   groupId: number | null
+  title?: string | undefined
+  variation?: string | null | undefined
+  variationSource?: VariationSource | null | undefined
 }
 
 /** Where a row sits: a pile's top, a member under a top, or on its own. */
@@ -38,7 +45,10 @@ export function layOutPile(tx: Pick<AppDatabase, 'update'>, topId: number, ids: 
 export interface PileChange {
   /** The pile's id after the change (its top mockup). */
   pileId: number
-  /** The earlier state of every row the change touched. */
+}
+
+/** A merge, with the earlier state of every row it moved. */
+export interface PileMerge extends PileChange {
   before: PileRow[]
 }
 
@@ -70,6 +80,21 @@ export class PileRepository {
     })
   }
 
+  /** Every pile's id (its top), in Trash or not, at any stage. */
+  getPileTopIds(): number[] {
+    return this.db.select({ id: mockups.id }).from(mockups).where(eq(mockups.isGroup, true)).all().map((r) => r.id)
+  }
+
+  /** Mockups on their own that still hold a variation from a pile they left. */
+  getLoneIdsWithVariation(): number[] {
+    return this.db
+      .select({ id: mockups.id })
+      .from(mockups)
+      .where(and(eq(mockups.isGroup, false), isNull(mockups.groupId), isNotNull(mockups.variation)))
+      .all()
+      .map((r) => r.id)
+  }
+
   collectGroupIds(leaderId: number): number[] {
     const members = this.getMockupsByGroupId(leaderId)
     return [leaderId, ...members.map((m) => m.id)]
@@ -79,25 +104,20 @@ export class PileRepository {
   getPileRows(ids: number[]): PileRow[] {
     const found = new Map(
       this.db
-        .select({ id: mockups.id, isGroup: mockups.isGroup, groupId: mockups.groupId })
+        .select({
+          id: mockups.id,
+          isGroup: mockups.isGroup,
+          groupId: mockups.groupId,
+          title: mockups.title,
+          variation: mockups.variation,
+          variationSource: mockups.variationSource
+        })
         .from(mockups)
         .where(inArray(mockups.id, ids))
         .all()
         .map((r) => [r.id, r])
     )
     return ids.flatMap((id) => found.get(id) ?? [])
-  }
-
-  /** Put rows back as they were (Undo). Rows that were deleted since are skipped. */
-  restorePileRows(rows: PileRow[]): void {
-    this.db.transaction((tx) => {
-      for (const row of rows) {
-        tx.update(mockups)
-          .set({ isGroup: row.isGroup, groupId: row.groupId })
-          .where(eq(mockups.id, row.id))
-          .run()
-      }
-    })
   }
 
   /** A pile from mockups on their own; `topId` becomes the leader. */
@@ -108,9 +128,8 @@ export class PileRepository {
     if (!ids.includes(topId)) throw new Error('The top mockup must be in the pile')
     this.assertOnTheirOwn(ids)
 
-    const before = this.getPileRows(ids)
     this.db.transaction((tx) => layOutPile(tx, topId, ids))
-    return { pileId: topId, before }
+    return { pileId: topId }
   }
 
   /** Put mockups on their own into an existing pile; the top stays on top. */
@@ -120,16 +139,15 @@ export class PileRepository {
     this.assertPile(pileId)
     this.assertOnTheirOwn(ids)
 
-    const before = this.getPileRows(ids)
     this.db.transaction((tx) => layOutPile(tx, pileId, ids))
-    return { pileId, before }
+    return { pileId }
   }
 
   /**
    * Fold piles (or mockups on their own) into a target pile. The target keeps its top;
    * each source's top and members become members of the target.
    */
-  mergePiles(sourceIds: number[], targetId: number): PileChange {
+  mergePiles(sourceIds: number[], targetId: number): PileMerge {
     const sources = [...new Set(sourceIds)]
     if (sources.length === 0) throw new Error('Nothing to merge into the pile')
     if (sources.includes(targetId)) throw new Error('A pile cannot be merged into itself')
@@ -156,14 +174,13 @@ export class PileRepository {
   /** Hand the pile to another of its mockups. The pile's id becomes `topId`. */
   setPileTop(pileId: number, topId: number): PileChange {
     this.assertPile(pileId)
-    if (topId === pileId) return { pileId, before: [] }
+    if (topId === pileId) return { pileId }
 
     const members = this.getMockupsByGroupId(pileId)
     if (!members.some((m) => m.id === topId)) throw new Error('That mockup is not in the pile')
 
     const oldTop = this.requireLive(pileId)
     const ids = [pileId, ...members.map((m) => m.id)]
-    const before = this.getPileRows(ids)
     this.db.transaction((tx) => {
       layOutPile(tx, topId, ids)
       // The star belongs to the pile, so it moves with the top.
@@ -176,16 +193,15 @@ export class PileRepository {
         .where(eq(mockups.id, pileId))
         .run()
     })
-    return { pileId: topId, before }
+    return { pileId: topId }
   }
 
   /** Break a pile up: every mockup lands on its own. */
-  disbandPile(pileId: number): PileChange & { freedIds: number[] } {
+  disbandPile(pileId: number): { freedIds: number[] } {
     this.assertPile(pileId)
     const freedIds = this.collectGroupIds(pileId)
-    const before = this.getPileRows(freedIds)
     this.ungroupGroup(pileId)
-    return { pileId, before, freedIds }
+    return { freedIds }
   }
 
   /**
@@ -193,23 +209,19 @@ export class PileRepository {
    * lowest id, the order the pile lists them). A pile left with one mockup stops being a pile. Each
    * mockup keeps its own star. `pileId` is the pile's id afterwards, or null when it no longer exists.
    */
-  removeFromPile(
-    pileId: number,
-    mockupId: number
-  ): { pileId: number | null; before: PileRow[]; freedIds: number[] } {
+  removeFromPile(pileId: number, mockupId: number): { pileId: number | null; freedIds: number[] } {
     this.assertPile(pileId)
     const members = this.getMockupsByGroupId(pileId).sort((a, b) => a.id - b.id)
     const inPile = mockupId === pileId || members.some((m) => m.id === mockupId)
     if (!inPile) throw new Error('That mockup is not in the pile')
 
     const all = [pileId, ...members.map((m) => m.id)]
-    const before = this.getPileRows(all)
     const rest = all.filter((id) => id !== mockupId)
 
     // One left: no pile any more, both are on their own.
     if (rest.length < 2) {
       this.ungroupGroup(pileId)
-      return { pileId: null, before, freedIds: all }
+      return { pileId: null, freedIds: all }
     }
 
     const newTop = mockupId === pileId ? (rest[0] as number) : pileId
@@ -217,7 +229,7 @@ export class PileRepository {
       tx.update(mockups).set(PLACE_ALONE).where(eq(mockups.id, mockupId)).run()
       layOutPile(tx, newTop, rest)
     })
-    return { pileId: newTop, before, freedIds: [mockupId] }
+    return { pileId: newTop, freedIds: [mockupId] }
   }
 
   private requireLive(id: number): Mockup {

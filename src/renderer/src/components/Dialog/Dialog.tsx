@@ -1,8 +1,6 @@
-import { ICON_STROKE } from '@renderer/design-system/icon'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { dialogDescriptionClass, dialogPanelClass, dialogTitleClass } from '@renderer/ui/dialog'
 import { DIALOG_DEFAULTS, type DialogContractProps } from './Dialog.types'
 import { dialogVariants } from './Dialog.variants'
@@ -14,7 +12,7 @@ export interface DialogProps extends DialogContractProps {
 /**
  * Dialog — Overlay shells. Screens never use these directly — they use Modal / ConfirmDialog / ChoiceDialog.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=213-781
- * Adapter over ui/dialog.tsx, ui/alert-dialog.tsx and ui/sheet.tsx: this renders the static shell
+ * Adapter over ui/dialog.tsx and ui/alert-dialog.tsx: this renders the static shell
  * (catalog, Figma parity); the live overlays are the ui/ primitives.
  */
 export function Dialog({ className, ...rest }: DialogProps) {
@@ -32,9 +30,7 @@ export function Dialog({ className, ...rest }: DialogProps) {
           {props.showDescription && <p className={dialogDescriptionClass}>{props.description}</p>}
         </div>
         {!isAlert && (
-          <Button variant="ghost" size="icon" aria-label="Close">
-            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
-          </Button>
+          <Button variant="ghost" size="icon" aria-label="Close" iconStart={Cancel01Icon} />
         )}
       </div>
       {!isAlert && (
@@ -49,7 +45,7 @@ export function Dialog({ className, ...rest }: DialogProps) {
       )}
       <div className="flex justify-end gap-2">
         <Button variant="ghost">Cancel</Button>
-        <Button variant={isAlert ? 'destructive' : 'default'}>
+        <Button variant={isAlert ? 'destructive' : 'primary'}>
           {isAlert ? 'Move to Trash' : 'Confirm'}
         </Button>
       </div>

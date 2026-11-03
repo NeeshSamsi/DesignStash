@@ -9,7 +9,7 @@ import {
   UndoIcon
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
-import { mockupCountLabel } from '@shared/pile-title'
+import { mockups } from '@renderer/lib/plural'
 import {
   canDisband,
   canNewPile,
@@ -17,6 +17,7 @@ import {
   canTakeOut,
   getPile,
   moveTargets,
+  pileOf,
   titleOfPile,
   undoLabel,
   type BoardAction,
@@ -45,6 +46,8 @@ export type MenuRow =
       icon: IconSvgElement
       shortcut?: string
       disabled?: boolean
+      /** Why it is disabled, in a few words; the row shows it after its label. */
+      reason?: string
       destructive?: boolean
       action: BoardAction
     }
@@ -54,6 +57,7 @@ export type MenuRow =
       label: string
       icon: IconSvgElement
       disabled?: boolean
+      reason?: string
       items: SubItem[]
     }
   | { type: 'divider' }
@@ -63,6 +67,21 @@ const item = (row: Omit<Extract<MenuRow, { type: 'item' }>, 'type'>): MenuRow =>
   ...row
 })
 const divider: MenuRow = { type: 'divider' }
+
+/** `disabled` with its reason, or nothing when `why` is null. */
+const unless = (why: string | null) => (why === null ? {} : { disabled: true, reason: why })
+
+/** Why Put on top can't run on the selection, or null when it can. */
+function putOnTopBlock(state: BoardState): string | null {
+  if (canPutOnTop(state)) return null
+  const [only] = state.selectedTiles
+  if (state.selectedTiles.length !== 1 || only === undefined) return 'one at a time'
+  return pileOf(state, only) ? 'already on top' : 'not in a pile'
+}
+
+/** Why New pile can't run on the selection, or null when it can. */
+const newPileBlock = (state: BoardState) =>
+  canNewPile(state) ? null : state.selectedTiles.length < 2 ? 'needs 2 or more' : 'already a pile'
 
 /** The Move to ▸ destinations: every pile that doesn't already hold the lot, On its own, New pile. */
 function moveItems(state: BoardState): SubItem[] {
@@ -105,29 +124,30 @@ function tileRows(state: BoardState): MenuRow[] {
     key: 'move',
     label: n > 1 ? `Move ${n} to` : 'Move to',
     icon: FolderTransferIcon,
-    disabled: moves.length === 0,
+    // With nothing in a pile, Move to only has piles to offer, and there are none.
+    ...unless(moves.length === 0 ? 'no piles yet' : null),
     items: moves
   }
   const takeOut = item({
     key: 'take-out',
     label: n > 1 ? `Take ${n} out of piles` : 'Take out of pile',
     icon: Logout01Icon,
-    disabled: !canTakeOut(state),
+    ...unless(canTakeOut(state) ? null : n > 1 ? 'none in a pile' : 'not in a pile'),
     action: { type: 'take-out' }
   })
   const putOnTop = item({
     key: 'put-on-top',
     label: 'Put on top',
     icon: ArrowUp01Icon,
-    disabled: !canPutOnTop(state),
+    ...unless(putOnTopBlock(state)),
     action: { type: 'put-on-top' }
   })
   const newPile = item({
     key: 'new-pile',
-    label: n > 1 ? `New pile from ${mockupCountLabel(n)}` : 'New pile',
+    label: n > 1 ? `New pile from ${mockups(n)}` : 'New pile',
     icon: Layers01Icon,
     shortcut: '⌘G',
-    disabled: !canNewPile(state),
+    ...unless(newPileBlock(state)),
     action: { type: 'new-pile' }
   })
   // With several tiles, making a pile leads (S4.2). With one it can't be made, so it comes last (S4.1).
@@ -144,7 +164,7 @@ function pileRows(state: BoardState): MenuRow[] {
     icon: Delete02Icon,
     shortcut: '⇧⌘G',
     destructive: true,
-    disabled: !canDisband(state),
+    ...unless(canDisband(state) ? null : 'no pile picked'),
     action: { type: 'disband' }
   })
   if (chosen.length > 1) {
@@ -173,7 +193,7 @@ function pileRows(state: BoardState): MenuRow[] {
       key: 'merge-into',
       label: 'Merge into',
       icon: GitMergeIcon,
-      disabled: others.length === 0,
+      ...unless(others.length === 0 ? 'no other piles' : null),
       items: others.map((p) => ({
         key: p.id,
         label: `${titleOfPile(state, getPile(state, p.id)!).title} · ${p.memberIds.length}`,
@@ -200,7 +220,7 @@ function boardRows(state: BoardState): MenuRow[] {
       label: last ? `Undo ${last}` : 'Undo',
       icon: UndoIcon,
       shortcut: '⌘Z',
-      disabled: last === null,
+      ...unless(last === null ? 'nothing to undo' : null),
       action: { type: 'undo' }
     })
   ]

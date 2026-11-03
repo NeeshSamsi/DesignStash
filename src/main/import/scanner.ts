@@ -1,10 +1,11 @@
-import { createWriteStream, mkdirSync, readdirSync, statSync } from 'node:fs'
-import { extname, join, basename, sep, relative } from 'node:path'
+import { createWriteStream, mkdirSync, promises as fs, type Dirent } from 'node:fs'
+import { join, basename, sep, relative } from 'node:path'
 import { pipeline } from 'node:stream/promises'
-import { collectCandidateImages, imagesNamedFor } from '../psd'
+import { imagesNamedFor, isSidecarImage, leadsToFile } from '../psd/sidecar'
 import { archiveKindOf, classifyEntry, entryPath, listArchive, openArchiveEntry } from './archive'
 import type { ArchiveEntry } from './archive'
 import { archiveFolderTrail } from './archive-name'
+import { isPhotoshopFile } from '../psd/photoshop-file'
 
 export interface ScannedPsd {
   /** The PSD on disk, or for a PSD inside a zip, the zip's path joined with the entry's (never opened as is). */
@@ -23,10 +24,13 @@ export interface ScannedPsd {
   importContext: { originalFileName: string; folderTrail: string[] }
 }
 
-/** A dropped archive that gave no PSDs. Each counts once. */
-export interface SkippedArchive {
+/**
+ * Something in the drop that gave no PSDs and gets a row saying why: an archive left whole, or a
+ * file or folder that couldn't be read (gone, locked, or a cloud file not on this Mac). Each counts once.
+ */
+export interface SkippedItem {
   path: string
-  /** Its file name, as dropped. */
+  /** Its file or folder name, as dropped. */
   name: string
   reason: 'archive-unsupported' | 'no-psd-in-archive' | 'unreadable'
 }
@@ -34,7 +38,7 @@ export interface SkippedArchive {
 export interface ScanResult {
   psds: ScannedPsd[]
   skippedCount: number // non-.psd files encountered (files inside zips are packaging, not counted)
-  skippedArchives: SkippedArchive[]
+  skippedItems: SkippedItem[]
   candidateImagePaths: string[] // ALL sidecar-eligible images across the dropped folders (for M2 resolveCover)
 }
 
@@ -43,13 +47,13 @@ export interface ScanOptions {
   stagingDir: string
 }
 
-type ZipScan = { psds: ScannedPsd[]; problem?: SkippedArchive['reason'] }
+type ZipScan = { psds: ScannedPsd[]; problem?: SkippedItem['reason'] }
 
 export async function scanForPsds(droppedPaths: string[], opts: ScanOptions): Promise<ScanResult> {
   const result: ScanResult = {
     psds: [],
     skippedCount: 0,
-    skippedArchives: [],
+    skippedItems: [],
     candidateImagePaths: []
   }
 
@@ -67,34 +71,54 @@ export async function scanForPsds(droppedPaths: string[], opts: ScanOptions): Pr
     )
   }
 
-  function recurse(path: string, root: string) {
-    const stat = statSync(path)
-    if (stat.isDirectory()) {
-      for (const entry of readdirSync(path, { withFileTypes: true })) {
-        if (entry.name.startsWith('.')) continue
-        const fullPath = join(path, entry.name)
-        recurse(fullPath, root)
-      }
-    } else if (stat.isFile()) {
-      const archive = archiveKindOf(path)
-      if (extname(path).toLowerCase() === '.psd') {
-        result.psds.push({
-          psdPath: path,
-          importContext: {
-            originalFileName: basename(path),
-            folderTrail: trailOf(path, root)
-          }
-        })
-      } else if (archive === 'zip') {
-        zips.push({ path, outerTrail: trailOf(path, root) })
-      } else if (archive === 'unsupported') {
-        result.skippedArchives.push({
-          path,
-          name: basename(path),
-          reason: 'archive-unsupported'
-        })
-      } else {
-        result.skippedCount++
+  const unreadable = (path: string): void => {
+    result.skippedItems.push({ path, name: basename(path), reason: 'unreadable' })
+  }
+
+  function addFile(path: string, root: string) {
+    const archive = archiveKindOf(path)
+    if (isPhotoshopFile(path)) {
+      result.psds.push({
+        psdPath: path,
+        importContext: {
+          originalFileName: basename(path),
+          folderTrail: trailOf(path, root)
+        }
+      })
+    } else if (archive === 'zip') {
+      zips.push({ path, outerTrail: trailOf(path, root) })
+    } else if (archive === 'unsupported') {
+      result.skippedItems.push({
+        path,
+        name: basename(path),
+        reason: 'archive-unsupported'
+      })
+    } else {
+      result.skippedCount++
+    }
+  }
+
+  /**
+   * A folder at a time, so a big drop never holds up the main thread, gathering its PSDs and the
+   * images that could be their covers in the one pass. A folder it can't open is one unreadable row
+   * and the rest of the drop carries on. A link is followed to a file, never to a folder, which could
+   * lead back up the tree.
+   */
+  async function walk(dir: string, root: string): Promise<void> {
+    let entries: Dirent[]
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true })
+    } catch {
+      unreadable(dir)
+      return
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue
+      const fullPath = join(dir, entry.name)
+      if (entry.isDirectory()) await walk(fullPath, root)
+      else if (entry.isFile() || (entry.isSymbolicLink() && (await leadsToFile(fullPath)))) {
+        if (isSidecarImage(entry.name)) candidateImages.add(fullPath)
+        addFile(fullPath, root)
       }
     }
   }
@@ -130,7 +154,7 @@ export async function scanForPsds(droppedPaths: string[], opts: ScanOptions): Pr
     if (wanted.some((e) => e.entry.encrypted)) return { psds: [], problem: 'archive-unsupported' }
 
     const psds: ScannedPsd[] = []
-    let innerProblem: SkippedArchive['reason'] | undefined
+    let innerProblem: SkippedItem['reason'] | undefined
     for (const { entry, kind } of wanted) {
       if (kind === 'psd') {
         psds.push({
@@ -164,24 +188,33 @@ export async function scanForPsds(droppedPaths: string[], opts: ScanOptions): Pr
   }
 
   for (const path of droppedPaths) {
-    const stat = statSync(path)
-    // Cover images come from dropped folders. A dropped PSD gets only the images beside it with its
-    // own name, so its folder (Downloads, say) isn't walked; nor is a dropped zip's.
-    if (stat.isDirectory()) {
-      for (const imagePath of collectCandidateImages(path)) candidateImages.add(imagePath)
-    } else if (extname(path).toLowerCase() === '.psd') {
-      for (const imagePath of imagesNamedFor(path)) candidateImages.add(imagePath)
+    // Something dropped is gone, locked, or a cloud file not on this Mac: it gets its row, and the
+    // rest of the drop lands.
+    const stat = await fs.stat(path).catch(() => null)
+    if (!stat || !(stat.isDirectory() || stat.isFile())) {
+      unreadable(path)
+      continue
     }
     // A dropped folder's own name starts its PSDs' trail ("Long Website Mockup / PSD"): it is often the
     // only name that says what they are. A dropped file's folder isn't part of the drop.
-    recurse(path, join(path, '..'))
+    const root = join(path, '..')
+    // Cover images come from dropped folders, as they are walked. A dropped PSD gets only the images
+    // beside it with its own name, so its folder (Downloads, say) isn't walked; nor is a dropped zip's.
+    if (stat.isDirectory()) {
+      await walk(path, root)
+    } else {
+      if (isPhotoshopFile(path)) {
+        for (const imagePath of await imagesNamedFor(path)) candidateImages.add(imagePath)
+      }
+      addFile(path, root)
+    }
   }
 
   for (const zip of zips) {
     const name = basename(zip.path)
     const scan = await scanZip(zip.path, name, [name], [], zip.outerTrail)
     result.psds.push(...scan.psds)
-    if (scan.problem) result.skippedArchives.push({ path: zip.path, name, reason: scan.problem })
+    if (scan.problem) result.skippedItems.push({ path: zip.path, name, reason: scan.problem })
   }
 
   result.candidateImagePaths = [...candidateImages]

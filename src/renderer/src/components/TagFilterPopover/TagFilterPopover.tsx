@@ -1,11 +1,8 @@
-import { ICON_STROKE } from '@renderer/design-system/icon'
 import { Fragment, useState } from 'react'
-import { Cancel01Icon, Settings01Icon, Tag01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import { Settings01Icon, Tag01Icon } from '@hugeicons/core-free-icons'
 import { CategoryPill } from '@renderer/components/CategoryPill'
 import { Checkbox } from '@renderer/components/Checkbox'
 import { EmptyState } from '@renderer/components/EmptyState'
-import { Popover } from '@renderer/components/Popover'
 import { Tooltip } from '@renderer/components/Tooltip'
 import {
   categoryCounts,
@@ -19,8 +16,9 @@ import {
   type FilterCategory
 } from '@renderer/lib/tag-filter'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
-import { InputGroup, InputGroupInput } from '@renderer/ui/input'
+import { Button } from '@renderer/components/Button'
+import { Input } from '@renderer/components/Input'
+import { Popover } from '@renderer/components/Popover'
 import {
   TAG_FILTER_POPOVER_DEFAULTS,
   type TagFilterPopoverContractProps,
@@ -225,24 +223,15 @@ export function TagFilterPopover({
     />
   ) : (
     <>
-      <InputGroup>
-        <InputGroupInput
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={`Search ${totalTagCount(data.map((c) => ({ ...c })))} tags`}
-          aria-label="Search tags"
-        />
-        {searching && (
-          <button
-            type="button"
-            aria-label="Clear search"
-            onClick={() => setQuery('')}
-            className="rounded-sm text-tertiary outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} className="size-4" />
-          </button>
-        )}
-      </InputGroup>
+      <Input
+        variant="search"
+        showHint={false}
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        onClear={() => setQuery('')}
+        placeholder={`Search ${totalTagCount(data.map((c) => ({ ...c })))} tags`}
+        aria-label="Search tags"
+      />
       {matches.length > 0 && (
         <div role="group" aria-label="Narrow by category" className="flex flex-wrap gap-1">
           <CategoryPill
@@ -319,8 +308,10 @@ export function TagFilterPopover({
     </>
   )
 
+  // Popover's one-column layout, as Figma draws the tag filter's panel.
   return (
     <Popover
+      layout="one-column"
       title="Tags"
       headerAction={clearAll}
       {...(trigger !== undefined ? { trigger } : {})}

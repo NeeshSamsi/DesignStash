@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { LlamaServer, type LlamaServerDeps, type ServerProcess } from './llama-server'
+import { LlamaServer, LlamaStartError, type LlamaServerDeps, type ServerProcess } from './llama-server'
 
 /** A child process that does nothing until the test makes it exit. */
 class FakeProcess extends EventEmitter implements ServerProcess {
@@ -41,12 +41,13 @@ interface Harness {
 function harness(
   opts: {
     health?: () => Response | Promise<Response>
-    chat?: () => Response | Promise<Response>
+    chat?: (init?: RequestInit) => Response | Promise<Response>
     exitsOnTerm?: boolean
     idleMs?: number
     startTimeoutMs?: number
     extraArgs?: string[]
     tracker?: { record: (pid: number) => void; clear: () => void }
+    log?: (line: string) => void
   } = {}
 ): Harness {
   const processes: FakeProcess[] = []
@@ -67,13 +68,14 @@ function harness(
       const url = String(input)
       if (url.endsWith('/health')) return opts.health ? opts.health() : json({ status: 'ok' })
       chatBodies.push(JSON.parse(String(init?.body)))
-      return opts.chat ? opts.chat() : reply('{"title":"t"}')
+      return opts.chat ? opts.chat(init) : reply('{"title":"t"}')
     }) as unknown as typeof fetch,
     sleep: async () => {},
     onParentExit: (listener) => {
       parentExit.listeners.add(listener)
       return () => parentExit.listeners.delete(listener)
-    }
+    },
+    ...(opts.log && { log: opts.log })
   }
 
   const server = new LlamaServer(
@@ -198,6 +200,103 @@ describe('LlamaServer', () => {
 
     await expect(h.server.chat({})).resolves.toBe('{"title":"t"}')
     expect(h.spawnArgs).toHaveLength(2)
+  })
+
+  it("fails at once, with the reason, when the binary can't be started, and starts afresh next time (F-039)", async () => {
+    // A spawn that fails (no file, no execute bit) emits 'error' and never 'exit', and nothing listens on the port.
+    const h = harness({
+      health: () => {
+        if (h.processes.at(-1)!.pid === undefined) throw new TypeError('fetch failed')
+        return json({ status: 'ok' })
+      }
+    })
+    const spawn = h.deps.spawn
+    let broken = true
+    h.deps.spawn = (command, args) => {
+      const p = spawn(command, args) as FakeProcess
+      if (broken) {
+        broken = false
+        p.pid = undefined
+        process.nextTick(() => p.emit('error', Object.assign(new Error('spawn /bin/llama-server ENOENT'), { code: 'ENOENT' })))
+      }
+      return p
+    }
+    h.deps.sleep = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+    await expect(h.server.chat({})).rejects.toThrow(/couldn't start.*ENOENT/)
+    const healthChecks = vi.mocked(h.deps.fetch).mock.calls.filter(([url]) => String(url).endsWith('/health'))
+    expect(healthChecks.length).toBeLessThanOrEqual(2)
+    expect(h.server.running).toBe(false)
+
+    await expect(h.server.chat({})).resolves.toBe('{"title":"t"}')
+    expect(h.spawnArgs).toHaveLength(2)
+  })
+
+  it('logs each start, a start that fails, a stop, and an exit on its own, so a problem report shows every restart (F-075)', async () => {
+    const lines: string[] = []
+    let failFirst = true
+    const h = harness({
+      log: (line) => lines.push(line),
+      health: () => {
+        if (!failFirst) return json({ status: 'ok' })
+        failFirst = false
+        h.processes[0]!.exit(1)
+        return json({ error: 'Loading model' }, 503)
+      }
+    })
+
+    await expect(h.server.chat({})).rejects.toThrow(/exited while loading/)
+    await h.server.chat({})
+    h.processes[1]!.exit(139)
+    await h.server.chat({})
+    await h.server.stop()
+
+    expect(lines).toEqual([
+      expect.stringMatching(/^\[AI\] llama-server for m couldn't start: llama-server exited while loading \(code 1\)/),
+      expect.stringMatching(/^\[AI\] llama-server for m is up after \d+\.\d s\.$/),
+      '[AI] llama-server for m exited on its own (code 139). The next request starts it again.',
+      expect.stringMatching(/^\[AI\] llama-server for m is up after \d+\.\d s\.$/),
+      '[AI] llama-server for m stopped.'
+    ])
+  })
+
+  it("marks a start that fails as the runtime's (LlamaStartError), and a failed request as not (F-038)", async () => {
+    const exits = harness({
+      health: () => {
+        exits.processes[0]!.exit(1)
+        return json({ error: 'Loading model' }, 503)
+      }
+    })
+    await expect(exits.server.chat({})).rejects.toBeInstanceOf(LlamaStartError)
+    const never = harness({ health: () => json({ error: 'Loading model' }, 503), startTimeoutMs: 1000 })
+    await expect(never.server.chat({})).rejects.toBeInstanceOf(LlamaStartError)
+    const answers500 = harness({ chat: () => json({ error: 'boom' }, 500) })
+    const err = await answers500.server.chat({}).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(Error)
+    expect(err).not.toBeInstanceOf(LlamaStartError)
+  })
+
+  it("cancels a request when the caller's signal aborts, so the server is free for the next one (F-035)", async () => {
+    let first = true
+    let sent: AbortSignal | undefined
+    const h = harness({
+      chat: (init) => {
+        if (!first) return reply('{"title":"next"}')
+        first = false
+        sent = init?.signal ?? undefined
+        // A check that never answers until it is cancelled.
+        return new Promise<Response>((_, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('aborted'))))
+      }
+    })
+    const caller = new AbortController()
+    const asked = h.server.complete({}, caller.signal)
+    await vi.waitFor(() => expect(sent).toBeDefined())
+    expect(sent!.aborted).toBe(false)
+
+    caller.abort()
+    await expect(asked).rejects.toThrow(/aborted/)
+    expect(sent!.aborted).toBe(true)
+    await expect(h.server.chat({})).resolves.toBe('{"title":"next"}')
   })
 
   it('gives up and kills the server when it never becomes ready', async () => {

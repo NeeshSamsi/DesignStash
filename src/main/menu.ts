@@ -1,5 +1,8 @@
 import { Menu, type MenuItemConstructorOptions } from 'electron'
 import type { MenuCommand } from '@shared/ipc/menu'
+import { PLAIN_UNDO, type UndoMenuItems } from './undo/menu-items'
+
+export { undoMenuItems, type UndoMenuItems } from './undo/menu-items'
 
 /**
  * Help › DesignStash Guide opens this. There is no guide yet, so the item stays out of the menu
@@ -11,6 +14,8 @@ export interface MenuDeps {
   /** Hand a command to the window, which runs it like the matching in-app control. */
   send: (command: MenuCommand) => void
   openExternal: (url: string) => void
+  /** Edit › Undo and Redo as they read now. Plain and on without one. */
+  undo?: UndoMenuItems
   /** Adds Reload and the dev tools to View. */
   dev?: boolean
   /** Where Help › DesignStash Guide goes; without one there is no Guide item. */
@@ -19,7 +24,8 @@ export interface MenuDeps {
 
 /**
  * The window owns every app shortcut (lib/shortcuts.ts knows about fields, scopes and modals), so
- * the menu only shows the keys and never registers them: one key press never runs twice.
+ * the menu only shows the keys and never registers them: one key press never runs twice. Undo and
+ * Redo are the exception (see the Edit menu).
  */
 function command(
   deps: MenuDeps,
@@ -39,6 +45,7 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
   const devItems: MenuItemConstructorOptions[] = deps.dev
     ? [separator, { role: 'reload' }, { role: 'toggleDevTools' }]
     : []
+  const undo = deps.undo ?? PLAIN_UNDO
   const guideUrl = deps.guideUrl === undefined ? GUIDE_URL : deps.guideUrl
   const guide: MenuItemConstructorOptions[] = guideUrl
     ? [{ label: 'DesignStash Guide', click: () => deps.openExternal(guideUrl) }]
@@ -67,7 +74,32 @@ export function buildMenuTemplate(deps: MenuDeps): MenuItemConstructorOptions[] 
         command(deps, 'Add Folder…', 'import-folder', 'CmdOrCtrl+Shift+O')
       ]
     },
-    { role: 'editMenu' },
+    {
+      label: 'Edit',
+      submenu: [
+        // The menu owns ⌘Z and ⇧⌘Z, so the key reaches the window as a command, even inside a
+        // dialog. The window sends it to a focused field, an open flow, or the app's history.
+        {
+          label: undo.undo.label,
+          enabled: undo.undo.enabled,
+          accelerator: 'CmdOrCtrl+Z',
+          click: () => deps.send('undo')
+        },
+        {
+          label: undo.redo.label,
+          enabled: undo.redo.enabled,
+          accelerator: 'Shift+CmdOrCtrl+Z',
+          click: () => deps.send('redo')
+        },
+        separator,
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'pasteAndMatchStyle' },
+        { role: 'delete' },
+        { role: 'selectAll' }
+      ]
+    },
     {
       label: 'View',
       submenu: [

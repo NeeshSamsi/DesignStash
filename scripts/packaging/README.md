@@ -7,7 +7,10 @@ pnpm package        # package:stage, build, then package:mac
 ```
 
 That stages llama-server and the Swift helper into `build/`, builds the app, and writes
-`dist/DesignStash-<version>-arm64.dmg`. Signing is skipped (`CSC_IDENTITY_AUTO_DISCOVERY=false`).
+`dist/DesignStash-<version>-arm64.dmg`. The app is ad-hoc signed (identity `-`, no certificate), so
+`codesign --verify --deep --strict` passes and a downloaded copy gets macOS's Open Anyway. electron-builder
+rebuilds better-sqlite3 for Electron inside `node_modules`, so `postpackage:mac` puts the Node build
+back for the unit tests.
 The migrations, llama-server and the helper are shipped in `<resources>/drizzle`, `/llama-server`
 and `/helper`. The helper needs the macOS 27 SDK (Command Line Tools 27 or Xcode 27).
 
@@ -17,8 +20,9 @@ To try a packaged build without touching your real profile, start it with its ow
 /Applications/DesignStash.app/Contents/MacOS/DesignStash --user-data-dir=/tmp/ds-profile
 ```
 
-A packaged app uses `~/Library/Application Support/DesignStash`, which on a case-insensitive disk
-is the same folder `pnpm dev` uses (`designstash`). The override avoids sharing it.
+A packaged app uses `~/Library/Application Support/DesignStash`. `pnpm dev` keeps its own
+`DesignStash-dev` (src/main/dev-user-data.ts), so the two never share a library, settings or the
+single-instance lock. The override keeps a test run away from both.
 
 ## How a release happens
 

@@ -6,6 +6,8 @@ import type Database from 'better-sqlite3'
 import { IPC_CHANNELS, PUSH_CHANNELS, PUSH_CONTRACT, type IpcResult } from '@shared/ipc'
 import type { Repository } from '../db/repository'
 import { createSettingsStore, type SettingsStore } from '../settings'
+import { undoForTests } from '../undo/test-support'
+import type { UndoService } from '../undo/undo-service'
 import { createTestDb } from '../db/repositories/__tests__/setup'
 import type { HandlerContext } from './context'
 
@@ -28,6 +30,7 @@ let sqlite: Database.Database
 let repo: Repository
 let base: string
 let settings: SettingsStore
+let undo: UndoService
 let relaunch: ReturnType<typeof vi.fn<() => void>>
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
@@ -38,9 +41,11 @@ beforeEach(() => {
   base = mkdtempSync(join(tmpdir(), 'ds-settings-ipc-'))
   settings = createSettingsStore(base)
   mkdirSync(settings.getLibraryRoot(), { recursive: true })
-  ;({ sqlite, repo } = createTestDb())
+  const test = createTestDb()
+  ;({ sqlite, repo } = test)
   relaunch = vi.fn<() => void>()
-  registerSettingsHandlers({ settings, repo, push: vi.fn() } as unknown as HandlerContext)
+  ;({ undo } = undoForTests(repo, test.db, settings))
+  registerSettingsHandlers({ settings, repo, push: vi.fn(), undo } as unknown as HandlerContext)
   registerAppHandlers(relaunch)
 })
 
@@ -58,15 +63,38 @@ describe('stash channels', () => {
     })
   })
 
-  it('points at an existing folder and asks for a restart', async () => {
+  it('points at a folder that holds a stash and asks for a restart', async () => {
     const other = join(base, 'Other')
     mkdirSync(other)
+    writeFileSync(join(other, 'designstash.db'), '')
     expect(await call(IPC_CHANNELS.STASH_CHANGE, { path: other, mode: 'point' })).toEqual({
       success: true,
-      data: { ok: true, restartRequired: true }
+      data: { ok: true, restartRequired: true, undoEntryId: expect.any(Number) }
     })
     expect(await call(IPC_CHANNELS.STASH_INFO)).toMatchObject({
       data: { path: other, restartRequired: true }
+    })
+  })
+
+  it('a stash folder change waits for the restart, and undo cancels it until then', async () => {
+    const other = join(base, 'Other')
+    mkdirSync(other)
+    writeFileSync(join(other, 'designstash.db'), '')
+    await call(IPC_CHANNELS.STASH_CHANGE, { path: other, mode: 'point' })
+    expect(undo.history.state().undo).toMatchObject({ label: 'Change stash folder' })
+
+    await undo.history.undo()
+    expect(settings.get().pendingStash).toBeNull()
+    await undo.history.redo()
+    expect(settings.get().pendingStash).toMatchObject({ path: other, mode: 'point' })
+  })
+
+  it('will not point at a folder with no stash in it', async () => {
+    const empty = join(base, 'Empty')
+    mkdirSync(empty)
+    expect(await call(IPC_CHANNELS.STASH_CHANGE, { path: empty, mode: 'point' })).toEqual({
+      success: true,
+      data: { ok: false, reason: 'no-stash' }
     })
   })
 

@@ -82,20 +82,22 @@ export class MockupRepository {
       .all()
   }
 
-  mockupExistsByHash(hash: string): boolean {
-    return !!this.db.select().from(mockups).where(eq(mockups.contentHash, hash)).get()
+  /**
+   * The mockup that already has this file, if any. One in the library comes first. One in Trash says
+   * which Trash row brings it back: its own, or its pile's top, since a pile goes to Trash by its top.
+   */
+  findByHash(hash: string): { id: number; libraryPath: string; trashedAs: number | null } | undefined {
+    const twins = this.db.select().from(mockups).where(eq(mockups.contentHash, hash)).all()
+    const placed = twins.map((m) => {
+      const top = m.deletedAt === null && m.groupId !== null ? this.getMockup(m.groupId) : undefined
+      const trashedAs = m.deletedAt !== null ? m.id : top?.deletedAt ? top.id : null
+      return { id: m.id, libraryPath: m.libraryPath, trashedAs }
+    })
+    return placed.find((m) => m.trashedAs === null) ?? placed[0]
   }
 
   updateMockup(id: number, data: Partial<NewMockup>): void {
     this.db.update(mockups).set(data).where(eq(mockups.id, id)).run()
-  }
-
-  getMockupsByBatchId(batchId: string): Mockup[] {
-    return this.db
-      .select()
-      .from(mockups)
-      .where(sql`json_extract(${mockups.importContext}, '$.batchId') = ${batchId}`)
-      .all()
   }
 
   setMockupCover(
@@ -106,18 +108,23 @@ export class MockupRepository {
     this.db.update(mockups).set({ coverPath, coverSource }).where(eq(mockups.id, mockupId)).run()
   }
 
+  /** Edit details: the title, description and tags. Refuses a mockup that is gone and a blank title. */
   updateMockupMeta(
     id: number,
     data: { title: string; description: string; tagIds: number[] }
   ): void {
-    this.db
-      .update(mockups)
-      .set({ title: data.title, description: data.description })
-      .where(eq(mockups.id, id))
-      .run()
-    this.clearTagsForMockup(id)
-    for (const tagId of data.tagIds) this.addTagToMockup(id, tagId)
-    this.search.upsertSearchIndex(id)
+    const title = data.title.trim()
+    if (!title) throw new Error('A mockup needs a title')
+    const m = this.getMockup(id)
+    if (!m) throw new Error(`Mockup ${id} not found`)
+    // One transaction, so a failure part-way never leaves the mockup without its tags.
+    this.db.transaction((tx) => {
+      tx.update(mockups).set({ title, description: data.description }).where(eq(mockups.id, id)).run()
+      this.clearTagsForMockup(id)
+      for (const tagId of data.tagIds) this.addTagToMockup(id, tagId)
+      // One in Trash stays out of search.
+      if (m.stage === 'stashed' && m.deletedAt === null) this.search.upsertSearchIndex(id)
+    })
   }
 
   // Variants

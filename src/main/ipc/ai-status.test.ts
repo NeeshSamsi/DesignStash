@@ -10,6 +10,7 @@ import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, sample } from '../db/repositories/__tests__/setup'
 import { LookOverService } from '../import/look-over-service'
 import { LibraryService } from '../library/library-service'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -26,6 +27,7 @@ import { registerAiStatusHandlers } from './ai-status'
 import { inferenceQueueFor } from './library-effects'
 import { registerInboxHandlers } from './inbox'
 import { registerTrashHandlers } from './trash'
+import { registerUndoHandlers } from './undo'
 
 let sqlite: Database.Database
 let repo: Repository
@@ -60,10 +62,12 @@ beforeEach(() => {
       update: (patch: Partial<typeof settingsState>) => Object.assign(settingsState, patch)
     },
     telemetry: { get: () => ({ track }), rebuild: () => {} },
-    library: new LibraryService(repo, root)
+    library: new LibraryService(repo, root),
+    ...undoForTests(repo, test.db)
   } as unknown as HandlerContext
   registerInboxHandlers(ctx)
   registerTrashHandlers(ctx)
+  registerUndoHandlers(ctx)
 })
 
 afterEach(() => {
@@ -122,9 +126,7 @@ describe('ai:status push', () => {
     make('a')
     make('b')
     await inferenceQueueFor(ctx).enqueue([1, 2])
-    await vi.waitFor(() =>
-      expect(repo.mockups.getMockup(2)?.aiStatus).toBe('ready')
-    )
+    await vi.waitFor(() => expect(repo.mockups.getMockup(2)?.aiStatus).toBe('ready'))
     const firsts = track.mock.calls.filter(([name]) => name === 'first_suggestion')
     expect(firsts).toHaveLength(1)
     expect(firsts[0]?.[1]).toMatchObject({ seconds_since_install: expect.any(Number) })
@@ -135,7 +137,9 @@ describe('ai:status push', () => {
     repo.piles.createPile([top.id, side.id], top.id)
     repo.mockups.setStage([top.id, side.id], 'to_stash')
     repo.mockups.updateMockup(side.id, { aiStatus: 'pending' })
-    await new LookOverService(repo, async () => null, { probe: async () => ({ width: 1, height: 1 }) }).open()
+    await new LookOverService(repo, async () => null, {
+      probe: async () => ({ width: 1, height: 1 })
+    }).open()
 
     const queue = inferenceQueueFor(ctx)
     await queue.enqueue([side.id])
@@ -144,11 +148,64 @@ describe('ai:status push', () => {
     await vi.waitFor(() =>
       expect(push).toHaveBeenCalledWith(
         IPC_CHANNELS.LOOK_OVER_DRAFT,
-        expect.objectContaining({ mockupId: side.id, role: 'variant', title: 'Suggested', waitingForAi: false })
+        expect.objectContaining({
+          mockupId: side.id,
+          role: 'variant',
+          description: 'd',
+          waitingForAi: false
+        })
       )
     )
     const drafts = push.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.LOOK_OVER_DRAFT)
     expect(drafts).toHaveLength(1)
+  })
+
+  it("names a pile's base once its top's suggestion lands in a waiting draft, with a model that names bases (the 9B)", async () => {
+    const [top, side] = [make('top'), make('side')]
+    repo.piles.createPile([top.id, side.id], top.id)
+    repo.mockups.setStage([top.id, side.id], 'to_stash')
+    repo.mockups.updateMockup(top.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(side.id, {
+      aiStatus: 'ready',
+      aiResult: { title: 'Side', description: 'd', tags: [] }
+    })
+    await new LookOverService(repo, async () => null, {
+      probe: async () => ({ width: 1, height: 1 })
+    }).open()
+    analyze.mockResolvedValue({
+      title: 'Long scroll MacBook on wavy sheets',
+      description: 'd',
+      tags: []
+    })
+    const pileVariations = vi.fn(async (_pile: unknown[], topTitle?: string) => ({
+      variations: ['wavy', 'flat'],
+      base: topTitle ? 'Long scroll MacBook' : null
+    }))
+    Object.assign(ctx, {
+      ai: {
+        activeProvider: async () => ({
+          id: 'stub',
+          name: 'Stub',
+          analyze,
+          pileVariations,
+          pileBase: true
+        })
+      }
+    })
+
+    await inferenceQueueFor(ctx).enqueue([top.id])
+
+    await vi.waitFor(() => expect(repo.drafts.getDraft(side.id)?.title).toBe('Long scroll MacBook'))
+    expect(pileVariations).toHaveBeenLastCalledWith(
+      expect.any(Array),
+      'Long scroll MacBook on wavy sheets'
+    )
+    await vi.waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        IPC_CHANNELS.LOOK_OVER_DRAFT,
+        expect.objectContaining({ mockupId: side.id, title: 'Long scroll MacBook' })
+      )
+    )
   })
 
   it('is one shared queue for the whole app', () => {
@@ -178,7 +235,20 @@ describe('cancelling and requeueing', () => {
 
     await call(IPC_CHANNELS.INBOX_TOSS, { ids: [b.id] })
 
-    expect(repo.mockups.getMockup(b.id)).toBeUndefined()
+    // Toss goes to Trash.
+    expect(repo.mockups.getMockup(b.id)?.deletedAt).not.toBeNull()
+    expect(analyze).toHaveBeenCalledTimes(1)
+  })
+
+  it('a Toss undone back to To sort is picked up by the AI queue now, without waiting for a launch', async () => {
+    const b = make('b')
+    repo.mockups.updateMockup(b.id, { aiStatus: 'pending' })
+    await call(IPC_CHANNELS.INBOX_TOSS, { ids: [b.id] })
+    expect(analyze).not.toHaveBeenCalled()
+
+    await call(IPC_CHANNELS.UNDO_RUN)
+
+    await vi.waitFor(() => expect(repo.mockups.getMockup(b.id)?.aiStatus).toBe('ready'))
     expect(analyze).toHaveBeenCalledTimes(1)
   })
 

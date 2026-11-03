@@ -2,7 +2,6 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { useUiStore, type AppView } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { DetailsSidebar, DiscardAsk } from './screens/details/DetailsSidebar'
-import { mockupsLabel } from './screens/details/details-model'
 import { usePanelLayout } from './screens/details/use-panel-layout'
 import { useRevealSelected } from './screens/details/use-reveal-selected'
 import { useDetailsEscape } from './screens/details/use-details-escape'
@@ -22,6 +21,7 @@ import { SidebarNav, sidebarNavVariant, type SidebarNavKey } from './components/
 import { useInboxCounts } from './hooks/use-inbox-counts'
 import { useHeaderSlot } from './lib/page-header-slot'
 import { libraryDescription } from './lib/library-header'
+import { mockups, pluralise } from './lib/plural'
 import { filterChips } from './lib/tag-filter'
 import { useTagTreeStore } from './stores/tagTreeStore'
 import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
@@ -44,8 +44,6 @@ interface AppShellProps {
 /** How far the dock and toasts sit in from the corner they are anchored to. */
 const DOCK_INSET = 16
 
-const mockups = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
-
 interface HeaderCounts {
   total: number
   favourites: number
@@ -66,12 +64,12 @@ function headerFor(view: AppView, counts: HeaderCounts, library: string) {
     case 'to-stash':
       return {
         current: 'To stash',
-        description: `${counts.toStash} ${counts.toStash === 1 ? 'pile or mockup' : 'piles and mockups'} waiting`
+        description: `${pluralise(counts.toStash, 'pile or mockup', 'piles and mockups')} waiting`
       }
     case 'trash':
       return {
         current: 'Trash',
-        description: `${counts.trash} ${counts.trash === 1 ? 'item' : 'items'}`
+        description: pluralise(counts.trash, 'item')
       }
     default:
       return null
@@ -121,9 +119,9 @@ export default function AppShell({
   const setQuery = useLibraryStore((s) => s.setQuery)
 
   useShortcutDispatcher()
-  // ⌘F and ⌘K are handled by GlobalSearch (useSearchFocusShortcut); reserving them keeps anyone else off them.
-  useShortcut({ id: 'search.focus', combo: 'mod+f' })
-  useShortcut({ id: 'search.focus-alias', combo: 'mod+k' })
+  // ⌘F, and ⌘K as its alias, focus the title-bar search.
+  useShortcut({ id: 'search.focus', combo: 'mod+f', handler: focusGlobalSearch })
+  useShortcut({ id: 'search.focus-alias', combo: 'mod+k', handler: focusGlobalSearch })
   useShortcut({
     id: 'import.add-files',
     combo: 'mod+o',
@@ -170,7 +168,7 @@ export default function AppShell({
       ? {
           parent: 'My Stash',
           current: pile.title,
-          description: `Pile · ${mockupsLabel(pile.count)} · Esc to go back`
+          description: `Pile · ${mockups(pile.count)} · Esc to go back`
         }
       : headerFor(
           view,

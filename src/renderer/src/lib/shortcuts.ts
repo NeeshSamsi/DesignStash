@@ -2,6 +2,11 @@ import { useEffect, useRef } from 'react'
 
 /** Elements that mark a focus scope: `<div data-shortcut-scope="grid">`. */
 export const SHORTCUT_SCOPE_ATTR = 'data-shortcut-scope'
+/**
+ * Marks a modal (every live DialogFrame): its own scopes still work inside it, but the window's
+ * global shortcuts stay behind it while it is open, as a click can't reach what it covers.
+ */
+export const SHORTCUT_BOUNDARY_ATTR = 'data-shortcut-scope-boundary'
 export const GLOBAL_SCOPE = 'global'
 
 export interface ShortcutDef {
@@ -55,16 +60,20 @@ export function comboFromEvent(event: KeyboardEvent): string {
   return [...mods, event.key.toLowerCase()].join('+')
 }
 
-/** Scopes from the focused element outwards, ending with `global`. */
+/**
+ * Scopes from the focused element outwards, ending with `global`. A boundary ends the chain there,
+ * and while one is open anywhere (focus can sit in a menu portalled outside it) `global` is left out.
+ */
 function scopeChain(target: EventTarget | null): string[] {
   const chain: string[] = []
   let el = target instanceof Element ? target : null
   while (el) {
     const scope = el.getAttribute(SHORTCUT_SCOPE_ATTR)
     if (scope) chain.push(scope)
+    if (el.hasAttribute(SHORTCUT_BOUNDARY_ATTR)) return chain
     el = el.parentElement
   }
-  chain.push(GLOBAL_SCOPE)
+  if (document.querySelector(`[${SHORTCUT_BOUNDARY_ATTR}]`) === null) chain.push(GLOBAL_SCOPE)
   return chain
 }
 
@@ -76,7 +85,8 @@ function isTyping(target: EventTarget | null): boolean {
 /**
  * One place for every keyboard shortcut. A combo can be bound once per scope, so two features
  * cannot claim the same keys; registering a second binding throws. A scoped binding only fires
- * while focus is inside that scope, and beats the global one with the same combo.
+ * while focus is inside that scope, and beats the global one with the same combo. Global ones
+ * don't fire while a modal (a scope boundary) is open.
  * Plain keys (no ⌘, ⌃ or ⌥) are ignored while typing in a field.
  */
 export class ShortcutRegistry {

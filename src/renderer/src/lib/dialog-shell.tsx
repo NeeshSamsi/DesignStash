@@ -1,5 +1,14 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  type ReactElement,
+  type ReactNode
+} from 'react'
+import { AlertDialog as AlertDialogPrimitive } from 'radix-ui'
 import { cn } from '@renderer/lib/utils'
+import { SHORTCUT_BOUNDARY_ATTR } from '@renderer/lib/shortcuts'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -8,9 +17,10 @@ import {
 } from '@renderer/ui/alert-dialog'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogTitle,
+  DialogDescription as UiDialogDescription,
+  DialogTitle as UiDialogTitle,
   dialogDescriptionClass,
   dialogPanelClass,
   dialogTitleClass
@@ -24,9 +34,9 @@ type Kind = 'static' | 'dialog' | 'alert'
 
 const KindContext = createContext<Kind>('static')
 
-/** Menus, pickers and popovers that open over a dialog. */
+/** Menus, pickers and popovers that open over a dialog. The card grid's list is not one. */
 const NESTED_LAYER =
-  '[role="menu"], [role="listbox"], [data-slot="popover-content"], [data-slot="select-content"]'
+  '[role="menu"], [role="listbox"]:not([data-slot="mockup-cards"]), [data-slot="popover-content"], [data-slot="select-content"]'
 
 /**
  * Whether a menu, picker or popover was open when the latest mouse press began. Radix closes such a
@@ -94,6 +104,8 @@ export function DialogFrame({
     const target = (e as CustomEvent<{ originalEvent?: Event }>).detail?.originalEvent?.target
     return target instanceof Element && target.closest('[role="alertdialog"]') !== null
   }
+  // The window's shortcuts stay behind a live dialog; its own scopes still work inside it.
+  const boundary = { [SHORTCUT_BOUNDARY_ATTR]: '' }
   const guard = blocking
     ? {
         onEscapeKeyDown: (e: Event) => e.preventDefault(),
@@ -105,7 +117,7 @@ export function DialogFrame({
     return (
       <KindContext.Provider value="alert">
         <AlertDialog open={open} onOpenChange={onOpenChange}>
-          <AlertDialogContent data-ds={dataDs} className={className} {...guard}>
+          <AlertDialogContent data-ds={dataDs} className={className} {...boundary} {...guard}>
             {children}
           </AlertDialogContent>
         </AlertDialog>
@@ -118,6 +130,7 @@ export function DialogFrame({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           data-ds={dataDs}
+          {...boundary}
           showCloseButton={showCloseButton && !blocking}
           className={className}
           onInteractOutside={(e) => {
@@ -139,19 +152,48 @@ interface DialogHeadingProps {
 
 /** Title and description in the right element for the surrounding frame (Radix a11y names when live). */
 export function DialogHeading({ title, description }: DialogHeadingProps) {
-  const kind = useContext(KindContext)
-  const Title = kind === 'alert' ? AlertDialogTitle : kind === 'dialog' ? DialogTitle : null
-  const Description =
-    kind === 'alert' ? AlertDialogDescription : kind === 'dialog' ? DialogDescription : null
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-      {Title ? <Title>{title}</Title> : <p className={dialogTitleClass}>{title}</p>}
-      {description !== undefined &&
-        (Description ? (
-          <Description>{description}</Description>
-        ) : (
-          <p className={dialogDescriptionClass}>{description}</p>
-        ))}
+      <DialogTitle>{title}</DialogTitle>
+      {description !== undefined && <DialogDescription>{description}</DialogDescription>}
     </div>
   )
+}
+
+interface DialogTextProps {
+  className?: string
+  children: ReactNode
+}
+
+/** The title: it names a live dialog or alert, and is plain text in the static panel. */
+export function DialogTitle({ className, children }: DialogTextProps) {
+  const kind = useContext(KindContext)
+  if (kind === 'alert') return <AlertDialogTitle className={className}>{children}</AlertDialogTitle>
+  if (kind === 'dialog') return <UiDialogTitle className={className}>{children}</UiDialogTitle>
+  return <p className={cn(dialogTitleClass, className)}>{children}</p>
+}
+
+/** The description: it describes a live dialog or alert, and is plain text in the static panel. */
+export function DialogDescription({ className, children }: DialogTextProps) {
+  const kind = useContext(KindContext)
+  if (kind === 'alert') {
+    return <AlertDialogDescription className={className}>{children}</AlertDialogDescription>
+  }
+  if (kind === 'dialog') {
+    return <UiDialogDescription className={className}>{children}</UiDialogDescription>
+  }
+  return <p className={cn(dialogDescriptionClass, className)}>{children}</p>
+}
+
+/**
+ * Makes its button the frame's Cancel: a live alert focuses it first and closes on it, a live
+ * dialog closes on it. In the static panel it is the button alone.
+ */
+export function DialogCancel({ children }: { children: ReactElement }) {
+  const kind = useContext(KindContext)
+  if (kind === 'alert') {
+    return <AlertDialogPrimitive.Cancel asChild>{children}</AlertDialogPrimitive.Cancel>
+  }
+  if (kind === 'dialog') return <DialogClose asChild>{children}</DialogClose>
+  return children
 }

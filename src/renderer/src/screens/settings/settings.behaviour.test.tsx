@@ -119,6 +119,7 @@ function setup(overrides: Record<string, Handler> = {}) {
       ok({ lastRun: { at: NOW, trigger: 'launch', result: 'in-sync', toReview: 0 } }),
     [IPC_CHANNELS.TRASH_STATS]: () => ok({ count: 3, bytes: 412_000_000 }),
     [IPC_CHANNELS.DIALOG_SELECT_DIRECTORY]: () => ok({ path: '/Volumes/Work/Stash' }),
+    [IPC_CHANNELS.BOOT_CHECK_FOLDER]: () => ok({ state: 'ok', hasLibrary: false }),
     [IPC_CHANNELS.STASH_CHANGE]: () => ok({ ok: true, restartRequired: true }),
     [IPC_CHANNELS.APP_RELAUNCH]: () => ok({ relaunching: true }),
     [IPC_CHANNELS.STASH_CHECK_RUN]: () =>
@@ -153,8 +154,7 @@ function setup(overrides: Record<string, Handler> = {}) {
       (p as { confirmed?: boolean; id: string }).id === 'qwen3b' &&
       !(p as { confirmed?: boolean }).confirmed
         ? ok({ deleted: false, inUse: true, undoable: true })
-        : ok({ deleted: true, inUse: false, undoable: true }),
-    [IPC_CHANNELS.AI_RESTORE_MODEL]: () => ok({ restored: true }),
+        : ok({ deleted: true, inUse: false, undoable: true, undoEntryId: 50 }),
     [IPC_CHANNELS.TAG_TREE]: () =>
       ok({
         tree: [
@@ -165,17 +165,16 @@ function setup(overrides: Record<string, Handler> = {}) {
     [IPC_CHANNELS.TAG_CREATE]: () => ok({ tagId: 1, label: 'Beige', categoryId: 1 }),
     [IPC_CHANNELS.CATEGORY_CREATE]: () => ok({ categoryId: 5, label: 'Mood' }),
     [IPC_CHANNELS.TAG_DELETE]: () =>
-      ok({ affectedMockups: 4, snapshot: { tag: { id: 7 }, mockupIds: [1] } }),
-    [IPC_CHANNELS.TAG_RESTORE]: () => ok({ tagId: 7, restoredMockups: 4 }),
+      ok({ affectedMockups: 4, snapshot: { tag: { id: 7 }, mockupIds: [1] }, undoEntryId: 51 }),
     [IPC_CHANNELS.TAG_MERGE_PREVIEW]: () => ok({ affectedMockups: 2 }),
     [IPC_CHANNELS.TAG_MERGE]: () => ok({ affectedMockups: 2 }),
     [IPC_CHANNELS.CATEGORY_DELETE]: () =>
       ok({
         deleted: true,
         movedTags: 0,
-        snapshot: { id: 9, label: 'Empty', sortOrder: 1, isCanonical: false }
+        snapshot: { id: 9, label: 'Empty', sortOrder: 1, isCanonical: false },
+        undoEntryId: 52
       }),
-    [IPC_CHANNELS.CATEGORY_RESTORE]: () => ok({ categoryId: 9 }),
     [IPC_CHANNELS.TELEMETRY_GET_CONSENT]: () => ok({ enabled: true }),
     [IPC_CHANNELS.TELEMETRY_SET_CONSENT]: (p) => ok(p),
     [IPC_CHANNELS.APP_INFO]: () =>
@@ -268,20 +267,39 @@ describe('Settings · My Stash', () => {
     expect(screen.getByText('128 mockups · 14.2 GB')).not.toBeNull()
   })
 
-  it('asks Move my files, Use as is or Cancel after Change… picks a folder', async () => {
+  /** The stash already in the picked folder, as the folder check reports it. */
+  const holdsStash = {
+    [IPC_CHANNELS.BOOT_CHECK_FOLDER]: () => ok({ state: 'ok', hasLibrary: true })
+  }
+  const buttonsIn = (dialog: HTMLElement) =>
+    within(dialog)
+      .getAllByRole('button')
+      .map((b) => b.textContent)
+      .sort()
+
+  it('asks only Move my files or Cancel for a folder with no stash in it', async () => {
     open()
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
     const dialog = await screen.findByRole('alertdialog')
-    const names = within(dialog)
-      .getAllByRole('button')
-      .map((b) => b.textContent)
-    expect(names.sort()).toEqual(['Cancel', 'Move my files', 'Use as is'])
+    expect(calls(IPC_CHANNELS.BOOT_CHECK_FOLDER)[0]![1]).toEqual({ path: '/Volumes/Work/Stash' })
+    expect(buttonsIn(dialog)).toEqual(['Cancel', 'Move my files'])
     // The description says how much would move.
     expect(dialog.textContent).toContain('128 mockups (14.2 GB)')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
     expect(calls(IPC_CHANNELS.STASH_CHANGE)).toHaveLength(0)
+  })
+
+  it('asks Use as is or Cancel for a folder that already holds a stash', async () => {
+    setup(holdsStash)
+    open()
+    await screen.findByText('~/Pictures/DesignStash')
+    fireEvent.click(btn('Change…'))
+    const dialog = await screen.findByRole('alertdialog')
+    // A move needs an empty folder, so it is not offered here.
+    expect(buttonsIn(dialog)).toEqual(['Cancel', 'Use as is'])
+    expect(dialog.textContent).toContain('already holds a stash')
   })
 
   it('does nothing when the folder picker is cancelled', async () => {
@@ -331,6 +349,7 @@ describe('Settings · My Stash', () => {
   })
 
   it('points only without a progress dialog, and Later keeps the app open', async () => {
+    setup(holdsStash)
     open()
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
@@ -361,7 +380,7 @@ describe('Settings · My Stash', () => {
     fireEvent.click(btn('Change…'))
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
-        name: 'Use as is'
+        name: 'Move my files'
       })
     )
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
@@ -413,7 +432,9 @@ describe('Settings · My Stash', () => {
     fireEvent.click(btn('Empty Trash…'))
     const dialog = await screen.findByRole('alertdialog')
     expect(
-      within(dialog).getByText(/permanently deletes 3 mockups and frees 412 MB/)
+      within(dialog).getByText(
+        /permanently deletes 3 mockups and frees 412 MB\. This can’t be undone\./
+      )
     ).not.toBeNull()
     expect(calls(IPC_CHANNELS.TRASH_EMPTY)).toHaveLength(0)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Empty Trash' }))
@@ -450,7 +471,10 @@ describe('Settings · AI model', () => {
   it('keeps the models listed when on-device AI is off, with Use disabled and a reason', async () => {
     open()
     goto('AI model')
-    const toggle = await screen.findByRole('switch', { name: 'Use on-device AI' })
+    // The switch is on once the models have loaded and one is in use: turn it off from there.
+    await screen.findByText('Your models')
+    const toggle = screen.getByRole('switch', { name: 'Use on-device AI' })
+    await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'))
     fireEvent.click(toggle)
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: null })
@@ -557,23 +581,24 @@ describe('Settings · AI model', () => {
     )
   })
 
-  it('asks before deleting the model in use, and says AI titles and tags stop', async () => {
+  it('deletes the model in use at once, saying AI titles and tags stop, and Undo puts it back in use (undo.md)', async () => {
     open()
     goto('AI model')
     await screen.findByText('Your models')
     const inUse = document.querySelector('[data-state="in-use"]') as HTMLElement
     fireEvent.click(within(inUse).getByRole('button', { name: 'Delete' }))
-    const dialog = await screen.findByRole('alertdialog')
-    expect(
-      within(dialog).getByText(/AI titles and tags stop until you pick another model/)
-    ).not.toBeNull()
-    expect(calls(IPC_CHANNELS.AI_DELETE_MODEL)).toHaveLength(0)
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, {
         id: 'qwen3b',
         confirmed: true
       })
+    )
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    // Its Undo is the delete's entry in main, which brings it back in use.
+    expect(toasts.undoToast).toHaveBeenCalledWith(
+      'Qwen 2.5 VL 3B deleted',
+      50,
+      'AI titles and tags stop until you pick another model.'
     )
   })
 
@@ -588,11 +613,7 @@ describe('Settings · AI model', () => {
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'qwen7b' })
     )
     expect(screen.queryByRole('alertdialog')).toBeNull()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Qwen 2.5 VL 7B deleted', expect.any(Function))
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_RESTORE_MODEL, { id: 'qwen7b' })
-    )
+    expect(toasts.undoToast).toHaveBeenCalledWith('Qwen 2.5 VL 7B deleted', 50, undefined)
   })
 
   it('offers Apple’s built-in model as its own card, with nothing to download or delete', async () => {
@@ -643,9 +664,13 @@ describe('Settings · AI model', () => {
     const banner = (await screen.findByText('Apple Intelligence is turned off')).closest(
       '[data-ds="Banner"]'
     ) as HTMLElement
-    expect(within(banner).getByText(/Turn it on in System Settings, or choose another model/)).not.toBeNull()
+    expect(
+      within(banner).getByText(/Turn it on in System Settings, or choose another model/)
+    ).not.toBeNull()
     // AI is still on: the person only has to pick a model.
-    expect(screen.getByRole('switch', { name: 'Use on-device AI' }).getAttribute('aria-checked')).toBe('true')
+    expect(
+      screen.getByRole('switch', { name: 'Use on-device AI' }).getAttribute('aria-checked')
+    ).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Use this model' }))
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'qwen3b' })
@@ -695,13 +720,8 @@ describe('Settings · Tags', () => {
     fireEvent.click(await screen.findByText('delete tag'))
     await waitFor(() => expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.TAG_DELETE, { tagId: 7 }))
     expect(screen.queryByRole('alertdialog')).toBeNull()
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    expect(toasts.undoToast.mock.calls[0]![0]).toBe('Deleted “Clay”')
-    toasts.undoToast.mock.calls[0]![1]()
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.TAG_RESTORE, {
-        snapshot: { tag: { id: 7 }, mockupIds: [1] }
-      })
+      expect(toasts.undoToast).toHaveBeenCalledWith('Deleted “Clay”', 51, 'Removed from 4 mockups')
     )
   })
 
@@ -743,9 +763,7 @@ describe('Settings · Tags', () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.CATEGORY_DELETE, { categoryId: 9 })
     )
-    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() => expect(calls(IPC_CHANNELS.CATEGORY_RESTORE)).toHaveLength(1))
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalledWith('Deleted “Empty”', 52))
   })
 
   it('tells the person and keeps going when a tag change fails', async () => {
@@ -940,7 +958,10 @@ describe('Settings · About', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Copy report' }))
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.REPORT_COPY, { action: 'copy-full', message: '' })
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.REPORT_COPY, {
+        action: 'copy-full',
+        message: ''
+      })
     )
   })
 
@@ -976,7 +997,9 @@ describe('Meaning search row', () => {
     expect(within(row).getByText('146 MB')).toBeTruthy()
     fireEvent.click(within(row).getByRole('button', { name: 'Download' }))
     await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: 'nomic-embed-v1.5' })
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DOWNLOAD_MODEL, {
+        id: 'nomic-embed-v1.5'
+      })
     )
     expect(within(row).getByRole('button', { name: 'Cancel' })).toBeTruthy()
   })
@@ -1008,8 +1031,6 @@ describe('Meaning search row', () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'nomic-embed-v1.5' })
     )
-    await waitFor(() =>
-      expect(toasts.undoToast).toHaveBeenCalledWith('Meaning search deleted', expect.any(Function))
-    )
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalledWith('Meaning search deleted', 50))
   })
 })

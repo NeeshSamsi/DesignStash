@@ -64,6 +64,7 @@ const APP_FOLDER = [
   'cover.webp',
   'thumb.webp',
   'slot-mask.png',
+  'slot-mask.none',
   'cover-ai-soft.png',
   'cover-ai-grey.png'
 ]
@@ -77,6 +78,15 @@ describe('removeAppCopies: deleting a mockup for good', () => {
 
     expect(existsSync(at('mockups/u1'))).toBe(false)
     expect(existsSync(at('mockups'))).toBe(true)
+  })
+
+  it('removes a PSB mockup’s whole folder the same way, its copy kept as original.psb (H-12)', async () => {
+    files(...['original.psb', ...APP_FOLDER.slice(1)].map((f) => `mockups/u2/${f}`))
+    const id = mockup('mockups/u2/original.psb', 'mockups/u2/cover.webp')
+
+    await deleteForGood([id])
+
+    expect(existsSync(at('mockups/u2'))).toBe(false)
   })
 
   it('removes every cover folder it had, the current one and the replaced ones kept for Undo', async () => {

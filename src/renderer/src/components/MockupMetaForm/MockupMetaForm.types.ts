@@ -9,11 +9,11 @@ export const MOCKUP_META_FORM_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=222-3346',
   section: '8 · Approval & editing',
   description:
-    'One title / description / tags editor for approval and detail (detail edits the title in the modal header). No status of its own: in Detail an enabled Save means unsaved changes, and a failed save is an error toast. Dirty state drives the unsaved-changes guard. Code: extract from ApprovalStepper ItemEditor + DetailModal.',
+    'One title / description / tags editor for approval and detail (detail edits the title in the modal header). No status of its own: in Detail an enabled Save means unsaved changes, and a failed save is an error toast. Dirty state drives the unsaved-changes guard. Code: extract from ApprovalStepper ItemEditor + DetailModal.\nNo resting hint (retired 2026-10-24): show-hint and hint are gone; AI status lives in AiStatus above the form. state=writing (2026-10-24) replaces state=thinking: every field stays editable and says “Writing with AI…” while the AI writes; typing in one makes that field the person’s. state=thinking (a non-editable skeleton) is superseded, kept only for the superseded L3.E3.',
   code: null,
   axes: {
     variant: ['approval', 'detail'],
-    state: ['pristine', 'invalid', 'edited', 'saving', 'thinking']
+    state: ['pristine', 'invalid', 'edited', 'saving', 'thinking', 'writing']
   },
   axisDefaults: {
     variant: 'approval',
@@ -22,34 +22,30 @@ export const MOCKUP_META_FORM_CONTRACT = {
   flags: {},
   interactionStates: [],
   disabled: false,
-  booleans: {
-    showHint: true
-  },
-  texts: {
-    hint: 'AI suggested the title, description and tags. Give them a quick check before you stash it.'
-  },
+  booleans: {},
+  texts: {},
   icons: {},
   slots: {}
 } as const satisfies ComponentContract
 
 export type MockupMetaFormVariant = 'approval' | 'detail'
-export type MockupMetaFormState = 'pristine' | 'invalid' | 'edited' | 'saving' | 'thinking'
+export type MockupMetaFormState =
+  | 'pristine'
+  | 'invalid'
+  | 'edited'
+  | 'saving'
+  | 'thinking'
+  | 'writing'
 
 export interface MockupMetaFormContractProps {
   /** Figma `variant` (2 options). Default `approval`. */
   variant?: MockupMetaFormVariant
-  /** Figma `state` (5 options). Default `pristine`. */
+  /** Figma `state` (6 options). Default `pristine`. */
   state?: MockupMetaFormState
-  /** Figma boolean. Default `true`. */
-  showHint?: boolean
-  /** Figma text. Default "AI suggested the title, description and tags. Give them a quick check before you stash it.". */
-  hint?: string
 }
 
 /** Figma defaults. Slots have none. */
 export const MOCKUP_META_FORM_DEFAULTS = {
   variant: 'approval',
-  state: 'pristine',
-  showHint: true,
-  hint: 'AI suggested the title, description and tags. Give them a quick check before you stash it.'
+  state: 'pristine'
 } satisfies MockupMetaFormContractProps

@@ -31,17 +31,25 @@ export class Repository {
   readonly drafts: DraftRepository
   readonly copyJobs: CopyJobRepository
 
-  constructor(db: AppDatabase) {
+  constructor(private readonly db: AppDatabase) {
     this.search = new SearchRepository(db)
     this.embeddings = new EmbeddingRepository(db)
     this.mockups = new MockupRepository(db, this.search)
     this.piles = new PileRepository(db)
-    this.tags = new TagRepository(db, this.mockups, this.search)
+    this.tags = new TagRepository(db, this.search)
     this.library = new LibraryQueryRepository(db, this.mockups, this.piles, this.search)
     this.trash = new TrashRepository(db, this.mockups, this.search, this.library)
     this.inbox = new InboxRepository(db, this.library, this.piles)
     this.sortBoards = new SortBoardRepository(db)
     this.drafts = new DraftRepository(db)
     this.copyJobs = new CopyJobRepository(db)
+  }
+
+  /**
+   * Runs `fn` in one transaction, for writes that span repositories: all of them land, or none
+   * does. A repository's own transaction inside it becomes a savepoint, so it is undone too.
+   */
+  transaction<T>(fn: () => T): T {
+    return this.db.transaction(() => fn())
   }
 }

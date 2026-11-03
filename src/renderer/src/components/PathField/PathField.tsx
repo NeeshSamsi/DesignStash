@@ -4,7 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Folder01Icon } from '@hugeicons/core-free-icons'
 import { Button } from '@renderer/components/Button'
 import { cn } from '@renderer/lib/utils'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
+import { Tooltip } from '@renderer/components/Tooltip'
 import { PATH_FIELD_DEFAULTS, type PathFieldContractProps } from './PathField.types'
 import { pathFieldBoxVariants, pathFieldVariants } from './PathField.variants'
 
@@ -75,11 +75,8 @@ export function PathField({
         />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 whitespace-nowrap">
           {fullPath && fullPath !== path ? (
-            <Tooltip>
-              <TooltipTrigger asChild>{pathText}</TooltipTrigger>
-              <TooltipContent side="top" align="start">
-                {fullPath}
-              </TooltipContent>
+            <Tooltip arrow="bottom-left" label={fullPath}>
+              {pathText}
             </Tooltip>
           ) : (
             pathText

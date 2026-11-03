@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
-import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
+import { sep } from 'node:path'
+import { and, asc, eq, exists, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { mockups, tags, mockupTags, tagCategories } from '../schema'
 import type { Mockup } from '../schema'
@@ -9,6 +10,10 @@ import { isStashed } from './stashed'
 import type { PileRepository } from './piles'
 import type { SearchRepository } from './search'
 import { MEANING_FLOOR, MEANING_TOP, meaningHits } from '../../search/meaning'
+import type { Variation } from '@shared/pile-variation'
+
+const variationOf = (m: Mockup): Variation | null =>
+  m.variation ? { words: m.variation, source: m.variationSource ?? 'ai' } : null
 
 export interface LibraryQueryOptions {
   tagIds?: number[]
@@ -33,6 +38,10 @@ export interface LibraryRow {
   /** Set when this row is a pile's top: `memberCount` counts the top too. Null for a mockup on its own. */
   pile: { memberCount: number } | null
   tags: { id: number; label: string; categoryLabel: string }[]
+  /** The pile it's in (its top's id), or null on its own. In a pile `title` is the pile's base. */
+  pileId: number | null
+  /** Its own part of its title in a pile. */
+  variation: Variation | null
 }
 
 type LabelledTag = { id: number; label: string; categoryLabel: string }
@@ -50,6 +59,13 @@ const LOOKUP_CHUNK = 500
 
 /** Read models for My Stash: the filtered grid, the detail view and the counts. */
 export class LibraryQueryRepository {
+  /**
+   * Covers found on disk. The app writes each cover to a path of its own and never removes one a
+   * record still uses, so a found cover isn't checked again on every list. One deleted outside the
+   * app is forgotten when the stash folder says so (`forgetCoversUnder`), and checked at the next list.
+   */
+  private readonly coversFound = new Set<string>()
+
   constructor(
     private readonly db: AppDatabase,
     private readonly mockups: MockupRepository,
@@ -57,6 +73,29 @@ export class LibraryQueryRepository {
     private readonly search: SearchRepository,
     private readonly fileExists: (path: string) => boolean = existsSync
   ) {}
+
+  /**
+   * Something under `path` changed on disk: a file, or a folder and everything in it. Its covers are
+   * checked again at the next list, so one deleted outside the app shows as missing (cover-watch).
+   * True when it was a cover the list had seen, so the list is worth asking for again.
+   */
+  forgetCoversUnder(path: string): boolean {
+    if (this.coversFound.delete(path)) return true
+    const folder = path.endsWith(sep) ? path : path + sep
+    let forgot = false
+    for (const found of this.coversFound) {
+      if (found.startsWith(folder)) forgot = this.coversFound.delete(found) || forgot
+    }
+    return forgot
+  }
+
+  /** Whether a cover file is gone. A missing one is checked again each time, so it shows once it's back. */
+  private coverMissing(path: string): boolean {
+    if (this.coversFound.has(path)) return false
+    if (!this.fileExists(path)) return true
+    this.coversFound.add(path)
+    return false
+  }
 
   getLibrary(opts: LibraryQueryOptions): LibraryRow[] {
     return this.queryLibrary(opts).rows
@@ -71,6 +110,23 @@ export class LibraryQueryRepository {
     const { tagIds = [], categoryIds = [], sort } = opts
     const rawQuery = opts.query?.trim() ?? ''
 
+    // Every picked tag must match (AND); a category rolls up to every tag in it, and categories AND too.
+    const hasTag = (tagId: number) =>
+      exists(
+        this.db
+          .select({ one: sql`1` })
+          .from(mockupTags)
+          .where(and(eq(mockupTags.mockupId, mockups.id), eq(mockupTags.tagId, tagId)))
+      )
+    const hasCategory = (categoryId: number) =>
+      exists(
+        this.db
+          .select({ one: sql`1` })
+          .from(mockupTags)
+          .innerJoin(tags, eq(tags.id, mockupTags.tagId))
+          .where(and(eq(mockupTags.mockupId, mockups.id), eq(tags.categoryId, categoryId)))
+      )
+
     let candidates = this.db
       .select()
       .from(mockups)
@@ -79,21 +135,29 @@ export class LibraryQueryRepository {
           isStashed,
           isNull(mockups.deletedAt),
           isNull(mockups.groupId),
-          ...(opts.starredOnly ? [eq(mockups.favourite, true)] : [])
+          ...(opts.starredOnly ? [eq(mockups.favourite, true)] : []),
+          ...[...new Set(tagIds)].map(hasTag),
+          ...[...new Set(categoryIds)].map(hasCategory)
         )
       )
       .all()
 
-    // FTS filter + rank map
-    const ftsRankMap = rawQuery ? this.search.rankMatches(rawQuery) : null
+    // FTS filter + rank map. A hit on a mockup in a pile finds the pile: its top shows, ranked by
+    // the best of its mockups, so a word only one variation has ("wavy") still finds it.
+    const piles = rawQuery ? this.pileOfMembers() : new Map<number, number>()
+    // A query with no word left to match ("!!") finds nothing by keyword, never the whole library.
+    const ftsRankMap = rawQuery
+      ? rollUp(this.search.rankMatches(rawQuery) ?? new Map(), piles, Math.min)
+      : null
+    const meaning = rollUp(opts.meaning ?? null, piles, Math.max)
     // The closest meaning hit among the mockups shown (a pile member is not one; its top is), then
     // dropped if keyword search found it already.
     const meaningIds =
-      ftsRankMap && opts.meaning
+      ftsRankMap && meaning
         ? meaningHits(
             new Map(
               candidates.flatMap((c) => {
-                const sim = opts.meaning!.get(c.id)
+                const sim = meaning.get(c.id)
                 return sim === undefined ? [] : [[c.id, sim] as const]
               })
             ),
@@ -105,18 +169,6 @@ export class LibraryQueryRepository {
 
     const lookups = this.loadLookups(candidates.map((c) => c.id))
 
-    // Tag filter: every picked tag must match (AND).
-    for (const tagId of new Set(tagIds)) {
-      candidates = candidates.filter((c) => lookups.tags.get(c.id)?.some((t) => t.id === tagId))
-    }
-
-    // Category filter: rolls up to every tag in the category; categories AND together.
-    for (const categoryId of new Set(categoryIds)) {
-      candidates = candidates.filter((c) =>
-        lookups.tags.get(c.id)?.some((t) => t.categoryId === categoryId)
-      )
-    }
-
     // Sort: FTS rank when searching, else name / date. Favourites don't jump the queue (Starred is its own view).
     candidates.sort((a, b) => {
       if (ftsRankMap) {
@@ -124,14 +176,15 @@ export class LibraryQueryRepository {
         const ra = ftsRankMap.get(a.id)
         const rb = ftsRankMap.get(b.id)
         if (ra === undefined && rb === undefined) {
-          return (opts.meaning?.get(b.id) ?? 0) - (opts.meaning?.get(a.id) ?? 0)
+          return (meaning?.get(b.id) ?? 0) - (meaning?.get(a.id) ?? 0)
         }
         if (ra === undefined) return 1
         if (rb === undefined) return -1
         return ra - rb
       }
       if (sort === 'name') return a.title.localeCompare(b.title)
-      return b.createdAt.localeCompare(a.createdAt)
+      // createdAt has whole seconds, so a haul shares one: the later id was added later.
+      return b.createdAt.localeCompare(a.createdAt) || b.id - a.id
     })
 
     return {
@@ -186,6 +239,18 @@ export class LibraryQueryRepository {
     return { tags: tagMap, members }
   }
 
+  /** Each stashed mockup in a pile, by id, with its pile's top. */
+  private pileOfMembers(): Map<number, number> {
+    return new Map(
+      this.db
+        .select({ id: mockups.id, groupId: mockups.groupId })
+        .from(mockups)
+        .where(and(isStashed, isNull(mockups.deletedAt), isNotNull(mockups.groupId)))
+        .all()
+        .map((r) => [r.id, r.groupId!])
+    )
+  }
+
   /** Assemble grid rows with variant counts and labelled tags. */
   toRows(list: Mockup[], lookups = this.loadLookups(list.map((m) => m.id))): LibraryRow[] {
     return list.map((m) => ({
@@ -194,7 +259,7 @@ export class LibraryQueryRepository {
       description: m.description ?? null,
       coverPath: m.coverPath,
       coverSource: m.coverSource,
-      coverMissing: !this.fileExists(m.coverPath),
+      coverMissing: this.coverMissing(m.coverPath),
       favourite: m.favourite,
       createdAt: m.createdAt,
       pile:
@@ -203,8 +268,20 @@ export class LibraryQueryRepository {
         id,
         label,
         categoryLabel
-      }))
+      })),
+      pileId: m.isGroup ? m.id : m.groupId,
+      variation: variationOf(m)
     }))
+  }
+
+  /**
+   * A pile's mockups for its page, as grid rows: the top first, then the rest in order. Empty when
+   * `pileId` is no pile's top, or the pile is in Trash.
+   */
+  getPileItems(pileId: number): LibraryRow[] {
+    const top = this.mockups.getMockup(pileId)
+    if (!top || pileRole(top) !== 'top' || top.deletedAt !== null) return []
+    return this.toRows([top, ...this.piles.getMockupsByGroupId(pileId).sort((a, b) => a.id - b.id)])
   }
 
   getMockupDetail(id: number): {
@@ -231,6 +308,7 @@ export class LibraryQueryRepository {
     coverMissing: boolean
     coverSource: Mockup['coverSource']
     isTop: boolean
+    variation: Variation | null
   }[] {
     const top = this.mockups.getMockup(id)
     if (!top || pileRole(top) !== 'top') return []
@@ -239,9 +317,10 @@ export class LibraryQueryRepository {
       id: m.id,
       title: m.title,
       coverPath: m.coverPath,
-      coverMissing: !this.fileExists(m.coverPath),
+      coverMissing: this.coverMissing(m.coverPath),
       coverSource: m.coverSource,
-      isTop: m.id === top.id
+      isTop: m.id === top.id,
+      variation: variationOf(m)
     }))
   }
 
@@ -277,4 +356,21 @@ export class LibraryQueryRepository {
         .get()?.c ?? 0
     return { total, favourites, groups, trashed }
   }
+}
+
+/** Scores by mockup with each pile's top given the best score of any mockup in it. */
+function rollUp(
+  scores: ReadonlyMap<number, number> | null,
+  piles: ReadonlyMap<number, number>,
+  best: (a: number, b: number) => number
+): Map<number, number> | null {
+  if (!scores) return null
+  const out = new Map(scores)
+  for (const [member, top] of piles) {
+    const score = scores.get(member)
+    if (score === undefined) continue
+    const now = out.get(top)
+    out.set(top, now === undefined ? score : best(now, score))
+  }
+  return out
 }

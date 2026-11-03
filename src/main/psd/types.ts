@@ -22,5 +22,7 @@ export interface ResolveCoverInput {
    * the images inside the zip a PSD came out of, whose paths are labels (see `entryPath`).
    */
   readImage?: (path: string) => Promise<Buffer>
+  /** Reads the PSD's own composite. On this thread by default; the app passes its worker's (`readEmbeddedPreviewInWorker`). */
+  readEmbedded?: (psdPath: string) => Promise<RawImage | null>
   outDir: string
 }

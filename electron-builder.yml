@@ -9,15 +9,28 @@ files:
   - out/**
   - package.json
 publish: null # releases are made by .github/workflows/release.yml, not by electron-builder
+# Burnt into the Electron binary before signing (scripts/packaging/fuses.test.ts). The app never
+# runs as plain Node (ELECTRON_RUN_AS_NODE) or takes code from NODE_OPTIONS, and it loads only its
+# own app.asar, checked against the hash electron-builder writes into Info.plist. --inspect stays:
+# Playwright drives the packaged app through it in e2e (DESIGNSTASH_E2E_APP).
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: true
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
 artifactName: DesignStash-${version}-${arch}.${ext}
 mac:
   target:
     - target: dmg
       arch: arm64
   category: public.app-category.graphics-design
-  # Beta builds are unsigned (pnpm package:mac sets CSC_IDENTITY_AUTO_DISCOVERY=false, so signing
-  # is skipped and notarization with it). Signing is a config change: provide the certificate and
-  # run pnpm package:mac:signed (see scripts/packaging/README.md for the exact secrets).
+  # Beta builds are ad-hoc signed (pnpm package:mac passes identity "-" and turns certificate
+  # discovery off): no Developer ID and no notarization, but a valid seal over the whole bundle.
+  # Without it the bundle keeps Electron's own linker signature, which no longer matches once the
+  # app's files are added, and macOS calls a downloaded copy "damaged" with no Open Anyway.
+  # Signing is a config change: provide the certificate and run pnpm package:mac:signed (see
+  # scripts/packaging/README.md for the exact secrets).
   # Signing walks every Mach-O file in the app, the extra resources included, so llama-server and
   # the Swift helper are signed with the app's identity and the hardened runtime. The helper is
   # signed without entitlements; check Vision and Foundation Models on the first signed build

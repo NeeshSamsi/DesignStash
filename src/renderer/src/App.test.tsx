@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from './App'
 import { IPC_CHANNELS } from '@shared/ipc'
+import { TO_SORT_BOARD } from '@shared/grouping'
 import { useLibraryStore } from './stores/libraryStore'
 import { useUiStore } from './stores/uiStore'
 import { useCopyStore } from './stores/copyStore'
@@ -82,12 +83,6 @@ beforeEach(() => {
       if (channel === IPC_CHANNELS.APP_INFO) {
         return { success: true, data: { name: 'DesignStash', version: '0.0.0', env: 'test' } }
       }
-      if (channel === IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT) {
-        return {
-          success: true,
-          data: { tier: 'free', enabled: { 'search.semantic': true, 'app.core': true } }
-        }
-      }
       if (channel === IPC_CHANNELS.DEBUG_READ_SETTINGS) {
         return { success: true, data: { path: '/stub/settings.json', json: '{}', exists: false } }
       }
@@ -103,6 +98,25 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByRole('button', { name: /My Stash/ })).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeTruthy()
+  })
+
+  it('reads My Stash again when main says the stash folder changed, such as a cover deleted in Finder (F-012)', async () => {
+    render(<App />)
+    await screen.findByRole('navigation', { name: 'Primary' })
+    const lists = () =>
+      vi.mocked(window.api.invoke).mock.calls.filter(([c]) => c === IPC_CHANNELS.LIBRARY_LIST).length
+    await waitFor(() => expect(lists()).toBeGreaterThan(0))
+    const before = lists()
+    const listener = vi
+      .mocked(window.api.subscribe)
+      .mock.calls.find(([channel]) => channel === IPC_CHANNELS.LIBRARY_CHANGED)?.[1] as
+      | ((payload: unknown) => void)
+      | undefined
+    expect(listener).toBeDefined()
+
+    act(() => listener!({ reason: 'covers' }))
+
+    await waitFor(() => expect(lists()).toBeGreaterThan(before))
   })
 
   it('a drop on My Stash starts a copy', async () => {
@@ -238,6 +252,62 @@ describe('App', () => {
     })
   })
 
+  it('closing Look it over never fetches a list without the Starred view and category filter', async () => {
+    useUiStore.setState({ view: 'starred' })
+    useLibraryStore.setState({ categoryIds: [5] })
+    const base = window.api.invoke as ReturnType<typeof vi.fn>
+    const previous = base.getMockImplementation() as (c: string, r: unknown) => unknown
+    base.mockImplementation(async (channel: string, request: unknown) => {
+      if (channel === IPC_CHANNELS.INBOX_COUNTS)
+        return { success: true, data: { toSort: 0, toStash: 1, sniffing: 0, trash: 0 } }
+      if (channel === IPC_CHANNELS.INBOX_LIST)
+        return {
+          success: true,
+          data: {
+            items: [
+              {
+                id: 4,
+                title: 'Poster',
+                description: null,
+                coverPath: '/c/p.webp',
+                coverSource: 'embedded',
+                coverMissing: false,
+                favourite: false,
+                createdAt: '2026-10-11',
+                pile: null,
+                pileId: null,
+                variation: null,
+                tags: [],
+                stage: 'to_stash',
+                aiStatus: 'ready',
+                sizeBytes: 1,
+                batchId: 'b1'
+              }
+            ]
+          }
+        }
+      // Nothing left by the time it opens, so Look it over closes at once, as Finish later would.
+      if (channel === IPC_CHANNELS.LOOK_OVER_OPEN)
+        return { success: true, data: { units: [], checksEdits: false, resume: null } }
+      return previous(channel, request)
+    })
+    const sent = (channel: string) => base.mock.calls.filter(([c]) => c === channel)
+
+    render(<App />)
+    await waitFor(() => expect(sent(IPC_CHANNELS.LIBRARY_LIST).length).toBeGreaterThan(0))
+    fireEvent.click(await screen.findByRole('button', { name: /To stash/ }))
+    const lookThemOver = await screen.findByRole('button', { name: 'Look them over' })
+    const statsBefore = sent(IPC_CHANNELS.LIBRARY_STATS).length
+    fireEvent.click(lookThemOver)
+    await waitFor(() => expect(sent(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1))
+    await waitFor(() =>
+      expect(sent(IPC_CHANNELS.LIBRARY_STATS).length).toBeGreaterThan(statsBefore)
+    )
+    for (const [, request] of sent(IPC_CHANNELS.LIBRARY_LIST)) {
+      expect(request).toMatchObject({ starredOnly: true, categoryIds: [5] })
+    }
+  })
+
   it('blocking reconciliation modal appears when boot scan finds drift', async () => {
     ;(window.api.invoke as ReturnType<typeof vi.fn>).mockImplementation(async (channel: string) => {
       if (channel === IPC_CHANNELS.SETTINGS_GET)
@@ -272,7 +342,79 @@ describe('App', () => {
     })
   })
 
-  it('Sort on To sort opens the Sort board for the cards’ import batch', async () => {
+  it.each([
+    ['running', true],
+    ['paused', true],
+    ['done', false]
+  ] as const)(
+    'the Sort board says it is still copying while a haul is %s (S1.E1)',
+    async (state, shown) => {
+      const base = window.api.invoke as ReturnType<typeof vi.fn>
+      const previous = base.getMockImplementation() as (c: string, r: unknown) => unknown
+      base.mockImplementation(async (channel: string, request: unknown) => {
+        if (channel === IPC_CHANNELS.COPY_STATUS)
+          return {
+            success: true,
+            data: {
+              haul: {
+                haulId: 'h1',
+                state,
+                total: 40,
+                landed: 12,
+                bytesTotal: 0,
+                bytesCopied: 0,
+                bytesPerSecond: 0,
+                secondsLeft: null,
+                skipped: {
+                  notPsd: 0,
+                  duplicate: 0,
+                  unreadable: 0,
+                  archiveUnsupported: 0,
+                  noPsdInArchive: 0
+                },
+                files: []
+              }
+            }
+          }
+        if (channel === IPC_CHANNELS.INBOX_COUNTS)
+          return { success: true, data: { toSort: 1, toStash: 0, sniffing: 0, trash: 0 } }
+        if (channel === IPC_CHANNELS.INBOX_LIST)
+          return {
+            success: true,
+            data: {
+              items: [
+                {
+                  id: 7,
+                  title: 'a.psd',
+                  description: null,
+                  coverPath: '/c/a.webp',
+                  coverSource: 'embedded',
+                  coverMissing: false,
+                  favourite: false,
+                  createdAt: '2026-10-11',
+                  pile: null,
+                  pileId: null,
+                  variation: null,
+                  tags: [],
+                  stage: 'to_sort',
+                  aiStatus: 'ready',
+                  sizeBytes: 1,
+                  batchId: 'h1'
+                }
+              ]
+            }
+          }
+        return previous(channel, request)
+      })
+      render(<App />)
+      fireEvent.click(await screen.findByRole('button', { name: /To sort/ }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Sort' }))
+      await screen.findByRole('application', { name: 'Sort board' })
+      expect(screen.queryByText('Still copying') !== null).toBe(shown)
+    }
+  )
+
+  it('Sort on To sort opens the one Sort board, for everything waiting', async () => {
     const base = window.api.invoke as ReturnType<typeof vi.fn>
     const previous = base.getMockImplementation() as (c: string, r: unknown) => unknown
     base.mockImplementation(async (channel: string, request: unknown) => {
@@ -312,12 +454,12 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sort' }))
     await waitFor(() =>
       expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.GROUPING_PROPOSE, {
-        batchId: 'batch-7'
+        batchId: TO_SORT_BOARD
       })
     )
     expect(await screen.findByRole('application', { name: 'Sort board' })).toBeTruthy()
     expect(window.api.invoke).toHaveBeenCalledWith(IPC_CHANNELS.SORT_BOARD_LOAD, {
-      batchId: 'batch-7'
+      batchId: TO_SORT_BOARD
     })
   })
 })

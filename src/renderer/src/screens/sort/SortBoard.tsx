@@ -1,8 +1,10 @@
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type Dispatch,
+  type KeyboardEvent,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject
@@ -24,7 +26,7 @@ import {
 import { GroupCard } from '@renderer/components/GroupCard'
 import { GroupMemberThumb } from '@renderer/components/GroupMemberThumb'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import {
   countLabel,
   getPile,
@@ -38,6 +40,7 @@ import {
   type DropTarget
 } from './board-model'
 import type { MenuTarget } from './menu-model'
+import { nearestTile, stepTile } from './board-keys'
 import { coverUrl } from '@shared/cover-url'
 
 export interface SortBoardProps {
@@ -46,8 +49,14 @@ export interface SortBoardProps {
   dispatch: Dispatch<BoardAction>
   /** Open the menu for a target at a point. The board has already applied the right-click. */
   onMenu: (target: MenuTarget, at: { x: number; y: number }) => void
+  /** A menu is open: when it closes, focus comes back to the board. */
+  menuOpen?: boolean
   className?: string
 }
+
+/** What the keys do, for assistive tech; the guidance line above the board stays Figma's. */
+const KEYS_HELP =
+  'Arrow keys move between mockups. Space picks one, or puts it back. Shift F10 opens its menu, with Put on top and Move to. Command G makes a pile of the ones picked.'
 
 const TRAY = 'tray'
 const tileDnd = (id: number) => `tile:${id}`
@@ -71,7 +80,9 @@ function Tile({
   dispatch,
   onMenu,
   visual,
-  top
+  top,
+  tabStop,
+  onFocus
 }: {
   state: BoardState
   tileId: number
@@ -79,6 +90,9 @@ function Tile({
   onMenu: SortBoardProps['onMenu']
   visual: 'idle' | 'selected' | 'left-behind' | 'pile-target'
   top: boolean
+  /** The one tile Tab lands on (roving tab stop); the arrows move it. */
+  tabStop: boolean
+  onFocus: () => void
 }) {
   const tile = state.tiles[tileId]!
   const drag = useDraggable({ id: tileDnd(tileId) })
@@ -90,6 +104,9 @@ function Tile({
         drag.setNodeRef(node)
         drop.setNodeRef(node)
       }}
+      tabIndex={tabStop ? 0 : -1}
+      onFocus={onFocus}
+      className="outline-none focus-visible:focus-ring"
       tileId={String(tileId)}
       filename={tile.fileName}
       primary={top}
@@ -230,8 +247,23 @@ function useMarquee(root: RefObject<HTMLDivElement | null>, dispatch: Dispatch<B
  * and turns pointer events into its actions. Two piles share a row; an odd last pile and the tray
  * take the full width.
  */
-export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps) {
+export function SortBoard({
+  state,
+  dispatch,
+  onMenu,
+  menuOpen = false,
+  className
+}: SortBoardProps) {
   const root = useRef<HTMLDivElement>(null)
+  const keysHelp = useId()
+  /** The tile the keyboard is on. A tile that left the board (Undo, a merge) no longer counts. */
+  const [cursor, setCursor] = useState<number | null>(null)
+  const at = cursor !== null && state.tiles[cursor] ? cursor : null
+  const tabStop = at ?? stepTile(state, null, 'next')
+  const cursorRef = useRef(at)
+  useEffect(() => {
+    cursorRef.current = at
+  })
   const marquee = useMarquee(root, dispatch)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
   const drag = state.drag
@@ -298,8 +330,59 @@ export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps
       onMenu={onMenu}
       visual={tileVisual(id)}
       top={inPile && index === 0}
+      tabStop={tabStop === id}
+      onFocus={() => setCursor(id)}
     />
   )
+
+  const tileEl = (id: number) =>
+    root.current?.querySelector<HTMLElement>(`[data-tile-id="${id}"]`) ?? null
+  const focusTile = (id: number) => {
+    setCursor(id)
+    tileEl(id)?.focus({ preventScroll: false })
+  }
+  const openTileMenu = (id: number) => {
+    const box = tileEl(id)?.getBoundingClientRect()
+    dispatch({ type: 'context-tile', id })
+    onMenu({ kind: 'tile', tileId: id }, { x: box?.left ?? 0, y: box?.bottom ?? 0 })
+  }
+
+  /**
+   * The keyboard path (F-046): arrows move between tiles, Space picks one or puts it back, and the
+   * menu key (⇧F10) opens the tile's menu, which puts it on top or moves it to another pile.
+   * ⌘ combos stay with the board's shortcuts, and a focused button keeps its own keys.
+   */
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('button')) return
+    if (event.metaKey || event.ctrlKey || event.altKey) return
+    if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+      if (at === null) return
+      event.preventDefault()
+      openTileMenu(at)
+      return
+    }
+    if (event.shiftKey) return
+    let next: number | null
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      next = stepTile(state, at, event.key === 'ArrowRight' ? 'next' : 'previous')
+    } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      const boxes = [...(root.current?.querySelectorAll<HTMLElement>('[data-tile-id]') ?? [])].map(
+        (el) => ({ id: Number(el.dataset.tileId), rect: el.getBoundingClientRect() })
+      )
+      next =
+        at === null
+          ? stepTile(state, null, 'next')
+          : nearestTile(boxes, at, event.key === 'ArrowDown' ? 'down' : 'up')
+    } else if (event.key === ' ' && at !== null) {
+      event.preventDefault()
+      dispatch({ type: 'click-tile', id: at, meta: true })
+      return
+    } else {
+      return
+    }
+    event.preventDefault()
+    if (next !== null) focusTile(next)
+  }
 
   const tray = useDroppable({ id: TRAY })
   const lastIsAlone = state.piles.length % 2 === 1
@@ -308,6 +391,24 @@ export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps
     // Focus lives on the board, so ⌘A, ⌘G and friends reach it (scope "sort").
     root.current?.focus({ preventScroll: true })
   }, [])
+
+  // A menu hands focus back to its hidden anchor, which can't take it: bring it back to the tile
+  // the keyboard was on, or the board, so the arrows and ⌘ keys keep working.
+  const menuWasOpen = useRef(menuOpen)
+  useEffect(() => {
+    if (!menuWasOpen.current || menuOpen) {
+      menuWasOpen.current = menuOpen
+      return
+    }
+    menuWasOpen.current = false
+    const frame = requestAnimationFrame(() => {
+      const id = cursorRef.current
+      const el = id !== null ? tileEl(id) : null
+      if (el) el.focus({ preventScroll: true })
+      else root.current?.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [menuOpen])
 
   const grabbed =
     draggedTiles.length > 0 ? state.tiles[(drag as { grabbed: number }).grabbed] : undefined
@@ -329,6 +430,8 @@ export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps
         tabIndex={-1}
         role="application"
         aria-label="Sort board"
+        aria-describedby={keysHelp}
+        onKeyDown={onKeyDown}
         onPointerDown={marquee.onPointerDown}
         onClick={(event: MouseEvent<HTMLDivElement>) => {
           if (marquee.consumeClick()) return
@@ -420,7 +523,7 @@ export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps
           <div className="relative w-32">
             <GroupMemberThumb state="lifted" filename={grabbed.fileName} />
             {draggedTiles.length > 1 && (
-              <Badge variant="default" className="absolute -top-2 -right-2">
+              <Badge variant="primary" className="absolute -top-2 -right-2">
                 {draggedTiles.length}
               </Badge>
             )}
@@ -437,6 +540,9 @@ export function SortBoard({ state, dispatch, onMenu, className }: SortBoardProps
           />
         )}
       </DragOverlay>
+      <span id={keysHelp} className="sr-only">
+        {KEYS_HELP}
+      </span>
       <span className="sr-only" aria-live="polite">
         {state.selectedTiles.length > 0
           ? `${countLabel({ id: '', memberIds: state.selectedTiles })} selected`

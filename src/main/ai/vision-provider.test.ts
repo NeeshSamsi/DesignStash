@@ -10,6 +10,7 @@ import {
   VISION_IMAGE_MAX_EDGE,
   buildRequest,
   parseResult,
+  pileBaseTitle,
   readCoverAsDataUrl,
   type ChatContentPart,
   type ChatReply,
@@ -124,6 +125,99 @@ describe('VisionInferenceProvider.analyze', () => {
     const { provider, dispose } = makeProvider()
     await provider.dispose()
     expect(dispose).toHaveBeenCalledOnce()
+  })
+
+  it("takes the object's colours out of every answer and leaves the setting's (round 4)", async () => {
+    const coloured = {
+      title: 'White mug on a grey table',
+      description: 'A white mug with a black handle on a grey table.',
+      tags: [
+        { category: 'Print & Branding', label: 'white mug' },
+        { category: 'Environment', label: 'table' }
+      ]
+    }
+    const clean = {
+      title: 'Mug on a grey table',
+      description: 'A mug with a handle on a grey table.',
+      tags: [
+        { category: 'Print & Branding', label: 'mug' },
+        { category: 'Environment', label: 'table' }
+      ]
+    }
+    expect(await makeProvider(coloured).provider.analyze(INPUT)).toEqual(clean)
+    expect(await makeProvider(coloured, null).provider.analyze(INPUT)).toEqual(clean)
+  })
+
+  it('stops its runtime on stop(), for a run that hit the hard stop', async () => {
+    const { provider, dispose } = makeProvider()
+    await provider.stop()
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
+  it("names a pile's variations in one request when its profile asks (the 4B, the 9B), and has no way to otherwise", async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'vision-pile-'))
+    const covers = await Promise.all(
+      ['front', 'side'].map(async (name) => {
+        const path = join(dir, `${name}.png`)
+        await sharp({ create: { width: 400, height: 300, channels: 3, background: '#808080' } }).png().toFile(path)
+        return path
+      })
+    )
+    const complete = vi.fn<(req: ChatRequest) => Promise<ChatReply>>(async () => ({ text: JSON.stringify({ variations: ['front view', 'same'] }) }))
+    const provider = new VisionInferenceProvider('m', { prompt: { ...SHIPPED, variations: true }, complete, readImage: async () => IMAGE })
+    const pile = covers.map((coverPath, i) => ({ coverPath, fileName: `phone_${i}.psd` }))
+
+    expect(await provider.pileVariations!(pile)).toEqual({ variations: ['front view', null], base: null })
+    expect(complete).toHaveBeenCalledOnce()
+    expect(userText(complete.mock.calls[0]![0])).toContain('1 = phone_0.psd, 2 = phone_1.psd')
+    expect(makeProvider().provider.pileVariations).toBeUndefined()
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  describe("a pile's base (round 4 B: the 9B)", () => {
+    let dir: string
+    let pile: { coverPath: string; fileName: string }[]
+    beforeAll(async () => {
+      dir = await mkdtemp(join(tmpdir(), 'vision-base-'))
+      pile = await Promise.all(
+        ['front', 'side'].map(async (name) => {
+          const coverPath = join(dir, `${name}.png`)
+          await sharp({ create: { width: 400, height: 300, channels: 3, background: '#808080' } }).png().toFile(coverPath)
+          return { coverPath, fileName: `scroll_${name}.psd` }
+        })
+      )
+    })
+    afterAll(() => rm(dir, { recursive: true, force: true }))
+
+    const reply = (title: string) =>
+      vi.fn<(req: ChatRequest) => Promise<ChatReply>>(async () => ({ text: JSON.stringify({ variations: ['wavy', 'flat'], title }) }))
+
+    it("asks for the base with the variations when its profile names bases, from the top's own title, and tidies it as a title", async () => {
+      const complete = reply("Long Scroll MacBook mockup variants with 'ACME' text")
+      const provider = new VisionInferenceProvider('m', { prompt: { ...SHIPPED, variations: true, pileBase: true }, complete, readImage: async () => IMAGE })
+
+      expect(provider.pileBase).toBe(true)
+      expect(await provider.pileVariations!(pile, 'Long Scroll MacBook on wavy sheets')).toEqual({ variations: ['wavy', 'flat'], base: 'Long Scroll MacBook' })
+      expect(userText(complete.mock.calls[0]![0])).toContain('The first mockup\'s own title is "Long Scroll MacBook on wavy sheets".')
+    })
+
+    it('never asks for one when its profile names only the variations (the 4B), even given the title', async () => {
+      const complete = reply('Long Scroll MacBook')
+      const provider = new VisionInferenceProvider('m', { prompt: { ...SHIPPED, variations: true }, complete, readImage: async () => IMAGE })
+
+      expect(provider.pileBase).toBeFalsy()
+      expect(await provider.pileVariations!(pile, 'Long Scroll MacBook on wavy sheets')).toEqual({ variations: ['wavy', 'flat'], base: null })
+      expect(userText(complete.mock.calls[0]![0])).not.toContain("own title")
+    })
+
+    it('gives no base when tidying leaves nothing', async () => {
+      const provider = new VisionInferenceProvider('m', {
+        prompt: { ...SHIPPED, variations: true, pileBase: true },
+        complete: reply('Free PSD mockup variants'),
+        readImage: async () => IMAGE
+      })
+      expect((await provider.pileVariations!(pile, 'Phone')).base).toBeNull()
+    })
   })
 
   it("says whether its runtime has the model loaded, and loads it on load()", async () => {
@@ -357,6 +451,49 @@ describe('VisionInferenceProvider with a masked design slot', () => {
     expect(userParts(question)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
   })
 
+  describe('with checkEdge (the 4B, round 4)', () => {
+    /** A real cover, 1200 by 900, so it can be scaled. */
+    const bigCover = async () =>
+      `data:image/png;base64,${(await sharp({ create: { width: 1200, height: 900, channels: 3, background: '#808080' } }).png().toBuffer()).toString('base64')}`
+    const size = async (url: string) => sharp(Buffer.from(url.slice(url.indexOf(',') + 1), 'base64')).metadata()
+    const imageOf = (req: ChatRequest) => (userParts(req).find((p) => p.type === 'image_url') as { image_url: { url: string } }).image_url.url
+
+    function scaled(cover: string, maskPath: string | null) {
+      const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+        const text = JSON.stringify(req)
+        if (/Is there a lamp in this image/.test(text)) return { text: 'yes', logprobs: { content: [{ top_logprobs: [{ token: 'yes', logprob: 0 }] }] } }
+        if (/What kind of object/.test(text)) return { text: JSON.stringify({ object: 'lamp' }) }
+        return { text: JSON.stringify(LAMP) }
+      })
+      const provider = new VisionInferenceProvider('m', {
+        prompt: { ...SHIPPED, sceneThings: SCENE_THINGS, mask: 'outline', objectHint: true, checkEdge: 512 },
+        complete,
+        readImage: vi.fn(async (path: string) => (path.includes('cover-ai') ? MASKED : cover)),
+        maskedCover: vi.fn(async () => maskPath)
+      })
+      return { provider, complete }
+    }
+
+    it('asks the scene check about the cover as it is, scaled to fit, and names the object from it at full size', async () => {
+      const cover = await bigCover()
+      const { provider, complete } = scaled(cover, '/library/mockups/1/cover-ai-outline.png')
+      await provider.analyze(INPUT)
+      const [hint, answer, check] = complete.mock.calls.map((c) => c[0] as ChatRequest)
+      expect(imageOf(hint!)).toBe(cover)
+      expect(imageOf(answer!)).toBe(MASKED)
+      expect(await size(imageOf(check!))).toMatchObject({ width: 512, height: 384, format: 'jpeg' })
+    })
+
+    it("scales the check without a slot mask too, where it looks at the answer's own image", async () => {
+      const cover = await bigCover()
+      const { provider, complete } = scaled(cover, null)
+      await provider.analyze(INPUT)
+      const [answer, check] = complete.mock.calls.map((c) => c[0] as ChatRequest)
+      expect(imageOf(answer!)).toBe(cover)
+      expect(await size(imageOf(check!))).toMatchObject({ width: 512, height: 384 })
+    })
+  })
+
   it("shows the profile's fallback fill when the masked cover is too blank to show", async () => {
     const SOFT = 'data:image/jpeg;base64,SOFT'
     const buildRequest = vi.fn(SHIPPED.buildRequest)
@@ -404,7 +541,8 @@ describe('VisionInferenceProvider with a masked design slot', () => {
   it('keeps the first answer, less the refused thing, when asking again fails', async () => {
     const { provider } = masked({ redo: true }, true)
     const result = await provider.analyze(INPUT)
-    expect(result.title).toBe('Stacked white cube lamp')
+    // Less its colour too, which is taken out last.
+    expect(result.title).toBe('Stacked cube lamp')
     expect(result.tags).toEqual([])
   })
 })
@@ -414,6 +552,8 @@ describe('VisionInferenceProvider placeholder check (verify)', () => {
   const LABEL = 'data:image/jpeg;base64,LABEL'
   const GRID = { title: 'Blue grid MacBook on white bench', description: 'A MacBook with a blue grid screen on a white bench.', tags: [] }
   const CLEAN = { title: 'Long scroll MacBook on white bench', description: 'A MacBook on a white bench.', tags: [] }
+  /** GRID as it comes out: the object's colour is taken out last, after the check. */
+  const GRID_KEPT = { ...GRID, title: 'Grid MacBook on white bench' }
 
   function verifying(says: Record<string, 'yes' | 'no'>, masks = true) {
     const calls: object[] = []
@@ -436,9 +576,16 @@ describe('VisionInferenceProvider placeholder check (verify)', () => {
     return { provider, calls }
   }
 
+  it("takes the object's colours out only after the check, which still asks about them", async () => {
+    const { provider, calls } = verifying({ blue: 'yes', grid: 'yes' })
+    const result = await provider.analyze(INPUT)
+    expect(calls.some((c) => JSON.stringify(c).includes('blue in colour'))).toBe(true)
+    expect(result.title).toBe('Grid MacBook on white bench')
+  })
+
   it('answers from the cover as it is, and keeps the answer when every word is also outside the slot', async () => {
     const { provider, calls } = verifying({ blue: 'yes', grid: 'yes' })
-    await expect(provider.analyze(INPUT)).resolves.toEqual(GRID)
+    await expect(provider.analyze(INPUT)).resolves.toEqual(GRID_KEPT)
     expect(userParts(calls[0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
     expect(userParts(calls[1] as ChatRequest)).toEqual([
       { type: 'image_url', image_url: { url: SOFT } },
@@ -476,13 +623,13 @@ describe('VisionInferenceProvider placeholder check (verify)', () => {
     await expect(provider('soft').analyze(INPUT)).resolves.toEqual(CLEAN)
     expect(userParts(calls[3] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: SOFT } })
     calls.length = 0
-    await expect(provider().analyze(INPUT)).resolves.toEqual(GRID)
+    await expect(provider().analyze(INPUT)).resolves.toEqual(GRID_KEPT)
     expect(calls).toHaveLength(3)
   })
 
   it('checks nothing for a mockup without a slot mask', async () => {
     const { provider, calls } = verifying({}, false)
-    await expect(provider.analyze(INPUT)).resolves.toEqual(GRID)
+    await expect(provider.analyze(INPUT)).resolves.toEqual(GRID_KEPT)
     expect(calls).toHaveLength(1)
   })
 })
@@ -774,7 +921,7 @@ describe('VisionInferenceProvider pile edits', () => {
   const ENTRY = { description: 'A laptop on a grey mesh floor.', tags: ['Laptop', 'floor'] }
 
   function pileProvider(pileEdits: PromptProfile['pileEdits'], reply: object) {
-    const complete = vi.fn<(req: ChatRequest) => Promise<ChatReply>>(async () => ({ text: JSON.stringify(reply) }))
+    const complete = vi.fn<(req: ChatRequest, signal?: AbortSignal) => Promise<ChatReply>>(async () => ({ text: JSON.stringify(reply) }))
     const readImage = vi.fn<(path: string) => Promise<string | null>>(async () => IMAGE)
     const provider = new VisionInferenceProvider('Qwen3.5 9B', { prompt: { ...SHIPPED, ...(pileEdits && { pileEdits }) }, complete, readImage })
     return { provider, complete, readImage }
@@ -825,7 +972,40 @@ describe('VisionInferenceProvider pile edits', () => {
     expect(complete).not.toHaveBeenCalled()
   })
 
+  it("passes the caller's signal to the model for a check and a rewrite, so one that ran out of time can be cancelled (F-035)", async () => {
+    const judged = pileProvider({ judge: true }, { answer: 'yes', reason: '' })
+    const signal = new AbortController().signal
+    await judged.provider.pileEdits.check!('/c', EDIT, ['bench'], signal)
+    expect(judged.complete.mock.calls[0]![1]).toBe(signal)
+
+    const rewritten = pileProvider(undefined, { description: 'A laptop on a white slatted bench.', tags: [] })
+    await rewritten.provider.pileEdits.rewrite!(EDIT, ENTRY, signal)
+    expect(rewritten.complete.mock.calls[0]![1]).toBe(signal)
+  })
+
   it('throws on an empty rewrite, so the caller falls back to a copy', async () => {
     await expect(pileProvider(undefined, { description: ' ', tags: [] }).provider.pileEdits!.rewrite!(EDIT, ENTRY)).rejects.toThrow()
+  })
+})
+
+describe('pileBaseTitle', () => {
+  it('cuts the words for the pile itself (variant, variation), as the 4B and 9B add them', () => {
+    expect(pileBaseTitle('iMac Monitor Variants')).toBe('iMac Monitor')
+    expect(pileBaseTitle('Apron variants')).toBe('Apron')
+  })
+
+  it('tidies the rest as a suggested title: printed words, stock words, a capital, the object\'s colours', () => {
+    expect(pileBaseTitle("Free menu card labeled 'Salt & Vine' mockup")).toBe('Menu card')
+    expect(pileBaseTitle('iMac desktop setup')).toBe('iMac desktop setup')
+    expect(pileBaseTitle('stacked cubes')).toBe('Stacked cubes')
+    expect(pileBaseTitle('White ceramic mug with handle')).toBe('Ceramic mug with handle')
+  })
+
+  it('keeps to 60 characters at a word, and gives nothing when nothing is left', () => {
+    const long = pileBaseTitle('Long scroll MacBook Pro laptop with an extended landing page design shown')!
+    expect(long.length).toBeLessThanOrEqual(60)
+    expect(long.endsWith('…')).toBe(true)
+    expect(pileBaseTitle('Mockup variations')).toBeNull()
+    expect(pileBaseTitle('  ')).toBeNull()
   })
 })

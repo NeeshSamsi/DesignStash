@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import sharp from 'sharp'
 import { resolveCover } from './cover-resolver'
-import { buildPsdWithComposite, buildDroppedTree, buildSidecarImage } from './__fixtures__/build'
+import { buildLayeredPsd, buildPsdWithComposite, buildDroppedTree, buildSidecarImage } from './__fixtures__/build'
 
 const dirs: string[] = []
 function tempDir(): string {
@@ -38,6 +38,17 @@ describe('resolveCover — embedded branch', () => {
     }
   })
 
+  it('draws the cover of a PSB (Large Document Format) from its composite the same way (H-12)', async () => {
+    const dir = tempDir()
+    const psbPath = join(dir, 'original.psb')
+    buildLayeredPsd(psbPath, { layers: 2, psb: true })
+
+    const result = await resolveCover({ psdPath: psbPath, candidateImagePaths: [], outDir: join(dir, 'out') })
+
+    expect(result.source).toBe('embedded')
+    if (result.source === 'embedded') expect(existsSync(result.coverPath)).toBe(true)
+  })
+
   it('writes cover.webp and thumb.webp for embedded result', async () => {
     const dir = tempDir()
     const psdPath = join(dir, 'design.psd')
@@ -50,6 +61,26 @@ describe('resolveCover — embedded branch', () => {
       expect(result.coverPath).toMatch(/cover\.webp$/)
       expect(result.thumbPath).toMatch(/thumb\.webp$/)
     }
+  })
+})
+
+describe('resolveCover — who reads the composite', () => {
+  it('reads the PSD’s composite with the reader it is given, as the app’s worker does', async () => {
+    const dir = tempDir()
+    const pixels = Buffer.alloc(800 * 600 * 4)
+    for (let i = 0; i < pixels.length; i++) pixels[i] = i % 4 === 3 ? 255 : (i * 7) % 256
+    const readEmbedded = vi.fn(async () => ({ data: pixels, width: 800, height: 600 }))
+
+    const result = await resolveCover({
+      psdPath: join(dir, 'not-on-disk.psd'),
+      candidateImagePaths: [],
+      outDir: join(dir, 'out'),
+      readEmbedded
+    })
+
+    expect(readEmbedded).toHaveBeenCalledWith(join(dir, 'not-on-disk.psd'))
+    expect(result.source).toBe('embedded')
+    if (result.source === 'embedded') expect(existsSync(result.coverPath)).toBe(true)
   })
 })
 

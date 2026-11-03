@@ -1,47 +1,44 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { Popover as PopoverPrimitive } from "radix-ui"
+import * as React from 'react'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { Popover as PopoverPrimitive } from 'radix-ui'
 
-import { cn } from "@renderer/lib/utils"
+import { cn } from '@renderer/lib/utils'
 
-/** Panel shared by the live popover and the static catalog/Figma rendering. */
+/**
+ * Panel shared by the live popover and the static catalog/Figma rendering: raised (shadow/raised), with
+ * no padding of its own, since the Popover component lays out header, body and footer regions.
+ */
 const popoverPanelVariants = cva(
-  "flex flex-col gap-3 rounded-lg border border-base bg-surface-2 p-4 text-foreground outline-hidden",
+  'flex flex-col rounded-lg border border-base bg-surface-2 text-foreground shadow-raised outline-hidden',
   {
     variants: {
       size: {
-        default: "w-72",
-        lg: "w-96",
-      },
+        default: 'w-72',
+        lg: 'w-96'
+      }
     },
     defaultVariants: {
-      size: "default",
-    },
+      size: 'default'
+    }
   }
 )
 
-function Popover({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />
 }
 
-function PopoverTrigger({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
+function PopoverTrigger({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
 }
 
-function PopoverAnchor({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
+function PopoverAnchor({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />
 }
 
 function PopoverContent({
   className,
   size,
-  align = "start",
+  align = 'start',
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content> &
@@ -53,7 +50,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 max-h-(--radix-popover-content-available-height) origin-(--radix-popover-content-transform-origin) data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          'z-50 max-h-(--radix-popover-content-available-height) origin-(--radix-popover-content-transform-origin) data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
           popoverPanelVariants({ size }),
           className
         )}
@@ -63,31 +60,31 @@ function PopoverContent({
   )
 }
 
-function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
+function PopoverHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="popover-header"
-      className={cn("flex items-center justify-between gap-2", className)}
+      className={cn('flex items-center justify-between gap-2', className)}
       {...props}
     />
   )
 }
 
-function PopoverTitle({ className, ...props }: React.ComponentProps<"h2">) {
+function PopoverTitle({ className, ...props }: React.ComponentProps<'h2'>) {
   return (
     <h2
       data-slot="popover-title"
-      className={cn("type-body-sm-medium text-foreground", className)}
+      className={cn('type-body-sm-medium text-foreground', className)}
       {...props}
     />
   )
 }
 
-function PopoverFooter({ className, ...props }: React.ComponentProps<"div">) {
+function PopoverFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="popover-footer"
-      className={cn("flex items-center justify-end gap-2", className)}
+      className={cn('flex items-center justify-end gap-2', className)}
       {...props}
     />
   )
@@ -101,5 +98,5 @@ export {
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
-  popoverPanelVariants,
+  popoverPanelVariants
 }

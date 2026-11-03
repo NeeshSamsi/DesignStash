@@ -1,5 +1,8 @@
-import { readFile } from 'node:fs/promises'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { open, readFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { readPsd, type Layer, type Psd } from 'ag-psd'
+import { decodeLayerImageData } from 'ag-psd/dist/psdReader'
 import sharp from 'sharp'
 // The canvas shim ag-psd needs is set up there.
 import './embedded'
@@ -16,6 +19,31 @@ import './embedded'
 
 /** The slot mask's file name, beside the cover in a mockup's folder. */
 export const SLOT_MASK_FILE = 'slot-mask.png'
+
+/**
+ * Beside the cover when reading the PSD gave no mask, and why, so it is never read again for one:
+ * a sidecar cover framed differently is about one mockup in twenty, and reading a large PSD takes
+ * seconds and hundreds of megabytes. JSON: `{ outcome, version }`.
+ */
+export const SLOT_MASK_NONE = 'slot-mask.none'
+
+/** Bump when what finds a slot or the decode budget changes: PSDs that gave no mask are read once more. */
+export const SLOT_MASK_VERSION = 1
+
+/**
+ * The most a slot mask may decode, in bytes of layer pixels (4 a pixel). On the 90 test-set PSDs it
+ * needs a median of 30 MB and at most 891 MB (a kit of ten smart objects); decoding every layer took
+ * a median of 319 MB and up to 1.5 GB. The cap keeps an outsized document from putting gigabytes on
+ * top of a running model; such a PSD keeps its cover as it is for the AI.
+ */
+export const SLOT_MASK_BUDGET_BYTES = 1024 ** 3
+
+/**
+ * What reading a PSD for its slot mask came to. `written`: the mask is beside the cover. The rest
+ * leave none: `no-slot`, `other-shape` (the cover is framed differently from the document),
+ * `unreadable`, or `too-large` (the layers it needs would decode past the budget).
+ */
+export type SlotMaskOutcome = 'written' | 'no-slot' | 'other-shape' | 'unreadable' | 'too-large'
 
 /** Names a designer's own content goes into. */
 const DESIGN =
@@ -107,56 +135,148 @@ const overlaps = (a: Box, b: Box) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] &
  */
 export function designSlotMask(psd: Psd): { mask: Uint8Array; slots: string[] } {
   const { width: w, height: h } = psd
-  const flat = flatten(psd)
-  const slots = slotsIn(flat)
+  const plan = maskPlan(psd)
   const mask = new Uint8Array(w * h)
-  const occluders = flat.filter(
-    (f) => f.plain && !slots.includes(f) && !NOTICE.test([...f.path, f.layer.name ?? ''].join(' '))
-  )
-  for (const s of slots) {
+  for (const { slot: s, above } of plan) {
     const box = boxOf(s.layer)
-    const above = occluders.filter((c) => c.order > s.order && overlaps(boxOf(c.layer), box))
     for (let y = Math.max(0, box[1]); y < Math.min(h, box[3]); y++)
       for (let x = Math.max(0, box[0]); x < Math.min(w, box[2]); x++) {
         if (clippedAlphaAt(s, x, y) < 0.5) continue
         if (!above.some((c) => clippedAlphaAt(c, x, y) >= 0.9)) mask[y * w + x] = 255
       }
   }
-  return { mask, slots: slots.map((s) => s.layer.name ?? '') }
+  return { mask, slots: plan.map((p) => p.slot.layer.name ?? '') }
 }
 
-async function readWithLayers(psdPath: string): Promise<Psd> {
+/** Each slot, with the plain opaque layers painted over it that may hide part of it. Read from the layers' structure alone. */
+function maskPlan(psd: Psd): { slot: Flat; above: Flat[] }[] {
+  const flat = flatten(psd)
+  const slots = slotsIn(flat)
+  const occluders = flat.filter(
+    (f) => f.plain && !slots.includes(f) && !NOTICE.test([...f.path, f.layer.name ?? ''].join(' '))
+  )
+  return slots.map((slot) => ({
+    slot,
+    above: occluders.filter((c) => c.order > slot.order && overlaps(boxOf(c.layer), boxOf(slot.layer)))
+  }))
+}
+
+/** The layers whose pixels the mask reads: the slots, their clipping bases and what is painted over them. */
+function pixelLayers(plan: ReturnType<typeof maskPlan>): Layer[] {
+  return [...new Set(plan.flatMap(({ slot, above }) => [slot.layer, ...(slot.clipBase ? [slot.clipBase] : []), ...above.map((a) => a.layer)]))]
+}
+
+const areaOf = (l: { left?: number; top?: number; right?: number; bottom?: number }) =>
+  Math.max(0, (l.right ?? 0) - (l.left ?? 0)) * Math.max(0, (l.bottom ?? 0) - (l.top ?? 0))
+
+/** What decoding these layers takes, in bytes: 4 a pixel, for each layer and its mask. */
+function decodedBytes(layers: Layer[]): number {
+  return layers.reduce((sum, l) => sum + areaOf(l) * 4 + (l.mask ? areaOf(l.mask) * 4 : 0), 0)
+}
+
+/** What a slot mask decodes for this document, in bytes, from its layers' structure alone. */
+export function maskDecodeBytes(psd: Psd): number {
+  return decodedBytes(pixelLayers(maskPlan(psd)))
+}
+
+/** The document's size, from the PSD's 26-byte header, without reading the rest. */
+async function readHeader(psdPath: string): Promise<{ width: number; height: number }> {
+  const file = await open(psdPath, 'r')
+  try {
+    const head = Buffer.alloc(26)
+    const { bytesRead } = await file.read(head, 0, 26, 0)
+    if (bytesRead < 26 || head.toString('ascii', 0, 4) !== '8BPS') throw new Error('Not a PSD')
+    return { width: head.readUInt32BE(18), height: head.readUInt32BE(14) }
+  } finally {
+    await file.close()
+  }
+}
+
+/**
+ * The document with its layers' structure and their pixels still compressed (`rawData`, views into
+ * the file's one buffer), so only the layers a mask needs are ever decoded.
+ */
+async function readStructure(psdPath: string): Promise<Psd> {
   const bytes = await readFile(psdPath)
-  const ab = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
-  return readPsd(ab, { skipCompositeImageData: true, skipThumbnail: true, skipLinkedFilesData: true, useImageData: true })
+  // A large file's buffer is its own; a small one may sit in Node's shared pool and needs its own copy.
+  const whole = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
+  const ab = (whole ? bytes.buffer : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)) as ArrayBuffer
+  return readPsd(ab, { useRawData: true, useImageData: true, skipCompositeImageData: true, skipThumbnail: true, skipLinkedFilesData: true })
+}
+
+/** Whether a mockup's folder already says what its PSD gave: a mask, or no mask at this detector's version. */
+export function slotMaskSettled(dir: string): boolean {
+  if (existsSync(join(dir, SLOT_MASK_FILE))) return true
+  try {
+    return (JSON.parse(readFileSync(join(dir, SLOT_MASK_NONE), 'utf8')) as { version?: unknown }).version === SLOT_MASK_VERSION
+  } catch {
+    return false
+  }
+}
+
+export interface SlotMaskDeps {
+  /** The document's size from its header. */
+  header?: (psdPath: string) => Promise<{ width: number; height: number }>
+  /** The document's structure, its layers' pixels not yet decoded. */
+  read?: (psdPath: string) => Promise<Psd>
+  /** Decode one layer's pixels and mask into `imageData`. */
+  decode?: (layer: Layer) => void
+  budgetBytes?: number
 }
 
 /**
  * Writes the slot mask beside the cover, at the cover's size (white where the placeholder shows),
- * and says whether it did. Nothing is written when the PSD can't be read, has no slot, or the cover
- * isn't the document's shape (a sidecar framed differently), so the AI sees the cover as it is.
+ * and says what it came to. The cheap checks go first: the cover's shape against the header's, then
+ * the slots from the layers' structure; only the layers the mask needs are decoded, within the
+ * budget. Without a mask, why is kept beside the cover (`SLOT_MASK_NONE`), so the PSD isn't read
+ * again for one, and the AI sees the cover as it is. Never throws.
  */
 export async function writeDesignSlotMask(
   psdPath: string,
   coverPath: string,
   outPath: string,
-  deps: { read?: (psdPath: string) => Promise<Psd> } = {}
-): Promise<boolean> {
+  deps: SlotMaskDeps = {}
+): Promise<SlotMaskOutcome> {
+  const outcome = await slotMask(psdPath, coverPath, outPath, deps)
   try {
-    const psd = await (deps.read ?? readWithLayers)(psdPath)
-    const { mask } = designSlotMask(psd)
-    if (!mask.some((v) => v)) return false
+    const none = join(dirname(outPath), SLOT_MASK_NONE)
+    if (outcome === 'written') rmSync(none, { force: true })
+    else writeFileSync(none, JSON.stringify({ outcome, version: SLOT_MASK_VERSION }))
+  } catch {
+    // Not kept: the PSD is only read again next time.
+  }
+  return outcome
+}
+
+async function slotMask(psdPath: string, coverPath: string, outPath: string, deps: SlotMaskDeps): Promise<SlotMaskOutcome> {
+  let doc: { width: number; height: number }
+  let psd: Psd
+  try {
+    doc = await (deps.header ?? readHeader)(psdPath)
     const { width, height } = await sharp(coverPath).metadata()
-    if (!width || !height) return false
-    const docAspect = psd.width / psd.height
-    if (Math.abs(width / height - docAspect) / docAspect >= 0.015) return false
+    if (!width || !height) return 'unreadable'
+    const docAspect = doc.width / doc.height
+    if (Math.abs(width / height - docAspect) / docAspect >= 0.015) return 'other-shape'
+    psd = await (deps.read ?? readStructure)(psdPath)
+  } catch {
+    return 'unreadable'
+  }
+  try {
+    const needed = pixelLayers(maskPlan(psd))
+    if (needed.length === 0) return 'no-slot'
+    if (maskDecodeBytes(psd) > (deps.budgetBytes ?? SLOT_MASK_BUDGET_BYTES)) return 'too-large'
+    const decode = deps.decode ?? ((layer: Layer) => decodeLayerImageData(layer, true))
+    for (const layer of needed) if (!layer.imageData) decode(layer)
+    const { mask } = designSlotMask(psd)
+    if (!mask.some((v) => v)) return 'no-slot'
+    const { width, height } = await sharp(coverPath).metadata()
     await sharp(Buffer.from(mask), { raw: { width: psd.width, height: psd.height, channels: 1 } })
-      .resize(width, height, { fit: 'fill' })
+      .resize(width!, height!, { fit: 'fill' })
       .threshold(128)
       .png()
       .toFile(outPath)
-    return true
+    return 'written'
   } catch {
-    return false
+    return 'unreadable'
   }
 }

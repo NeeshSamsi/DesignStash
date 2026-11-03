@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import { afterUndo } from '@renderer/lib/undo-router'
 import type { DriftReport } from '@shared/integrity'
 import { installApi, ok, type TestApi } from '../onboarding/test-api'
 import { StashCheckModal } from './StashCheckModal'
@@ -84,25 +85,22 @@ describe('stash check modal', () => {
   })
 
   it('Add puts the file in To sort, takes the row out and offers Undo', async () => {
-    open({ [IPC_CHANNELS.INTEGRITY_ADD]: () => ok({ mockupIds: [41] }) })
+    open({ [IPC_CHANNELS.INTEGRITY_ADD]: () => ok({ mockupIds: [41], undoEntryId: 60 }) })
     fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]!)
     await waitFor(() => expect(screen.queryByText('poster_new')).toBeNull())
     expect(api.sent(IPC_CHANNELS.INTEGRITY_ADD)).toEqual([{ ids: ['f1'] }])
     expect(screen.getByText('2 left')).toBeTruthy()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Added 1 file to To sort', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith('Added 1 file to To sort', 60)
   })
 
-  it('Undo on an add undoes it in main, then checks again with skeleton rows', async () => {
+  it('once main has undone an add, it checks again with skeleton rows', async () => {
     open({
-      [IPC_CHANNELS.INTEGRITY_ADD]: () => ok({ mockupIds: [41] }),
+      [IPC_CHANNELS.INTEGRITY_ADD]: () => ok({ mockupIds: [41], undoEntryId: 60 }),
       [IPC_CHANNELS.INTEGRITY_REPORT]: () => new Promise(() => {})
     })
     fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]!)
     await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(api.sent(IPC_CHANNELS.INTEGRITY_UNDO_ADD)).toEqual([{ mockupIds: [41] }])
-    )
+    act(() => afterUndo({ status: 'done', label: 'Add to To sort' }, 'undo'))
     await waitFor(() => expect(skeletons().length).toBeGreaterThan(0))
   })
 
@@ -111,7 +109,7 @@ describe('stash check modal', () => {
     fireEvent.click(button('Add all'))
     await waitFor(() => expect(screen.queryByText('mug_v2')).toBeNull())
     expect(screen.getByText('Glass iPhone 14')).toBeTruthy()
-    expect(toasts.undoToast).toHaveBeenCalledWith('Added 2 files to To sort', expect.any(Function))
+    expect(toasts.undoToast).toHaveBeenCalledWith('Added 2 files to To sort', undefined)
   })
 
   it('Ignore all is instant with Undo, and Done is on at 0 left', async () => {
@@ -119,12 +117,7 @@ describe('stash check modal', () => {
     fireEvent.click(button('Ignore all'))
     expect(await screen.findByText('All sorted')).toBeTruthy()
     expect(button('Done').disabled).toBe(false)
-    expect(toasts.undoToast).toHaveBeenCalledWith('Ignored 3 changes', expect.any(Function))
-
-    toasts.undoToast.mock.calls[0]![1]()
-    await waitFor(() =>
-      expect(api.sent(IPC_CHANNELS.INTEGRITY_UNIGNORE)).toEqual([{ ids: ['f1', 'f2', 'm9'] }])
-    )
+    expect(toasts.undoToast).toHaveBeenCalledWith('Ignored 3 changes', undefined)
   })
 
   it('Done closes once everything is resolved', async () => {
@@ -206,12 +199,11 @@ describe('stash check modal', () => {
     expect(onOpenSettings).toHaveBeenCalledOnce()
   })
 
-  it('an Undo clicked during an action waits for it and never blanks the rows', async () => {
+  it('an undo that lands during an action checks again only after it, never blanking the rows', async () => {
     let finishRemove!: (value: unknown) => void
     open({
       [IPC_CHANNELS.INTEGRITY_ADD]: () => ok({ mockupIds: [41] }),
       [IPC_CHANNELS.INTEGRITY_REMOVE]: () => new Promise((r) => (finishRemove = r)),
-      [IPC_CHANNELS.INTEGRITY_UNDO_ADD]: () => ok({}),
       [IPC_CHANNELS.INTEGRITY_REPORT]: () => ok(report)
     })
     fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]!)
@@ -219,15 +211,16 @@ describe('stash check modal', () => {
     fireEvent.click(button('Remove'))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.INTEGRITY_REMOVE)).toHaveLength(1))
 
-    toasts.undoToast.mock.calls[0]![1]()
+    const checksBefore = api.sent(IPC_CHANNELS.INTEGRITY_REPORT).length
+    act(() => afterUndo({ status: 'done', label: 'Add to To sort' }, 'undo'))
     await new Promise((r) => setTimeout(r, 20))
-    // The Undo is queued behind the action: nothing sent yet, and no skeleton rows.
-    expect(api.sent(IPC_CHANNELS.INTEGRITY_UNDO_ADD)).toHaveLength(0)
+    // The check is queued behind the action: none sent yet, and no skeleton rows.
+    expect(api.sent(IPC_CHANNELS.INTEGRITY_REPORT)).toHaveLength(checksBefore)
     expect(skeletons()).toHaveLength(0)
 
     finishRemove(ok({ removed: 1 }))
     await waitFor(() =>
-      expect(api.sent(IPC_CHANNELS.INTEGRITY_UNDO_ADD)).toEqual([{ mockupIds: [41] }])
+      expect(api.sent(IPC_CHANNELS.INTEGRITY_REPORT).length).toBeGreaterThan(checksBefore)
     )
     expect(await screen.findByText('poster_new')).toBeTruthy()
   })
@@ -238,14 +231,13 @@ describe('stash check modal', () => {
     const releases: Array<(value: unknown) => void> = []
     open({
       [IPC_CHANNELS.INTEGRITY_IGNORE]: () => ok({ ignoredIds: ['f1'] }),
-      [IPC_CHANNELS.INTEGRITY_UNIGNORE]: () => ok({}),
       [IPC_CHANNELS.INTEGRITY_REPORT]: () => new Promise((r) => releases.push(r))
     })
     fireEvent.click(screen.getAllByRole('button', { name: 'Ignore' })[0]!)
     await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
-    const undo = toasts.undoToast.mock.calls[0]![1]
-    undo()
-    undo()
+    const undo = () => afterUndo({ status: 'done', label: 'Ignore' }, 'undo')
+    act(() => undo())
+    act(() => undo())
     await waitFor(() => expect(releases).toHaveLength(1))
     // The second check starts after the first lands, and its result is the one that shows.
     releases[0]!(ok(first))

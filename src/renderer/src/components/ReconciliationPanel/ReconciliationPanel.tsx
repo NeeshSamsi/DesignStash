@@ -1,8 +1,9 @@
 import type { ComponentProps } from 'react'
 import { Button } from '@renderer/components/Button'
 import { CoverImage } from '@renderer/components/CoverImage'
+import { mockups, pluralise } from '@renderer/lib/plural'
 import { cn } from '@renderer/lib/utils'
-import { Skeleton } from '@renderer/ui/skeleton'
+import { Skeleton } from '@renderer/components/Skeleton'
 import {
   RECONCILIATION_PANEL_DEFAULTS,
   type ReconciliationPanelContractProps
@@ -60,11 +61,9 @@ const SAMPLE_GONE: readonly ReconciliationItem[] = [
 const FOUND_DETAIL = 'Not in your stash yet'
 const GONE_DETAIL = 'Its PSD isn’t in your stash folder any more'
 
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
-
 function describe(found: number, gone: number): string {
   const parts = [
-    found > 0 && `${plural(found, 'PSD turned', 'PSDs turned')} up in your stash folder`,
+    found > 0 && `${pluralise(found, 'PSD turned', 'PSDs turned')} up in your stash folder`,
     gone > 0 && `${gone} went missing`
   ].filter(Boolean)
   return `${parts.join(' and ')}, outside DesignStash. Choose what to keep; nothing is deleted from disk without asking.`
@@ -216,7 +215,7 @@ export function ReconciliationPanel({
         {foundRows.length > 0 && (
           <Group
             title="Found in your stash folder"
-            count={plural(foundRows.length, 'file', 'files')}
+            count={pluralise(foundRows.length, 'file')}
             bulkLabel="Add all"
             onBulk={onAddAll}
             disabled={busy}
@@ -254,7 +253,7 @@ export function ReconciliationPanel({
         {goneRows.length > 0 && (
           <Group
             title="Gone from your stash folder"
-            count={plural(goneRows.length, 'mockup', 'mockups')}
+            count={mockups(goneRows.length)}
             bulkLabel="Remove all"
             onBulk={onRemoveAll}
             disabled={busy}

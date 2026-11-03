@@ -16,6 +16,9 @@ const buttonVariants = cva(
           "bg-surface-3 text-foreground hover:bg-surface-3-hover aria-expanded:bg-surface-3-hover",
         outline:
           "border border-base text-foreground hover:bg-surface-2-hover aria-expanded:bg-surface-2-hover",
+        // The quiet outline (toolbar and toast actions): a subtle edge, no fill, the input edge on hover.
+        "outline-subtle":
+          "border border-subtle text-foreground hover:border-input aria-expanded:border-input",
         ghost: "text-foreground hover:bg-surface-2-hover aria-expanded:bg-surface-2-hover",
         destructive: "bg-error text-on-error hover:bg-error-hover aria-expanded:bg-error-hover",
         link: "text-brand hover:text-brand-hover",

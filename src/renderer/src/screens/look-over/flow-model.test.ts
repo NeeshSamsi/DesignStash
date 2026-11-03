@@ -19,6 +19,7 @@ import {
   progress,
   rail,
   reviewCards,
+  scopeQueue,
   skip,
   type FlowState
 } from './flow-model'
@@ -38,6 +39,8 @@ const item = (
   checked: false,
   waitingForAi: false,
   carry: null,
+  variation: null,
+  ai: { status: 'ready' },
   cover: { path: '/c.png', source: 'embedded', missing: false, width: 1, height: 1 },
   ...over
 })
@@ -56,6 +59,7 @@ const single = (id: number): LookOverUnit => ({
 /** Two piles (3 and 2 mockups), then two on their own: 7 mockups. */
 const queue = (over: Partial<LookOverQueue> = {}): LookOverQueue => ({
   units: [pile(1, [10, 11, 12]), pile(2, [20, 21]), single(30), single(31)],
+  checksEdits: false,
   resume: null,
   ...over
 })
@@ -79,6 +83,41 @@ describe('createFlow', () => {
 
   it('ignores a resume point that is no longer in the queue', () => {
     expect(at(createFlow(queue({ resume: { unitId: 99, mockupId: 1 } })))).toBe('0:0')
+  })
+})
+
+describe('where Look it over opens (inboxes.md I2)', () => {
+  it('opens on the card whose Look it over was pressed, ahead of a resume point', () => {
+    const q = queue({ resume: { unitId: 1, mockupId: 11 } })
+    const s = createFlow(scopeQueue(q, { kind: 'from', unitId: 2 }))
+    expect(at(s)).toBe('1:0')
+    expect(currentItem(s)?.mockupId).toBe(20)
+    expect(s.units).toHaveLength(4)
+  })
+
+  it('opens where Finish later left off when the card it was asked for has gone', () => {
+    const q = queue({ resume: { unitId: 1, mockupId: 11 } })
+    expect(at(createFlow(scopeQueue(q, { kind: 'from', unitId: 99 })))).toBe('0:1')
+  })
+
+  it('looks over only the cards picked, piles first as the queue has them', () => {
+    const s = createFlow(scopeQueue(queue(), { kind: 'only', unitIds: [31, 2] }))
+    expect(s.units.map((u) => u.unitId)).toEqual([2, 31])
+    expect(at(s)).toBe('0:0')
+    expect(headerBadge(s)).toBe('Pile 1 of 1')
+  })
+
+  it('has nothing to look over when none of the cards picked still wait', () => {
+    expect(scopeQueue(queue(), { kind: 'only', unitIds: [99] }).units).toEqual([])
+  })
+
+  it('goes round to the first one still waiting after stashing the last', () => {
+    let s = createFlow(scopeQueue(queue(), { kind: 'from', unitId: 31 }))
+    expect(primary(s)).toEqual({ kind: 'stash', label: 'Stash & next' })
+    s = afterStash(s)
+    expect(finished(s)).toBe(false)
+    expect(at(s)).toBe('0:0')
+    expect(currentItem(s)?.mockupId).toBe(10)
   })
 })
 
@@ -223,7 +262,7 @@ describe('Back', () => {
     const reopened = back(s)
     expect(onReview(reopened)).toBe(true)
     expect(primary(reopened)).toEqual({ kind: 'stash-pile', label: 'Save & next' })
-    const only = createFlow({ units: [pile(1, [10, 11])], resume: null })
+    const only = createFlow({ units: [pile(1, [10, 11])], checksEdits: false, resume: null })
     const lastReview = jumpTo(only, 2)
     expect(primary(lastReview).label).toBe('Stash pile (2)')
     expect(primary({ ...lastReview, stashed: new Set([1]) })).toEqual({
@@ -241,7 +280,7 @@ describe('Back', () => {
   })
 
   it('goes back to Sort from a first mockup on its own when there are no piles', () => {
-    const s = createFlow({ units: [single(1), single(2)], resume: null })
+    const s = createFlow({ units: [single(1), single(2)], checksEdits: false, resume: null })
     expect(backTarget(s)).toEqual({ kind: 'sort' })
   })
 })
@@ -263,7 +302,9 @@ describe('Header badge', () => {
 
   it('uses the haul count from the start when nothing is in a pile', () => {
     expect(
-      headerBadge(createFlow({ units: [single(1), single(2), single(3)], resume: null }))
+      headerBadge(
+        createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null })
+      )
     ).toBe('1 of 3')
   })
 })
@@ -291,16 +332,18 @@ describe('Deck', () => {
     expect(deck(s).showDeck).toBe(false)
     s = jumpTo(s, 3)
     expect(deck(s)).toMatchObject({ remaining: 0, showDeck: false })
-    expect(deck(createFlow({ units: [single(1)], resume: null })).showDeck).toBe(false)
+    expect(
+      deck(createFlow({ units: [single(1)], checksEdits: false, resume: null })).showDeck
+    ).toBe(false)
   })
 
   it('peeks one card for a pile of two', () => {
-    const s = createFlow({ units: [pile(1, [10, 11])], resume: null })
+    const s = createFlow({ units: [pile(1, [10, 11])], checksEdits: false, resume: null })
     expect(deck(s)).toMatchObject({ remaining: 1, showDeck: true, deckMore: false })
   })
 
   it('does not count mockups already looked at', () => {
-    const s = createFlow({ units: [pile(1, [10, 11, 12])], resume: null })
+    const s = createFlow({ units: [pile(1, [10, 11, 12])], checksEdits: false, resume: null })
     const looked = { ...s, checked: new Set([11]) }
     expect(deck(looked).remaining).toBe(1)
   })
@@ -338,11 +381,38 @@ describe('Rail', () => {
   })
 
   it('has no rail for a mockup on its own', () => {
-    expect(rail(createFlow({ units: [single(1)], resume: null }))).toBeNull()
+    expect(rail(createFlow({ units: [single(1)], checksEdits: false, resume: null }))).toBeNull()
   })
 
   it('gives every step the index to jump to', () => {
     expect(rail(start())!.steps.map((x) => x.step)).toEqual([0, 1, 2, 3])
+  })
+
+  it('names the pile by its base and each step by its variation, following the typing (L8)', () => {
+    const v = (words: string) => ({ words, source: 'ai' as const })
+    const s = createFlow({
+      units: [
+        {
+          unitId: 1,
+          kind: 'pile',
+          items: [
+            item(10, 'top', { title: 'Clay iPhone 15 Pro', variation: v('three-quarter') }),
+            item(11, 'variant', { title: 'Clay iPhone 15 Pro', variation: v('side') }),
+            item(12, 'variant', { title: 'Clay iPhone 15 Pro', variation: v('side 2') })
+          ]
+        }
+      ],
+      checksEdits: false,
+      resume: null
+    })
+    const r = rail(s, { 10: 'Matte clay iPhone' }, { 11: 'side view', 12: '  ' })!
+    expect(r.title).toBe('Matte clay iPhone')
+    expect(r.steps.map((x) => x.label)).toEqual([
+      'Top · three-quarter',
+      'Variant · side view',
+      'Variant · side 2',
+      'Review & stash pile'
+    ])
   })
 })
 
@@ -352,7 +422,7 @@ describe('Primary button', () => {
   })
 
   it('is Stash & next on a single, and Stash on the last', () => {
-    const s = createFlow({ units: [single(1), single(2)], resume: null })
+    const s = createFlow({ units: [single(1), single(2)], checksEdits: false, resume: null })
     expect(primary(s)).toEqual({ kind: 'stash', label: 'Stash & next' })
     const last = afterStash(s)
     expect(primary(last)).toEqual({ kind: 'stash', label: 'Stash' })
@@ -360,7 +430,8 @@ describe('Primary button', () => {
 })
 
 describe('Skip', () => {
-  const singles = () => createFlow({ units: [single(1), single(2), single(3)], resume: null })
+  const singles = () =>
+    createFlow({ units: [single(1), single(2), single(3)], checksEdits: false, resume: null })
 
   it('is only for mockups on their own', () => {
     expect(canSkip(start())).toBe(false)
@@ -378,7 +449,7 @@ describe('Skip', () => {
     let s = singles()
     s = skip(skip(s))
     expect(s.units.map((u) => u.unitId)).toEqual([3, 1, 2])
-    const lastOne = createFlow({ units: [single(1)], resume: null })
+    const lastOne = createFlow({ units: [single(1)], checksEdits: false, resume: null })
     expect(canSkip(lastOne)).toBe(false)
     const rest = { ...singles(), stashed: new Set([2, 3]) }
     expect(canSkip(rest)).toBe(false)
@@ -415,23 +486,32 @@ describe('Progress', () => {
   })
 
   it('moves when a single is skipped, since the next one is opened', () => {
-    const s = createFlow({ units: [single(1), single(2), single(3)], resume: null })
+    const s = createFlow({
+      units: [single(1), single(2), single(3)],
+      checksEdits: false,
+      resume: null
+    })
     expect(progress(s)).toBeCloseTo(1 / 3)
     expect(progress(skip(s))).toBeCloseTo(2 / 3)
   })
 
   it('is 1 once everything is stashed, and 0 for an empty queue', () => {
-    let s = createFlow({ units: [single(1), single(2)], resume: null })
+    let s = createFlow({ units: [single(1), single(2)], checksEdits: false, resume: null })
     s = afterStash(afterStash(s))
     expect(progress(s)).toBe(1)
-    expect(progress(createFlow({ units: [], resume: null }))).toBe(0)
+    expect(progress(createFlow({ units: [], checksEdits: false, resume: null }))).toBe(0)
   })
 })
 
 describe('landedDraft', () => {
   const phone = { tagId: 1, label: 'Phone', categoryId: 1, categoryLabel: 'Device' }
   const laptop = { tagId: 2, label: 'Laptop', categoryId: 1, categoryLabel: 'Device' }
-  const fallback = { title: 'phone side', description: 'On a stand', tags: [phone] }
+  const fallback = {
+    title: 'phone side',
+    variation: null,
+    description: 'On a stand',
+    tags: [phone]
+  }
   const landed = item(2, 'variant', {
     title: 'Blue scroll Macbook',
     description: 'A long page',
@@ -440,15 +520,53 @@ describe('landedDraft', () => {
 
   it('shows the suggestion that landed when the form holds what main had', () => {
     const { form, saved } = landedDraft(fallback, fallback, landed)
-    expect(form).toEqual({ title: 'Blue scroll Macbook', description: 'A long page', tags: [laptop] })
+    expect(form).toEqual({
+      title: 'Blue scroll Macbook',
+      variation: null,
+      description: 'A long page',
+      tags: [laptop]
+    })
     expect(saved).toEqual(form)
   })
 
   it('keeps a field the user is still editing, and records what main now has', () => {
     const typing = { ...fallback, title: 'My side' }
     const { form, saved } = landedDraft(typing, fallback, landed)
-    expect(form).toEqual({ title: 'My side', description: 'A long page', tags: [laptop] })
+    expect(form).toEqual({
+      title: 'My side',
+      variation: null,
+      description: 'A long page',
+      tags: [laptop]
+    })
     // Saving then counts only the title as the user's edit.
     expect(saved.title).toBe('Blue scroll Macbook')
+  })
+
+  it('in a pile, fills an untyped variation and follows a new base, but keeps typed words', () => {
+    const base = { title: 'Clay phone', variation: 'B', description: '', tags: [] }
+    const fresh = item(2, 'variant', {
+      title: 'Clay iPhone 15 Pro',
+      variation: { words: 'side', source: 'ai' }
+    })
+    expect(landedDraft(base, base, fresh).form).toMatchObject({
+      title: 'Clay iPhone 15 Pro',
+      variation: 'side'
+    })
+    // A typed variation stays; the base still takes the top's suggestion.
+    const typed = { ...base, variation: 'my side' }
+    expect(landedDraft(typed, base, fresh, ['title']).form).toMatchObject({
+      title: 'Clay iPhone 15 Pro',
+      variation: 'my side'
+    })
+    // A base the person renamed stays theirs.
+    expect(landedDraft({ ...base, title: 'Matte clay' }, base, fresh).form.title).toBe('Matte clay')
+  })
+
+  it('keeps the fields the person took over even when they still read as main had them', () => {
+    // Fill it myself: the title stays the file name, and the cleared description and tags stay clear.
+    const mine = { title: 'phone side', variation: null, description: '', tags: [] }
+    const { form } = landedDraft(mine, fallback, landed, ['title', 'description', 'tags'])
+    expect(form).toEqual(mine)
+    expect(landedDraft(fallback, fallback, landed, ['title']).form.title).toBe('phone side')
   })
 })

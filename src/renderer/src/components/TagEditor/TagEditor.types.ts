@@ -9,7 +9,7 @@ export const TAG_EDITOR_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=222-2959',
   section: '8 · Approval & editing',
   description:
-    'Tags field with inline add: “+ Add tag” is first and becomes the input in place; added tags append at the end; AI suggestions sit after a divider and move into your tags when accepted. Rules: design/specs/tags.md.',
+    'Tags field with inline add: “+ Add tag” is first and becomes the input in place; added tags append at the end; AI suggestions sit after a divider and move into your tags when accepted. Rules: design/specs/tags.md.\nSuggestions (2026-10-28): a Command list (variant=list) in a menu-styled popover: surface-3, 4 padding, 260 wide, shadow/raised; a note line above it and the key hint below.',
   code: 'components/TagEditor/TagEditor.tsx',
   axes: {
     variant: ['editable', 'read-only'],

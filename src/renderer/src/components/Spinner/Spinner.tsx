@@ -1,9 +1,11 @@
+import type { ComponentProps } from 'react'
 import { cn } from '@renderer/lib/utils'
 import { Spinner as UiSpinner } from '@renderer/ui/spinner'
 import { SPINNER_DEFAULTS, type SpinnerContractProps } from './Spinner.types'
 import { spinnerVariants } from './Spinner.variants'
 
-export interface SpinnerProps extends SpinnerContractProps {
+export interface SpinnerProps
+  extends SpinnerContractProps, Pick<ComponentProps<'svg'>, 'aria-hidden' | 'aria-label'> {
   className?: string
 }
 
@@ -15,12 +17,13 @@ const UI_SIZE = { sm: 'sm', base: 'default', lg: 'lg' } as const
  * Thin adapter over ui/spinner.tsx (Figma `base` → shadcn `default`).
  */
 export function Spinner({ className, ...rest }: SpinnerProps) {
-  const props = { ...SPINNER_DEFAULTS, ...rest }
+  const { size, ...aria } = { ...SPINNER_DEFAULTS, ...rest }
   return (
     <UiSpinner
       data-ds="Spinner"
-      size={UI_SIZE[props.size]}
-      className={cn(spinnerVariants({ size: props.size }), className)}
+      size={UI_SIZE[size]}
+      className={cn(spinnerVariants({ size }), className)}
+      {...aria}
     />
   )
 }

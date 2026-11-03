@@ -3,10 +3,14 @@ import type { ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
 import { APP_WINDOW_DEFAULTS, type AppWindowContractProps } from './AppWindow.types'
 import {
+  appWindowEdgeClass,
+  appWindowPageClass,
   appWindowPanelClass,
+  appWindowScrollClass,
   appWindowTitleBarClass,
   appWindowVariants
 } from './AppWindow.variants'
+import { ScrollEdge } from './PageBar'
 
 export interface AppWindowProps extends AppWindowContractProps {
   className?: string
@@ -58,10 +62,12 @@ export function AppWindow({ className, aside, asideOpen = false, ...rest }: AppW
             at once, never scaled (styles/details-transition.css), so it paints above the surface layer.
           */}
           <div data-slot="main-content" className="flex min-h-0 flex-1 flex-col gap-6">
-            {props.showHeader && props.header}
-            {/* The extra right padding keeps the hover scrollbar gutter (12px) off the last column and the ring. */}
-            <div className="-m-2 -mr-3 min-h-0 flex-1 overflow-auto rounded-lg p-2 pr-3">
-              {props.page}
+            {props.showHeader && <div className="px-7">{props.header}</div>}
+            <div data-slot="page-scroll" className={appWindowScrollClass}>
+              <div aria-hidden data-slot="page-edge" className={appWindowEdgeClass}>
+                <ScrollEdge />
+              </div>
+              <div className={appWindowPageClass}>{props.page}</div>
             </div>
           </div>
         </main>

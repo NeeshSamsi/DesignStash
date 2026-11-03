@@ -23,12 +23,13 @@ import { seedTaxonomy } from '../src/main/db/bootstrap'
 import { Repository } from '../src/main/db/repository'
 import { mockups } from '../src/main/db/schema'
 import { resolveCover, collectCandidateImages } from '../src/main/psd'
+import { DEV_USER_DATA } from '../src/main/dev-user-data'
 
 const REPO_ROOT = process.cwd()
 const FIXTURES = join(REPO_ROOT, 'dev-fixtures', 'psd')
 const LIBRARY_ROOT =
   process.env.DESIGNSTASH_LIBRARY ??
-  join(homedir(), 'Library', 'Application Support', 'designstash', 'Library')
+  join(homedir(), 'Library', 'Application Support', DEV_USER_DATA, 'Library')
 const MOCKUPS_DIR = join(LIBRARY_ROOT, 'mockups')
 const FRESH = process.argv.includes('--fresh')
 

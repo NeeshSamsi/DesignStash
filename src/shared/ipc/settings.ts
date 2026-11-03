@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
 import { StashChangeModeSchema, StashChangeResultSchema, StashInfoSchema } from '../stash'
+import { withUndoEntry } from './undo'
 
 /** Settings. */
 export const settingsContract = {
@@ -22,6 +23,6 @@ export const settingsContract = {
   },
   [IPC_CHANNELS.STASH_CHANGE]: {
     request: z.object({ path: z.string().min(1), mode: StashChangeModeSchema }),
-    response: StashChangeResultSchema
+    response: withUndoEntry(StashChangeResultSchema)
   }
 } as const

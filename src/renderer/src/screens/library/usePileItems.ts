@@ -24,27 +24,14 @@ export function usePileItems(pileId: number): PileItems {
   })
   const revision = useDetailEffects((s) => s.revision)
 
+  // One call for the whole pile, however many mockups it has (F-068).
   const load = useCallback(async (): Promise<Omit<PileItems, 'reload'>> => {
     try {
-      const detail = await window.api.invoke(IPC_CHANNELS.MOCKUP_DETAIL, { mockupId: pileId })
-      if (!detail.success) return { status: 'error', gone: false, items: [], topId: null }
-      if (detail.data.variants.length === 0)
-        return { status: 'ready', gone: true, items: [], topId: null }
-      const ordered = [...detail.data.variants].sort((a, b) => Number(b.isTop) - Number(a.isTop))
-      const loaded = await Promise.all(
-        ordered.map((variant) =>
-          variant.id === pileId
-            ? Promise.resolve(detail)
-            : window.api.invoke(IPC_CHANNELS.MOCKUP_DETAIL, { mockupId: variant.id })
-        )
-      )
-      const items = loaded.flatMap((res) => (res.success ? [res.data.item] : []))
-      return {
-        status: 'ready',
-        gone: false,
-        items,
-        topId: ordered.find((v) => v.isTop)?.id ?? pileId
-      }
+      const res = await window.api.invoke(IPC_CHANNELS.PILE_MEMBERS, { pileId })
+      if (!res.success) return { status: 'error', gone: false, items: [], topId: null }
+      const items = res.data.items
+      if (items.length === 0) return { status: 'ready', gone: true, items: [], topId: null }
+      return { status: 'ready', gone: false, items, topId: items[0]?.id ?? pileId }
     } catch {
       return { status: 'error', gone: false, items: [], topId: null }
     }

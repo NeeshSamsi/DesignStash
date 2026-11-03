@@ -32,15 +32,21 @@ export class TrashService {
       readdir: deps?.readdir ?? defaultAppFileOps.readdir,
       rmdir: deps?.rmdir ?? defaultAppFileOps.rmdir,
       stat: deps?.stat ?? ((p) => fs.stat(p)),
-      exists: deps?.exists ?? ((p) => fs.access(p).then(() => true, () => false))
+      exists:
+        deps?.exists ??
+        ((p) =>
+          fs.access(p).then(
+            () => true,
+            () => false
+          ))
     }
   }
 
   async list(): Promise<TrashItem[]> {
     const entries = this.repo.trash.getTrashEntries()
     const items: TrashItem[] = []
-    for (const { row, trashedAt, ids } of entries) {
-      items.push({ ...row, trashedAt, sizeBytes: await this.bytesOf(ids) })
+    for (const { row, trashedAt, ids, origin } of entries) {
+      items.push({ ...row, trashedAt, origin, sizeBytes: await this.bytesOf(ids) })
     }
     return items
   }

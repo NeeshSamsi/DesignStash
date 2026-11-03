@@ -5,13 +5,19 @@ import { DOCUMENT_PREFIX, MAX_DOCUMENT_CHARS, QUERY_PREFIX, normalise } from './
 export interface MeaningEmbedder {
   embedDocuments(texts: readonly string[]): Promise<Float32Array[]>
   embedQuery(query: string): Promise<Float32Array>
+  /** Start whatever runs the model, so the next call needn't wait for it. */
+  start?(): Promise<void>
   /** Stop whatever runs the model. */
   stop(): Promise<void>
 }
 
 /** Nomic through an embedding-mode `LlamaServer`, with the prefixes it was evaluated with. */
 export class LlamaMeaningEmbedder implements MeaningEmbedder {
-  constructor(private readonly server: Pick<LlamaServer, 'embed' | 'stop'>) {}
+  constructor(private readonly server: Pick<LlamaServer, 'embed' | 'start' | 'stop'>) {}
+
+  start(): Promise<void> {
+    return this.server.start()
+  }
 
   async embedDocuments(texts: readonly string[]): Promise<Float32Array[]> {
     if (texts.length === 0) return []

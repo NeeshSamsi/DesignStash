@@ -10,6 +10,7 @@ import type { Repository } from '../db/repository'
 import { seedTaxonomy } from '../db/bootstrap'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, sample } from '../db/repositories/__tests__/setup'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const handlers = vi.hoisted(
@@ -52,7 +53,8 @@ beforeEach(() => {
       getLibraryRoot: () => '/library',
       get: () => settings,
       update: (patch: object) => (settings = { ...settings, ...patch })
-    }
+    },
+    ...undoForTests(repo, test.db)
   } as unknown as HandlerContext
   registerApprovalHandlers(ctx)
 })
@@ -115,6 +117,29 @@ describe('look-over channels', () => {
     ).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
   })
 
+  it('pushes every other mockup a save reached as it answers, so the window never reopens the queue', async () => {
+    const [top, side] = [waiting('top'), waiting('side')]
+    repo.piles.createPile([top.id, side.id], top.id)
+    await call(IPC_CHANNELS.LOOK_OVER_OPEN)
+    push.mockClear()
+
+    const saved = await call(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, {
+      mockupId: top.id,
+      title: 'Renamed',
+      description: '',
+      tagIds: []
+    })
+    expect(saved).toEqual({ success: true, data: { propagatedIds: [side.id] } })
+    expect(push).toHaveBeenCalledWith(
+      IPC_CHANNELS.LOOK_OVER_DRAFT,
+      expect.objectContaining({ mockupId: side.id, title: 'Renamed' })
+    )
+    expect(push).not.toHaveBeenCalledWith(
+      IPC_CHANNELS.LOOK_OVER_DRAFT,
+      expect.objectContaining({ mockupId: top.id })
+    )
+  })
+
   it("saves an edit on the top of a pile, offers it on the variant, and pushes the variant once accepting's version is ready", async () => {
     const [top, side] = [waiting('top'), waiting('side')]
     repo.piles.createPile([top.id, side.id], top.id)
@@ -131,7 +156,13 @@ describe('look-over channels', () => {
     await vi.waitFor(() =>
       expect(push).toHaveBeenCalledWith(
         IPC_CHANNELS.LOOK_OVER_DRAFT,
-        expect.objectContaining({ mockupId: side.id, carry: expect.objectContaining({ state: 'offered', after: { description: 'Shared', via: 'copy' } }) })
+        expect.objectContaining({
+          mockupId: side.id,
+          carry: expect.objectContaining({
+            state: 'offered',
+            after: { description: 'Shared', via: 'copy' }
+          })
+        })
       )
     )
   })
@@ -143,28 +174,55 @@ describe('look-over:answer-edit', () => {
     const [top, side] = [waiting('top'), waiting('side')]
     repo.piles.createPile([top.id, side.id], top.id)
     await call(IPC_CHANNELS.LOOK_OVER_OPEN)
-    await call(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, { mockupId: top.id, title: 'Top', description: 'Shared', tagIds: [] })
+    await call(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, {
+      mockupId: top.id,
+      title: 'Top',
+      description: 'Shared',
+      tagIds: []
+    })
     await vi.waitFor(() =>
-      expect(push).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_DRAFT, expect.objectContaining({ mockupId: side.id, carry: expect.objectContaining({ after: expect.anything() }) }))
+      expect(push).toHaveBeenCalledWith(
+        IPC_CHANNELS.LOOK_OVER_DRAFT,
+        expect.objectContaining({
+          mockupId: side.id,
+          carry: expect.objectContaining({ after: expect.anything() })
+        })
+      )
     )
     return side
   }
-  const answer = (mockupId: number, action: string) => call<LookOverItem | null>(IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT, { mockupId, action })
+  const answer = (mockupId: number, action: string) =>
+    call<LookOverItem | null>(IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT, { mockupId, action })
 
-  it("accepts, undoes, dismisses and restores the offer on one variant, answering with its item", async () => {
+  it('accepts, undoes, dismisses and restores the offer on one variant, answering with its item', async () => {
     const side = await offered()
 
     const accepted = await answer(side.id, 'accept')
-    expect(accepted).toMatchObject({ success: true, data: { mockupId: side.id, description: 'Shared', carry: { state: 'applied' } } })
-    expect(await answer(side.id, 'undo')).toMatchObject({ success: true, data: { description: '', carry: { state: 'offered' } } })
-    expect(await answer(side.id, 'dismiss')).toMatchObject({ success: true, data: { carry: { state: 'dismissed' } } })
-    expect(await answer(side.id, 'restore')).toMatchObject({ success: true, data: { carry: { state: 'offered' } } })
+    expect(accepted).toMatchObject({
+      success: true,
+      data: { mockupId: side.id, description: 'Shared', carry: { state: 'applied' } }
+    })
+    expect(await answer(side.id, 'undo')).toMatchObject({
+      success: true,
+      data: { description: '', carry: { state: 'offered' } }
+    })
+    expect(await answer(side.id, 'dismiss')).toMatchObject({
+      success: true,
+      data: { carry: { state: 'dismissed' } }
+    })
+    expect(await answer(side.id, 'restore')).toMatchObject({
+      success: true,
+      data: { carry: { state: 'offered' } }
+    })
   })
 
   it('answers null for a mockup with nothing in that state, and refuses an unknown answer', async () => {
     const alone = waiting('alone')
     expect(await answer(alone.id, 'accept')).toEqual({ success: true, data: null })
-    expect(await answer(alone.id, 'copy')).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
+    expect(await answer(alone.id, 'copy')).toMatchObject({
+      success: false,
+      error: { code: 'INVALID_REQUEST' }
+    })
   })
 })
 
@@ -197,8 +255,14 @@ describe('look-over:showing', () => {
     await queue.enqueue([first.id, top.id, a.id, b.id, after.id])
     await vi.waitFor(() => expect(asked).toEqual(['first']))
 
-    expect(await showing(a.id)).toMatchObject({ success: true, data: { mockupId: a.id, status: 'pending', run: { phase: 'queued' } } })
-    expect(await showing(first.id)).toMatchObject({ success: true, data: { mockupId: first.id, status: 'sniffing', run: { phase: 'writing' } } })
+    expect(await showing(a.id)).toMatchObject({
+      success: true,
+      data: { mockupId: a.id, status: 'pending', run: { phase: 'queued' } }
+    })
+    expect(await showing(first.id)).toMatchObject({
+      success: true,
+      data: { mockupId: first.id, status: 'sniffing', run: { phase: 'writing' } }
+    })
     expect(await showing(9999)).toEqual({ success: true, data: null })
     release()
     await queue.idle()
@@ -210,8 +274,14 @@ describe('look-over:showing', () => {
     const { asked, release } = heldModel()
     const piles = [0, 1].map((p) => {
       const rows = ['top', 'x', 'y'].map((n) => waiting(`${n}${p}`))
-      repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
-      repo.mockups.updateMockup(rows[0]!.id, { aiStatus: 'ready', aiResult: { title: 'Top', description: '', tags: [] } })
+      repo.piles.createPile(
+        rows.map((r) => r.id),
+        rows[0]!.id
+      )
+      repo.mockups.updateMockup(rows[0]!.id, {
+        aiStatus: 'ready',
+        aiResult: { title: 'Top', description: '', tags: [] }
+      })
       return rows
     })
     const queue = inferenceQueueFor(ctx)
@@ -238,11 +308,17 @@ describe('stash channels', () => {
     registerPileHandlers({
       repo: r,
       push: pushed,
-      ai: { activeProvider: async () => null }
+      ai: { activeProvider: async () => null },
+      ...undoForTests(r, test.db)
     } as unknown as HandlerContext)
 
     const mk = (name: string) => {
-      const m = r.mockups.createMockup({ ...sample, title: name, libraryPath: `/lib/${name}.psd`, coverPath: `/lib/${name}.webp` })
+      const m = r.mockups.createMockup({
+        ...sample,
+        title: name,
+        libraryPath: `/lib/${name}.psd`,
+        coverPath: `/lib/${name}.webp`
+      })
       r.mockups.setStage([m.id], 'to_stash')
       return m
     }
@@ -257,21 +333,61 @@ describe('stash channels', () => {
     expect(pushed).not.toHaveBeenCalled()
     test.sqlite.close()
   })
-
-  it('rejects a snapshot that is not the right shape', async () => {
-    const test = createTestDb()
-    handlers.clear()
-    const { registerPileHandlers } = await import('./pile')
-    registerPileHandlers({ repo: test.repo, push: vi.fn(), ai: { activeProvider: async () => null } } as unknown as HandlerContext)
-    expect(await call(IPC_CHANNELS.PILE_UNSTASH, { snapshot: { mockups: 'no' } })).toMatchObject({
-      success: false,
-      error: { code: 'INVALID_REQUEST' }
-    })
-    test.sqlite.close()
-  })
 })
 
 describe('stash with real cover files', () => {
+  it('a stash is one entry: its undo puts the pile back in To stash, with its drafts, and redo stashes it again', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ds-stash-undo-'))
+    try {
+      const test = createTestDb()
+      handlers.clear()
+      const r = test.repo
+      seedTaxonomy(test.db)
+      ensureSearchIndex(test.db)
+      const undoing = undoForTests(r, test.db)
+      const { registerPileHandlers } = await import('./pile')
+      registerPileHandlers({
+        repo: r,
+        push: vi.fn(),
+        ai: { activeProvider: async () => null },
+        ...undoing
+      } as unknown as HandlerContext)
+      const mk = (name: string) => {
+        const cover = join(dir, `${name}.webp`)
+        writeFileSync(cover, 'c')
+        const m = r.mockups.createMockup({
+          ...sample,
+          title: name,
+          libraryPath: `/lib/${name}.psd`,
+          coverPath: cover
+        })
+        r.mockups.setStage([m.id], 'to_stash')
+        return m
+      }
+      const [top, side] = [mk('top'), mk('side')]
+      r.piles.createPile([top.id, side.id], top.id)
+      // Looked over: each has its draft.
+      for (const m of [top, side]) {
+        r.drafts.ensureDraft(m.id, { title: `draft ${m.id}`, description: '', tagIds: [] })
+      }
+
+      const pile = await call<{ undoEntryId: number }>(IPC_CHANNELS.PILE_STASH, { pileId: top.id })
+      const id = pile.success ? pile.data.undoEntryId : -1
+      expect(await undoing.undo.history.undoEntry(id)).toMatchObject({
+        status: 'done',
+        label: 'Stash pile'
+      })
+      for (const m of [top, side]) expect(r.mockups.getMockup(m.id)?.stage).toBe('to_stash')
+      expect(r.drafts.getDrafts([top.id, side.id]).size).toBe(2)
+
+      await undoing.undo.history.redo()
+      for (const m of [top, side]) expect(r.mockups.getMockup(m.id)?.stage).toBe('stashed')
+      test.sqlite.close()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('stashes a pile and a single, pushes the counts, and Undo brings the pile back', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ds-stash-ipc-'))
     try {
@@ -282,30 +398,60 @@ describe('stash with real cover files', () => {
       ensureSearchIndex(test.db)
       const pushed = vi.fn()
       const { registerPileHandlers } = await import('./pile')
-      registerPileHandlers({ repo: r, push: pushed, ai: { activeProvider: async () => null } } as unknown as HandlerContext)
+      const undoing = undoForTests(r, test.db)
+      registerPileHandlers({
+        repo: r,
+        push: pushed,
+        ai: { activeProvider: async () => null },
+        ...undoing
+      } as unknown as HandlerContext)
 
       const mk = (name: string) => {
         const cover = join(dir, `${name}.webp`)
         writeFileSync(cover, 'c')
-        const m = r.mockups.createMockup({ ...sample, title: name, libraryPath: `/lib/${name}.psd`, coverPath: cover })
+        const m = r.mockups.createMockup({
+          ...sample,
+          title: name,
+          libraryPath: `/lib/${name}.psd`,
+          coverPath: cover
+        })
         r.mockups.setStage([m.id], 'to_stash')
         return m
       }
       const [top, side, alone] = [mk('top'), mk('side'), mk('alone')]
       r.piles.createPile([top.id, side.id], top.id)
 
-      const pile = await call<{ ok: true; stashedIds: number[]; snapshot: unknown }>(IPC_CHANNELS.PILE_STASH, { pileId: top.id })
-      expect(pile.success && pile.data.stashedIds.sort()).toEqual([top.id, side.id].sort())
-      expect(pushed).toHaveBeenLastCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, expect.objectContaining({ toStash: 1 }))
-
-      expect(await call(IPC_CHANNELS.MOCKUP_STASH, { mockupId: alone.id })).toMatchObject({ data: { ok: true } })
-      expect(pushed).toHaveBeenLastCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, expect.objectContaining({ toStash: 0 }))
-
-      const undo = await call<{ restoredIds: number[] }>(IPC_CHANNELS.PILE_UNSTASH, {
-        snapshot: pile.success ? pile.data.snapshot : null
+      const pile = await call<{ ok: true; stashedIds: number[]; undoEntryId: number }>(
+        IPC_CHANNELS.PILE_STASH,
+        { pileId: top.id }
+      )
+      // What was stashed and the entry that undoes it, and nothing else.
+      expect(pile).toEqual({
+        success: true,
+        data: { ok: true, stashedIds: expect.any(Array), undoEntryId: expect.any(Number) }
       })
-      expect(undo.success && undo.data.restoredIds.sort()).toEqual([top.id, side.id].sort())
+      expect(pile.success && pile.data.stashedIds.sort()).toEqual([top.id, side.id].sort())
+      expect(undoing.undo.history.state().undo).toMatchObject({ label: 'Stash pile' })
+      expect(pushed).toHaveBeenLastCalledWith(
+        IPC_CHANNELS.INBOX_COUNTS_CHANGED,
+        expect.objectContaining({ toStash: 1 })
+      )
+
+      expect(await call(IPC_CHANNELS.MOCKUP_STASH, { mockupId: alone.id })).toMatchObject({
+        data: { ok: true, undoEntryId: expect.any(Number) }
+      })
+      expect(undoing.undo.history.state().undo).toMatchObject({ label: 'Stash' })
+      expect(pushed).toHaveBeenLastCalledWith(
+        IPC_CHANNELS.INBOX_COUNTS_CHANGED,
+        expect.objectContaining({ toStash: 0 })
+      )
+
+      // The pile's own entry, undone after the single's stash: they touch different mockups.
+      expect(
+        await undoing.undo.history.undoEntry(pile.success ? pile.data.undoEntryId : -1)
+      ).toMatchObject({ status: 'done', label: 'Stash pile' })
       expect(r.mockups.getMockup(top.id)?.stage).toBe('to_stash')
+      expect(r.mockups.getMockup(side.id)?.stage).toBe('to_stash')
       expect(r.mockups.getMockup(alone.id)?.stage).toBe('stashed')
       test.sqlite.close()
     } finally {

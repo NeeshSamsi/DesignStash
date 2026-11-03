@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { createSettingsStore } from '../settings'
 import { createTestDb } from '../db/repositories/__tests__/setup'
 import { LibraryService } from '../library/library-service'
+import { undoForTests } from '../undo/test-support'
 import type { HandlerContext } from './context'
 
 const registered = vi.hoisted(() => [] as string[])
@@ -30,7 +31,7 @@ import { registerAllHandlers, registerPreAppHandlers } from './index'
 describe('handler registration', () => {
   it('registers every channel exactly once across the pre-app set and the library set', () => {
     const base = mkdtempSync(join(tmpdir(), 'ds-register-once-'))
-    const { sqlite, repo } = createTestDb()
+    const { sqlite, repo, db } = createTestDb()
     const settings = createSettingsStore(base)
     registerPreAppHandlers({ settings, repo: null })
     // Only registration is under test, so the AI runtime is a stub whose methods do nothing.
@@ -39,13 +40,19 @@ describe('handler registration', () => {
       settings,
       telemetry: { get: () => quiet, rebuild: vi.fn() },
       repo,
+      ...undoForTests(repo, db, settings),
       library: new LibraryService(repo, settings.getLibraryRoot(), { openPath: vi.fn() }),
       ai: {
         modelsDir: base,
         downloader: quiet,
         activeDownloads: new Map(),
         activeProvider: async () => null,
-        embeddings: { setBusyCheck: vi.fn(), backfill: vi.fn(), similarities: async () => null, modelRemoved: async () => {} }
+        embeddings: {
+          setBusyCheck: vi.fn(),
+          backfill: vi.fn(),
+          similarities: async () => null,
+          modelRemoved: async () => {}
+        }
       },
       push: vi.fn()
     } as unknown as HandlerContext
@@ -54,6 +61,24 @@ describe('handler registration', () => {
     expect(new Set(registered).size).toBe(registered.length)
     expect(registered).toContain(IPC_CHANNELS.SETTINGS_GET)
     expect(registered).toContain(IPC_CHANNELS.STASH_INFO)
+
+    // The old one-way undo routes are gone: each action's own history entry undoes it now
+    // (design/specs/undo.md). Trash's Restore button still uses mockup:restore, as an action.
+    const retired = [
+      'pile:restore',
+      'pile:unstash',
+      'tag:restore',
+      'category:restore',
+      'integrity:undo-add',
+      'integrity:unignore',
+      'ai:restore-model',
+      'copy:undo-all'
+    ]
+    for (const channel of retired) {
+      expect(registered, channel).not.toContain(channel)
+      expect(Object.values(IPC_CHANNELS), channel).not.toContain(channel)
+    }
+    expect(registered).toContain(IPC_CHANNELS.MOCKUP_RESTORE)
     sqlite.close()
     rmSync(base, { recursive: true, force: true })
   })

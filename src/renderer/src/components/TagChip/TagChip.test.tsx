@@ -44,12 +44,24 @@ describe('TagChip', () => {
     expect(onAccept).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the × always once marked, and no label while thinking', () => {
-    const { container, unmount } = render(<TagChip variant="removable" state="marked" />)
+  it('shows the × always once marked, and “Writing with AI…” pulsing while thinking', () => {
+    const marked = render(<TagChip variant="removable" state="marked" />)
     expect(screen.getByRole('button', { name: 'Remove iPhone' }).className).not.toContain('hidden')
-    unmount()
+    marked.unmount()
     render(<TagChip variant="suggested" state="thinking" />)
     expect(screen.queryByText('iPhone')).toBeNull()
-    expect(container).toBeTruthy()
+    const writing = screen.getByText('Writing with AI…')
+    expect(writing.className).toContain('animate-pulse')
+    expect(writing.className).toContain('motion-reduce:animate-none')
+  })
+
+  it('removed: a tag an edit takes out, struck and muted, with nothing to press', () => {
+    const { container } = render(<TagChip variant="removed" category="Scene" label="Studio" />)
+    const chip = container.querySelector('[data-ds="TagChip"]')!
+    expect(chip.className).toContain('line-through')
+    expect(chip.hasAttribute('tabindex')).toBe(false)
+    expect(screen.getByText('Scene').className).toContain('text-tertiary')
+    expect(screen.getByText('Studio').className).toContain('text-tertiary')
+    expect(screen.queryByRole('button')).toBeNull()
   })
 })

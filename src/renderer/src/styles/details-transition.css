@@ -10,7 +10,7 @@
   --details-panel-share: 24.75rem;
 }
 
-/* The page stays clickable and hoverable while it morphs: no part of the transition takes the pointer. */
+/* No part of the transition takes the pointer. Chromium still sends presses to <html> while it runs; lib/panel-transition.ts hands them on. */
 ::view-transition,
 ::view-transition-group(*),
 ::view-transition-image-pair(*),

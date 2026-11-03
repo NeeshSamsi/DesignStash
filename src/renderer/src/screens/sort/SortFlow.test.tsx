@@ -3,12 +3,20 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import type { ReactNode } from 'react'
 import type { DndContextProps } from '@dnd-kit/core'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { GroupMember, GroupingProposal, SortBoard } from '@shared/grouping'
+import {
+  TO_SORT_BOARD,
+  type GroupMember,
+  type GroupingProposal,
+  type SortBoard
+} from '@shared/grouping'
 import { useShortcutDispatcher } from '@renderer/lib/shortcuts'
-import { toast, undoToast } from '@renderer/stores/toastStore'
+import { toast, stepToast } from '@renderer/stores/toastStore'
+import { runMenuCommand } from '@renderer/lib/menu-commands'
 import { SortFlow } from './SortFlow'
 
-vi.mock('@renderer/stores/toastStore', () => ({ toast: vi.fn(), undoToast: vi.fn() }))
+const menuActions = { focusSearch: () => {} }
+
+vi.mock('@renderer/stores/toastStore', () => ({ toast: vi.fn(), stepToast: vi.fn() }))
 
 // dnd-kit's pointer sensor needs real pointer events; drive its callbacks directly instead.
 const dnd = vi.hoisted(() => ({ props: null as DndContextProps | null }))
@@ -34,7 +42,7 @@ const member = (id: number, fileName: string, folder: string[] = []): GroupMembe
 })
 
 const proposal = (overrides: Partial<GroupingProposal> = {}): GroupingProposal => ({
-  batchId: 'b1',
+  batchId: TO_SORT_BOARD,
   groups: [
     {
       id: 'phones',
@@ -103,7 +111,7 @@ function mount(props: Partial<React.ComponentProps<typeof SortFlow>> = {}) {
   const onLookThemOver = vi.fn()
   render(
     <ShortcutHost>
-      <SortFlow open batchId="b1" onClose={onClose} onLookThemOver={onLookThemOver} {...props} />
+      <SortFlow open onClose={onClose} onLookThemOver={onLookThemOver} {...props} />
     </ShortcutHost>
   )
   return { onClose, onLookThemOver }
@@ -135,7 +143,7 @@ const dragEnd = (active: string, over: string | null) =>
 
 beforeEach(() => {
   vi.mocked(toast).mockClear()
-  vi.mocked(undoToast).mockClear()
+  vi.mocked(stepToast).mockClear()
 })
 
 describe('opening the board (S1)', () => {
@@ -188,7 +196,7 @@ describe('opening the board (S1)', () => {
   it('opens with the board the user left, not a fresh suggestion (Finish later)', async () => {
     setupApi({
       saved: {
-        batchId: 'b1',
+        batchId: TO_SORT_BOARD,
         groups: [{ id: 'mine', memberIds: [9, 8] }],
         singletonIds: [1, 2, 3, 4, 5, 6, 7, 10]
       }
@@ -283,7 +291,7 @@ describe('selection and menus', () => {
     const made = document.querySelector<HTMLElement>('[data-pile-id]')!
     expect(tileIds(made)).toEqual([9, 10])
     expect(within(made).getByText('solo_9.psd')).toBeTruthy()
-    expect(vi.mocked(undoToast).mock.calls[0]![0]).toBe('New pile of 2 mockups.')
+    expect(vi.mocked(stepToast).mock.calls[0]![0]).toBe('New pile of 2 mockups.')
     expect(tileIds(tray())).toEqual([8])
   })
 
@@ -300,7 +308,7 @@ describe('selection and menus', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Make pile' }))
     const made = document.querySelector<HTMLElement>('[data-pile-id]')!
     expect(tileIds(made)).toEqual([9, 10])
-    expect(vi.mocked(undoToast).mock.calls[0]![0]).toBe('New pile of 2 mockups.')
+    expect(vi.mocked(stepToast).mock.calls[0]![0]).toBe('New pile of 2 mockups.')
   })
 
   it('does nothing for ⌘G on one tile', async () => {
@@ -310,10 +318,10 @@ describe('selection and menus', () => {
     fireEvent.click(tile(9))
     key('g', { metaKey: true })
     expect(pileIds()).toEqual(['phones', 'mugs'])
-    expect(undoToast).not.toHaveBeenCalled()
+    expect(stepToast).not.toHaveBeenCalled()
   })
 
-  it('⇧⌘G disbands the selected pile and ⌘Z brings it back (S8.E2, S8.E1)', async () => {
+  it('⇧⌘G disbands the selected pile, Edit › Undo (⌘Z) brings it back and Redo (⇧⌘Z) breaks it up again (S8.E2, S8.E1, undo.md)', async () => {
     setupApi()
     mount()
     await ready()
@@ -321,8 +329,22 @@ describe('selection and menus', () => {
     key('g', { metaKey: true, shiftKey: true })
     expect(pileIds()).toEqual(['phones'])
     expect(tileIds(tray())).toEqual([8, 9, 10, 5, 6, 7])
-    key('z', { metaKey: true })
+    act(() => runMenuCommand('undo', menuActions))
     expect(pileIds()).toEqual(['phones', 'mugs'])
+    act(() => runMenuCommand('redo', menuActions))
+    expect(pileIds()).toEqual(['phones'])
+    // The board's own steps: nothing reached main's history.
+    expect(window.api.invoke).not.toHaveBeenCalledWith(IPC_CHANNELS.UNDO_RUN, undefined)
+  })
+
+  it('no longer hears ⌘Z as a key: it comes through the Edit menu', async () => {
+    setupApi()
+    mount()
+    await ready()
+    fireEvent.click(header('mugs'))
+    key('g', { metaKey: true, shiftKey: true })
+    key('z', { metaKey: true })
+    expect(pileIds()).toEqual(['phones'])
   })
 
   it('the toast’s Undo undoes the change', async () => {
@@ -331,7 +353,7 @@ describe('selection and menus', () => {
     await ready()
     fireEvent.click(header('mugs'))
     key('g', { metaKey: true, shiftKey: true })
-    const undo = vi.mocked(undoToast).mock.calls[0]![1]
+    const undo = vi.mocked(stepToast).mock.calls[0]![1]
     act(() => undo())
     expect(pileIds()).toEqual(['phones', 'mugs'])
   })
@@ -387,7 +409,22 @@ describe('selection and menus', () => {
     await ready()
     fireEvent.contextMenu(board())
     const rows = (await screen.findAllByRole('menuitem')).map((r) => r.textContent ?? '')
-    expect(rows.map((r) => r.replace(/[⌘A-Z]+$/, ''))).toEqual(['Select all', 'Undo'])
+    expect(rows.map((r) => r.replace(/[⌘A-Z]+$/, ''))).toEqual([
+      'Select all',
+      'Undo · nothing to undo'
+    ])
+  })
+
+  it('a greyed-out row says why, in its own words (F-047)', async () => {
+    setupApi()
+    mount()
+    await ready()
+    fireEvent.contextMenu(tile(3))
+    const newPile = await screen.findByRole('menuitem', { name: /New pile/ })
+    expect(
+      newPile.getAttribute('aria-disabled') ?? newPile.getAttribute('data-disabled')
+    ).not.toBeNull()
+    expect(newPile.textContent).toContain('New pile · needs 2 or more')
   })
 
   it('the ⋯ on a tile opens the same menu (S4.E1)', async () => {
@@ -421,7 +458,7 @@ describe('drag and drop (S3, S5, S7, S8)', () => {
     dragEnd('tile:8', 'pile:mugs')
     expect(tileIds(pile('mugs'))).toEqual([5, 6, 7, 8])
     expect(tileIds(tray())).toEqual([9, 10])
-    expect(vi.mocked(undoToast).mock.calls[0]![0]).toMatch(/^Added 1 mockup to /)
+    expect(vi.mocked(stepToast).mock.calls[0]![0]).toMatch(/^Added 1 mockup to /)
   })
 
   it('dropping on a tile on its own starts a pile led by that tile, shown first (S5.1, S5.2)', async () => {
@@ -456,7 +493,7 @@ describe('drag and drop (S3, S5, S7, S8)', () => {
     dragStart('tile:8')
     dragEnd('tile:8', null)
     expect(tileIds(tray())).toEqual([8, 9, 10])
-    expect(undoToast).not.toHaveBeenCalled()
+    expect(stepToast).not.toHaveBeenCalled()
   })
 
   it('cancelling a drag leaves the board as it was (S3.E5)', async () => {
@@ -475,7 +512,7 @@ describe('drag and drop (S3, S5, S7, S8)', () => {
     await ready()
     dragStart('tile:1')
     dragEnd('tile:1', 'tray')
-    expect(vi.mocked(undoToast).mock.calls[0]![0]).toContain('phone_2.psd is now the top mockup')
+    expect(vi.mocked(stepToast).mock.calls[0]![0]).toContain('phone_2.psd is now the top mockup')
   })
 
   it('a pile down to one tile dissolves into On its own (S3.E2)', async () => {
@@ -532,7 +569,7 @@ describe('leaving', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
     expect(api.calls(IPC_CHANNELS.SORT_BOARD_SAVE)).toEqual([
       {
-        batchId: 'b1',
+        batchId: TO_SORT_BOARD,
         groups: [
           { id: 'phones', memberIds: [1, 2, 3, 4] },
           { id: 'mugs', memberIds: [5, 6, 7] }
@@ -582,15 +619,15 @@ describe('leaving', () => {
     expect(await screen.findByRole('alertdialog')).toBeTruthy()
   })
 
-  it('Look them over saves the piles with each top first, then hands the batch on', async () => {
+  it('Look them over saves the piles with each top first, then hands them on', async () => {
     const api = setupApi()
     const { onClose, onLookThemOver } = mount()
     await ready()
     fireEvent.click(screen.getByRole('button', { name: 'Look them over' }))
-    await waitFor(() => expect(onLookThemOver).toHaveBeenCalledWith('b1'))
+    await waitFor(() => expect(onLookThemOver).toHaveBeenCalled())
     expect(api.calls(IPC_CHANNELS.GROUPING_CONFIRM)).toEqual([
       {
-        batchId: 'b1',
+        batchId: TO_SORT_BOARD,
         groups: [
           { id: 'phones', memberIds: [1, 2, 3, 4] },
           { id: 'mugs', memberIds: [5, 6, 7] }
@@ -615,9 +652,114 @@ describe('leaving', () => {
     expect(onLookThemOver).not.toHaveBeenCalled()
   })
 
+  describe('Sort 3: a board of just the cards picked (F-049)', () => {
+    const only = { kind: 'only', mockupIds: [2, 3, 8] } as const
+
+    it('shows just those three, with the piles cut to them', async () => {
+      setupApi()
+      mount({ scope: only })
+      await ready()
+      expect(pileIds()).toEqual(['phones'])
+      expect(tileIds(pile('phones'))).toEqual([2, 3])
+      expect(screen.getByText('3 mockups')).toBeTruthy()
+    })
+
+    it('Look them over confirms just those three', async () => {
+      const api = setupApi()
+      const { onLookThemOver } = mount({ scope: only })
+      await ready()
+      fireEvent.click(screen.getByRole('button', { name: 'Look them over' }))
+      await waitFor(() => expect(onLookThemOver).toHaveBeenCalled())
+      expect(api.calls(IPC_CHANNELS.GROUPING_CONFIRM)).toEqual([
+        { batchId: TO_SORT_BOARD, groups: [{ id: 'phones', memberIds: [2, 3] }], singletonIds: [8] }
+      ])
+    })
+
+    it('Finish later keeps the rest of the board around them', async () => {
+      const api = setupApi()
+      const { onClose } = mount({ scope: only })
+      await ready()
+      fireEvent.click(screen.getByRole('button', { name: 'Finish later' }))
+      fireEvent.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Finish later' })
+      )
+      await waitFor(() => expect(onClose).toHaveBeenCalled())
+      expect(api.calls(IPC_CHANNELS.SORT_BOARD_SAVE)).toEqual([
+        {
+          batchId: TO_SORT_BOARD,
+          groups: [
+            { id: 'phones', memberIds: [1, 4] },
+            { id: 'mugs', memberIds: [5, 6, 7] },
+            { id: expect.any(String), memberIds: [2, 3] }
+          ],
+          singletonIds: [9, 10, 8]
+        }
+      ])
+    })
+  })
+
+  describe('the board by keyboard alone (F-046)', () => {
+    const press = (name: string, init: KeyboardEventInit = {}) =>
+      fireEvent.keyDown(document.activeElement ?? board(), { key: name, ...init })
+    const focused = () => (document.activeElement as HTMLElement | null)?.dataset.tileId
+
+    it('arrows walk the tiles, piles first, and only the one under the cursor takes Tab', async () => {
+      setupApi()
+      mount()
+      await ready()
+      press('ArrowRight')
+      expect(focused()).toBe('1')
+      press('ArrowRight')
+      expect(focused()).toBe('2')
+      press('ArrowLeft')
+      expect(focused()).toBe('1')
+      const tabStops = [...document.querySelectorAll<HTMLElement>('[data-tile-id][tabindex="0"]')]
+      expect(tabStops.map((t) => t.dataset.tileId)).toEqual(['1'])
+    })
+
+    it('Space picks two tiles and ⌘G piles them', async () => {
+      setupApi()
+      mount()
+      await ready()
+      press('ArrowRight')
+      for (let i = 0; i < 7; i++) press('ArrowRight')
+      expect(focused()).toBe('8')
+      press(' ')
+      press('ArrowRight')
+      press(' ')
+      expect(tile(8).getAttribute('aria-selected')).toBe('true')
+      expect(tile(9).getAttribute('aria-selected')).toBe('true')
+      press('g', { metaKey: true })
+      expect(pileIds()).toHaveLength(3)
+    })
+
+    it('the menu key opens the tile’s menu: Put on top, then Move to another pile', async () => {
+      setupApi()
+      mount()
+      await ready()
+      press('ArrowRight')
+      press('ArrowRight')
+      expect(focused()).toBe('2')
+      press('F10', { shiftKey: true })
+      fireEvent.keyDown(await screen.findByRole('menuitem', { name: /Put on top/ }), {
+        key: 'Enter'
+      })
+      await waitFor(() => expect(tileIds(pile('phones'))[0]).toBe(2))
+      await waitFor(() => expect(focused()).toBe('2'))
+
+      press('ContextMenu')
+      fireEvent.keyDown(await screen.findByRole('menuitem', { name: /Move to/ }), {
+        key: 'ArrowRight'
+      })
+      fireEvent.keyDown(await screen.findByRole('menuitem', { name: /mug/ }), { key: 'Enter' })
+      await waitFor(() => expect(tileIds(pile('mugs'))).toContain(2))
+      expect(tileIds(pile('phones'))).not.toContain(2)
+    })
+  })
+
   it('renders nothing when closed', () => {
     setupApi()
-    render(<SortFlow open={false} batchId="b1" onClose={vi.fn()} onLookThemOver={vi.fn()} />)
+    render(<SortFlow open={false} onClose={vi.fn()} onLookThemOver={vi.fn()} />)
     expect(document.querySelector('[data-ds="FlowModal"]')).toBeNull()
   })
 })

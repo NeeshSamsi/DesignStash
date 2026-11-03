@@ -1,19 +1,19 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
-import type { GroupMember } from '@shared/grouping'
+import { TO_SORT_BOARD, type GroupMember } from '@shared/grouping'
 import { GroupingService } from '../import/grouping-service'
+import { undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { countsChanged } from './library-effects'
 import { registerIpcHandler } from './register'
 
 export function registerGroupingHandlers(ctx: HandlerContext): void {
   const { telemetry, repo } = ctx
-  registerIpcHandler(IPC_CHANNELS.GROUPING_PROPOSE, (args) => {
+  // One board for everything in To sort, whichever import it came in with: the board's batchId is
+  // always TO_SORT_BOARD.
+  registerIpcHandler(IPC_CHANNELS.GROUPING_PROPOSE, () => {
     // Only what still waits in To sort: stashed, sorted and trashed mockups have left the board.
-    const dbMockups = repo.mockups
-      .getMockupsByBatchId(args.batchId)
-      .filter((m) => m.stage === 'to_sort' && m.deletedAt === null)
-    const members: GroupMember[] = dbMockups.map((m) => {
+    const members: GroupMember[] = repo.sortBoards.waiting().map((m) => {
       const ctx = m.importContext as {
         batchId?: string
         folderTrail?: string[]
@@ -31,15 +31,21 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
         ...(ctx?.archiveTitle ? { archiveTitle: ctx.archiveTitle } : {})
       }
     })
-    return GroupingService.proposeOrFallback(args.batchId, members)
+    return GroupingService.proposeOrFallback(TO_SORT_BOARD, members)
   })
 
-  registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, (args) => {
-    repo.piles.confirmGroupings(args.groups, args.singletonIds)
-    repo.sortBoards.clear(args.batchId)
-    repo.mockups.setStage(
-      [...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds],
-      'to_stash'
+  // One entry in the undo history ("Undo Sort"): its undo puts back the stage, the piles and the
+  // saved board's remainder.
+  registerIpcHandler(IPC_CHANNELS.GROUPING_CONFIRM, async (args) => {
+    // One transaction: piles laid out but still in To sort would hide from its list. A board opened
+    // on a few ("Sort 3") confirms only those, and the rest of the saved board stays.
+    const ids = [...args.groups.flatMap((g) => g.memberIds), ...args.singletonIds]
+    const { record } = await ctx.dataOps.track('Sort', { mockupIds: ids, sortBoard: true }, () =>
+      repo.transaction(() => {
+        repo.piles.confirmGroupings(args.groups, args.singletonIds)
+        repo.sortBoards.remove(ids)
+        repo.mockups.setStage(ids, 'to_stash')
+      })
     )
     countsChanged(ctx)
     // Telemetry: counts only — never group contents.
@@ -47,7 +53,7 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
       groups: args.groups.length,
       singletons: args.singletonIds.length
     })
-    return { confirmed: true }
+    return { confirmed: true, ...undoEntry(ctx.undo.record(record)) }
   })
 
   registerIpcHandler(IPC_CHANNELS.SORT_BOARD_SAVE, (board) => {
@@ -55,7 +61,5 @@ export function registerGroupingHandlers(ctx: HandlerContext): void {
     return { saved: true }
   })
 
-  registerIpcHandler(IPC_CHANNELS.SORT_BOARD_LOAD, (args) => ({
-    board: repo.sortBoards.load(args.batchId)
-  }))
+  registerIpcHandler(IPC_CHANNELS.SORT_BOARD_LOAD, () => ({ board: repo.sortBoards.load() }))
 }

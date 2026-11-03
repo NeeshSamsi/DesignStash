@@ -51,6 +51,15 @@ describe('openExternal', () => {
     expect(deps.openPath).toHaveBeenCalledWith('/lib/open.psd')
   })
 
+  it('opens a PSB’s copy as it is, original.psb (H-12)', async () => {
+    const m = repo.mockups.createMockup(approvedRow({ title: 'Big', libraryPath: '/library/mockups/u/original.psb' }))
+    const deps = makeDeps()
+    const svc = new LibraryService(repo, '/library', deps)
+
+    expect(await svc.openExternal(m.id)).toEqual({ opened: true })
+    expect(deps.openPath).toHaveBeenCalledWith('/library/mockups/u/original.psb')
+  })
+
   it('says it failed, and does not call openPath, for a mockup that does not exist', async () => {
     const deps = makeDeps()
     const svc = new LibraryService(repo, '/library', deps)

@@ -5,6 +5,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   Field as UiField
 } from '@renderer/ui/field'
 import { FIELD_DEFAULTS, type FieldContractProps } from './Field.types'
@@ -15,6 +16,11 @@ export interface FieldProps
   children?: ReactNode
   /** id of the control the label points at. */
   htmlFor?: string
+  /**
+   * For a control made of many (the tag editor): the label is a title with this id, which the
+   * control names itself by (aria-labelledby), since a label element points at one control.
+   */
+  labelId?: string
 }
 
 /**
@@ -22,7 +28,7 @@ export interface FieldProps
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=212-273
  * Styles live in ui/field.tsx. The error shows only while invalid.
  */
-export function Field({ children, htmlFor, ...rest }: FieldProps) {
+export function Field({ children, htmlFor, labelId, ...rest }: FieldProps) {
   const {
     orientation,
     invalid,
@@ -37,16 +43,22 @@ export function Field({ children, htmlFor, ...rest }: FieldProps) {
   const fallbackId = useId()
   const controlId = htmlFor ?? fallbackId
 
-  const labelRow = (
-    <FieldLabel htmlFor={controlId}>
+  const labelText = (
+    <>
       {label}
       {required && (
         <span aria-hidden className="text-error">
           *
         </span>
       )}
-    </FieldLabel>
+    </>
   )
+  const labelRow =
+    labelId !== undefined ? (
+      <FieldTitle id={labelId}>{labelText}</FieldTitle>
+    ) : (
+      <FieldLabel htmlFor={controlId}>{labelText}</FieldLabel>
+    )
   const control = children ?? (
     <Input id={controlId} disabled={disabled} aria-invalid={invalid || undefined} />
   )

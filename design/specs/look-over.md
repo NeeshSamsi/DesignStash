@@ -1,7 +1,7 @@
 # Look it over: AI working and the edit check
 
 **Status:** Proposed (awaiting Neesh), designed 2026-10-23; the edit check reworked 2026-10-24 after experiment C. Nothing here is built.
-**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.5, L6.E1–E4; L6.E2 superseded, and L3.E3 superseded by L6.1 and L6.5) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card, plus _Preview placement for L7.9_ (Option A chosen, Option B superseded, under L7.9). Row _Pile titles (L8)_ (L8.1 to L8.3) shows the base title and variations; the rules are in [pile-titles.md](pile-titles.md). Components: **AiStatus** (new; `kind=none` since 2026-10-24), **PileStep** (new `note` line), **Popover** (its content is now a real slot; `shadow/raised` since 2026-10-24), **MockupMetaForm** (resting hint retired 2026-10-24) and every focusable component (focus ring rebuilt 2026-10-24). The component pass is under [Component pass](#component-pass-2026-10-24).
+**Figma:** _↳ Look it over_ › section _B3 · Look it over_, rows _AI working (L6)_ (L6.1–L6.5, L6.E1–E4; L6.E2 superseded, and L3.E3 superseded by L6.1 and L6.5) and _Edit check (L7)_ (L7.1–L7.12, L7.E1–E5; L7.5, L7.E1 and L7.E2 superseded), each screen with a Notes card, plus _Preview placement for L7.9_ (Option A chosen, Option B superseded, under L7.9). Row _Pile titles (L8)_ (L8.1 to L8.4) shows the base title and variations; the rules are in [pile-titles.md](pile-titles.md). Components: **AiStatus** (new; `kind=none` since 2026-10-24), **PileStep** (new `note` line), **Popover** (its content is now a real slot; `shadow/raised` since 2026-10-24), **MockupMetaForm** (resting hint retired 2026-10-24) and every focusable component (focus ring rebuilt 2026-10-24). The component pass is under [Component pass](#component-pass-2026-10-24).
 **Related:** [piles.md](piles.md) (the pile model these screens sit in), [tags.md](tags.md) (suggested and new chips), [ai.md](ai.md) (models and timings).
 
 ## Proposed (awaiting Neesh)
@@ -9,9 +9,9 @@
 ### The status line (AiStatus)
 
 - **One line above the form, only when it has something to say** (Neesh, 2026-10-24: “if it's not necessary to say then it's weird to show it”): writing, taking a while, an offer, applied or reworded, couldn't write, and L7.1's heads-up that Next will check the edits. There is no resting text anywhere. MockupMetaForm's old hint (“AI suggested the title, description and tags. Give them a quick check before you stash it.”) is retired, on mockups on their own too, since it only ever said that the AI had done its job.
-- **The row is decided when the mockup opens and never changes while it's on screen.** A mockup that opens with something to say gets the row; one that opens with nothing to say has none, and its form starts at the top. When a message has had its say (L6.3's “filled in” after 4 s, a dismissed offer in L7.10), its text fades and the row stays, empty (`kind=none`), until you move on. Nothing that can change later opens without a line: a mockup the AI is still writing opens on “Writing…”, a variant being checked on “Checking your edits…”. So the Title and Description fields never move under someone typing (8.17), and no screen carries a line that says nothing (1.6, no-obvious-status). Animating the row in was the alternative; it still moves the fields, only more slowly, so it doesn't solve the jump.
+- **The row is decided when the mockup opens and never changes while it's on screen.** A mockup that opens with something to say gets the row; one that opens with nothing to say has none, and its form starts at the top. When a message has had its say (L6.3's “filled in” after 4 s, a dismissed offer in L7.10), its text fades and the row stays, empty (`kind=none`), until you move on. Nothing that can change later opens without a line: a mockup the AI is still writing opens on “Writing with AI…”, a variant being checked on “Checking your edits…”. So the Title and Description fields never move under someone typing (8.17), and no screen carries a line that says nothing (1.6, no-obvious-status). Animating the row in was the alternative; it still moves the fields, only more slowly, so it doesn't solve the jump.
 - **Kinds:**
-  - **working:** a spinner. Writing suggestions, checking edits, or taking a while (with Fill it myself).
+  - **working:** a spinner. Writing with AI, checking edits, or taking a while (with Fill it myself).
   - **done:** a sparkle. Filled in, applied, reworded.
   - **off:** an info icon. You’re filling it in, edits offered.
   - **none:** an empty row of the same height, kept after a message has had its say.
@@ -25,20 +25,22 @@
 |---|---|
 | L6.1 Writing with AI | Neesh, 2026-10-24. The line reads “Writing with AI…” with **Fill it myself** (ghost) in line from the start; it opts out the whole mockup. Title, Description and Tags each say “Writing with AI…”, pulsing like Skeleton (`animate-pulse`: opacity 100% to 50% over 2 s; static text with reduced motion), and each stays a real field you can click and type in (Input and Textarea `state=writing`; Tags show one thinking chip that says it). The file name doesn't appear while the AI writes. |
 | L6.2 Typing while it writes | Typing opts out that field only (Neesh, 2026-10-24): it becomes a normal field, with no pulse, and stays yours. The other fields keep writing, and the suggestion fills only the fields you haven't touched when it lands (`landedDraft` already works this way). The line says what's still coming, still with Fill it myself. |
-| L6.3 Suggestions land | The untouched fields fill in. Focus and the caret stay put. Each filled field gets a `background/primary-weak` tint that fades out over 1.2 s (ease out); with reduced motion it shows for 2 s with no fade. The line says what was filled; after 4 s its text fades and the row stays empty until you move on. |
+| L6.3 Suggestions land | The untouched fields fill in. Focus and the caret stay put. Each filled field gets a `background/primary-weak` tint (Input and Textarea `state=ai-filled`) that fades out over 1.2 s (ease out); with reduced motion it shows for 2 s with no fade. The line says what was filled; after 4 s its text fades and the row stays empty until you move on. |
 | L6.4 Taking a while | When the run counts as slow (see **When it counts as slow**), the line changes to “Still writing with AI. This one is taking a while.” **Fill it myself** has been there since the start (one ghost button, for this mockup only; a pile-level stop meant the same thing). |
 | L6.5 Writing with AI, on its own | The same writing state for a mockup outside a pile: every place the AI writes works this way. It replaces the old skeleton form (MockupMetaForm `state=thinking`, L3.E3), which couldn't be typed into; both are superseded. |
 | L6.E1 Fill it myself | Suggestions stop for this mockup. The title starts as the file name, selected so typing replaces it. Description and tags start empty. **Write suggestions** asks again. |
-| L6.E3 Couldn't write | “Couldn't write suggestions for this one, so the title is its file name.” with **Try again**. No error codes. |
-| L6.E4 Review while one is still writing | Stash pile waits until every variant's suggestions have landed or been opted out (Neesh, 2026-10-24: “if it's taking a while, you can opt out and fill it yourself”). It's disabled, and the footer says why: “Stash pile waits until phone_top's suggestions arrive.” Each card still writing says “Writing suggestions…” and has a ghost **Fill it myself** under it, outside the card so the card stays one click target (8.19). The rail says “Writing suggestions…” too. |
+| L6.E3 Couldn't write | “Couldn't write suggestions for this one, so the title is its file name.” on its own, and “…so its variation is from the file name.” in a pile, with **Try again**. No error codes. It also shows when a run reaches 3 times the slow threshold: the app stops the run, and the queue moves on (Neesh, 2026-10-26). |
+| L6.E4 Review while one is still writing | Stash pile waits until every variant's suggestions have landed or been opted out (Neesh, 2026-10-24: “if it's taking a while, you can opt out and fill it yourself”). It's disabled, and the footer says why: “Stash pile waits until phone_top's suggestions arrive.” Each card still writing says “Writing with AI…” and has a ghost **Fill it myself** under it, outside the card so the card stays one click target (8.19). The rail says “Writing with AI…” too. |
 
-- **The rail shows what's still coming.** PileStep gets a caption under its label: “Writing suggestions…” on the one in progress, and “Suggestions on the way” on the queued ones. That helps you pick a ready variant to work on next.
+- **The rail shows what's still coming.** PileStep gets a caption under its label: “Writing with AI…” on the one being written, and “Suggestions on the way” on the queued ones. That helps you pick a ready variant to work on next.
+- **“Writing with AI…” everywhere** for the one being written (Neesh, 2026-10-26): the status line, the fields' placeholder, the rail caption and the review cards. It's Neesh's wording. Queued steps keep “Suggestions on the way”, and the L6.E4 footer keeps “Stash pile waits until phone_top's suggestions arrive.”
+- **One queue from the moment Look it over opens** (Neesh, 2026-10-26; built, see [Contracts](#contracts-main-and-shared-for-l6-and-l7)): opening doesn't ask the model itself. Every mockup without suggestions, tops and mockups on their own included, waits in the one AI queue, with the one on screen first and then the rest of its pile, and shows the writing state (L6.1 in a pile, L6.5 on its own) with **Fill it myself** while it waits. The skeleton on open (L1.E6) covers only reading the queue. Until 2026-10-26 `look-over:open` asked the model for every top and single itself, one after another behind skeletons, and the queue then asked again (round 3 D in `design/research/ai-round3.md`).
 - **AI switched off in Settings** shows no line. The file-name title is expected there, so a notice would never say anything new.
 - **When it counts as slow** (ai-eval, round 3 D in `design/research/ai-round3.md`; in code since 2026-10-24, `run-timing.ts`): about 2.5 times the median of this Mac's last 20 runs of that model, kept within a per-model floor and ceiling: Apple 5 to 10 s, Qwen3-VL 4B 20 to 60 s, Qwen3.5 9B 35 to 100 s. On an M3 Max that comes to about 6 s, 20 s and 35 s; a base M1 or M2, three to five times slower with the Qwen models, gets its own threshold from its own runs. With fewer than 5 runs on record the ceiling applies.
   - **The clock** starts when the model begins on this mockup (`ai:status` `run.writingSince`); a model load after launch or five idle minutes doesn't count. The mockup on screen goes to the front of the queue, then the rest of its pile. If it still has to wait for another mockup's run to finish, the clock counts from when it came on screen, so a stuck run ahead still brings the line. No timer is shown.
   - **Normal runs don't see it.** Replayed over 90 covers per model in the order they ran, it would have shown on none of Apple's, on 4 of the 4B's (all during a few minutes when other work slowed the Mac 2 to 3 times, at 26 to 38 s) and on 1 of the 9B's (37 s, while the GPU was busy with other apps).
   - **The wait for a turn and the model load get no state of their own.** The wait is at most one other run; the load takes under a second for Apple and 1 to 4 s for the Qwen models.
-  - **Proposed (nothing built yet):** at 3 times the threshold the app stops the run and shows L6.E3 (“Couldn't write suggestions…” with **Try again**), so one stuck run can't hold up the queue.
+  - **The hard stop** (decided by Neesh, 2026-10-26; built in `14b8a18`): at 3 times the threshold the app stops the run and shows L6.E3 (“Couldn't write suggestions…” with **Try again**), and the queue moves on to the next mockup, so one stuck run can't hold up the rest. On an M3 Max that's about 18 s for Apple, 60 s for the 4B and 105 s for the 9B; at the ceilings it's 30 s, 180 s and 300 s.
 - **One way out, for this mockup only.** No pile-level or haul-wide stop and no Settings link in the prompt: stopping for the pile meant the same as filling each one in, and changing model or turning AI off is a Settings decision.
 
 ### Edit check (ask 2, coming soon)
@@ -133,7 +135,7 @@ Neesh asked why the focus ring broke: “shouldn't focused variants of buttons b
 - **Raw values fixed:** AiStatus's gap (now `spacing/2`), MeaningSearchCard's title-row gap (`spacing/2`) and its corner radius (`radius/xl`). No raw colours, and no text without a style.
 - **Clipping that is intended:** VariantStrip (a carousel with faded ends), TagFilterPopover's tag list (now marked as a vertical scroll area), SettingsLayout's scrolling body, and MockupCard and GroupMemberThumb's hover zoom inside the cover.
 - **Retired:** MockupMetaForm's resting hint and its two properties (see the status line).
-- **Added:** AiStatus `kind=none`, Textarea `state=ai-filled`, TagChip `variant=removed`, CoverImage `show-border`, Button `variant=outline-subtle`, StepBar, and the `radius/card-ring` token (28).
+- **Added:** AiStatus `kind=none`, Textarea `state=ai-filled` (and Input's, 2026-10-26), TagChip `variant=removed`, CoverImage `show-border`, Button `variant=outline-subtle`, StepBar, and the `radius/card-ring` token (28).
 
 **For the build:** the code sets the quiet outline with the same className in four places (LibraryToolbar, Toast, SortFlow's Make pile, PilePage's Disband pile); one `outline-subtle` Button variant can replace them. Textarea's AI-filled tint, TagChip `removed`, CoverImage `show-border` and the retired MockupMetaForm hint need their code counterparts.
 
@@ -146,6 +148,8 @@ Neesh asked why the focus ring broke: “shouldn't focused variants of buttons b
 | Typing opts out that field only, and focus never moves (Neesh) | Overwriting someone's words, or yanking the caret, would break trust. The code's `landedDraft` already keeps edited fields. | 8.14, 8.17 |
 | A 1.2 s fading tint on fields the AI just filled | It shows what changed without taking focus. It fades so it doesn't linger, and has a reduced-motion fallback. | 10.1, 10.5, 10.6, 10.7 |
 | The opt-out when a run counts as slow for this Mac and model | Base Macs run several times slower than the Mac the limits were measured on, so the threshold follows this Mac's own runs; it never fires on a normal run and arrives before the wait feels broken. | 0.2, 8.3 |
+| A run that reaches 3 times the slow threshold stops, shows Couldn't write with Try again, and the queue moves on (Neesh) | One stuck run can't hold up the rest of the pile. The person gets the fallback title, the reason where it happened and a way to retry, and Fill it myself was there the whole time. | 8.4, 8.3, 8.7 |
+| One AI queue for every mockup, the one on screen first, and opening Look it over doesn't ask the model (Neesh) | Every mockup that's waiting looks and works the same, with its way out from the start, and nothing is asked twice. Asking on open meant skeletons with no line and nothing to do: over two minutes with ten fresh singles on the 9B. | 8.3, 7.5, 8.9 |
 | One opt-out, a ghost Fill it myself, for this mockup only (Neesh) | A pile-level stop did the same job, so two buttons offered one choice twice. A ghost button keeps the quiet line quiet and leaves Next as the strongest thing on screen. Model choice stays in Settings. | 1.6, 2.5, 9.2 |
 | Text notes under rail steps, not icons | Words say exactly what's happening, and the rail is the running view of the pile. | 5.5, 8.20 |
 | An honest fallback line with Try again where it failed; nothing when AI is off by choice | The error sits next to its cause and comes with the fix. A line that can only say one obvious thing is cut. | 8.4, 1.6, no-obvious-status |
@@ -173,10 +177,45 @@ Neesh asked why the focus ring broke: “shouldn't focused variants of buttons b
 | A new AiStatus component, plus a `note` on PileStep | The form's hint row can't change state or hold actions, and a Banner is heavier and would push the fields. Two small additions cover every state in both asks. | 7.3, 7.5 |
 | Labels say what happens: Fill it myself, Write suggestions, Apply anyway | The button tells you the next thing. | 1.7, 8.9 |
 
+## Contracts (main and shared, for L6 and L7)
+
+Built by ai-eval on 2026-10-26, through the existing typed invoke and pushes, with no preload changes. The shapes are in `src/shared/approval.ts`, `src/shared/ipc/approval.ts`, `src/shared/ipc/ai-status.ts` and `src/shared/inbox.ts`.
+
+**Every item's AI state** (L6). Each `LookOverItem` has `ai: { status, run? }`, as `ai:status` says it, so the rail captions are right from the first frame:
+
+| `ai.status` | `ai.run` | Means | Shows |
+|---|---|---|---|
+| `pending` | `{ phase: 'queued', writingSince: null, slowAfterMs }` while it waits its turn | queued | "Suggestions on the way" on the rail; the writing state (L6.1, L6.5) |
+| `sniffing` | `{ phase: 'starting' or 'writing', writingSince, slowAfterMs }` | being written | "Writing with AI…"; L6.4 once `writingSince + slowAfterMs` passes |
+| `failed` | none | couldn't write: two failed tries, or the hard stop | L6.E3 with Try again |
+| `opted_out` | none | the person chose Fill it myself | Write suggestions (L6.E1) |
+| `ready` | none | the suggestion landed | |
+| `off` | none | the AI isn't in use | no line |
+
+A `pending` item reloaded before the queue picks it up again can come without `run`. Later changes come on the `ai:status` push (`updates: [{ mockupId, status, run? }]`), and a draft that a landing filled in comes on `look-over:draft`. `waitingForAi` stays as it was: true while the draft holds fallback fields until a suggestion lands.
+
+**The hard stop** (L6.E3, `14b8a18`). A run that reaches 3 times `slowAfterMs`, counted from `writingSince`, is stopped. `ai:status` pushes `{ mockupId, status: 'failed' }`, the draft stops waiting with its file-name title (`look-over:draft`), and the queue moves on. Still writing is `pending` or `sniffing`, couldn't write is `failed`, and filled in by the person is `opted_out`.
+
+**`look-over:open`** answers `{ units, checksEdits, resume }`. `checksEdits` is true when the active model checks an edit to a pile top against each variant (the 9B), for L7.1: "your edits get checked" when true, "your edits are offered" when false. Opening no longer asks the model itself. Tops and mockups on their own wait in the queue like variants (`waitingForAi`), with the one opened on first, and any the AI was never asked about join the queue before their drafts are made.
+
+**`look-over:fill-myself`** `{ mockupId }` answers `LookOverItem | null` (L6.E1). The mockup leaves the queue, a run on it now is stopped, `ai.status` becomes `opted_out`, the draft stops waiting, and every field stays as it is. The queue never asks about it again until Write suggestions. Null when it isn't waiting in To stash.
+
+**`look-over:write`** `{ mockupId }` answers `LookOverItem | null` (Write suggestions in L6.E1, Try again in L6.E3). It asks again for an `opted_out` or `failed` mockup, first in line with the rest of its pile after it. `ai.status` becomes `pending`, the draft waits again, and the answer fills only the fields the person hasn't typed in. A `ready` one is left as it is.
+
+**Why an offer was made** (L7). `carry.why` is set while `carry.state` is `offered` or `dismissed`, and null while `checking` or once `applied` or `reworded`. Dismissing and restoring keep it.
+
+| `carry.why` | When | Screen |
+|---|---|---|
+| `unjudged` | the model doesn't check edits (the 4B, Apple) | L7.9 |
+| `refused` | the 9B checked and said no; `carry.reason` holds its reason for the preview's header | L7.7 |
+| `slow` | the check ran out of its 20 s before it reached this one, or Look it over closed first | L7.E4 |
+| `failed` | the check failed, or the rewrite after its yes did | L7.E5 |
+| `undone` | the edit reached it and the person undid it | L7.E3 |
+
 ## Open questions for Neesh
 
 1. **The status line in piles:** settled on 2026-10-24. No resting text anywhere, on piles or mockups on their own; the line shows only when it has something to say, and its row is kept for the mockup once shown.
-2. **Threshold:** settled on 2026-10-24 by the ai-eval rework: 2.5 times this Mac's median for the model, within per-model limits (Apple 5 to 10 s, 4B 20 to 60 s, 9B 35 to 100 s), timed from the run's start. Open: the hard stop at 3 times the threshold.
+2. **Threshold:** settled on 2026-10-24 by the ai-eval rework: 2.5 times this Mac's median for the model, within per-model limits (Apple 5 to 10 s, 4B 20 to 60 s, 9B 35 to 100 s), timed from the run's start. The hard stop was settled on 2026-10-26: at 3 times the threshold the app stops the run and shows L6.E3 with Try again, and the queue moves on.
 3. **Pile-level stop:** settled on 2026-10-24. Only the per-mockup Fill it myself (ghost); Stop for this pile is gone and L6.E2 is superseded.
 4. **Stashing while one still writes:** settled on 2026-10-24. Stash pile waits; each card still writing offers Fill it myself (L6.E4).
 5. **A failed or slow edit check:** settled on 2026-10-24. It falls back to the offer (L7.E4, L7.E5), and the old Apply to all is gone.

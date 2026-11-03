@@ -9,7 +9,7 @@ export const DIALOG_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=213-781',
   section: '2 · Primitives (shadcn)',
   description:
-    'Overlay shells. Screens never use these directly — they use Modal / ConfirmDialog / ChoiceDialog.',
+    'Overlay shells. Screens never use these directly — they use ConfirmDialog / ChoiceDialog / FormDialog, or a composed dialog frame in ModalLayer.',
   code: 'ui/dialog.tsx, ui/alert-dialog.tsx, ui/sheet.tsx',
   axes: {
     variant: ['dialog', 'alert-dialog', 'sheet']

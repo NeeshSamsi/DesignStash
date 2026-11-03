@@ -5,8 +5,11 @@ import type { AnalysisInput, InferenceProvider, InferenceResult } from '@shared/
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb, sample } from '../db/repositories/__tests__/setup'
+import { PileTitles } from '../library/pile-titles'
 import { InferenceQueue, analysisInputFor } from './inference-queue'
-import { RunTimes, memoryRunTimes } from './run-timing'
+import { LlamaStartError } from './llama-server'
+import { ModelUnavailableError } from './model-unavailable'
+import { HARD_STOP_FACTOR, RunTimes, memoryRunTimes } from './run-timing'
 
 const result = (title: string): InferenceResult => ({
   title,
@@ -328,7 +331,9 @@ describe('InferenceQueue', () => {
 
     expect(status(side.id)).toBe('ready')
     expect(status(back.id)).toBe('ready')
-    expect(stub.calls.map((c) => c.fileName).sort()).toEqual(['back.psd', 'side.psd'])
+    // The top was never asked (a new row reads off), so the restart, with a model ready, asks it too (H-2).
+    expect(status(top.id)).toBe('ready')
+    expect(stub.calls.map((c) => c.fileName).sort()).toEqual(['back.psd', 'side.psd', 'top.psd'])
   })
 
   it('on restart with no provider, marks what was waiting as off', async () => {
@@ -405,6 +410,67 @@ describe('pile context', () => {
   })
 })
 
+describe('a runtime that keeps failing to start (F-038)', () => {
+  const failing = (err: () => Error) => stubProvider(() => Promise.reject(err())).provider
+  const cannotStart = () => new LlamaStartError('llama-server exited while loading (code 1).')
+
+  it('says the runtime is broken once two runs in a row could not start it, and not after one', async () => {
+    const queue = queueWith(failing(cannotStart), { model: () => 'qwen3-vl-4b' })
+    await queue.enqueue([imported('a').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBeNull()
+
+    await queue.enqueue([imported('b').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBe('runtime-failed')
+  })
+
+  it('forgets it after a run that writes, and on another model', async () => {
+    let broken = true
+    let model = 'qwen3-vl-4b'
+    const stub = stubProvider((input) => (broken ? Promise.reject(cannotStart()) : result(input.fileName)))
+    const queue = queueWith(stub.provider, { model: () => model })
+    await queue.enqueue([imported('a').id, imported('b').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBe('runtime-failed')
+
+    model = 'qwen3.5-9b'
+    expect(queue.runtimeProblem).toBeNull()
+    model = 'qwen3-vl-4b'
+    broken = false
+    await queue.enqueue([imported('c').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBeNull()
+  })
+
+  it('counts a model that never loads, whose run the hard stop then cuts off', async () => {
+    const stub = stubProvider(() => new Promise<InferenceResult>(() => {}))
+    const provider: InferenceProvider = { ...stub.provider, loaded: false, load: () => Promise.reject(cannotStart()), stop: async () => {} }
+    const stops: (() => void)[] = []
+    const queue = queueWith(provider, {
+      model: () => 'qwen3-vl-4b',
+      timer: (_ms, fire) => {
+        stops.push(fire)
+        return () => {}
+      }
+    })
+    await queue.enqueue([imported('a').id, imported('b').id])
+    await vi.waitFor(() => expect(stops).toHaveLength(1))
+    stops[0]!()
+    await vi.waitFor(() => expect(stops).toHaveLength(2))
+    stops[1]!()
+    await queue.idle()
+    expect(queue.runtimeProblem).toBe('runtime-failed')
+  })
+
+  it("leaves other failures to each mockup: a reply that can't be read is no broken runtime", async () => {
+    const queue = queueWith(failing(() => new Error('Invalid JSON in model response')), { model: () => 'qwen3-vl-4b' })
+    await queue.enqueue([imported('a').id, imported('b').id, imported('c').id])
+    await queue.idle()
+    expect(queue.runtimeProblem).toBeNull()
+  })
+})
+
 describe('analysisInputFor', () => {
   it('shows the cover, the name the file came in as, and its folders', () => {
     const m = imported('front')
@@ -418,6 +484,11 @@ describe('analysisInputFor', () => {
   it('falls back to the title and no folders when nothing is known about where it came from', () => {
     const m = imported('side', { importContext: null })
     expect(analysisInputFor(m)).toEqual({ imagePath: '/lib/side.webp', fileName: 'side', folderTrail: [] })
+  })
+
+  it('writes Cyrillic lookalikes in a Latin name as Latin, so the model and the fallback title read "Clay" (F-077)', () => {
+    const m = imported('watch', { importContext: { batchId: 'b', folderTrail: ['\u0421lay kit'], originalFilename: 'Watch-\u0421lay.psd' } })
+    expect(analysisInputFor(m)).toMatchObject({ fileName: 'Watch-Clay.psd', folderTrail: ['Clay kit'] })
   })
 })
 
@@ -469,6 +540,44 @@ describe('what Look it over is told about a run (design L6)', () => {
       run: { phase: 'writing', writingSince: 1_000, slowAfterMs: expected }
     })
     expect(times.get()['qwen3.5-9b']!.at(-1)).toBe(14_000)
+  })
+
+  it("starts the clock once the mockup's files are readied, so a slow slot mask is never the model's time (F-036)", async () => {
+    let now = 1_000
+    const times = memoryRunTimes()
+    times.set({ 'qwen3.5-9b': [12_000, 12_000, 13_000, 14_000, 15_000] })
+    const timing = new RunTimes(times)
+    const slowAfterMs = timing.slowAfterMs('qwen3.5-9b')
+    const stub = stubProvider(() => {
+      now += 9_000
+      return result('x')
+    })
+    const hardStops: number[] = []
+    const a = imported('a')
+    let whilePreparing: unknown = null
+    const queue = queueWith(stub.provider, {
+      now: () => now,
+      model: () => 'qwen3.5-9b',
+      timing,
+      // A kit of smart objects: its mask takes 4 s, and it still waits its turn to be written meanwhile.
+      prepare: async () => {
+        whilePreparing = queue.statusOf(a.id)
+        now += 4_000
+      },
+      timer: (ms) => {
+        hardStops.push(ms)
+        return () => {}
+      }
+    })
+
+    await queue.enqueue([a.id])
+    await queue.idle()
+
+    const runs = events.flatMap((e) => e.updates).filter((u) => u.status === 'sniffing').map((u) => u.run)
+    expect(runs).toEqual([{ phase: 'writing', writingSince: 5_000, slowAfterMs }])
+    expect(times.get()['qwen3.5-9b']!.at(-1)).toBe(9_000)
+    expect(hardStops).toEqual([HARD_STOP_FACTOR * slowAfterMs])
+    expect(whilePreparing).toEqual({ mockupId: a.id, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs } })
   })
 
   it('says the model is starting while it loads, and starts the clock once it answers', async () => {
@@ -531,4 +640,696 @@ describe('what Look it over is told about a run (design L6)', () => {
     expect(queue.statusOf(a.id)).toEqual({ mockupId: a.id, status: 'ready' })
     expect(queue.statusOf(9999)).toBeNull()
   })
+
+  describe('the hard stop (design L6.E3)', () => {
+    /** A timer the test fires by hand, recording what it was set for and whether it was cleared. */
+    function handTimer() {
+      const set: { ms: number; fire: () => void; cleared: boolean }[] = []
+      return {
+        set,
+        timer: (ms: number, fire: () => void) => {
+          const t = { ms, fire, cleared: false }
+          set.push(t)
+          return () => {
+            t.cleared = true
+          }
+        }
+      }
+    }
+
+    it("stops a run at 3 times the slow threshold: the mockup can't be written, the model is stopped, and the queue moves on", async () => {
+      const stuck = later<InferenceResult>()
+      const stub = stubProvider((input) => (input.fileName === 'a.psd' ? stuck.promise : result('b')))
+      const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
+      const timing = new RunTimes(memoryRunTimes())
+      const hand = handTimer()
+      const queue = queueWith({ ...stub.provider, stop }, { model: () => 'qwen3-vl-4b', timing, timer: hand.timer, now: () => 0 })
+      const [a, b] = [imported('a'), imported('b')]
+
+      await queue.enqueue([a.id, b.id])
+      await vi.waitFor(() => expect(hand.set).toHaveLength(1))
+      expect(hand.set[0]!.ms).toBe(3 * timing.slowAfterMs('qwen3-vl-4b'))
+      hand.set[0]!.fire()
+      await queue.idle()
+
+      expect(stop).toHaveBeenCalledTimes(1)
+      expect(status(a.id)).toBe('failed')
+      expect(status(b.id)).toBe('ready')
+      // Stopped, so it isn't tried again.
+      expect(stub.calls.map((i) => i.fileName)).toEqual(['a.psd', 'b.psd'])
+    })
+
+    it('logs a hard stop: the mockup, how long it ran on which model, its threshold, and that the model starts again (F-075)', async () => {
+      let now = 0
+      const stuck = later<InferenceResult>()
+      const stub = stubProvider(() => stuck.promise)
+      const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
+      const times = memoryRunTimes()
+      // A median of 14 s: the 9B's slow threshold is its floor, 35 s, and the stop is at 105 s.
+      times.set({ 'qwen3.5-9b': [14_000, 14_000, 14_000, 14_000, 14_000] })
+      const hand = handTimer()
+      const log = vi.fn<(line: string) => void>()
+      const queue = queueWith({ ...stub.provider, stop }, { model: () => 'qwen3.5-9b', timing: new RunTimes(times), timer: hand.timer, now: () => now, log })
+      const a = imported('a')
+
+      await queue.enqueue([a.id])
+      await vi.waitFor(() => expect(hand.set).toHaveLength(1))
+      now = 105_000
+      hand.set[0]!.fire()
+      await queue.idle()
+
+      expect(log.mock.calls.map(([line]) => line)).toEqual([
+        `[AI] Hard stop: mockup ${a.id} ran 105.0 s on qwen3.5-9b, 3 times its slow threshold of 35.0 s. The model is stopped, and starts again on the next request.`
+      ])
+    })
+
+    it('clears the stop when the run ends in time', async () => {
+      const stop = vi.fn(async () => {})
+      const stub = stubProvider(() => result('a'))
+      const hand = handTimer()
+      const queue = queueWith({ ...stub.provider, stop }, { timer: hand.timer })
+      const a = imported('a')
+
+      await queue.enqueue([a.id])
+      await queue.idle()
+
+      expect(status(a.id)).toBe('ready')
+      expect(hand.set.map((t) => t.cleared)).toEqual([true])
+      expect(stop).not.toHaveBeenCalled()
+    })
+
+    it('never writes the answer a stopped run sends late', async () => {
+      const stuck = later<InferenceResult>()
+      const stub = stubProvider(() => stuck.promise)
+      const hand = handTimer()
+      const queue = queueWith(stub.provider, { timer: hand.timer })
+      const a = imported('a')
+
+      await queue.enqueue([a.id])
+      await vi.waitFor(() => expect(hand.set).toHaveLength(1))
+      hand.set[0]!.fire()
+      await queue.idle()
+      stuck.resolve(result('late'))
+      await Promise.resolve()
+
+      expect(status(a.id)).toBe('failed')
+      expect(repo.mockups.getMockup(a.id)?.aiResult).toBeNull()
+    })
+
+    it('counts the stop from when the model begins, after its files are readied (F-036)', async () => {
+      let now = 0
+      const hand = handTimer()
+      const stub = stubProvider(() => result('a'))
+      const timing = new RunTimes(memoryRunTimes())
+      const queue = queueWith(stub.provider, {
+        model: () => 'apple',
+        timing,
+        timer: hand.timer,
+        now: () => now,
+        prepare: async () => {
+          now += 1_000
+        }
+      })
+
+      await queue.enqueue([imported('a').id])
+      await queue.idle()
+
+      expect(hand.set[0]!.ms).toBe(3 * timing.slowAfterMs('apple'))
+    })
+  })
+
+  describe('Fill it myself and Write suggestions (design L6.E1, L6.E3)', () => {
+    it('drops a queued mockup the person fills in themselves, and never asks about it again', async () => {
+      const gate = later()
+      const stub = stubProvider(async (input) => {
+        if (input.fileName === 'a.psd') await gate.promise
+        return result(input.fileName)
+      })
+      const queue = queueWith(stub.provider)
+      const [a, b] = [imported('a'), imported('b')]
+      await queue.enqueue([a.id, b.id])
+      await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
+
+      queue.optOut(b.id)
+      gate.resolve()
+      await queue.idle()
+      await queue.enqueue([b.id])
+      await queue.idle()
+
+      expect(stub.calls.map((i) => i.fileName)).toEqual(['a.psd'])
+      expect(status(b.id)).toBe('opted_out')
+      expect(queue.statusOf(b.id)).toEqual({ mockupId: b.id, status: 'opted_out' })
+      expect(events.flatMap((e) => e.updates)).toContainEqual({ mockupId: b.id, status: 'opted_out' })
+    })
+
+    it("stops the run on a mockup the person fills in themselves while it's being written, and moves on", async () => {
+      const stuck = later<InferenceResult>()
+      const stub = stubProvider((input) => (input.fileName === 'a.psd' ? stuck.promise : result('b')))
+      const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
+      const log = vi.fn<(line: string) => void>()
+      const queue = queueWith({ ...stub.provider, stop }, { log })
+      const [a, b] = [imported('a'), imported('b')]
+      await queue.enqueue([a.id, b.id])
+      await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
+
+      queue.optOut(a.id)
+      await queue.idle()
+
+      expect(stop).toHaveBeenCalledTimes(1)
+      // It restarts the model, so the log says so (F-075).
+      expect(log.mock.calls.map(([line]) => line)).toEqual([
+        `[AI] Mockup ${a.id} was filled in by the person while it was being written. The model is stopped, and starts again on the next request.`
+      ])
+      expect(status(a.id)).toBe('opted_out')
+      expect(status(b.id)).toBe('ready')
+      expect(stub.calls.map((i) => i.fileName)).toEqual(['a.psd', 'b.psd'])
+    })
+
+    it('never writes an answer that lands after the person chose to fill it in', async () => {
+      const slow = later<InferenceResult>()
+      const stub = stubProvider(() => slow.promise)
+      const queue = queueWith(stub.provider)
+      const a = imported('a')
+      await queue.enqueue([a.id])
+      await vi.waitFor(() => expect(stub.calls).toHaveLength(1))
+
+      queue.optOut(a.id)
+      slow.resolve(result('late'))
+      await queue.idle()
+
+      expect(status(a.id)).toBe('opted_out')
+      expect(repo.mockups.getMockup(a.id)?.aiResult).toBeNull()
+    })
+
+    it('leaves alone a mockup whose suggestion already landed', async () => {
+      const queue = queueWith(stubProvider(() => result('a')).provider)
+      const a = imported('a')
+      await queue.enqueue([a.id])
+      await queue.idle()
+      queue.optOut(a.id)
+      expect(status(a.id)).toBe('ready')
+    })
+
+    it('asks again for one the person filled in themselves, or one that could not be written', async () => {
+      const stub = stubProvider((input) => result(input.fileName))
+      const queue = queueWith(stub.provider)
+      const [a, b] = [imported('a'), imported('b')]
+      repo.mockups.updateMockup(a.id, { aiStatus: 'opted_out' })
+      repo.mockups.updateMockup(b.id, { aiStatus: 'failed' })
+
+      await queue.askAgain(a.id)
+      await queue.askAgain(b.id)
+      await queue.idle()
+
+      expect([status(a.id), status(b.id)]).toEqual(['ready', 'ready'])
+      expect(events.flatMap((e) => e.updates).filter((u) => u.mockupId === a.id).map((u) => u.status)).toEqual(['pending', 'sniffing', 'ready'])
+    })
+  })
+
+  describe("a pile's variations (L8)", () => {
+    /** A pile waiting in To stash, its drafts made as Look it over makes them. */
+    const waitingPile = (...names: string[]) => {
+      const rows = names.map((n) => imported(n))
+      repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+      repo.mockups.setStage(rows.map((r) => r.id), 'to_stash')
+      for (const r of rows) repo.drafts.ensureDraft(r.id, { title: 'Phone', description: '', tagIds: [] })
+      return rows
+    }
+    const variation = (id: number) => {
+      const d = repo.drafts.getDraft(id)!
+      return d.variation === null ? null : { words: d.variation, source: d.variationSource }
+    }
+    /** A provider that writes suggestions and names a pile's variations as told, noting how many suggestions came first. */
+    const namer = (answer: (pile: { coverPath: string; fileName: string }[]) => Promise<(string | null)[]> | (string | null)[]) => {
+      const stub = stubProvider((input) => result(input.fileName))
+      const before: number[] = []
+      const pileVariations = vi.fn(async (pile: { coverPath: string; fileName: string }[]) => {
+        before.push(stub.calls.length)
+        return { variations: await answer(pile), base: null }
+      })
+      return { ...stub, provider: { ...stub.provider, pileVariations }, pileVariations, before }
+    }
+
+    it("asks a pile for every mockup's variation once its own suggestions are done, and lands them", async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      const named = namer(() => ['front', 'side view'])
+      const landed: [number, number[]][] = []
+      const queue = queueWith(named.provider, { onVariations: (pileId, ids) => landed.push([pileId, ids]) })
+
+      await queue.enqueue([top!.id, side!.id])
+      await queue.idle()
+
+      expect(named.before).toEqual([2])
+      expect(named.pileVariations.mock.calls[0]![0]).toEqual([
+        { coverPath: top!.coverPath, fileName: 'phone_front.psd' },
+        { coverPath: side!.coverPath, fileName: 'phone_side.psd' }
+      ])
+      expect([variation(top!.id), variation(side!.id)]).toEqual([
+        { words: 'front', source: 'ai' },
+        { words: 'side view', source: 'ai' }
+      ])
+      expect(landed).toEqual([[top!.id, [top!.id, side!.id]]])
+    })
+
+    it('numbers words the app gives twice, gives "same" or no answer the fallback, and keeps words a person typed', async () => {
+      const [a, b, c, d] = waitingPile('tote-a', 'tote-b', 'tote-c', 'tote-d')
+      repo.drafts.updateDraft(d!.id, { variation: 'my favourite', variationSource: 'typed' })
+      const queue = queueWith(namer(() => ['side', 'side', null, 'front']).provider)
+
+      await queue.enqueue([a!.id, b!.id, c!.id, d!.id])
+      await queue.idle()
+
+      expect([a, b, c, d].map((m) => variation(m!.id))).toEqual([
+        { words: 'side', source: 'ai' },
+        { words: 'side 2', source: 'ai' },
+        { words: 'C', source: 'marker' },
+        { words: 'my favourite', source: 'typed' }
+      ])
+    })
+
+    it('waits while any mockup in the pile is still waiting for its own suggestion', async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      repo.mockups.updateMockup(side!.id, { aiStatus: 'pending' })
+      const named = namer(() => ['front', 'side'])
+      const queue = queueWith(named.provider)
+
+      await queue.enqueue([top!.id])
+      await queue.idle()
+      expect(named.pileVariations).not.toHaveBeenCalled()
+
+      await queue.enqueue([side!.id])
+      await queue.idle()
+      expect(named.pileVariations).toHaveBeenCalledOnce()
+    })
+
+    it("asks nothing until Look it over has made the pile's drafts, then asks when told to", async () => {
+      const rows = [imported('phone_front'), imported('phone_side')]
+      repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+      repo.mockups.setStage(rows.map((r) => r.id), 'to_stash')
+      const named = namer(() => ['front', 'side'])
+      const queue = queueWith(named.provider)
+
+      await queue.enqueue(rows.map((r) => r.id))
+      await queue.idle()
+      expect(named.pileVariations).not.toHaveBeenCalled()
+
+      for (const r of rows) repo.drafts.ensureDraft(r.id, { title: 'Phone', description: '', tagIds: [] })
+      await queue.askPile(rows[0]!.id)
+      await queue.idle()
+      expect(named.pileVariations).toHaveBeenCalledOnce()
+    })
+
+    it('asks a pile again when a mockup joins it, and not while it stays the same', async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      const named = namer((pile) => pile.map((m) => m.fileName.replace('.psd', '')))
+      const queue = queueWith(named.provider)
+      await queue.enqueue([top!.id, side!.id])
+      await queue.idle()
+
+      await queue.askPile(top!.id)
+      await queue.idle()
+      expect(named.pileVariations).toHaveBeenCalledTimes(1)
+
+      const back = imported('phone_back', { aiStatus: 'ready', aiResult: result('back') })
+      repo.piles.addToPile(top!.id, [back.id])
+      repo.mockups.setStage([back.id], 'to_stash')
+      repo.drafts.ensureDraft(back.id, { title: 'Phone', description: '', tagIds: [] })
+      await queue.askPile(top!.id)
+      await queue.idle()
+
+      expect(named.pileVariations).toHaveBeenCalledTimes(2)
+      expect(named.pileVariations.mock.calls[1]![0]).toHaveLength(3)
+      expect(variation(back.id)).toEqual({ words: 'phone_back', source: 'ai' })
+    })
+
+    it('names a pile in My Stash, on its mockups, when a mockup joins it there', async () => {
+      const rows = ['clay', 'realistic'].map((n) => imported(`watch-${n}`, { aiStatus: 'ready', aiResult: result(n) }))
+      repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+      repo.mockups.setStage(rows.map((r) => r.id), 'stashed')
+      const queue = queueWith(namer(() => ['clay render', 'realistic']).provider)
+
+      await queue.askPile(rows[0]!.id)
+      await queue.idle()
+
+      expect(rows.map((r) => repo.mockups.getMockup(r.id)!.variation)).toEqual(['clay render', 'realistic'])
+    })
+
+    it("leaves a model that doesn't name variations (Apple) to the fallback", async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      const queue = queueWith(stubProvider((input) => result(input.fileName)).provider)
+      await queue.enqueue([top!.id, side!.id])
+      await queue.askPile(top!.id)
+      await queue.idle()
+      expect([variation(top!.id), variation(side!.id)]).toEqual([null, null])
+    })
+
+    it('keeps the fallback when the request fails or gets stuck, and the queue moves on', async () => {
+      const [top, side] = waitingPile('phone_front', 'phone_side')
+      const stuck = later<(string | null)[]>()
+      const named = namer(() => stuck.promise)
+      const stop = vi.fn(async () => stuck.resolve(Promise.reject(new Error('stopped')) as never))
+      const timers: (() => void)[] = []
+      let now = 0
+      const times = memoryRunTimes()
+      times.set({ 'qwen3.5-9b': [14_000, 14_000, 14_000, 14_000, 14_000] })
+      const log = vi.fn<(line: string) => void>()
+      const queue = queueWith({ ...named.provider, stop }, {
+        timer: (_ms, fire) => {
+          timers.push(fire)
+          return () => {}
+        },
+        model: () => 'qwen3.5-9b',
+        timing: new RunTimes(times),
+        now: () => now,
+        log
+      })
+      const other = imported('other')
+
+      await queue.enqueue([top!.id, side!.id, other.id])
+      await vi.waitFor(() => expect(named.pileVariations).toHaveBeenCalledOnce())
+      now += 105_000
+      timers.at(-1)!()
+      await queue.idle()
+
+      expect(stop).toHaveBeenCalledOnce()
+      // Logged, with the pile and how long it ran (F-075).
+      expect(log.mock.calls.map(([line]) => line)).toEqual([
+        `[AI] Hard stop: the variations for pile ${top!.id} ran 105.0 s on qwen3.5-9b, 3 times its slow threshold of 35.0 s. The model is stopped, and starts again on the next request.`
+      ])
+      expect(variation(top!.id)).toBeNull()
+      expect(status(other.id)).toBe('ready')
+    })
+
+    describe("the pile's base, with a model that names it (the 9B, round 4 B)", () => {
+      const OWN = 'Long scroll MacBook on wavy sheets'
+      /** A pile in To stash whose top's suggestion has landed in its drafts, as Look it over leaves it: every draft holds the top's own title. */
+      const namedPile = (...names: string[]) => {
+        const rows = waitingPile(...names)
+        repo.mockups.updateMockup(rows[0]!.id, { aiStatus: 'ready', aiResult: result(OWN) })
+        for (const r of rows.slice(1)) repo.mockups.updateMockup(r.id, { aiStatus: 'ready', aiResult: result(r.title) })
+        for (const r of rows) repo.drafts.updateDraft(r.id, { title: OWN })
+        return rows
+      }
+      const base = (id: number) => repo.drafts.getDraft(id)!.title
+      /** A provider that names bases (unless `names` is false): each call answers its variations, and the base from the top's title it was given. */
+      const baseNamer = (answer: (topTitle: string) => string | null, names = true) => {
+        const stub = stubProvider((input) => result(input.fileName))
+        const pileVariations = vi.fn(async (pile: { coverPath: string; fileName: string }[], topTitle?: string) => ({
+          variations: pile.map((m) => m.fileName.replace('.psd', '')),
+          base: topTitle === undefined ? null : answer(topTitle)
+        }))
+        return { provider: { ...stub.provider, pileVariations, ...(names && { pileBase: true }) }, pileVariations }
+      }
+
+      it("asks for the base with the variations, from the top's own title, and gives it to every mockup in the pile", async () => {
+        const [top, side] = namedPile('scroll_wavy', 'scroll_flat')
+        const named = baseNamer(() => 'Long scroll MacBook')
+        const landed: [number, number[]][] = []
+        const queue = queueWith(named.provider, { onVariations: (pileId, ids) => landed.push([pileId, ids]) })
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls[0]![1]).toBe(OWN)
+        expect([base(top!.id), base(side!.id)]).toEqual(['Long scroll MacBook', 'Long scroll MacBook'])
+        expect(repo.drafts.getDraft(top!.id)!.keptFields).not.toContain('title')
+        expect(variation(side!.id)).toEqual({ words: 'scroll_flat', source: 'ai' })
+        expect(landed).toEqual([[top!.id, [top!.id, side!.id]]])
+      })
+
+      it('keeps a base the person typed, and asks only for the variations', async () => {
+        const [top, side] = namedPile('scroll_wavy', 'scroll_flat')
+        new PileTitles(repo).renameBase(top!.id, 'My scroll MacBook')
+        const named = baseNamer(() => 'Long scroll MacBook')
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls[0]![1]).toBeUndefined()
+        expect([base(top!.id), base(side!.id)]).toEqual(['My scroll MacBook', 'My scroll MacBook'])
+      })
+
+      it('keeps a base the person types while the model writes', async () => {
+        const [top] = namedPile('scroll_wavy', 'scroll_flat')
+        const named = baseNamer(() => {
+          new PileTitles(repo).renameBase(top!.id, 'Typed meanwhile')
+          return 'Long scroll MacBook'
+        })
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(base(top!.id)).toBe('Typed meanwhile')
+      })
+
+      it("waits for the top's suggestion to land in its draft, then asks for the base once", async () => {
+        const [top, side] = namedPile('scroll_wavy', 'scroll_flat')
+        repo.drafts.updateDraft(top!.id, { title: 'scroll', awaitingAi: true })
+        repo.drafts.updateDraft(side!.id, { title: 'scroll' })
+        const named = baseNamer(() => 'Long scroll MacBook')
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+        expect(named.pileVariations.mock.calls.map((c) => c[1])).toEqual([undefined])
+        expect(base(side!.id)).toBe('scroll')
+
+        // Look it over settles the top: its suggestion names the pile, and the pile is asked again.
+        repo.drafts.updateDraft(top!.id, { awaitingAi: false })
+        new PileTitles(repo).renameBase(top!.id, OWN, 'ai')
+        await queue.askPile(top!.id)
+        await queue.idle()
+        expect(named.pileVariations.mock.calls.map((c) => c[1])).toEqual([undefined, OWN])
+        expect([base(top!.id), base(side!.id)]).toEqual(['Long scroll MacBook', 'Long scroll MacBook'])
+
+        await queue.askPile(top!.id)
+        await queue.idle()
+        expect(named.pileVariations).toHaveBeenCalledTimes(2)
+      })
+
+      it("asks no more for a base that came back as the top's own title", async () => {
+        const [top] = namedPile('scroll_wavy', 'scroll_flat')
+        const named = baseNamer((own) => own)
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.askPile(top!.id)
+        await queue.idle()
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations).toHaveBeenCalledOnce()
+        expect(base(top!.id)).toBe(OWN)
+      })
+
+      it("makes the base again from the top's own title when a mockup joins", async () => {
+        const [top] = namedPile('scroll_wavy', 'scroll_flat')
+        let asked = 0
+        const named = baseNamer(() => (++asked === 1 ? 'Long scroll MacBook on sheets' : 'Long scroll MacBook'))
+        const queue = queueWith(named.provider)
+        await queue.askPile(top!.id)
+        await queue.idle()
+        expect(base(top!.id)).toBe('Long scroll MacBook on sheets')
+
+        const desk = imported('scroll_desk', { aiStatus: 'ready', aiResult: result('desk') })
+        repo.piles.addToPile(top!.id, [desk.id])
+        repo.mockups.setStage([desk.id], 'to_stash')
+        repo.drafts.ensureDraft(desk.id, { title: base(top!.id), description: '', tagIds: [] })
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls.map((c) => c[1])).toEqual([OWN, OWN])
+        expect(base(desk.id)).toBe('Long scroll MacBook')
+      })
+
+      it('asks no base for a pile in My Stash, whose name the person has seen', async () => {
+        const rows = ['clay', 'realistic'].map((n) => imported(`watch-${n}`, { aiStatus: 'ready', aiResult: result(`Apple Watch ${n}`) }))
+        repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+        repo.mockups.setStage(rows.map((r) => r.id), 'stashed')
+        const named = baseNamer(() => 'Apple Watch')
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(rows[0]!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls[0]![1]).toBeUndefined()
+        expect(repo.mockups.getMockup(rows[1]!.id)!.title).toBe('watch-realistic')
+      })
+
+      it("never gives the top's title to a model that doesn't name bases (the 4B)", async () => {
+        const [top] = namedPile('scroll_wavy', 'scroll_flat')
+        const named = baseNamer(() => 'Long scroll MacBook', false)
+        const queue = queueWith(named.provider)
+
+        await queue.askPile(top!.id)
+        await queue.askPile(top!.id)
+        await queue.idle()
+
+        expect(named.pileVariations.mock.calls.map((c) => c[1])).toEqual([undefined])
+        expect(base(top!.id)).toBe(OWN)
+      })
+    })
+  })
 })
+
+describe('mockups marked off, once a model is usable (H-2)', () => {
+  it('at launch with a model ready, queues the ones marked off too, and leaves out the ones a person filled in', async () => {
+    const [a, b, mine, gone] = [imported('a'), imported('b'), imported('mine'), imported('gone')]
+    repo.mockups.updateMockup(a.id, { aiStatus: 'off' })
+    repo.mockups.updateMockup(b.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(mine.id, { aiStatus: 'opted_out' })
+    repo.mockups.updateMockup(gone.id, { aiStatus: 'off', deletedAt: new Date().toISOString() })
+
+    const stub = stubProvider((input) => result(input.fileName))
+    const restarted = queueWith(stub.provider)
+    await restarted.resume()
+    await restarted.idle()
+
+    expect(stub.calls.map((c) => c.fileName)).toEqual(['a.psd', 'b.psd'])
+    expect([a, b, mine, gone].map((m) => status(m.id))).toEqual(['ready', 'ready', 'opted_out', 'off'])
+  })
+
+  it('at launch with no model, leaves them off and tells the window nothing new', async () => {
+    const a = imported('a')
+    repo.mockups.updateMockup(a.id, { aiStatus: 'off' })
+
+    const restarted = queueWith(null)
+    await restarted.resume()
+    await restarted.idle()
+
+    expect(status(a.id)).toBe('off')
+    expect(events).toEqual([])
+  })
+
+  it('queues the ones marked off when the active model changes to one that can run', async () => {
+    const a = imported('a')
+    let provider: InferenceProvider | null = null
+    const stub = stubProvider((input) => result(input.fileName))
+    const queue = queueWith(null, { getProvider: async () => provider })
+    await queue.enqueue([a.id])
+    await queue.idle()
+    expect(status(a.id)).toBe('off')
+
+    provider = stub.provider
+    await queue.modelChanged()
+    await queue.idle()
+
+    expect(status(a.id)).toBe('ready')
+  })
+})
+
+describe('a model that stops being able to run mid-session (H-1)', () => {
+  /** Apple's model with Apple Intelligence switched off: every describe answers unavailable. */
+  const switchedOff = () => {
+    let calls = 0
+    const provider: InferenceProvider = {
+      id: 'apple',
+      name: 'Apple',
+      analyze: async () => {
+        calls++
+        throw new ModelUnavailableError('Apple Intelligence is off')
+      }
+    }
+    return { provider, calls: () => calls }
+  }
+  /** A timer the test fires by hand: the queue's recheck while it waits. */
+  const handTimer = () => {
+    const pending: (() => void)[] = []
+    return {
+      timer: (_ms: number, fire: () => void) => {
+        pending.push(fire)
+        return () => {}
+      },
+      fire: () => pending.splice(0).forEach((fire) => fire())
+    }
+  }
+
+  it('waits at the first unavailable: asks once, marks nothing failed, and says so once', async () => {
+    const off = switchedOff()
+    const onModelUnavailable = vi.fn()
+    const [a, b] = [imported('a'), imported('b')]
+    const queue = queueWith(off.provider, { onModelUnavailable, timer: handTimer().timer })
+
+    await queue.enqueue([a.id, b.id])
+    await queue.idle()
+
+    expect(off.calls()).toBe(1)
+    expect([status(a.id), status(b.id)]).toEqual(['pending', 'pending'])
+    expect(onModelUnavailable).toHaveBeenCalledTimes(1)
+    expect(events.filter((e) => e.modelUnavailable)).toHaveLength(1)
+    // Nothing runs while it waits, so meaning search's embeddings don't wait behind it.
+    expect(queue.busy).toBe(false)
+  })
+
+  it('picks the waiting ones up, in order, once the model can run again', async () => {
+    const off = switchedOff()
+    const stub = stubProvider((input) => result(input.fileName))
+    let provider: InferenceProvider | null = off.provider
+    const clock = handTimer()
+    const [a, b] = [imported('a'), imported('b')]
+    const queue = queueWith(null, {
+      getProvider: async () => provider,
+      onModelUnavailable: () => {
+        provider = null
+      },
+      timer: clock.timer
+    })
+    await queue.enqueue([a.id, b.id])
+    await queue.idle()
+
+    // Still off at the first look: it keeps waiting.
+    clock.fire()
+    await queue.idle()
+    expect([status(a.id), status(b.id)]).toEqual(['pending', 'pending'])
+
+    provider = stub.provider
+    clock.fire()
+    await vi.waitFor(() => expect(status(b.id)).toBe('ready'))
+    expect(stub.calls.map((c) => c.fileName)).toEqual(['a.psd', 'b.psd'])
+  })
+
+  it('picks them up at once when the person chooses another model', async () => {
+    const off = switchedOff()
+    const stub = stubProvider((input) => result(input.fileName))
+    let provider: InferenceProvider | null = off.provider
+    const a = imported('a')
+    const queue = queueWith(null, {
+      getProvider: async () => provider,
+      onModelUnavailable: () => {
+        provider = null
+      },
+      timer: handTimer().timer
+    })
+    await queue.enqueue([a.id])
+    await queue.idle()
+
+    provider = stub.provider
+    await queue.modelChanged()
+    await queue.idle()
+
+    expect(status(a.id)).toBe('ready')
+  })
+
+  it('keeps a mockup that lands while it waits waiting too, instead of marking it off', async () => {
+    const off = switchedOff()
+    let provider: InferenceProvider | null = off.provider
+    const [a, b] = [imported('a'), imported('b')]
+    const queue = queueWith(null, {
+      getProvider: async () => provider,
+      onModelUnavailable: () => {
+        provider = null
+      },
+      timer: handTimer().timer
+    })
+    await queue.enqueue([a.id])
+    await queue.idle()
+
+    await queue.enqueue([b.id])
+    await queue.idle()
+
+    expect([status(a.id), status(b.id)]).toEqual(['pending', 'pending'])
+  })
+})
+

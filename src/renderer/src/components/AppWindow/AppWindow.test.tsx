@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { variantMatrix } from '@renderer/design-system/matrix'
 import { AppWindow, type AppWindowProps } from './AppWindow'
+import { PageBar } from './PageBar'
 import { APP_WINDOW_CONTRACT } from './AppWindow.types'
 
 describe('AppWindow', () => {
@@ -28,11 +31,52 @@ describe('AppWindow behaviour', () => {
     expect(screen.getByText('search')).not.toBeNull()
   })
 
-  it('pads the page scroller on the right so the hover scrollbar stays off the last column', () => {
-    render(<AppWindow page={<div>page</div>} />)
-    const scroller = screen.getByText('page').parentElement!
-    expect(scroller.className).toContain('pr-3')
-    expect(scroller.className).toContain('-mr-3')
+  it('scrolls the page edge to edge across the panel, with the page padding inside the scroll area', () => {
+    const { baseElement } = render(<AppWindow page={<div>page</div>} />)
+    const main = baseElement.querySelector('main')!
+    const scroll = baseElement.querySelector<HTMLElement>('[data-slot="page-scroll"]')!
+    // The panel pads only its top, so the scroll area and its scrollbar meet the panel's sides and bottom.
+    expect(main.className).not.toMatch(/(^|\s)(p|px|pr|pb)-/)
+    expect(scroll.className).toContain('overflow-auto')
+    expect(scroll.className).not.toMatch(/(^|\s)-?m[rlxb]?-/)
+    expect(screen.getByText('page').parentElement!.className).toContain('px-7')
+  })
+
+  it('shows the soft scroll edge under the header, unless the page brings its own bar', () => {
+    const { baseElement, rerender } = render(<AppWindow page={<div>page</div>} />)
+    const edge = baseElement.querySelector('[data-slot="page-edge"]')!
+    expect(edge.className).toContain('sticky')
+    expect(edge.querySelector('[data-slot="scroll-edge"]')).not.toBeNull()
+    // Hidden by CSS once a PageBar is inside the scroll area; the bar carries its own edge.
+    expect(edge.className).toContain('group-has-data-page-bar/scroll:hidden')
+    rerender(
+      <AppWindow
+        page={
+          <PageBar>
+            <div>toolbar</div>
+          </PageBar>
+        }
+      />
+    )
+    const bar = screen.getByText('toolbar').parentElement!
+    expect(bar.hasAttribute('data-page-bar')).toBe(true)
+    expect(bar.querySelector('[data-slot="scroll-edge"]')).not.toBeNull()
+  })
+
+  it('blurs the scroll edge progressively over an eased fade, and keeps the fade alone under Reduce transparency', () => {
+    const { baseElement } = render(<AppWindow page={<div>page</div>} />)
+    const edge = baseElement.querySelector('[data-slot="scroll-edge"]')!
+    expect(edge.querySelectorAll('.ds-scroll-edge-blur')).toHaveLength(8)
+    expect(edge.querySelectorAll('.ds-scroll-edge-fade')).toHaveLength(1)
+    const css = readFileSync(join(process.cwd(), 'src/renderer/src/assets/main.css'), 'utf8')
+    // Many stops along an ease curve, so the fade has no hard top or visible linear slope.
+    const ease = css.match(/--scroll-edge-ease:([^;]+);/)![1]!
+    expect(ease.split(',').length).toBeGreaterThanOrEqual(12)
+    expect(css).toMatch(
+      /prefers-reduced-transparency: reduce\)\s*\{\s*\.ds-scroll-edge-blur\s*\{\s*display: none/
+    )
+    // Shown only while the bar is stuck, so the first row is never dimmed at the top of the scroll.
+    expect(css).toMatch(/scroll-state\(stuck: top\)\s*\{\s*\.ds-scroll-edge > \*\s*\{\s*opacity: 1/)
   })
 
   it('hides the header when showHeader is off', () => {

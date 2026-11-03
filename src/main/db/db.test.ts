@@ -253,7 +253,7 @@ describe('migration: seed tag display labels', () => {
         (9, 'iPad', 1, 'user');             -- taken already, so the seeded one stays as it is
       INSERT INTO mockups (id, title, library_path, cover_path, cover_source)
         VALUES (1, 'Clay iPhone', '/lib/a.psd', '/lib/a.png', 'embedded');
-      INSERT INTO mockup_tags (mockup_id, tag_id) VALUES (1, 1), (1, 4), (1, 6);
+      INSERT INTO mockup_tags (mockup_id, tag_id) VALUES (1, 1), (1, 4), (1, 5), (1, 6);
     `)
 
     migrate(oldDb, { migrationsFolder: './drizzle' })
@@ -269,7 +269,7 @@ describe('migration: seed tag display labels', () => {
       { id: 8, label: 'ipad', created_by: 'seed' },
       { id: 9, label: 'iPad', created_by: 'user' }
     ])
-    expect(old.prepare('SELECT count(*) AS c FROM mockup_tags').get()).toEqual({ c: 3 })
+    expect(old.prepare('SELECT count(*) AS c FROM mockup_tags').get()).toEqual({ c: 4 })
     expect(old.pragma('foreign_key_check')).toEqual([])
     old.close()
   })
@@ -356,11 +356,11 @@ describe('seedTaxonomy', () => {
 })
 
 describe('bootstrapLibrary', () => {
-  it('creates mockups/ and models/ directories', () => {
+  it('creates mockups/, and no models/ (models live in app data)', () => {
     const root = tempDir()
     bootstrapLibrary(root)
     expect(existsSync(join(root, 'mockups'))).toBe(true)
-    expect(existsSync(join(root, 'models'))).toBe(true)
+    expect(existsSync(join(root, 'models'))).toBe(false)
   })
 
   it('creates a config.json version marker', () => {

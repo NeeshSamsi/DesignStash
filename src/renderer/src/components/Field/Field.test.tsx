@@ -1,20 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { variantMatrix } from '@renderer/design-system/matrix'
-import { Field, type FieldProps } from './Field'
-import { FIELD_CONTRACT } from './Field.types'
+import { Field } from './Field'
 
 describe('Field', () => {
-  it.each(variantMatrix(FIELD_CONTRACT))('renders %s', (_label, props) => {
-    const { baseElement } = render(<Field {...(props as FieldProps)} />)
-    expect(baseElement.querySelector('[data-ds="Field"]')).not.toBeNull()
+  it('labels its one control with a label element', () => {
+    render(
+      <Field label="Title" htmlFor="title" showDescription={false}>
+        <input id="title" />
+      </Field>
+    )
+    expect(screen.getByRole('textbox', { name: /Title/ })).toBeTruthy()
   })
 
-  it('renders the Figma default text', () => {
-    // The error text only shows while invalid, as in Figma.
-    render(<Field invalid />)
-    for (const text of Object.values<string>(FIELD_CONTRACT.texts)) {
-      expect(screen.getAllByText(text).length).toBeGreaterThan(0)
-    }
+  it('titles a control made of many, which names itself by the title’s id', () => {
+    const { container } = render(
+      <Field label="Tags" labelId="tags" required={false} showDescription={false}>
+        <div role="group" aria-labelledby="tags">
+          <button type="button">Add tag</button>
+        </div>
+      </Field>
+    )
+    expect(screen.getByRole('group', { name: 'Tags' })).toBeTruthy()
+    expect(container.querySelector('label')).toBeNull()
+    expect(container.querySelector('[data-ds="Field"]')).not.toBeNull()
   })
 })

@@ -1,6 +1,6 @@
 import { app } from 'electron'
-import type { HandlerContext } from './context'
-import { registerAppHandlers } from './app'
+import type { HandlerContext, TelemetryRef } from './context'
+import { registerAppHandlers, registerRendererErrorHandler } from './app'
 import { registerBootHandlers, type BootHandlerDeps } from './boot'
 import { registerAboutHandlers } from './about'
 import { registerSettingsHandlers } from './settings'
@@ -18,15 +18,20 @@ import { registerPileHandlers } from './pile'
 import { registerInboxHandlers } from './inbox'
 import { registerIntegrityHandlers } from './integrity'
 import { registerTelemetryHandlers } from './telemetry'
-import { registerEntitlementsHandlers } from './entitlements'
 import { registerDebugHandlers } from './debug'
+import { registerUndoHandlers } from './undo'
 
 /**
  * The handlers the screens before the app rely on (app lifecycle, launch status, settings, folder
- * picker, problem report). Registered once at launch, library or not.
+ * picker, problem report, renderer errors). Registered once at launch, library or not. Without
+ * `telemetry` (it failed to start) renderer errors still reach the log.
  */
-export function registerPreAppHandlers(deps: BootHandlerDeps): void {
+export function registerPreAppHandlers({
+  telemetry,
+  ...deps
+}: BootHandlerDeps & { telemetry?: TelemetryRef }): void {
   registerAppHandlers()
+  registerRendererErrorHandler(telemetry ?? null)
   registerBootHandlers(deps)
 }
 
@@ -51,7 +56,7 @@ export function registerAllHandlers(ctx: HandlerContext): void {
   registerPileHandlers(ctx)
   registerInboxHandlers(ctx)
   registerIntegrityHandlers(ctx)
+  registerUndoHandlers(ctx)
   registerTelemetryHandlers(ctx)
-  registerEntitlementsHandlers()
   if (!app.isPackaged) registerDebugHandlers(ctx.settings)
 }

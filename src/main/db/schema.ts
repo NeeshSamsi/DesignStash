@@ -6,10 +6,12 @@ import {
   blob,
   primaryKey,
   check,
+  index,
   uniqueIndex,
   type AnySQLiteColumn
 } from 'drizzle-orm/sqlite-core'
 import type { DraftCarry } from '../../shared/approval'
+import type { VariationSource } from '../../shared/pile-variation'
 
 // Shared timestamp columns (SQLite-native defaults).
 const timestamps = {
@@ -23,6 +25,15 @@ const timestamps = {
 
 const coverSource = (name: string) =>
   text(name, { enum: ['embedded', 'sidecar', 'user-uploaded', 'default', 'none'] })
+
+/**
+ * A mockup's variation in a pile (design/specs/pile-titles.md): its 1 to 3 words, and where they came
+ * from. Null on a mockup on its own. In a pile, `title` is the pile's base, the same on every row.
+ */
+const variationColumns = {
+  variation: text('variation'),
+  variationSource: text('variation_source').$type<VariationSource>()
+}
 
 /** Mockups — the primary library entity (spec §5.4). No `source_path`: originals are untracked once copied in. */
 export const mockups = sqliteTable(
@@ -45,6 +56,11 @@ export const mockups = sqliteTable(
     favouritedAt: text('favourited_at'),
     deletedAt: text('deleted_at'),
     /**
+     * In Trash: where it came from, for the Trash card's caption ("Tossed from To sort"). Its stage
+     * is kept, so Restore puts it back there. `import`: an import that was undone brought it in.
+     */
+    trashOrigin: text('trash_origin', { enum: ['my-stash', 'to-sort', 'to-stash', 'import'] }),
+    /**
      * Where the mockup is in the import flow: waiting to be sorted into piles, sorted and waiting
      * to be looked over, or stashed (in My Stash).
      */
@@ -56,16 +72,23 @@ export const mockups = sqliteTable(
     /** Size of the PSD in the stash folder, in bytes. Null until measured. */
     sizeBytes: integer('size_bytes'),
     /** The AI suggestion's progress. `off` when the AI is not in use. */
-    aiStatus: text('ai_status', { enum: ['pending', 'sniffing', 'ready', 'failed', 'off'] })
+    aiStatus: text('ai_status', { enum: ['pending', 'sniffing', 'ready', 'failed', 'opted_out', 'off'] })
       .notNull()
       .default('off'),
     /** The AI's suggestions for this mockup (title, tags). Written by the background queue. */
     aiResult: text('ai_result', { mode: 'json' }),
+    ...variationColumns,
     ...timestamps
   },
   (table) => [
     // A row is a pile's top or a member of one, never both (see pileRole in repositories/piles.ts).
-    check('mockups_pile_shape', sql`NOT (${table.isGroup} AND ${table.groupId} IS NOT NULL)`)
+    check('mockups_pile_shape', sql`NOT (${table.isGroup} AND ${table.groupId} IS NOT NULL)`),
+    // A pile's mockups by their top, and Trash (deleted, outside a pile).
+    index('mockups_group_deleted_idx').on(table.groupId, table.deletedAt),
+    // The inbox lists and counts, and My Stash.
+    index('mockups_stage_deleted_idx').on(table.stage, table.deletedAt),
+    // The duplicate check on every imported file.
+    index('mockups_content_hash_idx').on(table.contentHash)
   ]
 )
 
@@ -88,7 +111,12 @@ export const tagCategories = sqliteTable('tag_categories', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   label: text('label').notNull().unique(),
   sortOrder: integer('sort_order').notNull().default(0),
-  isCanonical: integer('is_canonical', { mode: 'boolean' }).notNull().default(true)
+  isCanonical: integer('is_canonical', { mode: 'boolean' }).notNull().default(true),
+  /**
+   * Made for an AI suggestion that no mockup carries yet, so it isn't listed (F-034). It becomes a
+   * category when one of its tags lands on a mockup (a trigger in migration 0019) or a person adds it.
+   */
+  suggestion: integer('suggestion', { mode: 'boolean' }).notNull().default(false)
 })
 
 /** Tags: two tiers, category then tag. No nesting; roll-up is at the category level. */
@@ -101,7 +129,12 @@ export const tags = sqliteTable(
       .notNull()
       .references(() => tagCategories.id, { onDelete: 'cascade' }),
     isCanonical: integer('is_canonical', { mode: 'boolean' }).notNull().default(true),
-    createdBy: text('created_by', { enum: ['seed', 'ai', 'user'] })
+    /**
+     * `suggestion` is an AI suggestion no mockup carries yet: not a tag yet, so it isn't listed, and
+     * it goes once nothing suggests it (F-034). It turns `ai` when it lands on a mockup (a trigger in
+     * migration 0019).
+     */
+    createdBy: text('created_by', { enum: ['seed', 'ai', 'user', 'suggestion'] })
       .notNull()
       .default('seed')
   },
@@ -119,7 +152,11 @@ export const mockupTags = sqliteTable(
       .notNull()
       .references(() => tags.id, { onDelete: 'cascade' })
   },
-  (table) => [primaryKey({ columns: [table.mockupId, table.tagId] })]
+  (table) => [
+    primaryKey({ columns: [table.mockupId, table.tagId] }),
+    // The mockups carrying a tag (rename, merge, delete, usage counts).
+    index('mockup_tags_tag_id_idx').on(table.tagId)
+  ]
 )
 
 /**
@@ -171,6 +208,8 @@ export const drafts = sqliteTable('drafts', {
     .default(sql`'[]'`),
   /** The last edit to its pile's top, on an untouched variant: judged, offered or taken (`DraftCarry`). */
   carry: text('carry', { mode: 'json' }).$type<DraftCarry>(),
+  /** In a pile, `title` is the pile's base, the same on every draft, and this is the mockup's own part. */
+  ...variationColumns,
   ...timestamps
 })
 
@@ -191,7 +230,7 @@ export const lookOverResume = sqliteTable('look_over_resume', {
  */
 export const copyHauls = sqliteTable('copy_hauls', {
   id: text('id').primaryKey(),
-  state: text('state', { enum: ['running', 'paused', 'done', 'cancelled', 'undone'] })
+  state: text('state', { enum: ['running', 'paused', 'done', 'cancelled'] })
     .notNull()
     .default('running'),
   /** Why it is paused. Null unless `state` is 'paused'. */
@@ -261,6 +300,8 @@ export const mockupEmbeddings = sqliteTable(
 // mockups_fts (FTS5 virtual table) is maintained via raw SQL in search-index.ts and repository.ts — NOT a Drizzle table.
 
 export type Mockup = InferSelectModel<typeof mockups>
+/** Where a mockup in Trash came from (`mockups.trash_origin`). */
+export type TrashOrigin = NonNullable<Mockup['trashOrigin']>
 export type Draft = InferSelectModel<typeof drafts>
 export type CopyHaul = InferSelectModel<typeof copyHauls>
 export type CopyJob = InferSelectModel<typeof copyJobs>

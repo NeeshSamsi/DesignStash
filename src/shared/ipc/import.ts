@@ -30,6 +30,8 @@ export const CopyFileSchema = z.object({
   skipReason: CopySkipReasonSchema.optional(),
   /** The mockup it became, once it has landed in To sort. */
   mockupId: z.number().optional(),
+  /** The file's mockup was in Trash and came back with its title, tags and description; nothing new was copied. */
+  restored: z.literal(true).optional(),
   /** The file's size, and how much of it is copied so far (the row's own progress bar). */
   size: z.number().optional(),
   bytesCopied: z.number().optional()
@@ -57,7 +59,12 @@ const copyCountsShape = {
     archiveUnsupported: z.number(),
     /** Zips with no PSD inside. Each counts once. */
     noPsdInArchive: z.number()
-  })
+  }),
+  /**
+   * The history entry for this import ("Undo import of 12 mockups"), once it has landed something
+   * and stopped. Its Undo moves what it brought in to Trash.
+   */
+  undoEntryId: z.number().int().optional()
 }
 
 /**
@@ -66,7 +73,7 @@ const copyCountsShape = {
  */
 const copyCountsVariants = [
   z.object({ ...copyCountsShape, state: z.literal('paused'), pauseReason: CopyPauseReasonSchema }),
-  z.object({ ...copyCountsShape, state: z.enum(['running', 'done', 'cancelled', 'undone']) })
+  z.object({ ...copyCountsShape, state: z.enum(['running', 'done', 'cancelled']) })
 ] as const
 
 /** The overall figures plus whatever else rides with them, as one union on `state`. */
@@ -97,7 +104,7 @@ export const importContract = {
     /** The haul that is running or paused, else the latest one, else null. */
     response: z.object({ haul: CopyStatusSchema.nullable() })
   },
-  /** Stop. What had already landed stays: keep it, or COPY_UNDO_ALL. */
+  /** Stop. What had already landed stays: keep it, or undo the import's history entry. */
   [IPC_CHANNELS.COPY_CANCEL]: {
     request: z.object({ haulId: z.string() }),
     response: z.object({ landedIds: z.array(z.number()) })
@@ -105,10 +112,5 @@ export const importContract = {
   [IPC_CHANNELS.COPY_RETRY]: {
     request: z.object({ haulId: z.string() }),
     response: CopyStatusSchema
-  },
-  /** Remove everything this haul landed, records and the app's copies. Originals are never touched. */
-  [IPC_CHANNELS.COPY_UNDO_ALL]: {
-    request: z.object({ haulId: z.string() }),
-    response: z.object({ tossedIds: z.array(z.number()) })
   }
 } as const

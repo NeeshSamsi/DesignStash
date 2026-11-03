@@ -131,7 +131,8 @@ export function classifyEntry(entry: Pick<ArchiveEntry, 'name' | 'directory'>): 
   if (parts[0] === '__MACOSX' || base.startsWith('._') || JUNK_NAMES.has(base.toLowerCase()))
     return 'junk'
   const ext = extname(base).toLowerCase()
-  if (ext === '.psd') return 'psd'
+  // A PSB, Photoshop's Large Document Format, is taken like a PSD (H-12).
+  if (ext === '.psd' || ext === '.psb') return 'psd'
   if (ext === '.zip') return 'zip'
   return 'other'
 }

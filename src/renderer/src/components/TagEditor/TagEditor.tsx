@@ -11,14 +11,8 @@ import {
 import type { ApprovalTag } from '@shared/approval'
 import { TagChip } from '@renderer/components/TagChip'
 import { cn } from '@renderer/lib/utils'
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  CommandShortcut
-} from '@renderer/ui/command'
-import { Popover, PopoverAnchor, PopoverContent } from '@renderer/ui/popover'
+import { Command, CommandGroup, CommandItem, CommandShortcut } from '@renderer/components/Command'
+import { Popover } from '@renderer/components/Popover'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { PlusSignIcon } from '@hugeicons/core-free-icons'
 import {
@@ -455,8 +449,20 @@ export function TagEditor({
     <>
       {editable &&
         (adding ? (
-          <Popover open={popoverOpen}>
-            <PopoverAnchor asChild>
+          <Popover
+            anchored
+            open={popoverOpen}
+            layout="one-column"
+            header={false}
+            // Figma's menu-styled panel for the suggestions: surface-3, 4 padding, 260 wide.
+            className="w-65 gap-0 bg-surface-3 p-1 shadow-raised"
+            panelProps={{
+              onOpenAutoFocus: (event) => event.preventDefault(),
+              onInteractOutside: (event) => event.preventDefault(),
+              onEscapeKeyDown: (event) => event.preventDefault(),
+              onMouseDown: (event) => event.preventDefault()
+            }}
+            trigger={
               <TagChip variant="input" state={duplicate ? 'invalid' : draft ? 'typing' : 'default'}>
                 <input
                   ref={input}
@@ -475,45 +481,24 @@ export function TagEditor({
                   className="field-sizing-content min-w-0 bg-transparent type-label-xs-medium text-foreground outline-none placeholder:text-placeholder"
                 />
               </TagChip>
-            </PopoverAnchor>
-            <PopoverContent
-              size="default"
-              className="w-65 gap-0 bg-surface-3 p-1 shadow-raised"
-              onOpenAutoFocus={(event) => event.preventDefault()}
-              onInteractOutside={(event) => event.preventDefault()}
-              onEscapeKeyDown={(event) => event.preventDefault()}
-              onMouseDown={(event) => event.preventDefault()}
-            >
-              {note && (
-                <p className="px-2 py-1.5 type-caption-xs-regular text-muted-foreground">{note}</p>
-              )}
-              {mode !== 'duplicate' && mode !== 'naming' && (
-                <Command
-                  shouldFilter={false}
-                  value={current ?? ''}
-                  onValueChange={setActive}
-                  className="w-full rounded-none border-0 bg-transparent"
-                >
-                  <CommandList className="p-0">
-                    {creating ? (
-                      <>
-                        {vocabulary.map((category) => (
-                          <CommandItem
-                            key={category.categoryId}
-                            value={`cat:${category.categoryId}`}
-                            onSelect={activate}
-                            className="data-selected:bg-surface-4"
-                          >
-                            <HugeiconsIcon
-                              icon={PlusSignIcon}
-                              strokeWidth={ICON_STROKE}
-                              className="size-icon-2xs"
-                            />
-                            {category.categoryLabel}
-                          </CommandItem>
-                        ))}
+            }
+          >
+            {note && (
+              <p className="px-2 py-1.5 type-caption-xs-regular text-muted-foreground">{note}</p>
+            )}
+            {mode !== 'duplicate' && mode !== 'naming' && (
+              <Command
+                variant="list"
+                shouldFilter={false}
+                active={current ?? ''}
+                onActiveChange={setActive}
+                items={
+                  creating ? (
+                    <>
+                      {vocabulary.map((category) => (
                         <CommandItem
-                          value="cat:new"
+                          key={category.categoryId}
+                          value={`cat:${category.categoryId}`}
                           onSelect={activate}
                           className="data-selected:bg-surface-4"
                         >
@@ -522,42 +507,54 @@ export function TagEditor({
                             strokeWidth={ICON_STROKE}
                             className="size-icon-2xs"
                           />
-                          New category…
+                          {category.categoryLabel}
                         </CommandItem>
-                        {pending && (
+                      ))}
+                      <CommandItem
+                        value="cat:new"
+                        onSelect={activate}
+                        className="data-selected:bg-surface-4"
+                      >
+                        <HugeiconsIcon
+                          icon={PlusSignIcon}
+                          strokeWidth={ICON_STROKE}
+                          className="size-icon-2xs"
+                        />
+                        New category…
+                      </CommandItem>
+                      {pending && (
+                        <CommandItem
+                          value="skip"
+                          onSelect={activate}
+                          className="data-selected:bg-surface-4"
+                        >
+                          Skip it
+                        </CommandItem>
+                      )}
+                    </>
+                  ) : (
+                    groups.map((category) => (
+                      <CommandGroup key={category.categoryId} heading={category.categoryLabel}>
+                        {category.tags.map((tag) => (
                           <CommandItem
-                            value="skip"
+                            key={tag.tagId}
+                            value={`tag:${tag.tagId}`}
                             onSelect={activate}
                             className="data-selected:bg-surface-4"
                           >
-                            Skip it
+                            {tag.label}
+                            <CommandShortcut>{tag.usageCount}</CommandShortcut>
                           </CommandItem>
-                        )}
-                      </>
-                    ) : (
-                      groups.map((category) => (
-                        <CommandGroup key={category.categoryId} heading={category.categoryLabel}>
-                          {category.tags.map((tag) => (
-                            <CommandItem
-                              key={tag.tagId}
-                              value={`tag:${tag.tagId}`}
-                              onSelect={activate}
-                              className="data-selected:bg-surface-4"
-                            >
-                              {tag.label}
-                              <CommandShortcut>{tag.usageCount}</CommandShortcut>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      ))
-                    )}
-                  </CommandList>
-                </Command>
-              )}
-              {mode !== 'duplicate' && (
-                <p className="px-2 pt-1.5 pb-1 type-caption-xs-regular text-tertiary">{footer}</p>
-              )}
-            </PopoverContent>
+                        ))}
+                      </CommandGroup>
+                    ))
+                  )
+                }
+              />
+            )}
+            {mode !== 'duplicate' && (
+              <p className="px-2 pt-1.5 pb-1 type-caption-xs-regular text-tertiary">{footer}</p>
+            )}
           </Popover>
         ) : (
           <TagChip
@@ -593,22 +590,22 @@ export function TagEditor({
       {editable && (suggestions.length > 0 || thinking) && (
         <span aria-hidden className="h-4 border-l border-base" />
       )}
-      {editable && thinking
-        ? [0, 1].map((n) => (
-            <TagChip key={n} variant="suggested" state="thinking" showCategory={false} />
-          ))
-        : editable &&
-          suggestions.map((tag) => (
-            <TagChip
-              key={tag.tagId}
-              variant="suggested"
-              category={tag.categoryLabel}
-              label={tag.label}
-              data-tag={`suggestion-${tag.tagId}`}
-              onAccept={() => addTag(tag)}
-              onDismiss={() => setSuggestions(suggestions.filter((s) => s.tagId !== tag.tagId))}
-            />
-          ))}
+      {editable && thinking ? (
+        <TagChip variant="suggested" state="thinking" showCategory={false} />
+      ) : (
+        editable &&
+        suggestions.map((tag) => (
+          <TagChip
+            key={tag.tagId}
+            variant="suggested"
+            category={tag.categoryLabel}
+            label={tag.label}
+            data-tag={`suggestion-${tag.tagId}`}
+            onAccept={() => addTag(tag)}
+            onDismiss={() => setSuggestions(suggestions.filter((s) => s.tagId !== tag.tagId))}
+          />
+        ))
+      )}
     </>
   )
 

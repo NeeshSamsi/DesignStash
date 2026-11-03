@@ -36,4 +36,17 @@ describe('nameKeywords', () => {
   it('does not repeat a word', () => {
     expect(nameKeywords('box_box.psd', ['Box'])).toEqual(['box'])
   })
+
+  it('reads Cyrillic and Greek letters that look Latin as Latin, in the file name and the folders (H-4)', () => {
+    // "Сlay" with a Cyrillic С, and "Μockups" with a Greek Μ, as some marketplaces' files have them.
+    expect(nameKeywords('\u0421lay_mug.psd', ['\u039cockups \u0421eramics'])).toEqual(['clay', 'mug', 'ceramics'])
+  })
+
+  it('drops "psb" like "psd", and a .psb extension (H-12)', () => {
+    expect(nameKeywords('Billboard_PSB.psb', ['PSB Files'])).toEqual(['billboard'])
+  })
+
+  it('leaves a word wholly in Cyrillic or Greek as it is written', () => {
+    expect(nameKeywords('Москва_poster.psd', ['Αθήνα'])).toEqual(['москва', 'poster', 'αθήνα'])
+  })
 })

@@ -1,5 +1,13 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
+import {
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+  readFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createSettingsStore } from './settings'
@@ -223,5 +231,105 @@ describe('settings store', () => {
       expect(store.get().onboarded).toBe(false)
       expect(store.loadIssue()).toEqual({ kind: 'corrupt', backedUp: false })
     })
+  })
+})
+
+describe('saving settings', () => {
+  it('a write cut off part-way leaves the last good file', () => {
+    const dir = tempDir()
+    const custom = join(dir, 'custom-library')
+    createSettingsStore(dir).update({ libraryRoot: custom, onboarded: true })
+    const store = createSettingsStore(dir, {
+      writeFile: (path, data) => {
+        writeFileSync(path, data.slice(0, 10), 'utf-8')
+        throw new Error('power cut')
+      }
+    })
+
+    expect(() => store.update({ aiRunTimes: { model: [1200] } })).toThrow('power cut')
+
+    const reloaded = createSettingsStore(dir)
+    expect(reloaded.getLibraryRoot()).toBe(custom)
+    expect(reloaded.get().onboarded).toBe(true)
+    expect(reloaded.loadIssue()).toBeNull()
+  })
+
+  it('leaves no half-written file beside the settings', () => {
+    const dir = tempDir()
+    createSettingsStore(dir).update({ onboarded: true })
+    const failing = createSettingsStore(dir, {
+      writeFile: () => {
+        throw new Error('disk full')
+      }
+    })
+    expect(() => failing.update({ onboarded: false })).toThrow('disk full')
+    expect(readdirSync(dir).filter((name) => name.endsWith('.tmp'))).toEqual([])
+  })
+})
+
+describe('the stash folder when the settings file is unreadable', () => {
+  /** A folder holding a library, the way onboarding leaves one. */
+  function stashWithLibrary(dir: string): string {
+    const stash = join(dir, 'My Stash')
+    mkdirSync(stash)
+    writeFileSync(join(stash, 'designstash.db'), '')
+    return stash
+  }
+
+  it('comes back to the folder it pointed at', () => {
+    const dir = tempDir()
+    const stash = stashWithLibrary(dir)
+    createSettingsStore(dir).update({ libraryRoot: stash, onboarded: true })
+    writeFileSync(join(dir, 'settings.json'), '{ "libraryRoot": "/Us', 'utf-8')
+
+    const store = createSettingsStore(dir)
+
+    expect(store.getLibraryRoot()).toBe(stash)
+    expect(store.get().onboarded).toBe(false)
+    expect(store.loadIssue()).toEqual({ kind: 'corrupt', backedUp: true })
+    // The reset file holds it too, so the next launch keeps it.
+    expect(createSettingsStore(dir).getLibraryRoot()).toBe(stash)
+  })
+
+  it('is kept for settings written before the stash folder had its own note', () => {
+    const dir = tempDir()
+    const stash = stashWithLibrary(dir)
+    writeFileSync(
+      join(dir, 'settings.json'),
+      JSON.stringify({
+        libraryRoot: stash,
+        onboarded: true,
+        telemetryInstallId: 'install-1',
+        installedAt: '2026-10-01T00:00:00.000Z'
+      }),
+      'utf-8'
+    )
+    createSettingsStore(dir).get()
+    writeFileSync(join(dir, 'settings.json'), '{ nope', 'utf-8')
+
+    expect(createSettingsStore(dir).getLibraryRoot()).toBe(stash)
+  })
+
+  it('follows a later change of stash folder', () => {
+    const dir = tempDir()
+    const first = stashWithLibrary(dir)
+    const second = join(dir, 'Moved')
+    mkdirSync(second)
+    writeFileSync(join(second, 'designstash.db'), '')
+    const store = createSettingsStore(dir)
+    store.update({ libraryRoot: first })
+    store.update({ libraryRoot: second })
+    writeFileSync(join(dir, 'settings.json'), '{ nope', 'utf-8')
+
+    expect(createSettingsStore(dir).getLibraryRoot()).toBe(second)
+  })
+
+  it('falls back to the default folder when the remembered one holds no library', () => {
+    const dir = tempDir()
+    const gone = join(dir, 'Unplugged')
+    createSettingsStore(dir).update({ libraryRoot: gone, onboarded: true })
+    writeFileSync(join(dir, 'settings.json'), '{ nope', 'utf-8')
+
+    expect(createSettingsStore(dir).getLibraryRoot()).toBe(join(dir, 'Library'))
   })
 })

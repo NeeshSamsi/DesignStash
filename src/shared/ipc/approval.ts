@@ -35,5 +35,23 @@ export const approvalContract = {
   [IPC_CHANNELS.LOOK_OVER_SHOWING]: {
     request: z.object({ mockupId: z.number() }),
     response: AiStatusUpdateSchema.nullable()
+  },
+  /**
+   * Fill it myself (L6.E1): no suggestion for this mockup. It leaves the queue, a run on it now is
+   * stopped, and its fields stay as they are. The updated item (`ai.status` `opted_out`), or null
+   * when it isn't waiting in To stash.
+   */
+  [IPC_CHANNELS.LOOK_OVER_FILL_MYSELF]: {
+    request: z.object({ mockupId: z.number() }),
+    response: LookOverItemSchema.nullable()
+  },
+  /**
+   * Write suggestions (L6.E1) or Try again (L6.E3): ask again, first in line, and fill only the
+   * fields the person hasn't typed in when it lands. The updated item (`ai.status` `pending`), or
+   * null when it isn't waiting in To stash.
+   */
+  [IPC_CHANNELS.LOOK_OVER_WRITE]: {
+    request: z.object({ mockupId: z.number() }),
+    response: LookOverItemSchema.nullable()
   }
 } as const

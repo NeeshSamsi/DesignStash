@@ -8,7 +8,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
-import { Button } from '@renderer/ui/button'
+import { Button } from '@renderer/components/Button'
 import { BANNER_DEFAULTS, type BannerContractProps, type BannerTone } from './Banner.types'
 import { bannerIconVariants, bannerVariants } from './Banner.variants'
 
@@ -78,9 +78,8 @@ export function Banner({
           type="button"
           aria-label="Dismiss"
           onClick={onDismiss}
-        >
-          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
-        </Button>
+          iconStart={Cancel01Icon}
+        />
       )}
     </div>
   )

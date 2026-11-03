@@ -5,7 +5,7 @@ import type * as schema from '../schema'
 import type { Repository } from '../repository'
 import { seedTaxonomy } from '../bootstrap'
 import { ensureSearchIndex } from '../search-index'
-import { approvedMockup, batchSample, createTestDb, sample } from './__tests__/setup'
+import { approvedMockup, createTestDb, sample } from './__tests__/setup'
 
 let sqlite: Database.Database
 let db: BetterSQLite3Database<typeof schema>
@@ -132,19 +132,6 @@ describe('Repository — variants', () => {
   })
 })
 
-describe('getMockupsByBatchId', () => {
-  it('returns only mockups with the matching batchId', () => {
-    repo.mockups.createMockup({ ...batchSample('batch-1'), title: 'A', libraryPath: '/lib/a.psd' })
-    repo.mockups.createMockup({ ...batchSample('batch-1'), title: 'B', libraryPath: '/lib/b.psd' })
-    repo.mockups.createMockup({ ...batchSample('batch-1'), title: 'C', libraryPath: '/lib/c.psd' })
-    repo.mockups.createMockup({ ...batchSample('batch-2'), title: 'D', libraryPath: '/lib/d.psd' })
-    repo.mockups.createMockup({ ...batchSample('batch-2'), title: 'E', libraryPath: '/lib/e.psd' })
-    expect(repo.mockups.getMockupsByBatchId('batch-1')).toHaveLength(3)
-    expect(repo.mockups.getMockupsByBatchId('batch-2')).toHaveLength(2)
-    expect(repo.mockups.getMockupsByBatchId('batch-99')).toHaveLength(0)
-  })
-})
-
 describe('setMockupCover', () => {
   it('updates coverPath and coverSource to user-uploaded', () => {
     const m = repo.mockups.createMockup(sample)
@@ -184,5 +171,50 @@ describe('updateMockupMeta', () => {
       .prepare(`SELECT rowid FROM mockups_fts WHERE mockups_fts MATCH ?`)
       .all('Old') as { rowid: number }[]
     expect(oldRows.map((r) => r.rowid)).not.toContain(m.id)
+  })
+
+  it('refuses a mockup that no longer exists, and writes nothing', () => {
+    const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
+
+    expect(() =>
+      repo.mockups.updateMockupMeta(9999, { title: 'Gone', description: '', tagIds: [laptop.id] })
+    ).toThrow('Mockup 9999 not found')
+    expect(sqlite.prepare('SELECT count(*) AS n FROM mockup_tags').get()).toEqual({ n: 0 })
+  })
+
+  it('refuses a title of only spaces, and keeps a title without the spaces around it', () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Mug', libraryPath: '/lib/sp.psd' }))
+
+    expect(() => repo.mockups.updateMockupMeta(m.id, { title: '   ', description: '', tagIds: [] })).toThrow(
+      'A mockup needs a title'
+    )
+    expect(repo.mockups.getMockup(m.id)?.title).toBe('Mug')
+
+    repo.mockups.updateMockupMeta(m.id, { title: '  Clay mug ', description: '', tagIds: [] })
+    expect(repo.mockups.getMockup(m.id)?.title).toBe('Clay mug')
+  })
+
+  it('keeps the old details and tags when a write fails part-way', () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Old Title', libraryPath: '/lib/fp.psd' }))
+    const [laptop, phone] = ['Laptop', 'Phone'].map((label) => repo.tags.getAllTags().find((t) => t.label === label)!)
+    repo.mockups.addTagToMockup(m.id, phone!.id)
+    sqlite.exec(`CREATE TRIGGER stuck_link BEFORE INSERT ON mockup_tags
+      WHEN NEW.tag_id = ${laptop!.id} BEGIN SELECT RAISE(ABORT, 'stuck'); END`)
+
+    expect(() =>
+      repo.mockups.updateMockupMeta(m.id, { title: 'New Title', description: 'New', tagIds: [laptop!.id] })
+    ).toThrow(/stuck/)
+
+    expect(repo.mockups.getMockup(m.id)).toMatchObject({ title: 'Old Title', description: null })
+    expect(repo.mockups.getTagsForMockup(m.id).map((t) => t.label)).toEqual(['Phone'])
+  })
+
+  it('leaves a mockup in Trash out of search when its details are saved', () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Binned', libraryPath: '/lib/bn.psd' }))
+    repo.trash.moveToTrash(m.id)
+
+    repo.mockups.updateMockupMeta(m.id, { title: 'Binned again', description: '', tagIds: [] })
+
+    expect(repo.search.isIndexed(m.id)).toBe(false)
   })
 })

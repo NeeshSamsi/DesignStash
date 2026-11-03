@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
 import { DriftReportSchema, RelinkOutcomeSchema } from '../integrity'
 import { StashCheckStatusSchema } from '../stash'
+import { withUndoEntry } from './undo'
 
 /** Integrity (stash check). */
 export const integrityContract = {
@@ -16,16 +17,11 @@ export const integrityContract = {
   [IPC_CHANNELS.INTEGRITY_REPORT]: { request: z.void(), response: DriftReportSchema },
   [IPC_CHANNELS.INTEGRITY_ADD]: {
     request: z.object({ ids: z.array(z.string()).min(1) }),
-    response: z.object({ mockupIds: z.array(z.number()) })
+    response: withUndoEntry(z.object({ mockupIds: z.array(z.number()) }))
   },
   [IPC_CHANNELS.INTEGRITY_ADD_ALL]: {
     request: z.void(),
-    response: z.object({ mockupIds: z.array(z.number()) })
-  },
-  /** Undo for Add and Add all: removes the records that were added, never the PSD. */
-  [IPC_CHANNELS.INTEGRITY_UNDO_ADD]: {
-    request: z.object({ mockupIds: z.array(z.number()).min(1) }),
-    response: z.object({ undone: z.boolean() })
+    response: withUndoEntry(z.object({ mockupIds: z.array(z.number()) }))
   },
   [IPC_CHANNELS.INTEGRITY_REMOVE]: {
     request: z.object({ ids: z.array(z.string()).min(1) }),
@@ -42,15 +38,10 @@ export const integrityContract = {
   },
   [IPC_CHANNELS.INTEGRITY_IGNORE]: {
     request: z.object({ ids: z.array(z.string()).min(1) }),
-    response: z.object({ ignoredIds: z.array(z.string()) })
+    response: withUndoEntry(z.object({ ignoredIds: z.array(z.string()) }))
   },
   [IPC_CHANNELS.INTEGRITY_IGNORE_ALL]: {
     request: z.void(),
-    response: z.object({ ignoredIds: z.array(z.string()) })
-  },
-  /** Undo for Ignore and Ignore all, with the ids they returned. */
-  [IPC_CHANNELS.INTEGRITY_UNIGNORE]: {
-    request: z.object({ ids: z.array(z.string()).min(1) }),
-    response: z.object({ restored: z.boolean() })
+    response: withUndoEntry(z.object({ ignoredIds: z.array(z.string()) }))
   }
 } as const

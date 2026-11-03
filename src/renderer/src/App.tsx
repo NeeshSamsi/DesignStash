@@ -1,52 +1,42 @@
 import { useState, useEffect, useCallback } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { InboxItem } from '@shared/inbox'
 import { BootGate } from './screens/boot/BootGate'
 import { stashCheckCopy } from './screens/integrity'
 import LibraryPage from './screens/library/LibraryPage'
 import InboxPage from './screens/inboxes/InboxPage'
 import TrashPage from './screens/trash/TrashPage'
-import { SortFlow } from './screens/sort'
-import { LookOverFlow } from './screens/look-over'
+import { SortFlow, type SortScope } from './screens/sort'
+import { LookOverFlow, type LookOverScope } from './screens/look-over'
 import AppShell from './AppShell'
 import DebugMenu from './DebugMenu'
-import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
+import { useDetailEffects } from './stores/detailEffectsStore'
+import { subscribePush } from './lib/subscribe'
 import { toast } from './stores/toastStore'
 import { useUpdateNotice } from './lib/update-notice'
 import { useActiveModelNotice } from './lib/model-notice'
 import { GatherDock, useGather, useGatherDrops } from './screens/gather'
 
-type AddFlow = 'approval' | null
-
 /** The app window, once launch is fine and onboarding is done. */
 function AppMain() {
-  const [addFlow, setAddFlow] = useState<AddFlow>(null)
-  /** The import batch on the Sort board, or null when it is closed. */
-  const [sortBatch, setSortBatch] = useState<string | null>(null)
+  /** What Look it over is open on, or null when it is closed. */
+  const [lookOver, setLookOver] = useState<LookOverScope | null>(null)
+  const addFlow = lookOver === null ? null : 'approval'
+  /** What the Sort board is open on, or null when it is closed. */
+  const [sorting, setSorting] = useState<SortScope | null>(null)
 
   const gather = useGather()
   const drops = useGatherDrops(gather)
+  // A haul running or paused still has files to come, which the Sort board won't show (S1.E1).
+  const haulOpen = gather.haul?.state === 'running' || gather.haul?.state === 'paused'
 
-  const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
   const view = useUiStore((s) => s.view)
   const openModal = useUiStore((s) => s.openModal)
-  const libraryQuery = useLibraryStore((s) => s.query)
-  const librarySort = useLibraryStore((s) => s.sort)
-  const libraryTagFilter = useLibraryStore((s) => s.tagFilter)
-  const setLibraryItems = useLibraryStore((s) => s.setItems)
   const setLibraryStats = useLibraryStore((s) => s.setStats)
 
   useUpdateNotice()
   useActiveModelNotice()
-
-  useEffect(() => {
-    void (async () => {
-      const res = await window.api.invoke(IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT, undefined)
-      if (res.success) setSnapshot(res.data)
-    })()
-  }, [setSnapshot])
 
   // The launch stash check, once when the shell is first entered. Changes open the blocking stash
   // check modal on what was found; a check that fails points at Settings › My Stash.
@@ -73,32 +63,27 @@ function AppMain() {
     })()
   }, [openModal])
 
-  const refreshLibrary = useCallback(async () => {
-    const [listRes, statsRes] = await Promise.all([
-      window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
-        tagIds: libraryTagFilter.length ? libraryTagFilter : undefined,
-        query: libraryQuery || undefined,
-        sort: librarySort
-      }),
-      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
-    ])
-    if (listRes.success) setLibraryItems(listRes.data.items)
-    if (statsRes.success) setLibraryStats(statsRes.data)
-  }, [libraryQuery, librarySort, libraryTagFilter, setLibraryItems, setLibraryStats])
+  // Something in the stash folder changed outside the app (a cover deleted in Finder): every
+  // library view reads again, so the card shows the cover as missing (F-012).
+  useEffect(
+    () =>
+      subscribePush(IPC_CHANNELS.LIBRARY_CHANGED, () => useDetailEffects.getState().notifyChanged()),
+    []
+  )
 
-  // The Sort board works on an import batch; Look it over works on the whole queue main holds, piles first.
-  const batchOf = (items: InboxItem[]) =>
-    items.find((item) => item.batchId !== null)?.batchId ?? null
-  const openSort = (items: InboxItem[]) => {
-    const batchId = batchOf(items)
-    if (batchId === null)
-      return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
-    setSortBatch(batchId)
-  }
-  const openLookOver = () => setAddFlow('approval')
+  // My Stash fetches its own list, with its view and filters, whenever it shows: only the counts
+  // are refreshed here.
+  const refreshLibrary = useCallback(async () => {
+    const statsRes = await window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
+    if (statsRes.success) setLibraryStats(statsRes.data)
+  }, [setLibraryStats])
+
+  // Sort and Look it over each open on everything waiting, or on just the cards picked.
+  const openSort = (scope: SortScope = { kind: 'all' }) => setSorting(scope)
+  const openLookOver = (scope: LookOverScope = { kind: 'all' }) => setLookOver(scope)
 
   const handleLookOverClosed = async () => {
-    setAddFlow(null)
+    setLookOver(null)
     await refreshLibrary()
   }
 
@@ -117,7 +102,7 @@ function AppMain() {
             starredOnly={view === 'starred'}
             onAddFiles={() => void gather.addFiles()}
             onAddFolder={() => void gather.addFolder()}
-            onSortWaiting={openSort}
+            onSortWaiting={() => openSort()}
           />
         )}
         {addFlow === null && view === 'to-sort' && (
@@ -141,15 +126,17 @@ function AppMain() {
         {addFlow === null && view === 'trash' && <TrashPage />}
       </AppShell>
       <SortFlow
-        open={sortBatch !== null}
-        batchId={sortBatch}
-        onClose={() => setSortBatch(null)}
-        onLookThemOver={openLookOver}
+        open={sorting !== null}
+        {...(sorting ? { scope: sorting } : {})}
+        copying={haulOpen}
+        onClose={() => setSorting(null)}
+        onLookThemOver={() => openLookOver()}
       />
       <LookOverFlow
-        open={addFlow === 'approval'}
+        open={lookOver !== null}
+        {...(lookOver ? { scope: lookOver } : {})}
         onClose={() => void handleLookOverClosed()}
-        onBackToSort={() => setAddFlow(null)}
+        onBackToSort={() => setLookOver(null)}
       />
     </>
   )

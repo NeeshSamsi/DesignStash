@@ -3,15 +3,15 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { StashCheckStatus, StashInfo, StashMoveProgress } from '@shared/stash'
 import type { TrashStats } from '@shared/inbox'
 import { Button } from '../../components/Button'
-import { ChoiceDialog } from '../../components/ChoiceDialog'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ProgressDialog } from '../../components/ProgressDialog'
 import { SettingsGroup, SettingsPathField, SettingsRow } from '../../components/SettingsLayout'
 import { subscribePush } from '../../lib/subscribe'
 import { toast } from '../../stores/toastStore'
-import { Badge } from '../../ui/badge'
+import { Badge } from '../../components/Badge'
 import { friendlyPath, shortPath } from '../onboarding/onboarding-copy'
-import { formatBytes, mockupCount, stashCheckView, stashFailureCopy } from './settings-copy'
+import { mockups } from '../../lib/plural'
+import { formatBytes, stashCheckView, stashFailureCopy } from './settings-copy'
 
 interface Props {
   /** Opens the Trash page and closes Settings. */
@@ -21,6 +21,8 @@ interface Props {
 }
 
 type Moving = { percent: number; label: string } | null
+/** A folder picked in Change…, and whether a stash is already in it. */
+type Picked = { path: string; holdsStash: boolean } | null
 
 const TONE = {
   none: 'secondary',
@@ -35,7 +37,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
   const [check, setCheck] = useState<StashCheckStatus | null>(null)
   const [trash, setTrash] = useState<TrashStats | null>(null)
   const [checking, setChecking] = useState(false)
-  const [picked, setPicked] = useState<string | null>(null)
+  const [picked, setPicked] = useState<Picked>(null)
   const [moving, setMoving] = useState<Moving>(null)
   const [restart, setRestart] = useState(false)
   const [emptying, setEmptying] = useState(false)
@@ -75,11 +77,15 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
 
   const change = async () => {
     const res = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_DIRECTORY, undefined)
-    if (res.success && res.data.path) setPicked(res.data.path)
+    if (!res.success || !res.data.path) return
+    const path = res.data.path
+    // Use as is only opens a stash that is already there; anywhere else takes a move.
+    const check = await window.api.invoke(IPC_CHANNELS.BOOT_CHECK_FOLDER, { path }).catch(() => null)
+    setPicked({ path, holdsStash: check?.success === true && check.data.hasLibrary })
   }
 
   const apply = async (mode: 'move' | 'point') => {
-    const path = picked
+    const path = picked?.path
     if (!path) return
     setPicked(null)
     if (mode === 'move') setMoving({ percent: 0, label: 'Getting ready' })
@@ -129,9 +135,8 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
   }
 
   const what = info
-    ? `${mockupCount(info.count)} (${formatBytes(info.bytes)})`
+    ? `${mockups(info.count)} (${formatBytes(info.bytes)})`
     : 'every PSD and cover'
-  const moveDescription = `Moving copies ${what} to the new folder. Using the folder leaves your files where they are and starts fresh from the new folder.`
 
   const view = check ? stashCheckView(check) : null
   const secondary = (
@@ -165,7 +170,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
           <SettingsPathField
             path={info ? shortPath(friendlyPath(info.path)) : '…'}
             {...(info ? { fullPath: friendlyPath(info.path) } : {})}
-            meta={info ? `${mockupCount(info.count)} · ${formatBytes(info.bytes)}` : ''}
+            meta={info ? `${mockups(info.count)} · ${formatBytes(info.bytes)}` : ''}
             onChange={() => void change()}
           />
           {info?.restartRequired && (
@@ -195,7 +200,7 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
             trash
               ? trashEmpty
                 ? 'Trash is empty.'
-                : `${mockupCount(trash.count)} · ${formatBytes(trash.bytes)}, kept until you empty it.`
+                : `${mockups(trash.count)} · ${formatBytes(trash.bytes)}, kept until you empty it.`
               : ' '
           }
           controls={
@@ -210,16 +215,28 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
         />
       </SettingsGroup>
 
-      <ChoiceDialog
-        open={picked !== null}
-        title="Move your stash or use the new folder as it is?"
-        description={moveDescription}
-        primaryLabel="Move my files"
-        onPrimary={() => void apply('move')}
-        secondaryLabel="Use as is"
-        onSecondary={() => void apply('point')}
-        tertiaryLabel="Cancel"
-        onTertiary={() => setPicked(null)}
+      {/* A move needs an empty folder, so a folder that holds a stash can only be used as it is. */}
+      <ConfirmDialog
+        open={picked !== null && !picked.holdsStash}
+        variant="neutral"
+        detail={false}
+        title="Move your stash to this folder?"
+        description={`Moving copies ${what} to the new folder.`}
+        confirmLabel="Move my files"
+        cancelLabel="Cancel"
+        onCancel={() => setPicked(null)}
+        onConfirm={() => void apply('move')}
+      />
+      <ConfirmDialog
+        open={picked?.holdsStash === true}
+        variant="neutral"
+        detail={false}
+        title="Use the stash in this folder?"
+        description="This folder already holds a stash. DesignStash opens it the next time it starts, and your current stash stays where it is."
+        confirmLabel="Use as is"
+        cancelLabel="Cancel"
+        onCancel={() => setPicked(null)}
+        onConfirm={() => void apply('point')}
       />
       <ProgressDialog
         open={moving !== null}
@@ -250,8 +267,8 @@ export function MyStashPane({ onOpenTrash, onReview }: Props) {
         title="Empty Trash?"
         description={
           trash
-            ? `This permanently deletes ${mockupCount(trash.count)} and frees ${formatBytes(trash.bytes)}. It can’t be undone.`
-            : 'This permanently deletes everything in Trash. It can’t be undone.'
+            ? `This permanently deletes ${mockups(trash.count)} and frees ${formatBytes(trash.bytes)}. This can’t be undone.`
+            : 'This permanently deletes everything in Trash. This can’t be undone.'
         }
         confirmLabel="Empty Trash"
         cancelLabel="Cancel"

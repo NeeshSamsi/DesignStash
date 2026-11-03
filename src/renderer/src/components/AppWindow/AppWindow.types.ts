@@ -10,7 +10,7 @@ export const APP_WINDOW_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-2248',
   section: '3 · Layout & navigation',
   description:
-    'The window: traffic lights, centred GlobalSearch, SidebarNav (176), content panel with PageHeader + page slot. modal-open adds the scrim; drag-over adds DropOverlay. Slot: page (screen content inside the window, under the PageHeader).',
+    'The window: traffic lights, centred GlobalSearch, SidebarNav (176), content panel with PageHeader + page slot. modal-open adds the scrim; drag-over adds DropOverlay. Slot: page (screen content inside the window, under the PageHeader).\nScroll area (2026-10-26, library-ui, approved by Neesh): the panel pads only its top (28); the header sits in a row inset 28; the page slot spans the panel edge to edge with the 28 page padding inside, so the page scrolls across the whole panel to its bottom edge. page-bar = the page has a PageBar (My Stash’s toolbar), so the edge and the scrollbar start under it. scroll-edge = content is under the bar: the ScrollEdge band shows (96, spacing/scroll-edge; a progressive blur and an eased fade into surface-1, Figma-only plain component). scrollbar = the pointer is over the page: the overlay gutter (12, surface-3) and thumb (6, text/tertiary) show, flush on the panel’s right edge.',
   code: 'AppShell.tsx',
   axes: {
     state: ['idle', 'modal-open', 'drag-over']
@@ -27,7 +27,10 @@ export const APP_WINDOW_CONTRACT = {
   interactionStates: [],
   disabled: false,
   booleans: {
-    showHeader: true
+    showHeader: true,
+    pageBar: false,
+    scrollEdge: false,
+    scrollbar: false
   },
   texts: {},
   icons: {},
@@ -50,6 +53,12 @@ export interface AppWindowContractProps {
   asideOpen?: boolean
   /** Figma boolean. Default `true`. */
   showHeader?: boolean
+  /** Figma boolean. Default `false`. */
+  pageBar?: boolean
+  /** Figma boolean. Default `false`. */
+  scrollEdge?: boolean
+  /** Figma boolean. Default `false`. */
+  scrollbar?: boolean
   /** Slot — nests `GlobalSearch` in Figma. */
   search?: ReactNode
   /** Slot — nests `SidebarNav` in Figma. */
@@ -68,5 +77,8 @@ export interface AppWindowContractProps {
 export const APP_WINDOW_DEFAULTS = {
   state: 'idle',
   asideOpen: false,
-  showHeader: true
+  showHeader: true,
+  pageBar: false,
+  scrollEdge: false,
+  scrollbar: false
 } satisfies AppWindowContractProps

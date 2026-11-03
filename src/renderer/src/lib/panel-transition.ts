@@ -7,6 +7,7 @@ export type PanelDirection = 'open' | 'close'
 export interface TransitionDocument {
   documentElement: HTMLElement
   querySelectorAll: Document['querySelectorAll']
+  elementFromPoint: (x: number, y: number) => Element | null
   startViewTransition?: (update: () => void) => {
     finished: Promise<unknown>
     skipTransition: () => void
@@ -21,6 +22,8 @@ export interface PanelTransitionOptions {
 
 /** The one transition that can be running; a new toggle skips it. */
 let running: { skipTransition: () => void } | null = null
+/** The click forwarding of that transition (see keepClicks). */
+let forwarding: { end: () => void; remove: () => void } | null = null
 
 /** A card carries this prefix plus its mockup id as its transition name. */
 export const CARD_TRANSITION_PREFIX = 'card-'
@@ -34,12 +37,22 @@ export const CARD_TRANSITION_CLASS = 'card'
  * Returns what to undo.
  */
 export function nameVisibleCards(doc: TransitionDocument, view: DOMRect | null): () => void {
-  const named: HTMLElement[] = []
+  return nameCards(visibleCards(doc, view))
+}
+
+interface PlacedCard {
+  card: HTMLElement
+  box: DOMRect
+}
+
+/** The cards on screen and where they sit; every card when there is no view to check against. */
+function visibleCards(doc: TransitionDocument, view: DOMRect | null): PlacedCard[] {
+  const placed: PlacedCard[] = []
   doc.querySelectorAll<HTMLElement>('[data-mockup-id]').forEach((card) => {
     const id = card.dataset.mockupId
     if (id === undefined || !/^[\w-]+$/.test(id)) return
+    const box = card.getBoundingClientRect()
     if (view) {
-      const box = card.getBoundingClientRect()
       const visible =
         box.bottom > view.top &&
         box.top < view.bottom &&
@@ -47,16 +60,98 @@ export function nameVisibleCards(doc: TransitionDocument, view: DOMRect | null):
         box.left < view.right
       if (!visible) return
     }
-    card.style.setProperty('view-transition-name', `${CARD_TRANSITION_PREFIX}${id}`)
+    placed.push({ card, box })
+  })
+  return placed
+}
+
+function nameCards(placed: PlacedCard[]): () => void {
+  for (const { card } of placed) {
+    card.style.setProperty(
+      'view-transition-name',
+      `${CARD_TRANSITION_PREFIX}${card.dataset.mockupId}`
+    )
     // The class lets the stylesheet treat every card alike: only its box morphs, one image, no double text.
     card.style.setProperty('view-transition-class', CARD_TRANSITION_CLASS)
-    named.push(card)
-  })
+  }
   return () =>
-    named.forEach((card) => {
+    placed.forEach(({ card }) => {
       card.style.removeProperty('view-transition-name')
       card.style.removeProperty('view-transition-class')
     })
+}
+
+const holds = (box: DOMRect, x: number, y: number) =>
+  x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
+
+/**
+ * Chromium sends every press made during a view transition to <html>, whatever `pointer-events` the
+ * pseudo-elements have, so a click on a card while the panel morphs would be lost, and with it the
+ * second click of a double-click on a pile. This hands those clicks on. A press ends the morph at once,
+ * and its click goes to what is under the pointer then. The second click of a double-click goes to the
+ * card that sat under the pointer when the morph began, where the first click landed, since the morph
+ * has moved it since. A click that comes before the browser has applied the new layout (within a frame
+ * of the transition starting) waits for it, so it lands in the layout that is about to show.
+ *
+ * It listens until the morph is over and a press made during it has let go (`end`), or until another
+ * transition takes over (`remove`).
+ */
+function keepClicks(
+  doc: TransitionDocument,
+  before: PlacedCard[],
+  skip: () => void,
+  applied: () => boolean,
+  settled: Promise<unknown>
+): { end: () => void; remove: () => void } {
+  const root = doc.documentElement
+  let pressing = false
+  let ended = false
+
+  const onDown = (event: MouseEvent) => {
+    if (event.target !== root) return
+    pressing = true
+    skip()
+  }
+  const onUp = () => {
+    if (!pressing) return
+    // The click and the double-click follow mouseup in the same task.
+    setTimeout(() => {
+      pressing = false
+      if (ended) remove()
+    })
+  }
+  const onClick = (event: MouseEvent) => {
+    if (event.target !== root) return
+    event.stopPropagation()
+    const { clientX: x, clientY: y } = event
+    const replay = new MouseEvent(event.type, event)
+    const deliver = () => {
+      const target =
+        (event.detail >= 2 ? before.find(({ box }) => holds(box, x, y))?.card : undefined) ??
+        doc.elementFromPoint(x, y)
+      if (target && target !== root) target.dispatchEvent(replay)
+    }
+    if (applied()) deliver()
+    else settled.then(deliver, deliver)
+  }
+
+  const remove = () => {
+    root.removeEventListener('mousedown', onDown, true)
+    root.removeEventListener('mouseup', onUp, true)
+    root.removeEventListener('click', onClick, true)
+    root.removeEventListener('dblclick', onClick, true)
+  }
+  root.addEventListener('mousedown', onDown, true)
+  root.addEventListener('mouseup', onUp, true)
+  root.addEventListener('click', onClick, true)
+  root.addEventListener('dblclick', onClick, true)
+  return {
+    end: () => {
+      ended = true
+      if (!pressing) remove()
+    },
+    remove
+  }
 }
 
 /**
@@ -110,13 +205,15 @@ export function nameSideMovers(doc: TransitionDocument): () => void {
  *
  * Without the API, or with reduced motion, `apply` just runs. A second toggle while one is running
  * skips the running one; `apply` still runs for both, so the layout always ends in the right state.
- * Pointer events pass through the transition's overlay (see styles/details-transition.css).
+ * Chromium still sends every press during the morph to <html>; keepClicks hands each click on to what was pressed.
  */
 export function panelTransition(
   apply: () => void,
   direction: PanelDirection,
   { doc = document, reduced = false }: PanelTransitionOptions = {}
 ): void {
+  forwarding?.remove()
+  forwarding = null
   if (reduced || typeof doc.startViewTransition !== 'function') {
     running?.skipTransition()
     running = null
@@ -128,7 +225,8 @@ export function panelTransition(
   const root = doc.documentElement
   root.dataset.panelMotion = direction
   const main = doc.querySelectorAll<HTMLElement>('main')[0]
-  const forgetCards = nameVisibleCards(doc, main?.getBoundingClientRect() ?? null)
+  const cards = visibleCards(doc, main?.getBoundingClientRect() ?? null)
+  const forgetCards = nameCards(cards)
   const forgetMovers = nameSideMovers(doc)
   const forgetLayers = namePanelLayers(doc)
   const forget = () => {
@@ -137,14 +235,27 @@ export function panelTransition(
     forgetLayers()
   }
 
-  const transition = doc.startViewTransition(() => flushSync(apply))
+  let applied = false
+  const transition = doc.startViewTransition(() => {
+    flushSync(apply)
+    applied = true
+  })
   running = transition
+  const clicks = keepClicks(
+    doc,
+    cards,
+    () => transition.skipTransition(),
+    () => applied,
+    transition.finished
+  )
+  forwarding = clicks
   const done = () => {
     if (running === transition) {
       running = null
       forget()
       delete root.dataset.panelMotion
     }
+    clicks.end()
   }
   transition.finished.then(done, done)
 }

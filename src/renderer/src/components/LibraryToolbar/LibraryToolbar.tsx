@@ -5,8 +5,8 @@ import { Select } from '@renderer/components/Select'
 import { TagChip } from '@renderer/components/TagChip'
 import { TagFilterPopover, type TagFilterPopoverProps } from '@renderer/components/TagFilterPopover'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
-import { Button } from '@renderer/ui/button'
+import { Badge } from '@renderer/components/Badge'
+import { Button } from '@renderer/components/Button'
 import { LIBRARY_TOOLBAR_DEFAULTS, type LibraryToolbarContractProps } from './LibraryToolbar.types'
 import { libraryToolbarVariants } from './LibraryToolbar.variants'
 
@@ -43,9 +43,8 @@ const SAMPLE_CHIPS: ToolbarChip[] = [
   { key: 'style', category: 'Style', label: 'Clay' }
 ]
 
-/** Hairline controls: no fill, a subtle edge at rest, the input edge on hover. Padding keeps the 34px height. */
-const HAIRLINE_BUTTON =
-  'border-subtle bg-transparent py-2 type-label-xs-medium hover:border-input hover:bg-transparent'
+/** Filter is the quiet outline (outline-subtle) with smaller text. Padding keeps the 34px height. */
+const HAIRLINE_BUTTON = 'py-2 type-label-xs-medium'
 const HAIRLINE_SORT =
   'border-subtle bg-transparent type-caption-xs-regular hover:border-input data-[size=sm]:py-2'
 
@@ -70,7 +69,7 @@ export function LibraryToolbar({
   const active = picked.length > 0
 
   const filterButton = (
-    <Button variant="outline" size="sm" disabled={disabled} className={HAIRLINE_BUTTON}>
+    <Button variant="outline-subtle" size="sm" disabled={disabled} className={HAIRLINE_BUTTON}>
       <HugeiconsIcon icon={FilterHorizontalIcon} strokeWidth={ICON_STROKE} />
       Filter
     </Button>

@@ -1312,6 +1312,18 @@ export const TOKENS = {
       value: 280,
       unit: 'ms',
       cssVar: '--ds-duration-slow'
+    },
+    {
+      name: 'radius/card-ring',
+      value: 28,
+      unit: 'px',
+      cssVar: '--ds-radius-card-ring'
+    },
+    {
+      name: 'spacing/scroll-edge',
+      value: 96,
+      unit: 'px',
+      cssVar: '--ds-spacing-scroll-edge'
     }
   ],
   textStyles: [

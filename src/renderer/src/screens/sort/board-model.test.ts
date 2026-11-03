@@ -5,6 +5,7 @@ import {
   boardFromSaved,
   boardOrder,
   makeBoardReducer,
+  mergeBoard,
   canDisband,
   canNewPile,
   canPutOnTop,
@@ -18,6 +19,7 @@ import {
   titleOfPile,
   toSortBoard,
   undoLabel,
+  redoLabel,
   type BoardAction,
   type BoardState
 } from './board-model'
@@ -943,6 +945,40 @@ describe('undo', () => {
   })
 })
 
+describe('redo (⇧⌘Z, undo.md)', () => {
+  it('puts an undone change back, selection too, and names it', () => {
+    const done = run(fixture(), click(8), click(9, { meta: true }), { type: 'new-pile' })
+    const undone = run(done, { type: 'undo' })
+    expect(redoLabel(undone)).toBe('New pile')
+    const redone = run(undone, { type: 'redo' })
+    expect(redone.piles).toEqual(done.piles)
+    expect(redone.standalone).toEqual(done.standalone)
+    expect(redone.selectedTiles).toEqual(done.selectedTiles)
+    expect(undoLabel(redone)).toBe('New pile')
+    expect(redoLabel(redone)).toBeNull()
+  })
+
+  it('walks forward through several undone changes in order', () => {
+    const one = run(fixture(), click(3), { type: 'put-on-top' })
+    const two = run(one, click(8), click(9, { meta: true }), { type: 'new-pile' })
+    const back = run(two, { type: 'undo' }, { type: 'undo' })
+    expect(run(back, { type: 'redo' }).piles).toEqual(one.piles)
+    expect(run(back, { type: 'redo' }, { type: 'redo' }).piles).toEqual(two.piles)
+  })
+
+  it('a new change clears what was waiting to be redone', () => {
+    const undone = run(fixture(), click(3), { type: 'put-on-top' }, { type: 'undo' })
+    const changed = run(undone, click(2), { type: 'take-out' })
+    expect(redoLabel(changed)).toBeNull()
+    expect(run(changed, { type: 'redo' })).toBe(changed)
+  })
+
+  it('does nothing with nothing to redo', () => {
+    const s = fixture()
+    expect(run(s, { type: 'redo' })).toBe(s)
+  })
+})
+
 describe('invariants', () => {
   const everyTile = (s: BoardState) =>
     boardOrder(s)
@@ -988,5 +1024,68 @@ describe('invariants', () => {
     const frozen = JSON.stringify(before)
     run(before, click(1), { type: 'take-out' }, { type: 'disband' }, { type: 'select-all' })
     expect(JSON.stringify(before)).toBe(frozen)
+  })
+})
+
+describe('a board opened on a few, put back into the whole (Sort 3, F-049)', () => {
+  const fresh = () => 'fresh'
+
+  it('moves the few to where they are now and leaves the rest as it was', () => {
+    const whole = {
+      batchId: 'to-sort',
+      groups: [
+        { id: 'phones', memberIds: [1, 2, 3, 4] },
+        { id: 'mugs', memberIds: [5, 6] }
+      ],
+      singletonIds: [7, 8]
+    }
+    const part = {
+      batchId: 'to-sort',
+      groups: [{ id: 'mine', memberIds: [8, 5] }],
+      singletonIds: [2]
+    }
+    expect(mergeBoard(whole, part, fresh)).toEqual({
+      batchId: 'to-sort',
+      groups: [
+        { id: 'phones', memberIds: [1, 3, 4] },
+        { id: 'mine', memberIds: [8, 5] }
+      ],
+      singletonIds: [7, 6, 2]
+    })
+  })
+
+  it('gives the part of a split pile a fresh id, so two piles never share one', () => {
+    const whole = {
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [1, 2, 3, 4] }],
+      singletonIds: []
+    }
+    const part = {
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [2, 3] }],
+      singletonIds: []
+    }
+    expect(mergeBoard(whole, part, fresh).groups).toEqual([
+      { id: 'phones', memberIds: [1, 4] },
+      { id: 'fresh', memberIds: [2, 3] }
+    ])
+  })
+
+  it('keeps a pile’s id when the part took all of it', () => {
+    const whole = {
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [1, 2] }],
+      singletonIds: [3]
+    }
+    const part = {
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [2, 1] }],
+      singletonIds: []
+    }
+    expect(mergeBoard(whole, part, fresh)).toEqual({
+      batchId: 'to-sort',
+      groups: [{ id: 'phones', memberIds: [2, 1] }],
+      singletonIds: [3]
+    })
   })
 })

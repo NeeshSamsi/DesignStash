@@ -3,6 +3,7 @@ import type { AiActiveProblem } from '@shared/ipc/ai'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { detectHardware, recommendTier } from '../ai/hardware'
 import { DownloadError, assertSafeId, classifyDownloadError } from '../ai/download'
+import { resolveLlamaServerPath } from '../ai/provider-factory'
 import {
   MEANING_MODEL,
   MODEL_REGISTRY,
@@ -13,6 +14,7 @@ import {
   isMeaningModel
 } from '../ai/registry'
 import { inferenceQueueFor } from './library-effects'
+import { undoEntry } from '../undo/undo-service'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
@@ -23,12 +25,32 @@ function appleProblem(reason: string | null): AiActiveProblem {
   return 'apple-unavailable'
 }
 
-export function registerAiHandlers(ctx: HandlerContext): void {
+/** What the handlers ask about the runtime, so tests can say it without a real one. */
+export interface AiHandlerDeps {
+  /** The llama-server the app runs models on, or null when it is missing. */
+  llamaServerPath(): string | null
+  /** 'runtime-failed' once the active model's runtime has failed to start twice in a row. */
+  runtimeProblem(): 'runtime-failed' | null
+}
+
+export function registerAiHandlers(
+  ctx: HandlerContext,
+  deps: AiHandlerDeps = {
+    llamaServerPath: () => resolveLlamaServerPath(),
+    runtimeProblem: () => inferenceQueueFor(ctx).runtimeProblem
+  }
+): void {
   const { settings, telemetry, ai, push } = ctx
   const { downloader, activeDownloads } = ai
 
   // Meaning-search vectors wait for suggestions to finish first.
   ai.embeddings.setBusyCheck(() => inferenceQueueFor(ctx).busy)
+
+  /** The active model changed or arrived: the queue asks again for what waited for a model. */
+  const modelChanged = () =>
+    void inferenceQueueFor(ctx)
+      .modelChanged()
+      .catch((err: unknown) => console.error('[AI] Could not queue suggestions:', err))
 
   // Models deleted last session can no longer be undone.
   void downloader.purgeSetAside().catch(() => {})
@@ -63,6 +85,19 @@ export function registerAiHandlers(ctx: HandlerContext): void {
       }))
     )
     const active = activeModelId ? getModel(activeModelId) : undefined
+    const activeInstalled = models.find((m) => m.active)?.installed ?? false
+    // Apple's model can be off in macOS; a downloaded model can have no runtime, or one that won't start.
+    const activeProblem: AiActiveProblem | null = !active
+      ? null
+      : isBuiltIn(active)
+        ? apple.available
+          ? null
+          : appleProblem(apple.reason)
+        : !activeInstalled
+          ? null
+          : deps.llamaServerPath() === null
+            ? 'runtime-missing'
+            : deps.runtimeProblem()
     return {
       models,
       meaning: {
@@ -75,7 +110,7 @@ export function registerAiHandlers(ctx: HandlerContext): void {
         installed: await downloader.isInstalled(MEANING_MODEL.id)
       },
       legacy: await downloader.listLegacy(),
-      activeProblem: active && isBuiltIn(active) && !apple.available ? appleProblem(apple.reason) : null
+      activeProblem
     }
   })
 
@@ -98,6 +133,8 @@ export function registerAiHandlers(ctx: HandlerContext): void {
       .then(() => {
         // Meaning search catches up on the library now that its model is there.
         if (isMeaningModel(args.id)) ai.embeddings.backfill()
+        // The active model is there now: what waited for one gets its suggestions (H-2).
+        if (args.id === settings.get().activeModelId) modelChanged()
         telemetry.get().track(TELEMETRY_EVENTS.MODEL_DOWNLOAD_FINISHED, {
           model_id: args.id,
           size_mb: sizeMb,
@@ -161,20 +198,17 @@ export function registerAiHandlers(ctx: HandlerContext): void {
     if (deleted && inUse) settings.update({ activeModelId: null })
     // Search goes back to keywords only: the vectors and the server go with the model.
     if (deleted && isMeaningModel(args.id)) await ai.embeddings.modelRemoved()
-    return { deleted, inUse: deleted && inUse, undoable: deleted }
-  })
-
-  registerIpcHandler(IPC_CHANNELS.AI_RESTORE_MODEL, async (args) => {
-    const restored = await downloader.restoreSetAside(args.id)
-    if (restored && isMeaningModel(args.id)) ai.embeddings.backfill()
-    if (restored && args.makeActive) settings.update({ activeModelId: args.id })
-    return { restored }
+    // Set aside until quit, so it's in the undo history: its undo brings it back.
+    const entry = deleted ? ctx.undo.record(ctx.undo.modelRecord(args.id, inUse)) : undefined
+    return { deleted, inUse: deleted && inUse, undoable: deleted, ...undoEntry(entry) }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_SET_ACTIVE, (args) => {
     // The meaning-search model is not a vision model; it can never be the active one.
     if (args.id && isMeaningModel(args.id)) return { modelId: settings.get().activeModelId }
     settings.update({ activeModelId: args.id })
+    // A model chosen that can run picks up what waited for one; one that can't leaves it off (H-1, H-2).
+    modelChanged()
     // Telemetry: hardware/model tier enum only — never the model id beyond its tier.
     if (args.id) {
       const tier = MODEL_REGISTRY.find((m) => m.id === args.id)?.tier

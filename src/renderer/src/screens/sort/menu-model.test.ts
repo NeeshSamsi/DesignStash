@@ -226,3 +226,64 @@ describe('copy', () => {
     expect(all.join(' ')).not.toMatch(/leader|primary|duplicate|finder|—/i)
   })
 })
+
+describe('a disabled row says why (F-047)', () => {
+  const reason = (rows: MenuRow[], key: string) => (row(rows, key) as { reason?: string }).reason
+  const tileMenu = (s: BoardState, id: number) => buildMenu(s, { kind: 'tile', tileId: id })
+
+  it('New pile needs two or more, and a whole pile is already one', () => {
+    expect(reason(tileMenu(run(fixture(), { type: 'context-tile', id: 3 }), 3), 'new-pile')).toBe(
+      'needs 2 or more'
+    )
+    const mugs = run(
+      fixture(),
+      { type: 'click-tile', id: 5 },
+      { type: 'click-tile', id: 6, meta: true },
+      { type: 'click-tile', id: 7, meta: true }
+    )
+    expect(reason(tileMenu(mugs, 5), 'new-pile')).toBe('already a pile')
+  })
+
+  it('Put on top: one at a time, already on top, or not in a pile', () => {
+    const two = run(
+      fixture(),
+      { type: 'click-tile', id: 2 },
+      { type: 'click-tile', id: 3, meta: true }
+    )
+    expect(reason(tileMenu(two, 2), 'put-on-top')).toBe('one at a time')
+    expect(reason(tileMenu(run(fixture(), { type: 'context-tile', id: 1 }), 1), 'put-on-top')).toBe(
+      'already on top'
+    )
+    const alone = tileMenu(run(fixture(), { type: 'context-tile', id: 9 }), 9)
+    expect(reason(alone, 'put-on-top')).toBe('not in a pile')
+    expect(reason(alone, 'take-out')).toBe('not in a pile')
+  })
+
+  it('Move to with no piles on the board, Merge into with no other pile, Undo with nothing done', () => {
+    const singles = boardFromProposal({
+      batchId: 'b',
+      groups: [],
+      singletons: [member(1, 'a.psd'), member(2, 'b.psd')]
+    })
+    expect(reason(tileMenu(run(singles, { type: 'context-tile', id: 1 }), 1), 'move')).toBe(
+      'no piles yet'
+    )
+    const onePile = boardFromProposal({
+      batchId: 'b',
+      groups: [{ id: 'p', members: [member(1, 'a.psd'), member(2, 'b.psd')], reason: 'stem' }],
+      singletons: []
+    })
+    const pileMenu = buildMenu(run(onePile, { type: 'context-pile', pileId: 'p' }), {
+      kind: 'pile',
+      pileId: 'p'
+    })
+    expect(reason(pileMenu, 'merge-into')).toBe('no other piles')
+    expect(reason(buildMenu(fixture(), { kind: 'board' }), 'undo')).toBe('nothing to undo')
+  })
+
+  it('leaves enabled rows without one', () => {
+    const rows = tileMenu(run(fixture(), { type: 'context-tile', id: 3 }), 3)
+    expect(reason(rows, 'put-on-top')).toBeUndefined()
+    expect(reason(rows, 'take-out')).toBeUndefined()
+  })
+})

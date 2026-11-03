@@ -253,6 +253,37 @@ describe('welcome and stash folder', () => {
     expect(await screen.findByRole('heading', { name: 'Set up on-device AI' })).toBeTruthy()
   })
 
+  it('says under the field how many mockups the stash already there holds', async () => {
+    installApi(
+      base({
+        [IPC_CHANNELS.DIALOG_SELECT_DIRECTORY]: () => ok({ path: '/Users/ada/Old' }),
+        [IPC_CHANNELS.BOOT_CHECK_FOLDER]: () =>
+          ok({ state: 'ok', hasLibrary: true, mockupCount: 12 })
+      })
+    )
+    mount('stash')
+    await screen.findByText('~/Pictures/DesignStash')
+    fireEvent.click(btn('Choose…'))
+    await screen.findByRole('alertdialog')
+    expect(screen.getByText('There’s already a stash in here (12 mockups).')).toBeTruthy()
+  })
+
+  it('leaves the count out when the stash there cannot be read', async () => {
+    installApi(
+      base({
+        [IPC_CHANNELS.DIALOG_SELECT_DIRECTORY]: () => ok({ path: '/Users/ada/Old' }),
+        [IPC_CHANNELS.BOOT_CHECK_FOLDER]: () =>
+          ok({ state: 'ok', hasLibrary: true, mockupCount: null })
+      })
+    )
+    mount('stash')
+    await screen.findByText('~/Pictures/DesignStash')
+    fireEvent.click(btn('Choose…'))
+    await screen.findByRole('alertdialog')
+    expect(screen.getByText('There’s already a stash in here.')).toBeTruthy()
+    expect(screen.queryByText(/128 mockups/)).toBeNull()
+  })
+
   it('Choose another reopens the picker', async () => {
     const api = installApi(
       base({

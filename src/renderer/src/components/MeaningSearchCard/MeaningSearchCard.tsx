@@ -2,7 +2,7 @@ import { useId, type ComponentProps } from 'react'
 import { Switch } from '@renderer/components/Switch'
 import { Tooltip } from '@renderer/components/Tooltip'
 import { cn } from '@renderer/lib/utils'
-import { Badge } from '@renderer/ui/badge'
+import { Badge } from '@renderer/components/Badge'
 import {
   MEANING_SEARCH_CARD_DEFAULTS,
   type MeaningSearchCardContractProps,

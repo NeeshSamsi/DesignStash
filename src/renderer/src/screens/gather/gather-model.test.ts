@@ -85,7 +85,6 @@ describe('widget', () => {
     expect(widgetState(haul({ state: 'paused', pauseReason: 'disk-full' }))).toBe('error')
     expect(widgetState(haul({ state: 'done' }))).toBe('done')
     expect(widgetState(haul({ state: 'cancelled' }))).toBe('stopped')
-    expect(widgetState(haul({ state: 'undone' }))).toBeNull()
   })
 
   it('counts landed plus duplicates and unreadable files, never non-PSDs', () => {
@@ -203,11 +202,26 @@ describe('widget', () => {
     expect(rowState(file({ status: 'skipped', skipReason: 'not-psd' }))).toBe('not-psd')
   })
 
-  it('words the undo toast', () => {
-    expect(undoneMessage(12).description).toBe(
-      '12 mockups removed from To sort. Your originals weren’t touched.'
+  it('says a file brought its mockup back from Trash', () => {
+    const restored: CopyFile = {
+      jobId: 1,
+      name: 'a.psd',
+      status: 'done',
+      size: 312_000_000,
+      restored: true
+    }
+    expect(rowDetail(restored, haul())).toBe('Already in Trash · restored')
+    expect(rowDetail({ ...restored, archiveName: 'Free_Cap_Mockup.zip' }, haul())).toBe(
+      'Already in Trash · restored · From Free_Cap_Mockup.zip'
     )
-    expect(undoneMessage(1).description).toContain('1 mockup removed')
+    expect(rowState(restored)).toBe('done')
+  })
+
+  it('words the undo toast: the import went to Trash, so it can come back', () => {
+    expect(undoneMessage(12).description).toBe(
+      '12 mockups moved to Trash. Your originals weren’t touched.'
+    )
+    expect(undoneMessage(1).description).toContain('1 mockup moved to Trash')
   })
 })
 
@@ -290,6 +304,16 @@ describe('drags', () => {
     ]
     expect(keepDropped(files)).toEqual([0, 2, 3])
   })
+
+  it('keeps a folder whose name has a dot in it, and drops a file that only looks like one', () => {
+    const files = [
+      { name: 'Device Mockups 2.0', type: '', directory: true },
+      { name: 'ls.graphics', type: '', directory: true },
+      { name: 'Brand 2.0', type: '', directory: false },
+      { name: 'Client mockups', type: '', directory: false }
+    ]
+    expect(keepDropped(files)).toEqual([0, 1])
+  })
 })
 
 describe('where a drop lands', () => {
@@ -329,7 +353,8 @@ describe('overlay copy', () => {
   it('rejects non-PSDs', () => {
     expect(overlayFor({ ...base, verdict: 'rejected' })).toMatchObject({
       state: 'rejected',
-      title: 'Those aren’t PSDs or zips'
+      title: 'Those aren’t PSDs or zips',
+      description: 'DesignStash only takes .psd, .psb and .zip files, so there’s nothing to add.'
     })
   })
 

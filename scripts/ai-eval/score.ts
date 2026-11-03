@@ -80,6 +80,8 @@ const SIGN_OFF = process.argv.includes('--sign-off') || QUERIES_PATH !== undefin
  * `--cut` and `--image-cut` set the similarity a meaning hit needs.
  */
 const EMBED = argValue('embed')
+/** `--compact`: score meaning search on vectors kept as the app keeps them since F-070 (256 numbers, as bytes). */
+const COMPACT = process.argv.includes('--compact')
 const IMAGE = process.argv.includes('--image')
 const FUSION = (argValue('fuse') ?? 'cutoff') as Fusion
 const CUT = Number(argValue('cut') ?? '0.6')
@@ -94,7 +96,7 @@ const SCORE_NAME = [
   HELD_OUT && 'heldout',
   SIGN_OFF && 'signoff',
   QUERIES_PATH && 'userq',
-  MEANING && `${MEANING}-${FUSION}${TOP !== undefined ? `-top${TOP}` : ''}`
+  MEANING && `${MEANING}-${FUSION}${TOP !== undefined ? `-top${TOP}` : ''}${COMPACT ? '-compact' : ''}`
 ]
   .filter(Boolean)
   .join('-')
@@ -218,7 +220,7 @@ async function main(): Promise<void> {
   const model = argValue('model')
   const version = argValue('prompt')
   if (!model || !version)
-    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off] [--embed bge|nomic|qwen3|nlsentence|nlcontextual] [--image] [--fuse cutoff|rrf] [--cut n] [--top k] [--image-cut n] [--queries file]')
+    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off] [--embed bge|nomic|qwen3|nlsentence|nlcontextual] [--image] [--fuse cutoff|rrf] [--cut n] [--top k] [--image-cut n] [--compact] [--queries file]')
   if (!existsSync(GOLD_PATH)) throw new Error(`No gold data at ${GOLD_PATH}`)
   const dir = runDir(model, version)
   const resultsPath = join(dir, 'results.json')
@@ -279,7 +281,8 @@ async function main(): Promise<void> {
         sims: await textSimilarities(
           embedder,
           indexed.map((i) => ({ id: i.id, text: docText(i) })),
-          queryTexts
+          queryTexts,
+          { compact: COMPACT }
         ),
         cut: CUT,
         ...(TOP !== undefined && { top: TOP })

@@ -116,6 +116,18 @@ describe('IntegrityService.scan', () => {
     expect((await service.report()).found.map((f) => f.name)).toEqual(['LOUD MOCKUP'])
   })
 
+  it('reports a stray PSB the same way (H-12)', async () => {
+    const service = makeService({
+      listFiles: async () => [`${mockupsDir}/y/Billboard.psb`, `${mockupsDir}/z/original.psb`],
+      exists: async () => true,
+      stat: async () => ({ size: 10 }),
+      resolveCover: async () => ({ source: 'none' }) as never
+    })
+
+    expect(await service.scan()).toEqual({ orphanFiles: 2, orphanRecords: 0 })
+    expect((await service.report()).found.map((f) => f.name).sort()).toEqual(['Billboard', 'original'])
+  })
+
   it('reports nothing for a clean library', async () => {
     const a = `${mockupsDir}/a/original.psd`
     const b = `${mockupsDir}/b/original.psd`

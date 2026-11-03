@@ -12,7 +12,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@renderer/components/Button'
 import { cn } from '@renderer/lib/utils'
-import { Progress as UiProgress } from '@renderer/ui/progress'
+import { Progress } from '@renderer/components/Progress'
 import { COPY_WIDGET_DEFAULTS, type CopyWidgetContractProps } from './CopyWidget.types'
 import {
   copyWidgetFadeVariants,
@@ -132,7 +132,13 @@ export function CopyWidget({
           )}
           {copying && (
             <div className="flex w-full flex-col gap-1.5 pt-1">
-              <UiProgress size="sm" value={percent} aria-label={headline} />
+              <Progress
+                size="sm"
+                showLabel={false}
+                percent={percent}
+                label={headline}
+                className="w-full"
+              />
               {expanded && remaining && (
                 <p className="type-caption-xs-regular text-tertiary">{remaining}</p>
               )}

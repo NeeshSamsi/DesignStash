@@ -7,6 +7,7 @@ import {
   GithubUpdateService,
   NoopUpdateService,
   compareVersions,
+  plainNotes,
   type FetchLike
 } from './update-service'
 
@@ -79,7 +80,7 @@ describe('GithubUpdateService', () => {
     expect(await svc.check()).toEqual({
       state: 'available',
       version: '0.2.0',
-      notes: '### Features\n\n* a thing',
+      notes: 'Features\n\n• a thing',
       releaseUrl: RELEASE_URL,
       lastCheckedAt: NOW.toISOString()
     })
@@ -193,6 +194,60 @@ describe('GithubUpdateService', () => {
 
   it('treats a missing body as empty notes', async () => {
     expect(await make(reply(release({ body: null }))).svc.check()).toMatchObject({ notes: '' })
+  })
+})
+
+describe('release notes (What’s new)', () => {
+  it('read as plain text: headings without marks, bullets as dots, links as their words, no commit links', () => {
+    const body = [
+      '## [0.2.0](https://github.com/NeeshSamsi/DesignStash/compare/v0.1.0...v0.2.0) (2026-10-20)',
+      '',
+      '',
+      '### Features',
+      '',
+      '* **look-over:** offer the edit to every variant ([abc1234](https://github.com/x/commit/abc1234))',
+      '* a plain thing ([#12](https://github.com/x/issues/12)) ([def5678](https://github.com/x/commit/def5678))',
+      '',
+      '',
+      '### Bug Fixes',
+      '',
+      '* **tags:** keep `iPhone` as typed, see [the spec](https://example.com/spec)'
+    ].join('\n')
+
+    expect(plainNotes(body)).toBe(
+      [
+        '0.2.0 (2026-10-20)',
+        '',
+        'Features',
+        '',
+        '• look-over: offer the edit to every variant',
+        '• a plain thing',
+        '',
+        'Bug fixes',
+        '',
+        '• tags: keep iPhone as typed, see the spec'
+      ].join('\n')
+    )
+  })
+
+  it('leaves plain text as it is', () => {
+    expect(plainNotes('Faster covers.\n\n• Fewer clicks')).toBe('Faster covers.\n\n• Fewer clicks')
+  })
+
+  it('makes notes an earlier check saved as markdown plain too', async () => {
+    const settings = createSettingsStore(dir())
+    settings.update({
+      updatesCheckedAt: NOW.toISOString(),
+      updatesLatest: { version: '0.2.0', notes: '### Features\n\n* a thing', releaseUrl: RELEASE_URL }
+    })
+    const svc = new GithubUpdateService({
+      settings,
+      currentVersion: '0.1.0',
+      fetch: reply(release()),
+      now: () => NOW,
+      openExternal: vi.fn()
+    })
+    expect(svc.status()).toMatchObject({ state: 'available', notes: 'Features\n\n• a thing' })
   })
 })
 

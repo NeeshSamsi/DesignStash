@@ -1,19 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { variantMatrix } from '@renderer/design-system/matrix'
-import { Toast, type ToastProps } from './Toast'
-import { TOAST_CONTRACT } from './Toast.types'
+import { Toast } from './Toast'
 
 describe('Toast', () => {
-  it.each(variantMatrix(TOAST_CONTRACT))('renders %s', (_label, props) => {
-    const { baseElement } = render(<Toast {...(props as ToastProps)} />)
-    expect(baseElement.querySelector('[data-ds="Toast"]')).not.toBeNull()
+  it('action-disabled: Undo is off and the line says why, whatever the description', () => {
+    render(
+      <Toast variant="success" message="Moved 3 mockups" description="Just now" actionDisabled />
+    )
+    expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('Changed since. Use ⌘Z')).toBeTruthy()
+    expect(screen.queryByText('Just now')).toBeNull()
   })
 
-  it('renders the Figma default text', () => {
-    render(<Toast />)
-    for (const text of Object.values<string>(TOAST_CONTRACT.texts)) {
-      expect(screen.getAllByText(text).length).toBeGreaterThan(0)
-    }
+  it('action-disabled: the line shows even on a toast with no description', () => {
+    render(
+      <Toast variant="success" message="Moved 3 mockups" showDescription={false} actionDisabled />
+    )
+    expect(screen.getByText('Changed since. Use ⌘Z')).toBeTruthy()
   })
 })

@@ -121,11 +121,13 @@ describe('LibraryPage grid', () => {
     setupApi([item(1)])
     render(<LibraryPage />)
     await ready()
-    const sticky = document.querySelector('[data-slot="library-toolbar-sticky"]')!
-    expect(sticky.contains(document.querySelector('[data-ds="LibraryToolbar"]'))).toBe(true)
-    for (const name of ['sticky', '-top-2', 'z-20', 'bg-surface-1', 'pt-2']) {
-      expect(sticky.className).toContain(name)
+    const bar = document.querySelector('[data-slot="page-bar"]')!
+    expect(bar.contains(document.querySelector('[data-ds="LibraryToolbar"]'))).toBe(true)
+    for (const name of ['sticky', 'top-0', 'z-20', 'bg-surface-1']) {
+      expect(bar.className).toContain(name)
     }
+    // The soft scroll edge hangs under the toolbar.
+    expect(bar.querySelector('[data-slot="scroll-edge"]')).not.toBeNull()
   })
 
   it('selects with a click and reports it in the toolbar', async () => {
@@ -303,9 +305,7 @@ describe('LibraryPage stars', () => {
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: /Star Mockup 1/ }))
     await waitFor(() =>
-      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toEqual([
-        { mockupId: 1, favourite: true }
-      ])
+      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toEqual([{ ids: [1], favourite: true }])
     )
     expect(useLibraryStore.getState().items[0]!.favourite).toBe(true)
   })
@@ -314,8 +314,8 @@ describe('LibraryPage stars', () => {
     const starred = [item(1, { favourite: true }), item(2, { favourite: true })]
     const api = setupApi(starred, {
       [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: (request) => {
-        const { mockupId, favourite } = request as { mockupId: number; favourite: boolean }
-        starred.find((i) => i.id === mockupId)!.favourite = favourite
+        const { ids, favourite } = request as { ids: number[]; favourite: boolean }
+        for (const id of ids) starred.find((i) => i.id === id)!.favourite = favourite
         return { success: true, data: { favourite } }
       },
       [IPC_CHANNELS.LIBRARY_LIST]: () => ({
@@ -327,7 +327,7 @@ describe('LibraryPage stars', () => {
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: /Remove star from Mockup 1/ }))
     await waitFor(() => expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE)).toHaveLength(1))
-    expect(undoToast).toHaveBeenCalledWith('Removed from Starred', expect.any(Function), undefined)
+    expect(undoToast).toHaveBeenCalledWith('Removed from Starred', undefined)
     // The list is refetched (say, a sort change): the card is still there, unstarred.
     act(() => useLibraryStore.getState().setSort('name'))
     await ready()
@@ -341,32 +341,19 @@ describe('LibraryPage stars', () => {
     await waitFor(() => expect(titles()).toEqual(['2']))
   })
 
-  it('Undo on the Starred toast stars it again', async () => {
+  it('the Starred toast undoes the unstar’s own entry', async () => {
     const starred = [item(1, { favourite: true })]
-    const api = setupApi(starred, {
-      [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: (request) => {
-        const { mockupId, favourite } = request as { mockupId: number; favourite: boolean }
-        starred.find((i) => i.id === mockupId)!.favourite = favourite
-        return { success: true, data: { favourite } }
-      },
-      [IPC_CHANNELS.LIBRARY_LIST]: () => ({
+    setupApi(starred, {
+      [IPC_CHANNELS.MOCKUP_SET_FAVOURITE]: () => ({
         success: true,
-        data: { items: starred.filter((i) => i.favourite) }
-      })
+        data: { favourite: false, undoEntryId: 40 }
+      }),
+      [IPC_CHANNELS.LIBRARY_LIST]: () => ({ success: true, data: { items: starred } })
     })
     render(<LibraryPage starredOnly />)
     await ready()
     fireEvent.click(within(cards()[0]!).getByRole('button', { name: /Remove star from Mockup 1/ }))
-    await waitFor(() => expect(undoToast).toHaveBeenCalledTimes(1))
-    const undo = vi.mocked(undoToast).mock.calls[0]![1]
-    await act(async () => undo())
-    await waitFor(() =>
-      expect(api.calls(IPC_CHANNELS.MOCKUP_SET_FAVOURITE).at(-1)).toEqual({
-        mockupId: 1,
-        favourite: true
-      })
-    )
-    expect(useLibraryStore.getState().items[0]!.favourite).toBe(true)
+    await waitFor(() => expect(undoToast).toHaveBeenCalledWith('Removed from Starred', 40))
   })
 
   it('a failed star puts it back and says so', async () => {
@@ -403,6 +390,59 @@ describe('LibraryPage details sidebar', () => {
     expect(useDetailsStore.getState().target).toEqual({ id: 4, edit: false })
     fireEvent.keyDown(cards()[0]!, { key: 'Escape' })
     expect(useDetailsStore.getState().target).toBeNull()
+  })
+
+  it('opens from every part of a card and switches with each click, the cover under the hover buttons too', async () => {
+    setupApi([item(1), item(2)])
+    render(<LibraryPage />)
+    await ready()
+    // Everything on a card that is not one of its buttons.
+    const parts: Record<string, (card: HTMLElement) => Element> = {
+      face: (card) => card.firstElementChild!,
+      cover: (card) => card.querySelector('[data-ds="CoverImage"]')!,
+      'scrim over the cover': (card) =>
+        within(card).getByRole('button', { name: 'Edit details' }).parentElement!
+          .previousElementSibling!,
+      'gap between the hover buttons': (card) =>
+        within(card).getByRole('button', { name: 'Edit details' }).parentElement!,
+      'gap between the star and ⋯': (card) =>
+        within(card).getByRole('button', { name: /^More actions/ }).parentElement!,
+      title: (card) => within(card).getByText(/^Mockup \d$/),
+      'tag line': (card) => card.querySelector('p.type-caption-xs-regular')!
+    }
+    for (const [name, part] of Object.entries(parts)) {
+      for (const card of [cards()[0]!, cards()[1]!]) {
+        fireEvent.click(part(card))
+        expect(useDetailsStore.getState().target?.id, `${name} of ${card.dataset.mockupId}`).toBe(
+          Number(card.dataset.mockupId)
+        )
+      }
+    }
+  })
+
+  it('takes a click on a pile’s count badge as a click on the pile', async () => {
+    setupApi([item(1), pile(3)])
+    render(<LibraryPage />)
+    await ready()
+    fireEvent.click(cards()[0]!)
+    fireEvent.click(within(cards()[1]!).getByLabelText(/mockups in this pile$/))
+    expect(useDetailsStore.getState().target?.id).toBe(3)
+  })
+
+  it('takes a click on a pile’s stacked edges as a click on the pile', async () => {
+    setupApi([item(1), pile(3)])
+    render(<LibraryPage />)
+    await ready()
+    fireEvent.click(cards()[0]!)
+    const edges = cards()[1]!.querySelectorAll<HTMLElement>('[data-pile-edge]')
+    expect(edges).toHaveLength(2)
+    for (const edge of edges) {
+      // The edges hang below the card's box, so they must take the pointer themselves or the press lands on the grid.
+      expect(edge.className).not.toContain('pointer-events-none')
+      fireEvent.click(cards()[0]!)
+      fireEvent.click(edge)
+      expect(useDetailsStore.getState().target?.id).toBe(3)
+    }
   })
 
   it('shows nothing for several selected mockups, and the sidebar closes', async () => {

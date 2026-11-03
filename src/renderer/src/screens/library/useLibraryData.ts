@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
+import type { LibraryItem } from '@shared/library'
 import type { TagTree } from '@shared/tags'
 import { mergeLingering } from '@renderer/lib/library-list'
 import type { FilterCategory } from '@renderer/lib/tag-filter'
@@ -36,6 +37,13 @@ function toFilterCategories(tree: TagTree): FilterCategory[] {
 const cacheKeyOf = (parts: object) => JSON.stringify(parts)
 
 /**
+ * How long to wait before asking once more for a search whose meaning hits were skipped because
+ * the meaning model was still starting (H-3): it takes about half a second to start, and the
+ * skipped answer keeps it starting meanwhile.
+ */
+export const MEANING_RETRY_MS = 700
+
+/**
  * Fetches My Stash for the current search, filter, sort and view, into the library store. A newer
  * request wins over an older one. Search arrives already debounced from the title-bar field.
  * The last list of each view is kept in the library store: coming back to a page shows it at once
@@ -59,6 +67,8 @@ export function useLibraryData(starredOnly: boolean): LibraryData {
   const [failed, setFailed] = useState(false)
   const lingering = useRef(new Set<number>())
   const [reloadKey, setReloadKey] = useState(0)
+  // The list a second ask has gone out for, so a search is asked again at most once (H-3).
+  const askedAgain = useRef<string | null>(null)
 
   // Landing on a view with a kept list puts it on screen before the first paint.
   useLayoutEffect(() => {
@@ -69,26 +79,43 @@ export function useLibraryData(starredOnly: boolean): LibraryData {
   // A change of search, filter, sort or view (or `refresh`) fetches again; a stale answer is dropped.
   useEffect(() => {
     let current = true
+    let askAgain: ReturnType<typeof setTimeout> | undefined
+    const listArgs = {
+      ...(tagIds.length > 0 ? { tagIds } : {}),
+      ...(categoryIds.length > 0 ? { categoryIds } : {}),
+      ...(query.trim() !== '' ? { query } : {}),
+      ...(starredOnly ? { starredOnly } : {}),
+      sort
+    }
+    const show = (items: LibraryItem[]) => {
+      const previous = useLibraryStore.getState().items
+      const merged = mergeLingering(previous, items, lingering.current)
+      setItems(merged)
+      useLibraryStore.getState().cacheList(cacheKey, merged)
+    }
     void (async () => {
       try {
         const [listRes, statsRes] = await Promise.all([
-          window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
-            ...(tagIds.length > 0 ? { tagIds } : {}),
-            ...(categoryIds.length > 0 ? { categoryIds } : {}),
-            ...(query.trim() !== '' ? { query } : {}),
-            ...(starredOnly ? { starredOnly } : {}),
-            sort
-          }),
+          window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, listArgs),
           window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
         ])
         if (!current) return
         if (listRes.success) {
-          const previous = useLibraryStore.getState().items
-          const merged = mergeLingering(previous, listRes.data.items, lingering.current)
-          setItems(merged)
-          useLibraryStore.getState().cacheList(cacheKey, merged)
+          show(listRes.data.items)
           setFailed(false)
           setFetched(true)
+          // The meaning model was still starting: ask once more for this list, a moment later (H-3).
+          if (listRes.data.meaningSkipped && askedAgain.current !== cacheKey) {
+            askedAgain.current = cacheKey
+            askAgain = setTimeout(() => {
+              void window.api
+                .invoke(IPC_CHANNELS.LIBRARY_LIST, listArgs)
+                .then((again) => {
+                  if (current && again.success) show(again.data.items)
+                })
+                .catch(() => {})
+            }, MEANING_RETRY_MS)
+          }
         } else {
           setFailed(true)
         }
@@ -99,6 +126,7 @@ export function useLibraryData(starredOnly: boolean): LibraryData {
     })()
     return () => {
       current = false
+      clearTimeout(askAgain)
     }
   }, [
     cacheKey,

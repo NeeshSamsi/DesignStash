@@ -1,13 +1,14 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '../schema'
 import type { Repository } from '../repository'
 import { seedTaxonomy } from '../bootstrap'
 import { ensureSearchIndex } from '../search-index'
+import { LibraryQueryRepository } from './library-query'
 import { approvedMockup, createTestDb, sample } from './__tests__/setup'
 
 let sqlite: Database.Database
@@ -237,6 +238,22 @@ describe('getLibrary', () => {
     expect(prefixResult.map((r) => r.id)).toContain(a.id)
   })
 
+  it('a search with no word to look for finds nothing, never the whole library', () => {
+    repo.mockups.createMockup(approvedMockup({ title: 'Mug', libraryPath: '/lib/nothing-1.psd' }))
+    repo.mockups.createMockup(approvedMockup({ title: 'Cup', libraryPath: '/lib/nothing-2.psd' }))
+
+    expect(repo.library.getLibrary({ query: '!!', sort: 'date' })).toEqual([])
+    expect(repo.library.getLibrary({ query: '  ', sort: 'date' })).toHaveLength(2)
+  })
+
+  it('finds a title written in another script', () => {
+    const jp = repo.mockups.createMockup(approvedMockup({ title: '日本 poster', libraryPath: '/lib/jp.psd' }))
+    const other = repo.mockups.createMockup(approvedMockup({ title: 'Mug', libraryPath: '/lib/mug.psd' }))
+    for (const m of [jp, other]) repo.search.upsertSearchIndex(m.id)
+
+    expect(repo.library.getLibrary({ query: '日本', sort: 'date' }).map((r) => r.id)).toEqual([jp.id])
+  })
+
   it('sort:name orders A to Z and sort:date newest first', () => {
     const z = repo.mockups.createMockup(approvedMockup({ title: 'Zebra', libraryPath: '/lib/z.psd' }))
     const ap = repo.mockups.createMockup(approvedMockup({ title: 'Apple', libraryPath: '/lib/ap.psd' }))
@@ -248,6 +265,15 @@ describe('getLibrary', () => {
 
     expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([ap.id, m.id, z.id])
     expect(repo.library.getLibrary({ sort: 'date' }).map((r) => r.id)).toEqual([m.id, ap.id, z.id])
+  })
+
+  it('sort:date puts the later of mockups added in the same second first, as between hauls', () => {
+    const [a, b, c] = ['A', 'B', 'C'].map((title) =>
+      repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/same-${title}.psd` }))
+    )
+    for (const m of [a!, b!, c!]) repo.mockups.updateMockup(m.id, { createdAt: '2026-10-12 09:00:00' })
+
+    expect(repo.library.getLibrary({ sort: 'date' }).map((r) => r.id)).toEqual([c!.id, b!.id, a!.id])
   })
 })
 
@@ -303,8 +329,8 @@ describe('getDetailVariants', () => {
       )
 
       expect(repo.library.getDetailVariants(top.id)).toEqual([
-        { id: top.id, title: 'front', coverPath, coverMissing: false, coverSource: 'embedded', isTop: true },
-        { id: side.id, title: 'side', coverPath: '/c.png', coverMissing: true, coverSource: 'embedded', isTop: false }
+        { id: top.id, title: 'front', coverPath, coverMissing: false, coverSource: 'embedded', isTop: true, variation: null },
+        { id: side.id, title: 'side', coverPath: '/c.png', coverMissing: true, coverSource: 'embedded', isTop: false, variation: null }
       ])
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -315,6 +341,91 @@ describe('getDetailVariants', () => {
     const m = repo.mockups.createMockup(approvedMockup({ title: 'Solo', libraryPath: '/lib/so2.psd' }))
     expect(repo.library.getDetailVariants(m.id)).toEqual([])
     expect(repo.library.getDetailVariants(9999)).toEqual([])
+  })
+})
+
+describe('a big library', () => {
+  beforeEach(() => {
+    seedTaxonomy(db)
+    ensureSearchIndex(db)
+  })
+
+  /** My Stash's list with a counted check for each cover file. */
+  const withCoverCheck = (present: (path: string) => boolean = () => true) => {
+    const fileExists = vi.fn(present)
+    const library = new LibraryQueryRepository(db, repo.mockups, repo.piles, repo.search, fileExists)
+    return { fileExists, library }
+  }
+
+  it('checks each cover on disk once, however often the list is asked for', () => {
+    for (let i = 0; i < 1000; i++) {
+      const m = repo.mockups.createMockup(
+        approvedMockup({ title: `Mug ${i}`, libraryPath: `/lib/big${i}.psd`, coverPath: `/c/big${i}.png` })
+      )
+      if (i < 20) repo.search.upsertSearchIndex(m.id)
+    }
+    const { fileExists, library } = withCoverCheck()
+
+    expect(library.getLibrary({ sort: 'date' })).toHaveLength(1000)
+    expect(fileExists).toHaveBeenCalledTimes(1000)
+
+    fileExists.mockClear()
+    expect(library.getLibrary({ sort: 'name' })).toHaveLength(1000)
+    expect(library.getLibrary({ sort: 'date', query: 'mug' })).toHaveLength(20)
+    expect(fileExists).not.toHaveBeenCalled()
+  })
+
+  it('checks a missing cover again each time, so it shows as soon as it is back', () => {
+    const m = repo.mockups.createMockup(approvedMockup({ title: 'Gone', coverPath: '/c/gone.png' }))
+    let back = false
+    const { library } = withCoverCheck(() => back)
+
+    expect(library.getLibrary({ sort: 'date' })).toMatchObject([{ id: m.id, coverMissing: true }])
+    back = true
+    expect(library.getLibrary({ sort: 'date' })).toMatchObject([{ id: m.id, coverMissing: false }])
+  })
+
+  it('checks a cover again once the stash folder says it changed, and every cover in a folder that did', () => {
+    const covers = ['/s/mockups/a/cover.webp', '/s/mockups/b/cover.webp', '/s/mockups/bb/cover.webp']
+    const [a, b, bb] = covers.map((coverPath, i) =>
+      repo.mockups.createMockup(approvedMockup({ title: `C${i}`, libraryPath: `/lib/c${i}.psd`, coverPath }))
+    )
+    const present = new Set(covers)
+    const { fileExists, library } = withCoverCheck((path) => present.has(path))
+    const missing = () =>
+      Object.fromEntries(library.getLibrary({ sort: 'date' }).map((r) => [r.id, r.coverMissing]))
+    expect(missing()).toEqual({ [a!.id]: false, [b!.id]: false, [bb!.id]: false })
+    for (const path of covers) present.delete(path)
+    fileExists.mockClear()
+
+    expect(library.forgetCoversUnder('/s/mockups/a/cover.webp')).toBe(true)
+    expect(library.forgetCoversUnder('/s/designstash.db-wal')).toBe(false)
+    expect(missing()).toEqual({ [a!.id]: true, [b!.id]: false, [bb!.id]: false })
+    expect(fileExists).toHaveBeenCalledTimes(1)
+
+    library.forgetCoversUnder('/s/mockups/b')
+    expect(missing()).toEqual({ [a!.id]: true, [b!.id]: true, [bb!.id]: false })
+  })
+
+  it('filters by tag and category in the query, so only the matches are read further', () => {
+    const tags = repo.tags.getAllTags()
+    const laptop = tags.find((t) => t.label === 'Laptop')!
+    const minimal = tags.find((t) => t.label === 'Minimal')!
+    const style = repo.tags.getAllCategories().find((c) => c.label === 'Style')!
+    const ids = Array.from({ length: 20 }, (_, i) =>
+      repo.mockups.createMockup(approvedMockup({ title: `T${i}`, libraryPath: `/lib/t${i}.psd` })).id
+    )
+    repo.mockups.addTagToMockup(ids[3]!, laptop.id)
+    repo.mockups.addTagToMockup(ids[3]!, minimal.id)
+    repo.mockups.addTagToMockup(ids[7]!, laptop.id)
+    const { fileExists, library } = withCoverCheck()
+    const lookups = vi.spyOn(library, 'loadLookups')
+
+    expect(library.getLibrary({ tagIds: [laptop.id], categoryIds: [style.id], sort: 'date' }).map((r) => r.id)).toEqual([
+      ids[3]
+    ])
+    expect(lookups.mock.calls).toEqual([[[ids[3]]]])
+    expect(fileExists).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -341,5 +452,54 @@ describe('getLibraryStats', () => {
     expect(stats.favourites).toBe(1) // a
     expect(stats.groups).toBe(1) // b
     expect(stats.trashed).toBe(1) // t
+  })
+})
+
+describe('base titles and variations in My Stash (design/specs/pile-titles.md)', () => {
+  beforeEach(() => {
+    seedTaxonomy(db)
+    ensureSearchIndex(db)
+  })
+
+  /** The long scroll pile from the dev library: a base, and "wavy surface" on its last mockup. */
+  function longScrolls() {
+    const make = (title: string, path: string, extra = {}) =>
+      repo.mockups.createMockup(approvedMockup({ title, libraryPath: `/lib/${path}.psd`, description: 'A laptop on books', ...extra }))
+    const top = make('Long scroll MacBook', 'a', { isGroup: true, variation: 'front', variationSource: 'ai' })
+    const side = make('Long scroll MacBook', 'b', { groupId: top.id, variation: 'side view', variationSource: 'ai' })
+    const wavy = make('Long scroll MacBook', 'c', { groupId: top.id, variation: 'wavy surface', variationSource: 'typed' })
+    const other = make('Clay iPhone', 'd')
+    for (const m of [top, side, wavy, other]) repo.search.upsertSearchIndex(m.id)
+    return { top, side, wavy, other }
+  }
+
+  it('finds a pile by a word only one of its mockups’ variations has, by keyword', () => {
+    const { top } = longScrolls()
+    expect(repo.library.getLibrary({ sort: 'date', query: 'wavy' }).map((r) => r.id)).toEqual([top.id])
+  })
+
+  it('embeds the full title for meaning search, and a close mockup in a pile brings up its pile', () => {
+    const { top, wavy, other } = longScrolls()
+    expect(repo.search.meaningDocuments().find((d) => d.id === wavy.id)?.text).toContain('Long scroll MacBook · wavy surface')
+
+    // "rippled" matches no word, so only meaning search can find it: the wavy mockup is the closest.
+    const meaning = new Map([
+      [wavy.id, 0.9],
+      [other.id, 0.1]
+    ])
+    const { rows, meaningHit } = repo.library.queryLibrary({ sort: 'date', query: 'rippled', meaning })
+    expect(rows.map((r) => r.id)).toEqual([top.id])
+    expect(meaningHit).toBe(true)
+  })
+
+  it('sends the pile and the variation with every row', () => {
+    const { top, wavy, other } = longScrolls()
+    const rows = repo.library.toRows([top, wavy, other].map((m) => repo.mockups.getMockup(m.id)!))
+    expect(rows.map((r) => [r.title, r.pileId, r.variation])).toEqual([
+      ['Long scroll MacBook', top.id, { words: 'front', source: 'ai' }],
+      ['Long scroll MacBook', top.id, { words: 'wavy surface', source: 'typed' }],
+      ['Clay iPhone', null, null]
+    ])
+    expect(repo.library.getDetailVariants(top.id).map((v) => v.variation?.words)).toEqual(['front', 'side view', 'wavy surface'])
   })
 })

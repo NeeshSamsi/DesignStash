@@ -1,7 +1,17 @@
-import { readdirSync, statSync } from 'node:fs'
+import { promises as fs, readdirSync, statSync } from 'node:fs'
 import { join, extname, basename, dirname } from 'node:path'
 import { SIDECAR_EXTENSIONS, SIDECAR_FUZZY_THRESHOLD } from '@shared/constants'
 
+/** An image file that could be a PSD's cover, by its name. */
+export const isSidecarImage = (name: string): boolean =>
+  SIDECAR_EXTENSIONS.includes(extname(name).toLowerCase())
+
+/** Whether a path, or the link at it, leads to a file. */
+export async function leadsToFile(path: string): Promise<boolean> {
+  return fs.stat(path).then((s) => s.isFile(), () => false)
+}
+
+/** Every image under a folder that could be a cover, for scripts. The app gathers them as it walks a drop (scanner.ts). */
 export function collectCandidateImages(rootDir: string): string[] {
   const results: string[] = []
   function walk(dir: string): void {
@@ -10,7 +20,7 @@ export function collectCandidateImages(rootDir: string): string[] {
       const stat = statSync(full)
       if (stat.isDirectory()) {
         walk(full)
-      } else if (SIDECAR_EXTENSIONS.includes(extname(entry).toLowerCase())) {
+      } else if (isSidecarImage(entry)) {
         results.push(full)
       }
     }
@@ -19,15 +29,14 @@ export function collectCandidateImages(rootDir: string): string[] {
   return results
 }
 
-/** The images in a PSD's own folder (not below it) with the PSD's name, in any case. */
-export function imagesNamedFor(psdPath: string): string[] {
+/** The images in a PSD's own folder (not below it) with the PSD's name, in any case. None when it can't be read. */
+export async function imagesNamedFor(psdPath: string): Promise<string[]> {
   const dir = dirname(psdPath)
   const stem = normalizeStem(psdPath)
-  return readdirSync(dir)
-    .filter((name) => SIDECAR_EXTENSIONS.includes(extname(name).toLowerCase()))
-    .filter((name) => normalizeStem(name) === stem)
-    .map((name) => join(dir, name))
-    .filter((path) => statSync(path).isFile())
+  const names = await fs.readdir(dir).catch((): string[] => [])
+  const named = names.filter((name) => isSidecarImage(name) && normalizeStem(name) === stem)
+  const files = await Promise.all(named.map((name) => leadsToFile(join(dir, name))))
+  return named.filter((_, i) => files[i]).map((name) => join(dir, name))
 }
 
 export function normalizeStem(fileName: string): string {
@@ -78,8 +87,14 @@ function pathDistance(psdPath: string, candidatePath: string): number {
   return psdParts.length - common + (candParts.length - common)
 }
 
+/**
+ * An image named for the PSD: the nearest one with its exact name anywhere in the drop, else a
+ * near-miss name, which is only trusted from the PSD's own folder. Further away, a near miss is
+ * as likely to be another kit's render ("iphone-15-pro-max" for "iphone-15-pro").
+ */
 export function findSidecar(psdPath: string, candidateImagePaths: string[]): SidecarMatch | null {
   const psdStem = normalizeStem(psdPath)
+  const psdDir = dirname(psdPath)
 
   const exactMatches: SidecarMatch[] = []
   const fuzzyMatches: SidecarMatch[] = []
@@ -92,7 +107,7 @@ export function findSidecar(psdPath: string, candidateImagePaths: string[]): Sid
         candidateName: basename(candidatePath),
         confidence: 1.0,
       })
-    } else {
+    } else if (dirname(candidatePath) === psdDir) {
       const score = bigramDice(psdStem, candStem)
       if (score >= SIDECAR_FUZZY_THRESHOLD) {
         fuzzyMatches.push({

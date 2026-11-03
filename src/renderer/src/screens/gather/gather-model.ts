@@ -6,10 +6,7 @@ import { formatBytes } from '../settings/settings-copy'
 
 /** Pure rules for Gather: what the widget says, what a drag means, what a drop becomes. */
 
-/** 1204 reads as "1,204". */
-export const formatCount = (n: number) => n.toLocaleString('en-US')
-
-const plural = (n: number, one: string, many: string) => `${formatCount(n)} ${n === 1 ? one : many}`
+import { formatCount, mockups } from '@renderer/lib/plural'
 
 /**
  * Files that were looked at: landed, or left out as a duplicate or unreadable. Not-PSDs never count,
@@ -25,7 +22,7 @@ export function processed(haul: CopyStatus): number {
   )
 }
 
-export function widgetState(haul: CopyStatus): CopyWidgetState | null {
+export function widgetState(haul: CopyStatus): CopyWidgetState {
   switch (haul.state) {
     case 'running':
       return 'copying'
@@ -35,8 +32,6 @@ export function widgetState(haul: CopyStatus): CopyWidgetState | null {
       return 'done'
     case 'cancelled':
       return 'stopped'
-    case 'undone':
-      return null
   }
 }
 
@@ -131,7 +126,12 @@ export function rowDetail(file: CopyFile, haul: CopyStatus): string | null {
   // A PSD out of a zip keeps saying which zip it came from.
   const from = file.archiveName ? `From ${file.archiveName}` : null
   if (file.status === 'done') {
-    const done = file.size ? `Copied · ${formatBytes(file.size)}` : 'Copied'
+    // A file whose mockup was in Trash brought it back, and nothing new was copied.
+    const done = file.restored
+      ? 'Already in Trash · restored'
+      : file.size
+        ? `Copied · ${formatBytes(file.size)}`
+        : 'Copied'
     return from ? `${done} · ${from}` : done
   }
   if (file.status === 'queued' && haul.state === 'cancelled') return 'Not copied'
@@ -157,11 +157,11 @@ export function rowState(file: CopyFile): CopyFileRowState {
   return file.status
 }
 
-/** The toast after Undo all. */
+/** The toast after Undo all: the import went to Trash, where Restore (or Redo) brings it back. */
 export function undoneMessage(removed: number): { message: string; description: string } {
   return {
     message: 'Copy undone',
-    description: `${plural(removed, 'mockup', 'mockups')} removed from To sort. Your originals weren’t touched.`
+    description: `${mockups(removed)} moved to Trash. Your originals weren’t touched.`
   }
 }
 
@@ -200,12 +200,23 @@ export function dragVerdict(items: readonly DragItem[]): DragVerdict {
 
 const PSD_NAME = /\.(psd|psb|zip|rar|7z)$/i
 
-/** On drop the names are known. PSDs and archives are kept. Folders have no extension and are kept: main scans them. */
-export function keepDropped(files: readonly { name: string; type: string }[]): number[] {
+export interface DroppedFile {
+  name: string
+  type: string
+  /** Whether the drop said it is a folder. Unknown when the drop gave no entry for it. */
+  directory?: boolean | undefined
+}
+
+/**
+ * On drop the names are known. PSDs and archives are kept, and so are folders: main scans them.
+ * A folder's name can have a dot in it ("Device Mockups 2.0"), so the drop's own word on what is a
+ * folder wins. Without it, a name with no extension stands for a folder.
+ */
+export function keepDropped(files: readonly DroppedFile[]): number[] {
   const kept: number[] = []
   files.forEach((file, index) => {
-    const hasExtension = /\.[^./]+$/.test(file.name)
-    if (PSD_NAME.test(file.name) || !hasExtension) kept.push(index)
+    const folder = file.directory ?? !/\.[^./]+$/.test(file.name)
+    if (PSD_NAME.test(file.name) || folder) kept.push(index)
   })
   return kept
 }
@@ -242,7 +253,7 @@ export function overlayFor(input: {
     return {
       state: 'rejected',
       title: 'Those aren’t PSDs or zips',
-      description: 'DesignStash only takes .psd and .zip files, so there’s nothing to add.'
+      description: 'DesignStash only takes .psd, .psb and .zip files, so there’s nothing to add.'
     }
   }
   if (input.copying) {
@@ -258,7 +269,7 @@ export function overlayFor(input: {
       title: 'Drop to add them to To sort',
       description:
         input.waiting > 0
-          ? `They’ll join the ${plural(input.waiting, 'mockup', 'mockups')} already waiting.`
+          ? `They’ll join the ${mockups(input.waiting)} already waiting.`
           : 'They’ll wait here until you sort them.'
     }
   }

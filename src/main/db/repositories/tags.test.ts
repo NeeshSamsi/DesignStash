@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '../schema'
@@ -219,46 +219,6 @@ describe('tag management — merge / delete / deleteCategory (M8.2)', () => {
     expect(repo.tags.getAllCategories().find((c) => c.id === device.id)).toBeUndefined()
   })
 
-  it('deleteTag returns a snapshot that restoreTag uses to bring the tag back on every mockup', () => {
-    const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
-    const a = repo.mockups.createMockup(approvedMockup({ title: 'Undo A', libraryPath: '/lib/ua.psd' }))
-    const b = repo.mockups.createMockup(approvedMockup({ title: 'Undo B', libraryPath: '/lib/ub.psd' }))
-    repo.mockups.addTagToMockup(a.id, laptop.id)
-    repo.mockups.addTagToMockup(b.id, laptop.id)
-    repo.search.upsertSearchIndex(a.id)
-    repo.search.upsertSearchIndex(b.id)
-
-    const { snapshot } = repo.tags.deleteTag(laptop.id)
-    expect(snapshot.tag).toMatchObject({
-      id: laptop.id,
-      label: 'Laptop',
-      categoryId: laptop.categoryId
-    })
-    expect(snapshot.mockupIds.sort()).toEqual([a.id, b.id].sort())
-
-    const restored = repo.tags.restoreTag(snapshot)
-
-    expect(restored).toEqual({ tagId: laptop.id, restoredMockups: 2 })
-    expect(repo.mockups.getTagsForMockup(a.id).map((t) => t.label)).toEqual(['Laptop'])
-    expect(repo.mockups.getTagsForMockup(b.id).map((t) => t.label)).toEqual(['Laptop'])
-    expect(matchFts('laptop').sort()).toEqual([a.id, b.id].sort())
-  })
-
-  it('restoreTag relinks to a same-named tag created since the delete, skipping gone mockups', () => {
-    const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
-    const a = repo.mockups.createMockup(approvedMockup({ title: 'Kept', libraryPath: '/lib/rk.psd' }))
-    const b = repo.mockups.createMockup(approvedMockup({ title: 'Gone', libraryPath: '/lib/rg.psd' }))
-    repo.mockups.addTagToMockup(a.id, laptop.id)
-    repo.mockups.addTagToMockup(b.id, laptop.id)
-
-    const { snapshot } = repo.tags.deleteTag(laptop.id)
-    const again = repo.tags.createTag({ label: 'Laptop', categoryId: laptop.categoryId })
-    repo.mockups.deleteMockup(b.id)
-
-    expect(repo.tags.restoreTag(snapshot)).toEqual({ tagId: again.id, restoredMockups: 1 })
-    expect(repo.mockups.getTagsForMockup(a.id).map((t) => t.id)).toEqual([again.id])
-  })
-
   it('previewMergeTags counts the mockups that would move, without changing anything', () => {
     const all = repo.tags.getAllTags()
     const macbook = all.find((t) => t.label === 'MacBook')!
@@ -290,7 +250,6 @@ describe('tag management — merge / delete / deleteCategory (M8.2)', () => {
     const result = repo.tags.deleteCategory(angle.id, environment.id)
 
     expect(result.movedTags).toBe(4)
-    expect(result.snapshot).toMatchObject({ id: angle.id, label: 'Angle' })
     expect(repo.tags.getAllCategories().find((c) => c.id === angle.id)).toBeUndefined()
     const labels = repo
       .mockups.getTagsForMockup(m.id)
@@ -321,18 +280,60 @@ describe('tag management — merge / delete / deleteCategory (M8.2)', () => {
     expect(repo.mockups.getTagsForMockup(m.id)).toHaveLength(inAngle.length)
   })
 
+  describe('a write that fails part-way changes nothing', () => {
+    /** Search can't take the change: every write that keeps it in step fails. */
+    const searchFails = () =>
+      vi.spyOn(repo.search, 'upsertSearchIndex').mockImplementation(() => {
+        throw new Error('search is stuck')
+      })
+    const tagged = (label: string) => {
+      const tag = repo.tags.getAllTags().find((t) => t.label === label)!
+      const m = repo.mockups.createMockup(approvedMockup({ title: `Has ${label}`, libraryPath: `/lib/f-${label}.psd` }))
+      repo.mockups.addTagToMockup(m.id, tag.id)
+      repo.search.upsertSearchIndex(m.id)
+      return { tag, m }
+    }
+
+    it('renameTag', () => {
+      const { tag } = tagged('Laptop')
+      searchFails()
+      expect(() => repo.tags.renameTag(tag.id, 'Notebook')).toThrow('search is stuck')
+      expect(repo.tags.getAllTags().find((t) => t.id === tag.id)?.label).toBe('Laptop')
+    })
+
+    it('deleteTag', () => {
+      const { tag, m } = tagged('Laptop')
+      searchFails()
+      expect(() => repo.tags.deleteTag(tag.id)).toThrow('search is stuck')
+      expect(repo.mockups.getTagsForMockup(m.id).map((t) => t.id)).toEqual([tag.id])
+      expect(matchFts('laptop')).toEqual([m.id])
+    })
+
+    it('mergeTags', () => {
+      const { tag: macbook, m } = tagged('MacBook')
+      const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
+      searchFails()
+      expect(() => repo.tags.mergeTags(macbook.id, laptop.id)).toThrow('search is stuck')
+      expect(repo.mockups.getTagsForMockup(m.id).map((t) => t.id)).toEqual([macbook.id])
+    })
+
+    it('deleteCategory with its tags moving into a same-named one', () => {
+      const environment = repo.tags.getAllCategories().find((c) => c.label === 'Environment')!
+      const angle = repo.tags.getAllCategories().find((c) => c.label === 'Angle')!
+      repo.tags.createTag({ label: 'Side', categoryId: environment.id })
+      const { tag: side, m } = tagged('Side')
+      expect(side.categoryId).toBe(angle.id)
+      searchFails()
+      expect(() => repo.tags.deleteCategory(angle.id, environment.id)).toThrow('search is stuck')
+      expect(repo.tags.getAllCategories().find((c) => c.id === angle.id)).toBeDefined()
+      expect(repo.mockups.getTagsForMockup(m.id).map((t) => t.id)).toEqual([side.id])
+    })
+  })
+
   it('deleteCategory rejects moving tags into itself or a missing category', () => {
     const angle = repo.tags.getAllCategories().find((c) => c.label === 'Angle')!
     expect(() => repo.tags.deleteCategory(angle.id, angle.id)).toThrow()
     expect(() => repo.tags.deleteCategory(angle.id, 99999)).toThrow()
-  })
-
-  it('restoreCategory brings back an empty category that was deleted', () => {
-    const empty = repo.tags.createCategory({ label: 'Mood' })
-    const { snapshot } = repo.tags.deleteCategory(empty.id)
-
-    expect(repo.tags.restoreCategory(snapshot)).toEqual({ categoryId: empty.id })
-    expect(repo.tags.getAllCategories().find((c) => c.id === empty.id)?.label).toBe('Mood')
   })
 
   it('findTagsByLabel matches across categories, ignoring case and spaces, with use counts', () => {

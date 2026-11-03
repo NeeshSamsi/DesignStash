@@ -66,6 +66,12 @@ describe('cleanArchiveName', () => {
     expect(cleanArchiveName('Free_Cards_Mockup.psd.zip')).toBe('Free Cards Mockup')
   })
 
+  it('drops a .psb left before .zip, and says nothing for a name that is only "PSB" (H-12)', () => {
+    expect(cleanArchiveName('Billboard_Mockup.psb.zip')).toBe('Billboard Mockup')
+    expect(cleanArchiveName('psb.zip')).toBeNull()
+    expect(cleanArchiveName('Free-PSB-Mockup.zip')).toBeNull()
+  })
+
   it('says nothing for names made only of generic words', () => {
     for (const n of ['Archive.zip', 'download.zip', 'Files.zip', 'MOCKUP.zip', 'psd.zip'])
       expect(cleanArchiveName(n)).toBeNull()
