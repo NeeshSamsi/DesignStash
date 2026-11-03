@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { CpuIcon, HardDriveIcon, Tick02Icon } from '@hugeicons/core-free-icons'
@@ -66,7 +67,7 @@ export function HardwareSummary({
       <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-3">
         <HugeiconsIcon
           icon={variant === 'low-disk' ? HardDriveIcon : CpuIcon}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           className="size-5 text-foreground"
         />
       </div>
@@ -75,7 +76,7 @@ export function HardwareSummary({
         <p className="type-caption-xs-regular text-tertiary">{description ?? sample.description}</p>
       </div>
       <Badge variant={supported ? 'success' : 'warning'} className="shrink-0">
-        {supported && <HugeiconsIcon icon={Tick02Icon} strokeWidth={1.5} />}
+        {supported && <HugeiconsIcon icon={Tick02Icon} strokeWidth={ICON_STROKE} />}
         {badge ?? sample.badge}
       </Badge>
     </div>

@@ -14,10 +14,7 @@ beforeEach(() => {
     query: '',
     tagFilter: [],
     sort: 'date',
-    stats: { total: 0, favourites: 0, groups: 0, trashed: 0 },
-    isLoading: false,
-    trash: [],
-    selectedDetail: null
+    stats: { total: 0, favourites: 0, groups: 0, trashed: 0 }
   })
 
   // Provide a stub preload bridge — jsdom has no real `window.api`.
@@ -67,10 +64,9 @@ beforeEach(() => {
               title: 'Hero',
               description: null,
               coverPath: '/p/hero.png',
-              isGroup: false,
               favourite: false,
               reviewStatus: 'approved',
-              variantCount: 1,
+              pile: { memberCount: 2 },
               tags: []
             },
             variants: []
@@ -98,7 +94,6 @@ beforeEach(() => {
       return { success: true, data: { success: true, message: 'pong', timestamp: 0 } }
     }),
     subscribe: vi.fn(() => () => {}),
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn((file) => `/path/to/${file.name}`)
   } as unknown as typeof window.api
 })
@@ -148,12 +143,10 @@ describe('App', () => {
                 coverPath: '/t.png',
                 coverSource: 'embedded',
                 coverMissing: false,
-                isGroup: false,
                 favourite: false,
                 reviewStatus: 'needs_review',
                 createdAt: '2026-10-11',
-                variantCount: 0,
-                topId: null,
+                pile: null,
                 tags: [],
                 stage: 'to_sort',
                 aiStatus: 'off',
@@ -193,7 +186,6 @@ describe('App', () => {
                     tags: [],
                     touched: false,
                     checked: false,
-                    sidecarFileName: null,
                     cover: {
                       path: '/t.png',
                       source: 'embedded',
@@ -296,12 +288,10 @@ describe('App', () => {
                 coverPath: '/c/a.webp',
                 coverSource: 'embedded',
                 coverMissing: false,
-                isGroup: false,
                 favourite: false,
                 reviewStatus: 'pending',
                 createdAt: '2026-10-11',
-                variantCount: 0,
-                topId: null,
+                pile: null,
                 tags: [],
                 stage: 'to_sort',
                 aiStatus: 'ready',

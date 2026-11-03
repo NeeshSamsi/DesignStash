@@ -7,6 +7,9 @@ import { normaliseTagLabel, type CategorySnapshot, type TagMatch, type TagSnapsh
 import type { MockupRepository } from './mockups'
 import type { SearchRepository } from './search'
 
+/** The handle inside a transaction. */
+type Tx = Parameters<Parameters<AppDatabase['transaction']>[0]>[0]
+
 /** Two-tier taxonomy: categories and the tags inside them. */
 export class TagRepository {
   constructor(
@@ -124,20 +127,23 @@ export class TagRepository {
   /** Merge sourceTag into targetTag: re-point every association, dedupe, delete source, reindex FTS. */
   mergeTags(sourceTagId: number, targetTagId: number): { affectedMockups: number } {
     this.assertMergeable(sourceTagId, targetTagId)
-    const affected = this.mockupIdsForTag(sourceTagId)
-
-    this.db.transaction((tx) => {
-      for (const mockupId of affected) {
-        tx.insert(mockupTags).values({ mockupId, tagId: targetTagId }).onConflictDoNothing().run()
-        tx.delete(mockupTags)
-          .where(and(eq(mockupTags.mockupId, mockupId), eq(mockupTags.tagId, sourceTagId)))
-          .run()
-      }
-      tx.delete(tags).where(eq(tags.id, sourceTagId)).run()
-    })
+    const affected = this.db.transaction((tx) => this.mergeInTx(tx, sourceTagId, targetTagId))
 
     for (const mockupId of affected) this.search.upsertSearchIndex(mockupId)
     return { affectedMockups: affected.length }
+  }
+
+  /** The merge itself, for a caller that already holds a transaction. Returns the mockups it touched. */
+  private mergeInTx(tx: Tx, sourceTagId: number, targetTagId: number): number[] {
+    const affected = this.mockupIdsForTag(sourceTagId)
+    for (const mockupId of affected) {
+      tx.insert(mockupTags).values({ mockupId, tagId: targetTagId }).onConflictDoNothing().run()
+      tx.delete(mockupTags)
+        .where(and(eq(mockupTags.mockupId, mockupId), eq(mockupTags.tagId, sourceTagId)))
+        .run()
+    }
+    tx.delete(tags).where(eq(tags.id, sourceTagId)).run()
+    return affected
   }
 
   /**
@@ -216,14 +222,22 @@ export class TagRepository {
         .get()
       if (!target) throw new Error(`Category ${moveTagsTo} not found`)
 
-      for (const tag of tagsIn) {
-        const clash = this.getTagByNormalisedLabel(moveTagsTo, tag.label)
-        if (clash) this.mergeTags(tag.id, clash.id)
-        else this.reassignTagCategory(tag.id, moveTagsTo)
-      }
+      // Every move and the delete are one transaction, so a failure leaves nothing half-moved.
+      const touched = this.db.transaction((tx) => {
+        const merged: number[] = []
+        for (const tag of tagsIn) {
+          const clash = this.getTagByNormalisedLabel(moveTagsTo, tag.label)
+          if (clash) merged.push(...this.mergeInTx(tx, tag.id, clash.id))
+          else tx.update(tags).set({ categoryId: moveTagsTo }).where(eq(tags.id, tag.id)).run()
+        }
+        tx.delete(tagCategories).where(eq(tagCategories.id, categoryId)).run()
+        return merged
+      })
+      for (const mockupId of new Set(touched)) this.search.upsertSearchIndex(mockupId)
+    } else {
+      this.db.delete(tagCategories).where(eq(tagCategories.id, categoryId)).run()
     }
 
-    this.db.delete(tagCategories).where(eq(tagCategories.id, categoryId)).run()
     return {
       deleted: true,
       movedTags: tagsIn.length,

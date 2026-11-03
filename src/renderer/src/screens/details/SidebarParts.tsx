@@ -6,7 +6,6 @@ import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { CoverImage } from '@renderer/components/CoverImage'
 import { CoverPanel } from '@renderer/components/CoverPanel'
 import { Lightbox } from '@renderer/components/Lightbox'
-import { Tooltip } from '@renderer/components/Tooltip'
 import { cn } from '@renderer/lib/utils'
 import { TruncatedText } from '@renderer/lib/truncated-text'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
@@ -57,7 +56,7 @@ export interface SidebarCoverProps {
   missing: boolean
 }
 
-/** The cover at full width, 4:3, with a small button at its corner that opens the full-screen viewer. */
+/** The cover at full width, 4:3, with a Zoom button at its corner that opens the full-screen viewer. */
 export function SidebarCover({ src, title, coverSource, missing }: SidebarCoverProps) {
   const [zoom, setZoom] = useState(false)
   const state = missing ? 'missing-file' : !src || coverSource === 'none' ? 'no-preview' : 'loaded'
@@ -70,20 +69,20 @@ export function SidebarCover({ src, title, coverSource, missing }: SidebarCoverP
         {...(src ? { src } : {})}
         className="size-full rounded-card-cover"
       />
-      <Tooltip label="Full screen" arrow="top-right">
-        <Button
-          variant="secondary"
-          size="icon"
-          aria-label="Full screen"
-          iconStart={ZoomInAreaIcon}
-          showIconStart
-          className="absolute right-2.5 bottom-2.5"
-          onClick={() => setZoom(true)}
-        />
-      </Tooltip>
+      {/* Same name and icon as the edit form's Zoom, so the control reads alike in both modes. */}
+      <Button
+        variant="secondary"
+        size="sm"
+        label="Zoom"
+        iconStart={ZoomInAreaIcon}
+        showIconStart
+        className="absolute right-2.5 bottom-2.5"
+        onClick={() => setZoom(true)}
+      />
       <Lightbox
         open={zoom}
         mode="single"
+        caption={title}
         state={missing ? 'missing' : 'loaded'}
         {...(src ? { src } : {})}
         onClose={() => setZoom(false)}
@@ -97,6 +96,8 @@ export function SidebarCover({ src, title, coverSource, missing }: SidebarCoverP
 }
 
 export interface EditableCoverProps {
+  /** Names the full-screen viewer: the title as it stands in the form. */
+  title: string
   src: string | undefined
   coverPath: string
   coverSource: CoverSource
@@ -114,6 +115,7 @@ export interface EditableCoverProps {
  * of what Save commits.
  */
 export function EditableCover({
+  title,
   src,
   coverPath,
   coverSource,
@@ -131,7 +133,6 @@ export function EditableCover({
         source={panelSource(coverPath, coverSource)}
         state={ui}
         coverMissing={missing}
-        sidecarAccepted
         showDeck={false}
         {...(src ? { coverSrc: src } : {})}
         {...(imageSize ? { imageSize } : {})}
@@ -144,6 +145,7 @@ export function EditableCover({
       <Lightbox
         open={zoom}
         mode="single"
+        caption={title}
         state={missing ? 'missing' : 'loaded'}
         {...(src ? { src } : {})}
         onClose={() => setZoom(false)}

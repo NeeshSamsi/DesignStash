@@ -33,6 +33,8 @@ const figma = snapshot<{ components: FigmaComponent[] }>('components.json').comp
   (c) => !FIGMA_ONLY.has(c.name) && !c.retired
 )
 const byName = new Map(CATALOG.map((e) => [e.contract.name, e]))
+// Axes whose code prop has another name (OVERRIDES.axisNames in scripts/ds/contract.mjs).
+const AXIS_NAMES: Record<string, Record<string, string>> = { Textarea: { rowRange: 'rows' } }
 
 describe('design-system drift', () => {
   it('has a scaffolded component for every Figma component set', () => {
@@ -49,7 +51,8 @@ describe('design-system drift', () => {
       const contract = byName.get(name)?.contract
       expect(contract?.figmaId).toBe(c.figmaId)
       for (const [axis, options] of Object.entries(contract?.axes ?? {})) {
-        const figmaAxis = Object.entries(c.variants).find(([k]) => pascal(k) === pascal(axis))
+        const figmaName = AXIS_NAMES[name]?.[axis] ?? axis
+        const figmaAxis = Object.entries(c.variants).find(([k]) => pascal(k) === pascal(figmaName))
         expect(figmaAxis, `${name}.${axis}`).toBeDefined()
         for (const option of options) expect(figmaAxis?.[1]).toContain(option)
       }

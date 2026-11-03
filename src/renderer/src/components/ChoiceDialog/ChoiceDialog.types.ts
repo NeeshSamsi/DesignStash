@@ -16,7 +16,9 @@ export const CHOICE_DIALOG_CONTRACT = {
   flags: {},
   interactionStates: [],
   disabled: false,
-  booleans: {},
+  booleans: {
+    showSecondary: true
+  },
   texts: {
     title: 'Save your changes before closing?',
     description: 'You changed the title and 2 tags on “Clay iPhone 15 Pro”.'
@@ -26,6 +28,8 @@ export const CHOICE_DIALOG_CONTRACT = {
 } as const satisfies ComponentContract
 
 export interface ChoiceDialogContractProps {
+  /** Figma boolean. Default `true`. */
+  showSecondary?: boolean
   /** Figma text. Default "Save your changes before closing?". */
   title?: string
   /** Figma text. Default "You changed the title and 2 tags on “Clay iPhone 15 Pro”.". */
@@ -34,6 +38,7 @@ export interface ChoiceDialogContractProps {
 
 /** Figma defaults. Slots have none. */
 export const CHOICE_DIALOG_DEFAULTS = {
+  showSecondary: true,
   title: 'Save your changes before closing?',
   description: 'You changed the title and 2 tags on “Clay iPhone 15 Pro”.'
 } satisfies ChoiceDialogContractProps

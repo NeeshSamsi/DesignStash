@@ -9,6 +9,7 @@ import { createSettingsStore } from '../settings'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, approvedMockup } from '../db/repositories/__tests__/setup'
 import type { HandlerContext } from './context'
+import { inferenceQueueFor } from './library-effects'
 
 const handlers = vi.hoisted(
   () => new Map<string, (event: unknown, args: unknown) => Promise<unknown>>()
@@ -34,7 +35,7 @@ beforeEach(() => {
   const test = createTestDb()
   sqlite = test.sqlite
   const settings = createSettingsStore(base)
-  test.repo.createMockup(approvedMockup({ title: 'Gone', libraryPath: join(base, 'missing.psd') }))
+  test.repo.mockups.createMockup(approvedMockup({ title: 'Gone', libraryPath: join(base, 'missing.psd') }))
   registerIntegrityHandlers({ settings, repo: test.repo } as unknown as HandlerContext)
 })
 
@@ -89,7 +90,7 @@ describe('resolving changes', () => {
   })
 
   const goneRow = () =>
-    ctx.repo.createMockup(
+    ctx.repo.mockups.createMockup(
       approvedMockup({
         title: 'Glass iPhone 14',
         libraryPath: join(base, 'Library', 'mockups', 'g', 'original.psd')
@@ -132,9 +133,30 @@ describe('resolving changes', () => {
       ids: [`m${gone.id}`]
     })
     expect(removed).toEqual({ success: true, data: { removed: 1 } })
-    expect(ctx.repo.getMockup(gone.id)).toBeUndefined()
+    expect(ctx.repo.mockups.getMockup(gone.id)).toBeUndefined()
+    expect(pushed.at(-1)?.channel).toBe(IPC_CHANNELS.INBOX_COUNTS_CHANGED)
     const status = await call<StashCheckStatus>(IPC_CHANNELS.STASH_CHECK_STATUS)
     expect(status.success && status.data.lastRun).toMatchObject({ result: 'in-sync' })
+  })
+
+  it('Remove and Remove all take the removed mockups out of the AI queue', async () => {
+    const first = goneRow()
+    const cancel = vi.spyOn(inferenceQueueFor(ctx), 'cancel')
+
+    await call(IPC_CHANNELS.INTEGRITY_REMOVE, { ids: [`m${first.id}`] })
+    expect(cancel).toHaveBeenLastCalledWith([first.id])
+
+    const second = goneRow()
+    await call(IPC_CHANNELS.INTEGRITY_REMOVE_ALL)
+    expect(cancel).toHaveBeenLastCalledWith([second.id])
+  })
+
+  it('Remove all pushes the counts too', async () => {
+    goneRow()
+    pushed.length = 0
+    const removed = await call(IPC_CHANNELS.INTEGRITY_REMOVE_ALL)
+    expect(removed).toMatchObject({ success: true, data: { removed: 1 } })
+    expect(pushed.at(-1)?.channel).toBe(IPC_CHANNELS.INBOX_COUNTS_CHANGED)
   })
 
   it('Relink opens the dialog in main and reports a cancel', async () => {
@@ -162,13 +184,13 @@ describe('resolving changes', () => {
     const added = await call<{ mockupIds: number[] }>(IPC_CHANNELS.INTEGRITY_ADD, { ids: [id] })
     const mockupIds = added.success ? added.data.mockupIds : []
     expect(mockupIds).toHaveLength(1)
-    expect(ctx.repo.getMockup(mockupIds[0]!)).toMatchObject({
+    expect(ctx.repo.mockups.getMockup(mockupIds[0]!)).toMatchObject({
       stage: 'to_sort',
       title: 'poster_new'
     })
     expect(pushed.some((p) => p.channel === IPC_CHANNELS.INBOX_COUNTS_CHANGED)).toBe(true)
 
     await call(IPC_CHANNELS.INTEGRITY_UNDO_ADD, { mockupIds })
-    expect(ctx.repo.getMockup(mockupIds[0]!)).toBeUndefined()
+    expect(ctx.repo.mockups.getMockup(mockupIds[0]!)).toBeUndefined()
   })
 })

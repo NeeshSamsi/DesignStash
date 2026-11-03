@@ -5,12 +5,12 @@ import { cn } from "@renderer/lib/utils"
 
 // Figma KeyboardShortcut 211:41. variant="default" ↔ boxed (inputs, palettes); plain for menus and tooltips.
 const kbdVariants = cva(
-  "pointer-events-none inline-flex w-fit items-center justify-center gap-1 font-sans type-caption-xs-light whitespace-nowrap select-none [&_svg:not([class*='size-'])]:size-3",
+  "pointer-events-none inline-flex w-fit items-center justify-center gap-1 font-sans type-caption-xs-regular whitespace-nowrap select-none [&_svg:not([class*='size-'])]:size-icon-2xs",
   {
     variants: {
       variant: {
         default: "rounded-sm border border-base bg-surface-3 px-1.5 py-0.5 text-muted-foreground",
-        plain: "text-tertiary",
+        plain: "text-muted-foreground",
       },
     },
     defaultVariants: { variant: "default" },

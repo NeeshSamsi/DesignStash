@@ -31,6 +31,18 @@ describe('FlowModal', () => {
     expect(container.querySelector('li[data-step-state="done"] svg')).not.toBeNull()
   })
 
+  it('shows no badge while there is no count', () => {
+    const { container } = render(<FlowModal step="look-over" count="" />)
+    expect(states(container)).toEqual(['done', 'current', 'todo'])
+    expect(container.querySelector('li[data-step-state="current"] [data-ds="Badge"]')).toBeNull()
+  })
+
+  it('fills the Look it over track to the progress, and leaves it empty without one', () => {
+    const fillOf = (c: HTMLElement) => c.querySelector<HTMLElement>('span[style]')?.style.width
+    expect(fillOf(render(<FlowModal step="look-over" progress={0.5} />).container)).toBe('50%')
+    expect(fillOf(render(<FlowModal step="look-over" />).container)).toBe('0%')
+  })
+
   it('lays its body in the padded area', () => {
     render(<FlowModal body={<p>board</p>} />)
     expect(screen.getByText('board')).not.toBeNull()

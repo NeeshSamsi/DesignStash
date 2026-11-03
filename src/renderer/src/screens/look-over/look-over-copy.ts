@@ -27,3 +27,5 @@ export function stashRefusal(reason: 'not-ready' | 'no-cover'): {
 
 export const NO_COVER_REASON = 'Add a cover to stash it'
 export const NO_TITLE_REASON = 'Add a title to continue'
+/** Where Skip for now sends a mockup: nowhere new, it just goes to the end of the queue. */
+export const SKIP_NOTE = 'It stays in To stash'

@@ -45,4 +45,17 @@ describe('ModelRow behaviour', () => {
     expect(screen.getByRole('radio').getAttribute('aria-checked')).toBe('false')
     expect(screen.getByText('Downloaded')).not.toBeNull()
   })
+
+  it('selected sets the picked look; unset follows the state', () => {
+    const picked = (props: ModelRowProps) => {
+      const { container, unmount } = render(<ModelRow {...props} />)
+      const cls = container.querySelector('[data-ds="ModelRow"]')?.className ?? ''
+      unmount()
+      return cls
+    }
+    expect(picked({ state: 'not-installed' })).toContain('border-selected')
+    expect(picked({ state: 'not-installed', selected: false })).toContain('border-input')
+    expect(picked({ state: 'installed' })).toContain('border-input')
+    expect(picked({ state: 'installed', selected: true })).toContain('border-selected')
+  })
 })

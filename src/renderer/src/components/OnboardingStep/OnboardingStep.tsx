@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { ArrowLeft01Icon, ArrowRight01Icon, FolderLibraryIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -17,6 +18,8 @@ export interface OnboardingStepProps
   primaryLabel?: string
   /** The primary's label while `busy`, e.g. "Checking…" or "Starting download…". */
   busyLabel?: string
+  /** Standard only. Leaves the primary out when the page's own buttons are the answer (privacy). */
+  hidePrimary?: boolean
   /** The primary stays off until the page has what it needs (a usable folder). */
   primaryDisabled?: boolean
   /** Standard only. The quiet button next to the primary. */
@@ -40,13 +43,14 @@ export function OnboardingStep({
   primaryLabel,
   busyLabel = 'Checking…',
   primaryDisabled = false,
+  hidePrimary = false,
   skipLabel = 'Skip for now',
   onBack,
   onSkip,
   onPrimary,
   ...rest
 }: OnboardingStepProps) {
-  const { variant, busy, footer, showContent, title, body, content, ...props } = {
+  const { variant, busy, footer, showContent, showSkip, title, body, content, ...props } = {
     ...ONBOARDING_STEP_DEFAULTS,
     ...rest
   }
@@ -66,7 +70,7 @@ export function OnboardingStep({
         <div className="flex size-14 items-center justify-center rounded-xl bg-primary">
           <HugeiconsIcon
             icon={FolderLibraryIcon}
-            strokeWidth={1.5}
+            strokeWidth={ICON_STROKE}
             aria-hidden
             className="size-6 text-on-primary"
           />
@@ -102,19 +106,21 @@ export function OnboardingStep({
             </div>
           )}
           <div className="flex items-center gap-2">
-            {!welcome && onSkip && (
+            {!welcome && showSkip && onSkip && (
               <Button variant="ghost" size="sm" label={skipLabel} onClick={onSkip} />
             )}
-            <Button
-              variant="primary"
-              size={welcome ? 'base' : 'sm'}
-              label={busy ? busyLabel : label}
-              loading={busy}
-              disabled={busy || primaryDisabled}
-              showIconEnd={welcome && !busy}
-              iconEnd={ArrowRight01Icon}
-              onClick={onPrimary}
-            />
+            {!hidePrimary && (
+              <Button
+                variant="primary"
+                size={welcome ? 'base' : 'sm'}
+                label={busy ? busyLabel : label}
+                loading={busy}
+                disabled={busy || primaryDisabled}
+                showIconEnd={welcome && !busy}
+                iconEnd={ArrowRight01Icon}
+                onClick={onPrimary}
+              />
+            )}
           </div>
         </div>
       )}

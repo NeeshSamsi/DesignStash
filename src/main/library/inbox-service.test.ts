@@ -25,7 +25,7 @@ beforeEach(() => {
 afterEach(() => sqlite.close())
 
 const imported = (name: string, extra = {}) =>
-  repo.createMockup({
+  repo.mockups.createMockup({
     ...sample,
     title: name,
     libraryPath: `${ROOT}/mockups/${name}/original.psd`,
@@ -40,7 +40,7 @@ describe('list', () => {
     const first = await inbox.list('to_sort')
     expect(first[0]).toMatchObject({ id: a.id, sizeBytes: 4096 })
     expect(stat).toHaveBeenCalledWith(`${ROOT}/mockups/a/original.psd`)
-    expect(repo.getMockup(a.id)?.sizeBytes).toBe(4096)
+    expect(repo.mockups.getMockup(a.id)?.sizeBytes).toBe(4096)
 
     await inbox.list('to_sort')
     expect(stat).toHaveBeenCalledTimes(1)
@@ -57,14 +57,14 @@ describe('toss', () => {
   it('removes the records and the app copies of a pile and its members', async () => {
     const a = imported('a')
     const b = imported('b')
-    repo.createPile([a.id, b.id], a.id)
-    repo.setStage([a.id, b.id], 'to_stash')
+    repo.piles.createPile([a.id, b.id], a.id)
+    repo.mockups.setStage([a.id, b.id], 'to_stash')
 
     const result = await inbox.toss([a.id])
 
     expect(result.tossedIds.sort()).toEqual([a.id, b.id].sort())
-    expect(repo.getMockup(a.id)).toBeUndefined()
-    expect(repo.getMockup(b.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(a.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(b.id)).toBeUndefined()
     expect(rm.mock.calls.map((c) => c[0]).sort()).toEqual(
       [
         `${ROOT}/mockups/a/original.psd`,
@@ -95,24 +95,24 @@ describe('toss', () => {
     expect(removed).not.toContain('/Users/me/Desktop/thumb.webp')
     expect(removed.every((p) => p.startsWith(`${ROOT}/`) && !p.includes('..'))).toBe(true)
     // The records still go.
-    expect(repo.getMockup(stray.id)).toBeUndefined()
-    expect(repo.getMockup(sneaky.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(stray.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(sneaky.id)).toBeUndefined()
   })
 
   it('skips mockups already in My Stash or Trash and leaves them whole', async () => {
     const fresh = imported('fresh')
-    const stashed = repo.createMockup(
+    const stashed = repo.mockups.createMockup(
       approvedMockup({ title: 's', libraryPath: `${ROOT}/mockups/s/original.psd` })
     )
     const trashed = imported('t')
-    repo.moveToTrash(trashed.id)
+    repo.trash.moveToTrash(trashed.id)
 
     const result = await inbox.toss([fresh.id, stashed.id, trashed.id, 9999])
 
     expect(result.tossedIds).toEqual([fresh.id])
     expect(result.skippedIds.sort()).toEqual([stashed.id, trashed.id, 9999].sort())
-    expect(repo.getMockup(stashed.id)).toBeDefined()
-    expect(repo.getMockup(trashed.id)).toBeDefined()
+    expect(repo.mockups.getMockup(stashed.id)).toBeDefined()
+    expect(repo.mockups.getMockup(trashed.id)).toBeDefined()
     expect(rm.mock.calls.map((c) => c[0]).every((p) => p.includes('/mockups/fresh/'))).toBe(true)
   })
 

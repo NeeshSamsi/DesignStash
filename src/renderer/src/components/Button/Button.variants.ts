@@ -17,7 +17,9 @@ export const buttonVariants = cva('', {
       sm: '',
       base: '',
       lg: '',
-      icon: ''
+      icon: '',
+      'icon-xs': '',
+      'icon-sm': ''
     }
   },
   defaultVariants: { variant: 'primary', size: 'base' }

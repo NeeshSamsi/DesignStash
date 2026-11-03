@@ -1,11 +1,30 @@
 import type { AiDownloadFailure } from '@shared/ipc/ai'
 
-/** "/Users/ada/Pictures/DesignStash" → "~/Pictures/DesignStash". Anything outside the home folder is left alone. */
+/**
+ * A folder as a person would say it: "/Users/ada/Pictures/DesignStash" → "~/Pictures/DesignStash",
+ * "/Volumes/Studio SSD/Work" → "Studio SSD/Work", and the "/private" macOS adds to /var, /tmp and /etc
+ * is dropped.
+ */
 export function friendlyPath(path: string): string {
-  const home = /^\/Users\/[^/]+/.exec(path)
-  if (!home) return path
-  const rest = path.slice(home[0].length)
-  return rest === '' ? '~' : `~${rest}`
+  const real = path.replace(/^\/private(?=\/(?:var|tmp|etc)(?:\/|$))/, '')
+  const home = /^\/Users\/[^/]+/.exec(real)
+  if (home) {
+    const rest = real.slice(home[0].length)
+    return rest === '' ? '~' : `~${rest}`
+  }
+  const volume = /^\/Volumes\/([^/]+)(.*)$/.exec(real)
+  return volume ? `${volume[1]}${volume[2]}` : real
+}
+
+/**
+ * A friendly path cut in the middle so the last two folders always show:
+ * "~/Pictures/Work/Clients/DesignStash" → "~/…/Clients/DesignStash". Short paths stay whole.
+ */
+export function shortPath(path: string, keep = 2): string {
+  const parts = path.split('/').filter(Boolean)
+  if (parts.length <= keep + 1) return path
+  const head = path.startsWith('/') ? `/${parts[0]}` : (parts[0] ?? '')
+  return `${head}/…/${parts.slice(-keep).join('/')}`
 }
 
 /** Where a folder lives, in words: "Macintosh HD › Users › you › Pictures". */
@@ -36,7 +55,7 @@ export const PRIVACY_STEP = {
 
 export const DONE_STEP = {
   title: 'Your stash is ready!',
-  body: 'Use the Add card in My Stash to bring in files or a folder, or just drop PSDs anywhere in the window.'
+  body: 'Use the Add card in My Stash to bring in files or a folder, or just drop PSDs or zips anywhere in the window.'
 } as const
 
 export const AI_STEP = {

@@ -45,15 +45,15 @@ describe('TruncatedText', () => {
 })
 
 describe('PageHeader crumbs', () => {
-  it('never truncates My Stash, only the current title', () => {
+  it('cuts the parent crumb before the current title, and both can show the full name', () => {
     render(
       <TooltipProvider>
         <PageHeader current="A pile with a very long title" parent="My Stash" onParent={() => {}} />
       </TooltipProvider>
     )
     const parent = screen.getByRole('button', { name: 'My Stash' })
-    expect(parent.className).toContain('shrink-0')
-    expect(parent.className).not.toContain('truncate')
+    expect(parent.className).toContain('shrink-3')
+    expect(screen.getByText('My Stash').className).toContain('truncate')
     expect(screen.getByText('A pile with a very long title').className).toContain('truncate')
   })
 })

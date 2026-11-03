@@ -12,7 +12,10 @@ export type CoverResolution =
   | { source: 'none' }
 
 export interface ResolveCoverInput {
+  /** The PSD to read the embedded preview from. */
   psdPath: string
+  /** Where the PSD came from, for matching sidecar images by name and folder. Defaults to `psdPath`. */
+  sidecarFor?: string
   candidateImagePaths: string[]
   outDir: string
 }

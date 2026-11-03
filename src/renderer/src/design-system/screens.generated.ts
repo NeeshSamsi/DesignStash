@@ -12,26 +12,27 @@ export interface ScreenEntry {
 export const FIGMA_FLOWS_URL =
   'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=0-1'
 
+/** figmaId of each screen on the prototype's happy path, in order. */
 export const HAPPY_PATH: string[] = [
-  'A1 Welcome',
-  'A2 Library location',
-  'A3a Choose model',
-  'A3c Downloading',
-  'A3d Verifying checksum',
-  'A3e Download complete',
-  'A4 Privacy consent',
-  'A5 All set',
-  'C3 Empty library',
-  'G1.1 Add menu',
-  'G1.2 Copying starts',
-  'G3.2 Copied · 3 skipped',
-  'I1.1 To sort',
-  'S1.1 Board with suggested piles',
-  'L1.1 Look it over',
-  'L1.2 Stashed · next loading',
-  'I4.1 All tucked away',
-  'C1 Library grid',
-  'D2 Single mockup'
+  '180:5',
+  '180:90',
+  '180:977',
+  '180:1152',
+  '180:1238',
+  '180:1324',
+  '180:181',
+  '180:272',
+  '182:358',
+  '378:22825',
+  '378:22897',
+  '378:23479',
+  '378:24064',
+  '379:25464',
+  '379:26545',
+  '379:28011',
+  '367:24683',
+  '182:5',
+  '893:134791'
 ]
 
 export const SCREENS: ScreenEntry[] = [
@@ -62,6 +63,13 @@ export const SCREENS: ScreenEntry[] = [
     flow: '0 · Launch',
     page: '↳ Start',
     components: ['Banner', 'CenteredLayout', 'OnboardingStep', 'StepIndicator']
+  },
+  {
+    title: 'settings.json corrupt, no copy kept',
+    figmaId: '926:154063',
+    flow: '0 · Launch',
+    page: '↳ Start',
+    components: ['CenteredLayout']
   },
   {
     title: 'A1 Welcome',
@@ -104,6 +112,20 @@ export const SCREENS: ScreenEntry[] = [
     flow: 'A · Onboarding',
     page: '↳ Start',
     components: ['CenteredLayout', 'ChoiceDialog', 'OnboardingStep', 'PathField', 'StepIndicator']
+  },
+  {
+    title: 'Folder not found',
+    figmaId: '926:163373',
+    flow: 'A · Onboarding',
+    page: '↳ Start',
+    components: ['CenteredLayout']
+  },
+  {
+    title: 'Checking the folder',
+    figmaId: '926:163403',
+    flow: 'A · Onboarding',
+    page: '↳ Start',
+    components: ['CenteredLayout']
   },
   {
     title: 'A3a Choose model',
@@ -532,24 +554,6 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'G3.E3 Resumed after relaunch',
-    figmaId: '436:36773',
-    flow: 'B1 · Gather',
-    page: '↳ Gather',
-    components: [
-      'AppWindow',
-      'CopyFileRow',
-      'CopyWidget',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupCard',
-      'MockupGrid',
-      'PageHeader',
-      'Progress',
-      'SidebarNav'
-    ]
-  },
-  {
     title: 'G3.E4 Cancel · keep or undo',
     figmaId: '378:23772',
     flow: 'B1 · Gather',
@@ -580,6 +584,90 @@ export const SCREENS: ScreenEntry[] = [
       'PageHeader',
       'SidebarNav',
       'Toast'
+    ]
+  },
+  {
+    title: 'G4.1 Zip dropped · unpacking',
+    figmaId: '950:7163',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CopyFileRow',
+      'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Progress',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Spinner',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'G4.2 Zip copied · 2 skipped',
+    figmaId: '950:7202',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CopyFileRow',
+      'CopyWidget',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Spinner',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'G4.E1 Not PSDs or zips · toast',
+    figmaId: '950:7246',
+    flow: 'B1 · Gather',
+    page: '↳ Gather',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SidebarNav',
+      'SidebarNavItem',
+      'Spinner',
+      'Toast',
+      'TreeBranch'
     ]
   },
   {
@@ -1430,6 +1518,13 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'S9.E5 Long file names',
+    figmaId: '931:159799',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: ['AppWindow']
+  },
+  {
     title: 'S9.E1 Generic folder name',
     figmaId: '472:66001',
     flow: 'B2 · Sort into piles',
@@ -1476,7 +1571,7 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'S9.E4 Top mockup stashed, title takes over',
+    title: 'S9.E4 Leader stashed, title takes over',
     figmaId: '472:67768',
     flow: 'B2 · Sort into piles',
     page: '↳ Sort',
@@ -1489,6 +1584,48 @@ export const SCREENS: ScreenEntry[] = [
       'GroupMemberThumb',
       'SidebarNav'
     ]
+  },
+  {
+    title: 'S10.1 Finish later asks first',
+    figmaId: '931:160335',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: ['AppWindow']
+  },
+  {
+    title: 'S10.2 Saving your piles',
+    figmaId: '931:160475',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: ['AppWindow']
+  },
+  {
+    title: 'S10.E1 Couldn’t save your piles',
+    figmaId: '931:161574',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'S10.E2 Loading the board',
+    figmaId: '931:161636',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: ['AppWindow']
+  },
+  {
+    title: 'S10.E3 Couldn’t open these',
+    figmaId: '931:161698',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: ['AppWindow']
+  },
+  {
+    title: 'S10.E4 Nothing left to look over',
+    figmaId: '931:161760',
+    flow: 'B2 · Sort into piles',
+    page: '↳ Sort',
+    components: ['AppWindow']
   },
   {
     title: 'L2.1 Top of the pile',
@@ -1579,24 +1716,11 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'L2.E1 Top mockup edited · updating variants',
-    figmaId: '379:28978',
+    title: 'L2.E6 A draft isn’t ready yet',
+    figmaId: '932:167337',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: [
-      'ActionBar',
-      'AppWindow',
-      'CoverPanel',
-      'FlowModal',
-      'MockupMetaForm',
-      'PileRail',
-      'PileStep',
-      'Progress',
-      'ProgressDialog',
-      'SidebarNav',
-      'TagChip',
-      'TagEditor'
-    ]
+    components: ['AppWindow', 'Toast']
   },
   {
     title: 'L2.E2 Jump back to the top mockup',
@@ -1667,6 +1791,13 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'L2.E7 Add a cover to stash it',
+    figmaId: '932:167874',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: ['AppWindow', 'Toast']
+  },
+  {
     title: 'L1.1 Look it over',
     figmaId: '379:26545',
     flow: 'B3 · Look it over',
@@ -1683,7 +1814,7 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'L1.2 Stashed · next loading',
+    title: 'L1.2 Stashed · Undo',
     figmaId: '379:28011',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
@@ -1701,38 +1832,18 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'L1.E1 Sniffing out a title',
-    figmaId: '379:29231',
+    title: 'L1.E5 Stashing…',
+    figmaId: '926:172134',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: [
-      'ActionBar',
-      'AppWindow',
-      'CoverPanel',
-      'FlowModal',
-      'MockupMetaForm',
-      'SidebarNav',
-      'Skeleton',
-      'TagChip',
-      'TagEditor'
-    ]
+    components: ['AppWindow']
   },
   {
-    title: 'L1.E2 Without AI',
-    figmaId: '379:28732',
+    title: 'L1.E6 Opening Look it over',
+    figmaId: '932:130397',
     flow: 'B3 · Look it over',
     page: '↳ Look it over',
-    components: [
-      'ActionBar',
-      'AppWindow',
-      'Banner',
-      'CoverPanel',
-      'FlowModal',
-      'MockupMetaForm',
-      'SidebarNav',
-      'TagChip',
-      'TagEditor'
-    ]
+    components: ['AppWindow']
   },
   {
     title: 'L1.E3 Title emptied',
@@ -1768,6 +1879,34 @@ export const SCREENS: ScreenEntry[] = [
       'TagChip',
       'TagEditor'
     ]
+  },
+  {
+    title: 'L1.E7 Finish later?',
+    figmaId: '926:172177',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: ['AppWindow']
+  },
+  {
+    title: 'L1.E8 Couldn’t save your changes',
+    figmaId: '932:165771',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'L1.E9 Couldn’t stash that',
+    figmaId: '932:166335',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'L1.E10 Couldn’t undo that',
+    figmaId: '932:166836',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: ['AppWindow', 'Toast']
   },
   {
     title: 'L3.1 Click Add tag',
@@ -2178,6 +2317,13 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'L4.E9 Low-res preview',
+    figmaId: '932:168524',
+    flow: 'B3 · Look it over',
+    page: '↳ Look it over',
+    components: ['AppWindow']
+  },
+  {
     title: 'L5.1 Back inside a pile',
     figmaId: '573:17382',
     flow: 'B3 · Look it over',
@@ -2243,23 +2389,6 @@ export const SCREENS: ScreenEntry[] = [
       'TagChip',
       'TagEditor',
       'Toast'
-    ]
-  },
-  {
-    title: 'L5.E2 Only skipped ones left',
-    figmaId: '441:46634',
-    flow: 'B3 · Look it over',
-    page: '↳ Look it over',
-    components: [
-      'ActionBar',
-      'AppWindow',
-      'Banner',
-      'CoverPanel',
-      'FlowModal',
-      'MockupMetaForm',
-      'SidebarNav',
-      'TagChip',
-      'TagEditor'
     ]
   },
   {
@@ -2400,6 +2529,27 @@ export const SCREENS: ScreenEntry[] = [
       'Select',
       'SidebarNav'
     ]
+  },
+  {
+    title: 'C1.E4 Library failed to load',
+    figmaId: '926:169217',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'C1.E5 Waiting to be sorted',
+    figmaId: '931:163851',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'C1.E6 Waiting to be sorted · still copying',
+    figmaId: '931:163885',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: ['AppWindow']
   },
   {
     title: 'C2.1 Typing a search',
@@ -2554,6 +2704,13 @@ export const SCREENS: ScreenEntry[] = [
       'SidebarNav',
       'TagChip'
     ]
+  },
+  {
+    title: 'C3.5 A tag nothing carries yet',
+    figmaId: '933:167435',
+    flow: 'C · Library',
+    page: '↳ Library',
+    components: ['AppWindow', 'TagFilterPopover', 'Tooltip']
   },
   {
     title: 'C3.E1 No tag matches',
@@ -2776,41 +2933,6 @@ export const SCREENS: ScreenEntry[] = [
       'SidebarNav',
       'Toast'
     ]
-  },
-  {
-    title: 'C6.1 Preview → fullscreen',
-    figmaId: '182:622',
-    flow: 'C · Library',
-    page: '↳ Library',
-    components: ['AppWindow', 'Lightbox', 'MockupGrid']
-  },
-  {
-    title: 'C6.2 Next mockup',
-    figmaId: '584:9424',
-    flow: 'C · Library',
-    page: '↳ Library',
-    components: ['AppWindow', 'Lightbox', 'MockupGrid']
-  },
-  {
-    title: 'C6.E1 A pile',
-    figmaId: '584:9431',
-    flow: 'C · Library',
-    page: '↳ Library',
-    components: ['AppWindow', 'Lightbox', 'MockupGrid']
-  },
-  {
-    title: 'C6.E2 Still loading',
-    figmaId: '584:9438',
-    flow: 'C · Library',
-    page: '↳ Library',
-    components: ['AppWindow', 'Lightbox', 'MockupGrid']
-  },
-  {
-    title: 'C6.E3 Preview missing',
-    figmaId: '584:9445',
-    flow: 'C · Library',
-    page: '↳ Library',
-    components: ['AppWindow', 'Lightbox', 'MockupGrid']
   },
   {
     title: 'C7.1 Click to select',
@@ -3239,237 +3361,228 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'D1.1 Opening',
-    figmaId: '182:1060',
-    flow: 'D · Detail & edit',
+    title: 'details-panel · master · read',
+    figmaId: '893:133860',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'DetailModalLayout',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
+    components: ['Button', 'CoverImage', 'FavouriteToggle', 'TagChip']
   },
   {
-    title: 'D1.2 A mockup',
-    figmaId: '182:1147',
-    flow: 'D · Detail & edit',
+    title: 'details-panel · master · edit',
+    figmaId: '893:133881',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'DetailModalLayout',
-      'FavouriteToggle',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'MockupMetaForm',
-      'PageHeader',
-      'SidebarNav'
-    ]
+    components: ['Button', 'CoverPanel', 'FavouriteToggle', 'Input', 'MockupMetaForm']
   },
   {
-    title: 'D1.3 A pile',
-    figmaId: '182:1244',
-    flow: 'D · Detail & edit',
+    title: 'details-panel · master · pile',
+    figmaId: '893:133896',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'DetailModalLayout',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav',
-      'VariantStrip',
-      'VariantThumb'
-    ]
+    components: ['Button', 'MockupCard']
   },
   {
-    title: 'D1.E1 Couldn’t load it',
-    figmaId: '182:1600',
-    flow: 'D · Detail & edit',
+    title: 'D1.1 Open a mockup',
+    figmaId: '893:134791',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'DetailModalLayout',
-      'ErrorState',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
+    components: ['AppWindow']
   },
   {
-    title: 'D1.E2 A variant’s cover is missing',
-    figmaId: '182:2037',
-    flow: 'D · Detail & edit',
+    title: 'D1.2 Full screen from the cover',
+    figmaId: '894:19055',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'CoverImage',
-      'DetailModalLayout',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav',
-      'VariantStrip',
-      'VariantThumb'
-    ]
+    components: ['AppWindow', 'Lightbox']
   },
   {
-    title: 'D2.1 Change something',
-    figmaId: '599:20820',
-    flow: 'D · Detail & edit',
+    title: 'D1.3 Edit details',
+    figmaId: '894:19280',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'DetailModalLayout',
-      'FavouriteToggle',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'MockupMetaForm',
-      'PageHeader',
-      'SidebarNav'
-    ]
+    components: ['AppWindow']
   },
   {
-    title: 'D2.2 Saved',
-    figmaId: '599:20829',
-    flow: 'D · Detail & edit',
+    title: 'D1.4 Saved',
+    figmaId: '894:19678',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'DetailModalLayout',
-      'FavouriteToggle',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'MockupMetaForm',
-      'PageHeader',
-      'SidebarNav',
-      'Toast'
-    ]
+    components: ['AppWindow', 'Toast']
   },
   {
-    title: 'D2.E1 Title emptied',
-    figmaId: '182:1952',
-    flow: 'D · Detail & edit',
+    title: 'D1.E1 Opening the details',
+    figmaId: '894:19806',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'DetailModalLayout',
-      'GlobalSearch',
-      'Input',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav',
-      'Tooltip'
-    ]
+    components: ['AppWindow']
   },
   {
-    title: 'D2.E2 Save failed',
-    figmaId: '182:1776',
-    flow: 'D · Detail & edit',
+    title: 'D1.E2 Couldn’t open this mockup',
+    figmaId: '894:20188',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'Banner',
-      'DetailModalLayout',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'MockupMetaForm',
-      'PageHeader',
-      'SidebarNav'
-    ]
+    components: ['AppWindow']
   },
   {
-    title: 'D2.E3 Close with unsaved changes',
-    figmaId: '182:2122',
-    flow: 'D · Detail & edit',
+    title: 'D1.E3 Photoshop didn’t open',
+    figmaId: '894:135730',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ChoiceDialog',
-      'DetailModalLayout',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
+    components: ['AppWindow']
   },
   {
-    title: 'D3.1 Move to Trash',
-    figmaId: '599:20838',
-    flow: 'D · Detail & edit',
+    title: 'D1.E4 Title emptied',
+    figmaId: '894:136231',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AddMockupCard',
-      'AppWindow',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupCard',
-      'MockupGrid',
-      'PageHeader',
-      'Select',
-      'SidebarNav',
-      'Toast'
-    ]
+    components: ['AppWindow']
   },
   {
-    title: 'D3.2 Disband pile',
-    figmaId: '599:20845',
-    flow: 'D · Detail & edit',
+    title: 'D1.E5 Discard your changes?',
+    figmaId: '894:136676',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AddMockupCard',
-      'AppWindow',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupCard',
-      'MockupGrid',
-      'PageHeader',
-      'Select',
-      'SidebarNav',
-      'Toast'
-    ]
+    components: ['AppWindow']
   },
   {
-    title: 'D3.E1 Photoshop didn’t open',
-    figmaId: '182:1688',
-    flow: 'D · Detail & edit',
+    title: 'D1.E6 Cover file missing',
+    figmaId: '894:137128',
+    flow: 'D · Details sidebar',
     page: '↳ Library',
-    components: [
-      'AddMenu',
-      'AppWindow',
-      'ChoiceDialog',
-      'DetailModalLayout',
-      'GlobalSearch',
-      'LibraryToolbar',
-      'MockupGrid',
-      'PageHeader',
-      'SidebarNav'
-    ]
+    components: ['AppWindow']
+  },
+  {
+    title: 'D1.E7 Full screen · still loading',
+    figmaId: '894:140619',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow', 'Lightbox']
+  },
+  {
+    title: 'D1.E8 Full screen · preview missing',
+    figmaId: '894:141039',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow', 'Lightbox']
+  },
+  {
+    title: 'D1.5 Replace the cover',
+    figmaId: '896:22709',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D1.6 Drag an image over the cover',
+    figmaId: '896:22749',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D1.7 Replacing the cover',
+    figmaId: '896:22789',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D1.8 Cover replaced',
+    figmaId: '896:22829',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'D1.9 Use the PSD’s preview',
+    figmaId: '896:22869',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D1.10 Back on the PSD’s preview',
+    figmaId: '896:22909',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'D1.E9 That image didn’t work',
+    figmaId: '896:22949',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D1.E10 Couldn’t save your changes',
+    figmaId: '931:164899',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'D2.1 Open a pile',
+    figmaId: '894:137528',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D3.1 The pile page',
+    figmaId: '894:137941',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D3.2 Another mockup in the pile',
+    figmaId: '894:138520',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D3.3 Edit pile details',
+    figmaId: '894:139043',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D3.4 Card menu on the pile page',
+    figmaId: '894:140210',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D3.5 Removed from the pile',
+    figmaId: '896:142925',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'D3.6 Couldn’t open this pile',
+    figmaId: '931:164722',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow']
+  },
+  {
+    title: 'D3.E1 Couldn’t put it on top',
+    figmaId: '931:164781',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'D3.E2 Couldn’t remove it from the pile',
+    figmaId: '931:164840',
+    flow: 'D · Details sidebar',
+    page: '↳ Library',
+    components: ['AppWindow', 'Toast']
   },
   {
     title: 'I1.1 To sort',
@@ -3510,6 +3623,34 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'I1.E3 To sort · empty',
+    figmaId: '893:11547',
+    flow: 'I1 · To sort',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow']
+  },
+  {
+    title: 'I1.E4 Load failed',
+    figmaId: '926:167202',
+    flow: 'I1 · To sort',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow']
+  },
+  {
+    title: 'I1.E5 Selected',
+    figmaId: '926:167235',
+    flow: 'I1 · To sort',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow']
+  },
+  {
+    title: 'I1.E6 Tossed',
+    figmaId: '926:167269',
+    flow: 'I1 · To sort',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow', 'Toast']
+  },
+  {
     title: 'I2.1 To stash',
     figmaId: '380:31602',
     flow: 'I2 · To stash',
@@ -3539,6 +3680,20 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'I2.E3 Selected',
+    figmaId: '926:167303',
+    flow: 'I2 · To stash',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow']
+  },
+  {
+    title: 'I2.E2 To stash · empty',
+    figmaId: '893:11580',
+    flow: 'I2 · To stash',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow']
+  },
+  {
     title: 'I3.1 Finish later?',
     figmaId: '380:31280',
     flow: 'I3–I5 · Finish later, done & relaunch',
@@ -3556,7 +3711,7 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
-    title: 'I3.2 My Stash · waiting banner',
+    title: 'I3.2 My Stash · waiting strip',
     figmaId: '380:32844',
     flow: 'I3–I5 · Finish later, done & relaunch',
     page: '↳ Inboxes & Trash',
@@ -3725,6 +3880,48 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'E5 Load failed',
+    figmaId: '926:166976',
+    flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow']
+  },
+  {
+    title: 'E6 Refresh failed',
+    figmaId: '926:167007',
+    flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow']
+  },
+  {
+    title: 'E7 Selected',
+    figmaId: '926:167046',
+    flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow']
+  },
+  {
+    title: 'E8 Card menu',
+    figmaId: '926:167085',
+    flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow', 'DropdownMenu']
+  },
+  {
+    title: 'E9 Restored',
+    figmaId: '926:167124',
+    flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'E10 Emptied',
+    figmaId: '926:167163',
+    flow: 'E · Trash',
+    page: '↳ Inboxes & Trash',
+    components: ['AppWindow', 'Toast']
+  },
+  {
     title: 'F1.1 My Stash',
     figmaId: '797:122009',
     flow: 'F · Settings',
@@ -3808,6 +4005,39 @@ export const SCREENS: ScreenEntry[] = [
       'SettingsLayout',
       'SidebarNav'
     ]
+  },
+  {
+    title: 'F1.1b My Stash · Trash empty',
+    figmaId: '917:156203',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: [
+      'AddMockupCard',
+      'AppWindow',
+      'Badge',
+      'Button',
+      'CoverImage',
+      'FavouriteToggle',
+      'GlobalSearch',
+      'Input',
+      'KeyboardShortcut',
+      'LibraryToolbar',
+      'MockupCard',
+      'MockupGrid',
+      'PageHeader',
+      'Select',
+      'SettingsLayout',
+      'SidebarNav',
+      'SidebarNavItem',
+      'TreeBranch'
+    ]
+  },
+  {
+    title: 'F1.4b Privacy · sharing off',
+    figmaId: '930:157374',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: ['AppWindow']
   },
   {
     title: 'F2.1 The stash check found something',
@@ -3894,6 +4124,13 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'F2.6 The stash check could not run',
+    figmaId: '930:157411',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: ['AppWindow']
+  },
+  {
     title: 'F3.1 AI switched off',
     figmaId: '797:122101',
     flow: 'F · Settings',
@@ -3968,6 +4205,27 @@ export const SCREENS: ScreenEntry[] = [
       'SidebarNav',
       'Switch'
     ]
+  },
+  {
+    title: 'F3.5 AI model · Intel Mac',
+    figmaId: '930:157448',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: ['AppWindow']
+  },
+  {
+    title: 'F3.6 AI model · Checking the download',
+    figmaId: '930:157485',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: ['AppWindow']
+  },
+  {
+    title: 'F3.7 AI model · Download paused',
+    figmaId: '930:157522',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: ['AppWindow']
   },
   {
     title: 'F4.1 Add a tag',
@@ -4144,6 +4402,13 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'F4.11 No tags · loading',
+    figmaId: '930:157559',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: ['AppWindow']
+  },
+  {
     title: 'F5.1 Downloading an update',
     figmaId: '797:122229',
     flow: 'F · Settings',
@@ -4176,6 +4441,27 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'F5.3 About · before the first check',
+    figmaId: '884:133481',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: ['AppWindow']
+  },
+  {
+    title: 'F5.4 Starting the update download',
+    figmaId: '930:157596',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: ['AppWindow']
+  },
+  {
+    title: 'F5.5 Licences',
+    figmaId: '933:169017',
+    flow: 'F · Settings',
+    page: '↳ Settings',
+    components: ['AppWindow']
+  },
+  {
     title: 'G1.1 Changes found at launch',
     figmaId: '182:4338',
     flow: 'G · Stash check',
@@ -4206,6 +4492,27 @@ export const SCREENS: ScreenEntry[] = [
       'ReconciliationPanel',
       'SidebarNav'
     ]
+  },
+  {
+    title: 'G1.5 Checking (from Settings)',
+    figmaId: '926:173575',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
+    components: ['AppWindow']
+  },
+  {
+    title: 'G1.6 Adding a row',
+    figmaId: '926:173612',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
+    components: ['AppWindow']
+  },
+  {
+    title: 'G1.8 Removing a row',
+    figmaId: '933:17814',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
+    components: ['AppWindow']
   },
   {
     title: 'G1.3 Added to To sort',
@@ -4258,6 +4565,20 @@ export const SCREENS: ScreenEntry[] = [
     ]
   },
   {
+    title: 'G1.7 Removed',
+    figmaId: '926:173649',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
+    components: ['AppWindow', 'Toast']
+  },
+  {
+    title: 'G1.E2 Action failed',
+    figmaId: '926:173687',
+    flow: 'G · Stash check',
+    page: '↳ Integrity & errors',
+    components: ['AppWindow', 'Toast']
+  },
+  {
     title: 'X1 Something broke',
     figmaId: '182:5157',
     flow: 'X · Cross-cutting & errors',
@@ -4265,7 +4586,7 @@ export const SCREENS: ScreenEntry[] = [
     components: ['CenteredLayout', 'ErrorState']
   },
   {
-    title: 'X2 Couldn’t load, couldn’t save',
+    title: 'X2 Couldn’t load your stash',
     figmaId: '182:5242',
     flow: 'X · Cross-cutting & errors',
     page: '↳ Integrity & errors',
@@ -4305,5 +4626,19 @@ export const SCREENS: ScreenEntry[] = [
       'PageHeader',
       'SidebarNav'
     ]
+  },
+  {
+    title: 'X1.1 Report copied',
+    figmaId: '926:173722',
+    flow: 'X · Cross-cutting & errors',
+    page: '↳ Integrity & errors',
+    components: ['CenteredLayout', 'Toast']
+  },
+  {
+    title: 'X1.E1 Report not copied',
+    figmaId: '926:173749',
+    flow: 'X · Cross-cutting & errors',
+    page: '↳ Integrity & errors',
+    components: ['CenteredLayout', 'Toast']
   }
 ]

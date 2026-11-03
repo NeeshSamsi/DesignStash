@@ -8,12 +8,14 @@ import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { FlowModal } from '@renderer/components/FlowModal'
 import { useShortcut } from '@renderer/lib/shortcuts'
+import { useFlowOpen } from '@renderer/stores/copyStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { Button } from '@renderer/ui/button'
 import { Skeleton } from '@renderer/ui/skeleton'
 import {
   boardFromProposal,
   boardFromSaved,
-  boardReducer,
+  makeBoardReducer,
   canDisband,
   canNewPile,
   toSortBoard,
@@ -22,7 +24,7 @@ import {
 } from './board-model'
 import { SortBoard } from './SortBoard'
 import { SortMenu } from './SortMenu'
-import { NEW_PILE_ID, type MenuTarget } from './menu-model'
+import type { MenuTarget } from './menu-model'
 
 export interface SortFlowProps {
   open: boolean
@@ -36,6 +38,8 @@ export interface SortFlowProps {
   onLookThemOver: (batchId: string) => void
 }
 
+const SORT_GUIDANCE = 'Drag mockups together to make a pile. Leave the rest on their own.'
+
 type Loaded =
   | { status: 'loading' }
   | { status: 'failed' }
@@ -45,20 +49,7 @@ type Loaded =
 const freshPileId = () =>
   globalThis.crypto?.randomUUID?.() ?? `pile-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-/** Actions that make a pile arrive with a placeholder id; this swaps in a real one. */
-function withPileId(action: BoardAction): BoardAction {
-  if ((action.type === 'new-pile' || action.type === 'drop') && action.newPileId === NEW_PILE_ID) {
-    return { ...action, newPileId: freshPileId() }
-  }
-  if (
-    action.type === 'move-to' &&
-    action.destination.kind === 'new-pile' &&
-    action.destination.newPileId === NEW_PILE_ID
-  ) {
-    return { ...action, destination: { kind: 'new-pile', newPileId: freshPileId() } }
-  }
-  return action
-}
+const boardReducer = makeBoardReducer(freshPileId)
 
 function BoardSkeleton() {
   return (
@@ -98,7 +89,7 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
   /** Every board change goes through here, so each one can raise its Undo toast. */
   const send = useCallback(
     (action: BoardAction) => {
-      let next = boardReducer(latest.current, withPileId(action))
+      let next = boardReducer(latest.current, action)
       if (next.notice) {
         undoToast(next.notice, () => apply({ type: 'undo' }))
         next = { ...next, notice: null }
@@ -119,7 +110,7 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
     id: 'sort.new-pile',
     combo: 'mod+g',
     scope: 'sort',
-    handler: () => canNewPile(latest.current) && send({ type: 'new-pile', newPileId: NEW_PILE_ID })
+    handler: () => canNewPile(latest.current) && send({ type: 'new-pile' })
   })
   useShortcut({
     id: 'sort.disband',
@@ -194,6 +185,20 @@ function SortSession({ initial, batchId, copying, onClose, onLookThemOver }: Ses
               dismissible={false}
             />
           )}
+          <div className="flex min-h-8 items-center justify-between gap-4">
+            <p className="type-body-sm-regular text-muted-foreground">{SORT_GUIDANCE}</p>
+            {state.selectedTiles.length >= 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-subtle hover:border-input"
+                disabled={!canNewPile(state)}
+                onClick={() => send({ type: 'new-pile' })}
+              >
+                Make pile
+              </Button>
+            )}
+          </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-0.5">
             <SortBoard
               state={state}
@@ -252,7 +257,9 @@ export function SortFlow({
   onClose,
   onLookThemOver
 }: SortFlowProps) {
-  if (!open || batchId === null) return null
+  const shown = open && batchId !== null
+  useFlowOpen(shown)
+  if (!shown) return null
   return (
     <SortLoader
       key={batchId}

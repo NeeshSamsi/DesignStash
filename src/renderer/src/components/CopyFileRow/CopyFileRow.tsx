@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import {
   Alert02Icon,
@@ -8,6 +9,7 @@ import {
   Tick02Icon
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { MiddleTruncatedText } from '@renderer/lib/middle-truncated-text'
 import { cn } from '@renderer/lib/utils'
 import { Progress as UiProgress } from '@renderer/ui/progress'
 import {
@@ -48,9 +50,13 @@ const STATUS = {
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=372-5420
  * Copy stays plain: the line says what happened to the file, never a path or a code. Callers pass
  * `detail` for the specifics ("Copied · 312 MB", "Already in your stash as “Clay iPhone 15 Pro”").
+ * A copying row given a `detail`, like "Unpacking… · From Cap.zip", shows it in place of the bar.
  */
 export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFileRowProps) {
-  const { state, name, ...props } = { ...COPY_FILE_ROW_DEFAULTS, ...rest }
+  // The contract's `detail` default is only Figma's sample line: a copying row shows a detail line
+  // when the caller passes one, so the sample never applies.
+  const { state, name, detail: _sample, ...props } = { ...COPY_FILE_ROW_DEFAULTS, ...rest }
+  void _sample
   const copying = state === 'copying'
   return (
     <div
@@ -59,19 +65,23 @@ export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFi
       className={cn(copyFileRowVariants({ state }), className)}
       {...props}
     >
-      <div className="flex size-8 shrink-0 items-center justify-center overflow-clip rounded-md bg-surface-3">
+      <div className="flex size-8 shrink-0 items-center justify-center overflow-clip rounded-lg bg-surface-3">
         <HugeiconsIcon
           icon={Image01Icon}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           className="size-4 text-muted-foreground"
         />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="w-full truncate type-body-sm-medium text-foreground">{name}</p>
-        {copying ? (
+        <MiddleTruncatedText as="p" className="w-full type-body-sm-medium text-foreground">
+          {name}
+        </MiddleTruncatedText>
+        {copying && detail === undefined ? (
           <UiProgress size="sm" value={percent} aria-label={`Copying ${name}`} />
         ) : (
-          <p className={copyFileRowDetailVariants({ state })}>{detail ?? DETAIL[state]}</p>
+          <p className={copyFileRowDetailVariants({ state })}>
+            {detail ?? (copying ? '' : DETAIL[state])}
+          </p>
         )}
       </div>
       {copying ? (
@@ -79,7 +89,7 @@ export function CopyFileRow({ className, percent = 41, detail, ...rest }: CopyFi
       ) : (
         <HugeiconsIcon
           icon={STATUS[state]}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           aria-hidden
           className={cn('size-4 shrink-0', state === 'unreadable' ? 'text-error' : 'text-tertiary')}
         />

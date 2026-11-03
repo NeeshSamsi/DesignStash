@@ -57,7 +57,7 @@ const make = (name: string) => {
   mkdirSync(dir, { recursive: true })
   writeFileSync(join(dir, 'original.psd'), 'hello')
   writeFileSync(join(dir, 'cover.webp'), 'c')
-  return repo.createMockup(
+  return repo.mockups.createMockup(
     approvedMockup({
       title: name,
       libraryPath: join(dir, 'original.psd'),
@@ -70,7 +70,7 @@ describe('trash channels', () => {
   it('lists, counts and sizes what is in Trash', async () => {
     const a = make('a')
     const b = make('b')
-    repo.moveManyToTrash([a.id, b.id])
+    repo.trash.moveManyToTrash([a.id, b.id])
 
     const list = await call<{ items: { id: number; sizeBytes: number; trashedAt: string }[] }>(
       IPC_CHANNELS.TRASH_LIST
@@ -85,14 +85,14 @@ describe('trash channels', () => {
   it('restores all, returns the ids, and an Undo moves them back', async () => {
     const a = make('a')
     const b = make('b')
-    repo.moveManyToTrash([a.id, b.id])
+    repo.trash.moveManyToTrash([a.id, b.id])
 
     const res = await call<{ restoredIds: number[]; missing: number[] }>(
       IPC_CHANNELS.TRASH_RESTORE_ALL
     )
 
     expect(res.success && res.data.restoredIds.sort()).toEqual([a.id, b.id].sort())
-    expect(repo.getTrash()).toHaveLength(0)
+    expect(repo.trash.getTrash()).toHaveLength(0)
     expect(push).toHaveBeenCalledWith(
       IPC_CHANNELS.INBOX_COUNTS_CHANGED,
       expect.objectContaining({ trash: 0 })
@@ -102,43 +102,43 @@ describe('trash channels', () => {
       ids: res.success ? res.data.restoredIds : []
     })
     expect(undo).toMatchObject({ success: true, data: { count: 2 } })
-    expect(repo.getTrash()).toHaveLength(2)
+    expect(repo.trash.getTrash()).toHaveLength(2)
   })
 
   it('reports a restore whose PSD is gone as missing, with no path in the answer', async () => {
     const a = make('a')
-    repo.moveManyToTrash([a.id])
+    repo.trash.moveManyToTrash([a.id])
     rmSync(a.libraryPath)
 
     const res = await call(IPC_CHANNELS.TRASH_RESTORE, { ids: [a.id] })
 
     expect(res).toEqual({ success: true, data: { restoredIds: [], missing: [a.id] } })
     expect(JSON.stringify(res)).not.toContain(root)
-    expect(repo.getMockup(a.id)?.deletedAt).not.toBeNull()
+    expect(repo.mockups.getMockup(a.id)?.deletedAt).not.toBeNull()
   })
 
   it('deletes an entry whose PSD is gone', async () => {
     const a = make('a')
-    repo.moveManyToTrash([a.id])
+    repo.trash.moveManyToTrash([a.id])
     rmSync(a.libraryPath)
 
     const res = await call(IPC_CHANNELS.TRASH_DELETE_ENTRY, { ids: [a.id] })
 
     expect(res).toEqual({ success: true, data: { deletedIds: [a.id], skippedIds: [] } })
-    expect(repo.getMockup(a.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(a.id)).toBeUndefined()
   })
 
   it('empties Trash, removing the app copies and keeping My Stash', async () => {
     const gone = make('gone')
     const kept = make('kept')
-    repo.moveManyToTrash([gone.id])
+    repo.trash.moveManyToTrash([gone.id])
 
     const res = await call(IPC_CHANNELS.TRASH_EMPTY)
 
     expect(res).toEqual({ success: true, data: { deletedCount: 1, bytesFreed: 5 } })
     expect(existsSync(gone.libraryPath)).toBe(false)
     expect(existsSync(kept.libraryPath)).toBe(true)
-    expect(repo.getMockup(kept.id)).toBeDefined()
+    expect(repo.mockups.getMockup(kept.id)).toBeDefined()
     expect(push).toHaveBeenCalledWith(
       IPC_CHANNELS.INBOX_COUNTS_CHANGED,
       expect.objectContaining({ trash: 0 })

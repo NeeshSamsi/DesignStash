@@ -10,7 +10,7 @@
       "name": "Button",
       "figmaId": "211:2091",
       "section": "2 · Primitives (shadcn)",
-      "description": "Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = 2px border/focus ring outside.",
+      "description": "Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = 2px border/focus ring outside.\nSync 2026-10: sizes icon-xs (24px, 16px icon: Toast and Banner dismiss, TagTree row menu) and icon-sm (32px, 16px icon) match ui/button.tsx.",
       "code": "ui/button.tsx (variant=\"default\" ↔ primary, size=\"default\" ↔ base)",
       "variants": {
         "variant": [
@@ -26,7 +26,9 @@
           "sm",
           "base",
           "lg",
-          "icon"
+          "icon",
+          "icon-xs",
+          "icon-sm"
         ],
         "state": [
           "default",
@@ -102,6 +104,10 @@
           "focus",
           "invalid",
           "disabled"
+        ],
+        "rows": [
+          "3",
+          "4-6"
         ]
       },
       "booleans": {},
@@ -564,7 +570,7 @@
       "name": "Toast",
       "figmaId": "213:905",
       "section": "2 · Primitives (shadcn)",
-      "description": "Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.",
+      "description": "Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.\nSync 2026-10: done actions (Moved to Trash, Stashed) use the success variant with the check icon. Undo is a hairline outline button (border/subtle, no fill).",
       "code": "ui/sonner.tsx + stores/toastStore.ts",
       "variants": {
         "variant": [
@@ -630,6 +636,10 @@
           "idle",
           "modal-open",
           "drag-over"
+        ],
+        "sidebar": [
+          "closed",
+          "open"
         ]
       },
       "booleans": {
@@ -668,7 +678,7 @@
       "name": "SidebarNav Item",
       "figmaId": "218:1828",
       "section": "3 · Layout & navigation",
-      "description": "Nav row (icon · label · count); child rows hang off a TreeBranch.",
+      "description": "Nav row (icon · label · count); child rows hang off a TreeBranch.\nSync 2026-10: a count of 0 is hidden (show-count off), so an empty Starred or Trash shows no badge.",
       "code": "AppShell.tsx",
       "variants": {
         "variant": [
@@ -707,8 +717,8 @@
       "variants": {
         "variant": [
           "none",
-          "to-sort",
           "to-stash",
+          "to-sort",
           "both"
         ]
       },
@@ -767,7 +777,7 @@
       "name": "PageHeader",
       "figmaId": "216:1656",
       "section": "3 · Layout & navigation",
-      "description": "Breadcrumb title + description + trailing actions.",
+      "description": "Breadcrumb title + description + trailing actions.\nSync 2026-10: optional description-action (the Clear link while searching) sits right after the description. The title row wraps, so the actions drop under the title at narrow widths.",
       "code": null,
       "variants": {
         "variant": [
@@ -778,7 +788,8 @@
       "booleans": {
         "breadcrumb": true,
         "show-description": true,
-        "actions": false
+        "actions": false,
+        "description-action": false
       },
       "texts": {
         "current": "Starred",
@@ -805,7 +816,7 @@
       "swaps": {
         "content": {
           "kind": "slot",
-          "default": "ContentSlot"
+          "default": "kind=placeholder"
         }
       },
       "exposed": []
@@ -886,7 +897,7 @@
       },
       "texts": {
         "title": "Your stash is looking a little bare",
-        "description": "Add some PSD mockups and we’ll tuck them away, tagged and grouped."
+        "description": "Add some PSD mockups and we’ll tuck them away, tagged and sorted into piles."
       },
       "swaps": {
         "icon": {
@@ -933,12 +944,13 @@
         ]
       },
       "booleans": {
-        "show-details": true
+        "show-details": true,
+        "show-secondary": true
       },
       "texts": {
         "title": "Couldn’t load your library",
         "message": "The database is busy. Try again in a moment.",
-        "code": "LIBRARY_LIST · SQLITE_BUSY"
+        "code": "A report is ready to copy if you need to ask for help."
       },
       "swaps": {},
       "exposed": []
@@ -1012,7 +1024,7 @@
       "swaps": {
         "body": {
           "kind": "slot",
-          "default": "ContentSlot"
+          "default": "kind=placeholder"
         }
       },
       "exposed": []
@@ -1061,7 +1073,10 @@
         "detail-meta": "5 files · 184 MB"
       },
       "swaps": {},
-      "exposed": []
+      "exposed": [
+        "button:Button",
+        "button:Button"
+      ]
     },
     {
       "name": "ChoiceDialog",
@@ -1074,13 +1089,19 @@
           "neutral"
         ]
       },
-      "booleans": {},
+      "booleans": {
+        "show-secondary": true
+      },
       "texts": {
         "title": "Save your changes before closing?",
         "description": "You changed the title and 2 tags on “Clay iPhone 15 Pro”."
       },
       "swaps": {},
-      "exposed": []
+      "exposed": [
+        "button:Button",
+        "secondary:Button",
+        "button:Button"
+      ]
     },
     {
       "name": "FormDialog",
@@ -1152,7 +1173,12 @@
     },
     {
       "code": "ui/dialog.tsx (replaces StepperHeader)",
-      "booleans": {},
+      "booleans": {
+        "progress-25": true,
+        "progress-50": false,
+        "progress-75": false,
+        "progress-100": false
+      },
       "texts": {},
       "swaps": {},
       "exposed": [
@@ -1161,7 +1187,7 @@
       "name": "FlowModal",
       "figmaId": "374:5650",
       "section": "5 · Overlays & dialogs",
-      "description": "Large captured modal for Sort + Look it over. Named steps with counts; Finish later always available and always confirms. Slot: body (the step’s content).",
+      "description": "Large captured modal for Sort + Look it over (1352×822 in a 1512×982 window). Named steps with counts; Finish later always available and always confirms. Screens lay the step body over the empty body area.\n\nSlot: body — the step’s content (sort board, or cover + form + ActionBar) goes inside the modal; padding is built in.\nProgress (Look it over): the second track fills to a quarter of the haul. Turn on progress-50, progress-75 or progress-100 (the widest one that is on shows); with all four off it is empty. Code: FlowModal `progress` is 0 to 1. For an exact fraction, drag the `progress-25` rectangle in track-2 on the instance (the plugin API cannot resize it from here).",
       "variants": {
         "step": [
           "sort",
@@ -1198,7 +1224,7 @@
       "name": "MockupCard",
       "figmaId": "217:1492",
       "section": "6 · Library",
-      "description": "A mockup in any grid: an iOS-squircle container (radius 2xl, 60% corner smoothing; surface-2) with CoverImage, “+N variants” badge, favourite, title and tag line. Hover: the cover zooms ~6% (150ms); Star then ⋯ top-right; along the cover's bottom, over a soft scrim, a full-width primary Open in Photoshop with Edit details (ghost) under it. Edit details, double-click and ↵ open Detail; Space previews; ⋯ = the right-click menu. Selected = border/primary ring. left-behind = the slot a dragged card leaves; group-target = a card being dropped on (drop-hint). pending-review (inbox cards): status badge (show-status) and the +N badge share the top-left row; hover shows one full-width primary button (Look it over in To stash). trash: no star or ⋯, a “Trashed 2 days ago” line, hover Restore with Delete for good under it.",
+      "description": "A mockup in any grid: an iOS-squircle container (radius 2xl, 60% corner smoothing; surface-2) with CoverImage, “+N variants” badge, favourite, title and tag line. Hover: the cover zooms ~6% (150ms); Star then ⋯ top-right; along the cover's bottom, over a soft scrim, a full-width primary Open in Photoshop with Edit details (ghost) under it. Edit details, double-click and ↵ open Detail; Space previews; ⋯ = the right-click menu. Selected = border/primary ring. left-behind = the slot a dragged card leaves; group-target = a card being dropped on (drop-hint). pending-review (inbox cards): status badge (show-status) and the +N badge share the top-left row; hover shows one full-width primary button (Look it over in To stash). trash: no star or ⋯, a “Trashed 2 days ago” line, hover Restore with Delete for good under it.\nSync 2026-10: selected and group-target ring is border/selected. The pile badge shows the total (a 3-mockup pile reads 3) with the layers icon. In code, file-name titles middle-truncate (Figma text can only cut the end).",
       "code": "screens/library/LibraryCard.tsx",
       "variants": {
         "variant": [
@@ -1231,7 +1257,9 @@
         "drop-hint": "Start a pile"
       },
       "swaps": {},
-      "exposed": []
+      "exposed": [
+        "variants:Badge"
+      ]
     },
     {
       "name": "MockupGrid",
@@ -1259,17 +1287,23 @@
       "name": "LibraryToolbar",
       "figmaId": "217:2228",
       "section": "6 · Library",
-      "description": "Filter (+count) → TagFilterPopover, active chips + Clear, stats, sort Select.",
+      "description": "Filter (+count) → TagFilterPopover, active chips + Clear, stats, sort Select.\nSync 2026-10: no item count. The stats text only appears while selecting (&quot;N of M selected&quot;).",
       "code": "screens/library/LibraryPage.tsx",
       "variants": {
         "filters": [
           "none",
           "active"
+        ],
+        "disabled": [
+          "false",
+          "true"
         ]
       },
-      "booleans": {},
+      "booleans": {
+        "show-stats": true
+      },
       "texts": {
-        "stats": "128 items · 12 favourites"
+        "stats": "3 of 12 selected"
       },
       "swaps": {},
       "exposed": []
@@ -1284,9 +1318,9 @@
         "state": [
           "open",
           "some-selected",
+          "empty",
           "searching",
           "no-match",
-          "empty",
           "category-picked"
         ]
       },
@@ -1319,31 +1353,6 @@
       "exposed": []
     },
     {
-      "name": "ImportProgressCard",
-      "figmaId": "220:2403",
-      "section": "7 · Import & grouping",
-      "description": "RETIRED (import flow v1, 2026-10-07). Floating import status in ActivityDock; collapses to a pill.",
-      "code": "screens/gather/GatherDock.tsx (replaced by CopyWidget)",
-      "variants": {
-        "variant": [
-          "expanded",
-          "collapsed"
-        ],
-        "state": [
-          "scanning",
-          "copying",
-          "done",
-          "cancelling",
-          "error"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": [],
-      "retired": true
-    },
-    {
       "code": null,
       "booleans": {
         "more-above": false,
@@ -1357,7 +1366,7 @@
       "name": "CopyWidget",
       "figmaId": "373:5804",
       "section": "7 · Import & grouping",
-      "description": "Bottom-right copy panel (transport only): per-file and overall progress, failures inline, Cancel asks keep or undo, done collapses to a summary.",
+      "description": "Bottom-right copy panel (transport only): per-file and overall progress, failures inline, Cancel asks keep or undo, done collapses to a summary.\nSync 2026-10: while copying the title reads &quot;12 of 40 copied&quot; (files that landed, matching the rows marked Copied); counts use thousands separators (&quot;1,204 copied&quot;). The strip carries the headline and this widget the per-file detail. A done card with nothing failed dismisses itself after about 6 seconds and never shows over a flow modal.",
       "variants": {
         "view": [
           "expanded",
@@ -1373,16 +1382,20 @@
     },
     {
       "code": null,
-      "booleans": {},
+      "booleans": {
+        "show-detail": false,
+        "show-progress": true
+      },
       "texts": {
-        "name": "phone_front.psd"
+        "name": "phone_front.psd",
+        "detail": "Unpacking… · From Phone kit.zip"
       },
       "swaps": {},
       "exposed": [],
       "name": "CopyFileRow",
       "figmaId": "372:5420",
       "section": "7 · Import & grouping",
-      "description": "One file in the copy widget: progress while copying, then what happened to it.",
+      "description": "One file in the copy widget. copying shows a per-file progress bar; finished rows say what happened (copied, duplicate, unreadable, not a PSD).\nSync 2026-10: a done row reads &quot;Copied · 312 MB&quot;. A queued row of a cancelled haul reads &quot;Not copied&quot; (detail override).\ncopying: show-detail swaps the progress bar (show-progress off) for a detail line, like &quot;Unpacking… · From Cap.zip&quot;; the percentage stays. The code shows the line whenever a copying row is given a detail.",
       "variants": {
         "state": [
           "queued",
@@ -1393,26 +1406,6 @@
           "not-psd"
         ]
       }
-    },
-    {
-      "name": "ImportSummary",
-      "figmaId": "220:2945",
-      "section": "7 · Import & grouping",
-      "description": "RETIRED (import flow v1, 2026-10-07). What happened before grouping: StatTiles, skipped-file rows, next action.",
-      "code": null,
-      "variants": {
-        "variant": [
-          "all-good",
-          "partial",
-          "nothing-imported",
-          "cancelled"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": [],
-      "retired": true
     },
     {
       "name": "GroupCard",
@@ -1428,16 +1421,16 @@
         "state": [
           "idle",
           "drag-over",
+          "empty",
           "merge-target",
           "left-behind",
           "selected",
-          "lifted",
-          "empty"
+          "lifted"
         ]
       },
       "booleans": {
-        "show-folder": true,
-        "show-reason": false
+        "show-reason": false,
+        "show-folder": true
       },
       "texts": {
         "title": "iPhone 15 Clay"
@@ -1457,11 +1450,11 @@
         "state": [
           "idle",
           "hover",
-          "selected",
-          "lifted",
           "left-behind",
           "drop-ghost",
-          "pile-target"
+          "pile-target",
+          "lifted",
+          "selected"
         ]
       },
       "booleans": {
@@ -1474,31 +1467,10 @@
       "exposed": []
     },
     {
-      "name": "StepperHeader",
-      "figmaId": "220:3265",
-      "section": "8 · Approval & editing",
-      "description": "RETIRED (import flow v1, 2026-10-07). Where you are in the review queue: title, “3 of 12”, role badge, progress, Exit.",
-      "code": "components/FlowModal/FlowModal.tsx",
-      "variants": {
-        "role": [
-          "leader",
-          "variant",
-          "standalone"
-        ]
-      },
-      "booleans": {},
-      "texts": {
-        "position": "3 of 12"
-      },
-      "swaps": {},
-      "exposed": [],
-      "retired": true
-    },
-    {
       "name": "CoverPanel",
       "figmaId": "220:3545",
       "section": "8 · Approval & editing",
-      "description": "Cover in Look it over and Detail: the image plus a tag row (source tag · optional note · Zoom). Hover reveals Replace (and Use the PSD’s preview on your own cover); drag-over is the shared DropOverlay; replacing keeps the old cover dimmed; errors and the sidecar prompt are Banners. Crop-or-bars rule and limits: design/specs/cover.md. Deck (piles only): show-deck/deck-more peek the mockups still to come behind the cover, deck-label counts them; not clickable.",
+      "description": "Cover in Look it over and Detail. At rest: the image, then a tag row (source tag · optional note · Zoom, always visible). hover: Replace (refresh-01) centred, plus “Use the PSD’s preview” on uploaded covers. drag-over: DropOverlay (the same component as the library). replacing: old cover dimmed with progress. error: standard Banner; the cover is unchanged. none: required CoverDropZone. note/show-note + bars implement the crop rule (design/specs/cover.md). Deck (piles only): show-deck peeks one card behind the cover and shows deck-label (“2 left in this pile”); deck-more adds a second card. Only the mockups still to come are counted; it thins as you go and is not clickable.\nSync 2026-10: the source chip only shows when it says something: “Uploaded”, “Sidecar image” or “Low-res preview” for a small embedded preview. A normal embedded preview shows no chip. A sidecar image is used automatically when the PSD has no embedded preview, so there is no prompt to accept it.",
       "code": "screens/detail/DetailModal.tsx",
       "variants": {
         "source": [
@@ -1512,8 +1484,8 @@
           "hover",
           "drag-over",
           "replacing",
-          "uploading",
-          "error"
+          "error",
+          "uploading"
         ]
       },
       "booleans": {
@@ -1592,12 +1564,12 @@
         ],
         "state": [
           "idle",
-          "adding",
           "suggestions",
           "no-match",
-          "added",
+          "adding",
           "duplicate",
           "marked",
+          "added",
           "empty",
           "thinking"
         ]
@@ -1647,7 +1619,7 @@
       "name": "ActionBar",
       "figmaId": "214:951",
       "section": "8 · Approval & editing",
-      "description": "Footer row: secondary actions left, primary right, optional status text.",
+      "description": "Footer row: secondary actions left, primary right, optional status text.\nSync 2026-10: in the stepper bar only Back and the primary are filled; Finish later is ghost. Skip for now carries the tooltip &quot;It stays in To stash&quot; (hover in the app).",
       "code": null,
       "variants": {
         "variant": [
@@ -1667,30 +1639,6 @@
       "exposed": []
     },
     {
-      "name": "DetailModal layout",
-      "figmaId": "222:4366",
-      "section": "8 · Approval & editing",
-      "description": "Two-pane mockup detail, always editable. Header: title field · Move to Trash (trash icon) · favourite · close. Media: CoverPanel (piles add the deck and VariantStrip). Right: MockupMetaForm. Footer (F1): Disband pile bottom-left for piles; bottom-right, Open in Photoshop is always primary and Save (secondary) appears just left of it once something changes. Trash/Disband pile instant with Undo; no Duplicate, no permanent delete. loading mirrors the loaded layout with the footer disabled. error shows the title as a plain heading. A failed save is an error toast; closing with changes asks Keep editing or Discard. Rules: design/specs/detail.md.",
-      "code": "screens/detail/DetailModal.tsx",
-      "variants": {
-        "variant": [
-          "single",
-          "group"
-        ],
-        "state": [
-          "loaded",
-          "dirty",
-          "saving",
-          "loading",
-          "error"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": []
-    },
-    {
       "name": "VariantStrip",
       "figmaId": "222:3432",
       "section": "8 · Approval & editing",
@@ -1700,8 +1648,8 @@
         "overflow": [
           "fits",
           "start",
-          "scrolled",
-          "end"
+          "end",
+          "scrolled"
         ],
         "state": [
           "default",
@@ -1754,7 +1702,8 @@
       },
       "booleans": {
         "footer": true,
-        "show-content": true
+        "show-content": true,
+        "show-skip": true
       },
       "texts": {
         "title": "Set up on-device AI",
@@ -1763,7 +1712,7 @@
       "swaps": {
         "content": {
           "kind": "slot",
-          "default": "ContentSlot"
+          "default": "kind=placeholder"
         }
       },
       "exposed": []
@@ -1781,10 +1730,10 @@
         ],
         "step": [
           "1",
-          "2",
           "3",
-          "4",
-          "5"
+          "5",
+          "2",
+          "4"
         ]
       },
       "booleans": {},
@@ -1847,8 +1796,12 @@
           "downloading",
           "paused",
           "verifying",
-          "failed",
-          "installed"
+          "installed",
+          "failed"
+        ],
+        "selected": [
+          "true",
+          "false"
         ]
       },
       "booleans": {},
@@ -1860,7 +1813,7 @@
       "name": "ModelCard",
       "figmaId": "795:9758",
       "section": "9 · Onboarding & AI models",
-      "description": "One on-device model in Settings › AI model, after Handy's model card: name, In use / Best fit tags and one plain line, quality and speed as five-step bars; a divider; languages, size and the actions. States: in-use (orange border, Delete) · downloaded (Delete · Use this model) · downloading (progress, Cancel) · available (Download) · failed (reason, Try again).",
+      "description": "One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.",
       "code": "screens/settings/AiModelPane.tsx",
       "variants": {
         "state": [
@@ -1868,7 +1821,9 @@
           "downloaded",
           "downloading",
           "available",
-          "failed"
+          "failed",
+          "verifying",
+          "paused"
         ]
       },
       "booleans": {
@@ -1878,7 +1833,8 @@
         "name": "Qwen 2.5 VL 3B",
         "description": "Good titles and tags in a few seconds per mockup.",
         "languages": "29 languages",
-        "size": "2.1 GB"
+        "size": "2.1 GB",
+        "resume-note": "840 MB of 2.1 GB downloaded"
       },
       "swaps": {},
       "exposed": []
@@ -1909,7 +1865,7 @@
       "name": "ConsentPanel",
       "figmaId": "223:4275",
       "section": "9 · Onboarding & AI models",
-      "description": "Telemetry disclosure + choice for onboarding (A4): what we collect / never collect, with No thanks · Keep it on. Settings › Privacy shows the same lists in its usage-data accordion.",
+      "description": "Telemetry disclosure + choice for onboarding (A4): what we collect / never collect, with No thanks · Keep it on. Settings › Privacy shows the same lists in its usage-data accordion.\nSync 2026-10: neutral, equal-weight choices (Don’t share / Share usage data, both secondary). The What we collect and What we never collect lists are always visible, including in Settings › Privacy whatever the switch state.",
       "code": "screens/settings/PrivacyPane.tsx",
       "variants": {
         "variant": [
@@ -1928,7 +1884,7 @@
       "name": "SettingsLayout",
       "figmaId": "223:4771",
       "section": "10 · Settings & tags",
-      "description": "Settings as a modal over the app (880×760): section list on the left (same selected style as the sidebar), pane title + close, grouped rows (title, real value, control on the right, all inline buttons secondary). Switches that unlock more are accordions. Sections: my-stash · ai-model · tags · privacy · about. Rules: design/specs/settings.md.",
+      "description": "Settings as a modal over the app (880×760): section list on the left (same selected style as the sidebar), pane title + close, grouped rows (title, real value, control on the right, all inline buttons secondary). Switches that unlock more are accordions. Sections: my-stash · ai-model · tags · privacy · about. Rules: design/specs/settings.md.\nSync 2026-10: destructive inline actions in rows (Empty Trash…, Delete) use error-toned label text.",
       "code": "screens/settings/SettingsModal.tsx",
       "variants": {
         "section": [
@@ -1957,14 +1913,14 @@
       "variants": {
         "state": [
           "default",
+          "renaming",
+          "empty",
+          "loading",
           "adding",
           "added",
           "duplicate",
           "hover",
-          "renaming",
-          "new-category",
-          "empty",
-          "loading"
+          "new-category"
         ]
       },
       "booleans": {},
@@ -2070,31 +2026,14 @@
           "drift",
           "resolving",
           "rescanning",
-          "all-resolved"
+          "all-resolved",
+          "removing"
         ]
       },
       "booleans": {},
       "texts": {},
       "swaps": {},
       "exposed": []
-    },
-    {
-      "name": "PendingBatchGroup",
-      "figmaId": "223:6840",
-      "section": "11 · Lists, trash, integrity & recovery",
-      "description": "RETIRED (import flow v1, 2026-10-07). Unreviewed items grouped by import batch.",
-      "code": null,
-      "variants": {
-        "state": [
-          "default",
-          "discarding"
-        ]
-      },
-      "booleans": {},
-      "texts": {},
-      "swaps": {},
-      "exposed": [],
-      "retired": true
     },
     {
       "name": "ProGate",
@@ -2141,10 +2080,14 @@
     },
     {
       "name": "PileRail",
-      "figmaId": "566:15524",
+      "figmaId": "926:164024",
       "section": "8 · Approval & editing",
-      "description": "The pile you’re working through in Look it over: a recessed well right of the form, full body height. pile = “PILE n OF m”, title = the pile’s title, steps = PileStep rows. Everything in a pile is a draft until Stash pile, so steps are clickable. Rules: design/specs/piles.md.",
-      "variants": {},
+      "description": "The pile you’re working through in Look it over: a recessed well docked to the right of the form, full body height. Head: “PILE n OF m” + the pile’s title; steps slot holds PileStep rows (top mockup, variants, then Review &amp; stash pile). Everything in a pile is a draft until Stash pile, so every step is clickable. Rules: design/specs/piles.md.",
+      "variants": {
+        "kind": [
+          "default"
+        ]
+      },
       "booleans": {},
       "texts": {
         "pile": "PILE 1 OF 3",
@@ -2159,7 +2102,7 @@
       "name": "AddMockupCard",
       "figmaId": "583:6960",
       "section": "6 · Library",
-      "description": "The add affordance in the library grid: always the first card in My Stash › All (hidden in search, filter and Starred); on an empty library it is the only card. Recessed well with a faint dashed cover, same footprint as MockupCard. Click / ↵ opens the Add menu; dragging PSDs over the window shows DropOverlay. Rules: design/specs/library.md.",
+      "description": "The add affordance in the library grid: always the first card in My Stash › All (hidden in search, filter and Starred); on an empty library it is the only card. Recessed well with a faint dashed cover, same footprint as MockupCard. Click / ↵ opens the Add menu; dragging PSDs over the window shows DropOverlay. Rules: design/specs/library.md.\nSync 2026-10: the focus state is keyboard only. A mouse click leaves no ring (focus-visible).",
       "variants": {
         "state": [
           "default",

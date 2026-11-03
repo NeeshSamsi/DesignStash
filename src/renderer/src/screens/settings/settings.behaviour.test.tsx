@@ -196,7 +196,6 @@ function setup(overrides: Record<string, Handler> = {}) {
       pushes[channel] = cb
       return () => {}
     }),
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn()
   } as unknown as typeof window.api
 }
@@ -262,7 +261,7 @@ describe('Settings · My Stash', () => {
     expect(screen.getByText('128 mockups · 14.2 GB')).not.toBeNull()
   })
 
-  it('asks Move files, Point only or Cancel after Change… picks a folder', async () => {
+  it('asks Move my files, Use as is or Cancel after Change… picks a folder', async () => {
     open()
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
@@ -270,7 +269,9 @@ describe('Settings · My Stash', () => {
     const names = within(dialog)
       .getAllByRole('button')
       .map((b) => b.textContent)
-    expect(names.sort()).toEqual(['Cancel', 'Move files', 'Point only'])
+    expect(names.sort()).toEqual(['Cancel', 'Move my files', 'Use as is'])
+    // The description says how much would move.
+    expect(dialog.textContent).toContain('128 mockups (14.2 GB)')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
     expect(calls(IPC_CHANNELS.STASH_CHANGE)).toHaveLength(0)
@@ -292,7 +293,9 @@ describe('Settings · My Stash', () => {
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
     fireEvent.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Move files' })
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Move my files'
+      })
     )
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.STASH_CHANGE, {
@@ -325,7 +328,9 @@ describe('Settings · My Stash', () => {
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
     fireEvent.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Point only' })
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Use as is'
+      })
     )
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.STASH_CHANGE, {
@@ -348,7 +353,9 @@ describe('Settings · My Stash', () => {
     await screen.findByText('~/Pictures/DesignStash')
     fireEvent.click(btn('Change…'))
     fireEvent.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Point only' })
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Use as is'
+      })
     )
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
     const { description } = toasts.toast.mock.calls[0]![0]
@@ -409,6 +416,17 @@ describe('Settings · My Stash', () => {
   })
 })
 
+describe('Settings · Trash row', () => {
+  it('says Trash is empty at 0 and turns Empty Trash… off, keeping Open Trash', async () => {
+    setup({ [IPC_CHANNELS.TRASH_STATS]: () => ok({ count: 0, bytes: 0 }) })
+    open()
+    expect(await screen.findByText('Trash is empty.')).not.toBeNull()
+    expect((btn('Empty Trash…') as HTMLButtonElement).disabled).toBe(true)
+    expect((btn('Open Trash') as HTMLButtonElement).disabled).toBe(false)
+    expect(document.body.textContent).not.toContain('0 mockups · 0 B')
+  })
+})
+
 describe('Settings · AI model', () => {
   it('shows this Mac and lists Your models, then Available to download', async () => {
     open()
@@ -422,7 +440,7 @@ describe('Settings · AI model', () => {
     expect(screen.getByText('Best fit for this Mac')).not.toBeNull()
   })
 
-  it('collapses the models when on-device AI is switched off, and says titles come from file names', async () => {
+  it('keeps the models listed when on-device AI is off, with Use disabled and a reason', async () => {
     open()
     goto('AI model')
     const toggle = await screen.findByRole('switch', { name: 'Use on-device AI' })
@@ -430,8 +448,13 @@ describe('Settings · AI model', () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: null })
     )
-    expect(screen.queryByText('Your models')).toBeNull()
     expect(screen.getByText(/Titles come from file names/)).not.toBeNull()
+    expect(screen.getByText('Your models')).not.toBeNull()
+    expect(screen.getByText('Turn on AI to use a model.')).not.toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Delete' }).length).toBeGreaterThan(0)
+    for (const use of screen.queryAllByRole('button', { name: 'Use this model' })) {
+      expect((use as HTMLButtonElement).disabled).toBe(true)
+    }
   })
 
   it('downloads a model with progress, speed and time left, and cancels it', async () => {
@@ -477,6 +500,40 @@ describe('Settings · AI model', () => {
     )
     fireEvent.click(btn('Try again'))
     await waitFor(() => expect(calls(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toHaveLength(1))
+  })
+
+  it('shows a model being checked as its own state, with nothing to cancel', async () => {
+    open()
+    goto('AI model')
+    await screen.findByText('Available to download')
+    act(() =>
+      pushes[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]!({
+        modelId: 'qwen7b',
+        receivedBytes: 5_540_000_000,
+        totalBytes: 5_540_000_000,
+        phase: 'verifying'
+      })
+    )
+    expect(await screen.findByText('Checking the download…')).not.toBeNull()
+    expect(screen.queryByText(/Downloading \d+%/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('loads the models again when a download fails, so sizes are never stale', async () => {
+    open()
+    goto('AI model')
+    await screen.findByText('Available to download')
+    const before = calls(IPC_CHANNELS.AI_LIST_MODELS).length
+    act(() =>
+      pushes[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]!({
+        modelId: 'qwen7b',
+        receivedBytes: 1,
+        totalBytes: 5_540_000_000,
+        phase: 'error',
+        reason: 'offline'
+      })
+    )
+    await waitFor(() => expect(calls(IPC_CHANNELS.AI_LIST_MODELS).length).toBe(before + 1))
   })
 
   it('uses a downloaded model with one button, never the whole card', async () => {
@@ -645,7 +702,8 @@ describe('Settings · Privacy', () => {
     expect(toggle.getAttribute('aria-checked')).toBe('true')
     expect(screen.getByText('What we collect')).not.toBeNull()
     fireEvent.click(toggle)
-    expect(screen.queryByText('What we collect')).toBeNull()
+    // What is collected stays on show, switch on or off.
+    expect(screen.getByText('What we collect')).not.toBeNull()
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.TELEMETRY_SET_CONSENT, { enabled: false })
     )
@@ -656,12 +714,13 @@ describe('Settings · Privacy', () => {
     expect(screen.getByText('What we never collect')).not.toBeNull()
   })
 
-  it('shows the lists collapsed when consent is off', async () => {
+  it('shows what is collected even when consent is off', async () => {
     setup({ [IPC_CHANNELS.TELEMETRY_GET_CONSENT]: () => ok({ enabled: false }) })
     open()
     goto('Privacy')
     expect((await screen.findByRole('switch')).getAttribute('aria-checked')).toBe('false')
-    expect(screen.queryByText('What we collect')).toBeNull()
+    expect(screen.getByText('What we collect')).not.toBeNull()
+    expect(screen.getByText('What we never collect')).not.toBeNull()
   })
 })
 
@@ -718,7 +777,7 @@ describe('Settings · About', () => {
   it('copies the problem report', async () => {
     open()
     goto('About')
-    fireEvent.click(await screen.findByRole('button', { name: 'Report…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy report' }))
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
     expect(toasts.toast.mock.calls[0]![0].message).toBe('Copied your problem report')
   })

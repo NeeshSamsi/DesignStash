@@ -14,7 +14,7 @@ export const GROUP_CARD_CONTRACT = {
   code: 'screens/sort/SortBoard.tsx',
   axes: {
     variant: ['group', 'standalone'],
-    state: ['idle', 'drag-over', 'merge-target', 'left-behind', 'selected', 'lifted', 'empty']
+    state: ['idle', 'drag-over', 'empty', 'merge-target', 'left-behind', 'selected', 'lifted']
   },
   axisDefaults: {
     variant: 'group',
@@ -24,8 +24,8 @@ export const GROUP_CARD_CONTRACT = {
   interactionStates: [],
   disabled: false,
   booleans: {
-    showFolder: true,
-    showReason: false
+    showReason: false,
+    showFolder: true
   },
   texts: {
     title: 'iPhone 15 Clay'
@@ -40,21 +40,21 @@ export type GroupCardVariant = 'group' | 'standalone'
 export type GroupCardState =
   | 'idle'
   | 'drag-over'
+  | 'empty'
   | 'merge-target'
   | 'left-behind'
   | 'selected'
   | 'lifted'
-  | 'empty'
 
 export interface GroupCardContractProps {
   /** Figma `variant` (2 options). Default `group`. */
   variant?: GroupCardVariant
   /** Figma `state` (7 options). Default `idle`. */
   state?: GroupCardState
-  /** Figma boolean. Default `true`. */
-  showFolder?: boolean
   /** Figma boolean. Default `false`. */
   showReason?: boolean
+  /** Figma boolean. Default `true`. */
+  showFolder?: boolean
   /** Figma text. Default "iPhone 15 Clay". */
   title?: string
   /** Slot — free content slot. */
@@ -65,7 +65,7 @@ export interface GroupCardContractProps {
 export const GROUP_CARD_DEFAULTS = {
   variant: 'group',
   state: 'idle',
-  showFolder: true,
   showReason: false,
+  showFolder: true,
   title: 'iPhone 15 Clay'
 } satisfies GroupCardContractProps

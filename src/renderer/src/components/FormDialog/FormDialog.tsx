@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ReactNode } from 'react'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -77,7 +78,7 @@ export function FormDialog({
           <DialogHeading title={props.title} description={props.description} />
           {isStatic && (
             <Button variant="ghost" size="icon" type="button" aria-label="Close" onClick={onCancel}>
-              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
             </Button>
           )}
         </div>

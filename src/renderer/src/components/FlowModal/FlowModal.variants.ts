@@ -3,9 +3,10 @@ import { cva } from 'class-variance-authority'
 // Figma FlowModal 374:5650: 1352×822 (in a 1512×982 window), radius 2xl, a header of named steps and a padded body.
 // 1352×822 is the preferred size; it shrinks to the window (max-*-viewport) and the body scrolls inside.
 export const flowModalVariants = cva(
-  'flex h-flow-modal w-flow-modal max-h-viewport max-w-viewport flex-col overflow-clip rounded-2xl border border-base bg-surface-2 text-foreground',
+  'flex w-flow-modal max-h-viewport max-w-viewport flex-col overflow-clip rounded-2xl border border-base bg-surface-2 text-foreground',
   {
-    variants: { step: { sort: '', 'look-over': '' } },
+    // Sort keeps Figma's fixed height; Look it over hugs its content, up to the window.
+    variants: { step: { sort: 'h-flow-modal', 'look-over': 'h-auto' } },
     defaultVariants: { step: 'sort' }
   }
 )

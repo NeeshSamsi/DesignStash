@@ -9,10 +9,10 @@ export const MODEL_CARD_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=795-9758',
   section: '9 · Onboarding & AI models',
   description:
-    "One on-device model in Settings › AI model, after Handy's model card: name, In use / Best fit tags and one plain line, quality and speed as five-step bars; a divider; languages, size and the actions. States: in-use (orange border, Delete) · downloaded (Delete · Use this model) · downloading (progress, Cancel) · available (Download) · failed (reason, Try again).",
+    'One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.',
   code: 'screens/settings/AiModelPane.tsx',
   axes: {
-    state: ['in-use', 'downloaded', 'downloading', 'available', 'failed']
+    state: ['in-use', 'downloaded', 'downloading', 'available', 'failed', 'verifying', 'paused']
   },
   axisDefaults: {
     state: 'in-use'
@@ -27,16 +27,24 @@ export const MODEL_CARD_CONTRACT = {
     name: 'Qwen 2.5 VL 3B',
     description: 'Good titles and tags in a few seconds per mockup.',
     languages: '29 languages',
-    size: '2.1 GB'
+    size: '2.1 GB',
+    resumeNote: '840 MB of 2.1 GB downloaded'
   },
   icons: {},
   slots: {}
 } as const satisfies ComponentContract
 
-export type ModelCardState = 'in-use' | 'downloaded' | 'downloading' | 'available' | 'failed'
+export type ModelCardState =
+  | 'in-use'
+  | 'downloaded'
+  | 'downloading'
+  | 'available'
+  | 'failed'
+  | 'verifying'
+  | 'paused'
 
 export interface ModelCardContractProps {
-  /** Figma `state` (5 options). Default `in-use`. */
+  /** Figma `state` (7 options). Default `in-use`. */
   state?: ModelCardState
   /** Figma boolean. Default `false`. */
   bestFit?: boolean
@@ -48,6 +56,8 @@ export interface ModelCardContractProps {
   languages?: string
   /** Figma text. Default "2.1 GB". */
   size?: string
+  /** Figma text. Default "840 MB of 2.1 GB downloaded". */
+  resumeNote?: string
 }
 
 /** Figma defaults. Slots have none. */
@@ -57,5 +67,6 @@ export const MODEL_CARD_DEFAULTS = {
   name: 'Qwen 2.5 VL 3B',
   description: 'Good titles and tags in a few seconds per mockup.',
   languages: '29 languages',
-  size: '2.1 GB'
+  size: '2.1 GB',
+  resumeNote: '840 MB of 2.1 GB downloaded'
 } satisfies ModelCardContractProps

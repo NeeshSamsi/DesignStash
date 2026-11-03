@@ -77,7 +77,8 @@ export function OnboardingFlow({ onComplete, start = 'welcome' }: OnboardingFlow
               step="4"
               title={PRIVACY_STEP.title}
               body={PRIVACY_STEP.body}
-              footer={false}
+              hidePrimary
+              onBack={() => go(-1)}
               busy={deciding}
               content={
                 <ConsentPanel

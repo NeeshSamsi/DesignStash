@@ -1,9 +1,10 @@
 import type { StashCheckStatus as StashCheckStatusData } from '@shared/stash'
 import type { SettingsStore } from '../settings'
 
+/** How many files and records the scan found for the user to review. */
 export interface ScanReport {
-  orphanFiles: unknown[]
-  orphanRecords: unknown[]
+  orphanFiles: number
+  orphanRecords: number
 }
 
 /**
@@ -25,7 +26,7 @@ export class StashCheckStatus {
     const at = this.now().toISOString()
     try {
       const report = await this.scan()
-      const toReview = report.orphanFiles.length + report.orphanRecords.length
+      const toReview = report.orphanFiles + report.orphanRecords
       this.settings.update({
         stashCheck: { at, trigger, result: toReview === 0 ? 'in-sync' : 'review', toReview }
       })

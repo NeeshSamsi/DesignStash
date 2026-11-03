@@ -281,24 +281,21 @@ await emit(
 await emit(
   resolve(DS, 'catalog.generated.ts'),
   `${GENERATED}import type { ComponentType } from 'react'
-import type { ComponentContract, PortStatus } from './contract'
+import type { ComponentContract } from './contract'
 ${contracts.map((c) => `import { ${c.name}, ${upper(c.name)}_CONTRACT } from '@renderer/components/${c.name}'`).join('\n')}
 
 export interface CatalogEntry {
   contract: ComponentContract
   component: ComponentType<Record<string, unknown>>
-  /** 'stub' while <Name>.tsx still renders ScaffoldStub (refreshed by pnpm ds:scaffold). */
-  status: PortStatus
 }
 
-const entry = (contract: ComponentContract, component: unknown, status: PortStatus): CatalogEntry => ({
+const entry = (contract: ComponentContract, component: unknown): CatalogEntry => ({
   contract,
-  component: component as ComponentType<Record<string, unknown>>,
-  status
+  component: component as ComponentType<Record<string, unknown>>
 })
 
 export const CATALOG: CatalogEntry[] = [
-${contracts.map((c) => `  entry(${upper(c.name)}_CONTRACT, ${c.name}, ${q(isStub(c) ? 'stub' : 'ported')}),`).join('\n')}
+${contracts.map((c) => `  entry(${upper(c.name)}_CONTRACT, ${c.name}),`).join('\n')}
 ]
 `
 )
@@ -319,6 +316,7 @@ await emit(
 
 export const FIGMA_FLOWS_URL = ${q(`https://www.figma.com/design/${screens.source.fileKey}/DesignStash?node-id=${screens.source.flowsPage.replace(':', '-')}`)}
 
+/** figmaId of each screen on the prototype's happy path, in order. */
 export const HAPPY_PATH: string[] = ${JSON.stringify(screens.prototype.happyPath)}
 
 export const SCREENS: ScreenEntry[] = ${JSON.stringify(
@@ -338,6 +336,10 @@ export const SCREENS: ScreenEntry[] = ${JSON.stringify(
 )
 
 // ---------------------------------------------------------------- drift report
+const screenIds = new Set(screens.screens.map((s) => s.figmaId))
+for (const id of [screens.prototype.start, ...screens.prototype.happyPath])
+  if (!screenIds.has(id))
+    problems.push(`dangling: prototype screen ${id} is not in design/figma/screens.json`)
 const known = new Set(names)
 for (const entry of readdirSync(COMPONENTS, { withFileTypes: true })) {
   if (entry.isDirectory() && !known.has(entry.name))
@@ -353,11 +355,11 @@ if (CHECK) {
     process.exit(1)
   }
   console.log(
-    `ds:scaffold --check ok — ${contracts.length} components, ${contracts.length - stubs} ported, ${stubs} stubs`
+    `ds:scaffold --check ok — ${contracts.length} components`
   )
 } else {
   for (const p of problems) console.warn(`warn  ${p}`)
   console.log(
-    `ds:scaffold — ${written.length} file(s) written · ${contracts.length} components · ${contracts.length - stubs} ported · ${stubs} stubs`
+    `ds:scaffold — ${written.length} file(s) written · ${contracts.length} components · ${stubs} stubs`
   )
 }

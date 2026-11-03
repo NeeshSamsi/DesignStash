@@ -12,7 +12,7 @@ export const RECONCILIATION_PANEL_CONTRACT = {
     'Resolve stash drift in a blocking modal (G1), the same grouped rows as Settings. Found in your stash folder: cover thumbnail, Ignore · Add (Add puts it in To sort). Gone from your stash folder: Remove · Relink…. Add all / Remove all per group, one Ignore all in the footer (instant, Undo in a toast), N left and Done (enabled at 0). States: drift · resolving · rescanning / scanning (skeleton rows, never a spinner) · all-resolved.',
   code: 'screens/integrity/StashCheckModal.tsx',
   axes: {
-    state: ['scanning', 'drift', 'resolving', 'rescanning', 'all-resolved']
+    state: ['scanning', 'drift', 'resolving', 'rescanning', 'all-resolved', 'removing']
   },
   axisDefaults: {
     state: 'scanning'
@@ -32,9 +32,10 @@ export type ReconciliationPanelState =
   | 'resolving'
   | 'rescanning'
   | 'all-resolved'
+  | 'removing'
 
 export interface ReconciliationPanelContractProps {
-  /** Figma `state` (5 options). Default `scanning`. */
+  /** Figma `state` (6 options). Default `scanning`. */
   state?: ReconciliationPanelState
 }
 

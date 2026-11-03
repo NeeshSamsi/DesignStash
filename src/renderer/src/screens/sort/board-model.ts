@@ -12,6 +12,8 @@ export interface BoardTile {
   fileName: string
   folderTrail: string[]
   coverPath: string
+  /** The cleaned name of the zip it came out of, which titles a pile from one zip. */
+  archiveTitle?: string
 }
 
 export interface BoardPile {
@@ -104,7 +106,8 @@ export function createBoard({ members, groups, stashedTitles = {} }: BoardSource
       id: m.mockupId,
       fileName: m.fileName,
       folderTrail: m.folderTrail,
-      coverPath: m.coverPath
+      coverPath: m.coverPath,
+      ...(m.archiveTitle ? { archiveTitle: m.archiveTitle } : {})
     }
   }
   const placed = new Set<number>()
@@ -156,7 +159,8 @@ export function titleOfPile(state: BoardState, pile: BoardPile): PileTitle {
   const members = pile.memberIds.map((id, index) => ({
     fileName: state.tiles[id]!.fileName,
     folderTrail: state.tiles[id]!.folderTrail,
-    isPrimary: index === 0
+    isPrimary: index === 0,
+    ...(state.tiles[id]!.archiveTitle ? { archiveTitle: state.tiles[id]!.archiveTitle } : {})
   }))
   const stashedTitle = state.stashedTitles[pile.id]
   return pileTitle(members, stashedTitle ? { stashedTitle } : {})
@@ -242,13 +246,13 @@ export type BoardAction =
   | { type: 'drag-start-tile'; id: number }
   | { type: 'drag-start-pile'; pileId: string }
   | { type: 'drag-over'; target: DropTarget | null }
-  | { type: 'drop'; target: DropTarget | null; newPileId: string }
+  | { type: 'drop'; target: DropTarget | null }
   | { type: 'cancel' }
-  | { type: 'new-pile'; newPileId: string; topId?: number }
+  | { type: 'new-pile'; topId?: number }
   | { type: 'disband'; pileIds?: string[] }
   | { type: 'merge'; targetId: string; sourceIds?: string[] }
   | { type: 'put-on-top'; tileId?: number }
-  | { type: 'move-to'; destination: DropTarget | { kind: 'new-pile'; newPileId: string } }
+  | { type: 'move-to'; destination: DropTarget | { kind: 'new-pile' } }
   | { type: 'take-out' }
   | { type: 'undo' }
   | { type: 'dismiss-notice' }
@@ -403,10 +407,15 @@ function dropIntoPile(state: BoardState, ids: number[], pileId: string): BoardSt
 }
 
 /** Starts a pile: `topId` leads, then the rest in order. It goes first on the board. */
-function startPile(state: BoardState, ids: number[], topId: number, newPileId: string): BoardState {
+function startPile(
+  state: BoardState,
+  ids: number[],
+  topId: number,
+  newPileId: () => string
+): BoardState {
   const members = [topId, ...ids.filter((id) => id !== topId)]
   const lifted = lift(state, members)
-  const created: BoardPile = { id: newPileId, memberIds: members }
+  const created: BoardPile = { id: newPileId(), memberIds: members }
   const piles = [created, ...lifted.piles]
   return commit(state, {
     label: 'New pile',
@@ -465,7 +474,7 @@ function merge(state: BoardState, targetId: string, sourceIds: string[]): BoardS
   })
 }
 
-function drop(state: BoardState, target: DropTarget | null, newPileId: string): BoardState {
+function drop(state: BoardState, target: DropTarget | null, newPileId: () => string): BoardState {
   const drag = state.drag
   // Dropping somewhere that isn't a pile, a tile or On its own sends the stack back.
   if (!drag || !target) return { ...state, drag: null }
@@ -487,7 +496,13 @@ function drop(state: BoardState, target: DropTarget | null, newPileId: string): 
   return startPile(state, ids, target.tileId, newPileId)
 }
 
-export function boardReducer(state: BoardState, action: BoardAction): BoardState {
+/** Makes the reducer. `newPileId` mints the id of each pile the user starts; it must be unique across sessions, since boards are saved. */
+export const makeBoardReducer =
+  (newPileId: () => string) =>
+  (state: BoardState, action: BoardAction): BoardState =>
+    reduce(state, action, newPileId)
+
+function reduce(state: BoardState, action: BoardAction, newPileId: () => string): BoardState {
   switch (action.type) {
     case 'click-tile':
       return clickTile(state, action.id, action.meta, action.shift)
@@ -569,7 +584,7 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return state.drag ? { ...state, drag: { ...state.drag, over: action.target } } : state
 
     case 'drop':
-      return drop(state, action.target, action.newPileId)
+      return drop(state, action.target, newPileId)
 
     case 'cancel':
       // Esc: first cancel what is in hand, then clear the selection. Nothing moves either way.
@@ -580,7 +595,7 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       if (!canNewPile(state)) return state
       const ids = state.selectedTiles
       const top = action.topId !== undefined && ids.includes(action.topId) ? action.topId : ids[0]!
-      return startPile(state, ids, top, action.newPileId)
+      return startPile(state, ids, top, newPileId)
     }
 
     case 'disband':
@@ -613,7 +628,7 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       if (!ids.length) return state
       const to = action.destination
       if (to.kind === 'new-pile')
-        return canNewPile(state) ? startPile(state, ids, ids[0]!, to.newPileId) : state
+        return canNewPile(state) ? startPile(state, ids, ids[0]!, newPileId) : state
       if (to.kind === 'standalone') return takeOut(state, ids)
       if (to.kind === 'pile') return dropIntoPile(state, ids, to.pileId)
       return state

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { act, render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent, within } from '@testing-library/react'
 import AppShell from './AppShell'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
@@ -15,18 +15,19 @@ const css = readFileSync(
   'utf8'
 )
 import { IPC_CHANNELS } from '@shared/ipc'
+import { item } from './screens/library/library-test-utils'
 
 beforeEach(() => {
   useUiStore.setState({ view: 'all', modal: null, settingsOpen: false })
   useLibraryStore.setState({
     query: '',
+    statsLoaded: true,
     stats: { total: 128, favourites: 12, groups: 0, trashed: 3 }
   })
   window.api = {
     appName: 'DesignStash',
     invoke: vi.fn(async () => ({ success: true, data: {} })),
     subscribe: vi.fn(() => () => {}),
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn((f) => `/path/${(f as File).name}`)
   } as unknown as typeof window.api
 })
@@ -144,17 +145,83 @@ describe('AppShell header', () => {
       </AppShell>
     )
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('My StashStarred')
-    expect(screen.getByText('12 mockups')).toBeTruthy()
+    expect(screen.getByText('12 favourites')).toBeTruthy()
+  })
+
+  it('counts the result and names the search while searching', () => {
+    useLibraryStore.setState({ query: 'macbook', items: [item(1), item(2)] })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    expect(screen.getByText('2 results for “macbook”')).toBeTruthy()
+  })
+
+  it('offers a Clear link by the search count, which clears the search', () => {
+    useLibraryStore.setState({ query: 'macbook', items: [item(1)] })
+    useUiStore.setState({ searchText: 'macbook' })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    const header = document.querySelector('[data-ds="PageHeader"]')!
+    fireEvent.click(within(header as HTMLElement).getByRole('button', { name: 'Clear' }))
+    expect(useLibraryStore.getState().query).toBe('')
+  })
+
+  it('shows no Clear link without a search', () => {
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    const header = document.querySelector('[data-ds="PageHeader"]')!
+    expect(within(header as HTMLElement).queryByRole('button', { name: 'Clear' })).toBeNull()
+  })
+
+  it('hides a zero badge in the sidebar', () => {
+    useLibraryStore.setState({
+      statsLoaded: true,
+      stats: { total: 5, favourites: 0, groups: 0, trashed: 0 }
+    })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    const starred = screen.getByRole('button', { name: /Starred/ })
+    expect(starred.textContent).toBe('Starred')
   })
 
   it('keeps the header at zero mockups', () => {
-    useLibraryStore.setState({ stats: { total: 0, favourites: 0, groups: 0, trashed: 0 } })
+    useLibraryStore.setState({
+      statsLoaded: true,
+      stats: { total: 0, favourites: 0, groups: 0, trashed: 0 }
+    })
     render(
       <AppShell>
         <div />
       </AppShell>
     )
     expect(screen.getByText(/^0 mockups/)).toBeTruthy()
+  })
+
+  it('shows no count until the first stats answer, and keeps the line so nothing jumps', () => {
+    useLibraryStore.setState({ statsLoaded: false })
+    render(
+      <AppShell>
+        <div />
+      </AppShell>
+    )
+    const header = document.querySelector('[data-ds="PageHeader"]') as HTMLElement
+    expect(header.textContent).not.toMatch(/mockups/)
+    expect(header.querySelector('p')?.textContent).toBe('\u00a0')
+    act(() =>
+      useLibraryStore.getState().setStats({ total: 7, favourites: 0, groups: 0, trashed: 0 })
+    )
+    expect(screen.getByText('7 mockups')).toBeTruthy()
   })
 
   it('can hide the header for pipeline screens', () => {

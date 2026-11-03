@@ -4,6 +4,7 @@ import { useLibraryStore } from './stores/libraryStore'
 import { DetailsSidebar, DiscardAsk } from './screens/details/DetailsSidebar'
 import { mockupsLabel } from './screens/details/details-model'
 import { usePanelLayout } from './screens/details/use-panel-layout'
+import { useRevealSelected } from './screens/details/use-reveal-selected'
 import { useDetailsEscape } from './screens/details/use-details-escape'
 import { useDetailsStore } from './stores/detailsStore'
 import { PANEL_SHARE } from './screens/details/panel-share'
@@ -12,12 +13,16 @@ import { SettingsModal } from './screens/settings'
 import { StashCheckModal } from './screens/integrity'
 import { Toaster } from './ui/sonner'
 import { ActivityDock } from './components/ActivityDock'
+import { Button } from './components/Button'
 import { AppWindow } from './components/AppWindow'
 import { GlobalSearch } from './components/GlobalSearch'
 import { PageHeader } from './components/PageHeader'
 import { SidebarNav, sidebarNavVariant, type SidebarNavKey } from './components/SidebarNav'
 import { useInboxCounts } from './hooks/use-inbox-counts'
 import { useHeaderSlot } from './lib/page-header-slot'
+import { libraryDescription } from './lib/library-header'
+import { filterChips } from './lib/tag-filter'
+import { useTagTreeStore } from './stores/tagTreeStore'
 import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
 
 interface AppShellProps {
@@ -48,12 +53,12 @@ interface HeaderCounts {
 }
 
 /** Where each page sits in the header. Settings still brings its own heading. */
-function headerFor(view: AppView, counts: HeaderCounts) {
+function headerFor(view: AppView, counts: HeaderCounts, library: string) {
   switch (view) {
     case 'all':
-      return { parent: 'My Stash', current: 'All', description: mockups(counts.total) }
+      return { parent: 'My Stash', current: 'All', description: library }
     case 'starred':
-      return { parent: 'My Stash', current: 'Starred', description: mockups(counts.favourites) }
+      return { parent: 'My Stash', current: 'Starred', description: library }
     case 'to-sort':
       return { current: 'To sort', description: `${mockups(counts.toSort)} waiting to be sorted` }
     case 'to-stash':
@@ -98,12 +103,17 @@ export default function AppShell({
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
   const stats = useLibraryStore((s) => s.stats)
+  const statsLoaded = useLibraryStore((s) => s.statsLoaded)
   const searchText = useUiStore((s) => s.searchText)
   const setSearchText = useUiStore((s) => s.setSearchText)
   const inbox = useInboxCounts()
   const setActionsEl = useHeaderSlot((s) => s.setActionsEl)
   const status = useHeaderSlot((s) => s.status)
   const query = useLibraryStore((s) => s.query)
+  const shown = useLibraryStore((s) => s.items.length)
+  const tagFilter = useLibraryStore((s) => s.tagFilter)
+  const categoryIds = useLibraryStore((s) => s.categoryIds)
+  const tagTree = useTagTreeStore((s) => s.tree)
   const setQuery = useLibraryStore((s) => s.setQuery)
 
   useShortcutDispatcher()
@@ -132,6 +142,7 @@ export default function AppShell({
   useDetailsEscape()
   // The layout follows the selection inside a view transition, so the grid morphs instead of snapping.
   const panelOpen = usePanelLayout(sidebarOpen)
+  useRevealSelected(panelOpen)
   // Toasts and the dock sit 16px inside the container's bottom-right corner: left of the sidebar while
   // it is open, moving with the panel (they have transition names) so they never cover its buttons.
   const dockRight = DOCK_INSET + (panelOpen ? PANEL_SHARE : 0)
@@ -143,13 +154,35 @@ export default function AppShell({
           current: pile.title,
           description: `Pile · ${mockupsLabel(pile.count)} · Esc to go back`
         }
-      : headerFor(view, {
-          total: stats.total,
-          favourites: stats.favourites,
-          toSort: inbox?.toSort ?? 0,
-          toStash: inbox?.toStash ?? 0,
-          trash: inbox?.trash ?? stats.trashed
-        })
+      : headerFor(
+          view,
+          {
+            total: stats.total,
+            favourites: stats.favourites,
+            toSort: inbox?.toSort ?? 0,
+            toStash: inbox?.toStash ?? 0,
+            trash: inbox?.trash ?? stats.trashed
+          },
+          // No count until the first stats answer; the blank keeps the line's height.
+          !statsLoaded
+            ? '\u00a0'
+            : libraryDescription({
+                view: view === 'starred' ? 'starred' : 'all',
+                shown,
+                total: stats.total,
+                starred: stats.favourites,
+                query,
+                chips: filterChips(
+                  (tagTree ?? []).map((c) => ({
+                    categoryId: c.categoryId,
+                    categoryLabel: c.categoryLabel,
+                    tags: c.tags.map((t) => ({ tagId: t.tagId, label: t.label }))
+                  })),
+                  { tagIds: tagFilter, categoryIds },
+                  { onRemoveTag: () => {}, onRemoveCategory: () => {} }
+                )
+              })
+        )
     : null
 
   const onQueryChange = (next: string) => {
@@ -212,6 +245,15 @@ export default function AppShell({
                   {...(pile ? { onParent: () => useDetailsStore.getState().closePile() } : {})}
                   {...(header.parent !== undefined ? { parent: header.parent } : {})}
                   description={status ? `${header.description} · ${status}` : header.description}
+                  {...(!pile && query.trim() !== '' && (view === 'all' || view === 'starred')
+                    ? {
+                        descriptionAction: (
+                          <Button variant="link" size="xs" onClick={() => setQuery('')}>
+                            Clear
+                          </Button>
+                        )
+                      }
+                    : {})}
                 >
                   {/* Pages put their actions here with HeaderActions. */}
                   <div ref={setActionsEl} className="contents" />

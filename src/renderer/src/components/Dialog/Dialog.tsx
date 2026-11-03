@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
@@ -32,14 +33,14 @@ export function Dialog({ className, ...rest }: DialogProps) {
         </div>
         {!isAlert && (
           <Button variant="ghost" size="icon" aria-label="Close">
-            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
           </Button>
         )}
       </div>
       {!isAlert && (
         <div
           className={cn(
-            'flex flex-col items-center justify-center rounded-md border border-dashed border-subtle px-4 py-10',
+            'flex flex-col items-center justify-center rounded-lg border border-dashed border-subtle px-4 py-10',
             props.variant === 'sheet' && 'flex-1'
           )}
         >

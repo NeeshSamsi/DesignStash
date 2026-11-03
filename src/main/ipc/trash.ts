@@ -1,8 +1,7 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TrashService } from '../library/trash-service'
 import type { HandlerContext } from './context'
-import { enqueueInBackground, inferenceQueueFor, withPileMembers } from './ai-status'
-import { pushInboxCounts } from './inbox'
+import { countsChanged, mockupsArrived, mockupsLeft } from './library-effects'
 import { registerIpcHandler } from './register'
 
 export function registerTrashHandlers(ctx: HandlerContext): void {
@@ -11,17 +10,17 @@ export function registerTrashHandlers(ctx: HandlerContext): void {
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_TRASH, (args) => {
     const ids = args.ids
-    const count = repo.moveManyToTrash(ids)
-    inferenceQueueFor(ctx).cancel(withPileMembers(repo, ids))
-    pushInboxCounts(ctx)
+    const count = repo.trash.moveManyToTrash(ids)
+    mockupsLeft(ctx, ids)
+    countsChanged(ctx)
     return { ok: true, count }
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_RESTORE, (args) => {
     const ids = args.ids
-    const count = repo.restoreMany(ids)
-    enqueueInBackground(ctx, withPileMembers(repo, ids))
-    pushInboxCounts(ctx)
+    const count = repo.trash.restoreMany(ids)
+    mockupsArrived(ctx, ids)
+    countsChanged(ctx)
     return { ok: true, count }
   })
 
@@ -31,27 +30,27 @@ export function registerTrashHandlers(ctx: HandlerContext): void {
 
   registerIpcHandler(IPC_CHANNELS.TRASH_RESTORE, async (args) => {
     const result = await trash.restore(args.ids)
-    enqueueInBackground(ctx, withPileMembers(repo, result.restoredIds))
-    pushInboxCounts(ctx)
+    mockupsArrived(ctx, result.restoredIds)
+    countsChanged(ctx)
     return result
   })
 
   registerIpcHandler(IPC_CHANNELS.TRASH_RESTORE_ALL, async () => {
     const result = await trash.restoreAll()
-    enqueueInBackground(ctx, withPileMembers(repo, result.restoredIds))
-    pushInboxCounts(ctx)
+    mockupsArrived(ctx, result.restoredIds)
+    countsChanged(ctx)
     return result
   })
 
   registerIpcHandler(IPC_CHANNELS.TRASH_EMPTY, async () => {
     const result = await trash.empty()
-    pushInboxCounts(ctx)
+    countsChanged(ctx)
     return result
   })
 
   registerIpcHandler(IPC_CHANNELS.TRASH_DELETE_ENTRY, async (args) => {
     const result = await trash.deleteEntries(args.ids)
-    pushInboxCounts(ctx)
+    countsChanged(ctx)
     return result
   })
 }

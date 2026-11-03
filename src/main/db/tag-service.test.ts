@@ -28,16 +28,16 @@ afterEach(() => sqlite.close())
 
 describe('TagService.snapTags', () => {
   it('snaps to an existing seeded tag without creating a duplicate', async () => {
-    const before = repo.getAllTags().filter((t) => t.label === 'Laptop').length
+    const before = repo.tags.getAllTags().filter((t) => t.label === 'Laptop').length
     const ids = await svc.snapTags([{ category: 'Device', label: 'Laptop' }])
     expect(ids).toHaveLength(1)
-    const after = repo.getAllTags().filter((t) => t.label === 'Laptop').length
+    const after = repo.tags.getAllTags().filter((t) => t.label === 'Laptop').length
     expect(after).toBe(before) // no duplicate created
   })
 
   it('snaps a suggestion to the seeded display label whatever its casing, spaces or hyphens', async () => {
-    const byLabel = (label: string) => repo.getAllTags().find((t) => t.label === label)!
-    const before = repo.getAllTags().length
+    const byLabel = (label: string) => repo.tags.getAllTags().find((t) => t.label === label)!
+    const before = repo.tags.getAllTags().length
 
     const ids = await svc.snapTags([
       { category: 'Device', label: 'iphone' },
@@ -56,13 +56,13 @@ describe('TagService.snapTags', () => {
       byLabel('Tote bag').id
     ])
     // Nothing new was made: every suggestion found its tag.
-    expect(repo.getAllTags()).toHaveLength(before)
-    expect(repo.getAllCategories()).toHaveLength(6)
+    expect(repo.tags.getAllTags()).toHaveLength(before)
+    expect(repo.tags.getAllCategories()).toHaveLength(6)
   })
 
   it('keeps the casing of a tag it invents, trimmed, and finds it again however it is written', async () => {
     const [id] = await svc.snapTags([{ category: 'Device', label: '  Vision  Pro ' }])
-    const tag = repo.getAllTags().find((t) => t.id === id)!
+    const tag = repo.tags.getAllTags().find((t) => t.id === id)!
     expect(tag).toMatchObject({ label: 'Vision Pro', createdBy: 'ai', isCanonical: false })
 
     expect(await svc.snapTags([{ category: 'Device', label: 'vision-pro' }])).toEqual([id])
@@ -70,19 +70,19 @@ describe('TagService.snapTags', () => {
 
   it('does not match across categories', async () => {
     const [id] = await svc.snapTags([{ category: 'Style', label: 'front' }])
-    const tag = repo.getAllTags().find((t) => t.id === id)!
+    const tag = repo.tags.getAllTags().find((t) => t.id === id)!
     expect(tag.label).toBe('front')
-    expect(repo.getAllCategories().find((c) => c.id === tag.categoryId)?.label).toBe('Style')
+    expect(repo.tags.getAllCategories().find((c) => c.id === tag.categoryId)?.label).toBe('Style')
   })
 
   it('creates a new category and tag when absent, marked non-canonical + ai', async () => {
     const ids = await svc.snapTags([{ category: 'BrandNewCat', label: 'brandnewtag' }])
     expect(ids).toHaveLength(1)
-    const tag = repo.getAllTags().find((t) => t.label === 'brandnewtag')
+    const tag = repo.tags.getAllTags().find((t) => t.label === 'brandnewtag')
     expect(tag).toBeDefined()
     expect(tag?.isCanonical).toBe(false)
     expect(tag?.createdBy).toBe('ai')
-    const cat = repo.getAllCategories().find((c) => c.label === 'BrandNewCat')
+    const cat = repo.tags.getAllCategories().find((c) => c.label === 'BrandNewCat')
     expect(cat).toBeDefined()
     expect(cat?.isCanonical).toBe(false)
   })
@@ -91,7 +91,7 @@ describe('TagService.snapTags', () => {
     const [id1] = await svc.snapTags([{ category: 'BrandNewCat', label: 'brandnewtag' }])
     const [id2] = await svc.snapTags([{ category: 'BrandNewCat', label: 'brandnewtag' }])
     expect(id1).toBe(id2)
-    const count = repo.getAllTags().filter((t) => t.label === 'brandnewtag').length
+    const count = repo.tags.getAllTags().filter((t) => t.label === 'brandnewtag').length
     expect(count).toBe(1)
   })
 
@@ -117,18 +117,18 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
   beforeEach(() => ensureSearchIndex(db))
 
   const approved = (title: string, libraryPath: string) =>
-    repo.createMockup({
+    repo.mockups.createMockup({
       title,
       libraryPath,
       coverPath: '/c.png',
       coverSource: 'embedded',
-      reviewStatus: 'approved'
+      stage: 'stashed'
     })
 
   it('deleteTag and restoreTag round-trip and match their IPC contracts', () => {
-    const laptop = repo.getAllTags().find((t) => t.label === 'Laptop')!
+    const laptop = repo.tags.getAllTags().find((t) => t.label === 'Laptop')!
     const m = approved('Svc', '/lib/svc.psd')
-    repo.addTagToMockup(m.id, laptop.id)
+    repo.mockups.addTagToMockup(m.id, laptop.id)
 
     const deleted = svc.deleteTag({ tagId: laptop.id })
     expect(IPC_CONTRACT[IPC_CHANNELS.TAG_DELETE].response.parse(deleted)).toEqual(deleted)
@@ -145,7 +145,7 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
   })
 
   it('previewMergeTags matches its IPC contract', () => {
-    const all = repo.getAllTags()
+    const all = repo.tags.getAllTags()
     const macbook = all.find((t) => t.label === 'MacBook')!
     const laptop = all.find((t) => t.label === 'Laptop')!
     const preview = svc.previewMergeTags({ sourceTagId: macbook.id, targetTagId: laptop.id })
@@ -155,7 +155,7 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
   })
 
   it('deleteCategory (with and without a target) and restoreCategory match their IPC contracts', () => {
-    const cats = repo.getAllCategories()
+    const cats = repo.tags.getAllCategories()
     const angle = cats.find((c) => c.label === 'Angle')!
     const style = cats.find((c) => c.label === 'Style')!
 
@@ -163,7 +163,7 @@ describe('TagService · TagTree operations (IPC handler layer)', () => {
     expect(IPC_CONTRACT[IPC_CHANNELS.CATEGORY_DELETE].response.parse(moved)).toEqual(moved)
     expect(moved).toMatchObject({ deleted: true, movedTags: 4 })
 
-    const empty = repo.createCategory({ label: 'Mood' })
+    const empty = repo.tags.createCategory({ label: 'Mood' })
     const deleted = svc.deleteCategory({ categoryId: empty.id })
     expect(deleted.movedTags).toBe(0)
     const restored = svc.restoreCategory(

@@ -25,6 +25,7 @@
     "electron.vite.config.ts",
     "vitest.config.ts",
     "playwright.config.ts",
-    "e2e/**/*"
+    "e2e/**/*",
+    "scripts/ai-eval/**/*"
   ]
 }

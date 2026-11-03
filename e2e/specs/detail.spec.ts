@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import type { Page } from '@playwright/test'
 import sharp from 'sharp'
 import { test, expect } from '../fixtures/app'
+// Synthetic mockups (seedStash): this spec is not about importing, and they are fast.
 import { seedStash, showMyStash } from '../fixtures/seed'
 
 /** The details sidebar: a click opens it, Edit turns it into fields, and leaving with changes asks first. */
@@ -94,7 +95,7 @@ test.describe('Details sidebar', () => {
     await expect(panel(window).getByRole('button', { name: 'Save' })).toBeDisabled()
 
     await window.getByRole('button', { name: 'Undo' }).click()
-    await expect(panel(window).getByText('Embedded preview')).toBeVisible()
+    await expect(panel(window).getByText('Uploaded')).toBeHidden()
   })
 
   test('Remove from pile takes a mockup out with Undo; a pile of two dissolves', async ({

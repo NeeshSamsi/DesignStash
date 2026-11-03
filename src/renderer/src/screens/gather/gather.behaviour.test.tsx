@@ -11,24 +11,25 @@ import { GatherDock, useGather, useGatherDrops } from './index'
 const toasts = vi.hoisted(() => ({ toast: vi.fn(), undoToast: vi.fn() }))
 vi.mock('@renderer/stores/toastStore', () => toasts)
 
-const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
-  haulId: 'h1',
-  state: 'running',
-  pauseReason: null,
-  total: 40,
-  landed: 12,
-  bytesTotal: 0,
-  bytesCopied: 0,
-  bytesPerSecond: 0,
-  secondsLeft: null,
-  skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
-  files: [{ jobId: 1, name: 'phone_front.psd', status: 'done' }],
-  ...over
-})
+// The overrides may pick any state, so the merged object is checked against the union by the cast.
+const haul = (over: Partial<CopyStatus> = {}): CopyStatus =>
+  ({
+    haulId: 'h1',
+    state: 'running',
+    total: 40,
+    landed: 12,
+    bytesTotal: 0,
+    bytesCopied: 0,
+    bytesPerSecond: 0,
+    secondsLeft: null,
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 },
+    files: [{ jobId: 1, name: 'phone_front.psd', status: 'done' }],
+    ...over
+  }) as CopyStatus
 const progress = (over: Partial<CopyProgress> = {}): CopyProgress => {
   const { files, ...counts } = haul()
   void files
-  return { ...counts, file: null, ...over }
+  return { ...counts, file: null, ...over } as CopyProgress
 }
 
 function Harness() {
@@ -84,7 +85,7 @@ describe('starting a copy', () => {
     await waitFor(() =>
       expect(api.sent(IPC_CHANNELS.COPY_START)).toEqual([{ paths: ['/a/one.psd', '/a/two.psd'] }])
     )
-    expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+    expect(await screen.findByText('12 of 40 copied')).toBeTruthy()
   })
 
   it('Add folder sends the folder', async () => {
@@ -133,13 +134,13 @@ describe('the widget', () => {
       IPC_CHANNELS.COPY_PROGRESS,
       progress({ file: { jobId: 1, name: 'phone_front.psd', status: 'copying' } })
     )
-    expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+    expect(await screen.findByText('12 of 40 copied')).toBeTruthy()
     expect(screen.getByText('phone_front.psd')).toBeTruthy()
     api.push(
       IPC_CHANNELS.COPY_PROGRESS,
       progress({ landed: 13, file: { jobId: 1, name: 'phone_front.psd', status: 'done' } })
     )
-    expect(screen.getByText('Copying 13 of 40')).toBeTruthy()
+    expect(screen.getByText('13 of 40 copied')).toBeTruthy()
     expect(screen.getAllByText('phone_front.psd')).toHaveLength(1)
   })
 
@@ -159,7 +160,7 @@ describe('the widget', () => {
       )
 
     push(100, 100, null)
-    expect(await screen.findByRole('progressbar', { name: 'Copying 12 of 40' })).toBeTruthy()
+    expect(await screen.findByRole('progressbar', { name: '12 of 40 copied' })).toBeTruthy()
     expect(screen.queryByText(/left/)).toBeNull()
     expect(
       screen.getByRole('progressbar', { name: 'Copying big.psd' }).getAttribute('aria-valuenow')
@@ -168,7 +169,7 @@ describe('the widget', () => {
     push(600, 300, 125)
     expect(screen.getByText('About 3 min left')).toBeTruthy()
     expect(
-      screen.getByRole('progressbar', { name: 'Copying 12 of 40' }).getAttribute('aria-valuenow')
+      screen.getByRole('progressbar', { name: '12 of 40 copied' }).getAttribute('aria-valuenow')
     ).toBe('60')
     expect(
       screen.getByRole('progressbar', { name: 'Copying big.psd' }).getAttribute('aria-valuenow')
@@ -177,14 +178,14 @@ describe('the widget', () => {
     push(900, 400, 8)
     expect(screen.getByText('A few seconds left')).toBeTruthy()
     expect(
-      screen.getByRole('progressbar', { name: 'Copying 12 of 40' }).getAttribute('aria-valuenow')
+      screen.getByRole('progressbar', { name: '12 of 40 copied' }).getAttribute('aria-valuenow')
     ).toBe('90')
   })
 
   it('picks up a haul that was running before a relaunch', async () => {
     installApi(base({ [IPC_CHANNELS.COPY_STATUS]: () => ok({ haul: haul() }) }))
     render(<Harness />)
-    expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+    expect(await screen.findByText('12 of 40 copied')).toBeTruthy()
   })
 
   it('does not bring back an old finished haul at launch', async () => {
@@ -201,7 +202,17 @@ describe('the widget', () => {
     render(<Harness />)
     api.push(
       IPC_CHANNELS.COPY_PROGRESS,
-      progress({ state: 'done', landed: 38, skipped: { notPsd: 2, duplicate: 1, unreadable: 0 } })
+      progress({
+        state: 'done',
+        landed: 38,
+        skipped: {
+          notPsd: 2,
+          duplicate: 1,
+          unreadable: 0,
+          archiveUnsupported: 0,
+          noPsdInArchive: 0
+        }
+      })
     )
     expect(await screen.findByText('38 copied · 3 skipped')).toBeTruthy()
     expect(document.querySelector('[data-ds="CopyWidget"]')?.getAttribute('data-view')).toBe(
@@ -259,7 +270,7 @@ describe('the widget', () => {
     expect(await screen.findByText('Copying paused · your disk is full')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.COPY_RETRY)).toEqual([{ haulId: 'h1' }]))
-    expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+    expect(await screen.findByText('12 of 40 copied')).toBeTruthy()
   })
 })
 
@@ -282,6 +293,59 @@ describe('a finished copy', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('stays until dismissed when a file could not be read', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const api = installApi(base())
+      render(<Harness />)
+      await act(async () => {})
+      api.push(
+        IPC_CHANNELS.COPY_PROGRESS,
+        progress({
+          state: 'done',
+          landed: 4,
+          skipped: {
+            notPsd: 0,
+            duplicate: 0,
+            unreadable: 1,
+            archiveUnsupported: 0,
+            noPsdInArchive: 0
+          }
+        })
+      )
+      expect(await screen.findByText('4 copied · 1 skipped')).toBeTruthy()
+      act(() => void vi.advanceTimersByTime(SUMMARY_MS * 3))
+      expect(screen.getByText('4 copied · 1 skipped')).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps out from over a flow modal, and comes back when it closes', async () => {
+    const api = installApi(base())
+    render(<Harness />)
+    await act(async () => {})
+    act(() => useCopyStore.getState().setFlowOpen(true))
+    api.push(
+      IPC_CHANNELS.COPY_PROGRESS,
+      progress({
+        state: 'done',
+        landed: 4,
+        skipped: {
+          notPsd: 0,
+          duplicate: 0,
+          unreadable: 1,
+          archiveUnsupported: 0,
+          noPsdInArchive: 0
+        }
+      })
+    )
+    await act(async () => {})
+    expect(screen.queryByText('4 copied · 1 skipped')).toBeNull()
+    act(() => useCopyStore.getState().setFlowOpen(false))
+    expect(screen.getByText('4 copied · 1 skipped')).toBeTruthy()
   })
 
   it('hovering holds it, leaving starts the time again', async () => {
@@ -311,9 +375,9 @@ describe('a finished copy', () => {
       render(<Harness />)
       await act(async () => {})
       api.push(IPC_CHANNELS.COPY_PROGRESS, progress())
-      expect(await screen.findByText('Copying 12 of 40')).toBeTruthy()
+      expect(await screen.findByText('12 of 40 copied')).toBeTruthy()
       act(() => void vi.advanceTimersByTime(SUMMARY_MS * 5))
-      expect(screen.getByText('Copying 12 of 40')).toBeTruthy()
+      expect(screen.getByText('12 of 40 copied')).toBeTruthy()
     } finally {
       vi.useRealTimers()
     }
@@ -342,7 +406,7 @@ describe('drops', () => {
     installApi(base())
     render(<Harness />)
     fire(dragEvent('dragenter', [{ kind: 'file', type: '' }]))
-    expect(screen.getByText('Drop PSDs to add them')).toBeTruthy()
+    expect(screen.getByText('Drop PSDs or zips to add them')).toBeTruthy()
     fire(dragEvent('dragleave', []))
     expect(document.querySelector('[data-ds="DropOverlay"]')).toBeNull()
   })
@@ -371,7 +435,7 @@ describe('drops', () => {
     installApi(base())
     render(<Harness />)
     fire(dragEvent('dragenter', [{ kind: 'file', type: 'image/png' }]))
-    expect(screen.getByText('Those aren’t PSDs')).toBeTruthy()
+    expect(screen.getByText('Those aren’t PSDs or zips')).toBeTruthy()
     expect(document.querySelector('[data-ds="DropOverlay"]')?.getAttribute('data-state')).toBe(
       'rejected'
     )

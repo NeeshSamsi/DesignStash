@@ -29,7 +29,7 @@ const toSort = (n: number) =>
   Array.from(
     { length: n },
     (_, i) =>
-      repo.createMockup({
+      repo.mockups.createMockup({
         ...batchSample('b1'),
         title: `M${i}`,
         libraryPath: `/lib/${i}.psd`,
@@ -108,8 +108,8 @@ describe('sort board handlers', () => {
 describe('grouping propose handler', () => {
   it('proposes only what is still waiting to be sorted (S1.E4)', async () => {
     const [a, b, c, d] = toSort(4) as [number, number, number, number]
-    repo.setStage([c], 'to_stash')
-    repo.updateMockup(d, { deletedAt: new Date().toISOString() })
+    repo.mockups.setStage([c], 'to_stash')
+    repo.mockups.updateMockup(d, { deletedAt: new Date().toISOString() })
     const res = await call<{ groups: unknown[]; singletons: { mockupId: number }[] }>(
       IPC_CHANNELS.GROUPING_PROPOSE,
       { batchId: 'b1' }
@@ -123,5 +123,44 @@ describe('grouping propose handler', () => {
       .map((m) => m.mockupId)
       .sort()
     expect(ids).toEqual([a, b].sort())
+  })
+
+  describe('grouping propose handler: zips', () => {
+    it('passes on which zip each mockup came from', async () => {
+      const fromZip = (fileName: string, folderTrail: string[]) =>
+        repo.mockups.createMockup({
+          ...batchSample('b1'),
+          title: fileName,
+          libraryPath: `/lib/${fileName}`,
+          stage: 'to_sort',
+          importContext: {
+            batchId: 'b1',
+            folderTrail,
+            originalFilename: fileName,
+            archiveName: 'Apple-Watch-Ultra-Mockup.zip',
+            archiveTitle: 'Apple Watch Ultra Mockup'
+          }
+        }).id
+      const a = fromZip('Apple Watch Ultra - Realistic, PSD.psd', [
+        'Apple Watch Ultra Mockup',
+        'Realistic'
+      ])
+      const b = fromZip('Apple Watch Ultra - Сlay, PSD.psd', [
+        'Apple Watch Ultra Mockup',
+        'Clay Version'
+      ])
+
+      const res = await call<{
+        groups: { reason: string; members: { mockupId: number; archiveTitle?: string }[] }[]
+      }>(IPC_CHANNELS.GROUPING_PROPOSE, { batchId: 'b1' })
+      expect(res.success).toBe(true)
+      if (!res.success) return
+      expect(res.data.groups).toHaveLength(1)
+      expect(res.data.groups[0]).toMatchObject({ reason: 'archive' })
+      expect(res.data.groups[0]!.members.map((m) => m.mockupId).sort()).toEqual([a, b].sort())
+      expect(res.data.groups[0]!.members[0]).toMatchObject({
+        archiveTitle: 'Apple Watch Ultra Mockup'
+      })
+    })
   })
 })

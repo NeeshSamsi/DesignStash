@@ -16,4 +16,13 @@ describe('Textarea', () => {
       expect(screen.getAllByText(text).length).toBeGreaterThan(0)
     }
   })
+
+  it('rowRange 4-6 keeps at least four lines and grows to six', () => {
+    const { container, rerender } = render(<Textarea />)
+    expect(container.querySelector('textarea')?.className).not.toContain('min-h-28')
+    rerender(<Textarea rowRange="4-6" />)
+    const cls = container.querySelector('textarea')?.className ?? ''
+    expect(cls).toContain('min-h-28')
+    expect(cls).toContain('max-h-40')
+  })
 })

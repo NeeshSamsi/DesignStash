@@ -8,9 +8,9 @@ import { useDetailsData } from './use-details-data'
 
 function Content({ target, onPile }: { target: DetailsTarget; onPile: boolean }) {
   const data = useDetailsData(target.id)
-  const isPile = !onPile && (data.detail?.variants.length ?? 0) > 0 && data.detail?.item.isGroup
+  const isPile = !onPile && (data.detail?.variants.length ?? 0) > 0 && data.detail?.item.pile
   if (isPile) return <PileView data={data} />
-  const kind = onPile && data.detail?.item.isGroup ? 'top' : 'mockup'
+  const kind = onPile && data.detail?.item.pile ? 'top' : 'mockup'
   return <SingleView data={data} edit={target.edit} kind={kind} />
 }
 

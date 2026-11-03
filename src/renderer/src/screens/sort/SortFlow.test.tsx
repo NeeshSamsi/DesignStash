@@ -287,6 +287,22 @@ describe('selection and menus', () => {
     expect(tileIds(tray())).toEqual([8])
   })
 
+  it('says how to make a pile, and offers Make pile once two or more are selected', async () => {
+    setupApi()
+    mount()
+    await ready()
+    expect(
+      screen.getByText('Drag mockups together to make a pile. Leave the rest on their own.')
+    ).toBeTruthy()
+    fireEvent.click(tile(9))
+    expect(screen.queryByRole('button', { name: 'Make pile' })).toBeNull()
+    fireEvent.click(tile(10), { metaKey: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Make pile' }))
+    const made = document.querySelector<HTMLElement>('[data-pile-id]')!
+    expect(tileIds(made)).toEqual([9, 10])
+    expect(vi.mocked(undoToast).mock.calls[0]![0]).toBe('New pile of 2 mockups.')
+  })
+
   it('does nothing for ⌘G on one tile', async () => {
     setupApi()
     mount()

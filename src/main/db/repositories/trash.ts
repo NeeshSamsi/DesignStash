@@ -3,7 +3,6 @@ import type { AppDatabase } from '../connection'
 import { mockups } from '../schema'
 import type { LibraryQueryRepository, LibraryRow } from './library-query'
 import type { MockupRepository } from './mockups'
-import type { PileRepository } from './piles'
 import type { SearchRepository } from './search'
 
 /** Soft delete (deletedAt), restore and permanent delete. */
@@ -12,8 +11,7 @@ export class TrashRepository {
     private readonly db: AppDatabase,
     private readonly mockups: MockupRepository,
     private readonly search: SearchRepository,
-    private readonly library: LibraryQueryRepository,
-    private readonly piles: PileRepository
+    private readonly library: LibraryQueryRepository
   ) {}
 
   getTrash(): LibraryRow[] {
@@ -37,11 +35,12 @@ export class TrashRepository {
       .where(and(isNotNull(mockups.deletedAt), isNull(mockups.groupId)))
       .orderBy(desc(mockups.deletedAt), desc(mockups.id))
       .all()
-    const rows = this.library.toRows(trashed)
+    const lookups = this.library.loadLookups(trashed.map((m) => m.id))
+    const rows = this.library.toRows(trashed, lookups)
     return trashed.map((m, i) => ({
       row: rows[i]!,
       trashedAt: m.deletedAt!,
-      ids: [m.id, ...this.piles.getMockupsByGroupId(m.id).map((x) => x.id)]
+      ids: [m.id, ...(lookups.members.get(m.id) ?? [])]
     }))
   }
 
@@ -81,7 +80,7 @@ export class TrashRepository {
   restore(id: number): void {
     this.db.update(mockups).set({ deletedAt: null }).where(eq(mockups.id, id)).run()
     const m = this.mockups.getMockup(id)
-    if (m?.reviewStatus === 'approved') this.search.upsertSearchIndex(id)
+    if (m?.stage === 'stashed') this.search.upsertSearchIndex(id)
   }
 
   deleteMockupsHard(ids: number[]): { libraryPath: string; coverPath: string }[] {

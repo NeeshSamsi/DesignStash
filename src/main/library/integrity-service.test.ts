@@ -16,7 +16,7 @@ const row = (overrides: Partial<NewMockup> = {}): NewMockup => ({
   libraryPath: `${mockupsDir}/a/original.psd`,
   coverPath: `${mockupsDir}/a/cover.webp`,
   coverSource: 'embedded',
-  reviewStatus: 'approved',
+  stage: 'stashed',
   ...overrides
 })
 
@@ -39,7 +39,7 @@ const makeService = (deps: Partial<IntegrityDeps>) => new IntegrityService(repo,
 
 describe('IntegrityService.scan', () => {
   it('detects an orphan record (DB row whose file is missing)', async () => {
-    const m = repo.createMockup(row({ libraryPath: `${mockupsDir}/a/original.psd` }))
+    repo.mockups.createMockup(row({ libraryPath: `${mockupsDir}/a/original.psd` }))
     const service = makeService({
       listFiles: async () => [],
       exists: async () => false
@@ -47,14 +47,13 @@ describe('IntegrityService.scan', () => {
 
     const report = await service.scan()
 
-    expect(report.orphanRecords).toEqual([{ mockupId: m.id, libraryPath: `${mockupsDir}/a/original.psd` }])
-    expect(report.orphanFiles).toEqual([])
+    expect(report).toEqual({ orphanFiles: 0, orphanRecords: 1 })
   })
 
   it('detects an orphan file (on disk, no DB row)', async () => {
     const known = `${mockupsDir}/a/original.psd`
     const stray = `${mockupsDir}/x/stray.psd`
-    repo.createMockup(row({ libraryPath: known }))
+    repo.mockups.createMockup(row({ libraryPath: known }))
 
     const service = makeService({
       listFiles: async () => [known, stray],
@@ -63,13 +62,12 @@ describe('IntegrityService.scan', () => {
 
     const report = await service.scan()
 
-    expect(report.orphanFiles).toEqual([stray])
-    expect(report.orphanRecords).toEqual([])
+    expect(report).toEqual({ orphanFiles: 1, orphanRecords: 0 })
   })
 
   it('ignores generated cover/thumb files in the disk listing', async () => {
     const known = `${mockupsDir}/a/original.psd`
-    repo.createMockup(row({ libraryPath: known }))
+    repo.mockups.createMockup(row({ libraryPath: known }))
 
     const service = makeService({
       listFiles: async () => [
@@ -83,15 +81,14 @@ describe('IntegrityService.scan', () => {
 
     const report = await service.scan()
 
-    expect(report.orphanFiles).toEqual([])
-    expect(report.orphanRecords).toEqual([])
+    expect(report).toEqual({ orphanFiles: 0, orphanRecords: 0 })
   })
 
   it('reports nothing for a clean library', async () => {
     const a = `${mockupsDir}/a/original.psd`
     const b = `${mockupsDir}/b/original.psd`
-    repo.createMockup(row({ libraryPath: a }))
-    repo.createMockup(row({ libraryPath: b }))
+    repo.mockups.createMockup(row({ libraryPath: a }))
+    repo.mockups.createMockup(row({ libraryPath: b }))
 
     const service = makeService({
       listFiles: async () => [a, b, `${mockupsDir}/a/cover.webp`, `${mockupsDir}/b/thumb.webp`],
@@ -100,26 +97,25 @@ describe('IntegrityService.scan', () => {
 
     const report = await service.scan()
 
-    expect(report.orphanFiles).toEqual([])
-    expect(report.orphanRecords).toEqual([])
+    expect(report).toEqual({ orphanFiles: 0, orphanRecords: 0 })
   })
 
   it('deleteOrphanRecord removes the row and its FTS entry', async () => {
     const path = `${mockupsDir}/a/original.psd`
-    const m = repo.createMockup(row({ libraryPath: path }))
-    repo.upsertSearchIndex(m.id)
+    const m = repo.mockups.createMockup(row({ libraryPath: path }))
+    repo.search.upsertSearchIndex(m.id)
     const service = makeService({ listFiles: async () => [], exists: async () => false })
 
     // present before
-    expect((await service.scan()).orphanRecords).toHaveLength(1)
+    expect((await service.scan()).orphanRecords).toBe(1)
 
     service.deleteOrphanRecord(m.id)
 
-    expect(repo.getMockup(m.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(m.id)).toBeUndefined()
     const fts = sqlite.prepare(`SELECT rowid FROM mockups_fts WHERE rowid = ?`).all(m.id)
     expect(fts).toHaveLength(0)
     // no longer reported as an orphan record
-    expect((await service.scan()).orphanRecords).toEqual([])
+    expect((await service.scan()).orphanRecords).toBe(0)
   })
 
   it('addOrphanFile registers an in-place needs_review mockup without re-copying', async () => {
@@ -135,20 +131,20 @@ describe('IntegrityService.scan', () => {
     })
 
     // before registration the file is an orphan
-    expect((await service.scan()).orphanFiles).toEqual([orphan])
+    expect((await service.scan()).orphanFiles).toBe(1)
 
     const { mockupId } = await service.addOrphanFile(orphan)
 
-    const created = repo.getMockup(mockupId)!
+    const created = repo.mockups.getMockup(mockupId)!
     expect(created.libraryPath).toBe(orphan) // NOT re-copied
-    expect(created.reviewStatus).toBe('needs_review')
+    expect(created.stage).toBe('to_sort')
     expect(created.coverSource).toBe('embedded')
     const ctx = created.importContext as { batchId?: string; originalFilename?: string }
     expect(ctx.batchId).toBeTruthy()
     expect(ctx.originalFilename).toBe('original.psd')
 
     // follow-up scan no longer reports it as an orphan file
-    expect((await service.scan()).orphanFiles).toEqual([])
+    expect((await service.scan()).orphanFiles).toBe(0)
   })
 
   it('addOrphanFile stores coverSource: none when no cover is resolved', async () => {
@@ -161,17 +157,17 @@ describe('IntegrityService.scan', () => {
 
     const { mockupId } = await service.addOrphanFile(orphan)
 
-    const created = repo.getMockup(mockupId)!
+    const created = repo.mockups.getMockup(mockupId)!
     expect(created.coverSource).toBe('none')
-    expect(created.reviewStatus).toBe('needs_review')
+    expect(created.stage).toBe('to_sort')
   })
 
   it('excludes soft-deleted records from the scan', async () => {
     const live = `${mockupsDir}/a/original.psd`
     const trashedPath = `${mockupsDir}/t/original.psd`
-    repo.createMockup(row({ libraryPath: live }))
-    const trashed = repo.createMockup(row({ libraryPath: trashedPath }))
-    repo.updateMockup(trashed.id, { deletedAt: new Date().toISOString() })
+    repo.mockups.createMockup(row({ libraryPath: live }))
+    const trashed = repo.mockups.createMockup(row({ libraryPath: trashedPath }))
+    repo.mockups.updateMockup(trashed.id, { deletedAt: new Date().toISOString() })
 
     const service = makeService({
       listFiles: async () => [live],
@@ -181,7 +177,6 @@ describe('IntegrityService.scan', () => {
     const report = await service.scan()
 
     // trashed record's missing file is not flagged (it's excluded from getAllLibraryPaths)
-    expect(report.orphanRecords).toEqual([])
-    expect(report.orphanFiles).toEqual([])
+    expect(report).toEqual({ orphanFiles: 0, orphanRecords: 0 })
   })
 })

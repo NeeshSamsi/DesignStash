@@ -1,5 +1,4 @@
 import { promises as fs } from 'node:fs'
-import { basename } from 'node:path'
 import sharp from 'sharp'
 import {
   InferenceResultSchema,
@@ -13,7 +12,7 @@ import type {
   LookOverUnit,
   SaveDraftRequest
 } from '@shared/approval'
-import { analysisInputFor } from '../ai/inference-service'
+import { analysisInputFor } from '../ai/inference-queue'
 import type { Repository } from '../db/repository'
 import type { Draft, Mockup } from '../db/schema'
 import { TagService } from '../db/tag-service'
@@ -41,7 +40,8 @@ interface Fields {
 const sameIds = (a: number[], b: number[]) =>
   a.length === b.length && [...a].sort((x, y) => x - y).every((id, i) => id === [...b].sort((x, y) => x - y)[i])
 
-const stemOf = (fileName: string) => fileName.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim()
+/** The title a mockup gets when there is no suggestion: its file name without the extension. */
+export const stemOf = (fileName: string) => fileName.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim()
 
 /**
  * Look it over, on the main side. Everything the user does in a pile is a draft until Stash pile
@@ -115,7 +115,7 @@ export class LookOverService {
 
   /** Skip for now: a mockup on its own goes to the end of the queue. Piles and their members stay put. */
   async skip(mockupId: number): Promise<{ skipped: boolean }> {
-    const m = this.repo.getMockup(mockupId)
+    const m = this.repo.mockups.getMockup(mockupId)
     if (!m || m.deletedAt !== null || m.stage !== 'to_stash' || m.isGroup || m.groupId !== null) {
       return { skipped: false }
     }
@@ -126,7 +126,7 @@ export class LookOverService {
 
   /** Finish later: remember the step, so coming back resumes there. */
   async setResume(unitId: number, mockupId: number): Promise<{ saved: boolean }> {
-    const root = this.repo.getMockup(unitId)
+    const root = this.repo.mockups.getMockup(unitId)
     if (!root || root.deletedAt !== null || root.stage !== 'to_stash' || root.groupId !== null) {
       return { saved: false }
     }
@@ -140,13 +140,13 @@ export class LookOverService {
 
   private members(pileId: number): Mockup[] {
     return this.repo
-      .getMockupsByGroupId(pileId)
+      .piles.getMockupsByGroupId(pileId)
       .filter((m) => m.deletedAt === null && m.stage === 'to_stash')
       .sort((a, b) => a.id - b.id)
   }
 
   private requireWaiting(id: number): Mockup {
-    const m = this.repo.getMockup(id)
+    const m = this.repo.mockups.getMockup(id)
     if (!m || m.deletedAt !== null || m.stage !== 'to_stash') {
       throw new Error(`Mockup ${id} is not waiting in To stash`)
     }
@@ -226,7 +226,7 @@ export class LookOverService {
       role,
       title: draft.title,
       description: draft.description,
-      tags: this.repo.getApprovalTagsByIds(draft.tagIds),
+      tags: this.repo.tags.getApprovalTagsByIds(draft.tagIds),
       touched: draft.touched,
       checked: draft.checked,
       cover: {
@@ -235,8 +235,7 @@ export class LookOverService {
         missing,
         width: size?.width ?? null,
         height: size?.height ?? null
-      },
-      sidecarFileName: m.coverSource === 'sidecar' ? basename(m.coverPath) : null
+      }
     }
   }
 

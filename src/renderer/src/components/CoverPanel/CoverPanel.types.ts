@@ -9,11 +9,11 @@ export const COVER_PANEL_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-3545',
   section: '8 · Approval & editing',
   description:
-    'Cover in Look it over and Detail: the image plus a tag row (source tag · optional note · Zoom). Hover reveals Replace (and Use the PSD’s preview on your own cover); drag-over is the shared DropOverlay; replacing keeps the old cover dimmed; errors and the sidecar prompt are Banners. Crop-or-bars rule and limits: design/specs/cover.md. Deck (piles only): show-deck/deck-more peek the mockups still to come behind the cover, deck-label counts them; not clickable.',
+    'Cover in Look it over and Detail. At rest: the image, then a tag row (source tag · optional note · Zoom, always visible). hover: Replace (refresh-01) centred, plus “Use the PSD’s preview” on uploaded covers. drag-over: DropOverlay (the same component as the library). replacing: old cover dimmed with progress. error: standard Banner; the cover is unchanged. none: required CoverDropZone. note/show-note + bars implement the crop rule (design/specs/cover.md). Deck (piles only): show-deck peeks one card behind the cover and shows deck-label (“2 left in this pile”); deck-more adds a second card. Only the mockups still to come are counted; it thins as you go and is not clickable.\nSync 2026-10: the source chip only shows when it says something: “Uploaded”, “Sidecar image” or “Low-res preview” for a small embedded preview. A normal embedded preview shows no chip. A sidecar image is used automatically when the PSD has no embedded preview, so there is no prompt to accept it.',
   code: 'screens/detail/DetailModal.tsx',
   axes: {
     source: ['embedded', 'sidecar', 'uploaded', 'none'],
-    state: ['default', 'drag-over', 'replacing', 'uploading', 'error']
+    state: ['default', 'drag-over', 'replacing', 'error', 'uploading']
   },
   axisDefaults: {
     source: 'embedded',
@@ -37,7 +37,7 @@ export const COVER_PANEL_CONTRACT = {
 } as const satisfies ComponentContract
 
 export type CoverPanelSource = 'embedded' | 'sidecar' | 'uploaded' | 'none'
-export type CoverPanelState = 'default' | 'drag-over' | 'replacing' | 'uploading' | 'error'
+export type CoverPanelState = 'default' | 'drag-over' | 'replacing' | 'error' | 'uploading'
 
 export interface CoverPanelContractProps {
   /** Figma `source` (4 options). Default `embedded`. */

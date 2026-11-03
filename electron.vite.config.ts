@@ -2,6 +2,15 @@ import { resolve } from 'node:path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { cspMetaTags } from './src/main/csp'
+
+// Production builds only: the dev server is covered by the header in the main process, which
+// allows Vite's HMR origin.
+const cspMetaPlugin = {
+  name: 'designstash-csp-meta',
+  apply: 'build' as const,
+  transformIndexHtml: () => cspMetaTags()
+}
 
 export default defineConfig({
   main: {
@@ -11,15 +20,9 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
-        external: [
-          'electron',
-          'better-sqlite3',
-          'sharp',
-          'node:crypto'
-        ],
+        external: ['electron', 'better-sqlite3', 'sharp', 'node:crypto'],
         input: {
-          index: resolve('src/main/index.ts'),
-          'psd-reader.worker': resolve('src/main/psd/psd-reader.worker.ts'),
+          index: resolve('src/main/index.ts')
         },
         output: {
           format: 'cjs',
@@ -27,8 +30,8 @@ export default defineConfig({
           chunkFileNames: 'chunks/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash][extname]'
         }
-      },
-    },
+      }
+    }
   },
   preload: {
     resolve: {
@@ -46,6 +49,6 @@ export default defineConfig({
         '@shared': resolve('src/shared')
       }
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [react(), tailwindcss(), cspMetaPlugin]
   }
 })

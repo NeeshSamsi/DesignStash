@@ -65,7 +65,9 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
         })
       })
       .finally(() => {
-        activeDownloads.delete(args.id)
+        // A cancelled download settles late. By then the same model may have been started again,
+        // and that newer controller is not this one's to remove.
+        if (activeDownloads.get(args.id) === controller) activeDownloads.delete(args.id)
       })
     return { started: true }
   })

@@ -117,6 +117,17 @@ describe('LibraryPage grid', () => {
     expect(screen.queryByText(/selected/)).toBeNull()
   })
 
+  it('keeps the toolbar in view while the grid scrolls, on the panel colour with nothing above it', async () => {
+    setupApi([item(1)])
+    render(<LibraryPage />)
+    await ready()
+    const sticky = document.querySelector('[data-slot="library-toolbar-sticky"]')!
+    expect(sticky.contains(document.querySelector('[data-ds="LibraryToolbar"]'))).toBe(true)
+    for (const name of ['sticky', '-top-2', 'z-20', 'bg-surface-1', 'pt-2']) {
+      expect(sticky.className).toContain(name)
+    }
+  })
+
   it('selects with a click and reports it in the toolbar', async () => {
     setupApi([item(1), item(2), item(3)])
     render(<LibraryPage />)
@@ -200,14 +211,32 @@ describe('LibraryPage states', () => {
     expect(useLibraryStore.getState().tagFilter).toEqual([])
   })
 
-  it('nothing starred yet explains how to star, with no button', async () => {
+  it('nothing starred yet explains how to star and offers Go to All', async () => {
     setupApi([item(1)])
+    useUiStore.setState({ view: 'starred' })
     render(<LibraryPage starredOnly />)
     await ready()
     expect(screen.getByText('Nothing starred yet')).toBeTruthy()
+    fireEvent.click(
+      within(document.querySelector('[data-ds="EmptyState"]')!).getByRole('button', {
+        name: 'Go to All'
+      })
+    )
+    expect(useUiStore.getState().view).toBe('all')
+  })
+
+  it('an empty stash quiets Filter and sort and says what to do by the Add card', async () => {
+    setupApi([])
+    render(<LibraryPage />)
+    await ready()
+    expect((screen.getByRole('button', { name: /Filter/ }) as HTMLButtonElement).disabled).toBe(
+      true
+    )
     expect(
-      within(document.querySelector('[data-ds="EmptyState"]')!).queryByRole('button')
-    ).toBeNull()
+      (screen.getByRole('combobox', { name: 'Sort order' }) as HTMLButtonElement).disabled
+    ).toBe(true)
+    expect(screen.getByText(/drop them anywhere in this window/)).toBeTruthy()
+    expect(screen.queryByText('0 items')).toBeNull()
   })
 
   it('keeps no-results and error states at the top under the toolbar', async () => {
@@ -226,7 +255,8 @@ describe('LibraryPage states', () => {
     setupApi([])
     render(<LibraryPage />)
     await ready()
-    expect(screen.getByText('0 items')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter/ })).toBeTruthy()
+    expect(screen.queryByText('0 items')).toBeNull()
   })
 
   it('a failed first load shows the error state with a retry', async () => {

@@ -1,18 +1,17 @@
-import { app, shell, screen, protocol, net, BrowserWindow } from 'electron'
+import { app, session, shell, screen, protocol, net, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { APP_ID } from '@shared/constants'
 import { createHandlerContext, type TelemetryRef } from './ipc/context'
-import { registerAllHandlers } from './ipc'
+import { registerAllHandlers, registerPreAppHandlers } from './ipc'
 import { initDb, getDb, closeDb } from './db/connection'
 import { runMigrations } from './db/migrate'
 import { bootstrapLibrary, seedTaxonomy } from './db/bootstrap'
 import { ensureSearchIndex } from './db/search-index'
 import { createSettingsStore } from './settings'
-import { runBoot, setBootStatus } from './boot-status'
+import { isLibraryOpen, runBoot, setBootStatus } from './boot-status'
 import { MIN_WINDOW, windowSizeOptions } from './window-size'
+import { applyCsp } from './csp'
 import { handleCoverRequests, registerCoverScheme } from './cover-protocol'
-import { registerAppHandlers } from './ipc/app'
-import { registerBootHandlers } from './ipc/boot'
 import { logger } from './logger'
 import { Repository } from './db/repository'
 import { createIntegrityService, createStashCheck } from './ipc/integrity'
@@ -31,7 +30,11 @@ function migrationsFolder(): string {
   return app.isPackaged ? join(process.resourcesPath, 'drizzle') : join(app.getAppPath(), 'drizzle')
 }
 
-function createWindow(): BrowserWindow {
+// The one window. Pushes go to whatever this holds; it is cleared when the window closes, and
+// macOS can open a new one later while the handlers stay registered.
+let mainWindow: BrowserWindow | null = null
+
+function openWindow(): BrowserWindow {
   // 1440×900 clamped to the display, resizable down to a minimum, centred on first launch.
   const window = new BrowserWindow({
     ...windowSizeOptions(screen.getPrimaryDisplay().workAreaSize),
@@ -51,6 +54,9 @@ function createWindow(): BrowserWindow {
   window.setMinimumSize(MIN_WINDOW.width, MIN_WINDOW.height)
 
   window.on('ready-to-show', () => window.show())
+  window.on('closed', () => {
+    if (mainWindow === window) mainWindow = null
+  })
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url)
@@ -62,11 +68,15 @@ function createWindow(): BrowserWindow {
   } else {
     void window.loadFile(join(__dirname, '../renderer/index.html'))
   }
+  mainWindow = window
   return window
 }
 
 app.whenReady().then(() => {
   app.setAppUserModelId(APP_ID)
+  // Dev gets its policy as a header (it must allow Vite's HMR); the packaged build carries it as a
+  // meta tag in index.html, because headers are not reliable for file:// pages.
+  if (rendererDevUrl) applyCsp(session.defaultSession, { devUrl: rendererDevUrl })
 
   const settings = createSettingsStore(app.getPath('userData'))
   handleCoverRequests(
@@ -88,7 +98,7 @@ app.whenReady().then(() => {
       ensureSearchIndex(db)
       seedTaxonomy(db)
       try {
-        new Repository(db).rebuildSearchIndex()
+        new Repository(db).search.rebuildSearchIndex()
       } catch (err) {
         logger.error('Search index rebuild failed:', err)
       }
@@ -98,7 +108,7 @@ app.whenReady().then(() => {
   setBootStatus(boot)
   // A library that did not open leaves nothing for the other handlers to run on: the window
   // only gets the launch status, so it can say what happened.
-  const libraryOpen = boot.state === 'ok' || boot.state === 'settings-corrupt'
+  const libraryOpen = isLibraryOpen(boot)
   logger.info(`Launch status: ${boot.state}`)
 
   if (libraryOpen) {
@@ -143,23 +153,24 @@ app.whenReady().then(() => {
   process.on('uncaughtException', (err) => telemetry.captureError(err))
   process.on('unhandledRejection', (reason) => telemetry.captureError(reason))
 
-  const window = createWindow()
-  if (libraryOpen) {
+  openWindow()
+  const repo = libraryOpen ? new Repository(getDb()) : null
+  // The screens before the app (launch error, onboarding) run on this set, so it is registered
+  // whether or not the library opened. The library domains come on top of it, never instead.
+  registerPreAppHandlers({ settings, repo })
+  if (repo) {
     registerAllHandlers(
       createHandlerContext({
         settings,
         telemetry: telemetryRef,
-        repo: new Repository(getDb()),
-        window
+        repo,
+        getWindow: () => mainWindow
       })
     )
-  } else {
-    registerAppHandlers()
-    registerBootHandlers()
   }
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (!mainWindow) openWindow()
   })
 })
 

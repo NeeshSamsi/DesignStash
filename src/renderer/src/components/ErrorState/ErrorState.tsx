@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { Alert02Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Banner } from '@renderer/components/Banner'
@@ -50,13 +51,19 @@ export function ErrorState({
           action
           actionLabel={retry}
           {...(onRetry ? { onAction: onRetry } : {})}
+          {...(props.showSecondary && secondaryLabel ? { secondaryLabel } : {})}
+          {...(onSecondary ? { onSecondary } : {})}
           dismissible={false}
         />
       </div>
     )
   }
 
-  const secondary = secondaryLabel === undefined ? DEFAULT_SECONDARY[props.variant] : secondaryLabel
+  const secondary =
+    (secondaryLabel === undefined ? DEFAULT_SECONDARY[props.variant] : secondaryLabel) &&
+    props.showSecondary
+      ? (secondaryLabel ?? DEFAULT_SECONDARY[props.variant])
+      : null
   const isFullWindow = props.variant === 'full-window'
   return (
     <div
@@ -66,9 +73,9 @@ export function ErrorState({
       className={cn(errorStateVariants({ variant: props.variant }), className)}
     >
       <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-error-weak text-error">
-        <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-6" />
+        <HugeiconsIcon icon={Alert02Icon} strokeWidth={ICON_STROKE} className="size-6" />
       </div>
-      <p
+      <h1
         className={
           isFullWindow
             ? 'type-display-2xl-medium text-foreground'
@@ -76,7 +83,7 @@ export function ErrorState({
         }
       >
         {props.title}
-      </p>
+      </h1>
       <p className="type-body-sm-regular text-muted-foreground">{props.message}</p>
       <div className="flex items-start gap-2">
         {secondary && (
@@ -89,7 +96,7 @@ export function ErrorState({
         </Button>
       </div>
       {props.showDetails && (
-        <div className="flex w-full items-center gap-2 rounded-md bg-surface-2 px-3 py-2">
+        <div className="flex w-full items-center gap-2 rounded-lg bg-surface-2 px-3 py-2">
           <p className="type-caption-xs-regular min-w-0 flex-1 text-left text-tertiary">
             A report is ready to copy if you need to ask for help.
           </p>

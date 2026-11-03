@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
-import { IPC_CHANNELS, IPC_CONTRACT, PUSH_CHANNELS, type IpcResult } from '@shared/ipc'
+import { IPC_CHANNELS, PUSH_CHANNELS, PUSH_CONTRACT, type IpcResult } from '@shared/ipc'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, sample } from '../db/repositories/__tests__/setup'
@@ -42,12 +42,12 @@ beforeEach(() => {
 afterEach(() => sqlite.close())
 
 const make = (title: string) =>
-  repo.createMockup({ ...sample, title, libraryPath: `/library/mockups/${title}/original.psd` }).id
+  repo.mockups.createMockup({ ...sample, title, libraryPath: `/library/mockups/${title}/original.psd` }).id
 
 describe('inbox channels', () => {
   it('lists a stage and counts both', async () => {
     const [a, b] = [make('a'), make('b')]
-    repo.setStage([b], 'to_stash')
+    repo.mockups.setStage([b], 'to_stash')
 
     const toSort = await call<{ items: { id: number }[] }>(IPC_CHANNELS.INBOX_LIST, {
       stage: 'to_sort'
@@ -77,8 +77,8 @@ describe('inbox channels', () => {
     const res = await call(IPC_CHANNELS.INBOX_TOSS, { ids: [a] })
 
     expect(res).toEqual({ success: true, data: { tossedIds: [a], skippedIds: [] } })
-    expect(repo.getMockup(a)).toBeUndefined()
-    expect(repo.getMockup(b)).toBeDefined()
+    expect(repo.mockups.getMockup(a)).toBeUndefined()
+    expect(repo.mockups.getMockup(b)).toBeDefined()
     expect(push).toHaveBeenCalledWith(IPC_CHANNELS.INBOX_COUNTS_CHANGED, {
       toSort: 1,
       toStash: 0,
@@ -95,8 +95,8 @@ describe('inbox channels', () => {
 describe('inbox:counts push', () => {
   it('is a push channel whose payload is the counts', () => {
     expect(PUSH_CHANNELS).toContain(IPC_CHANNELS.INBOX_COUNTS_CHANGED)
-    const { request } = IPC_CONTRACT[IPC_CHANNELS.INBOX_COUNTS_CHANGED]
-    expect(request.safeParse({ toSort: 1, toStash: 2, sniffing: 0, trash: 3 }).success).toBe(true)
-    expect(request.safeParse({ toSort: 1 }).success).toBe(false)
+    const { payload } = PUSH_CONTRACT[IPC_CHANNELS.INBOX_COUNTS_CHANGED]
+    expect(payload.safeParse({ toSort: 1, toStash: 2, sniffing: 0, trash: 3 }).success).toBe(true)
+    expect(payload.safeParse({ toSort: 1 }).success).toBe(false)
   })
 })

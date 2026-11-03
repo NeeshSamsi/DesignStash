@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Cancel01Icon, Shield01Icon, Tick02Icon } from '@hugeicons/core-free-icons'
@@ -19,7 +20,7 @@ export interface ConsentPanelProps
   collect?: readonly string[]
   /** What we never collect, each with a red cross. Figma's list until given. */
   neverCollect?: readonly string[]
-  /** Card: the two answers. No thanks is secondary, Keep it on is the one primary. */
+  /** Card: the two answers, equal in weight and neutral in wording. */
   onDecline?: () => void
   onAccept?: () => void
   declineLabel?: string
@@ -59,7 +60,7 @@ function List({
           <li key={item} className="flex items-start gap-2">
             <HugeiconsIcon
               icon={icon}
-              strokeWidth={1.5}
+              strokeWidth={ICON_STROKE}
               aria-hidden
               className={cn('mt-0.5 size-4 shrink-0', tone)}
             />
@@ -73,10 +74,10 @@ function List({
 
 /**
  * ConsentPanel — Telemetry disclosure + choice for onboarding (A4): what we collect / never collect,
- * with No thanks · Keep it on. Settings › Privacy shows the same lists in its usage-data accordion.
+ * with Don’t share · Share usage data. Settings › Privacy shows the same lists in its usage-data accordion.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4275
  * What we collect gets green ticks and What we never collect red crosses, in both modes.
- * In `accordion` mode the switch heads the container and the lists open underneath while it is on.
+ * In `accordion` mode the switch heads the container and the lists always show underneath, whatever the switch says.
  */
 export function ConsentPanel({
   className,
@@ -87,8 +88,8 @@ export function ConsentPanel({
   neverCollect = NEVER,
   onDecline,
   onAccept,
-  declineLabel = 'No thanks',
-  acceptLabel = 'Keep it on',
+  declineLabel = 'Don’t share',
+  acceptLabel = 'Share usage data',
   enabled = true,
   onEnabledChange,
   ...rest
@@ -119,7 +120,7 @@ export function ConsentPanel({
       <div
         data-ds="ConsentPanel"
         data-mode="accordion"
-        data-state={enabled ? 'open' : 'closed'}
+        data-state={enabled ? 'on' : 'off'}
         className={cn(consentPanelVariants({ mode }), className)}
         {...props}
       >
@@ -135,11 +136,14 @@ export function ConsentPanel({
             onCheckedChange={(next) => onEnabledChange?.(next)}
           />
         </div>
-        {enabled && (
-          <div className="border-t border-subtle px-4 pt-3.5 pb-4 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150">
-            {lists}
-          </div>
-        )}
+        <div className="flex flex-col gap-3 border-t border-subtle px-4 pt-3.5 pb-4">
+          {!enabled && (
+            <p className="type-caption-xs-regular text-tertiary">
+              Sharing is off, so none of this is sent. This is what would be.
+            </p>
+          )}
+          {lists}
+        </div>
       </div>
     )
   }
@@ -153,7 +157,11 @@ export function ConsentPanel({
     >
       <div className="flex items-center gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-3">
-          <HugeiconsIcon icon={Shield01Icon} strokeWidth={1.5} className="size-5 text-foreground" />
+          <HugeiconsIcon
+            icon={Shield01Icon}
+            strokeWidth={ICON_STROKE}
+            className="size-5 text-foreground"
+          />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <p className="type-body-sm-medium text-foreground">{heading}</p>
@@ -163,7 +171,7 @@ export function ConsentPanel({
       {lists}
       <div className="flex items-center justify-end gap-2">
         <Button variant="secondary" label={declineLabel} onClick={onDecline} />
-        <Button label={acceptLabel} onClick={onAccept} />
+        <Button variant="secondary" label={acceptLabel} onClick={onAccept} />
       </div>
     </div>
   )

@@ -35,7 +35,6 @@ function AppMain() {
   const libraryTagFilter = useLibraryStore((s) => s.tagFilter)
   const setLibraryItems = useLibraryStore((s) => s.setItems)
   const setLibraryStats = useLibraryStore((s) => s.setStats)
-  const setLibraryLoading = useLibraryStore((s) => s.setLoading)
 
   useEffect(() => {
     void (async () => {
@@ -70,7 +69,6 @@ function AppMain() {
   }, [openModal])
 
   const refreshLibrary = useCallback(async () => {
-    setLibraryLoading(true)
     const [listRes, statsRes] = await Promise.all([
       window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
         tagIds: libraryTagFilter.length ? libraryTagFilter : undefined,
@@ -79,17 +77,9 @@ function AppMain() {
       }),
       window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
     ])
-    setLibraryLoading(false)
     if (listRes.success) setLibraryItems(listRes.data.items)
     if (statsRes.success) setLibraryStats(statsRes.data)
-  }, [
-    libraryQuery,
-    librarySort,
-    libraryTagFilter,
-    setLibraryLoading,
-    setLibraryItems,
-    setLibraryStats
-  ])
+  }, [libraryQuery, librarySort, libraryTagFilter, setLibraryItems, setLibraryStats])
 
   // The Sort board works on an import batch; Look it over works on the whole queue main holds, piles first.
   const batchOf = (items: InboxItem[]) =>

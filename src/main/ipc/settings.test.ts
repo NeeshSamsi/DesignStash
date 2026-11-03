@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
-import { IPC_CHANNELS, IPC_CONTRACT, PUSH_CHANNELS, type IpcResult } from '@shared/ipc'
+import { IPC_CHANNELS, PUSH_CHANNELS, PUSH_CONTRACT, type IpcResult } from '@shared/ipc'
 import type { Repository } from '../db/repository'
 import { createSettingsStore, type SettingsStore } from '../settings'
 import { createTestDb } from '../db/repositories/__tests__/setup'
@@ -90,9 +90,9 @@ describe('stash channels', () => {
 
   it('has a push channel for move progress', () => {
     expect(PUSH_CHANNELS).toContain(IPC_CHANNELS.STASH_MOVE_PROGRESS)
-    const { request } = IPC_CONTRACT[IPC_CHANNELS.STASH_MOVE_PROGRESS]
+    const { payload } = PUSH_CONTRACT[IPC_CHANNELS.STASH_MOVE_PROGRESS]
     expect(
-      request.safeParse({
+      payload.safeParse({
         phase: 'copying',
         copiedFiles: 1,
         totalFiles: 4,
@@ -100,7 +100,7 @@ describe('stash channels', () => {
         totalBytes: 40
       }).success
     ).toBe(true)
-    expect(request.safeParse({ phase: 'nope' }).success).toBe(false)
+    expect(payload.safeParse({ phase: 'nope' }).success).toBe(false)
   })
 })
 

@@ -1,3 +1,4 @@
+import { EASE_IN, EASE_OUT } from '@renderer/design-system/motion'
 import { describe, expect, it } from 'vitest'
 import { DECK_MOTION, deckDirection, deckDurationMs, deckSteps } from './deck-motion'
 
@@ -23,17 +24,17 @@ describe('deckDirection', () => {
 describe('deckSteps · next', () => {
   const steps = deckSteps('next', both)
 
-  it('slides the top card 20px left and fades it in 140ms, ease-in', () => {
+  it('slides the top card 20px left and fades it in the fast duration, ease-in', () => {
     const ghost = step(steps, 'ghost')!
-    expect(ghost.options).toMatchObject({ duration: 140, easing: 'ease-in' })
+    expect(ghost.options).toMatchObject({ duration: 120, easing: EASE_IN })
     expect(ghost.keyframes[0]).toMatchObject({ opacity: 1, transform: 'translate(0px, 0px)' })
     expect(ghost.keyframes[1]).toMatchObject({ opacity: 0, transform: 'translate(-20px, 0px)' })
   })
 
-  it('raises the cards behind 6px in 200ms, ease-out, from 40ms', () => {
+  it('raises the cards behind 6px in the base duration, ease-out, from 40ms', () => {
     for (const target of ['cover', 'deck1']) {
       const rising = step(steps, target)!
-      expect(rising.options).toMatchObject({ duration: 200, delay: 40, easing: 'ease-out' })
+      expect(rising.options).toMatchObject({ duration: 200, delay: 40, easing: EASE_OUT })
       expect(rising.keyframes[0]).toMatchObject({ transform: 'translate(6px, 6px)' })
       expect(rising.keyframes[1]).toMatchObject({ transform: 'translate(0px, 0px)' })
     }
@@ -59,10 +60,10 @@ describe('deckSteps · next', () => {
 describe('deckSteps · previous', () => {
   const steps = deckSteps('previous', both)
 
-  it('is the reverse in one 200ms ease-out, with nothing leaving', () => {
+  it('is the reverse in one base-length ease-out, with nothing leaving', () => {
     expect(step(steps, 'ghost')).toBeUndefined()
     for (const target of ['cover', 'deck1', 'deck2']) {
-      expect(step(steps, target)!.options).toMatchObject({ duration: 200, easing: 'ease-out' })
+      expect(step(steps, target)!.options).toMatchObject({ duration: 200, easing: EASE_OUT })
       expect(step(steps, target)!.options.delay).toBeUndefined()
     }
     expect(step(steps, 'cover')!.keyframes[0]).toMatchObject({

@@ -24,7 +24,7 @@ describe('AddMenu behaviour', () => {
     const onAddFiles = vi.fn()
     const onAddFolder = vi.fn()
     render(<AddMenu open onAddFiles={onAddFiles} onAddFolder={onAddFolder} />)
-    expect(screen.getByText('or drop PSDs anywhere')).not.toBeNull()
+    expect(screen.getByText('or drop PSDs and zips anywhere')).not.toBeNull()
     fireEvent.click(screen.getByRole('menuitem', { name: /Add folder/ }))
     expect(onAddFolder).toHaveBeenCalledTimes(1)
     expect(onAddFiles).not.toHaveBeenCalled()

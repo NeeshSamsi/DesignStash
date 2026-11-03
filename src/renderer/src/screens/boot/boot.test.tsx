@@ -65,6 +65,18 @@ describe('launch', () => {
   })
 })
 
+describe('a rejected invoke', () => {
+  it('carries on instead of waiting on the launch screen forever', async () => {
+    installApi({
+      [IPC_CHANNELS.BOOT_STATUS]: () => ok({ state: 'library-failed', backupKept: false }),
+      [IPC_CHANNELS.SETTINGS_GET]: () => Promise.reject(new Error('No handler registered'))
+    })
+    mount()
+    expect(await screen.findByText('the app')).toBeTruthy()
+    expect(screen.queryByText('Digging up your stash…')).toBeNull()
+  })
+})
+
 describe('launch problems', () => {
   it('library-failed: says it plainly, keeps PSDs safe, offers Try again and Choose a folder', async () => {
     const api = launch('library-failed')

@@ -2,7 +2,8 @@ import type { AiStatus, InboxItem } from '@shared/inbox'
 
 /** Pure copy and rules for To sort, To stash and Trash. The pages wire these to IPC. */
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+const plural = (n: number, one: string, many: string) =>
+  `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
 
 /** Cards still waiting on an AI suggestion get the quiet badge. Ready, failed and off get none. */
 export function sniffingBadge(status: AiStatus): string | undefined {
@@ -85,11 +86,6 @@ export function formatBytes(bytes: number): string {
 /** Newest trashed first. */
 export function newestFirst<T extends { trashedAt: string }>(items: readonly T[]): T[] {
   return [...items].sort((a, b) => Date.parse(b.trashedAt) - Date.parse(a.trashedAt))
-}
-
-export function trashDescription(count: number, bytes: number | null): string {
-  const size = bytes === null ? '' : ` · ${formatBytes(bytes)}`
-  return `${plural(count, 'item', 'items')}${size}`
 }
 
 export const pluralise = plural

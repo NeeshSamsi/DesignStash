@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Image01Icon, ImageNotFound01Icon } from '@hugeicons/core-free-icons'
@@ -50,20 +51,20 @@ export function CoverImage({
             alt={alt}
             loading="lazy"
             className={cn(
-              'size-full object-cover transition-transform duration-150',
+              'size-full object-cover transition-transform duration-(--duration-fast)',
               imageClassName
             )}
           />
         ) : (
           <div aria-hidden className={coverDeviceVariants({ size })}>
-            <div className="size-full rounded-md bg-primary-weak" />
+            <div className="size-full rounded-lg bg-primary-weak" />
           </div>
         ))}
       {(state === 'no-preview' || missing) && (
         <>
           <HugeiconsIcon
             icon={missing ? ImageNotFound01Icon : Image01Icon}
-            strokeWidth={1.5}
+            strokeWidth={ICON_STROKE}
             className={cn(coverIconVariants({ size }), missing ? 'text-error' : 'text-tertiary')}
           />
           {showLabel && (

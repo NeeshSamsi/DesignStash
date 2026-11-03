@@ -12,7 +12,7 @@ export const STEP_INDICATOR_CONTRACT = {
   code: 'components/OnboardingStep/OnboardingStep.tsx',
   axes: {
     variant: ['segments', 'dots'],
-    step: ['1', '2', '3', '4', '5']
+    step: ['1', '3', '5', '2', '4']
   },
   axisDefaults: {
     variant: 'segments',
@@ -28,7 +28,7 @@ export const STEP_INDICATOR_CONTRACT = {
 } as const satisfies ComponentContract
 
 export type StepIndicatorVariant = 'segments' | 'dots'
-export type StepIndicatorStep = '1' | '2' | '3' | '4' | '5'
+export type StepIndicatorStep = '1' | '3' | '5' | '2' | '4'
 
 export interface StepIndicatorContractProps {
   /** Figma `variant` (2 options). Default `segments`. */

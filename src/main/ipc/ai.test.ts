@@ -61,7 +61,10 @@ describe('AI_LIST_MODELS', () => {
       legacy: { id: string }[]
     }>(IPC_CHANNELS.AI_LIST_MODELS)
 
-    expect(res.success && res.data.models.map((m) => m.id)).toEqual(['qwen2.5-vl-3b', 'qwen2.5-vl-7b'])
+    expect(res.success && res.data.models.map((m) => m.id)).toEqual([
+      'qwen2.5-vl-3b',
+      'qwen2.5-vl-7b'
+    ])
     expect(res.success && res.data.models.filter((m) => m.bestFit)).toHaveLength(1)
     expect(res.success && res.data.models.find((m) => m.id === 'qwen2.5-vl-3b')?.installed).toBe(
       true
@@ -148,5 +151,52 @@ describe('AI_DELETE_MODEL', () => {
       success: true,
       data: { deleted: false, inUse: false, undoable: false }
     })
+  })
+})
+
+describe('AI_DOWNLOAD_MODEL tracking', () => {
+  it('keeps a restarted download tracked when the cancelled one settles late', async () => {
+    const settle: (() => void)[] = []
+    const download = vi.fn(
+      () => new Promise<void>((resolve) => settle.push(resolve)) as Promise<never>
+    )
+    handlers.clear()
+    registerAiHandlers({
+      settings,
+      push,
+      telemetry: { get: () => ({ track: vi.fn() }) },
+      ai: {
+        modelsDir,
+        downloader: { purgeSetAside: async () => {}, download },
+        activeDownloads
+      }
+    } as unknown as HandlerContext)
+
+    const id = 'qwen2.5-vl-3b'
+    expect(await call(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id })).toMatchObject({
+      data: { started: true }
+    })
+    expect(await call(IPC_CHANNELS.AI_CANCEL_DOWNLOAD, { id })).toMatchObject({
+      data: { cancelled: true }
+    })
+    expect(await call(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id })).toMatchObject({
+      data: { started: true }
+    })
+
+    // The cancelled download finally settles.
+    settle[0]?.()
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(activeDownloads.has(id)).toBe(true)
+    expect(await call(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id })).toMatchObject({
+      data: { started: false }
+    })
+    expect(await call(IPC_CHANNELS.AI_CANCEL_DOWNLOAD, { id })).toMatchObject({
+      data: { cancelled: true }
+    })
+
+    settle[1]?.()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(activeDownloads.has(id)).toBe(false)
   })
 })

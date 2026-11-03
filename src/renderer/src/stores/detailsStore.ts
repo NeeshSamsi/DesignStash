@@ -27,6 +27,8 @@ interface DetailsState {
   /** How the page on show clears its selection (closing the sidebar clears it too). */
   clearSelection: (() => void) | null
   pile: OpenPile | null
+  /** A mockup that should open as fields once the selection reaches it. */
+  pendingEdit: number | null
 
   setClearSelection: (clear: (() => void) | null) => void
   /** The page's selection changed: show this mockup, or close with null. */
@@ -47,29 +49,25 @@ interface DetailsState {
   closePile: () => void
 }
 
-/** A mockup that should open as fields once the selection reaches it. */
-let wantEdit: number | null = null
-
 export const useDetailsStore = create<DetailsState>((set, get) => ({
   target: null,
   dirty: false,
   ask: null,
   clearSelection: null,
   pile: null,
+  pendingEdit: null,
 
   setClearSelection: (clearSelection) => set({ clearSelection }),
 
   syncTarget: (id) => {
-    const { target } = get()
+    const { target, pendingEdit } = get()
     if (id === null) {
-      wantEdit = null
-      if (target !== null) set({ target: null, dirty: false })
+      if (target !== null) set({ target: null, dirty: false, pendingEdit: null })
+      else if (pendingEdit !== null) set({ pendingEdit: null })
       return
     }
     if (target?.id === id) return
-    const edit = wantEdit === id
-    wantEdit = null
-    set({ target: { id, edit }, dirty: false })
+    set({ target: { id, edit: pendingEdit === id }, dirty: false, pendingEdit: null })
   },
 
   requestEdit: (id) => {
@@ -78,7 +76,7 @@ export const useDetailsStore = create<DetailsState>((set, get) => ({
       if (!target.edit) set({ target: { id, edit: true } })
       return
     }
-    wantEdit = id
+    set({ pendingEdit: id })
   },
 
   setEditing: (edit) => {
@@ -117,7 +115,6 @@ export const useDetailsStore = create<DetailsState>((set, get) => ({
     if (pile) set({ pile: { ...pile, ...patch } })
   },
   closePile: () => {
-    wantEdit = null
-    set({ pile: null, target: null, dirty: false })
+    set({ pile: null, target: null, dirty: false, pendingEdit: null })
   }
 }))

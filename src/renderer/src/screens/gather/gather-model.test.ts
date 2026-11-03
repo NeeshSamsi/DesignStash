@@ -9,26 +9,28 @@ import {
   overlayFor,
   processed,
   remainingText,
+  rowDetail,
   rowState,
   undoneMessage,
   widgetCopy,
   widgetState
 } from './gather-model'
 
-const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
-  haulId: 'h1',
-  state: 'running',
-  pauseReason: null,
-  total: 40,
-  landed: 12,
-  bytesTotal: 0,
-  bytesCopied: 0,
-  bytesPerSecond: 0,
-  secondsLeft: null,
-  skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
-  files: [],
-  ...over
-})
+// The overrides may pick any state, so the merged object is checked against the union by the cast.
+const haul = (over: Partial<CopyStatus> = {}): CopyStatus =>
+  ({
+    haulId: 'h1',
+    state: 'running',
+    total: 40,
+    landed: 12,
+    bytesTotal: 0,
+    bytesCopied: 0,
+    bytesPerSecond: 0,
+    secondsLeft: null,
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 },
+    files: [],
+    ...over
+  }) as CopyStatus
 
 describe('smooth progress', () => {
   it('counts the bar in bytes, so a big file moves it while it copies', () => {
@@ -88,19 +90,76 @@ describe('widget', () => {
 
   it('counts landed plus duplicates and unreadable files, never non-PSDs', () => {
     expect(
-      processed(haul({ landed: 10, skipped: { notPsd: 5, duplicate: 1, unreadable: 1 } }))
+      processed(
+        haul({
+          landed: 10,
+          skipped: {
+            notPsd: 5,
+            duplicate: 1,
+            unreadable: 1,
+            archiveUnsupported: 0,
+            noPsdInArchive: 0
+          }
+        })
+      )
     ).toBe(12)
   })
 
+  it('counts an archive left whole as looked at, and as skipped in the title', () => {
+    const skipped = {
+      notPsd: 0,
+      duplicate: 0,
+      unreadable: 0,
+      archiveUnsupported: 1,
+      noPsdInArchive: 2
+    }
+    expect(processed(haul({ landed: 10, skipped }))).toBe(13)
+    expect(widgetCopy(haul({ state: 'done', total: 13, landed: 10, skipped })).title).toBe(
+      '10 copied · 3 skipped'
+    )
+  })
+
   it('says how far along a copy is', () => {
-    expect(widgetCopy(haul())).toEqual({ title: 'Copying 12 of 40', percent: 30 })
+    expect(widgetCopy(haul())).toEqual({ title: '12 of 40 copied', percent: 30 })
+  })
+
+  it('puts thousands separators in the counts', () => {
+    expect(widgetCopy(haul({ total: 1204, landed: 1204 })).title).toBe('1,204 of 1,204 copied')
+    expect(
+      widgetCopy(
+        haul({
+          state: 'done',
+          landed: 1200,
+          skipped: {
+            notPsd: 1000,
+            duplicate: 4,
+            unreadable: 0,
+            archiveUnsupported: 0,
+            noPsdInArchive: 0
+          }
+        })
+      ).title
+    ).toBe('1,200 copied · 1,004 skipped')
+  })
+
+  it('says how big a copied file is, and that a file never reached after a stop was not copied', () => {
+    const file = (over: Partial<CopyFile>): CopyFile => ({
+      jobId: 1,
+      name: 'a.psd',
+      status: 'done',
+      ...over
+    })
+    expect(rowDetail(file({ size: 312_000_000 }), haul())).toBe('Copied · 312 MB')
+    expect(rowDetail(file({}), haul())).toBe('Copied')
+    expect(rowDetail(file({ status: 'queued' }), haul())).toBeNull()
+    expect(rowDetail(file({ status: 'queued' }), haul({ state: 'cancelled' }))).toBe('Not copied')
   })
 
   it('summarises a finished haul with what was skipped', () => {
     const done = haul({
       state: 'done',
       landed: 38,
-      skipped: { notPsd: 2, duplicate: 1, unreadable: 0 }
+      skipped: { notPsd: 2, duplicate: 1, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 }
     })
     expect(widgetCopy(done).title).toBe('38 copied · 3 skipped')
     expect(widgetCopy(haul({ state: 'done', landed: 5 })).title).toBe('5 copied')
@@ -149,6 +208,49 @@ describe('widget', () => {
       '12 mockups removed from To sort. Your originals weren’t touched.'
     )
     expect(undoneMessage(1).description).toContain('1 mockup removed')
+  })
+})
+
+describe('files out of a zip', () => {
+  const zipped = { archiveName: 'Free_Cap_Mockup.zip' }
+  const file = (over: Partial<CopyFile>): CopyFile => ({
+    jobId: 1,
+    name: 'a.psd',
+    status: 'done',
+    ...over
+  })
+  it('says which zip a PSD comes from, and that it is unpacking', () => {
+    expect(rowDetail(file({ ...zipped, status: 'queued' }), haul())).toBe(
+      'From Free_Cap_Mockup.zip'
+    )
+    expect(rowDetail(file({ ...zipped, status: 'copying' }), haul())).toBe(
+      'Unpacking… · From Free_Cap_Mockup.zip'
+    )
+    expect(rowDetail(file({ ...zipped, status: 'done', size: 312_000_000 }), haul())).toBe(
+      'Copied · 312 MB · From Free_Cap_Mockup.zip'
+    )
+  })
+
+  it('words the two archive skips and keeps them out of the not-PSD sentence', () => {
+    const rar = file({ status: 'skipped', skipReason: 'archive-unsupported' })
+    const empty = file({ status: 'skipped', skipReason: 'no-psd-in-archive' })
+    expect(rowDetail(rar, haul())).toBe('Unzip this one first')
+    expect(rowDetail(empty, haul())).toBe('No PSD inside')
+    expect(rowState(rar)).toBe('not-psd')
+    expect(rowDetail(file({ status: 'skipped', skipReason: 'not-psd' }), haul())).toBeNull()
+  })
+
+  it('lets zips and other archives through a drag and a drop', () => {
+    expect(dragVerdict([{ kind: 'file', type: 'application/zip' }])).toBe('ok')
+    expect(dragVerdict([{ kind: 'file', type: 'application/x-zip-compressed' }])).toBe('ok')
+    expect(dragVerdict([{ kind: 'file', type: 'application/x-7z-compressed' }])).toBe('ok')
+    const files = [
+      { name: 'Cap.ZIP', type: 'application/zip' },
+      { name: 'old.rar', type: '' },
+      { name: 'b.7z', type: '' },
+      { name: 'b.png', type: 'image/png' }
+    ]
+    expect(keepDropped(files)).toEqual([0, 1, 2])
   })
 })
 
@@ -212,8 +314,8 @@ describe('overlay copy', () => {
     expect(overlayFor({ ...base, target: 'none' })).toBeNull()
   })
 
-  it('My Stash uses the component’s own words', () => {
-    expect(overlayFor(base)).toEqual({ state: 'drag-over' })
+  it('My Stash says PSDs or zips', () => {
+    expect(overlayFor(base)).toEqual({ state: 'drag-over', title: 'Drop PSDs or zips to add them' })
   })
 
   it('To sort says the drop joins what is waiting', () => {
@@ -227,7 +329,7 @@ describe('overlay copy', () => {
   it('rejects non-PSDs', () => {
     expect(overlayFor({ ...base, verdict: 'rejected' })).toMatchObject({
       state: 'rejected',
-      title: 'Those aren’t PSDs'
+      title: 'Those aren’t PSDs or zips'
     })
   })
 

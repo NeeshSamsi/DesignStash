@@ -625,8 +625,8 @@ export const TOKENS = {
     },
     {
       name: 'text/placeholder',
-      alias: 'color/bark-500',
-      description: 'Input placeholders, disabled-looking hints.',
+      alias: 'color/bark-400',
+      description: 'Input placeholders and disabled-looking hints (bark-400, 7:1 on surface-1).',
       cssVar: '--ds-text-placeholder',
       utility: 'text-placeholder',
       via: 'figma'
@@ -962,267 +962,356 @@ export const TOKENS = {
     {
       name: 'border-width/0',
       value: 0,
+      unit: 'px',
       cssVar: '--ds-border-width-0'
     },
     {
       name: 'border-width/1',
       value: 1,
+      unit: 'px',
       cssVar: '--ds-border-width-1'
     },
     {
       name: 'border-width/2',
       value: 2,
+      unit: 'px',
       cssVar: '--ds-border-width-2'
     },
     {
       name: 'border-width/4',
       value: 4,
+      unit: 'px',
       cssVar: '--ds-border-width-4'
     },
     {
       name: 'border-width/8',
       value: 8,
+      unit: 'px',
       cssVar: '--ds-border-width-8'
     },
     {
       name: 'icon-sizes/sm',
       value: 16,
+      unit: 'px',
       cssVar: '--ds-icon-sizes-sm'
     },
     {
       name: 'icon-sizes/md',
       value: 20,
+      unit: 'px',
       cssVar: '--ds-icon-sizes-md'
     },
     {
       name: 'icon-sizes/lg',
       value: 24,
+      unit: 'px',
       cssVar: '--ds-icon-sizes-lg'
+    },
+    {
+      name: 'icon-sizes/2xs',
+      value: 12,
+      unit: 'px',
+      cssVar: '--ds-icon-sizes-2xs'
+    },
+    {
+      name: 'icon-sizes/xs',
+      value: 14,
+      unit: 'px',
+      cssVar: '--ds-icon-sizes-xs'
+    },
+    {
+      name: 'icon-stroke/default',
+      value: 1.5,
+      unit: '',
+      cssVar: '--ds-icon-stroke-default'
     },
     {
       name: 'spacing/px',
       value: 1,
+      unit: 'px',
       cssVar: '--ds-spacing-px'
     },
     {
       name: 'spacing/0',
       value: 0,
+      unit: 'px',
       cssVar: '--ds-spacing-0'
     },
     {
       name: 'spacing/0_5',
       value: 2,
+      unit: 'px',
       cssVar: '--ds-spacing-0-5'
     },
     {
       name: 'spacing/1',
       value: 4,
+      unit: 'px',
       cssVar: '--ds-spacing-1'
     },
     {
       name: 'spacing/1_5',
       value: 6,
+      unit: 'px',
       cssVar: '--ds-spacing-1-5'
     },
     {
       name: 'spacing/2',
       value: 8,
+      unit: 'px',
       cssVar: '--ds-spacing-2'
     },
     {
       name: 'spacing/2_5',
       value: 10,
+      unit: 'px',
       cssVar: '--ds-spacing-2-5'
     },
     {
       name: 'spacing/3',
       value: 12,
+      unit: 'px',
       cssVar: '--ds-spacing-3'
     },
     {
       name: 'spacing/3_5',
       value: 14,
+      unit: 'px',
       cssVar: '--ds-spacing-3-5'
     },
     {
       name: 'spacing/4',
       value: 16,
+      unit: 'px',
       cssVar: '--ds-spacing-4'
     },
     {
       name: 'spacing/5',
       value: 20,
+      unit: 'px',
       cssVar: '--ds-spacing-5'
     },
     {
       name: 'spacing/6',
       value: 24,
+      unit: 'px',
       cssVar: '--ds-spacing-6'
     },
     {
       name: 'spacing/7',
       value: 28,
+      unit: 'px',
       cssVar: '--ds-spacing-7'
     },
     {
       name: 'spacing/8',
       value: 32,
+      unit: 'px',
       cssVar: '--ds-spacing-8'
     },
     {
       name: 'spacing/9',
       value: 36,
+      unit: 'px',
       cssVar: '--ds-spacing-9'
     },
     {
       name: 'spacing/10',
       value: 40,
+      unit: 'px',
       cssVar: '--ds-spacing-10'
     },
     {
       name: 'spacing/11',
       value: 44,
+      unit: 'px',
       cssVar: '--ds-spacing-11'
     },
     {
       name: 'spacing/12',
       value: 48,
+      unit: 'px',
       cssVar: '--ds-spacing-12'
     },
     {
       name: 'spacing/14',
       value: 56,
+      unit: 'px',
       cssVar: '--ds-spacing-14'
     },
     {
       name: 'spacing/16',
       value: 64,
+      unit: 'px',
       cssVar: '--ds-spacing-16'
     },
     {
       name: 'spacing/20',
       value: 80,
+      unit: 'px',
       cssVar: '--ds-spacing-20'
     },
     {
       name: 'spacing/24',
       value: 96,
+      unit: 'px',
       cssVar: '--ds-spacing-24'
     },
     {
       name: 'spacing/28',
       value: 112,
+      unit: 'px',
       cssVar: '--ds-spacing-28'
     },
     {
       name: 'spacing/32',
       value: 128,
+      unit: 'px',
       cssVar: '--ds-spacing-32'
     },
     {
       name: 'spacing/36',
       value: 144,
+      unit: 'px',
       cssVar: '--ds-spacing-36'
     },
     {
       name: 'spacing/40',
       value: 160,
+      unit: 'px',
       cssVar: '--ds-spacing-40'
     },
     {
       name: 'spacing/44',
       value: 176,
+      unit: 'px',
       cssVar: '--ds-spacing-44'
     },
     {
       name: 'spacing/48',
       value: 192,
+      unit: 'px',
       cssVar: '--ds-spacing-48'
     },
     {
       name: 'spacing/52',
       value: 208,
+      unit: 'px',
       cssVar: '--ds-spacing-52'
     },
     {
       name: 'spacing/56',
       value: 224,
+      unit: 'px',
       cssVar: '--ds-spacing-56'
     },
     {
       name: 'spacing/60',
       value: 240,
+      unit: 'px',
       cssVar: '--ds-spacing-60'
     },
     {
       name: 'spacing/64',
       value: 256,
+      unit: 'px',
       cssVar: '--ds-spacing-64'
     },
     {
       name: 'spacing/72',
       value: 288,
+      unit: 'px',
       cssVar: '--ds-spacing-72'
     },
     {
       name: 'spacing/80',
       value: 320,
+      unit: 'px',
       cssVar: '--ds-spacing-80'
     },
     {
       name: 'spacing/96',
       value: 384,
+      unit: 'px',
       cssVar: '--ds-spacing-96'
     },
     {
       name: 'radius/none',
       value: 0,
+      unit: 'px',
       cssVar: '--ds-radius-none'
     },
     {
       name: 'radius/xs',
       value: 2,
+      unit: 'px',
       cssVar: '--ds-radius-xs'
     },
     {
       name: 'radius/sm',
       value: 4,
+      unit: 'px',
       cssVar: '--ds-radius-sm'
     },
     {
       name: 'radius/md',
       value: 6,
+      unit: 'px',
       cssVar: '--ds-radius-md'
     },
     {
       name: 'radius/lg',
       value: 8,
+      unit: 'px',
       cssVar: '--ds-radius-lg'
     },
     {
       name: 'radius/xl',
       value: 12,
+      unit: 'px',
       cssVar: '--ds-radius-xl'
     },
     {
       name: 'radius/2xl',
       value: 16,
+      unit: 'px',
       cssVar: '--ds-radius-2xl'
     },
     {
       name: 'radius/3xl',
       value: 24,
+      unit: 'px',
       cssVar: '--ds-radius-3xl'
     },
     {
       name: 'radius/4xl',
       value: 32,
+      unit: 'px',
       cssVar: '--ds-radius-4xl'
     },
     {
       name: 'radius/full',
       value: 9999,
+      unit: 'px',
       cssVar: '--ds-radius-full'
+    },
+    {
+      name: 'duration/fast',
+      value: 120,
+      unit: 'ms',
+      cssVar: '--ds-duration-fast'
+    },
+    {
+      name: 'duration/base',
+      value: 200,
+      unit: 'ms',
+      cssVar: '--ds-duration-base'
+    },
+    {
+      name: 'duration/slow',
+      value: 280,
+      unit: 'ms',
+      cssVar: '--ds-duration-slow'
     }
   ],
   textStyles: [
@@ -1272,15 +1361,6 @@ export const TOKENS = {
       description: 'Nav items, larger body.'
     },
     {
-      name: 'body/base/light',
-      utility: 'type-body-base-light',
-      family: 'Inter',
-      style: 'Light',
-      size: 16,
-      lineHeight: 24,
-      description: 'Search field text.'
-    },
-    {
       name: 'body/sm/regular',
       utility: 'type-body-sm-regular',
       family: 'Inter',
@@ -1306,15 +1386,6 @@ export const TOKENS = {
       size: 12,
       lineHeight: 16,
       description: 'Meta, counts, helper text (text-xs).'
-    },
-    {
-      name: 'caption/xs/light',
-      utility: 'type-caption-xs-light',
-      family: 'Inter',
-      style: 'Light',
-      size: 12,
-      lineHeight: 16,
-      description: 'Keyboard hints.'
     },
     {
       name: 'label/xs/medium',

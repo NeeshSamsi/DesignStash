@@ -9,7 +9,7 @@ export const CONSENT_PANEL_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4275',
   section: '9 · Onboarding & AI models',
   description:
-    'Telemetry disclosure + choice for onboarding (A4): what we collect / never collect, with No thanks · Keep it on. Settings › Privacy shows the same lists in its usage-data accordion.',
+    'Telemetry disclosure + choice for onboarding (A4): what we collect / never collect, with No thanks · Keep it on. Settings › Privacy shows the same lists in its usage-data accordion.\nSync 2026-10: neutral, equal-weight choices (Don’t share / Share usage data, both secondary). The What we collect and What we never collect lists are always visible, including in Settings › Privacy whatever the switch state.',
   code: 'screens/settings/PrivacyPane.tsx',
   axes: {},
   axisDefaults: {},

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import type { ApprovalTag } from '@shared/approval'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { NewTagRequest, TagVocabularyCategory } from '../components/TagEditor'
+import { useTagTreeStore } from '../stores/tagTreeStore'
 import { toast } from '../stores/toastStore'
 
 /**
@@ -9,12 +10,11 @@ import { toast } from '../stores/toastStore'
  * create handler that makes the category first when it is new. A failure toasts plain words and rethrows.
  */
 export function useTagVocabulary() {
-  const [vocabulary, setVocabulary] = useState<TagVocabularyCategory[]>([])
+  const tree = useTagTreeStore((s) => s.tree)
+  const vocabulary = useMemo<TagVocabularyCategory[]>(() => tree ?? [], [tree])
 
   useEffect(() => {
-    void window.api.invoke(IPC_CHANNELS.TAG_TREE, undefined).then((res) => {
-      if (res.success) setVocabulary(res.data.tree)
-    })
+    void useTagTreeStore.getState().load()
   }, [])
 
   const createTag = useCallback(async (request: NewTagRequest): Promise<ApprovalTag> => {
@@ -32,13 +32,12 @@ export function useTagVocabulary() {
         categoryId
       })
       if (!created.success) throw new Error('tag')
-      const known = categoryId
-      const entry = { tagId: created.data.tagId, label: created.data.label, usageCount: 0 }
-      setVocabulary((current) =>
-        current.some((c) => c.categoryId === known)
-          ? current.map((c) => (c.categoryId === known ? { ...c, tags: [...c.tags, entry] } : c))
-          : [...current, { categoryId: known, categoryLabel: request.categoryLabel, tags: [entry] }]
+      const { addTag, load } = useTagTreeStore.getState()
+      addTag(
+        { categoryId, categoryLabel: request.categoryLabel },
+        { tagId: created.data.tagId, label: created.data.label }
       )
+      void load()
       return {
         tagId: created.data.tagId,
         label: created.data.label,

@@ -17,11 +17,11 @@ import {
 
 const VALID = {
   title: 'MacBook on white steps',
-  description: 'A laptop mockup on a white staircase.',
+  description: 'A laptop on a white staircase.',
   tags: [
     { category: 'Device', label: 'macbook' },
     { category: 'Style', label: 'minimal' },
-    { category: 'Angle', label: 'angle' }
+    { category: 'Environment', label: 'stairs' }
   ]
 }
 
@@ -67,7 +67,7 @@ describe('VisionInferenceProvider.analyze', () => {
     const text = userText(complete.mock.calls[0]![0])
     expect(text).toContain('File name: scroll-macbook.psd')
     expect(text).toContain('Folders: Devices / Laptops')
-    expect(text).toContain('trust the image')
+    expect(text).toContain('The image shows what the mockup is')
   })
 
   it('describes from the names alone when there is no cover to read', async () => {
@@ -75,7 +75,7 @@ describe('VisionInferenceProvider.analyze', () => {
     await provider.analyze(INPUT)
     const parts = userParts(complete.mock.calls[0]![0])
     expect(parts.every((p) => p.type === 'text')).toBe(true)
-    expect(userText(complete.mock.calls[0]![0])).toContain('no preview image')
+    expect(userText(complete.mock.calls[0]![0])).toContain('no usable preview image')
   })
 
   it('carries the first variant into the prompt for the rest of a pile', async () => {
@@ -117,14 +117,14 @@ describe('VisionInferenceProvider.analyze', () => {
 })
 
 describe('buildRequest', () => {
-  it('constrains the reply with the JSON schema, categories limited to the taxonomy', () => {
+  it('constrains the reply with the JSON schema: 3 to 6 tags in the seed categories', () => {
     const req = buildRequest(INPUT, IMAGE)
     expect(req.response_format).toEqual({
       type: 'json_schema',
       json_schema: { name: 'mockup', schema: RESULT_JSON_SCHEMA }
     })
-    const category = RESULT_JSON_SCHEMA.properties.tags.items.properties.category
-    expect(category.enum).toEqual([
+    const { tags } = RESULT_JSON_SCHEMA.properties
+    expect(tags.items.properties.category.enum).toEqual([
       'Device',
       'Print & Branding',
       'Apparel',
@@ -132,13 +132,46 @@ describe('buildRequest', () => {
       'Style',
       'Angle'
     ])
+    expect([tags.minItems, tags.maxItems]).toEqual([3, 6])
   })
 
-  it('says what each category covers, without a list of labels to copy', () => {
+  it('says what each category covers with a few examples, never the seed list', () => {
     const text = userText(buildRequest(INPUT, IMAGE))
-    expect(text).toContain('- Device: the screen device the design is shown on')
-    expect(text).toContain('- Angle: the camera angle')
-    expect(text).not.toContain('windows-laptop')
+    expect(text).toContain('- Device: screen devices: laptop, MacBook, phone')
+    expect(text).toContain('- Apparel: clothing and merchandise: t-shirt, hoodie, cap, tote bag')
+    expect(text).toContain('- Angle: front (camera level with the object)')
+    expect(text).not.toContain('Windows laptop')
+  })
+
+  it('treats printed words as template filler and takes product names from the names', () => {
+    const text = userText(buildRequest(INPUT, IMAGE))
+    expect(text).toContain('template filler')
+    expect(text).toContain('use that product name')
+  })
+
+  it('gives its only worked examples from outside the library, so there is nothing to copy', () => {
+    const text = userText(buildRequest(INPUT, IMAGE))
+    expect(text).toContain('"Red road bike against a garage door"')
+    expect(text).not.toMatch(/tote bag on|phone held|coffee cup,/i)
+  })
+
+  it('asks for the setting to be left out when there is no image to see it in', () => {
+    expect(userText(buildRequest(INPUT, null))).toContain("can't see the setting, so leave it out")
+  })
+
+  it('keeps the title and description to plain characters, so no other script leaks in', () => {
+    const { title, description } = RESULT_JSON_SCHEMA.properties
+    for (const field of [title, description]) {
+      const plain = new RegExp(field.pattern)
+      expect(plain.test("Road bike, a cyclist's 3D render")).toBe(true)
+      expect(plain.test('A white brick 墙')).toBe(false)
+      expect(plain.test('Text "quoted"')).toBe(false)
+    }
+  })
+
+  it('sends Qwen its own repeat penalty and caps the reply', () => {
+    const req = buildRequest(INPUT, IMAGE)
+    expect([req.temperature, req.repeat_penalty, req.max_tokens]).toEqual([0.2, 1.05, 450])
   })
 
   it('leaves the folder line out when there are no folders', () => {
@@ -211,6 +244,90 @@ describe('parseResult', () => {
     expect(result.description.length).toBeLessThanOrEqual(200)
   })
 
+  it('never suggests an Angle tag, although the model is asked for one', () => {
+    const result = parseResult(
+      JSON.stringify({
+        ...VALID,
+        tags: [
+          { category: 'Device', label: 'MacBook' },
+          { category: 'angle', label: 'Side' }
+        ]
+      })
+    )
+    expect(result.tags).toEqual([{ category: 'Device', label: 'MacBook' }])
+  })
+
+  it('takes free, mockup, PSD and stock-site names out of the title and tags, dropping a tag left empty', () => {
+    const result = parseResult(
+      JSON.stringify({
+        ...VALID,
+        title: 'Free Cap Mockup - Royal Blue Baseball Cap',
+        tags: [
+          { category: 'Apparel', label: 'Cap' },
+          { category: 'Print & Branding', label: 'mockup' },
+          { category: 'Style', label: 'Pixeden PSD template' }
+        ]
+      })
+    )
+    expect(result.title).toBe('Cap - Royal Blue Baseball Cap')
+    expect(result.tags).toEqual([{ category: 'Apparel', label: 'Cap' }])
+  })
+
+  it('cuts printed text the model quotes, with the words around it, from the description and title', () => {
+    const result = parseResult(
+      JSON.stringify({
+        ...VALID,
+        title: "Beige tote bag with 'totebag mckp' text",
+        description:
+          "A white snack bar package labeled 'SNACKBAR' with the number '1' in orange, on a grey surface. A sleek phone with a large '15' in bright yellow."
+      })
+    )
+    expect(result.title).toBe('Beige tote bag')
+    expect(result.description).toBe('A white snack bar package, on a grey surface. A sleek phone.')
+  })
+
+  it("leaves apostrophes in words alone", () => {
+    const result = parseResult(
+      JSON.stringify({ ...VALID, description: "A designer's desk with a cyclist's cap and the bike's bell." })
+    )
+    expect(result.description).toBe("A designer's desk with a cyclist's cap and the bike's bell.")
+  })
+
+  it('takes mockup out of the description without leaving a hole', () => {
+    const say = (description: string) => parseResult(JSON.stringify({ ...VALID, description })).description
+    expect(say('A clay mockup of an Apple Watch Ultra on grey.')).toBe('A clay Apple Watch Ultra on grey.')
+    expect(say('A mockup of a paperback book on a mirror.')).toBe('A paperback book on a mirror.')
+    expect(say('A canvas tote bag mockup on the floor.')).toBe('A canvas tote bag on the floor.')
+    expect(say('A laptop displaying a mockup template.')).toBe('A laptop displaying a design template.')
+  })
+
+  it('keeps names like iPhone as written when it capitalises the start', () => {
+    const result = parseResult(JSON.stringify({ ...VALID, title: 'iPhone 15 Mockup on black' }))
+    expect(result.title).toBe('iPhone 15 on black')
+  })
+
+  it('drops a sentence that only reports the printed text', () => {
+    const description =
+      "A black round sticker with a green smiley face. The text around the sticker reads 'STICKER MOCKUP' and 'DOWNLOAD'. It sits on light grey."
+    expect(parseResult(JSON.stringify({ ...VALID, description })).description).toBe(
+      'A black round sticker with a green smiley face. It sits on light grey.'
+    )
+  })
+
+  it('reads "a vibrant mockup featuring" as a design, and drops "free" before the object', () => {
+    const say = (description: string) => parseResult(JSON.stringify({ ...VALID, description })).description
+    expect(say('A vibrant mockup featuring notebooks and business cards.')).toBe(
+      'A vibrant design featuring notebooks and business cards.'
+    )
+    expect(say('A free paper postal package on a desk.')).toBe('A paper postal package on a desk.')
+  })
+
+  it('shortens a long title at a word, not mid-word', () => {
+    const title = 'Natural canvas tote bag with long handles standing in warmest light'
+    const result = parseResult(JSON.stringify({ ...VALID, title }))
+    expect(result.title).toBe('Natural canvas tote bag with long handles standing in…')
+  })
+
   it('finds the JSON inside surrounding text', () => {
     expect(parseResult(`Sure:\n${JSON.stringify(VALID)}\n`).title).toBe(VALID.title)
   })
@@ -223,6 +340,13 @@ describe('parseResult', () => {
   })
 })
 
+/** A cover with real content: random noise, the opposite of a blank placeholder. */
+function noise(width: number, height: number, channels: 3 | 4 = 3) {
+  const data = Buffer.alloc(width * height * channels)
+  for (let i = 0; i < data.length; i++) data[i] = (i * 2654435761) >>> 24
+  return sharp(data, { raw: { width, height, channels } })
+}
+
 describe('readCoverAsDataUrl', () => {
   let dir: string
   beforeAll(async () => {
@@ -234,9 +358,7 @@ describe('readCoverAsDataUrl', () => {
 
   it('scales a WebP cover down and re-encodes it as JPEG', async () => {
     const path = join(dir, 'cover.webp')
-    await sharp({ create: { width: 2048, height: 1536, channels: 3, background: '#3366ff' } })
-      .webp()
-      .toFile(path)
+    await sharp(await noise(256, 192).png().toBuffer()).resize(2048, 1536).webp().toFile(path)
 
     const url = await readCoverAsDataUrl(path)
     expect(url).toMatch(/^data:image\/jpeg;base64,/)
@@ -244,18 +366,25 @@ describe('readCoverAsDataUrl', () => {
     expect(meta.format).toBe('jpeg')
     expect(meta.width).toBe(VISION_IMAGE_MAX_EDGE)
     expect(meta.height).toBe(768)
-  })
+  }, 20_000)
 
   it('leaves a small cover at its size', async () => {
     const path = join(dir, 'small.png')
-    await sharp({ create: { width: 300, height: 200, channels: 4, background: '#00000000' } })
-      .png()
-      .toFile(path)
+    await noise(300, 200, 4).png().toFile(path)
     const meta = await sharp(
       Buffer.from((await readCoverAsDataUrl(path))!.split(',')[1]!, 'base64')
     ).metadata()
     expect([meta.width, meta.height]).toEqual([300, 200])
   })
+
+  it('returns null for a near-blank placeholder preview, so the mockup is described from its names', async () => {
+    const path = join(dir, 'placeholder.png')
+    const notice = Buffer.from(
+      '<svg width="800" height="600"><rect width="800" height="600" fill="#fff"/><rect x="280" y="270" width="240" height="60" fill="none" stroke="#222" stroke-width="2"/><text x="300" y="305" font-size="18">Remove this layer to start</text></svg>'
+    )
+    await sharp(notice).png().toFile(path)
+    await expect(readCoverAsDataUrl(path)).resolves.toBeNull()
+  }, 20_000)
 
   it('returns null for a missing, empty or unreadable cover', async () => {
     const junk = join(dir, 'junk.webp')

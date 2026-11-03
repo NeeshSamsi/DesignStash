@@ -9,24 +9,14 @@ import {
   type DragOverEvent,
   type DragStartEvent
 } from '@dnd-kit/core'
-import {
-  Cancel01Icon,
-  FileAddIcon,
-  FolderAddIcon,
-  Search02Icon,
-  StarIcon
-} from '@hugeicons/core-free-icons'
-import type { LibraryItem } from '@shared/library'
-import { AddMockupCard } from '@renderer/components/AddMockupCard'
+import { ArrowLeft01Icon, Cancel01Icon, Search02Icon, StarIcon } from '@hugeicons/core-free-icons'
+import { coverDisplay, type LibraryItem } from '@shared/library'
 import { Banner } from '@renderer/components/Banner'
 import { Badge } from '@renderer/ui/badge'
-import { DropdownMenu } from '@renderer/components/DropdownMenu/DropdownMenu'
-import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { LibraryToolbar } from '@renderer/components/LibraryToolbar'
 import { CoverImage } from '@renderer/components/CoverImage'
-import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard.types'
 import { MockupGrid } from '@renderer/components/MockupGrid'
 import type { MockupGridState } from '@renderer/components/MockupGrid/MockupGrid.types'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
@@ -48,6 +38,7 @@ import { useUiStore } from '@renderer/stores/uiStore'
 import { CardMenu, type MenuTarget } from './CardMenu'
 import { LibraryCard } from './LibraryCard'
 import { PilePage } from './PilePage'
+import { AddCardMenu } from '../gather/AddCardMenu'
 import { WaitingToSortStrip } from './WaitingToSortStrip'
 import { useLibraryActions } from './useLibraryActions'
 import { useLibraryData } from './useLibraryData'
@@ -70,12 +61,6 @@ const cardTags = (item: LibraryItem) =>
     .slice(0, 3)
     .map((tag) => tag.label)
     .join(' · ')
-
-function cardState(item: LibraryItem, selected: boolean): MockupCardState {
-  if (item.coverMissing) return 'cover-missing'
-  if (item.coverSource === 'none') return 'no-preview'
-  return selected ? 'selected' : 'default'
-}
 
 /**
  * My Stash (All and Starred): toolbar, grid, search results and the states between.
@@ -159,10 +144,12 @@ export default function LibraryPage({
     onRemoveTag: (tagId) => setTagFilter(tagFilter.filter((id) => id !== tagId)),
     onRemoveCategory: (categoryId) => setCategoryIds(categoryIds.filter((id) => id !== categoryId))
   })
+  // Read the store, not this render's values: a popover action can fire several toggles in a row.
   const onToggleCategory = (categoryId: number) => {
     const category = tagCategories.find((c) => c.categoryId === categoryId)
+    const current = useLibraryStore.getState()
     const next = toggleCategory(
-      selectionState,
+      { tagIds: current.tagFilter, categoryIds: current.categoryIds },
       categoryId,
       category?.tags.map((tag) => tag.tagId) ?? []
     )
@@ -197,7 +184,7 @@ export default function LibraryPage({
   const targetFor = (item: LibraryItem): MenuTarget =>
     selection.isSelected(String(item.id)) && selection.count > 1
       ? { kind: 'selection', items: selectedItems }
-      : item.isGroup
+      : item.pile
         ? { kind: 'pile', item }
         : { kind: 'card', item }
   const openMenuFor = (item: LibraryItem, at: { x: number; y: number }) => {
@@ -221,13 +208,13 @@ export default function LibraryPage({
       useDetailsStore.getState().openPile({
         id: item.id,
         title: item.title,
-        count: item.variantCount + 1,
-        select: item.topId ?? item.id,
+        count: item.pile?.memberCount ?? 1,
+        select: item.id,
         edit
       })
     )
   const editDetails = (item: LibraryItem) => {
-    if (item.isGroup) return openPileFor(item, true)
+    if (item.pile) return openPileFor(item, true)
     useDetailsStore.getState().guard(() => {
       useDetailsStore.getState().requestEdit(item.id)
       rawSelection.set([String(item.id)])
@@ -292,7 +279,7 @@ export default function LibraryPage({
     if (!item) return
     if (event.key === 'Enter') {
       event.preventDefault()
-      if (item.isGroup) openPileFor(item)
+      if (item.pile) openPileFor(item)
       else selection.select(String(item.id))
     }
   }
@@ -300,7 +287,7 @@ export default function LibraryPage({
   // Double-click opens a pile's page. On a mockup on its own it does nothing more than selecting it.
   const onDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
     const item = itemOf(event.target)
-    if (item?.isGroup) openPileFor(item)
+    if (item?.pile) openPileFor(item)
   }
   // A marquee press keeps focus where it was; pull it into the grid so its shortcuts apply.
   const onMouseUp = (event: MouseEvent<HTMLDivElement>) => {
@@ -323,49 +310,25 @@ export default function LibraryPage({
     ...(onAddFolder ? { addFolder: onAddFolder } : {})
   }
 
-  const addCard = (
-    <DropdownMenu
-      align="start"
-      trigger={<AddMockupCard />}
-      items={
-        <>
-          <DropdownMenuItem
-            label="Add files…"
-            icon={FileAddIcon}
-            shortcut="⌘O"
-            {...(onAddFiles ? { onSelect: onAddFiles } : { disabled: true })}
-          />
-          <DropdownMenuItem
-            label="Add folder…"
-            icon={FolderAddIcon}
-            shortcut="⇧⌘O"
-            {...(onAddFolder ? { onSelect: onAddFolder } : { disabled: true })}
-          />
-        </>
-      }
-    />
-  )
+  const addCard = <AddCardMenu onAddFiles={onAddFiles} onAddFolder={onAddFolder} />
 
   const copy = noResultsCopy({ query, filterCount, starred: starredOnly })
+  const goToAll = () => useUiStore.getState().setView('all')
   const clearAction =
-    searching && filtering
-      ? () => {
-          setQuery('')
-          clearFilters()
-        }
-      : searching
-        ? () => setQuery('')
-        : clearFilters
+    !searching && !filtering && starredOnly
+      ? goToAll
+      : searching && filtering
+        ? () => {
+            setQuery('')
+            clearFilters()
+          }
+        : searching
+          ? () => setQuery('')
+          : clearFilters
 
   const total = stats.total
-  const statsText =
-    selection.count > 0
-      ? `${selection.count} of ${total} selected`
-      : searching || filtering
-        ? `${items.length} of ${total} items`
-        : `${total} ${total === 1 ? 'item' : 'items'}${
-            stats.favourites > 0 ? ` · ${stats.favourites} favourites` : ''
-          }`
+  // The header carries the count of the view and of a search or filter; the toolbar only says what is picked.
+  const statsText = selection.count > 0 ? `${selection.count} of ${total} selected` : ''
 
   // The pile page is a view inside My Stash, over the same state.
   if (pageOpen) return <PilePage key={pageOpen.id} pile={pageOpen} />
@@ -373,22 +336,33 @@ export default function LibraryPage({
   return (
     <div className="flex min-h-full flex-col gap-4">
       {onSortWaiting && showAdd && <WaitingToSortStrip onSort={onSortWaiting} />}
-      <LibraryToolbar
-        className="flex-wrap"
-        stats={statsText}
-        chips={chips}
-        onClearFilters={clearFilters}
-        sort={sort}
-        onSortChange={setSort}
-        tagFilter={{
-          categories: tagCategories,
-          selectedTagIds: tagFilter,
-          onSelectedTagIdsChange: setTagFilter,
-          pickedCategoryIds: categoryIds,
-          onToggleCategory,
-          onManageTags: () => openSettings('tags')
-        }}
-      />
+      {/*
+        Stays put while the grid scrolls. The wrapper paints the panel colour and reaches over the
+        scroller's 8px padding (-top-2, -mx-2), so cards slide under it and nothing shows above it.
+      */}
+      <div
+        data-slot="library-toolbar-sticky"
+        className="sticky -top-2 z-20 -mx-2 bg-surface-1 px-2 pt-2 pb-2"
+      >
+        <LibraryToolbar
+          className="flex-wrap"
+          stats={statsText}
+          chips={chips}
+          disabled={state === 'empty'}
+          onClearFilters={clearFilters}
+          sort={sort}
+          onSortChange={setSort}
+          tagFilter={{
+            categories: tagCategories,
+            selectedTagIds: tagFilter,
+            onSelectedTagIdsChange: setTagFilter,
+            pickedCategoryIds: categoryIds,
+            onToggleCategory,
+            onClearAll: clearFilters,
+            onManageTags: () => openSettings('tags')
+          }}
+        />
+      </div>
       {failed && items.length > 0 && (
         <Banner
           tone="error"
@@ -425,7 +399,7 @@ export default function LibraryPage({
               title={copy.title}
               description={copy.description}
               primaryLabel={copy.clearLabel}
-              primaryIcon={Cancel01Icon}
+              primaryIcon={!searching && !filtering && starredOnly ? ArrowLeft01Icon : Cancel01Icon}
               onPrimary={clearAction}
             />
           }
@@ -450,14 +424,14 @@ export default function LibraryPage({
                 title={item.title}
                 tags={cardTags(item)}
                 {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
-                variantCount={item.variantCount}
+                pile={item.pile}
                 favourite={item.favourite}
                 state={
                   draggedIds.has(key)
                     ? 'left-behind'
                     : target
                       ? 'group-target'
-                      : cardState(item, selection.isSelected(key))
+                      : coverDisplay(item, selection.isSelected(key))
                 }
                 {...(target ? { dropHint: dropHint(drag.items, item) } : {})}
                 onToggleFavourite={(favourite) => void actions.setFavouriteFor([item], favourite)}
@@ -471,6 +445,11 @@ export default function LibraryPage({
             )
           })}
         </MockupGrid>
+        {state === 'empty' && (
+          <p className="type-body-sm-regular text-muted-foreground">
+            Add PSDs or zips with the card, or drop them anywhere in this window.
+          </p>
+        )}
         <DragOverlay dropAnimation={null}>
           {drag && drag.items[0] && (
             <div className="relative w-card">

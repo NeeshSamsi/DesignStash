@@ -8,7 +8,8 @@ export const COPY_FILE_ROW_CONTRACT = {
   figmaId: '372:5420',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=372-5420',
   section: '7 · Import & grouping',
-  description: 'One file in the copy widget: progress while copying, then what happened to it.',
+  description:
+    'One file in the copy widget. copying shows a per-file progress bar; finished rows say what happened (copied, duplicate, unreadable, not a PSD).\nSync 2026-10: a done row reads &quot;Copied · 312 MB&quot;. A queued row of a cancelled haul reads &quot;Not copied&quot; (detail override).\ncopying: show-detail swaps the progress bar (show-progress off) for a detail line, like &quot;Unpacking… · From Cap.zip&quot;; the percentage stays. The code shows the line whenever a copying row is given a detail.',
   code: null,
   axes: {
     state: ['queued', 'copying', 'done', 'duplicate', 'unreadable', 'not-psd']
@@ -21,7 +22,8 @@ export const COPY_FILE_ROW_CONTRACT = {
   disabled: false,
   booleans: {},
   texts: {
-    name: 'phone_front.psd'
+    name: 'phone_front.psd',
+    detail: 'Unpacking… · From Phone kit.zip'
   },
   icons: {},
   slots: {}
@@ -40,10 +42,13 @@ export interface CopyFileRowContractProps {
   state?: CopyFileRowState
   /** Figma text. Default "phone_front.psd". */
   name?: string
+  /** Figma text. Default "Unpacking… · From Phone kit.zip". */
+  detail?: string
 }
 
 /** Figma defaults. Slots have none. */
 export const COPY_FILE_ROW_DEFAULTS = {
   state: 'queued',
-  name: 'phone_front.psd'
+  name: 'phone_front.psd',
+  detail: 'Unpacking… · From Phone kit.zip'
 } satisfies CopyFileRowContractProps

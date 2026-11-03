@@ -31,9 +31,6 @@ export type MenuTarget =
   | { kind: 'pile'; pileId: string }
   | { kind: 'board' }
 
-/** Where an action that makes a pile gets its id: the screen swaps this for a fresh one. */
-export const NEW_PILE_ID = ''
-
 export interface SubItem {
   key: string
   label: string
@@ -92,7 +89,7 @@ function moveItems(state: BoardState): SubItem[] {
             label: 'New pile',
             action: {
               type: 'move-to',
-              destination: { kind: 'new-pile', newPileId: NEW_PILE_ID }
+              destination: { kind: 'new-pile' }
             } as BoardAction
           }
         ]
@@ -131,7 +128,7 @@ function tileRows(state: BoardState): MenuRow[] {
     icon: Layers01Icon,
     shortcut: '⌘G',
     disabled: !canNewPile(state),
-    action: { type: 'new-pile', newPileId: NEW_PILE_ID }
+    action: { type: 'new-pile' }
   })
   // With several tiles, making a pile leads (S4.2). With one it can't be made, so it comes last (S4.1).
   return n > 1

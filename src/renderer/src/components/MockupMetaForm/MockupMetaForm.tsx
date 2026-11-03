@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useId, type ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { AiMagicIcon } from '@hugeicons/core-free-icons'
@@ -8,6 +9,7 @@ import { cn } from '@renderer/lib/utils'
 import { FieldTitle, Field as UiField } from '@renderer/ui/field'
 import { Skeleton } from '@renderer/ui/skeleton'
 import { Textarea } from '@renderer/ui/textarea'
+import { textareaVariants } from '../Textarea/Textarea.variants'
 import { MOCKUP_META_FORM_DEFAULTS, type MockupMetaFormContractProps } from './MockupMetaForm.types'
 import { mockupMetaFormVariants } from './MockupMetaForm.variants'
 
@@ -34,7 +36,11 @@ const THINKING_HINT = 'Sniffing out a title… this one’s still with the AI.'
 function AiHint({ children }: { children: string }) {
   return (
     <div className="flex items-start gap-1.5">
-      <HugeiconsIcon icon={AiMagicIcon} strokeWidth={1.5} className="size-4 shrink-0 text-brand" />
+      <HugeiconsIcon
+        icon={AiMagicIcon}
+        strokeWidth={ICON_STROKE}
+        className="size-4 shrink-0 text-brand"
+      />
       <p className="min-w-0 flex-1 type-caption-xs-regular text-muted-foreground">{children}</p>
     </div>
   )
@@ -128,6 +134,7 @@ export function MockupMetaForm({
           >
             <Textarea
               id={`${id}-description`}
+              className={cn('resize-none', textareaVariants({ rowRange: approval ? '4-6' : '3' }))}
               readOnly={saving}
               {...(onDescriptionChange
                 ? {

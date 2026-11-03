@@ -1,9 +1,9 @@
 import type { Repository } from '../db/repository'
-import type { IpcChannel, IpcRequest, IpcResponse } from '@shared/ipc'
+import type { InvokeChannel, IpcRequest, IpcResponse } from '@shared/ipc'
 import type { IPC_CHANNELS } from '@shared/ipc-channels'
 
 type Channels = typeof IPC_CHANNELS
-type Handler<C extends IpcChannel> = (args: IpcRequest<C>) => IpcResponse<C>
+type Handler<C extends InvokeChannel> = (args: IpcRequest<C>) => IpcResponse<C>
 
 export class TagService {
   constructor(private readonly repo: Repository) {}
@@ -16,9 +16,9 @@ export class TagService {
 
     for (const aiTag of aiTags) {
       // 1. Find or create category
-      let category = this.repo.getCategoryByNormalisedLabel(aiTag.category)
+      let category = this.repo.tags.getCategoryByNormalisedLabel(aiTag.category)
       if (!category) {
-        category = this.repo.createCategory({
+        category = this.repo.tags.createCategory({
           label: aiTag.category.trim(),
           isCanonical: false // AI-created categories are not canonical by default
         })
@@ -27,9 +27,9 @@ export class TagService {
       // 2. Find or create tag
       // A suggestion snaps to the label already there ("iphone" finds "iPhone"). A new one keeps
       // the casing the model gave, trimmed.
-      let tag = this.repo.getTagByNormalisedLabel(category.id, aiTag.label)
+      let tag = this.repo.tags.getTagByNormalisedLabel(category.id, aiTag.label)
       if (!tag) {
-        tag = this.repo.createTag({
+        tag = this.repo.tags.createTag({
           label: aiTag.label.trim().replace(/\s+/g, ' '),
           categoryId: category.id,
           isCanonical: false,
@@ -45,16 +45,16 @@ export class TagService {
 
   // TagTree operations. Each method is the IPC handler body for its channel.
 
-  deleteTag: Handler<Channels['TAG_DELETE']> = ({ tagId }) => this.repo.deleteTag(tagId)
+  deleteTag: Handler<Channels['TAG_DELETE']> = ({ tagId }) => this.repo.tags.deleteTag(tagId)
 
-  restoreTag: Handler<Channels['TAG_RESTORE']> = ({ snapshot }) => this.repo.restoreTag(snapshot)
+  restoreTag: Handler<Channels['TAG_RESTORE']> = ({ snapshot }) => this.repo.tags.restoreTag(snapshot)
 
   previewMergeTags: Handler<Channels['TAG_MERGE_PREVIEW']> = ({ sourceTagId, targetTagId }) =>
-    this.repo.previewMergeTags(sourceTagId, targetTagId)
+    this.repo.tags.previewMergeTags(sourceTagId, targetTagId)
 
   deleteCategory: Handler<Channels['CATEGORY_DELETE']> = ({ categoryId, moveTagsTo }) =>
-    this.repo.deleteCategory(categoryId, moveTagsTo)
+    this.repo.tags.deleteCategory(categoryId, moveTagsTo)
 
   restoreCategory: Handler<Channels['CATEGORY_RESTORE']> = ({ snapshot }) =>
-    this.repo.restoreCategory(snapshot)
+    this.repo.tags.restoreCategory(snapshot)
 }

@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { PlusSignIcon } from '@hugeicons/core-free-icons'
@@ -23,7 +24,7 @@ export function AddMockupCard({ className, ...props }: AddMockupCardProps) {
       <span className={addMockupCardCoverVariants()}>
         <HugeiconsIcon
           icon={PlusSignIcon}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           className="size-6 text-muted-foreground transition-colors group-hover/add:text-brand"
         />
       </span>
@@ -31,7 +32,7 @@ export function AddMockupCard({ className, ...props }: AddMockupCardProps) {
         <span className="type-body-sm-medium text-muted-foreground group-hover/add:text-foreground group-focus-visible/add:text-foreground">
           Add mockup
         </span>
-        <span className="type-caption-xs-regular text-tertiary">PSDs or a whole folder</span>
+        <span className="type-caption-xs-regular text-tertiary">PSDs, zips or a folder</span>
       </span>
     </button>
   )

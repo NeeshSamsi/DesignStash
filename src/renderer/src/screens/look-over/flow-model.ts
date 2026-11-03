@@ -8,7 +8,7 @@ import type { LookOverItem, LookOverQueue, LookOverUnit } from '@shared/approval
  */
 
 /** Where you are. `step` is an item index in the unit; for a pile, `step === items.length` is its review. */
-export interface Position {
+interface Position {
   unit: number
   step: number
 }
@@ -28,8 +28,8 @@ export interface FlowState {
 export const isPile = (unit: LookOverUnit) => unit.kind === 'pile'
 
 /** Steps in a unit: every item, then a pile's review. */
-export const stepCount = (unit: LookOverUnit) => unit.items.length + (isPile(unit) ? 1 : 0)
-export const isReview = (unit: LookOverUnit, step: number) =>
+const stepCount = (unit: LookOverUnit) => unit.items.length + (isPile(unit) ? 1 : 0)
+const isReview = (unit: LookOverUnit, step: number) =>
   isPile(unit) && step === unit.items.length
 
 /** A fresh flow from the queue main sent, resuming where Finish later left off. */
@@ -197,9 +197,9 @@ export function deck(s: FlowState): Deck {
   }
 }
 
-export type StepStatus = 'done' | 'current' | 'todo' | 'skipped'
+type StepStatus = 'done' | 'current' | 'todo' | 'skipped'
 
-export interface RailStep {
+interface RailStep {
   key: string
   /** Null for the review step. */
   mockupId: number | null
@@ -217,8 +217,12 @@ export interface Rail {
   steps: RailStep[]
 }
 
-/** The rail for the current pile: the top mockup, the variants, then Review & stash pile. Null for a single. */
-export function rail(s: FlowState): Rail | null {
+/**
+ * The rail for the current pile: the top mockup, the variants, then Review & stash pile. Null for a
+ * single. `titles` are the drafts as edited (by mockup id), so the labels follow the typing; a
+ * blank draft keeps the title the mockup opened with.
+ */
+export function rail(s: FlowState, titles: Readonly<Record<number, string>> = {}): Rail | null {
   const unit = currentUnit(s)
   if (!isPile(unit)) return null
   const n = piles(s).findIndex((p) => p.unitId === unit.unitId) + 1
@@ -230,10 +234,12 @@ export function rail(s: FlowState): Rail | null {
         : s.skipped.has(mockupId)
           ? 'skipped'
           : 'todo'
+  const titleOf = (item: LookOverItem) => titles[item.mockupId]?.trim() || item.title
   const steps: RailStep[] = unit.items.map((item, step) => ({
     key: String(item.mockupId),
     mockupId: item.mockupId,
-    label: `${item.role === 'top' ? 'Top' : 'Variant'} · ${item.title}`,
+    label:
+      item.role === 'top' ? `Top · ${titleOf(item)}` : `Variant · ${titleOf(item)} · ${step}`,
     status: statusOf(item.mockupId, step),
     showConnector: true,
     step
@@ -246,7 +252,7 @@ export function rail(s: FlowState): Rail | null {
     showConnector: false,
     step: unit.items.length
   })
-  return { pile: `PILE ${n} OF ${piles(s).length}`, title: unit.items[0]!.title, steps }
+  return { pile: `PILE ${n} OF ${piles(s).length}`, title: titleOf(unit.items[0]!), steps }
 }
 
 export interface ReviewCard {
@@ -267,32 +273,61 @@ export function reviewCards(s: FlowState): ReviewCard[] {
 
 export type PrimaryKind = 'next' | 'stash-pile' | 'stash' | 'save-next'
 
-/** The one primary button: Next in a pile, Stash pile (N) on review, Stash & next on a single, Save & next once stashed. */
+/**
+ * The one primary button: Next in a pile, Stash pile (N) on its review, Stash & next on a single.
+ * Once a pile or single is stashed (Back reopened it) the label is Save & next, or Save on the last unit.
+ */
 export function primary(s: FlowState): { kind: PrimaryKind; label: string } {
   const unit = currentUnit(s)
-  if (isPile(unit)) {
-    return onReview(s)
-      ? { kind: 'stash-pile', label: `Stash pile (${unit.items.length})` }
-      : { kind: 'next', label: 'Next' }
-  }
   const last = s.position.unit === s.units.length - 1
-  if (s.stashed.has(unit.unitId)) return { kind: 'save-next', label: last ? 'Save' : 'Save & next' }
+  const saved = s.stashed.has(unit.unitId)
+  if (isPile(unit)) {
+    if (!onReview(s)) return { kind: 'next', label: 'Next' }
+    return {
+      kind: 'stash-pile',
+      label: saved ? (last ? 'Save' : 'Save & next') : `Stash pile (${unit.items.length})`
+    }
+  }
+  if (saved) return { kind: 'save-next', label: last ? 'Save' : 'Save & next' }
   return { kind: 'stash', label: last ? 'Stash' : 'Stash & next' }
 }
 
 // -- Skip -----------------------------------------------------------------------------------
 
-/** Skip for now exists only for mockups on their own, and needs another one waiting after it. */
+/**
+ * Skip for now exists only for a mockup on its own that is not stashed yet (Back can reopen a
+ * stashed one), and needs another one waiting after it.
+ */
 export function canSkip(s: FlowState): boolean {
   const unit = currentUnit(s)
-  if (isPile(unit)) return false
+  if (isPile(unit) || s.stashed.has(unit.unitId)) return false
   return s.units.slice(s.position.unit + 1).some((u) => !isPile(u) && !s.stashed.has(u.unitId))
 }
 
-/** Sends the mockup to the end of the queue; the next one takes its place. */
+/** Sends the mockup to the end of the queue; the next one takes its place. It counts as looked at. */
 export function skip(s: FlowState): FlowState {
   if (!canSkip(s)) return s
   const unit = currentUnit(s)
+  const left = leave(s)
   const units = [...s.units.slice(0, s.position.unit), ...s.units.slice(s.position.unit + 1), unit]
-  return open({ ...s, units }, { unit: s.position.unit, step: 0 })
+  return open({ ...left, units }, { unit: s.position.unit, step: 0 })
+}
+
+// -- Progress -------------------------------------------------------------------------------
+
+/**
+ * How far through the haul, 0 to 1, for the FlowModal's last track. Counts the mockups looked at
+ * (opened, left or skipped past), everything in a stashed pile, and the one on screen, so it moves
+ * on Next, Stash and Skip and never goes back.
+ */
+export function progress(s: FlowState): number {
+  const total = mockupTotal(s)
+  if (total === 0) return 0
+  const seen = new Set(s.checked)
+  for (const unit of s.units) {
+    if (s.stashed.has(unit.unitId)) for (const item of unit.items) seen.add(item.mockupId)
+  }
+  const here = currentItem(s)
+  if (here) seen.add(here.mockupId)
+  return Math.min(1, seen.size / total)
 }

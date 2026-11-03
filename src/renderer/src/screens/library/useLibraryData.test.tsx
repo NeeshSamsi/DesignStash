@@ -1,9 +1,10 @@
 /// <reference types="node" />
 import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
+import { useTagTreeStore } from '@renderer/stores/tagTreeStore'
 import { item, resetStores, setupApi } from './library-test-utils'
 import { useLibraryData } from './useLibraryData'
 
@@ -49,6 +50,54 @@ describe('useLibraryData cache', () => {
     )
     renderHook(() => useLibraryData(false))
     await waitFor(() => expect(useLibraryStore.getState().items.map((i) => i.id)).toEqual([1, 3]))
+  })
+})
+
+describe('useLibraryData tag filter', () => {
+  const treeOf = (label: string) => ({
+    tree: [
+      {
+        categoryId: 1,
+        categoryLabel: 'Device',
+        tagCount: 1,
+        tags: [{ tagId: 7, label, usageCount: 3 }]
+      }
+    ]
+  })
+
+  it('lists a tag renamed elsewhere (Settings › Tags) under its new name', async () => {
+    let tree = treeOf('iPhone')
+    setupApi([item(1)], { [IPC_CHANNELS.TAG_TREE]: () => ({ success: true, data: tree }) })
+    const { result } = renderHook(() => useLibraryData(false))
+    await waitFor(() => expect(result.current.tagCategories[0]?.tags[0]?.label).toBe('iPhone'))
+
+    tree = treeOf('iPhone 15')
+    await act(async () => {
+      await useTagTreeStore.getState().load()
+    })
+    expect(result.current.tagCategories[0]?.tags[0]).toEqual({
+      tagId: 7,
+      label: 'iPhone 15',
+      count: 3
+    })
+  })
+
+  it('applies only the newest answer when two loads overlap', async () => {
+    const answers: Array<(value: unknown) => void> = []
+    const api = setupApi([])
+    api.invoke.mockImplementation(
+      (channel: string) =>
+        new Promise((resolve) => {
+          if (channel === IPC_CHANNELS.TAG_TREE) answers.push(resolve)
+          else resolve({ success: true, data: {} })
+        })
+    )
+    const older = useTagTreeStore.getState().load()
+    const newer = useTagTreeStore.getState().load()
+    answers[1]!({ success: true, data: treeOf('New') })
+    answers[0]!({ success: true, data: treeOf('Old') })
+    await Promise.all([older, newer])
+    expect(useTagTreeStore.getState().tree?.[0]?.tags[0]?.label).toBe('New')
   })
 })
 

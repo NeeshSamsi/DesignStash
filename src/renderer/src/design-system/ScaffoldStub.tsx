@@ -35,7 +35,7 @@ export function ScaffoldStub({ contract, props, className, children }: ScaffoldS
       {...data}
       aria-disabled={props.disabled ? true : undefined}
       className={cn(
-        'flex flex-col gap-1 rounded-md border border-dashed border-border p-2 text-xs text-muted-foreground',
+        'flex flex-col gap-1 rounded-lg border border-dashed border-border p-2 text-xs text-muted-foreground',
         props.disabled === true && 'opacity-50',
         className
       )}

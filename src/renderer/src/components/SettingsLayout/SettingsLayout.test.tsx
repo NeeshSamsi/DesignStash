@@ -52,7 +52,7 @@ describe('SettingsLayout', () => {
     expect(document.querySelectorAll('[data-ds="ModelCard"]')).toHaveLength(2)
     rerender(<SettingsLayout section="about" />)
     expect(screen.getByText('Version 1.0.0 (42)')).not.toBeNull()
-    expect(screen.getByRole('button', { name: 'Report…' })).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Copy report' })).not.toBeNull()
   })
 
   it('puts the usage-data accordion in Privacy, with its switch on', () => {

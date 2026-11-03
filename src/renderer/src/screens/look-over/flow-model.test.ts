@@ -15,6 +15,7 @@ import {
   next,
   onReview,
   primary,
+  progress,
   rail,
   reviewCards,
   skip,
@@ -35,7 +36,6 @@ const item = (
   touched: false,
   checked: false,
   cover: { path: '/c.png', source: 'embedded', missing: false, width: 1, height: 1 },
-  sidecarFileName: null,
   ...over
 })
 
@@ -215,6 +215,20 @@ describe('Back', () => {
     expect(primary(reopened)).toEqual({ kind: 'save-next', label: 'Save & next' })
   })
 
+  it('labels the review of a pile that is already stashed Save & next, or Save on the last unit', () => {
+    const s = afterStash(jumpTo(start(), 3))
+    const reopened = back(s)
+    expect(onReview(reopened)).toBe(true)
+    expect(primary(reopened)).toEqual({ kind: 'stash-pile', label: 'Save & next' })
+    const only = createFlow({ units: [pile(1, [10, 11])], resume: null })
+    const lastReview = jumpTo(only, 2)
+    expect(primary(lastReview).label).toBe('Stash pile (2)')
+    expect(primary({ ...lastReview, stashed: new Set([1]) })).toEqual({
+      kind: 'stash-pile',
+      label: 'Save'
+    })
+  })
+
   it('goes from the very first mockup to Sort only while nothing is stashed', () => {
     const s = start()
     expect(backTarget(s)).toEqual({ kind: 'sort' })
@@ -297,11 +311,22 @@ describe('Rail', () => {
     expect(r.title).toBe('m10')
     expect(r.steps.map((x) => [x.label, x.status])).toEqual([
       ['Top · m10', 'done'],
-      ['Variant · m11', 'current'],
-      ['Variant · m12', 'todo'],
+      ['Variant · m11 · 1', 'current'],
+      ['Variant · m12 · 2', 'todo'],
       ['Review & stash pile', 'todo']
     ])
     expect(r.steps.map((x) => x.showConnector)).toEqual([true, true, true, false])
+  })
+
+  it('follows the edited titles, and keeps the opened title when a draft title is blank', () => {
+    const r = rail(start(), { 10: 'Edited top', 11: 'Edited variant', 12: '   ' })!
+    expect(r.title).toBe('Edited top')
+    expect(r.steps.map((x) => x.label)).toEqual([
+      'Top · Edited top',
+      'Variant · Edited variant · 1',
+      'Variant · m12 · 2',
+      'Review & stash pile'
+    ])
   })
 
   it('marks mockups jumped past as skipped, and Review as current on review', () => {
@@ -356,9 +381,46 @@ describe('Skip', () => {
     expect(canSkip(rest)).toBe(false)
   })
 
+  it('is not offered on a single that is already stashed, even with another waiting', () => {
+    const reopened = { ...singles(), stashed: new Set([1]) }
+    expect(canSkip(reopened)).toBe(false)
+    expect(skip(reopened)).toEqual(reopened)
+  })
+
   it('skips a single reached after the piles without touching the piles', () => {
     const s = createFlow(queue({ resume: { unitId: 30, mockupId: 30 } }))
     const skipped = skip(s)
     expect(skipped.units.map((u) => u.unitId)).toEqual([1, 2, 31, 30])
+  })
+})
+
+describe('Progress', () => {
+  // The queue has 7 mockups; the one you are on counts as looked at.
+  it('starts with the first mockup and moves with Next', () => {
+    expect(progress(start())).toBeCloseTo(1 / 7)
+    expect(progress(next(start()))).toBeCloseTo(2 / 7)
+  })
+
+  it('never goes back when you go back or jump around', () => {
+    const s = next(next(start()))
+    expect(progress(back(s))).toBeCloseTo(progress(s))
+    expect(progress(jumpTo(s, 0))).toBeCloseTo(progress(s))
+  })
+
+  it('counts a whole pile once it is stashed, and the first mockup of the next', () => {
+    expect(progress(afterStash(start()))).toBeCloseTo(4 / 7)
+  })
+
+  it('moves when a single is skipped, since the next one is opened', () => {
+    const s = createFlow({ units: [single(1), single(2), single(3)], resume: null })
+    expect(progress(s)).toBeCloseTo(1 / 3)
+    expect(progress(skip(s))).toBeCloseTo(2 / 3)
+  })
+
+  it('is 1 once everything is stashed, and 0 for an empty queue', () => {
+    let s = createFlow({ units: [single(1), single(2)], resume: null })
+    s = afterStash(afterStash(s))
+    expect(progress(s)).toBe(1)
+    expect(progress(createFlow({ units: [], resume: null }))).toBe(0)
   })
 })

@@ -12,7 +12,6 @@ import { WaitingToSortStrip } from './WaitingToSortStrip'
 const waitingItem = (id: number, over: Partial<InboxItem> = {}): InboxItem => ({
   ...item(id),
   title: `file-${id}.psd`,
-  reviewStatus: 'needs_review',
   stage: 'to_sort',
   aiStatus: 'ready',
   sizeBytes: 1024,
@@ -54,22 +53,24 @@ function land(items: InboxItem[], total = items.length) {
   act(() => pushes.get(IPC_CHANNELS.INBOX_COUNTS_CHANGED)?.forEach((cb) => cb(current)))
 }
 
-const haul = (over: Partial<CopyStatus> = {}): CopyStatus => ({
-  haulId: 'h1',
-  state: 'running',
-  pauseReason: null,
-  total: 38,
-  landed: 12,
-  bytesTotal: 100,
-  bytesCopied: 30,
-  bytesPerSecond: 10,
-  secondsLeft: 7,
-  skipped: { notPsd: 0, duplicate: 0, unreadable: 0 },
-  files: [],
-  ...over
-})
+// The overrides may pick any state, so the merged object is checked against the union by the cast.
+const haul = (over: Partial<CopyStatus> = {}): CopyStatus =>
+  ({
+    haulId: 'h1',
+    state: 'running',
+    total: 38,
+    landed: 12,
+    bytesTotal: 100,
+    bytesCopied: 30,
+    bytesPerSecond: 10,
+    secondsLeft: 7,
+    skipped: { notPsd: 0, duplicate: 0, unreadable: 0, archiveUnsupported: 0, noPsdInArchive: 0 },
+    files: [],
+    ...over
+  }) as CopyStatus
 
-const strip = () => document.querySelector('[data-ds="WaitingToSortStrip"]')
+// The strip folds away rather than leaving the tree: it counts as there only while open.
+const strip = () => document.querySelector('[data-open="true"] [data-ds="WaitingToSortStrip"]')
 const covers = () => strip()?.querySelectorAll('[data-ds="CoverImage"]') ?? []
 
 beforeEach(() => {
@@ -116,14 +117,14 @@ describe('WaitingToSortStrip', () => {
     await screen.findByText('1 mockup waiting to be sorted')
 
     act(() => useCopyStore.getState().setHaul(haul({ landed: 1 })))
-    expect(screen.getByText('Copying 1 of 38 · 1 waiting to be sorted')).toBeTruthy()
+    expect(screen.getByText('1 mockup waiting to be sorted')).toBeTruthy()
 
     land(
       [1, 2, 3, 4].map((id) => waitingItem(id)),
       12
     )
     act(() => useCopyStore.getState().setHaul(haul({ landed: 12 })))
-    expect(await screen.findByText('Copying 12 of 38 · 12 waiting to be sorted')).toBeTruthy()
+    expect(await screen.findByText('12 mockups waiting to be sorted')).toBeTruthy()
     expect(covers()).toHaveLength(3)
 
     act(() => useCopyStore.getState().setHaul(haul({ state: 'done', landed: 38 })))
@@ -160,6 +161,17 @@ describe('WaitingToSortStrip', () => {
       expect.objectContaining({ id: 1 }),
       expect.objectContaining({ id: 2 })
     ])
+  })
+
+  it('folds away inert and out of the accessibility tree, so it never takes space or focus', async () => {
+    setup([waitingItem(1)])
+    render(<WaitingToSortStrip onSort={vi.fn()} />)
+    await screen.findByText('1 mockup waiting to be sorted')
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }))
+    const fold = document.querySelector('[data-open="false"]') as HTMLElement
+    expect(fold.getAttribute('aria-hidden')).toBe('true')
+    expect(fold.hasAttribute('inert')).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Sort now' })).toBeNull()
   })
 
   it('Later hides it until the next copy lands', async () => {

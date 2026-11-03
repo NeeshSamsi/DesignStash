@@ -20,11 +20,5 @@ export const inboxContract = {
       /** Ids that were not in an inbox (already stashed, in Trash or gone). */
       skippedIds: z.array(z.number())
     })
-  },
-  // PUSH EVENT (main -> renderer), listed in PUSH_CHANNELS. `request` is the event payload;
-  // `response: z.void()` is a placeholder and no invoke handler is registered.
-  [IPC_CHANNELS.INBOX_COUNTS_CHANGED]: {
-    request: InboxCountsSchema,
-    response: z.void()
   }
 } as const

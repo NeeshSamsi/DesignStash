@@ -37,13 +37,31 @@ export const figmaUrl = (nodeId) =>
  *   derive:      state options computed from real data (not props, not previewable)
  *   stateFlag:   name of the boolean a two-option state axis becomes
  *   swapNames:   rename an instance-swap prop (Figma prop → code prop)
+ *   axisNames:   rename a variant axis (Figma axis → code prop), e.g. when it is an HTML attribute
+ *   flagAxes:    a two-option axis that is a boolean in code ({ axis: { name, on, off } })
+ *   ignoreBooleans / ignoreExposed: Figma-only drawing helpers (not React props)
  */
 export const OVERRIDES = {
   Button: { swapNames: { icon: 'iconStart' } },
   Input: { derive: ['empty', 'filled'], swapNames: { icon: 'iconStart' } },
-  Textarea: { derive: ['empty', 'filled'] },
+  // `rows` is also the HTML attribute, so the axis is `rowRange` in code.
+  Textarea: { derive: ['empty', 'filled'], axisNames: { rows: 'rowRange' } },
   Switch: { stateFlag: 'checked' },
-  FavouriteToggle: { stateFlag: 'pressed' }
+  FavouriteToggle: { stateFlag: 'pressed' },
+  // The sidebar axis is the details sidebar's open state; `sidebar` is already the nav slot.
+  AppWindow: { flagAxes: { sidebar: { name: 'asideOpen', on: 'open', off: 'closed' } } },
+  LibraryToolbar: { flagAxes: { disabled: { name: 'disabled', on: 'true', off: 'false' } } },
+  ModelRow: { flagAxes: { selected: { name: 'selected', on: 'true', off: 'false' } } },
+  // The four progress booleans only draw the second track in Figma; code takes progress as 0 to 1.
+  FlowModal: {
+    ignoreBooleans: ['progress-25', 'progress-50', 'progress-75', 'progress-100']
+  },
+  // Figma swaps the bar for the detail line with these two; code shows the line whenever `detail` is passed.
+  CopyFileRow: { ignoreBooleans: ['show-detail', 'show-progress'] },
+  // Exposed so a screen can edit the label of a nested Button or Badge; not slots in code.
+  ConfirmDialog: { ignoreExposed: ['button'] },
+  ChoiceDialog: { ignoreExposed: ['button', 'secondary'] },
+  MockupCard: { ignoreExposed: ['variants'] }
 }
 
 const pickDefault = (options) => ['base', 'md'].find((o) => options.includes(o)) ?? options[0]
@@ -71,6 +89,11 @@ export function toContract(c) {
   const interactionStates = []
   let hasDisabled = false
   for (const [axis, options] of Object.entries(c.variants)) {
+    const flagAxis = override.flagAxes?.[axis]
+    if (flagAxis) {
+      flags[flagAxis.name] = { on: flagAxis.on, off: flagAxis.off }
+      continue
+    }
     if (axis === 'state') {
       interactionStates.push(
         ...options.filter((o) => INTERACTION_STATES.includes(o) && o !== 'default')
@@ -89,7 +112,7 @@ export function toContract(c) {
       else if (data.length > 2) axes.state = data
       // a single drawn state (e.g. DropdownMenu state=open) is just how Figma shows it — no prop
     } else if (options.length >= 2) {
-      axes[camel(axis)] = options
+      axes[override.axisNames?.[axis] ?? camel(axis)] = options
     }
   }
   const icons = {}
@@ -101,10 +124,12 @@ export function toContract(c) {
   }
   for (const entry of c.exposed) {
     const [prop, component] = entry.split(':')
+    if (override.ignoreExposed?.includes(prop)) continue
     slots[camel(prop)] = component
   }
   const booleans = {}
   for (const [prop, def] of Object.entries(c.booleans)) {
+    if (override.ignoreBooleans?.includes(prop)) continue
     let key = camel(prop)
     if (key in icons || key in slots) key = 'show' + pascal(prop)
     booleans[key] = def

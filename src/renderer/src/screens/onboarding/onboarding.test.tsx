@@ -5,6 +5,9 @@ import type { AiModelInfo } from '@shared/ipc/ai'
 import { OnboardingFlow, type OnboardingPage } from './OnboardingFlow'
 import { installApi, ok } from './test-api'
 
+const toasts = vi.hoisted(() => ({ toast: vi.fn(), undoToast: vi.fn() }))
+vi.mock('@renderer/stores/toastStore', () => toasts)
+
 const model = (id: string, over: Partial<AiModelInfo> = {}): AiModelInfo => ({
   id,
   name: `Model ${id}`,
@@ -117,6 +120,48 @@ describe('welcome and stash folder', () => {
   })
 })
 
+describe('stash folder choice', () => {
+  it('Choose another, then cancelling the picker, cannot leave the old stash proceedable', async () => {
+    let picks = 0
+    const api = installApi(
+      base({
+        [IPC_CHANNELS.DIALOG_SELECT_DIRECTORY]: () =>
+          ok({ path: picks++ === 0 ? '/Users/ada/Old' : null }),
+        [IPC_CHANNELS.BOOT_CHECK_FOLDER]: () => ok({ state: 'ok', hasLibrary: true }),
+        [IPC_CHANNELS.SETTINGS_SET_LIBRARY_ROOT]: (r) =>
+          ok({ libraryRoot: (r as { path: string }).path })
+      })
+    )
+    mount('stash')
+    await screen.findByText('~/Pictures/DesignStash')
+    fireEvent.click(btn('Choose…'))
+    await screen.findByRole('alertdialog')
+    fireEvent.click(btn('Choose another'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.DIALOG_SELECT_DIRECTORY)).toHaveLength(2))
+    // The picker was cancelled: back to the folder that was chosen before, nothing unconfirmed.
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByText('~/Pictures/DesignStash')).toBeTruthy()
+    fireEvent.click(btn('Continue'))
+    await screen.findByRole('heading', { name: 'Set up on-device AI' })
+    expect(api.sent(IPC_CHANNELS.SETTINGS_SET_LIBRARY_ROOT)).toHaveLength(0)
+  })
+
+  it('cuts a long path in the middle and keeps the whole one for the tooltip', async () => {
+    installApi(
+      base({
+        [IPC_CHANNELS.SETTINGS_GET]: () =>
+          ok({
+            libraryRoot: '/Volumes/Studio SSD/Work/Clients/Acme/DesignStash',
+            onboarded: false,
+            telemetryEnabled: true
+          })
+      })
+    )
+    mount('stash')
+    expect(await screen.findByText('Studio SSD/…/Acme/DesignStash')).toBeTruthy()
+  })
+})
+
 describe('AI setup', () => {
   const lastRow = () => document.querySelectorAll('[data-ds="ModelRow"]')
 
@@ -146,8 +191,8 @@ describe('AI setup', () => {
       secondsLeft: 70
     })
     expect(screen.getByText(/860 MB of 2.1 GB/)).toBeTruthy()
-    expect(btn('Cancel download')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+    expect(btn('Continue').hasAttribute('disabled')).toBe(false)
+    expect(btn('Back')).toBeTruthy()
 
     api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
       modelId: 'a',
@@ -156,8 +201,37 @@ describe('AI setup', () => {
       phase: 'verifying'
     })
     expect(await screen.findByText('Checking the download…')).toBeTruthy()
-    expect((screen.getByText('Checking…').closest('button') as HTMLButtonElement).disabled).toBe(
-      true
+    expect(btn('Continue').hasAttribute('disabled')).toBe(false)
+  })
+
+  it('Continue mid-download leaves it running, then switches the model on and says so', async () => {
+    const api = installApi(base({ [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: () => ok({ started: true }) }))
+    mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(btn('Download'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toHaveLength(1))
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
+      modelId: 'a',
+      receivedBytes: 860_000_000,
+      totalBytes: 2_100_000_000,
+      phase: 'downloading'
+    })
+    fireEvent.click(btn('Continue'))
+    expect(await screen.findByText('Your privacy')).toBeTruthy()
+    expect(api.sent(IPC_CHANNELS.AI_CANCEL_DOWNLOAD)).toHaveLength(0)
+
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
+      modelId: 'a',
+      receivedBytes: 2_100_000_000,
+      totalBytes: 2_100_000_000,
+      phase: 'done'
+    })
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_SET_ACTIVE)).toEqual([{ id: 'a' }]))
+    await waitFor(() =>
+      expect(toasts.toast).toHaveBeenCalledWith({
+        variant: 'success',
+        message: 'Model a is ready and switched on'
+      })
     )
   })
 
@@ -293,24 +367,33 @@ describe('AI setup', () => {
 })
 
 describe('privacy and finish', () => {
-  it('shows what is and is not collected, and No thanks records the choice', async () => {
+  it('shows what is and is not collected, and Don’t share records the choice', async () => {
     const api = installApi(base())
     mount('privacy')
     expect(screen.getByText('What we never collect')).toBeTruthy()
-    fireEvent.click(btn('No thanks'))
+    fireEvent.click(btn('Don’t share'))
     await waitFor(() =>
       expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: false }])
     )
     expect(await screen.findByRole('heading', { name: 'Your stash is ready!' })).toBeTruthy()
   })
 
-  it('Keep it on records the other choice', async () => {
+  it('Share usage data records the other choice', async () => {
     const api = installApi(base())
     mount('privacy')
-    fireEvent.click(btn('Keep it on'))
+    fireEvent.click(btn('Share usage data'))
     await waitFor(() =>
       expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: true }])
     )
+  })
+
+  it('the privacy step has the standard footer with Back, and no primary of its own', () => {
+    installApi(base())
+    mount('privacy')
+    expect(btn('Back')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
+    fireEvent.click(btn('Back'))
+    expect(screen.getByRole('heading', { name: 'Set up on-device AI' })).toBeTruthy()
   })
 
   it('Open My Stash finishes onboarding', () => {
@@ -356,7 +439,7 @@ describe('privacy and finish', () => {
     fireEvent.click(btn('Continue'))
     await screen.findByRole('heading', { name: 'Set up on-device AI' })
     fireEvent.click(await screen.findByRole('button', { name: 'Skip AI' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'No thanks' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Don’t share' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Open My Stash' }))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.APP_RELAUNCH)).toHaveLength(1))
     expect(onComplete).not.toHaveBeenCalled()

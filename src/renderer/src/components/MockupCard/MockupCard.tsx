@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { useRef, useState } from 'react'
 import type { ComponentProps, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -8,6 +9,7 @@ import { Skeleton } from '@renderer/ui/skeleton'
 import { Button } from '@renderer/components/Button'
 import { CoverImage } from '@renderer/components/CoverImage'
 import { FavouriteToggle } from '@renderer/components/FavouriteToggle'
+import { MiddleTruncatedText } from '@renderer/lib/middle-truncated-text'
 import { cn } from '@renderer/lib/utils'
 import {
   MOCKUP_CARD_DEFAULTS,
@@ -31,8 +33,10 @@ export interface MockupCardProps
   mockupId?: string
   /** The cover file. Without it the cover shows a placeholder. */
   coverSrc?: string
-  /** Variants in the pile, shown as "+N". 0 (the default) shows no badge. */
-  variantCount?: number
+  /** Set for a pile's top: the card stacks and the badge shows how many mockups the pile holds. Default none. */
+  pile?: { memberCount: number } | null
+  /** The title is a file name: a long one keeps its end (the date, the number) and loses its middle. */
+  titleIsFileName?: boolean
   /** Starred. Shows the filled star at rest; unstarred cards show an outline star on hover. Default off. */
   favourite?: boolean
   /** Quiet status badge on pending-review cards when `showStatus` is on, e.g. "Sniffing…". Nothing shows without it. */
@@ -76,7 +80,8 @@ export function MockupCard({
   className,
   mockupId,
   coverSrc,
-  variantCount = 0,
+  pile = null,
+  titleIsFileName = false,
   favourite = false,
   status,
   trashedAgo,
@@ -106,7 +111,8 @@ export function MockupCard({
   const leftBehind = state === 'left-behind'
   const compact = variant === 'compact'
   const interactive = !loading && !leftBehind
-  const pile = variantCount > 0 && !compact && !loading && !leftBehind
+  const memberCount = pile?.memberCount ?? 0
+  const stacked = memberCount > 1 && !compact && !loading && !leftBehind
   const tagLine = variant === 'trash' && trashedAgo ? `Trashed ${trashedAgo}` : tags
 
   return (
@@ -115,13 +121,13 @@ export function MockupCard({
       data-mockup-id={mockupId}
       data-variant={variant}
       data-state={state === 'selected' ? 'selected' : undefined}
-      data-pile={pile || undefined}
+      data-pile={stacked || undefined}
       aria-busy={loading || undefined}
       tabIndex={interactive ? 0 : undefined}
-      className={cn(mockupCardVariants({ variant, pile }), className)}
+      className={cn(mockupCardVariants({ variant, pile: stacked }), className)}
       {...props}
     >
-      {pile && (
+      {stacked && (
         <>
           <span aria-hidden data-pile-edge className={cn(PILE_EDGE_BASE, PILE_EDGE_BACK)} />
           <span aria-hidden data-pile-edge className={cn(PILE_EDGE_BASE, PILE_EDGE_FRONT)} />
@@ -130,7 +136,7 @@ export function MockupCard({
       <div
         className={cn(
           mockupCardFaceVariants({ state }),
-          pile && 'delay-100 group-hover/card:delay-0'
+          stacked && 'delay-100 group-hover/card:delay-0'
         )}
       >
         <div className={mockupCardCoverVariants({ hidden: leftBehind })}>
@@ -146,9 +152,19 @@ export function MockupCard({
             {variant === 'pending-review' && showStatus && status && (
               <Badge variant="warning">{status}</Badge>
             )}
-            {showVariants && variantCount > 0 && !loading && (
-              <Badge variant="count" className="px-2 text-muted-foreground">
-                +{variantCount}
+            {showVariants && memberCount > 1 && !loading && (
+              // The whole pile, top included, so a pile of three reads 3.
+              <Badge
+                variant="count"
+                aria-label={`${memberCount} mockups in this pile`}
+                className="gap-1 px-2 text-muted-foreground"
+              >
+                <HugeiconsIcon
+                  icon={Layers01Icon}
+                  strokeWidth={ICON_STROKE}
+                  className="size-icon-2xs"
+                />
+                {memberCount}
               </Badge>
             )}
           </div>
@@ -172,7 +188,7 @@ export function MockupCard({
                   onClick={onMore}
                   className={cn(OVERLAY_ICON_BUTTON, REVEAL_ON_HOVER)}
                 >
-                  <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={1.5} />
+                  <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={ICON_STROKE} />
                 </button>
               )}
             </div>
@@ -230,7 +246,11 @@ export function MockupCard({
             <>
               <div aria-hidden className="absolute inset-0 bg-selection" />
               <div className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-primary px-3 py-1 type-label-xs-medium whitespace-nowrap text-on-primary">
-                <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-3.5" />
+                <HugeiconsIcon
+                  icon={Layers01Icon}
+                  strokeWidth={ICON_STROKE}
+                  className="size-icon-xs"
+                />
                 {dropHint}
               </div>
             </>
@@ -249,7 +269,7 @@ export function MockupCard({
             </>
           ) : (
             <>
-              <CardTitle title={title} />
+              <CardTitle title={title} fileName={titleIsFileName} />
               {showTags && (
                 <p className="truncate type-caption-xs-regular text-tertiary">{tagLine}</p>
               )}
@@ -265,10 +285,17 @@ export function MockupCard({
 const TITLE_TOOLTIP_MS = 600
 
 /** The card title. When it is cut off, hovering it shows the full title after the usual delay. */
-function CardTitle({ title }: { title: string }) {
+function CardTitle({ title, fileName }: { title: string; fileName: boolean }) {
   const ref = useRef<HTMLParagraphElement>(null)
   const [open, setOpen] = useState(false)
   const cut = () => ref.current !== null && ref.current.scrollWidth > ref.current.clientWidth
+  if (fileName) {
+    return (
+      <MiddleTruncatedText as="p" className="type-body-sm-medium text-foreground">
+        {title}
+      </MiddleTruncatedText>
+    )
+  }
   return (
     <Tooltip
       delayDuration={TITLE_TOOLTIP_MS}

@@ -46,19 +46,36 @@
 
   /* Same value as background/overlay; a colour token so gradients can use it (to-scrim). */
   --color-scrim: var(--ds-color-black-alpha-60);
+  /* border/selected as a colour, so the selected-card ring can use ring-selected (AN-1). */
+  --color-selected: var(--ds-border-selected);
 }
 
 /* Card corners (B5) and motion for the card hover and the details panel (B7). Static so the
    variables exist for var() and for other agents' utilities even before a class uses them. */
 @theme static {
-  --radius-card: 1.5rem; /* 24 */
+  --radius-card: var(--ds-radius-3xl); /* 24 */
   --radius-card-cover: 0.875rem; /* 14 */
+
+  /* Motion scale. Durations come from Figma (--ds-duration-*); the curves are the Tailwind defaults, named. */
+  --duration-fast: var(--ds-duration-fast); /* 120 */
+  --duration-base: var(--ds-duration-base); /* 200 */
+  --duration-slow: var(--ds-duration-slow); /* 280 */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Icon sizes 12 and 14 (size-icon-2xs, size-icon-xs); 16, 20 and 24 stay size-4, size-5 and size-6. */
+  --spacing-icon-2xs: var(--ds-icon-sizes-2xs);
+  --spacing-icon-xs: var(--ds-icon-sizes-xs);
+
+  /* Elevation: raised = a menu, popover or toast; lifted = a card being dragged or a floating button. */
+  --shadow-raised: 0 4px 12px -2px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lifted: 0 16px 32px -8px rgb(0 0 0 / 0.5), 0 6px 12px -4px rgb(0 0 0 / 0.35);
 
   /* Panel: open settles out; close leaves at once, and the container widens on the same out curve. */
   --ease-panel-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-panel-in: cubic-bezier(0.4, 0, 1, 1); /* moves at once on close */
-  --duration-panel-open: 280ms;
-  --duration-panel-close: 150ms; /* the panel */
+  --duration-panel-open: var(--duration-slow);
+  --duration-panel-close: var(--duration-fast); /* the panel */
   --duration-panel-container-close: 180ms; /* the container, on ease-panel-out */
 
   /* Card hover springs. In overshoots slightly (bounce ~0.45, ~450ms); out settles (bounce ~0.15, ~400ms). */
@@ -128,6 +145,15 @@
   --color-background: var(--background);
 }
 
+/* The one focus indicator: a 2px ring in the focus token, 2px clear of the control. Every control in ui/
+   composes it with a variant (focus-visible:focus-ring, has-focus-visible:focus-ring, data-open:focus-ring). */
+@utility focus-ring {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-color: var(--ring);
+  outline-offset: 2px;
+}
+
 /* Electron title bar: drag the window by it, and keep controls inside it clickable. */
 @utility app-drag {
   -webkit-app-region: drag;
@@ -141,7 +167,7 @@
   color-scheme: dark;
 }
 
-/* PORT SWITCH: shadcn variables, radii and fonts → Figma tokens. */
+/* shadcn variables, radii and fonts → Figma tokens. */
 @import '../styles/shadcn-bridge.css';
 
 @layer base {
@@ -193,8 +219,8 @@
   opacity: 0;
   /* Out is faster than in. */
   transition:
-    transform 100ms ease-in,
-    opacity 100ms ease-in;
+    transform var(--duration-fast) var(--ease-in),
+    opacity var(--duration-fast) var(--ease-in);
 }
 .ds-scrollbar[data-axis='vertical'] .ds-scrollbar-track {
   transform: translateX(100%);
@@ -207,8 +233,8 @@
   transform: none;
   pointer-events: auto;
   transition:
-    transform 150ms ease-out,
-    opacity 150ms ease-out;
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
 }
 .ds-scrollbar-thumb {
   position: absolute;
@@ -217,9 +243,9 @@
   opacity: 0;
   /* The thin thumb fades 200ms after it has been idle for 800ms. */
   transition:
-    opacity 200ms ease-out,
-    width 100ms ease-out,
-    height 100ms ease-out;
+    opacity var(--duration-base) var(--ease-out),
+    width var(--duration-fast) var(--ease-out),
+    height var(--duration-fast) var(--ease-out);
 }
 .ds-scrollbar[data-axis='vertical'] .ds-scrollbar-thumb {
   left: 50%;

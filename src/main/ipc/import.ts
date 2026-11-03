@@ -2,8 +2,7 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { CopyQueue } from '../import/copy-queue'
 import type { HandlerContext } from './context'
-import { enqueueInBackground, inferenceQueueFor } from './ai-status'
-import { pushInboxCounts } from './inbox'
+import { countsChanged, mockupsArrived, mockupsLeft } from './library-effects'
 import { registerIpcHandler } from './register'
 
 export function registerImportHandlers(ctx: HandlerContext): void {
@@ -14,8 +13,8 @@ export function registerImportHandlers(ctx: HandlerContext): void {
     libraryRoot: settings.getLibraryRoot(),
     onProgress: (progress) => push(IPC_CHANNELS.COPY_PROGRESS, progress),
     onLanded: (ids) => {
-      enqueueInBackground(ctx, ids)
-      pushInboxCounts(ctx)
+      mockupsArrived(ctx, ids)
+      countsChanged(ctx)
     }
   })
   // Carry on a haul that was running when the app last closed.
@@ -31,8 +30,8 @@ export function registerImportHandlers(ctx: HandlerContext): void {
   registerIpcHandler(IPC_CHANNELS.COPY_RETRY, (args) => copyQueue.retry(args.haulId))
   registerIpcHandler(IPC_CHANNELS.COPY_UNDO_ALL, async (args) => {
     const result = await copyQueue.undoAll(args.haulId)
-    inferenceQueueFor(ctx).cancel(result.tossedIds)
-    pushInboxCounts(ctx)
+    mockupsLeft(ctx, result.tossedIds)
+    countsChanged(ctx)
     return result
   })
 }

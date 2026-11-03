@@ -12,7 +12,7 @@ export const VARIANT_STRIP_CONTRACT = {
     "A pile's variants under the cover (V1a): VariantThumbs on fixed 92px slots from the cover's left edge, an arrow on a fade only at an end with more, and a status row (name · n of N, then the Top mark or Put on top).",
   code: 'screens/detail/DetailModal.tsx',
   axes: {
-    overflow: ['fits', 'start', 'scrolled', 'end']
+    overflow: ['fits', 'start', 'end', 'scrolled']
   },
   axisDefaults: {
     overflow: 'fits'
@@ -31,7 +31,7 @@ export const VARIANT_STRIP_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type VariantStripOverflow = 'fits' | 'start' | 'scrolled' | 'end'
+export type VariantStripOverflow = 'fits' | 'start' | 'end' | 'scrolled'
 
 export interface VariantStripContractProps {
   /** Figma `overflow` (4 options). Default `fits`. */

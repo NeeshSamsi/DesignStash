@@ -13,7 +13,12 @@ export const mockupContract = {
     response: z.object({ favourite: z.boolean() })
   },
   [IPC_CHANNELS.MOCKUP_UPDATE]: {
-    request: z.object({ mockupId: z.number(), title: z.string().min(1), description: z.string(), tagIds: z.array(z.number()) }),
+    request: z.object({
+      mockupId: z.number(),
+      title: z.string().min(1),
+      description: z.string(),
+      tagIds: z.array(z.number())
+    }),
     response: z.object({ updated: z.boolean() })
   },
   [IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL]: {

@@ -4,6 +4,7 @@ import { test, expect, type Page } from '@playwright/test'
 import sharp from 'sharp'
 import { buildPsdSmallComposite, buildSidecarImage } from '../../src/main/psd/__fixtures__/build'
 import { launchLikeReal } from '../fixtures/dev-origin'
+// Synthetic mockups (seedStash): these tests need covers of known shapes (small composites, sidecars).
 import { seedStash, showMyStash } from '../fixtures/seed'
 
 /**

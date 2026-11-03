@@ -28,7 +28,7 @@ export function PileRail({ className, steps, ...rest }: PileRailProps) {
       {...props}
     >
       <div className="flex flex-col gap-0.5 pb-2 pl-2">
-        <p className="truncate type-label-xs-medium font-semibold text-tertiary">{pile}</p>
+        <p className="truncate type-label-xs-medium text-tertiary">{pile}</p>
         <p className="truncate type-body-sm-medium text-foreground">{title}</p>
       </div>
       <div className="flex flex-col gap-1">

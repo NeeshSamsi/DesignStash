@@ -1,28 +1,30 @@
+import { DURATION_MS, EASE_IN, EASE_OUT } from '@renderer/design-system/motion'
+
 /**
  * The deck motion when a pile's shown variant changes (design/specs/detail.md, D1.4; Figma frames 751:116972
  * at real speed and 751:117116 at 4x slower). Pure data: `use-deck-motion.ts` plays it.
  *
- * Next: the top card slides 20px left and fades (140ms, ease-in) while the cards behind rise 6px
- * (200ms, ease-out, from 40ms), about 240ms in all; a new card joins at the back. Previous is the
- * reverse (200ms, ease-out). Jumps play one step. Reduced motion is a 120ms crossfade.
+ * Next: the top card slides 20px left and fades (fast, ease-in) while the cards behind rise 6px
+ * (base, ease-out, from 40ms), about 240ms in all; a new card joins at the back. Previous is the
+ * reverse (base, ease-out). Jumps play one step. Reduced motion is a fast crossfade.
  */
 export const DECK_MOTION = {
   /** The leaving top card. */
-  leaveMs: 140,
+  leaveMs: DURATION_MS.fast,
   leavePx: 20,
-  leaveEasing: 'ease-in',
+  leaveEasing: EASE_IN,
   /** The cards behind rising into the next slot. */
-  riseMs: 200,
+  riseMs: DURATION_MS.base,
   riseDelayMs: 40,
   risePx: 6,
-  riseEasing: 'ease-out',
+  riseEasing: EASE_OUT,
   /** The card that joins the back of the deck. */
-  joinMs: 120,
+  joinMs: DURATION_MS.fast,
   joinDelayMs: 100,
-  /** Going back plays the reverse in one 200ms ease-out. */
-  previousMs: 200,
+  /** Going back plays the reverse in one base-length ease-out. */
+  previousMs: DURATION_MS.base,
   /** Reduced motion, and the detail form's own crossfade. */
-  crossfadeMs: 120
+  crossfadeMs: DURATION_MS.fast
 } as const
 
 export type DeckDirection = 'next' | 'previous'

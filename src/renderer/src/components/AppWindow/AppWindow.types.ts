@@ -18,7 +18,12 @@ export const APP_WINDOW_CONTRACT = {
   axisDefaults: {
     state: 'idle'
   },
-  flags: {},
+  flags: {
+    asideOpen: {
+      on: 'open',
+      off: 'closed'
+    }
+  },
   interactionStates: [],
   disabled: false,
   booleans: {
@@ -41,6 +46,8 @@ export type AppWindowState = 'idle' | 'modal-open' | 'drag-over'
 export interface AppWindowContractProps {
   /** Figma `state` (3 options). Default `idle`. */
   state?: AppWindowState
+  /** Figma `state=open` (false = `state=closed`). */
+  asideOpen?: boolean
   /** Figma boolean. Default `true`. */
   showHeader?: boolean
   /** Slot — nests `GlobalSearch` in Figma. */
@@ -60,5 +67,6 @@ export interface AppWindowContractProps {
 /** Figma defaults. Slots have none. */
 export const APP_WINDOW_DEFAULTS = {
   state: 'idle',
+  asideOpen: false,
   showHeader: true
 } satisfies AppWindowContractProps

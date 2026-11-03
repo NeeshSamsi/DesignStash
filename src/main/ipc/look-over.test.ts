@@ -49,13 +49,13 @@ beforeEach(() => {
 afterEach(() => sqlite.close())
 
 const waiting = (name: string) => {
-  const m = repo.createMockup({
+  const m = repo.mockups.createMockup({
     ...sample,
     title: name,
     libraryPath: `/lib/${name}.psd`,
     coverPath: `/lib/${name}.webp`
   })
-  repo.setStage([m.id], 'to_stash')
+  repo.mockups.setStage([m.id], 'to_stash')
   return m
 }
 
@@ -106,7 +106,7 @@ describe('look-over channels', () => {
 
   it('saves an edit on the top of a pile', async () => {
     const [top, side] = [waiting('top'), waiting('side')]
-    repo.createPile([top.id, side.id], top.id)
+    repo.piles.createPile([top.id, side.id], top.id)
     await call(IPC_CHANNELS.LOOK_OVER_OPEN)
 
     const saved = await call(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, {
@@ -135,12 +135,12 @@ describe('stash channels', () => {
     } as unknown as HandlerContext)
 
     const mk = (name: string) => {
-      const m = r.createMockup({ ...sample, title: name, libraryPath: `/lib/${name}.psd`, coverPath: `/lib/${name}.webp` })
-      r.setStage([m.id], 'to_stash')
+      const m = r.mockups.createMockup({ ...sample, title: name, libraryPath: `/lib/${name}.psd`, coverPath: `/lib/${name}.webp` })
+      r.mockups.setStage([m.id], 'to_stash')
       return m
     }
     const [top, side] = [mk('top'), mk('side')]
-    r.createPile([top.id, side.id], top.id)
+    r.piles.createPile([top.id, side.id], top.id)
 
     // No cover file exists on this machine, so the first try is refused whole.
     expect(await call(IPC_CHANNELS.PILE_STASH, { pileId: top.id })).toEqual({
@@ -180,12 +180,12 @@ describe('stash with real cover files', () => {
       const mk = (name: string) => {
         const cover = join(dir, `${name}.webp`)
         writeFileSync(cover, 'c')
-        const m = r.createMockup({ ...sample, title: name, libraryPath: `/lib/${name}.psd`, coverPath: cover })
-        r.setStage([m.id], 'to_stash')
+        const m = r.mockups.createMockup({ ...sample, title: name, libraryPath: `/lib/${name}.psd`, coverPath: cover })
+        r.mockups.setStage([m.id], 'to_stash')
         return m
       }
       const [top, side, alone] = [mk('top'), mk('side'), mk('alone')]
-      r.createPile([top.id, side.id], top.id)
+      r.piles.createPile([top.id, side.id], top.id)
 
       const pile = await call<{ ok: true; stashedIds: number[]; snapshot: unknown }>(IPC_CHANNELS.PILE_STASH, { pileId: top.id })
       expect(pile.success && pile.data.stashedIds.sort()).toEqual([top.id, side.id].sort())
@@ -198,8 +198,8 @@ describe('stash with real cover files', () => {
         snapshot: pile.success ? pile.data.snapshot : null
       })
       expect(undo.success && undo.data.restoredIds.sort()).toEqual([top.id, side.id].sort())
-      expect(r.getMockup(top.id)?.stage).toBe('to_stash')
-      expect(r.getMockup(alone.id)?.stage).toBe('stashed')
+      expect(r.mockups.getMockup(top.id)?.stage).toBe('to_stash')
+      expect(r.mockups.getMockup(alone.id)?.stage).toBe('stashed')
       test.sqlite.close()
     } finally {
       rmSync(dir, { recursive: true, force: true })

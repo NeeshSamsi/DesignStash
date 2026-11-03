@@ -20,19 +20,17 @@ const single = {
     coverPath: '/lib/hero.png',
     coverSource: 'embedded',
     coverMissing: false,
-    isGroup: false,
     favourite: false,
     reviewStatus: 'approved',
     createdAt: `${new Date().getFullYear()}-10-12T09:00:00`,
-    variantCount: 0,
-    topId: null,
+    pile: null,
     tags: [{ id: 7, label: 'Clay', categoryLabel: 'Style' }]
   },
   variants: []
 }
 
 const pile = {
-  item: { ...single.item, id: 99, title: 'Login Pile', isGroup: true, variantCount: 2, topId: 99 },
+  item: { ...single.item, id: 99, title: 'Login Pile', pile: { memberCount: 3 } },
   variants: [
     { id: 100, title: 'side', coverPath: '/lib/b.png', coverMissing: false, isTop: false },
     { id: 99, title: 'front', coverPath: '/lib/a.png', coverMissing: false, isTop: true },
@@ -76,7 +74,6 @@ function setup(overrides: Record<string, Handler> = {}) {
     appName: 'DesignStash',
     invoke,
     subscribe: vi.fn(() => () => {}),
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn((file) => `/path/${(file as File).name}`)
   } as unknown as typeof window.api
 }
@@ -123,7 +120,7 @@ describe('details sidebar · one mockup, read-only', () => {
     expect(screen.getByText('Mockup · added 12 Oct')).not.toBeNull()
     expect(screen.getByText('The main hero mockup')).not.toBeNull()
     expect(screen.getByText('Clay')).not.toBeNull()
-    expect(button('Full screen')).not.toBeNull()
+    expect(button('Zoom')).not.toBeNull()
     expect(screen.queryByRole('textbox')).toBeNull()
     const names = buttons()
     expect(names.indexOf('Edit')).toBeGreaterThan(-1)
@@ -165,8 +162,29 @@ describe('details sidebar · one mockup, read-only', () => {
   it('opens the full-screen viewer from the cover', async () => {
     await show()
     await screen.findByText('Hero Screen')
-    fireEvent.click(button('Full screen')!)
+    fireEvent.click(button('Zoom')!)
     expect(await screen.findByRole('dialog')).not.toBeNull()
+  })
+
+  it('captions the full-screen viewer with the mockup’s title, not the sample', async () => {
+    await show()
+    await screen.findByText('Hero Screen')
+    fireEvent.click(button('Zoom')!)
+    const viewer = await screen.findByRole('dialog')
+    expect(within(viewer).getAllByText('Hero Screen').length).toBeGreaterThan(0)
+    expect(within(viewer).queryByText('Clay iPhone 15 Pro')).toBeNull()
+  })
+
+  it('captions the viewer opened from the edit form with the title being edited', async () => {
+    await show()
+    await screen.findByText('Hero Screen')
+    fireEvent.click(button('Edit')!)
+    const title = (await screen.findByLabelText('Title')) as HTMLInputElement
+    fireEvent.change(title, { target: { value: 'Renamed hero' } })
+    fireEvent.click(button('Zoom')!)
+    const viewer = await screen.findByRole('dialog')
+    expect(within(viewer).getAllByText('Renamed hero').length).toBeGreaterThan(0)
+    expect(within(viewer).queryByText('Clay iPhone 15 Pro')).toBeNull()
   })
 
   it('closes with ✕ and clears the page selection', async () => {
@@ -463,7 +481,7 @@ describe('details sidebar · cover', () => {
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.MOCKUP_USE_EMBEDDED_COVER, { mockupId: 42 })
     )
     await waitFor(() => expect(coverImg().getAttribute('src')).toContain(coverUrl('/lib/hero.png')))
-    expect(screen.getByText('Embedded preview')).not.toBeNull()
+    expect(screen.queryByText('Uploaded')).toBeNull()
   })
 
   it('undoes a replace back to the earlier uploaded cover', async () => {
@@ -555,5 +573,21 @@ describe('details sidebar · cover', () => {
     expect(useDetailsStore.getState().target?.id).toBe(42)
     finish(ok(change()))
     expect(toasts.undoToast).not.toHaveBeenCalled()
+  })
+
+  it('Esc while replacing reloads the cover under a new address, so the old cached image is not shown', async () => {
+    setup({ [IPC_CHANNELS.MOCKUP_SET_COVER]: () => new Promise(() => {}) })
+    await editing()
+    useDetailsStore.getState().setClearSelection(vi.fn())
+    const before = coverImg().getAttribute('src')
+    choose()
+    await waitFor(() =>
+      expect(document.querySelector('[data-ds="CoverPanel"]')?.getAttribute('data-state')).toBe(
+        'replacing'
+      )
+    )
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    await waitFor(() => expect(coverImg().getAttribute('src')).not.toBe(before))
+    expect(coverImg().getAttribute('src')).toMatch(/\?v=\d+$/)
   })
 })

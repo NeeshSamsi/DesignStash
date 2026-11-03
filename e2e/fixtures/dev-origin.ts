@@ -1,9 +1,7 @@
 import { createServer, type Server } from 'node:http'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
-import { _electron as electron } from '@playwright/test'
-import type { E2EApp } from './app'
+import { launchApp, type E2EApp } from './app'
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html',
@@ -55,58 +53,12 @@ export async function launchLikeReal(
   opts: DevOriginOptions = {}
 ): Promise<E2EApp & { close: () => Promise<void> }> {
   const { http = true, awkwardPath = true } = opts
-  const userData = join(
-    mkdtempSync(join(tmpdir(), 'designstash-e2e-')),
-    awkwardPath ? 'Application Support #1 100%' : 'userdata'
-  )
-  const stash = join(userData, 'Library')
-  mkdirSync(stash, { recursive: true })
-  mkdirSync(join(userData, 'models', 'qwen2.5-vl-3b'), { recursive: true })
-  writeFileSync(join(userData, 'models', 'qwen2.5-vl-3b', 'model.gguf'), '')
-  writeFileSync(join(userData, 'models', 'qwen2.5-vl-3b', 'mmproj.gguf'), '')
-  writeFileSync(
-    join(userData, 'settings.json'),
-    JSON.stringify({
-      libraryRoot: stash,
-      onboarded: true,
-      activeModelId: 'qwen2.5-vl-3b',
-      telemetryEnabled: false,
-      telemetryInstallId: 'e2e'
-    })
-  )
-
   const served = http ? await serveRenderer() : null
-  const app = await electron.launch({
-    args: ['.', `--user-data-dir=${userData}`],
-    env: {
-      ...process.env,
-      NODE_ENV: 'test',
-      DESIGNSTASH_E2E_STUB_AI: '1',
-      ...(served ? { ELECTRON_RENDERER_URL: served.url } : {})
+  return launchApp({
+    userDataName: awkwardPath ? 'Application Support #1 100%' : 'userdata',
+    env: served ? { ELECTRON_RENDERER_URL: served.url } : {},
+    onClose: () => {
+      served?.server.close()
     }
   })
-  const window = await app.firstWindow()
-  await window.waitForLoadState('domcontentloaded')
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setSize(1800, 1100))
-
-  return {
-    app,
-    window,
-    userData,
-    stash,
-    invoke: (channel, args) =>
-      window.evaluate(
-        ([c, a]) =>
-          (window as unknown as { api: { invoke: (c: string, a: unknown) => Promise<never> } }).api.invoke(
-            c as string,
-            a
-          ),
-        [channel, args] as const
-      ),
-    close: async () => {
-      await app.close().catch(() => {})
-      served?.server.close()
-      rmSync(join(userData, '..'), { recursive: true, force: true })
-    }
-  }
 }

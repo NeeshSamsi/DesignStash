@@ -37,6 +37,13 @@ export interface LlamaServerDeps {
   onParentExit(listener: () => void): () => void
 }
 
+/** The parts of an OpenAI-compatible chat completion reply that llama-server fills in. */
+export interface ChatCompletion {
+  choices?: { message?: { content?: unknown }; logprobs?: unknown }[]
+  usage?: { prompt_tokens?: number; completion_tokens?: number }
+  timings?: Record<string, number>
+}
+
 const HOST = '127.0.0.1'
 const HEALTH_POLL_MS = 250
 const STOP_GRACE_MS = 5_000
@@ -90,6 +97,14 @@ export class LlamaServer {
 
   /** POST a chat completion and return the reply text. Starts the server if it isn't running. */
   async chat(body: object): Promise<string> {
+    const json = await this.complete(body)
+    const content = json.choices?.[0]?.message?.content
+    if (typeof content !== 'string') throw new Error('llama-server reply has no message content')
+    return content
+  }
+
+  /** POST a chat completion and return the whole reply (every choice, logprobs, usage, timings). */
+  async complete(body: object): Promise<ChatCompletion> {
     this.clearIdle()
     this.inFlight++
     try {
@@ -103,10 +118,7 @@ export class LlamaServer {
       if (!res.ok) {
         throw new Error(`llama-server answered ${res.status}: ${(await res.text()).slice(0, 200)}`)
       }
-      const json = (await res.json()) as { choices?: { message?: { content?: unknown } }[] }
-      const content = json.choices?.[0]?.message?.content
-      if (typeof content !== 'string') throw new Error('llama-server reply has no message content')
-      return content
+      return (await res.json()) as ChatCompletion
     } finally {
       this.inFlight--
       if (this.inFlight === 0) this.armIdle()

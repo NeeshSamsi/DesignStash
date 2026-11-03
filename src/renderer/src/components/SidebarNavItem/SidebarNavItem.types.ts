@@ -10,7 +10,8 @@ export const SIDEBAR_NAV_ITEM_CONTRACT = {
   figmaId: '218:1828',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1828',
   section: '3 · Layout & navigation',
-  description: 'Nav row (icon · label · count); child rows hang off a TreeBranch.',
+  description:
+    'Nav row (icon · label · count); child rows hang off a TreeBranch.\nSync 2026-10: a count of 0 is hidden (show-count off), so an empty Starred or Trash shows no badge.',
   code: 'AppShell.tsx',
   axes: {
     variant: ['parent', 'child']

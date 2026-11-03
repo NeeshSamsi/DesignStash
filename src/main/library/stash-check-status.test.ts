@@ -8,10 +8,7 @@ import { StashCheckStatus } from './stash-check-status'
 let dir: string
 let settings: SettingsStore
 let now: Date
-const report = (files: number, records: number) => ({
-  orphanFiles: Array.from({ length: files }, (_, i) => `/f${i}`),
-  orphanRecords: Array.from({ length: records }, (_, i) => ({ mockupId: i, libraryPath: `/r${i}` }))
-})
+const report = (files: number, records: number) => ({ orphanFiles: files, orphanRecords: records })
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'ds-check-'))

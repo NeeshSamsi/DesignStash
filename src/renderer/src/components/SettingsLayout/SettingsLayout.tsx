@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, ReactNode } from 'react'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import {
@@ -10,6 +11,7 @@ import {
   Tag01Icon
 } from '@hugeicons/core-free-icons'
 import { Button } from '@renderer/components/Button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/ui/tooltip'
 import { ConsentPanel } from '@renderer/components/ConsentPanel'
 import { HardwareSummary } from '@renderer/components/HardwareSummary'
 import { ModelCard } from '@renderer/components/ModelCard'
@@ -94,6 +96,8 @@ export function SettingsRow({ title, status, value, note, controls }: SettingsRo
 
 interface SettingsPathFieldProps {
   path?: string
+  /** The whole path, shown as a tooltip when `path` is cut short. */
+  fullPath?: string
   /** "128 mockups · 14.2 GB". */
   meta?: string
   onChange?: () => void
@@ -102,14 +106,27 @@ interface SettingsPathFieldProps {
 /** The Stash folder's path field: folder icon, path, size, and Change… attached on the right. */
 export function SettingsPathField({
   path = '~/Pictures/DesignStash',
+  fullPath,
   meta = '128 mockups · 14.2 GB',
   onChange
 }: SettingsPathFieldProps) {
+  const pathText = (
+    <span className="min-w-0 flex-1 truncate type-body-sm-regular text-foreground">{path}</span>
+  )
   return (
     <div className="flex items-stretch overflow-clip rounded-lg border border-input bg-surface-2">
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-        <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.5} className="size-4 shrink-0" />
-        <span className="min-w-0 flex-1 truncate type-body-sm-regular text-foreground">{path}</span>
+        <HugeiconsIcon icon={Folder01Icon} strokeWidth={ICON_STROKE} className="size-4 shrink-0" />
+        {fullPath && fullPath !== path ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{pathText}</TooltipTrigger>
+            <TooltipContent side="top" align="start">
+              {fullPath}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          pathText
+        )}
         <span className="shrink-0 type-caption-xs-regular text-tertiary">{meta}</span>
       </div>
       <div className="w-px bg-input" aria-hidden />
@@ -223,7 +240,7 @@ function Sample({ section, slots }: { section: SettingsLayoutSection; slots: Slo
             <SettingsRow
               title="Report a problem"
               value="Opens a short form with your app version filled in. No files are sent."
-              controls={secondary('Report…')}
+              controls={secondary('Copy report')}
             />
           </SettingsGroup>
         </>

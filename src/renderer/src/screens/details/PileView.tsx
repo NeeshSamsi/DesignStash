@@ -40,7 +40,7 @@ export function PileView({ data }: { data: Data }) {
   const count = variants.length
   const open = (select: number, edit = false) =>
     useDetailsStore.getState().openPile({ id: item.id, title: item.title, count, select, edit })
-  const caption = detailsCaption({ ...item, variantCount: Math.max(0, count - 1) }, 'pile')
+  const caption = detailsCaption({ ...item, pile: { memberCount: count } }, 'pile')
 
   return (
     <>

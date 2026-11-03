@@ -189,6 +189,25 @@ describe('LlamaServer', () => {
     await expect(h.server.chat({})).rejects.toThrow('llama-server answered 400: bad image')
   })
 
+  it('complete() gives back the whole reply: every choice, logprobs, usage and timings', async () => {
+    const body = {
+      choices: [
+        { message: { content: 'a' }, logprobs: { content: [{ token: 'a', logprob: -0.2 }] } },
+        { message: { content: 'b' } }
+      ],
+      usage: { prompt_tokens: 900, completion_tokens: 12 },
+      timings: { prompt_ms: 310.5 }
+    }
+    const h = harness({ chat: () => json(body) })
+    await expect(h.server.complete({ n: 2, logprobs: true })).resolves.toEqual(body)
+    expect(h.chatBodies[0]).toEqual({ n: 2, logprobs: true })
+  })
+
+  it('complete() reports a failed request with its status', async () => {
+    const h = harness({ chat: () => new Response('bad image', { status: 400 }) })
+    await expect(h.server.complete({})).rejects.toThrow('llama-server answered 400: bad image')
+  })
+
   it('reports a reply with no message content', async () => {
     const h = harness({ chat: () => json({ choices: [] }) })
     await expect(h.server.chat({})).rejects.toThrow('no message content')

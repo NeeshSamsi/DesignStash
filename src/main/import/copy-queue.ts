@@ -1,25 +1,32 @@
 import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
-import { basename, extname, join } from 'node:path'
+import { basename, extname, join, sep } from 'node:path'
+import type { Readable } from 'node:stream'
 import type { CopyFile, CopyPauseReason, CopyProgress, CopyStatus } from '@shared/ipc/import'
 import type { Repository } from '../db/repository'
 import type { CopyJob } from '../db/schema'
 import { removeAppCopies } from '../library/app-files'
 import { resolveCover } from '../psd'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
+import { entryPath, openArchiveEntry } from './archive'
+import { cleanArchiveName } from './archive-name'
 import { scanForPsds } from './scanner'
-import { copyWithHash } from './stream-copy'
+import { copyWithHash, type CopySource } from './stream-copy'
 
 export interface CopyQueueDeps {
   resolveCover: (input: ResolveCoverInput) => Promise<CoverResolution>
   freeBytes: (path: string) => Promise<number>
-  /** Copy a file by streaming it, telling `onBytes` how much is written, and return its SHA-256. */
+  /** Copy a file (or a stream of one) by streaming it, telling `onBytes` how much is written, and return its SHA-256. */
   copyHashed: (
-    src: string,
+    src: CopySource,
     dest: string,
     onBytes: (written: number) => void
   ) => Promise<{ sha256: string; bytes: number }>
+  /** Stream one PSD out of a zip. */
+  openArchiveEntry: (zipPath: string, entryName: string) => Promise<Readable>
   stat: (path: string) => Promise<{ size: number }>
+  /** The names in a folder; empty when it is not there. */
+  readdir: (path: string) => Promise<string[]>
   rm: (path: string) => Promise<void>
   mkdir: (path: string) => Promise<void>
   /** Room kept free beyond the file itself, for its cover and thumbnail. */
@@ -35,7 +42,9 @@ const defaultDeps: CopyQueueDeps = {
     return s.bavail * s.bsize
   },
   copyHashed: copyWithHash,
+  openArchiveEntry,
   stat: (p) => fs.stat(p),
+  readdir: (p) => fs.readdir(p).catch(() => []),
   rm: (p) => fs.rm(p, { force: true, recursive: true }),
   mkdir: async (p) => {
     await fs.mkdir(p, { recursive: true })
@@ -83,8 +92,15 @@ export class CopyQueue {
   private pumping: Promise<void> | null = null
   /** The file being copied and how much of it is written. */
   private live: { jobId: number; bytes: number } | null = null
+  /** The file being handled and the haul it belongs to. */
+  private inFlight: { haulId: string; settled: Promise<boolean> } | null = null
   private lastPush = 0
-  private rate: { haulId: string; samples: { at: number; bytes: number }[] } = { haulId: '', samples: [] }
+  /** Staging folders of drops still being read, which cleanup must leave alone. */
+  private readonly scanning = new Set<string>()
+  private rate: { haulId: string; samples: { at: number; bytes: number }[] } = {
+    haulId: '',
+    samples: []
+  }
 
   constructor(private readonly opts: CopyQueueOptions) {
     this.repo = opts.repo
@@ -94,8 +110,48 @@ export class CopyQueue {
 
   /** Queue the PSDs under these paths. Joins the haul that is running or paused, else starts a new one. */
   async start(paths: string[]): Promise<CopyStatus> {
-    const scan = scanForPsds(paths)
+    // A zip inside a dropped zip is copied out here to be read. Cleared once no haul needs it.
+    const stagingDir = join(this.stagingRoot(), this.deps.newId())
+    this.scanning.add(stagingDir)
+    try {
+      return await this.queue(paths, stagingDir)
+    } finally {
+      this.scanning.delete(stagingDir)
+    }
+  }
+
+  private async queue(paths: string[], stagingDir: string): Promise<CopyStatus> {
+    const scan = await scanForPsds(paths, { stagingDir })
     const psds = [...scan.psds].sort((a, b) => a.psdPath.localeCompare(b.psdPath))
+
+    // Read every size first. Nothing below awaits, so the haul that gets joined is still going when the jobs land in it.
+    const jobs = await Promise.all(
+      psds.map(async (p) =>
+        p.archive
+          ? {
+              sourcePath: p.archive.path,
+              archiveEntry: p.archive.entry,
+              archiveName: p.archive.name,
+              fileName: p.importContext.originalFileName,
+              folderTrail: p.importContext.folderTrail,
+              // Uncompressed, so the disk check and progress count what is written.
+              sizeBytes: p.archive.size
+            }
+          : {
+              sourcePath: p.psdPath,
+              fileName: basename(p.psdPath),
+              folderTrail: p.importContext.folderTrail,
+              // Read now so progress can be counted in bytes. A file that can't be read counts as nothing.
+              sizeBytes: await this.deps.stat(p.psdPath).then(
+                (st) => st.size,
+                () => 0
+              )
+            }
+      )
+    )
+    const skippedArchives = [...scan.skippedArchives]
+      .sort((a, b) => a.path.localeCompare(b.path))
+      .map((a) => ({ fileName: a.name, skipReason: a.reason }))
 
     const active = this.repo.copyJobs.getActiveHaul()
     let haulId: string
@@ -109,21 +165,12 @@ export class CopyQueue {
       haulId = this.deps.newId()
       this.repo.copyJobs.createHaul(haulId, scan.candidateImagePaths, scan.skippedCount)
     }
-    this.repo.copyJobs.addJobs(
-      haulId,
-      await Promise.all(
-        psds.map(async (p) => ({
-          sourcePath: p.psdPath,
-          fileName: basename(p.psdPath),
-          folderTrail: p.importContext.folderTrail,
-          // Read now so progress can be counted in bytes. A file that can't be read counts as nothing.
-          sizeBytes: await this.deps.stat(p.psdPath).then((st) => st.size, () => 0)
-        }))
-      )
-    )
+    this.repo.copyJobs.addJobs(haulId, jobs)
+    this.repo.copyJobs.addSkippedJobs(haulId, skippedArchives)
 
-    if (this.repo.copyJobs.getJobs(haulId).length === 0) {
-      this.repo.copyJobs.updateHaul(haulId, { state: 'done' })
+    if (!active && !this.repo.copyJobs.nextQueued(haulId)) {
+      this.repo.copyJobs.setHaulState(haulId, { state: 'done' })
+      void this.cleanStaging()
     }
     this.emit(haulId, null)
     // Start on the next turn, so a caller that gets the status back can still act before the first file.
@@ -142,8 +189,13 @@ export class CopyQueue {
     const haul = this.repo.copyJobs.getHaul(haulId)
     if (!haul) return { landedIds: [] }
     if (haul.state === 'running' || haul.state === 'paused') {
-      this.repo.copyJobs.updateHaul(haulId, { state: 'cancelled', pauseReason: null })
+      this.repo.copyJobs.setHaulState(haulId, { state: 'cancelled' })
+      this.repo.copyJobs.forgetPendingSources(haulId)
       this.emit(haulId, null)
+      // A file in flight may still be reading from staging; clear it once that is done.
+      if (this.inFlight?.haulId === haulId)
+        void this.inFlight.settled.then(() => this.cleanStaging())
+      else await this.cleanStaging()
     }
     return { landedIds: this.repo.copyJobs.landedMockupIds(haulId) }
   }
@@ -153,7 +205,7 @@ export class CopyQueue {
     const haul = this.repo.copyJobs.getHaul(haulId)
     if (!haul) throw new Error('No such haul')
     if (haul.state === 'paused') {
-      this.repo.copyJobs.updateHaul(haulId, { state: 'running', pauseReason: null })
+      this.repo.copyJobs.setHaulState(haulId, { state: 'running' })
       this.emit(haulId, null)
       this.pump()
     }
@@ -165,18 +217,21 @@ export class CopyQueue {
     const haul = this.repo.copyJobs.getHaul(haulId)
     if (!haul) return { tossedIds: [] }
     await this.cancel(haulId)
-    await this.idle()
+    // Only this haul's file in flight matters. Later hauls keep going while the undo finishes.
+    if (this.inFlight?.haulId === haulId) await this.inFlight.settled
 
-    const { ids } = this.repo.collectTossable(this.repo.copyJobs.landedMockupIds(haulId))
-    const removed = this.repo.deleteMockupsHard(ids)
+    const { ids } = this.repo.inbox.collectTossable(this.repo.copyJobs.landedMockupIds(haulId))
+    const removed = this.repo.trash.deleteMockupsHard(ids)
     await removeAppCopies(this.root, removed, this.deps.rm)
-    this.repo.copyJobs.updateHaul(haulId, { state: 'undone', pauseReason: null })
+    this.repo.copyJobs.setHaulState(haulId, { state: 'undone' })
+    this.repo.copyJobs.forgetPendingSources(haulId)
     this.emit(haulId, null)
     return { tossedIds: ids }
   }
 
   /** At launch: carry on a haul that was running. A paused one waits for Retry. */
   async resume(): Promise<void> {
+    await this.cleanStaging()
     const haul = this.repo.copyJobs.getActiveHaul()
     if (!haul) return
     this.repo.copyJobs.resetCopying(haul.id)
@@ -204,95 +259,149 @@ export class CopyQueue {
       if (!haul || haul.state !== 'running') return
       const job = this.repo.copyJobs.nextQueued(haul.id)
       if (!job) {
-        this.repo.copyJobs.updateHaul(haul.id, { state: 'done' })
+        this.repo.copyJobs.setHaulState(haul.id, { state: 'done' })
         this.emit(haul.id, null)
+        await this.cleanStaging()
         return
       }
+      const attempt = this.attempt(haul.id, job, haul.candidateImages)
+      this.inFlight = { haulId: haul.id, settled: attempt }
       try {
-        await this.handle(haul.id, job, haul.candidateImages)
-      } catch (err) {
-        if (err instanceof Pause) {
-          this.repo.copyJobs.updateJob(job.id, { status: 'queued' })
-          // A cancel that arrived meanwhile wins.
-          if (this.repo.copyJobs.getHaul(haul.id)?.state === 'running') {
-            this.repo.copyJobs.updateHaul(haul.id, { state: 'paused', pauseReason: err.reason })
-          }
-          this.emit(haul.id, null)
-          return
-        }
-        console.error('[Copy] Queue error:', err)
-        this.repo.copyJobs.updateJob(job.id, { status: 'skipped', skipReason: 'unreadable', sourcePath: '' })
-        this.emit(haul.id, job.id)
+        if (!(await attempt)) return
+      } finally {
+        this.inFlight = null
       }
     }
   }
 
+  /** Copy one file. False when the loop should stop, because the haul paused. */
+  private async attempt(haulId: string, job: CopyJob, candidateImages: string[]): Promise<boolean> {
+    try {
+      await this.handle(haulId, job, candidateImages)
+    } catch (err) {
+      if (err instanceof Pause) {
+        this.repo.copyJobs.setJobState(job.id, { status: 'queued' })
+        // A cancel that arrived meanwhile wins.
+        if (this.repo.copyJobs.getHaul(haulId)?.state === 'running') {
+          this.repo.copyJobs.setHaulState(haulId, { state: 'paused', pauseReason: err.reason })
+        }
+        this.emit(haulId, null)
+        return false
+      }
+      console.error('[Copy] Queue error:', err)
+      this.repo.copyJobs.setJobState(job.id, { status: 'skipped', skipReason: 'unreadable' })
+      this.emit(haulId, job.id)
+    }
+    return true
+  }
+
   private async handle(haulId: string, job: CopyJob, candidateImagePaths: string[]): Promise<void> {
-    this.repo.copyJobs.updateJob(job.id, { status: 'copying' })
+    this.repo.copyJobs.setJobState(job.id, { status: 'copying' })
     this.emit(haulId, job.id)
 
     const skip = (reason: 'duplicate' | 'unreadable') => {
-      this.repo.copyJobs.updateJob(job.id, { status: 'skipped', skipReason: reason, sourcePath: '' })
+      this.repo.copyJobs.setJobState(job.id, { status: 'skipped', skipReason: reason })
       this.emit(haulId, job.id)
     }
 
+    // A PSD inside a zip: the zip has to be there, and the size is the PSD's own, read from the zip.
+    const entry = job.archiveEntry
     let size: number
     try {
-      size = (await this.deps.stat(job.sourcePath)).size
+      const st = await this.deps.stat(job.sourcePath)
+      size = entry === null ? st.size : job.sizeBytes
     } catch (err) {
       if (codeOf(err) === 'ENOENT' || codeOf(err) === 'ENOTDIR') throw new Pause('source-gone')
       return skip('unreadable')
     }
 
-    if ((await this.deps.freeBytes(this.root)) < size + this.deps.reserveBytes) throw new Pause('disk-full')
+    if ((await this.deps.freeBytes(this.root)) < size + this.deps.reserveBytes)
+      throw new Pause('disk-full')
 
     const destDir = join(this.root, 'mockups', this.deps.newId())
     try {
       await this.deps.mkdir(destDir)
       const libraryPath = join(destDir, 'original.psd')
       // One pass over the original: it is copied and hashed together, and every chunk moves the bar.
-      const { sha256 } = await this.deps.copyHashed(job.sourcePath, libraryPath, (written) => {
+      const source: CopySource =
+        entry === null ? job.sourcePath : () => this.deps.openArchiveEntry(job.sourcePath, entry)
+      const { sha256 } = await this.deps.copyHashed(source, libraryPath, (written) => {
         this.live = { jobId: job.id, bytes: written }
         this.emitThrottled(haulId, job.id)
       })
       this.live = null
 
-      if (this.repo.mockupExistsByHash(sha256)) {
+      if (this.repo.mockups.mockupExistsByHash(sha256)) {
         await this.deps.rm(destDir).catch(() => {})
         return skip('duplicate')
       }
 
+      // The preview is read from the stash's copy; sidecars are matched against where the PSD came from.
       const cover = await this.deps.resolveCover({
-        psdPath: job.sourcePath,
+        psdPath: libraryPath,
+        sidecarFor: entry === null ? job.sourcePath : entryPath(job.sourcePath, entry),
         candidateImagePaths,
         outDir: destDir
       })
 
-      const mockup = this.repo.createMockup({
-        title: basename(job.fileName, extname(job.fileName)),
+      const mockup = this.repo.mockups.createMockup({
+        // Names inside zips sometimes start with a space.
+        title: basename(job.fileName, extname(job.fileName)).trim(),
         libraryPath,
         coverPath: cover.source === 'none' ? '' : cover.coverPath,
         coverSource: cover.source,
         contentHash: sha256,
-        importContext: { batchId: haulId, folderTrail: job.folderTrail, originalFilename: job.fileName },
-        reviewStatus: 'needs_review',
+        importContext: {
+          batchId: haulId,
+          folderTrail: job.folderTrail,
+          originalFilename: job.fileName,
+          // Which zip it came out of, so Sort suggests a zip's PSDs as one pile named after it.
+          ...(job.archiveName !== null ? archiveContext(job.archiveName) : {})
+        },
         stage: 'to_sort',
         sizeBytes: size
       })
-      this.repo.copyJobs.updateJob(job.id, { status: 'done', mockupId: mockup.id, sourcePath: '' })
+      this.repo.copyJobs.setJobState(job.id, { status: 'done', mockupId: mockup.id })
       this.emit(haulId, job.id)
       this.opts.onLanded?.([mockup.id])
     } catch (err) {
       this.live = null
       await this.deps.rm(destDir).catch(() => {})
       if (codeOf(err) === 'ENOSPC') throw new Pause('disk-full')
-      if (codeOf(err) === 'ENOENT' && !(await this.sourceStillThere(job.sourcePath))) throw new Pause('source-gone')
+      if (codeOf(err) === 'ENOENT' && !(await this.sourceStillThere(job.sourcePath)))
+        throw new Pause('source-gone')
       skip('unreadable')
     }
   }
 
   private async sourceStillThere(path: string): Promise<boolean> {
-    return this.deps.stat(path).then(() => true, () => false)
+    return this.deps.stat(path).then(
+      () => true,
+      () => false
+    )
+  }
+
+  // ---- staging ----
+
+  private stagingRoot(): string {
+    return join(this.root, '.staging')
+  }
+
+  /**
+   * Remove staged zips no haul still needs: anything not waiting in the running or paused haul and
+   * not part of a drop still being read. Runs when a haul finishes and at launch.
+   */
+  async cleanStaging(): Promise<void> {
+    const stagingRoot = this.stagingRoot()
+    const keep = [...this.repo.copyJobs.pendingSourcePaths(), ...this.scanning]
+    const names = await this.deps.readdir(stagingRoot)
+    let left = 0
+    for (const name of names) {
+      const dir = join(stagingRoot, name)
+      if (keep.some((p) => p === dir || p.startsWith(dir + sep))) left++
+      else await this.deps.rm(dir).catch(() => left++)
+    }
+    if (left === 0) await this.deps.rm(stagingRoot).catch(() => {})
   }
 
   // ---- reporting ----
@@ -316,8 +425,10 @@ export class CopyQueue {
     const rate = this.rateFor(haulId, haul.state === 'running', bytesCopied, bytesTotal)
     return {
       haulId,
-      state: haul.state,
-      pauseReason: haul.pauseReason ?? null,
+      // A paused haul always has its reason (setHaulState writes them together).
+      ...(haul.state === 'paused'
+        ? { state: 'paused' as const, pauseReason: haul.pauseReason ?? 'disk-full' }
+        : { state: haul.state }),
       total: jobs.length,
       landed: jobs.filter((j) => j.mockupId !== null).length,
       bytesTotal,
@@ -327,7 +438,9 @@ export class CopyQueue {
       skipped: {
         notPsd: haul.notPsdCount,
         duplicate: jobs.filter((j) => j.skipReason === 'duplicate').length,
-        unreadable: jobs.filter((j) => j.skipReason === 'unreadable').length
+        unreadable: jobs.filter((j) => j.skipReason === 'unreadable').length,
+        archiveUnsupported: jobs.filter((j) => j.skipReason === 'archive-unsupported').length,
+        noPsdInArchive: jobs.filter((j) => j.skipReason === 'no-psd-in-archive').length
       },
       files: jobs.map((j) => toFile(j, live))
     }
@@ -358,7 +471,10 @@ export class CopyQueue {
     const gained = bytesCopied - first.bytes
     if (elapsed < RATE_MIN_MS || gained <= 0) return { bytesPerSecond: 0, secondsLeft: null }
     const bytesPerSecond = (gained / elapsed) * 1000
-    return { bytesPerSecond, secondsLeft: Math.max(0, Math.ceil((bytesTotal - bytesCopied) / bytesPerSecond)) }
+    return {
+      bytesPerSecond,
+      secondsLeft: Math.max(0, Math.ceil((bytesTotal - bytesCopied) / bytesPerSecond))
+    }
   }
 
   private emit(haulId: string, changedJobId: number | null): void {
@@ -377,15 +493,25 @@ export class CopyQueue {
   }
 }
 
+function archiveContext(archiveName: string): { archiveName: string; archiveTitle?: string } {
+  const archiveTitle = cleanArchiveName(archiveName)
+  return archiveTitle ? { archiveName, archiveTitle } : { archiveName }
+}
+
 function toFile(j: CopyJob, live: { jobId: number; bytes: number } | null): CopyFile {
   return {
     jobId: j.id,
     name: j.fileName,
+    ...(j.archiveName !== null ? { archiveName: j.archiveName } : {}),
     status: j.status,
     ...(j.skipReason ? { skipReason: j.skipReason } : {}),
     ...(j.mockupId !== null ? { mockupId: j.mockupId } : {}),
     size: j.sizeBytes,
     bytesCopied:
-      j.status === 'done' ? j.sizeBytes : live?.jobId === j.id ? Math.min(live.bytes, j.sizeBytes) : 0
+      j.status === 'done'
+        ? j.sizeBytes
+        : live?.jobId === j.id
+          ? Math.min(live.bytes, j.sizeBytes)
+          : 0
   }
 }

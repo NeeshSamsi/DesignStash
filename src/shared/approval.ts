@@ -45,9 +45,7 @@ export const LookOverItemSchema = z.object({
   touched: z.boolean(),
   /** The user has opened it. An unchecked one reads "Not checked" on the review step. */
   checked: z.boolean(),
-  cover: LookOverCoverSchema,
-  /** The image next to the PSD that became the cover, when there is one to offer. */
-  sidecarFileName: z.string().nullable()
+  cover: LookOverCoverSchema
 })
 export type LookOverItem = z.infer<typeof LookOverItemSchema>
 
@@ -101,7 +99,6 @@ export const StashSnapshotSchema = z.object({
       title: z.string(),
       description: z.string().nullable(),
       tagIds: z.array(z.number()),
-      reviewStatus: z.enum(['needs_review', 'approved']),
       stage: z.enum(['to_sort', 'to_stash', 'stashed']),
       sortedAt: z.string().nullable()
     })

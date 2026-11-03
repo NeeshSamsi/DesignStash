@@ -19,7 +19,7 @@ afterEach(() => sqlite.close())
 /** n mockups waiting in To sort, in one batch. */
 function toSort(n: number, batch = 'b1'): number[] {
   return Array.from({ length: n }, (_, i) => {
-    const row = repo.createMockup({
+    const row = repo.mockups.createMockup({
       ...batchSample(batch),
       title: `M${i}`,
       libraryPath: `/lib/${batch}/${i}.psd`,
@@ -81,21 +81,21 @@ describe('SortBoardRepository', () => {
     it('leaves out mockups that were trashed', () => {
       const [a, b, c] = toSort(3) as [number, number, number]
       boards.save({ batchId: 'b1', groups: [{ id: 'p', memberIds: [a, b, c] }], singletonIds: [] })
-      repo.updateMockup(b, { deletedAt: new Date().toISOString() })
+      repo.mockups.updateMockup(b, { deletedAt: new Date().toISOString() })
       expect(boards.load('b1')?.groups).toEqual([{ id: 'p', memberIds: [a, c] }])
     })
 
     it('leaves out mockups that already left To sort', () => {
       const [a, b] = toSort(2) as [number, number]
       boards.save({ batchId: 'b1', groups: [], singletonIds: [a, b] })
-      repo.setStage([a], 'to_stash')
+      repo.mockups.setStage([a], 'to_stash')
       expect(boards.load('b1')?.singletonIds).toEqual([b])
     })
 
     it('dissolves a pile that is down to one mockup', () => {
       const [a, b, c] = toSort(3) as [number, number, number]
       boards.save({ batchId: 'b1', groups: [{ id: 'p', memberIds: [a, b] }], singletonIds: [c] })
-      repo.updateMockup(a, { deletedAt: new Date().toISOString() })
+      repo.mockups.updateMockup(a, { deletedAt: new Date().toISOString() })
       const board = boards.load('b1')
       expect(board?.groups).toEqual([])
       expect(board?.singletonIds).toEqual([c, b])
@@ -111,7 +111,7 @@ describe('SortBoardRepository', () => {
     it('forgets a board with nothing left in it', () => {
       const [a] = toSort(1) as [number]
       boards.save({ batchId: 'b1', groups: [], singletonIds: [a] })
-      repo.setStage([a], 'stashed')
+      repo.mockups.setStage([a], 'stashed')
       expect(boards.load('b1')).toBeNull()
       expect(boards.load('b1')).toBeNull()
     })

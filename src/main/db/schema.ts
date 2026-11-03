@@ -5,6 +5,7 @@ import {
   text,
   blob,
   primaryKey,
+  check,
   uniqueIndex,
   type AnySQLiteColumn
 } from 'drizzle-orm/sqlite-core'
@@ -23,45 +24,49 @@ const coverSource = (name: string) =>
   text(name, { enum: ['embedded', 'sidecar', 'user-uploaded', 'default', 'none'] })
 
 /** Mockups — the primary library entity (spec §5.4). No `source_path`: originals are untracked once copied in. */
-export const mockups = sqliteTable('mockups', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  title: text('title').notNull(),
-  description: text('description'),
-  libraryPath: text('library_path').notNull(),
-  coverPath: text('cover_path').notNull(),
-  coverSource: coverSource('cover_source').notNull(),
-  reviewStatus: text('review_status', { enum: ['needs_review', 'approved'] })
-    .notNull()
-    .default('needs_review'),
-  contentHash: text('content_hash'),
-  /** Import metadata. Does NOT violate the 'no source_path' rule: we store folder *names* as text hints, never a reusable path. */
-  importContext: text('import_context', { mode: 'json' }),
-  isGroup: integer('is_group', { mode: 'boolean' }).notNull().default(false),
-  groupId: integer('group_id').references((): AnySQLiteColumn => mockups.id, {
-    onDelete: 'set null'
-  }),
-  favourite: integer('favourite', { mode: 'boolean' }).notNull().default(false),
-  favouritedAt: text('favourited_at'),
-  deletedAt: text('deleted_at'),
-  /**
-   * Where the mockup is in the import flow: waiting to be sorted into piles, sorted and waiting
-   * to be looked over, or stashed (in My Stash). `reviewStatus` is the older form of the same fact.
-   */
-  stage: text('stage', { enum: ['to_sort', 'to_stash', 'stashed'] })
-    .notNull()
-    .default('stashed'),
-  /** When it left To sort. */
-  sortedAt: text('sorted_at'),
-  /** Size of the PSD in the stash folder, in bytes. Null until measured. */
-  sizeBytes: integer('size_bytes'),
-  /** The AI suggestion's progress. `off` when the AI is not in use. */
-  aiStatus: text('ai_status', { enum: ['pending', 'sniffing', 'ready', 'failed', 'off'] })
-    .notNull()
-    .default('off'),
-  /** The AI's suggestions for this mockup (title, tags). Written by the background queue. */
-  aiResult: text('ai_result', { mode: 'json' }),
-  ...timestamps
-})
+export const mockups = sqliteTable(
+  'mockups',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    title: text('title').notNull(),
+    description: text('description'),
+    libraryPath: text('library_path').notNull(),
+    coverPath: text('cover_path').notNull(),
+    coverSource: coverSource('cover_source').notNull(),
+    contentHash: text('content_hash'),
+    /** Import metadata. Does NOT violate the 'no source_path' rule: we store folder *names* as text hints, never a reusable path. */
+    importContext: text('import_context', { mode: 'json' }),
+    isGroup: integer('is_group', { mode: 'boolean' }).notNull().default(false),
+    groupId: integer('group_id').references((): AnySQLiteColumn => mockups.id, {
+      onDelete: 'set null'
+    }),
+    favourite: integer('favourite', { mode: 'boolean' }).notNull().default(false),
+    favouritedAt: text('favourited_at'),
+    deletedAt: text('deleted_at'),
+    /**
+     * Where the mockup is in the import flow: waiting to be sorted into piles, sorted and waiting
+     * to be looked over, or stashed (in My Stash).
+     */
+    stage: text('stage', { enum: ['to_sort', 'to_stash', 'stashed'] })
+      .notNull()
+      .default('stashed'),
+    /** When it left To sort. */
+    sortedAt: text('sorted_at'),
+    /** Size of the PSD in the stash folder, in bytes. Null until measured. */
+    sizeBytes: integer('size_bytes'),
+    /** The AI suggestion's progress. `off` when the AI is not in use. */
+    aiStatus: text('ai_status', { enum: ['pending', 'sniffing', 'ready', 'failed', 'off'] })
+      .notNull()
+      .default('off'),
+    /** The AI's suggestions for this mockup (title, tags). Written by the background queue. */
+    aiResult: text('ai_result', { mode: 'json' }),
+    ...timestamps
+  },
+  (table) => [
+    // A row is a pile's top or a member of one, never both (see pileRole in repositories/piles.ts).
+    check('mockups_pile_shape', sql`NOT (${table.isGroup} AND ${table.groupId} IS NOT NULL)`)
+  ]
+)
 
 /** Variants — angle/variant images belonging to a group mockup (spec §5.4). */
 export const variants = sqliteTable('variants', {
@@ -137,7 +142,10 @@ export const drafts = sqliteTable('drafts', {
     .references(() => mockups.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description').notNull().default(''),
-  tagIds: text('tag_ids', { mode: 'json' }).$type<number[]>().notNull().default(sql`'[]'`),
+  tagIds: text('tag_ids', { mode: 'json' })
+    .$type<number[]>()
+    .notNull()
+    .default(sql`'[]'`),
   /** The user changed this variant, so edits to the top mockup no longer overwrite it. */
   touched: integer('touched', { mode: 'boolean' }).notNull().default(false),
   /** The user opened it. An unchecked draft in a stashed pile reads "Not checked". */
@@ -170,25 +178,41 @@ export const copyHauls = sqliteTable('copy_hauls', {
   /** Why it is paused. Null unless `state` is 'paused'. */
   pauseReason: text('pause_reason', { enum: ['disk-full', 'source-gone'] }),
   /** Images found beside the dropped PSDs, which can stand in for a missing preview. Paths, kept only while it runs. */
-  candidateImages: text('candidate_images', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
+  candidateImages: text('candidate_images', { mode: 'json' })
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'`),
   /** Files that were not PSDs and so were never queued. */
   notPsdCount: integer('not_psd_count').notNull().default(0),
   ...timestamps
 })
 
-/** One PSD in a haul. `sourcePath` is only the way back to the file while it waits; it is cleared once the file is handled. */
+/**
+ * One PSD in a haul. `sourcePath` is only the way back to the file while it waits; it is cleared once
+ * the file is handled. For a PSD inside a zip, `sourcePath` is the zip and `archiveEntry` the PSD's
+ * path inside it, cleared together.
+ */
 export const copyJobs = sqliteTable('copy_jobs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   haulId: text('haul_id')
     .notNull()
     .references(() => copyHauls.id, { onDelete: 'cascade' }),
   sourcePath: text('source_path').notNull(),
+  /** The PSD's path inside the zip at `sourcePath`. Null for a PSD dropped as itself. */
+  archiveEntry: text('archive_entry'),
+  /** The zip the PSD came out of, by its file name as dropped. Kept after the job is handled, for its row. */
+  archiveName: text('archive_name'),
   fileName: text('file_name').notNull(),
-  folderTrail: text('folder_trail', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
+  folderTrail: text('folder_trail', { mode: 'json' })
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'`),
   status: text('status', { enum: ['queued', 'copying', 'done', 'skipped'] })
     .notNull()
     .default('queued'),
-  skipReason: text('skip_reason', { enum: ['duplicate', 'unreadable'] }),
+  skipReason: text('skip_reason', {
+    enum: ['duplicate', 'unreadable', 'archive-unsupported', 'no-psd-in-archive']
+  }),
   /** The PSD's size in bytes, read when the haul was queued, so progress can be counted in bytes. */
   sizeBytes: integer('size_bytes').notNull().default(0),
   /** The mockup this became. */

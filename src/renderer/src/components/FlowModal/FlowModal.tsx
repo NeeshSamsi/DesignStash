@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Tick02Icon } from '@hugeicons/core-free-icons'
@@ -19,9 +20,9 @@ export interface FlowModalProps
    * opens that ConfirmDialog (or does nothing while a pile is mid-edit) from here.
    */
   onRequestClose?: () => void
-  /** The tally by the current step: "38 mockups" in Sort, "3 of 12" in Look it over. */
+  /** The tally by the current step: "38 mockups" in Sort, "3 of 12" in Look it over. Empty shows no badge. */
   count?: string
-  /** Look it over: how far through the haul, 0 to 1. Fills the second track. Figma's sample is 0.25. */
+  /** Look it over: how far through the haul, 0 to 1. Fills the second track; without one (loading, error) it stays empty. */
   progress?: number
 }
 
@@ -39,7 +40,7 @@ function Marker({ index, state }: { index: number; state: 'done' | 'current' | '
       )}
     >
       {state === 'done' ? (
-        <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} className="size-4" />
+        <HugeiconsIcon icon={Tick02Icon} strokeWidth={ICON_STROKE} className="size-4" />
       ) : (
         index + 1
       )}
@@ -64,7 +65,7 @@ export function FlowModal({
   const { step, body, ...props } = { ...FLOW_MODAL_DEFAULTS, ...rest }
   const current = step === 'sort' ? 0 : 1
   const shown = count ?? (step === 'sort' ? '38 mockups' : '3 of 12')
-  const fill = Math.max(0, Math.min(1, progress ?? 0.25))
+  const fill = Math.max(0, Math.min(1, progress ?? 0))
 
   const content: ReactNode = (
     <>
@@ -109,7 +110,7 @@ export function FlowModal({
                 >
                   {name}
                 </span>
-                {state === 'current' && <Badge variant="secondary">{shown}</Badge>}
+                {state === 'current' && shown !== '' && <Badge variant="secondary">{shown}</Badge>}
               </span>
             </li>
           )

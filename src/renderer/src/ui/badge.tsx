@@ -7,7 +7,7 @@ import { cn } from "@renderer/lib/utils"
 // Figma Badge 211:78. variant="default" ↔ primary. Status variants use weak fills + coloured text;
 // count is the quiet tally pill. Only outline has a border (so it is 2px taller, as in Figma).
 const badgeVariants = cva(
-  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full px-2 py-0.5 type-label-xs-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring [&>svg]:pointer-events-none [&>svg]:size-4",
+  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full px-2 py-0.5 type-label-xs-medium whitespace-nowrap transition-colors focus-visible:focus-ring [&>svg]:pointer-events-none [&>svg]:size-4",
   {
     variants: {
       variant: {

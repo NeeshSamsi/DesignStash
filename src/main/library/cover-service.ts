@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { open, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import sharp from 'sharp'
-import { COVER_MAX_BYTES, type CoverChange } from '@shared/library'
+import { COVER_MAX_BYTES } from '@shared/cover-fit'
+import type { CoverChange } from '@shared/library'
 import type { Repository } from '../db/repository'
 import { readEmbeddedPreview } from '../psd/embedded'
 import { generateCoverFromFile, generateCoverFromRaw } from '../psd/image'
@@ -68,7 +69,7 @@ export class CoverService {
   }
 
   async setCover(mockupId: number, filePath: string): Promise<CoverChange> {
-    const mockup = this.repo.getMockup(mockupId)
+    const mockup = this.repo.mockups.getMockup(mockupId)
     if (!mockup) throw new Error(`Mockup ${mockupId} not found`)
 
     try {
@@ -88,7 +89,7 @@ export class CoverService {
 
   /** Go back to the preview inside the PSD. A no-op when it's already the cover. */
   async useEmbeddedCover(mockupId: number): Promise<CoverChange> {
-    const mockup = this.repo.getMockup(mockupId)
+    const mockup = this.repo.mockups.getMockup(mockupId)
     if (!mockup) throw new Error(`Mockup ${mockupId} not found`)
 
     if (mockup.coverSource === 'embedded') {
@@ -120,9 +121,9 @@ export class CoverService {
     width: number,
     height: number
   ): CoverChange {
-    const before = this.repo.getMockup(mockupId)
+    const before = this.repo.mockups.getMockup(mockupId)
     if (!before) throw new Error(`Mockup ${mockupId} not found`)
-    this.repo.setMockupCover(mockupId, coverPath, coverSource)
+    this.repo.mockups.setMockupCover(mockupId, coverPath, coverSource)
     return {
       ok: true,
       coverPath,

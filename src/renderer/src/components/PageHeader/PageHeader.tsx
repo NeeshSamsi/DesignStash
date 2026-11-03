@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ReactNode } from 'react'
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -12,12 +13,14 @@ import {
   pageHeaderVariants
 } from './PageHeader.variants'
 
-export interface PageHeaderProps extends PageHeaderContractProps {
+export interface PageHeaderProps extends Omit<PageHeaderContractProps, 'descriptionAction'> {
   /** The trailing actions (buttons). Figma's `actions` boolean only says whether the area exists. */
   children?: ReactNode
   className?: string
   /** Makes the parent crumb a button that goes back (the pile page's “My Stash”). */
   onParent?: () => void
+  /** Sits right after the description, e.g. a Clear link while a search is on. Figma's `description-action` boolean only says whether the area exists. */
+  descriptionAction?: ReactNode
 }
 
 /**
@@ -26,7 +29,13 @@ export interface PageHeaderProps extends PageHeaderContractProps {
  * The header stays whatever the item count is: pass a description like "0 mockups" rather than
  * hiding it. The actions area renders when `children` are passed.
  */
-export function PageHeader({ children, className, onParent, ...rest }: PageHeaderProps) {
+export function PageHeader({
+  children,
+  className,
+  onParent,
+  descriptionAction,
+  ...rest
+}: PageHeaderProps) {
   const props = { ...PAGE_HEADER_DEFAULTS, ...rest }
   const page = props.variant === 'page'
   const Title = page ? 'h1' : 'h2'
@@ -43,22 +52,22 @@ export function PageHeader({ children, className, onParent, ...rest }: PageHeade
                 <button
                   type="button"
                   onClick={onParent}
-                  className="shrink-0 rounded-sm whitespace-nowrap outline-none hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-w-0 shrink-3 cursor-pointer rounded-sm outline-none hover:text-muted-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {props.parent}
+                  <TruncatedText>{props.parent}</TruncatedText>
                 </button>
               ) : (
-                <span className="shrink-0 whitespace-nowrap">{props.parent}</span>
+                <TruncatedText className="min-w-0 shrink-3">{props.parent}</TruncatedText>
               )}
               <HugeiconsIcon
                 icon={ArrowRight01Icon}
-                strokeWidth={1.5}
+                strokeWidth={ICON_STROKE}
                 className="size-6 shrink-0"
                 aria-hidden
               />
             </>
           )}
-          <TruncatedText className={cn(page && pageHeaderCurrentClass)}>
+          <TruncatedText className={cn('min-w-0', page && pageHeaderCurrentClass)}>
             {props.current}
           </TruncatedText>
         </Title>
@@ -68,7 +77,15 @@ export function PageHeader({ children, className, onParent, ...rest }: PageHeade
           </div>
         )}
       </div>
-      {props.showDescription && <p className={pageHeaderDescriptionClass}>{props.description}</p>}
+      {props.showDescription &&
+        (descriptionAction ? (
+          <div className="flex items-center gap-2">
+            <p className={pageHeaderDescriptionClass}>{props.description}</p>
+            {descriptionAction}
+          </div>
+        ) : (
+          <p className={pageHeaderDescriptionClass}>{props.description}</p>
+        ))}
     </header>
   )
 }

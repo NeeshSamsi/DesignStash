@@ -102,14 +102,6 @@
   font-weight: 400;
 }
 
-/* body/base/light — Search field text. */
-@utility type-body-base-light {
-  font-family: var(--ds-font-body);
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 300;
-}
-
 /* body/sm/regular — Default body text (text-sm). */
 @utility type-body-sm-regular {
   font-family: var(--ds-font-body);
@@ -132,14 +124,7 @@
   font-size: 12px;
   line-height: 16px;
   font-weight: 400;
-}
-
-/* caption/xs/light — Keyboard hints. */
-@utility type-caption-xs-light {
-  font-family: var(--ds-font-body);
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 300;
+  letter-spacing: 0.0167em;
 }
 
 /* label/xs/medium — Badges, field labels, overlines. */
@@ -148,4 +133,5 @@
   font-size: 12px;
   line-height: 16px;
   font-weight: 500;
+  letter-spacing: 0.0167em;
 }

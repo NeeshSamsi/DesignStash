@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { LibraryItem } from '@shared/library'
+import { coverDisplay, type LibraryItem } from '@shared/library'
 import { coverUrl } from '@shared/cover-url'
 import { Button } from '@renderer/components/Button'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { MockupGrid } from '@renderer/components/MockupGrid'
-import type { MockupCardState } from '@renderer/components/MockupCard/MockupCard.types'
 import { MockupCard } from '@renderer/components/MockupCard'
 import { useGridSelection } from '@renderer/hooks/use-grid-selection'
 import { HeaderActions } from '@renderer/lib/page-header-slot'
@@ -15,18 +14,13 @@ import { syncLibrary } from '../details/library-sync'
 import { disbandPile, putOnTop, removeFromPile } from '../details/pile-actions'
 import { useGuardedSelection } from '../details/use-guarded-selection'
 import { CardMenu, type MenuTarget } from './CardMenu'
+import { openInPhotoshop } from './open-in-photoshop'
 import { usePileItems } from './usePileItems'
 
 const cardTags = (item: LibraryItem, isTop: boolean) =>
   [isTop ? 'Top' : null, ...item.tags.slice(0, 3).map((tag) => tag.label)]
     .filter((part): part is string => part !== null)
     .join(' · ')
-
-function cardState(item: LibraryItem, selected: boolean): MockupCardState {
-  if (item.coverMissing) return 'cover-missing'
-  if (item.coverSource === 'none') return 'no-preview'
-  return selected ? 'selected' : 'default'
-}
 
 /**
  * The pile page (Figma D2.3 C2): a view inside My Stash that lists one pile's mockups as full cards.
@@ -83,21 +77,6 @@ export function PilePage({ pile }: { pile: OpenPile }) {
   const itemOf = (target: EventTarget | null) => {
     const id = cardOf(target)?.dataset.mockupId
     return id === undefined ? undefined : itemById(id)
-  }
-
-  const openInPhotoshop = async (item: LibraryItem) => {
-    const res = await window.api
-      .invoke(IPC_CHANNELS.MOCKUP_OPEN_EXTERNAL, { mockupId: item.id })
-      .catch(() => null)
-    if (!res?.success || !res.data.opened) {
-      toast({
-        variant: 'error',
-        message:
-          res?.success && res.data.opened === false && res.data.reason === 'no-app'
-            ? 'Photoshop isn’t installed on this Mac.'
-            : 'Couldn’t open this in Photoshop. Try again.'
-      })
-    }
   }
 
   const setFavourite = async (item: LibraryItem, favourite: boolean) => {
@@ -192,7 +171,13 @@ export function PilePage({ pile }: { pile: OpenPile }) {
   return (
     <div className="flex min-h-full flex-col gap-4">
       <HeaderActions>
-        <Button variant="ghost" size="sm" label="Disband pile" onClick={() => void disband()} />
+        <Button
+          variant="outline"
+          size="sm"
+          label="Disband pile"
+          className="border-subtle bg-transparent hover:border-input hover:bg-transparent"
+          onClick={() => void disband()}
+        />
         <Button variant="secondary" size="sm" label="Edit pile details" onClick={editPile} />
       </HeaderActions>
       {status === 'error' ? (
@@ -224,7 +209,7 @@ export function PilePage({ pile }: { pile: OpenPile }) {
                 tags={cardTags(item, item.id === topId)}
                 {...(item.coverPath ? { coverSrc: coverUrl(item.coverPath) } : {})}
                 favourite={item.favourite}
-                state={cardState(item, raw.isSelected(key))}
+                state={coverDisplay(item, raw.isSelected(key))}
                 onToggleFavourite={(favourite) => void setFavourite(item, favourite)}
                 onMore={(event) => {
                   const box = event.currentTarget.getBoundingClientRect()

@@ -25,7 +25,7 @@ export class LibraryService {
 
   /** Open a mockup's PSD in the app the system picks (Photoshop). A pile opens its top mockup. */
   async openExternal(id: number): Promise<OpenExternalResult> {
-    const mockup = this.repo.getMockup(id)
+    const mockup = this.repo.mockups.getMockup(id)
     if (!mockup || !(await this.deps.exists(mockup.libraryPath))) {
       return { opened: false, reason: 'failed' }
     }

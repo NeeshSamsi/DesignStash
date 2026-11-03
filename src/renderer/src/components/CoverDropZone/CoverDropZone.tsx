@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Alert02Icon, Upload01Icon } from '@hugeicons/core-free-icons'
@@ -57,7 +58,7 @@ export function CoverDropZone({ className, onCover, percent, ...rest }: CoverDro
       <div className="flex size-14 items-center justify-center rounded-xl bg-surface-3">
         <HugeiconsIcon
           icon={error ? Alert02Icon : Upload01Icon}
-          strokeWidth={1.5}
+          strokeWidth={ICON_STROKE}
           className={cn('size-6', error ? 'text-error' : 'text-brand')}
         />
       </div>

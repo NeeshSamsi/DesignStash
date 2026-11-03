@@ -1,6 +1,3 @@
-/** Covers are 4:3 everywhere. Rules: design/specs/cover.md. */
-export const COVER_ASPECT = 4 / 3
-
 /** Crop to 4:3 when at least this much of the image survives; otherwise show it whole with bars. */
 export const COVER_MIN_KEPT = 0.75
 

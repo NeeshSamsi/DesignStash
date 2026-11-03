@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, ReactNode } from 'react'
 import { SquareLock02Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -52,7 +53,7 @@ export function ProGate({
       {locked ? (
         <>
           <div className={proGateIconVariants({ variant })}>
-            <HugeiconsIcon icon={SquareLock02Icon} strokeWidth={1.5} aria-hidden />
+            <HugeiconsIcon icon={SquareLock02Icon} strokeWidth={ICON_STROKE} aria-hidden />
           </div>
           <Badge>Pro</Badge>
           <p className={proGateTitleVariants({ variant })}>{title}</p>

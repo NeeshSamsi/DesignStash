@@ -11,7 +11,7 @@ describe('DB Schemas', () => {
     expect(columns.libraryPath).toBeDefined()
     expect(columns.coverPath).toBeDefined()
     expect(columns.coverSource).toBeDefined()
-    expect(columns.reviewStatus).toBeDefined()
+    expect(columns.stage).toBeDefined()
     expect(columns.contentHash).toBeDefined()
     expect(columns.importContext).toBeDefined()
     expect(columns.isGroup).toBeDefined()

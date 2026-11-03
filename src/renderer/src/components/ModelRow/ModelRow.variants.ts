@@ -14,7 +14,7 @@ export const modelRowVariants = cva('flex w-full items-start gap-3 rounded-lg bo
     },
     selected: {
       true: 'border-selected bg-surface-3',
-      false: 'border-base bg-surface-2 hover:bg-surface-2-hover'
+      false: 'border-input bg-surface-2 hover:bg-surface-2-hover'
     }
   },
   compoundVariants: [{ state: 'failed', className: 'border-error bg-surface-3' }],

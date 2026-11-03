@@ -28,18 +28,16 @@ export function Checkbox({ className, onCheckedChange, ...rest }: CheckboxProps)
   return (
     <label
       data-ds="Checkbox"
-      className={cn(
-        'inline-flex items-center gap-2 has-disabled:cursor-not-allowed has-disabled:opacity-50',
-        className
-      )}
+      className={cn('inline-flex items-center gap-2 has-disabled:cursor-not-allowed', className)}
     >
-      {/* The row dims as a whole when disabled, as in Figma. */}
+      {/* Disabled: the box dims and the label drops to tertiary (a zero-count tag in the filter). */}
       <UiCheckbox
         {...(onCheckedChange ? { checked, onCheckedChange } : { defaultChecked: checked })}
-        className="disabled:opacity-100"
         {...props}
       />
-      <span className="type-body-sm-regular text-foreground">{label}</span>
+      <span className="type-body-sm-regular text-foreground peer-disabled:text-tertiary">
+        {label}
+      </span>
       {showCount && <span className="type-caption-xs-regular text-tertiary">{count}</span>}
     </label>
   )

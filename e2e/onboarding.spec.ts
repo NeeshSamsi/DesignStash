@@ -17,7 +17,7 @@ test('first run: welcome, stash folder, skip AI, say no to usage data, open My S
   await window.getByRole('button', { name: 'Skip AI' }).first().click()
 
   await expect(window.getByText('Your privacy')).toBeVisible()
-  await window.getByRole('button', { name: 'No thanks' }).click()
+  await window.getByRole('button', { name: 'Don’t share' }).click()
 
   await expect(window.getByText('Your stash is ready!')).toBeVisible()
   await window.getByRole('button', { name: 'Open My Stash' }).click()

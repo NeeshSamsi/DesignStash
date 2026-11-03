@@ -24,13 +24,13 @@ export class InboxService {
   }
 
   async list(stage: InboxStage): Promise<InboxItem[]> {
-    const rows = this.repo.getInboxList(stage)
+    const rows = this.repo.inbox.list(stage)
     const sizes = await ensureSizes(this.repo, this.deps.stat, rows.map((r) => r.id))
     return rows.map((r) => ({ ...r, sizeBytes: sizes.get(r.id) ?? r.sizeBytes }))
   }
 
   counts(): InboxCounts {
-    return this.repo.getInboxCounts()
+    return this.repo.inbox.getCounts()
   }
 
   /**
@@ -39,8 +39,8 @@ export class InboxService {
    * My Stash or Trash are skipped (they have their own ways out).
    */
   async toss(ids: number[]): Promise<{ tossedIds: number[]; skippedIds: number[] }> {
-    const { ids: tossedIds, skipped } = this.repo.collectTossable(ids)
-    const removed = this.repo.deleteMockupsHard(tossedIds)
+    const { ids: tossedIds, skipped } = this.repo.inbox.collectTossable(ids)
+    const removed = this.repo.trash.deleteMockupsHard(tossedIds)
     await removeAppCopies(this.libraryRoot, removed, this.deps.rm)
     return { tossedIds, skippedIds: skipped }
   }

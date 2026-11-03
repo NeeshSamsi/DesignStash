@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { AddSquareIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
@@ -42,7 +43,7 @@ export function EmptyState({
       className={cn(emptyStateVariants({ variant: props.variant }), className)}
     >
       <div className={emptyStateTileVariants({ variant: props.variant })}>
-        <HugeiconsIcon icon={props.icon} strokeWidth={2} />
+        <HugeiconsIcon icon={props.icon} strokeWidth={ICON_STROKE} />
       </div>
       <p
         className={
@@ -60,7 +61,7 @@ export function EmptyState({
         )}
         {primaryLabel !== null && (
           <Button size="sm" onClick={onPrimary}>
-            {!withSecondary && <HugeiconsIcon icon={primaryIcon} strokeWidth={2} />}
+            {!withSecondary && <HugeiconsIcon icon={primaryIcon} strokeWidth={ICON_STROKE} />}
             {primaryLabel}
           </Button>
         )}

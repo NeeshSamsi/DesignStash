@@ -26,13 +26,13 @@ export class StashService {
   }
 
   async stashPile(pileId: number): Promise<StashResult> {
-    const root = this.repo.getMockup(pileId)
+    const root = this.repo.mockups.getMockup(pileId)
     if (!root || !root.isGroup) return { ok: false, reason: 'not-ready', mockupIds: [pileId] }
     return this.stashUnit(pileId)
   }
 
   async stashSingle(mockupId: number): Promise<StashResult> {
-    const m = this.repo.getMockup(mockupId)
+    const m = this.repo.mockups.getMockup(mockupId)
     if (!m || m.isGroup || m.groupId !== null) return { ok: false, reason: 'not-ready', mockupIds: [mockupId] }
     return this.stashUnit(mockupId)
   }
@@ -40,12 +40,12 @@ export class StashService {
   /** Undo a stash. Mockups deleted since are left out. */
   async unstash(snapshot: StashSnapshot): Promise<{ restoredIds: number[] }> {
     const restoredIds = this.repo.drafts.unstash(snapshot)
-    for (const id of restoredIds) this.repo.removeSearchIndex(id)
+    for (const id of restoredIds) this.repo.search.removeSearchIndex(id)
     return { restoredIds }
   }
 
   private async stashUnit(unitId: number): Promise<StashResult> {
-    const root = this.repo.getMockup(unitId)
+    const root = this.repo.mockups.getMockup(unitId)
     if (!root || root.deletedAt !== null || root.stage !== 'to_stash' || root.groupId !== null) {
       return { ok: false, reason: 'not-ready', mockupIds: [unitId] }
     }
@@ -62,7 +62,7 @@ export class StashService {
 
     const snapshot = this.repo.drafts.stash(unitId, ids)
     // The search index can't be written inside the transaction.
-    for (const id of ids) this.repo.upsertSearchIndex(id)
+    for (const id of ids) this.repo.search.upsertSearchIndex(id)
     return { ok: true, stashedIds: ids, snapshot }
   }
 }

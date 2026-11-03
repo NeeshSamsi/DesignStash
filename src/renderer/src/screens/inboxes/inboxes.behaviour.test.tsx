@@ -17,7 +17,6 @@ vi.mock('@renderer/stores/toastStore', () => toasts)
 const inbox = (id: number, over: Partial<InboxItem> = {}): InboxItem => ({
   ...item(id),
   title: `file-${id}.psd`,
-  reviewStatus: 'needs_review',
   stage: 'to_sort',
   aiStatus: 'ready',
   sizeBytes: 1024,
@@ -168,7 +167,7 @@ describe('To sort', () => {
 
 describe('To stash', () => {
   const stash = [
-    inbox(1, { stage: 'to_stash', isGroup: true, variantCount: 3, title: 'Clay pile' }),
+    inbox(1, { stage: 'to_stash', pile: { memberCount: 4 }, title: 'Clay pile' }),
     inbox(2, { stage: 'to_stash', title: 'Single' })
   ]
 
@@ -176,7 +175,7 @@ describe('To stash', () => {
     setup(listOf(stash))
     render(<InboxPage stage="to_stash" />)
     await screen.findByText('Clay pile')
-    expect(card(1).textContent).toContain('+3')
+    expect(card(1).textContent).toContain('4')
     expect(card(2).textContent).not.toContain('Sniffing…')
   })
 
@@ -235,7 +234,7 @@ describe('Add card', () => {
     await screen.findByText('file-1.psd')
     const grid = document.querySelector('[data-ds="MockupGrid"]')!
     expect(grid.textContent).toContain('Add mockup')
-    expect(grid.textContent).toContain('PSDs or a whole folder')
+    expect(grid.textContent).toContain('PSDs, zips or a folder')
     const first = grid.querySelector('[data-ds="AddMockupCard"], [data-ds="MockupCard"]')
     expect(first?.getAttribute('data-ds')).toBe('AddMockupCard')
   })
@@ -394,7 +393,8 @@ describe('Trash', () => {
   it('says so when Trash is empty', async () => {
     setup({ [IPC_CHANNELS.TRASH_LIST]: () => ok({ items: [] }) })
     render(<TrashPage />)
-    expect(await screen.findByText('Trash is empty')).toBeTruthy()
+    expect(await screen.findByText('Not a crumb in here')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Back to My Stash' })).toBeTruthy()
   })
 })
 

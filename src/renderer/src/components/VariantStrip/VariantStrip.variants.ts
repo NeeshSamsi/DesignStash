@@ -14,7 +14,7 @@ export const STRIP_WINDOW = 'relative h-21 w-full touch-pan-y overflow-hidden se
 
 /** Thumbnails on fixed slots: 84px thumbs on an 8px gap, so every slot is `w-variant-slot`. */
 export const STRIP_TRACK =
-  'flex w-max items-start gap-2 motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out'
+  'flex w-max items-start gap-2 motion-safe:transition-transform motion-safe:duration-(--duration-base) motion-safe:ease-out'
 
 export const STRIP_FADE =
   'pointer-events-none absolute inset-y-0 w-14 from-transparent via-surface-2/90 via-70% to-surface-2'

@@ -34,9 +34,22 @@ afterEach(() => {
 })
 
 describe('CoverPanel · cover image', () => {
+  it('says nothing about the PSD’s own preview unless it is low-res', () => {
+    const { rerender } = renderPanel({ imageSize: { width: 1600, height: 1200 } })
+    expect(screen.queryByText('Low-res preview')).toBeNull()
+    rerender(
+      <CoverPanel
+        source="embedded"
+        coverSrc="file:///old.png"
+        imageSize={{ width: 640, height: 480 }}
+      />
+    )
+    expect(screen.getByText('Low-res preview')).not.toBeNull()
+  })
+
   it('shows the cover with a tag row: source tag, optional note, and an always-visible Zoom', () => {
     const { container, rerender } = renderPanel({ showNote: true, note: 'Cropped to 4:3' })
-    expect(screen.getByText('Embedded preview')).not.toBeNull()
+    expect(screen.queryByText('Embedded preview')).toBeNull()
     expect(screen.getByText('Cropped to 4:3')).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Zoom' })).not.toBeNull()
     expect(coverImg(container)?.getAttribute('src')).toBe('file:///old.png')
@@ -51,7 +64,7 @@ describe('CoverPanel · cover image', () => {
     expect(screen.queryByRole('button', { name: 'Use the PSD’s preview' })).toBeNull()
     rerender(<CoverPanel source="uploaded" />)
     expect(screen.getByRole('button', { name: 'Use the PSD’s preview' })).not.toBeNull()
-    rerender(<CoverPanel source="sidecar" sidecarAccepted />)
+    rerender(<CoverPanel source="sidecar" />)
     expect(screen.getByRole('button', { name: 'Use the PSD’s preview' })).not.toBeNull()
   })
 
@@ -201,21 +214,10 @@ describe('CoverPanel · cover image', () => {
     expect(screen.queryByText('ignored')).toBeNull()
   })
 
-  it('offers the sidecar image via an info Banner and tags the cover "Sidecar image" once used', () => {
-    const onUseSidecar = vi.fn()
-    const { container, rerender } = renderPanel({
-      source: 'sidecar',
-      sidecarName: 'phone_front.png',
-      onUseSidecar
-    })
-    expect(container.querySelector('[data-ds="Banner"]')?.getAttribute('data-tone')).toBe('info')
-    expect(screen.getByText('Found “phone_front.png” next to the PSD')).not.toBeNull()
-    expect(screen.getByText('Embedded preview')).not.toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Use this cover' }))
-    expect(onUseSidecar).toHaveBeenCalledOnce()
-
-    rerender(<CoverPanel source="sidecar" sidecarAccepted coverSrc="file:///side.png" />)
+  it('tags a sidecar cover "Sidecar image" and never asks whether to use it', () => {
+    const { container } = renderPanel({ source: 'sidecar', coverSrc: 'file:///side.png' })
     expect(container.querySelector('[data-ds="Banner"]')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Use this cover' })).toBeNull()
     expect(screen.getByText('Sidecar image')).not.toBeNull()
   })
 
@@ -258,8 +260,7 @@ describe('CoverPanel · cover image', () => {
       tags: [],
       touched: false,
       checked: false,
-      cover: { path: '', source: 'none', missing: false, width: null, height: null },
-      sidecarFileName: null
+      cover: { path: '', source: 'none', missing: false, width: null, height: null }
     })
     window.api = {
       appName: 'x',
@@ -277,7 +278,6 @@ describe('CoverPanel · cover image', () => {
             }
           : { success: true, data: { tree: [] } },
       subscribe: () => () => {},
-      onAiDownloadProgress: () => () => {},
       getPathForFile: () => ''
     } as unknown as typeof window.api
     const { LookOverFlow } = await import('@renderer/screens/look-over')

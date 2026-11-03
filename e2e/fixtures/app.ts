@@ -7,11 +7,17 @@ import type { ElectronApplication, Page } from '@playwright/test'
 import { buildPsdWithComposite } from '../../src/main/psd/__fixtures__/build'
 
 /** The catalogue model the seeded settings point at. Its files are empty: the stub provider answers instead. */
-const STUB_MODEL_ID = 'qwen2.5-vl-3b'
+export const STUB_MODEL_ID = 'qwen2.5-vl-3b'
 
 export interface LaunchOptions {
   /** Skip onboarding by seeding settings as a finished first run. Default true. */
   onboarded?: boolean
+  /** Extra environment for the app process, on top of the e2e defaults (stub AI, test mode). */
+  env?: Record<string, string>
+  /** Name the userData folder itself, inside a fresh temp parent. Used to put awkward characters in the stash path. */
+  userDataName?: string
+  /** Runs when the app is closed, after the process has quit (for example to stop a server). */
+  onClose?: () => void
 }
 
 export interface E2EApp {
@@ -53,8 +59,9 @@ export function makePsds(dir: string, names: string[]): string[] {
 export async function launchApp(
   opts: LaunchOptions = {}
 ): Promise<E2EApp & { close: () => Promise<void> }> {
-  const { onboarded = true } = opts
-  const userData = mkdtempSync(join(tmpdir(), 'designstash-e2e-'))
+  const { onboarded = true, env, userDataName, onClose } = opts
+  const root = mkdtempSync(join(tmpdir(), 'designstash-e2e-'))
+  const userData = userDataName ? join(root, userDataName) : root
   const stash = join(userData, 'Library')
 
   if (onboarded) {
@@ -80,7 +87,7 @@ export async function launchApp(
   const app = await electron.launch({
     // "." is the project folder, so the app finds its drizzle migrations the way `pnpm start` does.
     args: ['.', `--user-data-dir=${userData}`],
-    env: { ...process.env, NODE_ENV: 'test', DESIGNSTASH_E2E_STUB_AI: '1' }
+    env: { ...process.env, NODE_ENV: 'test', DESIGNSTASH_E2E_STUB_AI: '1', ...env }
   })
   const window = await app.firstWindow()
   await window.waitForLoadState('domcontentloaded')
@@ -102,7 +109,8 @@ export async function launchApp(
       ),
     close: async () => {
       await app.close().catch(() => {})
-      rmSync(userData, { recursive: true, force: true })
+      onClose?.()
+      rmSync(root, { recursive: true, force: true })
     }
   }
 }

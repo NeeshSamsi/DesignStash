@@ -184,7 +184,8 @@ export function ReconciliationPanel({
   const foundRows = listed ? found : []
   const goneRows = listed ? gone : []
   const left = foundRows.length + goneRows.length
-  const busy = state === 'resolving'
+  // `removing` is Figma's drawing of a gone row being worked on; code uses resolvingId for either.
+  const busy = state === 'resolving' || state === 'removing'
 
   const title = resolved
     ? 'All sorted'

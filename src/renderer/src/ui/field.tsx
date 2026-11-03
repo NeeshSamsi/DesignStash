@@ -102,7 +102,7 @@ function FieldLabel({
     <Label
       data-slot="field-label"
       className={cn(
-        "group/field-label peer/field-label flex w-fit gap-0.5 has-data-checked:border-selected has-data-checked:bg-surface-3 has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border has-[>[data-slot=field]]:border-base has-[>[data-slot=field]]:bg-surface-2 has-[>[data-slot=field]]:has-[:focus-visible]:border-ring has-[>[data-slot=field]]:has-[:focus-visible]:ring-1 has-[>[data-slot=field]]:has-[:focus-visible]:ring-ring *:data-[slot=field]:px-4 *:data-[slot=field]:py-3",
+        "group/field-label peer/field-label flex w-fit gap-0.5 has-data-checked:border-selected has-data-checked:bg-surface-3 has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border has-[>[data-slot=field]]:border-base has-[>[data-slot=field]]:bg-surface-2 has-[>[data-slot=field]]:has-[:focus-visible]:focus-ring *:data-[slot=field]:px-4 *:data-[slot=field]:py-3",
         "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
         className
       )}

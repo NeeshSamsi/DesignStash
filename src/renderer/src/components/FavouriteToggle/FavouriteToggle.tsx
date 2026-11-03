@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { StarIcon } from '@hugeicons/core-free-icons'
@@ -43,7 +44,7 @@ export function FavouriteToggle({
     >
       <HugeiconsIcon
         icon={StarIcon}
-        strokeWidth={1.5}
+        strokeWidth={ICON_STROKE}
         className={cn('size-4', pressed && '[&_path]:fill-current')}
       />
     </button>

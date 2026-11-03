@@ -6,14 +6,18 @@ import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { CoverPanel } from '@renderer/components/CoverPanel'
 import { ErrorState } from '@renderer/components/ErrorState'
 import { FlowModal } from '@renderer/components/FlowModal'
+import { Lightbox } from '@renderer/components/Lightbox'
 import { MockupCard } from '@renderer/components/MockupCard'
 import { MockupMetaForm } from '@renderer/components/MockupMetaForm'
 import { PileRail } from '@renderer/components/PileRail'
 import { PileStep } from '@renderer/components/PileStep'
 import { Tooltip } from '@renderer/components/Tooltip'
 import { useTagVocabulary } from '@renderer/hooks/use-tag-vocabulary'
+import { useFlowOpen } from '@renderer/stores/copyStore'
 import { toast, undoToast } from '@renderer/stores/toastStore'
+import { useUiStore } from '@renderer/stores/uiStore'
 import { Skeleton } from '@renderer/ui/skeleton'
+import { checkLibrary } from '../details/check-library'
 import {
   afterStash,
   back,
@@ -30,15 +34,22 @@ import {
   next,
   onReview,
   primary,
+  progress,
   rail,
   reviewCards,
   skip,
   type FlowState
 } from './flow-model'
-import { NO_COVER_REASON, NO_TITLE_REASON, doneMessage, stashRefusal } from './look-over-copy'
+import {
+  NO_COVER_REASON,
+  NO_TITLE_REASON,
+  SKIP_NOTE,
+  doneMessage,
+  stashRefusal
+} from './look-over-copy'
 import { coverUrl } from '@shared/cover-url'
 
-export interface LookOverFlowProps {
+interface LookOverFlowProps {
   open: boolean
   /** Finish later (confirmed), or all done. */
   onClose: () => void
@@ -100,6 +111,7 @@ function Skeletons() {
 export function LookOverFlow({ open, onClose, onBackToSort }: LookOverFlowProps) {
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  useFlowOpen(open)
 
   useEffect(() => {
     if (!open) return
@@ -167,6 +179,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const [busy, setBusy] = useState(false)
   const [asking, setAsking] = useState(false)
   const [coverState, setCoverState] = useState<'default' | 'replacing' | 'error'>('default')
+  const [zooming, setZooming] = useState(false)
   const { vocabulary, createTag } = useTagVocabulary()
 
   const unit = currentUnit(flow)
@@ -177,7 +190,10 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
   const pile = isPile(unit)
   const model = primary(flow)
   const theDeck = deck(flow)
-  const theRail = rail(flow)
+  const theRail = rail(
+    flow,
+    Object.fromEntries(Object.entries(forms).map(([id, f]) => [id, f.title]))
+  )
   const blocked = item && form ? form.title.trim() === '' : false
   const noCover = item && cover ? panelSource(cover) === 'none' : false
 
@@ -241,6 +257,8 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
 
   const finish = (s: FlowState) => {
     if (finished(s)) {
+      // Everything is tucked away: land where it now lives, not on an empty inbox.
+      useUiStore.getState().setView('all')
       toast(doneMessage(stashedCount.current, 0), 'success')
       onClose()
     }
@@ -251,7 +269,15 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     unitId: number,
     count: number
   ) => {
-    await window.api.invoke(IPC_CHANNELS.PILE_UNSTASH, { snapshot })
+    const res = await window.api.invoke(IPC_CHANNELS.PILE_UNSTASH, { snapshot }).catch(() => null)
+    if (!res?.success) {
+      toast({
+        variant: 'error',
+        message: 'Couldn’t undo that',
+        description: 'It is still stashed. Try again from My Stash.'
+      })
+      return
+    }
     stashedCount.current -= count
     const fresh = await window.api.invoke(IPC_CHANNELS.LOOK_OVER_OPEN, undefined).catch(() => null)
     if (!fresh?.success) return
@@ -419,10 +445,14 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
     <div className="flex items-center gap-2 border-t border-subtle pt-4">
       {target && <Button variant="secondary" label="Back" onClick={() => void doBack()} />}
       {canSkip(flow) && (
-        <Button variant="ghost" label="Skip for now" onClick={() => void doSkip()} />
+        <Tooltip label={SKIP_NOTE} arrow="bottom-left">
+          <span className="inline-flex">
+            <Button variant="ghost" label="Skip for now" onClick={() => void doSkip()} />
+          </span>
+        </Tooltip>
       )}
       <div className="flex-1" />
-      <Button variant="secondary" label="Finish later" onClick={() => setAsking(true)} />
+      <Button variant="ghost" label="Finish later" onClick={() => setAsking(true)} />
       {footerPrimary}
     </div>
   )
@@ -442,7 +472,6 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
                 mockupId={String(it.mockupId)}
                 title={forms[it.mockupId]?.title ?? it.title}
                 tags={note ?? forms[it.mockupId]?.tags.map((t) => t.label).join(' · ') ?? ''}
-                variantCount={0}
                 favourite={false}
                 {...(c?.path ? { coverSrc: coverUrl(c.path) } : {})}
                 onClick={() => void go((s) => jumpTo(s, step))}
@@ -463,7 +492,6 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
             source={panelSource(cover)}
             state={coverState}
             coverMissing={cover.missing}
-            sidecarAccepted
             showDeck={theDeck.showDeck}
             deckMore={theDeck.deckMore}
             deckLabel={theDeck.label}
@@ -473,6 +501,7 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
               : {})}
             onCover={replaceCover}
             onUsePsdPreview={useEmbedded}
+            onZoom={() => setZooming(true)}
           />
         )}
         <div className="min-w-0 flex-1">
@@ -519,8 +548,21 @@ function Session({ queue, onClose, onBackToSort }: SessionProps) {
         open
         step="look-over"
         count={headerBadge(flow)}
+        progress={progress(flow)}
         onRequestClose={() => setAsking(true)}
         body={body}
+      />
+      <Lightbox
+        open={zooming && cover !== undefined}
+        mode="single"
+        state={cover?.missing ? 'missing' : 'loaded'}
+        caption={form?.title.trim() || item?.title || ''}
+        {...(cover?.path ? { src: coverUrl(cover.path) } : {})}
+        onClose={() => setZooming(false)}
+        onCheckLibrary={() => {
+          setZooming(false)
+          void checkLibrary()
+        }}
       />
       <ConfirmDialog
         open={asking}

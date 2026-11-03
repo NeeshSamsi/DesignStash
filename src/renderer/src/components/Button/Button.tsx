@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Spinner } from '@renderer/components/Spinner'
@@ -19,7 +20,15 @@ const VARIANT = {
   link: 'link'
 } as const
 
-const SIZE = { xs: 'xs', sm: 'sm', base: 'default', lg: 'lg', icon: 'icon' } as const
+const SIZE = {
+  xs: 'xs',
+  sm: 'sm',
+  base: 'default',
+  lg: 'lg',
+  icon: 'icon',
+  'icon-xs': 'icon-xs',
+  'icon-sm': 'icon-sm'
+} as const
 
 /**
  * Button — Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = 2px border/focus ring outside.
@@ -40,7 +49,14 @@ export function Button({ children, ...rest }: ButtonProps) {
     iconEnd,
     ...props
   } = { ...BUTTON_DEFAULTS, ...rest }
-  const spinner = <Spinner size={size === 'xs' || size === 'sm' ? 'sm' : 'base'} />
+  const iconOnly = size === 'icon' || size === 'icon-xs' || size === 'icon-sm'
+  const spinner = (
+    <Spinner
+      size={
+        size === 'xs' || size === 'sm' || size === 'icon-xs' || size === 'icon-sm' ? 'sm' : 'base'
+      }
+    />
+  )
 
   return (
     <UiButton
@@ -51,19 +67,19 @@ export function Button({ children, ...rest }: ButtonProps) {
       aria-busy={loading || undefined}
       {...props}
     >
-      {size === 'icon' ? (
+      {iconOnly ? (
         loading ? (
           spinner
         ) : (
-          <HugeiconsIcon icon={iconStart} strokeWidth={1.5} />
+          <HugeiconsIcon icon={iconStart} strokeWidth={ICON_STROKE} />
         )
       ) : (
         <>
           {loading
             ? spinner
-            : showIconStart && <HugeiconsIcon icon={iconStart} strokeWidth={1.5} />}
+            : showIconStart && <HugeiconsIcon icon={iconStart} strokeWidth={ICON_STROKE} />}
           {children ?? label}
-          {showIconEnd && <HugeiconsIcon icon={iconEnd} strokeWidth={1.5} />}
+          {showIconEnd && <HugeiconsIcon icon={iconEnd} strokeWidth={ICON_STROKE} />}
         </>
       )}
     </UiButton>

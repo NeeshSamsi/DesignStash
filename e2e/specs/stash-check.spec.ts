@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
+// Synthetic PSDs (makePsds): the stray files only need to exist, and they are fast.
 import { test, expect, makePsds, type E2EApp } from '../fixtures/app'
 import { clickUndo } from '../fixtures/toast'
 

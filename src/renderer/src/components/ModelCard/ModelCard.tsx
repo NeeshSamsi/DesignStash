@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Alert02Icon, Download04Icon, Globe02Icon, HardDriveIcon } from '@hugeicons/core-free-icons'
@@ -24,6 +25,13 @@ export interface ModelCardProps
   remaining?: string
   /** `failed`: why it stopped, in plain words. */
   failureReason?: string
+  /** `downloading`: the file is whole and being checked, so there is nothing to cancel. */
+  verifying?: boolean
+  /** `available`: a stopped download is on disk. Replaces the languages and turns Download into Resume. */
+  resumeNote?: string
+  /** Use this model is off, with the reason as its tooltip (AI is switched off). */
+  useDisabled?: boolean
+  downloadDisabled?: boolean
   onUse?: () => void
   onDownload?: () => void
   onCancel?: () => void
@@ -33,8 +41,8 @@ export interface ModelCardProps
 
 const FAILURE = 'The download stopped. Check your connection, then try again.'
 
-/** Five 12×4 steps; the first `value` are filled. */
-function Bar({ label, value, accent }: { label: string; value: number; accent: boolean }) {
+/** Five 12×4 steps; the first `value` are filled in the brand colour, on every card. */
+function Bar({ label, value }: { label: string; value: number }) {
   const filled = Math.max(0, Math.min(5, Math.round(value)))
   return (
     <div className="flex items-center gap-2">
@@ -44,7 +52,7 @@ function Bar({ label, value, accent }: { label: string; value: number; accent: b
           <span
             key={step}
             className={modelCardStepVariants({
-              filled: step >= filled ? 'none' : accent ? 'accent' : 'muted'
+              filled: step >= filled ? 'none' : 'accent'
             })}
           />
         ))}
@@ -68,6 +76,10 @@ export function ModelCard({
   rate = '18 MB/s',
   remaining = 'about 3 min left',
   failureReason = FAILURE,
+  verifying = false,
+  resumeNote,
+  useDisabled = false,
+  downloadDisabled = false,
   onUse,
   onDownload,
   onCancel,
@@ -75,10 +87,25 @@ export function ModelCard({
   onDelete,
   ...rest
 }: ModelCardProps) {
-  const { state, bestFit, name, description, languages, size, ...props } = {
+  const {
+    state: figmaState,
+    bestFit,
+    name,
+    description,
+    languages,
+    size,
+    resumeNote: figmaResumeNote,
+    ...props
+  } = {
     ...MODEL_CARD_DEFAULTS,
     ...rest
   }
+  // Figma draws verifying and paused as states of their own; in code they are a downloading card
+  // that is being checked, and an available card that has a partial download to resume.
+  const state =
+    figmaState === 'verifying' ? 'downloading' : figmaState === 'paused' ? 'available' : figmaState
+  const isVerifying = verifying || figmaState === 'verifying'
+  const note = resumeNote ?? (figmaState === 'paused' ? figmaResumeNote : undefined)
   const inUse = state === 'in-use'
   const info = state === 'in-use' || state === 'downloaded' || state === 'available'
   const progress = [`Downloading ${Math.round(percent)}%`, rate, remaining]
@@ -102,8 +129,8 @@ export function ModelCard({
           <p className="type-body-sm-regular text-muted-foreground">{description}</p>
         </div>
         <div className="flex shrink-0 flex-col gap-1.5">
-          <Bar label="quality" value={quality} accent={inUse} />
-          <Bar label="speed" value={speed} accent={inUse} />
+          <Bar label="quality" value={quality} />
+          <Bar label="speed" value={speed} />
         </div>
       </div>
 
@@ -113,15 +140,19 @@ export function ModelCard({
         {info && (
           <>
             <div className="flex items-center gap-1.5 type-caption-xs-regular text-tertiary">
-              <HugeiconsIcon icon={Globe02Icon} strokeWidth={1.5} className="size-3.5" />
-              {languages}
+              <HugeiconsIcon
+                icon={Globe02Icon}
+                strokeWidth={ICON_STROKE}
+                className="size-icon-xs"
+              />
+              {note ?? languages}
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-1.5 type-caption-xs-regular text-tertiary">
               <HugeiconsIcon
                 icon={state === 'available' ? Download04Icon : HardDriveIcon}
-                strokeWidth={1.5}
-                className="size-3.5"
+                strokeWidth={ICON_STROKE}
+                className="size-icon-xs"
               />
               {size}
             </div>
@@ -129,10 +160,22 @@ export function ModelCard({
         )}
 
         {(inUse || state === 'downloaded') && (
-          <Button variant="secondary" size="sm" label="Delete" onClick={onDelete} />
+          <Button
+            variant="secondary"
+            size="sm"
+            label="Delete"
+            className="text-error"
+            onClick={onDelete}
+          />
         )}
         {state === 'downloaded' && (
-          <Button variant="secondary" size="sm" label="Use this model" onClick={onUse} />
+          <Button
+            variant="secondary"
+            size="sm"
+            label="Use this model"
+            disabled={useDisabled}
+            onClick={onUse}
+          />
         )}
 
         {state === 'downloading' && (
@@ -140,14 +183,17 @@ export function ModelCard({
             <Progress
               size="sm"
               showLabel={false}
-              label={`Downloading ${name}`}
+              label={isVerifying ? `Checking ${name}` : `Downloading ${name}`}
               percent={percent}
+              {...(isVerifying ? { state: 'indeterminate' as const } : {})}
               className="min-w-0 flex-1"
             />
             <p role="status" className="type-caption-xs-regular text-muted-foreground">
-              {progress}
+              {isVerifying ? 'Checking the download…' : progress}
             </p>
-            <Button variant="secondary" size="sm" label="Cancel" onClick={onCancel} />
+            {!isVerifying && (
+              <Button variant="secondary" size="sm" label="Cancel" onClick={onCancel} />
+            )}
           </>
         )}
 
@@ -155,9 +201,10 @@ export function ModelCard({
           <Button
             variant="secondary"
             size="sm"
-            label="Download"
+            label={note ? 'Resume' : 'Download'}
             showIconStart
             iconStart={Download04Icon}
+            disabled={downloadDisabled}
             onClick={onDownload}
           />
         )}
@@ -165,7 +212,11 @@ export function ModelCard({
         {state === 'failed' && (
           <>
             <div className="flex min-w-0 flex-1 items-center gap-1.5 type-caption-xs-regular text-error">
-              <HugeiconsIcon icon={Alert02Icon} strokeWidth={1.5} className="size-3.5 shrink-0" />
+              <HugeiconsIcon
+                icon={Alert02Icon}
+                strokeWidth={ICON_STROKE}
+                className="size-icon-xs shrink-0"
+              />
               <span role="alert">{failureReason}</span>
             </div>
             <Button variant="secondary" size="sm" label="Try again" onClick={onRetry} />

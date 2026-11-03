@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/app'
+// Synthetic mockups (seedStash): this spec is not about importing, and they are fast.
 import { seedStash } from '../fixtures/seed'
 
 /** Trash: Restore all (with Undo) and Empty Trash. */

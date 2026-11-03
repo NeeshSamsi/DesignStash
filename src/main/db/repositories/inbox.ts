@@ -4,6 +4,7 @@ import type { AppDatabase } from '../connection'
 import { mockups } from '../schema'
 import type { Mockup } from '../schema'
 import type { LibraryQueryRepository, LibraryRow } from './library-query'
+import { pileRole } from './piles'
 import type { PileRepository } from './piles'
 
 export type InboxRow = LibraryRow & {
@@ -88,7 +89,7 @@ export class InboxRepository {
     const tossable = found.filter((m) => m.stage !== 'stashed' && m.deletedAt === null)
     const tossableIds = new Set(tossable.map((m) => m.id))
     for (const m of tossable) {
-      if (!m.isGroup) continue
+      if (pileRole(m) !== 'top') continue
       for (const member of this.piles.getMockupsByGroupId(m.id)) tossableIds.add(member.id)
     }
     return {

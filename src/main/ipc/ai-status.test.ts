@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
-import { IPC_CHANNELS, IPC_CONTRACT, PUSH_CHANNELS, type IpcResult } from '@shared/ipc'
+import { IPC_CHANNELS, PUSH_CHANNELS, PUSH_CONTRACT, type IpcResult } from '@shared/ipc'
 import type { InferenceProvider } from '@shared/inference'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
@@ -21,7 +21,8 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { inferenceQueueFor, registerAiStatusHandlers } from './ai-status'
+import { registerAiStatusHandlers } from './ai-status'
+import { inferenceQueueFor } from './library-effects'
 import { registerInboxHandlers } from './inbox'
 import { registerTrashHandlers } from './trash'
 
@@ -64,7 +65,7 @@ const make = (name: string) => {
   const dir = join(root, 'mockups', name)
   mkdirSync(dir, { recursive: true })
   writeFileSync(join(dir, 'original.psd'), 'psd')
-  return repo.createMockup({
+  return repo.mockups.createMockup({
     ...sample,
     title: name,
     libraryPath: join(dir, 'original.psd'),
@@ -75,15 +76,15 @@ const make = (name: string) => {
 describe('ai:status push', () => {
   it('is a push channel whose payload carries the per-mockup status and the totals', () => {
     expect(PUSH_CHANNELS).toContain(IPC_CHANNELS.AI_STATUS)
-    const { request } = IPC_CONTRACT[IPC_CHANNELS.AI_STATUS]
+    const { payload } = PUSH_CONTRACT[IPC_CHANNELS.AI_STATUS]
     expect(
-      request.safeParse({
+      payload.safeParse({
         updates: [{ mockupId: 1, status: 'sniffing' }],
         totals: { total: 38, remaining: 7 }
       }).success
     ).toBe(true)
     expect(
-      request.safeParse({
+      payload.safeParse({
         updates: [{ mockupId: 1, status: 'bogus' }],
         totals: { total: 1, remaining: 0 }
       }).success
@@ -115,10 +116,10 @@ describe('ai:status push', () => {
 describe('registerAiStatusHandlers', () => {
   it('picks up suggestions that were waiting when the app last closed', async () => {
     const a = make('a')
-    repo.updateMockup(a.id, { aiStatus: 'sniffing' })
+    repo.mockups.updateMockup(a.id, { aiStatus: 'sniffing' })
 
     registerAiStatusHandlers(ctx)
-    await vi.waitFor(() => expect(repo.getMockup(a.id)?.aiStatus).toBe('ready'))
+    await vi.waitFor(() => expect(repo.mockups.getMockup(a.id)?.aiStatus).toBe('ready'))
 
     expect(analyze).toHaveBeenCalledTimes(1)
   })
@@ -130,24 +131,37 @@ describe('cancelling and requeueing', () => {
     analyze.mockImplementationOnce(() => new Promise(() => {})) // a never finishes, b waits behind it
     const queue = inferenceQueueFor(ctx)
     await queue.enqueue([a.id, b.id])
-    await vi.waitFor(() => expect(repo.getMockup(a.id)?.aiStatus).toBe('sniffing'))
+    await vi.waitFor(() => expect(repo.mockups.getMockup(a.id)?.aiStatus).toBe('sniffing'))
 
     await call(IPC_CHANNELS.INBOX_TOSS, { ids: [b.id] })
 
-    expect(repo.getMockup(b.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(b.id)).toBeUndefined()
     expect(analyze).toHaveBeenCalledTimes(1)
   })
 
   it('trashing cancels the suggestion, and restoring queues it again', async () => {
     const a = make('a')
-    repo.updateMockup(a.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(a.id, { aiStatus: 'pending' })
 
     await call(IPC_CHANNELS.MOCKUP_TRASH, { ids: [a.id] })
     await inferenceQueueFor(ctx).idle()
     expect(analyze).not.toHaveBeenCalled()
 
     await call(IPC_CHANNELS.TRASH_RESTORE, { ids: [a.id] })
-    await vi.waitFor(() => expect(repo.getMockup(a.id)?.aiStatus).toBe('ready'))
+    await vi.waitFor(() => expect(repo.mockups.getMockup(a.id)?.aiStatus).toBe('ready'))
+    expect(analyze).toHaveBeenCalledTimes(1)
+  })
+
+  it('trashing a pile cancels its members too, and restoring queues them again', async () => {
+    const [blocker, a, b] = [make('blocker'), make('a'), make('b')]
+    const pile = repo.piles.createPile([a.id, b.id], a.id)
+    analyze.mockImplementationOnce(() => new Promise(() => {})) // the blocker never finishes
+    await inferenceQueueFor(ctx).enqueue([blocker.id, a.id, b.id])
+    await vi.waitFor(() => expect(repo.mockups.getMockup(blocker.id)?.aiStatus).toBe('sniffing'))
+
+    await call(IPC_CHANNELS.MOCKUP_TRASH, { ids: [pile.pileId] })
+
+    // Only the blocker's own call ever ran: the pile and its members left the queue.
     expect(analyze).toHaveBeenCalledTimes(1)
   })
 })

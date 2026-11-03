@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { create } from 'zustand'
 import type { CopyFile, CopyProgress, CopyStatus } from '@shared/ipc/import'
 
@@ -7,6 +8,9 @@ interface CopyState {
   view: 'expanded' | 'collapsed'
   /** The haul was dismissed or resolved; a pushed update for it does not bring it back. */
   hiddenId: string | null
+  /** A flow modal (Sort, Look it over) is open: the finished-copy card keeps out of its way. */
+  flowOpen: boolean
+  setFlowOpen(open: boolean): void
   setHaul(haul: CopyStatus | null): void
   /** Folds a pushed update into the haul on show. */
   applyProgress(progress: CopyProgress): void
@@ -26,6 +30,8 @@ export const useCopyStore = create<CopyState>((set) => ({
   haul: null,
   view: 'expanded',
   hiddenId: null,
+  flowOpen: false,
+  setFlowOpen: (flowOpen) => set({ flowOpen }),
   setHaul: (haul) => set({ haul, hiddenId: null }),
   applyProgress: (progress) =>
     set((state) => {
@@ -44,3 +50,12 @@ export const useCopyStore = create<CopyState>((set) => ({
   dismiss: () => set((s) => ({ hiddenId: s.haul?.haulId ?? null, haul: null })),
   reset: () => set({ haul: null, view: 'expanded', hiddenId: null })
 }))
+
+/** A flow modal calls this with whether it is open, so the finished-copy card stays under it. */
+export function useFlowOpen(open: boolean) {
+  const setFlowOpen = useCopyStore((s) => s.setFlowOpen)
+  useEffect(() => {
+    setFlowOpen(open)
+    return () => setFlowOpen(false)
+  }, [open, setFlowOpen])
+}

@@ -6,7 +6,7 @@ export const coverImageVariants = cva(
   {
     variants: {
       size: {
-        xs: 'h-7.5 w-10 rounded-md',
+        xs: 'h-7.5 w-10 rounded-lg',
         sm: 'h-22.5 w-30 gap-2 rounded-lg',
         md: 'h-45 w-60 gap-2 rounded-xl',
         lg: 'h-90 w-120 gap-2 rounded-xl'

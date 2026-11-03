@@ -16,4 +16,12 @@ describe('Button', () => {
       expect(screen.getAllByText(text).length).toBeGreaterThan(0)
     }
   })
+
+  it('draws the two small icon sizes at the ui sizes', () => {
+    for (const size of ['icon-xs', 'icon-sm'] as const) {
+      const { container, unmount } = render(<Button size={size} aria-label="Dismiss" />)
+      expect(container.querySelector('button')?.getAttribute('data-size')).toBe(size)
+      unmount()
+    }
+  })
 })

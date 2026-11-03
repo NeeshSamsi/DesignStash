@@ -1,7 +1,9 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ComponentProps, MouseEvent } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { MoreHorizontalIcon } from '@hugeicons/core-free-icons'
 import { CoverImage } from '@renderer/components/CoverImage'
+import { MiddleTruncatedText } from '@renderer/lib/middle-truncated-text'
 import { cn } from '@renderer/lib/utils'
 import { Badge } from '@renderer/ui/badge'
 import {
@@ -63,7 +65,7 @@ export function GroupMemberThumb({
             />
           </div>
           <div className={groupMemberCaptionVariants({ state })}>
-            <span className="min-w-0 flex-1 truncate">{filename}</span>
+            <MiddleTruncatedText className="flex-1">{filename}</MiddleTruncatedText>
           </div>
           <div
             className={cn('absolute inset-x-1 top-1 flex items-center gap-1', away && 'opacity-0')}
@@ -86,7 +88,7 @@ export function GroupMemberThumb({
                     'opacity-0 group-hover/thumb:opacity-100 focus-visible:opacity-100'
                 )}
               >
-                <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={1.5} />
+                <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={ICON_STROKE} />
               </button>
             )}
           </div>

@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { LibraryItem, LibraryQuery } from '@shared/library'
 import { useLibraryStore } from '@renderer/stores/libraryStore'
+import { useTagTreeStore } from '@renderer/stores/tagTreeStore'
 import { useDetailsStore } from '@renderer/stores/detailsStore'
 import { useUiStore } from '@renderer/stores/uiStore'
 import { useShortcutDispatcher } from '@renderer/lib/shortcuts'
@@ -16,18 +17,15 @@ export const item = (id: number, over: Partial<LibraryItem> = {}): LibraryItem =
   coverPath: `/stash/${id}.webp`,
   coverSource: 'embedded',
   coverMissing: false,
-  isGroup: false,
   favourite: false,
-  reviewStatus: 'approved',
   createdAt: `2026-10-${String(10 + id).padStart(2, '0')}`,
-  variantCount: 0,
-  topId: null,
+  pile: null,
   tags: [],
   ...over
 })
 
 export const pile = (id: number, variants = 2, over: Partial<LibraryItem> = {}) =>
-  item(id, { isGroup: true, variantCount: variants, topId: id, ...over })
+  item(id, { pile: { memberCount: variants + 1 }, ...over })
 
 type Handler = (request: unknown) => unknown
 
@@ -63,7 +61,6 @@ export function setupApi(
   window.api = {
     appName: 'DesignStash',
     invoke,
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn()
   } as unknown as typeof window.api
   return {
@@ -74,6 +71,7 @@ export function setupApi(
 
 export function resetStores() {
   useLibraryStore.getState().reset()
+  useTagTreeStore.getState().reset()
   useUiStore.setState({ view: 'all', modal: null })
   useDetailsStore.getState().closePile()
   useDetailsStore.getState().syncTarget(null)

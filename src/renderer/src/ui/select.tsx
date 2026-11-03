@@ -1,3 +1,4 @@
+import { ICON_STROKE } from "@renderer/design-system/icon"
 import * as React from "react"
 import { Select as SelectPrimitive } from "radix-ui"
 
@@ -46,14 +47,14 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-1.5 rounded-lg border border-input bg-surface-2 px-3 type-body-sm-regular whitespace-nowrap text-foreground transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-error data-open:border-ring data-open:ring-1 data-open:ring-ring data-placeholder:text-placeholder data-[size=default]:py-2 data-[size=sm]:py-1.5 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex w-fit items-center justify-between gap-1.5 rounded-lg border border-input bg-surface-2 px-3 type-body-sm-regular whitespace-nowrap text-foreground transition-colors outline-none select-none focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-error data-open:focus-ring data-placeholder:text-placeholder data-[size=default]:py-2 data-[size=sm]:py-1.5 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <HugeiconsIcon icon={UnfoldMoreIcon} strokeWidth={1.5} className="pointer-events-none size-4 text-tertiary" />
+        <HugeiconsIcon icon={UnfoldMoreIcon} strokeWidth={ICON_STROKE} className="pointer-events-none size-4 text-tertiary" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
@@ -71,7 +72,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         data-align-trigger={position === "item-aligned"}
-        className={cn("relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-base bg-surface-2 text-foreground duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1", className)}
+        className={cn("relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-base bg-surface-2 text-foreground duration-(--duration-fast) data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1", className)}
         position={position}
         align={align}
         {...props}
@@ -96,7 +97,7 @@ function SelectLabel({
   return (
     <SelectPrimitive.Label
       data-slot="select-label"
-      className={cn("px-2 py-1 type-caption-xs-regular text-tertiary", className)}
+      className={cn("px-2 py-1 type-caption-xs-regular text-muted-foreground", className)}
       {...props}
     />
   )
@@ -111,14 +112,14 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full cursor-default items-center justify-between gap-2 rounded-md px-2 py-1.5 type-body-sm-regular text-foreground outline-hidden select-none focus:bg-surface-2-hover data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:first:flex *:[span]:first:items-center *:[span]:first:gap-2",
+        "relative flex w-full cursor-default items-center justify-between gap-2 rounded-lg px-2 py-1.5 type-body-sm-regular text-foreground outline-hidden select-none focus:bg-surface-2-hover data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:first:flex *:[span]:first:items-center *:[span]:first:gap-2",
         className
       )}
       {...props}
     >
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator className="flex size-4 items-center justify-center">
-        <HugeiconsIcon icon={Tick02Icon} strokeWidth={1.5} className="pointer-events-none" />
+        <HugeiconsIcon icon={Tick02Icon} strokeWidth={ICON_STROKE} className="pointer-events-none" />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   )
@@ -150,7 +151,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <HugeiconsIcon icon={ArrowUp01Icon} strokeWidth={1.5} />
+      <HugeiconsIcon icon={ArrowUp01Icon} strokeWidth={ICON_STROKE} />
     </SelectPrimitive.ScrollUpButton>
   )
 }
@@ -168,7 +169,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={1.5} />
+      <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={ICON_STROKE} />
     </SelectPrimitive.ScrollDownButton>
   )
 }

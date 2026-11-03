@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import {
   Alert02Icon,
   Cancel01Icon,
@@ -15,6 +16,9 @@ export interface BannerProps extends BannerContractProps {
   /** Label of the action button. The button shows when `action` is on and a label is given. */
   actionLabel?: string
   onAction?: () => void
+  /** A lighter button before the action (ErrorState inline: Close). Shows when a label is given. */
+  secondaryLabel?: string
+  onSecondary?: () => void
   onDismiss?: () => void
   className?: string
 }
@@ -31,7 +35,15 @@ const ICONS = {
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-777
  * Neutral card with a 3px left accent in the tone colour; errors are announced, the rest are polite.
  */
-export function Banner({ className, actionLabel, onAction, onDismiss, ...rest }: BannerProps) {
+export function Banner({
+  className,
+  actionLabel,
+  onAction,
+  secondaryLabel,
+  onSecondary,
+  onDismiss,
+  ...rest
+}: BannerProps) {
   const props = { ...BANNER_DEFAULTS, ...rest }
   return (
     <div
@@ -42,13 +54,18 @@ export function Banner({ className, actionLabel, onAction, onDismiss, ...rest }:
     >
       <HugeiconsIcon
         icon={ICONS[props.tone]}
-        strokeWidth={2}
+        strokeWidth={ICON_STROKE}
         className={bannerIconVariants({ tone: props.tone })}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="type-body-sm-medium text-foreground">{props.title}</p>
         <p className="type-caption-xs-regular text-muted-foreground">{props.message}</p>
       </div>
+      {secondaryLabel && (
+        <Button variant="ghost" size="xs" type="button" onClick={onSecondary}>
+          {secondaryLabel}
+        </Button>
+      )}
       {props.action && actionLabel && (
         <Button variant="secondary" size="xs" type="button" onClick={onAction}>
           {actionLabel}
@@ -62,7 +79,7 @@ export function Banner({ className, actionLabel, onAction, onDismiss, ...rest }:
           aria-label="Dismiss"
           onClick={onDismiss}
         >
-          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={ICON_STROKE} />
         </Button>
       )}
     </div>

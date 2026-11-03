@@ -64,7 +64,7 @@ export function ChoiceDialog({
       <div className="flex items-center justify-between">
         {tertiary}
         <div className="flex items-start gap-2">
-          {secondaryLabel !== null && (
+          {secondaryLabel !== null && props.showSecondary && (
             <Button variant="secondary" size="sm" onClick={onSecondary}>
               {secondaryLabel}
             </Button>

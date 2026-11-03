@@ -17,16 +17,13 @@ const item = (id: number, over: Partial<LibraryItem> = {}): LibraryItem => ({
   coverPath: '',
   coverSource: 'embedded',
   coverMissing: false,
-  isGroup: false,
   favourite: true,
-  reviewStatus: 'approved',
   createdAt: '2026-10-01',
-  variantCount: 0,
-  topId: null,
+  pile: null,
   tags: [],
   ...over
 })
-const pile = (id: number) => item(id, { isGroup: true, variantCount: 2, topId: id })
+const pile = (id: number) => item(id, { pile: { memberCount: 3 } })
 
 describe('mergeLingering', () => {
   it('is the fresh list when nothing lingers', () => {
@@ -74,10 +71,10 @@ describe('noResultsCopy', () => {
     expect(copy.title).toContain('“clay”')
   })
 
-  it('an empty Starred explains how to star, with no button', () => {
+  it('an empty Starred explains how to star and offers Go to All', () => {
     const copy = noResultsCopy({ query: '', filterCount: 0, starred: true })
     expect(copy.title).toBe('Nothing starred yet')
-    expect(copy.clearLabel).toBeNull()
+    expect(copy.clearLabel).toBe('Go to All')
   })
 
   it('never says the library is empty', () => {

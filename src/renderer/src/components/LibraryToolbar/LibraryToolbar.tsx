@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import { FilterHorizontalIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Select } from '@renderer/components/Select'
@@ -30,6 +31,8 @@ export interface LibraryToolbarProps extends LibraryToolbarContractProps {
   onClearFilters?: () => void
   /** Props for the tag filter popover the Filter button opens. */
   tagFilter?: Omit<TagFilterPopoverProps, 'trigger'>
+  /** Nothing to filter or sort yet (an empty stash): both controls go quiet. */
+  disabled?: boolean
   sort?: LibrarySort
   onSortChange?: (sort: LibrarySort) => void
   className?: string
@@ -59,6 +62,7 @@ export function LibraryToolbar({
   tagFilter,
   sort = 'date',
   onSortChange,
+  disabled = false,
   ...rest
 }: LibraryToolbarProps) {
   const props = { ...LIBRARY_TOOLBAR_DEFAULTS, ...rest }
@@ -66,8 +70,8 @@ export function LibraryToolbar({
   const active = picked.length > 0
 
   const filterButton = (
-    <Button variant="outline" size="sm" className={HAIRLINE_BUTTON}>
-      <HugeiconsIcon icon={FilterHorizontalIcon} strokeWidth={2} />
+    <Button variant="outline" size="sm" disabled={disabled} className={HAIRLINE_BUTTON}>
+      <HugeiconsIcon icon={FilterHorizontalIcon} strokeWidth={ICON_STROKE} />
       Filter
     </Button>
   )
@@ -100,12 +104,15 @@ export function LibraryToolbar({
         )}
       </div>
       <div className="flex items-center gap-4">
-        <p className="type-caption-xs-regular text-tertiary">{props.stats}</p>
+        {props.showStats && props.stats !== '' && (
+          <p className="type-caption-xs-regular text-tertiary">{props.stats}</p>
+        )}
         <Select
           size="sm"
           value={sort}
           options={SORT_OPTIONS}
           aria-label="Sort order"
+          disabled={disabled}
           className={HAIRLINE_SORT}
           onValueChange={(value) => onSortChange?.(value as LibrarySort)}
         />

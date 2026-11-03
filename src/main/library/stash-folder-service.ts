@@ -110,7 +110,7 @@ export class StashFolderService {
 
   async info(): Promise<StashInfo> {
     const { libraryRoot, pendingStash } = this.settings.get()
-    const ids = this.repo.getAllLibraryPaths().map((p) => p.mockupId)
+    const ids = this.repo.mockups.getAllLibraryPaths().map((p) => p.mockupId)
     const sizes = await ensureSizes(this.repo, this.deps.stat, ids)
     return {
       path: pendingStash?.path ?? libraryRoot,

@@ -43,7 +43,7 @@ function fakeDisk(files: Record<string, number>) {
 const service = (deps: Partial<IntegrityDeps>) => new IntegrityService(t.repo, LIB, deps)
 
 const goneRow = (title = 'Glass iPhone 14') =>
-  t.repo.createMockup(
+  t.repo.mockups.createMockup(
     approvedMockup({
       title,
       libraryPath: `${mockups}/g1/original.psd`,
@@ -117,12 +117,11 @@ describe('add', () => {
     const { mockupIds } = await s.add([item!.id])
 
     expect(mockupIds).toHaveLength(1)
-    const created = t.repo.getMockup(mockupIds[0]!)!
+    const created = t.repo.mockups.getMockup(mockupIds[0]!)!
     expect(created).toMatchObject({
       title: 'poster_new',
       libraryPath: path,
       stage: 'to_sort',
-      reviewStatus: 'needs_review',
       sizeBytes: 48
     })
     expect(disk.copies).toEqual([])
@@ -135,7 +134,7 @@ describe('add', () => {
     const s = service(disk.deps)
     const { mockupIds } = await s.add(['fffffffffffffffff', `m${gone.id}`])
     expect(mockupIds).toEqual([])
-    expect(t.repo.getMockup(gone.id)).toBeDefined()
+    expect(t.repo.mockups.getMockup(gone.id)).toBeDefined()
   })
 
   it('does not add the same file twice', async () => {
@@ -152,7 +151,7 @@ describe('add', () => {
     const gone = goneRow()
     const { mockupIds } = await service(disk.deps).addAll()
     expect(mockupIds).toHaveLength(2)
-    expect(t.repo.getMockup(gone.id)).toBeDefined()
+    expect(t.repo.mockups.getMockup(gone.id)).toBeDefined()
   })
 
   it('skips ignored files', async () => {
@@ -174,7 +173,7 @@ describe('undo add', () => {
 
     await s.undoAdd(mockupIds)
 
-    expect(t.repo.getMockup(mockupIds[0]!)).toBeUndefined()
+    expect(t.repo.mockups.getMockup(mockupIds[0]!)).toBeUndefined()
     expect(disk.removed).not.toContain(path)
     // The file is a found file again.
     expect((await s.report()).found).toHaveLength(1)
@@ -182,9 +181,9 @@ describe('undo add', () => {
 
   it('leaves records that were not added by this action', async () => {
     const disk = fakeDisk({})
-    const other = t.repo.createMockup(approvedMockup({ libraryPath: `${mockups}/k/original.psd` }))
+    const other = t.repo.mockups.createMockup(approvedMockup({ libraryPath: `${mockups}/k/original.psd` }))
     await service(disk.deps).undoAdd([other.id])
-    expect(t.repo.getMockup(other.id)).toBeDefined()
+    expect(t.repo.mockups.getMockup(other.id)).toBeDefined()
   })
 })
 
@@ -192,13 +191,14 @@ describe('remove', () => {
   it('removes the record of a missing PSD, with its search entry and cover', async () => {
     const disk = fakeDisk({ [`${mockups}/g1/cover.webp`]: 1 })
     const gone = goneRow()
-    t.repo.upsertSearchIndex(gone.id)
+    t.repo.search.upsertSearchIndex(gone.id)
     const s = service(disk.deps)
 
-    const { removed } = await s.remove([`m${gone.id}`])
+    const { removed, mockupIds } = await s.remove([`m${gone.id}`])
 
     expect(removed).toBe(1)
-    expect(t.repo.getMockup(gone.id)).toBeUndefined()
+    expect(mockupIds).toEqual([gone.id])
+    expect(t.repo.mockups.getMockup(gone.id)).toBeUndefined()
     expect(
       t.sqlite.prepare('SELECT rowid FROM mockups_fts WHERE rowid = ?').all(gone.id)
     ).toHaveLength(0)
@@ -208,19 +208,20 @@ describe('remove', () => {
   it('cannot remove a found file or a record whose PSD is still there', async () => {
     const present = `${mockups}/p1/original.psd`
     const disk = fakeDisk({ [present]: 1, [`${mockups}/x1/a.psd`]: 1 })
-    const kept = t.repo.createMockup(approvedMockup({ libraryPath: present }))
+    const kept = t.repo.mockups.createMockup(approvedMockup({ libraryPath: present }))
     const s = service(disk.deps)
     const [found] = (await s.report()).found
-    const { removed } = await s.remove([found!.id, `m${kept.id}`])
+    const { removed, mockupIds } = await s.remove([found!.id, `m${kept.id}`])
     expect(removed).toBe(0)
-    expect(t.repo.getMockup(kept.id)).toBeDefined()
+    expect(mockupIds).toEqual([])
+    expect(t.repo.mockups.getMockup(kept.id)).toBeDefined()
     expect(disk.removed).toEqual([])
   })
 
   it('removeAll removes every missing record', async () => {
     const disk = fakeDisk({})
     goneRow('One')
-    t.repo.createMockup(approvedMockup({ title: 'Two', libraryPath: `${mockups}/g2/original.psd` }))
+    t.repo.mockups.createMockup(approvedMockup({ title: 'Two', libraryPath: `${mockups}/g2/original.psd` }))
     expect((await service(disk.deps).removeAll()).removed).toBe(2)
   })
 })
@@ -237,7 +238,7 @@ describe('relink', () => {
     const result = await service(disk.deps).relink(`m${gone.id}`)
 
     expect(result).toEqual({ outcome: 'relinked' })
-    expect(t.repo.getMockup(gone.id)).toMatchObject({ libraryPath: moved, sizeBytes: 77 })
+    expect(t.repo.mockups.getMockup(gone.id)).toMatchObject({ libraryPath: moved, sizeBytes: 77 })
     expect(disk.copies).toEqual([])
   })
 
@@ -252,7 +253,7 @@ describe('relink', () => {
     expect(result).toEqual({ outcome: 'relinked' })
     expect(disk.copies).toHaveLength(1)
     expect(disk.copies[0]!.from).toBe(outside)
-    const after = t.repo.getMockup(gone.id)!
+    const after = t.repo.mockups.getMockup(gone.id)!
     expect(after.libraryPath).toMatch(/^\/lib\/mockups\/[^/]+\/original\.psd$/)
     expect(after.libraryPath).not.toBe(gonePsd)
   })
@@ -262,7 +263,7 @@ describe('relink', () => {
     disk.deps.pickFile = async () => null
     const gone = goneRow()
     expect(await service(disk.deps).relink(`m${gone.id}`)).toEqual({ outcome: 'cancelled' })
-    expect(t.repo.getMockup(gone.id)!.libraryPath).toBe(gonePsd)
+    expect(t.repo.mockups.getMockup(gone.id)!.libraryPath).toBe(gonePsd)
   })
 
   it('refuses a file that is not a PSD', async () => {
@@ -276,7 +277,7 @@ describe('relink', () => {
     const used = `${mockups}/u/original.psd`
     const disk = fakeDisk({ [used]: 1 })
     disk.deps.pickFile = async () => used
-    t.repo.createMockup(approvedMockup({ libraryPath: used }))
+    t.repo.mockups.createMockup(approvedMockup({ libraryPath: used }))
     const gone = goneRow()
     expect(await service(disk.deps).relink(`m${gone.id}`)).toEqual({ outcome: 'already-in-stash' })
   })
@@ -290,7 +291,7 @@ describe('relink', () => {
     }
     const gone = goneRow()
     expect(await service(disk.deps).relink(`m${gone.id}`)).toEqual({ outcome: 'failed' })
-    expect(t.repo.getMockup(gone.id)!.libraryPath).toBe(gonePsd)
+    expect(t.repo.mockups.getMockup(gone.id)!.libraryPath).toBe(gonePsd)
   })
 
   it('only relinks a record that is really missing', async () => {
@@ -299,7 +300,7 @@ describe('relink', () => {
     disk.deps.pickFile = async () => {
       throw new Error('should not open the dialog')
     }
-    const kept = t.repo.createMockup(approvedMockup({ libraryPath: present }))
+    const kept = t.repo.mockups.createMockup(approvedMockup({ libraryPath: present }))
     expect(await service(disk.deps).relink(`m${kept.id}`)).toEqual({ outcome: 'failed' })
   })
 })
@@ -315,7 +316,7 @@ describe('ignore', () => {
 
     expect(ignoredIds).toHaveLength(2)
     expect(await s.report()).toEqual({ found: [], gone: [] })
-    expect(await s.scan()).toEqual({ orphanFiles: [], orphanRecords: [] })
+    expect(await s.scan()).toEqual({ orphanFiles: 0, orphanRecords: 0 })
 
     await s.unignore(ignoredIds)
     expect((await s.report()).found).toHaveLength(1)
@@ -334,6 +335,45 @@ describe('ignore', () => {
     expect(ignoredIds).toHaveLength(2)
     expect(ignoredIds).not.toContain(first!.id)
     expect(await s.report()).toEqual({ found: [], gone: [] })
+  })
+
+  it('lets the scan and the report agree on what is left once some ids are ignored', async () => {
+    const disk = fakeDisk({ [`${mockups}/x1/a.psd`]: 1, [`${mockups}/x2/b.psd`]: 1 })
+    const keep = goneRow('Kept')
+    const dropped = t.repo.mockups.createMockup(
+      approvedMockup({ title: 'Dropped', libraryPath: `${mockups}/g2/original.psd`, coverPath: '' })
+    )
+    const s = service(disk.deps)
+    const { found } = await s.report()
+    expect(await s.scan()).toEqual({ orphanFiles: 2, orphanRecords: 2 })
+
+    await s.ignore([found[0]!.id, `m${dropped.id}`])
+
+    const report = await s.report()
+    expect(await s.scan()).toEqual({
+      orphanFiles: report.found.length,
+      orphanRecords: report.gone.length
+    })
+    expect(report.found.map((f) => f.id)).toEqual([found[1]!.id])
+    expect(report.gone.map((g) => g.id)).toEqual([`m${keep.id}`])
+  })
+
+  it('does not look for an ignored record on disk when it only needs what is visible', async () => {
+    const disk = fakeDisk({})
+    const ignoredRow = goneRow()
+    const looked: string[] = []
+    const s = service({
+      ...disk.deps,
+      exists: async (p) => {
+        looked.push(p)
+        return false
+      }
+    })
+    await s.ignore([`m${ignoredRow.id}`])
+    looked.length = 0
+
+    expect(await s.scan()).toEqual({ orphanFiles: 0, orphanRecords: 0 })
+    expect(looked).toEqual([])
   })
 
   it('keeps the ignore list in the store it is given, so it survives a restart', async () => {
@@ -365,6 +405,6 @@ describe('add with an unreadable PSD', () => {
     const s = service(disk.deps)
     const [item] = (await s.report()).found
     const { mockupIds } = await s.add([item!.id])
-    expect(t.repo.getMockup(mockupIds[0]!)).toMatchObject({ coverPath: '', coverSource: 'none' })
+    expect(t.repo.mockups.getMockup(mockupIds[0]!)).toMatchObject({ coverPath: '', coverSource: 'none' })
   })
 })

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { InboxItem } from '@shared/inbox'
 import { coverUrl } from '@shared/cover-url'
 import { CoverImage } from '@renderer/components/CoverImage'
@@ -32,14 +32,58 @@ export function WaitingToSortStrip({ onSort }: WaitingToSortStripProps) {
 
   const waiting = counts?.toSort ?? 0
   useEffect(() => lower(waiting), [waiting, lower])
-  if (waiting === 0 || (hiddenAt !== null && waiting <= hiddenAt)) return null
+  const shown = waiting > 0 && !(hiddenAt !== null && waiting <= hiddenAt)
+
+  // What the strip last said stays in the tree while it folds away, so it leaves with its own words.
+  const [held, setHeld] = useState<{ waiting: number; items: InboxItem[] | null }>({
+    waiting: 0,
+    items: null
+  })
+  if (shown && (held.waiting !== waiting || held.items !== items)) setHeld({ waiting, items })
+  const view = shown ? { waiting, items } : held
 
   const copying = haul !== null && (haul.state === 'running' || haul.state === 'paused')
-  const title = copying
-    ? `Copying ${haul.landed} of ${haul.total} · ${waiting} waiting to be sorted`
-    : `${pluralise(waiting, 'mockup', 'mockups')} waiting to be sorted`
+
+  // The strip slides open and shut instead of pushing the page: a row that grows from nothing,
+  // with the page gap folded into it so a hidden strip takes no space at all.
+  return (
+    <div
+      data-open={shown}
+      aria-hidden={!shown}
+      inert={!shown}
+      style={{ gridTemplateRows: shown ? '1fr' : '0fr' }}
+      className={`grid transition-[grid-template-rows,margin,opacity] duration-(--duration-panel-open) ease-panel-out motion-reduce:transition-none ${
+        shown ? 'mb-0 opacity-100' : '-mb-4 opacity-0'
+      }`}
+    >
+      <div className="min-h-0 overflow-hidden">
+        {view.waiting > 0 && (
+          <Strip
+            waiting={view.waiting}
+            items={view.items}
+            copying={copying}
+            onLater={() => later(waiting)}
+            onSort={onSort}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface StripProps {
+  waiting: number
+  items: InboxItem[] | null
+  copying: boolean
+  onLater: () => void
+  onSort: (items: InboxItem[]) => void
+}
+
+function Strip({ waiting, items, copying, onLater, onSort }: StripProps) {
+  // The copy card owns the "N of M copied" count and the per-file detail; the strip only says what waits.
+  const title = `${pluralise(waiting, 'mockup', 'mockups')} waiting to be sorted`
   const hint = copying
-    ? 'They land in To sort as they arrive. You can start sorting what is here.'
+    ? 'Still copying. They land in To sort as they arrive, so you can start on what is here.'
     : 'They landed in To sort. Sort them into piles, then look them over to stash them.'
 
   // The newest arrivals lead; a slot whose mockup has not been listed yet shows as loading.
@@ -68,7 +112,7 @@ export function WaitingToSortStrip({ onSort }: WaitingToSortStripProps) {
         <p className="type-body-sm-regular truncate text-muted-foreground">{hint}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => later(waiting)}>
+        <Button variant="ghost" size="sm" onClick={onLater}>
           Later
         </Button>
         <Button size="sm" disabled={items === null} onClick={() => onSort(items ?? [])}>

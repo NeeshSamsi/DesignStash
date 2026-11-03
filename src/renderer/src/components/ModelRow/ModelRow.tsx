@@ -58,7 +58,9 @@ export function ModelRow({
   onRetry,
   ...rest
 }: ModelRowProps) {
-  const { state, ...props } = { ...MODEL_ROW_DEFAULTS, ...rest }
+  // `selected` is the flag's Figma default (off); unset means "the chosen row", so it is not used here.
+  const { state, selected: figmaDefault, ...props } = { ...MODEL_ROW_DEFAULTS, ...rest }
+  void figmaDefault
   const chosen = selected ?? state !== 'installed'
   const transfer = state === 'downloading' || state === 'paused'
   return (

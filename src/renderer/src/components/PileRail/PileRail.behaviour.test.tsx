@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { LookOverFlow } from '@renderer/screens/look-over'
+import { useUiStore } from '@renderer/stores/uiStore'
 
 // Behaviour spec for piles in Look it over — see design/specs/piles.md. Run through the screen that owns the flow.
 
@@ -26,7 +27,6 @@ const item = (
   touched: false,
   checked: false,
   cover,
-  sidecarFileName: null,
   ...over
 })
 
@@ -76,7 +76,6 @@ function setup(overrides: Record<string, Handler> = {}, queue: unknown = queueOf
     appName: 'DesignStash',
     invoke,
     subscribe: vi.fn(() => () => {}),
-    onAiDownloadProgress: vi.fn(() => () => {}),
     getPathForFile: vi.fn()
   } as unknown as typeof window.api
 }
@@ -110,6 +109,81 @@ beforeEach(() => {
   toasts.undoToast.mockClear()
 })
 
+const trackFill = () =>
+  parseFloat(
+    (document.querySelector('[data-ds="FlowModal"] ol > li:nth-child(3) span[style]') as HTMLElement)
+      .style.width
+  )
+
+describe('Look it over · header, zoom and progress', () => {
+  it('shows no empty badge while loading or when it could not open', async () => {
+    setup({ [IPC_CHANNELS.LOOK_OVER_OPEN]: () => ({ success: false, error: 'x' }) })
+    render(<LookOverFlow open onClose={vi.fn()} />)
+    await screen.findByText('We couldn’t open Look it over')
+    expect(badge()).toBe('2Look it over')
+  })
+
+  it('opens the cover in the Lightbox from Zoom and closes it again', async () => {
+    await start()
+    fireEvent.click(btn('Zoom'))
+    const zoomIn = await screen.findByRole('button', { name: 'Zoom in' })
+    fireEvent.keyDown(zoomIn, { key: 'Escape' })
+    await waitFor(() => expect(maybe('Zoom in')).toBeNull())
+  })
+
+  it('captions the Lightbox with the mockup’s title as edited', async () => {
+    await start()
+    fireEvent.change(titleField(), { target: { value: 'Edited title' } })
+    fireEvent.click(btn('Zoom'))
+    const caption = await screen.findAllByText('Edited title')
+    expect(caption.some((el) => el.closest('[role="dialog"]') !== null)).toBe(true)
+    expect(document.querySelector('img[alt="Edited title"]')).not.toBeNull()
+  })
+
+  it('keeps the rail labels in step with the title as it is edited', async () => {
+    await start()
+    fireEvent.change(titleField(), { target: { value: 'Clay phone' } })
+    expect(railLabels()[0]).toBe('Top · Clay phone')
+    expect(screen.getByRole('navigation', { name: /PILE/ }).textContent).toContain('Clay phone')
+    fireEvent.click(btn('Next'))
+    await waitFor(() => expect(badge()).toContain('Pile 1 of 2'))
+    fireEvent.change(titleField(), { target: { value: 'Clay phone side' } })
+    expect(railLabels()[1]).toBe('Variant · Clay phone side · 1')
+    expect(railLabels()[0]).toBe('Top · Clay phone')
+  })
+
+  it('moves the progress track as they go: Next, stash, skip', async () => {
+    await start()
+    // 6 mockups: the one you are on counts.
+    expect(trackFill()).toBeCloseTo(100 / 6)
+    fireEvent.click(btn('Next'))
+    await waitFor(() => expect(trackFill()).toBeCloseTo(200 / 6))
+    await toReview()
+    fireEvent.click(btn(/Stash pile \(3\)/))
+    // Pile 1 is stashed (3), pile 2's top is open (1).
+    await waitFor(() => expect(trackFill()).toBeCloseTo(400 / 6))
+  })
+
+  it('does not offer Skip on a single that is already stashed', async () => {
+    setup(
+      {},
+      queueOf({
+        units: [
+          { unitId: 30, kind: 'single', items: [item(30, 'single', null)] },
+          { unitId: 31, kind: 'single', items: [item(31, 'single', null)] }
+        ]
+      })
+    )
+    await start()
+    expect(maybe('Skip for now')).not.toBeNull()
+    fireEvent.click(btn('Stash & next'))
+    await waitFor(() => expect(titleField().value).toBe('Title 31'))
+    fireEvent.click(btn('Back'))
+    await waitFor(() => expect(titleField().value).toBe('Title 30'))
+    expect(maybe('Skip for now')).toBeNull()
+  })
+})
+
 describe('Piles · drafts until Stash pile', () => {
   it('starts a pile on its top mockup and pre-fills variants from it', async () => {
     await start()
@@ -122,13 +196,23 @@ describe('Piles · drafts until Stash pile', () => {
     ).toBe('About 10')
   })
 
+  it('hugs its content, with a normal description box and no resize handle', async () => {
+    await start()
+    const modal = document.querySelector('[data-ds="FlowModal"]')!
+    expect(modal.className).toContain('h-auto')
+    expect(modal.className).not.toContain('h-flow-modal')
+    const box = screen.getByRole('textbox', { name: 'Description' })
+    expect(box.className).toContain('resize-none')
+    expect(box.className).not.toContain('flex-1')
+  })
+
   it('lists the pile in PileRail: top mockup, variants, then Review & stash pile', async () => {
     await start()
     expect(screen.getByText('PILE 1 OF 2')).not.toBeNull()
     expect(railLabels()).toEqual([
       'Top · Title 10',
-      'Variant · Title 10',
-      'Variant · Title 10',
+      'Variant · Title 10 · 1',
+      'Variant · Title 10 · 2',
       'Review & stash pile'
     ])
   })
@@ -271,6 +355,21 @@ describe('Piles · drafts until Stash pile', () => {
     await waitFor(() => expect(document.body.textContent).toContain('6 of 6'))
   })
 
+  it('lands on My Stash › All with the summary toast once everything is tucked away', async () => {
+    useUiStore.getState().setView('to-stash')
+    const { onClose } = await start()
+    await toReview()
+    fireEvent.click(btn('Stash pile (3)'))
+    await waitFor(() => expect(document.body.textContent).toContain('Pile 2 of 2'))
+    await toReview()
+    fireEvent.click(btn('Stash pile (2)'))
+    await waitFor(() => expect(document.body.textContent).toContain('6 of 6'))
+    fireEvent.click(btn('Stash'))
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(useUiStore.getState().view).toBe('all')
+    expect(toasts.toast).toHaveBeenCalledWith('All tucked away · 6 mockups stashed', 'success')
+  })
+
   it('reviews the pile as MockupCards and commits it all with Stash pile (N), undoable', async () => {
     await start()
     await toReview()
@@ -287,6 +386,23 @@ describe('Piles · drafts until Stash pile', () => {
         snapshot: { mockups: [], drafts: [], resume: null }
       })
     )
+  })
+
+  it('keeps the pile stashed and says so when Undo fails', async () => {
+    setup({ [IPC_CHANNELS.PILE_UNSTASH]: () => ({ success: false, error: 'nope' }) })
+    await start()
+    await toReview()
+    fireEvent.click(btn('Stash pile (3)'))
+    await waitFor(() => expect(toasts.undoToast).toHaveBeenCalled())
+    expect(calls(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1)
+    toasts.undoToast.mock.calls[0]![1]()
+    await waitFor(() =>
+      expect(toasts.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'error', message: 'Couldn’t undo that' })
+      )
+    )
+    expect(calls(IPC_CHANNELS.LOOK_OVER_OPEN)).toHaveLength(1)
+    expect(document.body.textContent).toContain('Pile 2 of 2')
   })
 
   it('keeps all drafts and parks the pile in To stash on Finish later', async () => {
@@ -326,6 +442,15 @@ describe('Look it over · mockups on their own and the ends', () => {
       expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_SKIP, { mockupId: 30 })
     )
     await waitFor(() => expect(titleField().value).toBe('Title 31'))
+  })
+
+  it('says where Skip sends it, and keeps only Back and the primary filled', async () => {
+    setup({}, singles())
+    await start()
+    fireEvent.focus(btn('Skip for now'))
+    expect((await screen.findAllByText('It stays in To stash')).length).toBeGreaterThan(0)
+    expect(btn('Finish later').getAttribute('data-variant')).toBe('ghost')
+    expect(btn('Skip for now').getAttribute('data-variant')).toBe('ghost')
   })
 
   it('stashes a single with Stash & next, and says all tucked away at the end', async () => {

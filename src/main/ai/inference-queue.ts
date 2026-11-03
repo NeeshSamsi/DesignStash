@@ -1,9 +1,23 @@
-import { InferenceResultSchema, type InferenceProvider, type InferenceResult } from '@shared/inference'
+import {
+  InferenceResultSchema,
+  type AnalysisInput,
+  type InferenceProvider,
+  type InferenceResult
+} from '@shared/inference'
 import type { AiStatus } from '@shared/inbox'
 import type { AiStatusEvent } from '@shared/ipc/ai-status'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
-import { analysisInputFor } from './inference-service'
+
+/** What the provider is shown for a mockup: its cover, the file name it came in as, and the folders around it. */
+export function analysisInputFor(m: Mockup): AnalysisInput {
+  const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
+  return {
+    imagePath: m.coverPath,
+    fileName: ctx?.originalFilename ?? m.title,
+    folderTrail: ctx?.folderTrail ?? []
+  }
+}
 
 export interface InferenceQueueDeps {
   repo: Repository
@@ -37,7 +51,7 @@ export class InferenceQueue {
     const updates: AiStatusEvent['updates'] = []
 
     for (const id of new Set(ids)) {
-      const m = this.deps.repo.getMockup(id)
+      const m = this.deps.repo.mockups.getMockup(id)
       if (!m || !this.inInbox(m) || m.aiStatus === 'ready') continue
       if (!provider) {
         if (m.aiStatus !== 'off') updates.push(this.setStatus(id, 'off'))
@@ -57,7 +71,7 @@ export class InferenceQueue {
   /** After a restart: queue everything that was waiting or half read, in the order it landed. */
   async resume(): Promise<void> {
     const waiting = this.deps.repo
-      .getUnfinishedAiMockups()
+      .inbox.getUnfinishedAiMockups()
       .sort((a, b) => a.id - b.id)
       .map((m) => m.id)
     await this.enqueue(waiting)
@@ -100,7 +114,7 @@ export class InferenceQueue {
   }
 
   private async process(id: number): Promise<void> {
-    const m = this.deps.repo.getMockup(id)
+    const m = this.deps.repo.mockups.getMockup(id)
     if (!m || !this.inInbox(m)) return
 
     const provider = await this.deps.getProvider()
@@ -113,7 +127,7 @@ export class InferenceQueue {
     const result = await this.suggest(provider, m)
 
     // Tossed or trashed while it was being read: nothing to write to.
-    const now = this.deps.repo.getMockup(id)
+    const now = this.deps.repo.mockups.getMockup(id)
     if (!now || now.deletedAt !== null) return
     if (this.cancelled.has(id)) {
       this.emit([this.setStatus(id, 'pending')])
@@ -121,7 +135,7 @@ export class InferenceQueue {
     }
 
     if (result) {
-      this.deps.repo.updateMockup(id, { aiStatus: 'ready', aiResult: result })
+      this.deps.repo.mockups.updateMockup(id, { aiStatus: 'ready', aiResult: result })
       this.emit([{ mockupId: id, status: 'ready' }])
     } else {
       this.emit([this.setStatus(id, 'failed')])
@@ -145,13 +159,13 @@ export class InferenceQueue {
   }
 
   private setStatus(id: number, status: AiStatus): AiStatusEvent['updates'][number] {
-    this.deps.repo.updateMockup(id, { aiStatus: status })
+    this.deps.repo.mockups.updateMockup(id, { aiStatus: status })
     return { mockupId: id, status }
   }
 
   private emit(updates: AiStatusEvent['updates']): void {
     if (updates.length === 0) return
-    const { toSort, sniffing } = this.deps.repo.getInboxCounts()
+    const { toSort, sniffing } = this.deps.repo.inbox.getCounts()
     this.deps.onStatus({ updates, totals: { total: toSort, remaining: sniffing } })
   }
 }

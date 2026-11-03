@@ -5,7 +5,7 @@ import type { AnalysisInput, InferenceProvider, InferenceResult } from '@shared/
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { approvedMockup, createTestDb, sample } from '../db/repositories/__tests__/setup'
-import { InferenceQueue } from './inference-queue'
+import { InferenceQueue, analysisInputFor } from './inference-queue'
 
 const result = (title: string): InferenceResult => ({
   title,
@@ -50,7 +50,7 @@ beforeEach(() => {
 afterEach(() => sqlite.close())
 
 const imported = (name: string, extra = {}) =>
-  repo.createMockup({
+  repo.mockups.createMockup({
     ...sample,
     title: name,
     libraryPath: `/lib/${name}.psd`,
@@ -66,7 +66,7 @@ const queueWith = (provider: InferenceProvider | null) =>
     onStatus: (e) => events.push(e)
   })
 
-const status = (id: number) => repo.getMockup(id)?.aiStatus
+const status = (id: number) => repo.mockups.getMockup(id)?.aiStatus
 
 describe('InferenceQueue', () => {
   it('works through the files in the order they landed, one at a time', async () => {
@@ -105,7 +105,7 @@ describe('InferenceQueue', () => {
     await queue.enqueue([a.id])
     await queue.idle()
 
-    const stored = repo.getMockup(a.id)!
+    const stored = repo.mockups.getMockup(a.id)!
     expect(stored.aiResult).toEqual(result('Clay phone'))
     expect(stored.title).toBe('a')
   })
@@ -148,7 +148,7 @@ describe('InferenceQueue', () => {
 
     expect(stub.calls).toHaveLength(2)
     expect(status(a.id)).toBe('ready')
-    expect(repo.getMockup(a.id)?.aiResult).toEqual(result('second time'))
+    expect(repo.mockups.getMockup(a.id)?.aiResult).toEqual(result('second time'))
   })
 
   it('marks a mockup failed after two failures and moves on to the next', async () => {
@@ -164,7 +164,7 @@ describe('InferenceQueue', () => {
 
     expect(stub.calls.map((c) => c.fileName)).toEqual(['a.psd', 'a.psd', 'b.psd'])
     expect(status(a.id)).toBe('failed')
-    expect(repo.getMockup(a.id)?.aiResult).toBeNull()
+    expect(repo.mockups.getMockup(a.id)?.aiResult).toBeNull()
     expect(status(b.id)).toBe('ready')
   })
 
@@ -194,21 +194,21 @@ describe('InferenceQueue', () => {
   it('skips a mockup that already has its suggestion', async () => {
     const stub = stubProvider(() => result('x'))
     const a = imported('a')
-    repo.updateMockup(a.id, { aiStatus: 'ready', aiResult: result('earlier') })
+    repo.mockups.updateMockup(a.id, { aiStatus: 'ready', aiResult: result('earlier') })
     const queue = queueWith(stub.provider)
 
     await queue.enqueue([a.id])
     await queue.idle()
 
     expect(stub.calls).toHaveLength(0)
-    expect(repo.getMockup(a.id)?.aiResult).toEqual(result('earlier'))
+    expect(repo.mockups.getMockup(a.id)?.aiResult).toEqual(result('earlier'))
   })
 
   it('ignores mockups that are stashed, in Trash or gone', async () => {
     const stub = stubProvider(() => result('x'))
-    const stashed = repo.createMockup(approvedMockup({ title: 's', libraryPath: '/lib/s.psd' }))
+    const stashed = repo.mockups.createMockup(approvedMockup({ title: 's', libraryPath: '/lib/s.psd' }))
     const trashed = imported('t')
-    repo.moveToTrash(trashed.id)
+    repo.trash.moveToTrash(trashed.id)
     const queue = queueWith(stub.provider)
 
     await queue.enqueue([stashed.id, trashed.id, 9999])
@@ -247,7 +247,7 @@ describe('InferenceQueue', () => {
     release()
     await queue.idle()
 
-    expect(repo.getMockup(a.id)?.aiResult).toBeNull()
+    expect(repo.mockups.getMockup(a.id)?.aiResult).toBeNull()
     expect(status(a.id)).toBe('pending')
   })
 
@@ -263,21 +263,21 @@ describe('InferenceQueue', () => {
 
     await queue.enqueue([a.id])
     await vi.waitFor(() => expect(status(a.id)).toBe('sniffing'))
-    repo.deleteMockupsHard([a.id])
+    repo.trash.deleteMockupsHard([a.id])
     release()
     await queue.idle()
 
-    expect(repo.getMockup(a.id)).toBeUndefined()
+    expect(repo.mockups.getMockup(a.id)).toBeUndefined()
   })
 
   it('picks up where it left off after a restart, in the original order', async () => {
     // First run: the app closes with one file mid-read and two waiting.
     const [a, b, c] = [imported('a'), imported('b'), imported('c')]
-    repo.updateMockup(a.id, { aiStatus: 'sniffing' })
-    repo.updateMockup(b.id, { aiStatus: 'pending' })
-    repo.updateMockup(c.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(a.id, { aiStatus: 'sniffing' })
+    repo.mockups.updateMockup(b.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(c.id, { aiStatus: 'pending' })
     const done = imported('done')
-    repo.updateMockup(done.id, { aiStatus: 'ready', aiResult: result('kept') })
+    repo.mockups.updateMockup(done.id, { aiStatus: 'ready', aiResult: result('kept') })
 
     const stub = stubProvider((input) => result(input.fileName))
     const restarted = queueWith(stub.provider)
@@ -286,12 +286,12 @@ describe('InferenceQueue', () => {
 
     expect(stub.calls.map((c) => c.fileName)).toEqual(['a.psd', 'b.psd', 'c.psd'])
     for (const m of [a, b, c]) expect(status(m.id)).toBe('ready')
-    expect(repo.getMockup(done.id)?.aiResult).toEqual(result('kept'))
+    expect(repo.mockups.getMockup(done.id)?.aiResult).toEqual(result('kept'))
   })
 
   it('on restart with no provider, marks what was waiting as off', async () => {
     const a = imported('a')
-    repo.updateMockup(a.id, { aiStatus: 'pending' })
+    repo.mockups.updateMockup(a.id, { aiStatus: 'pending' })
 
     const restarted = queueWith(null)
     await restarted.resume()
@@ -326,5 +326,21 @@ describe('InferenceQueue', () => {
 
     expect(status(a.id)).toBe('failed')
     expect(status(b.id)).toBe('ready')
+  })
+})
+
+describe('analysisInputFor', () => {
+  it('shows the cover, the name the file came in as, and its folders', () => {
+    const m = imported('front')
+    expect(analysisInputFor(m)).toEqual({
+      imagePath: '/lib/front.webp',
+      fileName: 'front.psd',
+      folderTrail: ['Phones']
+    })
+  })
+
+  it('falls back to the title and no folders when nothing is known about where it came from', () => {
+    const m = imported('side', { importContext: null })
+    expect(analysisInputFor(m)).toEqual({ imagePath: '/lib/side.webp', fileName: 'side', folderTrail: [] })
   })
 })

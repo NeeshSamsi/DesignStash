@@ -13,7 +13,7 @@ export function registerLibraryHandlers({ telemetry, repo }: HandlerContext): vo
       })
     }
     return {
-      items: repo.getLibrary({
+      items: repo.library.getLibrary({
         ...(args.tagIds !== undefined && { tagIds: args.tagIds }),
         ...(args.categoryIds !== undefined && { categoryIds: args.categoryIds }),
         ...(args.query !== undefined && { query: args.query }),
@@ -23,5 +23,5 @@ export function registerLibraryHandlers({ telemetry, repo }: HandlerContext): vo
     }
   })
 
-  registerIpcHandler(IPC_CHANNELS.LIBRARY_STATS, () => repo.getLibraryStats())
+  registerIpcHandler(IPC_CHANNELS.LIBRARY_STATS, () => repo.library.getLibraryStats())
 }

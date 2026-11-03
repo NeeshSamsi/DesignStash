@@ -42,13 +42,4 @@ describe('preload subscribe', () => {
     expect(() => exposed.subscribe(bad, vi.fn())).toThrow(/Not a push channel/)
     expect(on).not.toHaveBeenCalled()
   })
-
-  it('keeps the old progress listeners as wrappers over subscribe', () => {
-    const cb = vi.fn()
-    exposed.onAiDownloadProgress(cb)
-    expect(on).toHaveBeenCalledWith(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, expect.any(Function))
-    const handler = on.mock.calls[0]![1] as (e: unknown, payload: unknown) => void
-    handler({}, { modelId: 'm' })
-    expect(cb).toHaveBeenCalledWith({ modelId: 'm' })
-  })
 })

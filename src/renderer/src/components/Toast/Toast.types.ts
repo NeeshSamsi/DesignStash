@@ -9,7 +9,7 @@ export const TOAST_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=213-905',
   section: '2 · Primitives (shadcn)',
   description:
-    'Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.',
+    'Transient confirmation with optional action (Undo / Open / Retry). Lives in ActivityDock.\nSync 2026-10: done actions (Moved to Trash, Stashed) use the success variant with the check icon. Undo is a hairline outline button (border/subtle, no fill).',
   code: 'ui/sonner.tsx + stores/toastStore.ts',
   axes: {
     variant: ['neutral', 'success', 'info', 'error']

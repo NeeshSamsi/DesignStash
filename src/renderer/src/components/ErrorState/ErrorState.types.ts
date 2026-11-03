@@ -21,12 +21,13 @@ export const ERROR_STATE_CONTRACT = {
   interactionStates: [],
   disabled: false,
   booleans: {
-    showDetails: true
+    showDetails: true,
+    showSecondary: true
   },
   texts: {
     title: 'Couldn’t load your library',
     message: 'The database is busy. Try again in a moment.',
-    code: 'LIBRARY_LIST · SQLITE_BUSY'
+    code: 'A report is ready to copy if you need to ask for help.'
   },
   icons: {},
   slots: {}
@@ -39,11 +40,13 @@ export interface ErrorStateContractProps {
   variant?: ErrorStateVariant
   /** Figma boolean. Default `true`. */
   showDetails?: boolean
+  /** Figma boolean. Default `true`. */
+  showSecondary?: boolean
   /** Figma text. Default "Couldn’t load your library". */
   title?: string
   /** Figma text. Default "The database is busy. Try again in a moment.". */
   message?: string
-  /** Figma text. Default "LIBRARY_LIST · SQLITE_BUSY". */
+  /** Figma text. Default "A report is ready to copy if you need to ask for help.". */
   code?: string
 }
 
@@ -51,7 +54,8 @@ export interface ErrorStateContractProps {
 export const ERROR_STATE_DEFAULTS = {
   variant: 'inline',
   showDetails: true,
+  showSecondary: true,
   title: 'Couldn’t load your library',
   message: 'The database is busy. Try again in a moment.',
-  code: 'LIBRARY_LIST · SQLITE_BUSY'
+  code: 'A report is ready to copy if you need to ask for help.'
 } satisfies ErrorStateContractProps

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { IPC_CHANNELS } from '../ipc-channels'
-import { StashChangeModeSchema, StashChangeResultSchema, StashInfoSchema, StashMoveProgressSchema } from '../stash'
+import { StashChangeModeSchema, StashChangeResultSchema, StashInfoSchema } from '../stash'
 
 /** Settings. */
 export const settingsContract = {
@@ -23,10 +23,5 @@ export const settingsContract = {
   [IPC_CHANNELS.STASH_CHANGE]: {
     request: z.object({ path: z.string().min(1), mode: StashChangeModeSchema }),
     response: StashChangeResultSchema
-  },
-  // PUSH EVENT (main -> renderer), listed in PUSH_CHANNELS. No invoke handler is registered.
-  [IPC_CHANNELS.STASH_MOVE_PROGRESS]: {
-    request: StashMoveProgressSchema,
-    response: z.void()
   }
 } as const

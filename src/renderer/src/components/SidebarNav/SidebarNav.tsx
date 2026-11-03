@@ -1,3 +1,4 @@
+import { ICON_STROKE } from '@renderer/design-system/icon'
 import type { ReactNode } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Clock01Icon, Delete02Icon, Layers01Icon, Settings01Icon } from '@hugeicons/core-free-icons'
@@ -51,6 +52,8 @@ export function sidebarNavVariant(toSort: number, toStash: number): SidebarNavVa
 }
 
 const countText = (n: number | undefined) => (n === undefined ? undefined : String(n))
+/** A zero says nothing: its badge stays out of the row. */
+const hasCount = (n: number | undefined): n is number => n !== undefined && n > 0
 
 /**
  * SidebarNav — Primary navigation: the DesignStash brand row, My Stash › Starred / All, To sort and To stash (each only when non-empty), Trash, Settings.
@@ -77,8 +80,8 @@ export function SidebarNav({
     <SidebarNavItem
       label={label}
       active={selected === key}
-      showCount={count !== undefined}
-      {...(count !== undefined ? { count: String(count) } : {})}
+      showCount={hasCount(count)}
+      {...(hasCount(count) ? { count: String(count) } : {})}
       onClick={() => onNavigate?.(key)}
       {...extra}
     />
@@ -96,7 +99,7 @@ export function SidebarNav({
       {props.add}
       <div data-slot="brand" className={sidebarNavBrandClass}>
         <span aria-hidden className={sidebarNavLogoClass}>
-          <HugeiconsIcon icon={Layers01Icon} strokeWidth={1.5} className="size-4" />
+          <HugeiconsIcon icon={Layers01Icon} strokeWidth={ICON_STROKE} className="size-4" />
         </span>
         <span className="type-title-lg-semibold whitespace-nowrap text-foreground">
           DesignStash
@@ -106,7 +109,7 @@ export function SidebarNav({
         {props.library ?? (
           <SidebarNavItem
             label="My Stash"
-            showCount={counts.library !== undefined}
+            showCount={hasCount(counts.library)}
             count={countText(counts.library) ?? ''}
             onClick={() => onNavigate?.('all')}
           />

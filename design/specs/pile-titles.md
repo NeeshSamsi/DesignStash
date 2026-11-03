@@ -15,6 +15,7 @@ Every pile on the Sort board is titled by what its mockups share. The count is a
 | # | Rule | Example | Folder icon | Reason badge |
 |---|------|---------|-------------|--------------|
 | 0 | **Top mockup already stashed.** Use the stashed top mockup's real title. | `Clay iPhone 15 Pro` | no | `top mockup stashed` |
+| 0a | **Same zip.** Every member came out of the same dropped zip, and its cleaned name says something (`y1PjyY3rTTWYuCfHXkQo_Tape-Mockup.zip` reads `Tape Mockup`; `011.zip` says nothing). | `Apple Watch Ultra Mockup` | yes | none |
 | 1 | **Shared folder.** Every member has the same last `folderTrail` segment, and it isn't generic. | `iPhone 15 Clay` | yes | none (the title says it) |
 | 2 | **Shared filename start.** The longest common prefix of the filenames, cut back to the last `_`, `-` or space, with at least 3 letters or digits and not generic. Shown as written, plus an ellipsis: `mug_…`. | `mug_…` | no | `similar names` |
 | 3 | **The top mockup's filename**, extension included. | `poster_a3.psd` | no | none |
@@ -42,6 +43,8 @@ Every pile on the Sort board is titled by what its mockups share. The count is a
   - The count badge takes the count label.
 
 ## Notes for the grouping service (`src/main/import/grouping-service.ts`)
+
+- **Same zip first:** PSDs that came out of one dropped zip are proposed as one pile (reason `archive`) before the folder and stem passes, whatever folders and names they have inside it. The zip is recorded as `importContext.archiveName` (as dropped) and `archiveTitle` (cleaned, only when it says something).
 
 - **Generic folders:** the folder pass groups by the whole `folderTrail`. ~/Downloads or ~/Desktop shouldn't form a pile on their own (S9.E1). Skip generic last segments there too.
 - **Generic stems:** `extractStem('IMG_2041.psd')` returns `img`, so camera dumps become one stem group (S9.E2). Skip generic stems in the stem pass.

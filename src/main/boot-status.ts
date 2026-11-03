@@ -5,10 +5,14 @@ import type { SettingsStore } from './settings'
 /** What launch found. `library-failed` is the worst: nothing past the launch screen can run. */
 export type BootState = 'ok' | 'library-failed' | 'folder-unavailable' | 'settings-corrupt'
 
-export interface BootStatus {
-  state: BootState
-  /** `settings-corrupt`: whether the unreadable file was kept as a backup. */
-  backupKept: boolean
+export type BootStatus =
+  | { state: 'ok' | 'library-failed' | 'folder-unavailable' }
+  /** The settings file was unreadable and reset; `backupKept` says whether a copy was saved. */
+  | { state: 'settings-corrupt'; backupKept: boolean }
+
+/** Whether the database opened. Both `ok` and `settings-corrupt` mean it did. */
+export function isLibraryOpen(status: BootStatus): boolean {
+  return status.state === 'ok' || status.state === 'settings-corrupt'
 }
 
 /** A folder the user is about to use as their stash, or the one they already use. */
@@ -53,20 +57,20 @@ export function runBoot(
   const folder = checkFolder(settings.getLibraryRoot())
 
   const unusable = onboarded ? folder.state !== 'ok' : folder.state === 'not-writable'
-  if (unusable) return { state: 'folder-unavailable', backupKept: false }
+  if (unusable) return { state: 'folder-unavailable' }
 
   try {
     openLibrary()
   } catch (err) {
     onError(err)
-    return { state: 'library-failed', backupKept: false }
+    return { state: 'library-failed' }
   }
 
   if (issue) return { state: 'settings-corrupt', backupKept: issue.backedUp }
-  return { state: 'ok', backupKept: false }
+  return { state: 'ok' }
 }
 
-let current: BootStatus = { state: 'ok', backupKept: false }
+let current: BootStatus = { state: 'ok' }
 
 /** Set once by the launch code; read by the `boot:status` handler. */
 export function setBootStatus(status: BootStatus): void {

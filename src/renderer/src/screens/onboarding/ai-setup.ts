@@ -1,18 +1,12 @@
 import type { AiDownloadProgress, AiModelInfo } from '@shared/ipc/ai'
 import type { ModelRowState } from '@renderer/components/ModelRow/ModelRow.types'
+import { modelPhase, type HardwareInfo } from './model-phase'
 import {
   downloadFailureCopy,
   downloadRate,
   downloadRemaining,
   formatBytes
 } from '../settings/settings-copy'
-
-export interface HardwareInfo {
-  chip: string
-  totalMemoryGB: number
-  isAppleSilicon: boolean
-  recommendedTier: AiModelInfo['tier']
-}
 
 /** The model to pick first: the one marked best fit, else the recommended tier, else the first. */
 export function defaultSelection(
@@ -44,49 +38,29 @@ export interface RowView {
   failureReason: string
 }
 
-const percentOf = (received: number, total: number) =>
-  total > 0 ? Math.min(100, Math.round((received / total) * 100)) : 0
-
 /** What one model's row shows, from the list and the latest download event for it. */
 export function rowView(model: AiModelInfo, event: AiDownloadProgress | null): RowView {
-  const live = event && event.modelId === model.id ? event : null
-  const sizeLine = (received: number, total: number, extra: string) =>
-    [`${formatBytes(received)} of ${formatBytes(total)}`, extra].filter(Boolean).join(' · ')
-
-  if (live?.phase === 'downloading') {
-    const extra = [downloadRate(live.bytesPerSecond), downloadRemaining(live.secondsLeft)]
+  const status = modelPhase(model, event)
+  const sizeLine = (extra: string) =>
+    [`${formatBytes(status.receivedBytes)} of ${formatBytes(status.totalBytes)}`, extra]
       .filter(Boolean)
       .join(' · ')
-    return {
-      state: 'downloading',
-      percent: percentOf(live.receivedBytes, live.totalBytes),
-      progressText: sizeLine(live.receivedBytes, live.totalBytes, extra),
-      failureReason: ''
-    }
+  const state: ModelRowState = status.phase
+  const speed = [downloadRate(status.bytesPerSecond), downloadRemaining(status.secondsLeft)]
+    .filter(Boolean)
+    .join(' · ')
+  const progressText =
+    status.phase === 'downloading'
+      ? sizeLine(speed)
+      : status.phase === 'paused'
+        ? sizeLine('paused')
+        : ''
+  return {
+    state,
+    percent: status.percent,
+    progressText,
+    failureReason: status.phase === 'failed' ? downloadFailureCopy(status.reason) : ''
   }
-  if (live?.phase === 'verifying') {
-    return { state: 'verifying', percent: 100, progressText: '', failureReason: '' }
-  }
-  if (live?.phase === 'error') {
-    return {
-      state: 'failed',
-      percent: percentOf(live.receivedBytes, live.totalBytes),
-      progressText: '',
-      failureReason: downloadFailureCopy(live.reason)
-    }
-  }
-  if (model.installed || live?.phase === 'done') {
-    return { state: 'installed', percent: 100, progressText: '', failureReason: '' }
-  }
-  if (model.downloadedBytes > 0) {
-    return {
-      state: 'paused',
-      percent: percentOf(model.downloadedBytes, model.sizeBytes),
-      progressText: sizeLine(model.downloadedBytes, model.sizeBytes, 'paused'),
-      failureReason: ''
-    }
-  }
-  return { state: 'not-installed', percent: 0, progressText: '', failureReason: '' }
 }
 
 /** Which of the A3 screens this is. */

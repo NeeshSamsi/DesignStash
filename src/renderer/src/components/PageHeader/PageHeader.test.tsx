@@ -40,4 +40,29 @@ describe('PageHeader behaviour', () => {
     expect(screen.queryByText('My Stash')).toBeNull()
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Starred')
   })
+
+  it('wraps the actions below the title before cutting the title', () => {
+    render(
+      <PageHeader current="A pile" breadcrumb parent="My Stash" description="x">
+        <button>Edit</button>
+      </PageHeader>
+    )
+    const row = document.querySelector('[data-ds="PageHeader"] > div')!
+    expect(row.className).toContain('flex-wrap')
+  })
+
+  it('cuts the parent crumb before the current one, and reads as a link on hover', () => {
+    render(
+      <PageHeader
+        current="A pile"
+        breadcrumb
+        parent="My Stash"
+        description="x"
+        onParent={() => {}}
+      />
+    )
+    const parent = screen.getByRole('button', { name: 'My Stash' })
+    expect(parent.className).toContain('shrink-3')
+    expect(parent.className).toContain('hover:underline')
+  })
 })

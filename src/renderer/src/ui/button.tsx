@@ -7,7 +7,7 @@ import { cn } from "@renderer/lib/utils"
 // Figma Button 211:2091. variant="default" ↔ primary, size="default" ↔ base.
 // Heights come from padding + the 20px (16px at xs) line, so outline's 1px border adds 2px as in Figma.
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 aria-busy:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg whitespace-nowrap transition-colors outline-none select-none focus-visible:focus-ring disabled:pointer-events-none disabled:opacity-50 aria-busy:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -15,7 +15,7 @@ const buttonVariants = cva(
         secondary:
           "bg-surface-3 text-foreground hover:bg-surface-3-hover aria-expanded:bg-surface-3-hover",
         outline:
-          "border border-base text-foreground hover:bg-surface-2-hover focus-visible:border-ring focus-visible:ring-1 aria-expanded:bg-surface-2-hover",
+          "border border-base text-foreground hover:bg-surface-2-hover aria-expanded:bg-surface-2-hover",
         ghost: "text-foreground hover:bg-surface-2-hover aria-expanded:bg-surface-2-hover",
         destructive: "bg-error text-on-error hover:bg-error-hover aria-expanded:bg-error-hover",
         link: "text-brand hover:text-brand-hover",
@@ -28,7 +28,6 @@ const buttonVariants = cva(
         icon: "p-2 [&_svg:not([class*='size-'])]:size-5",
         "icon-xs": "p-1 [&_svg:not([class*='size-'])]:size-4",
         "icon-sm": "p-2 [&_svg:not([class*='size-'])]:size-4",
-        "icon-lg": "p-2.5 [&_svg:not([class*='size-'])]:size-5",
       },
     },
     compoundVariants: [{ variant: "link", className: "px-0" }],

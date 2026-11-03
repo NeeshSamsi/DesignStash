@@ -82,7 +82,7 @@ export function DropdownMenuDivider() {
   )
 }
 
-/** Quiet hint row, e.g. “or drop PSDs anywhere”. */
+/** Quiet hint row, e.g. “or drop PSDs and zips anywhere”. */
 export function DropdownMenuHint({ children }: { children: ReactNode }) {
   return useContext(DropdownMenuContext) === 'live' ? (
     <DropdownMenuLabel>{children}</DropdownMenuLabel>

@@ -8,7 +8,8 @@ export const LIBRARY_TOOLBAR_CONTRACT = {
   figmaId: '217:2228',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-2228',
   section: '6 · Library',
-  description: 'Filter (+count) → TagFilterPopover, active chips + Clear, stats, sort Select.',
+  description:
+    'Filter (+count) → TagFilterPopover, active chips + Clear, stats, sort Select.\nSync 2026-10: no item count. The stats text only appears while selecting (&quot;N of M selected&quot;).',
   code: 'screens/library/LibraryPage.tsx',
   axes: {
     filters: ['none', 'active']
@@ -16,12 +17,19 @@ export const LIBRARY_TOOLBAR_CONTRACT = {
   axisDefaults: {
     filters: 'none'
   },
-  flags: {},
+  flags: {
+    disabled: {
+      on: 'true',
+      off: 'false'
+    }
+  },
   interactionStates: [],
   disabled: false,
-  booleans: {},
+  booleans: {
+    showStats: true
+  },
   texts: {
-    stats: '128 items · 12 favourites'
+    stats: '3 of 12 selected'
   },
   icons: {},
   slots: {}
@@ -32,12 +40,18 @@ export type LibraryToolbarFilters = 'none' | 'active'
 export interface LibraryToolbarContractProps {
   /** Figma `filters` (2 options). Default `none`. */
   filters?: LibraryToolbarFilters
-  /** Figma text. Default "128 items · 12 favourites". */
+  /** Figma `state=true` (false = `state=false`). */
+  disabled?: boolean
+  /** Figma boolean. Default `true`. */
+  showStats?: boolean
+  /** Figma text. Default "3 of 12 selected". */
   stats?: string
 }
 
 /** Figma defaults. Slots have none. */
 export const LIBRARY_TOOLBAR_DEFAULTS = {
   filters: 'none',
-  stats: '128 items · 12 favourites'
+  disabled: false,
+  showStats: true,
+  stats: '3 of 12 selected'
 } satisfies LibraryToolbarContractProps
