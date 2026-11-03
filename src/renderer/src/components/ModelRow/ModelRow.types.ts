@@ -9,7 +9,7 @@ export const MODEL_ROW_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4073',
   section: '9 · Onboarding & AI models',
   description:
-    'One on-device model in the onboarding picker (a radio list): download, pause/resume, verify, installed, failed. Settings › AI model uses ModelCard.',
+    'One on-device model in the onboarding picker (a radio list): download, pause/resume, verify, installed, failed. Settings › AI model uses ModelCard.\nSync 2026-10-22: installed reads Downloaded, or Built in for Apple’s model. Recommended shows only on the best-fit row.',
   code: 'screens/onboarding/AiStep.tsx',
   axes: {
     state: ['not-installed', 'downloading', 'paused', 'verifying', 'installed', 'failed']

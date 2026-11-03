@@ -9,7 +9,7 @@ export const GLOBAL_SEARCH_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1649',
   section: '3 · Layout & navigation',
   description:
-    'Title-bar search; ⌘K focuses, 250 ms debounce; zero results → MockupGrid no-results.',
+    'Title-bar search; ⌘F focuses (⌘K is an alias), 250 ms debounce; zero results → MockupGrid no-results.',
   code: 'AppShell.tsx (title bar)',
   axes: {
     state: ['idle', 'focused', 'with-query']

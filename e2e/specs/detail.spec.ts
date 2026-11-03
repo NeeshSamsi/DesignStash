@@ -3,8 +3,8 @@ import { join } from 'node:path'
 import type { Page } from '@playwright/test'
 import sharp from 'sharp'
 import { test, expect } from '../fixtures/app'
-// Synthetic mockups (seedStash): this spec is not about importing, and they are fast.
-import { seedStash, showMyStash } from '../fixtures/seed'
+// Real mockups from the test set when it is there, else generated ones (seedStash).
+import { CARD_TITLE, seedStash, showMyStash } from '../fixtures/seed'
 
 /** The details sidebar: a click opens it, Edit turns it into fields, and leaving with changes asks first. */
 
@@ -13,11 +13,7 @@ test.describe('Details sidebar', () => {
 
   // The title, not the card's middle: the hover buttons over the cover would take the click.
   const clickCard = (window: Page, index = 0) =>
-    window
-      .locator('[data-mockup-id]')
-      .nth(index)
-      .getByText(/^Stub /)
-      .click()
+    window.locator('[data-mockup-id]').nth(index).getByText(CARD_TITLE).click()
   const panel = (window: Page) => window.locator('[data-slot="details-panel"]')
 
   test('a click opens it read-only; Edit, change the title, Save, and it reads again', async ({
@@ -102,7 +98,7 @@ test.describe('Details sidebar', () => {
     app
   }) => {
     const { window } = app
-    await seedStash(app, ['laptop', 'phone', 'poster'])
+    await seedStash(app, ['laptop', 'imac', 'poster'])
     await showMyStash(app)
     const cards = window.locator('[data-mockup-id]')
     await clickCard(window, 0)
@@ -115,10 +111,7 @@ test.describe('Details sidebar', () => {
     await expect(window.getByText('Pile made')).toBeVisible()
     await expect(cards).toHaveCount(1)
 
-    await cards
-      .first()
-      .getByText(/^Stub /)
-      .dblclick()
+    await cards.first().getByText(CARD_TITLE).dblclick()
     await expect(window.getByText('Pile · 3 mockups · Esc to go back')).toBeVisible()
 
     // Nothing scrolls sideways on the pile page, with the sidebar open or shut.
@@ -195,7 +188,7 @@ test.describe('Details sidebar', () => {
     app
   }) => {
     const { window } = app
-    await seedStash(app, ['laptop', 'phone', 'poster'])
+    await seedStash(app, ['laptop', 'imac', 'poster'])
     await showMyStash(app)
     const resize = async (width: number, height: number) => {
       await app.app.evaluate(
@@ -280,7 +273,7 @@ test.describe('Details sidebar', () => {
     app
   }) => {
     const { window } = app
-    await seedStash(app, ['laptop', 'phone', 'poster'])
+    await seedStash(app, ['laptop', 'imac', 'poster'])
     await showMyStash(app)
     // A window made before the minimum changed can be narrower than it: lift the minimum to test that.
     await app.app.evaluate(({ BrowserWindow }) => {
@@ -311,7 +304,7 @@ test.describe('Details sidebar', () => {
     app
   }) => {
     const { window } = app
-    await seedStash(app, ['laptop', 'phone'])
+    await seedStash(app, ['laptop', 'imac'])
     await showMyStash(app)
     const settled = async () => {
       await expect(window.locator('html')).not.toHaveAttribute('data-panel-motion', /.+/)
@@ -344,7 +337,7 @@ test.describe('Details sidebar', () => {
     await settled()
     // Clicks keep working while it morphs: the next card is picked straight away, and so is empty space.
     await clickCard(window, 1)
-    await expect(panel(window).getByRole('heading', { name: /^Stub / })).toBeVisible()
+    await expect(panel(window).getByRole('heading', { name: CARD_TITLE })).toBeVisible()
     const grid = window.locator('[data-ds="MockupGrid"]')
     const box = (await grid.boundingBox())!
     await window.mouse.click(box.x + box.width / 2, box.y + box.height - 20)
@@ -419,7 +412,7 @@ test.describe('Details sidebar', () => {
     await seedStash(app, ['laptop'])
     await showMyStash(app)
     const card = window.locator('[data-mockup-id]').first()
-    await card.getByText(/^Stub /).dblclick()
+    await card.getByText(CARD_TITLE).dblclick()
     await expect(panel(window).getByRole('textbox')).toHaveCount(0)
     await card.focus()
     await window.keyboard.press('Space')

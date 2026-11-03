@@ -31,8 +31,12 @@ vi.mock('../psd', () => ({
       thumbPath: j(input.outDir, 'thumb.webp')
     }
   },
-  collectCandidateImages: () => []
+  collectCandidateImages: () => [],
+  writeDesignSlotMask: async () => false,
+  SLOT_MASK_FILE: 'slot-mask.png'
 }))
+// The slot mask runs in a worker thread, which needs the built app.
+vi.mock('../psd/design-slot-worker', () => ({ writeDesignSlotMaskInWorker: async () => false, ensureSlotMask: async () => {} }))
 
 import { registerImportHandlers } from './import'
 
@@ -69,7 +73,7 @@ beforeEach(() => {
   registerImportHandlers({
     repo,
     push,
-    settings: { getLibraryRoot: () => join(base, 'Library') },
+    settings: { getLibraryRoot: () => join(base, 'Library'), get: () => ({ activeModelId: null, aiRunTimes: {} }), update: vi.fn() },
     telemetry: { get: () => ({ track: vi.fn() }) },
     ai: { activeProvider: async () => ({ id: 's', name: 's', analyze }) }
   } as unknown as HandlerContext)

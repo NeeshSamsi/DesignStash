@@ -3,7 +3,7 @@
  "items": {
   "office-identity-business-cards-free-psd-mockup": {
    "title": "Floating business cards with a yellow stapler",
-   "description": "A set of white and grey business cards, also called name cards, floating around a yellow stapler on a light grey background, for a brand identity.",
+   "description": "A set of business cards, also called name cards, floating around a yellow stapler on a light grey background, for a brand identity.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -51,7 +51,7 @@
   },
   "apple-set": {
    "title": "iPhones and iPad Pro with keyboard and pencil",
-   "description": "Two iPhones and an iPad Pro, also called a tablet, on a Magic Keyboard with an Apple Pencil, floating on a white background with colourful screens.",
+   "description": "Two iPhones and an iPad Pro, also called a tablet, on a Magic Keyboard with an Apple Pencil, floating on a white background.",
    "tags": [
     {
      "category": "Device",
@@ -77,7 +77,7 @@
   },
   "scene-02": {
    "title": "Hand tapping an Apple HomeView smart display",
-   "description": "A hand tapping an Apple HomeView smart display, also called a home hub, on a round silver speaker base against a light grey background.",
+   "description": "A hand tapping an Apple HomeView smart display, also called a home hub, on a round speaker base against a light grey background.",
    "tags": [
     {
      "category": "Device",
@@ -102,8 +102,8 @@
    ]
   },
   "free-stylish-cosmetic-tube-mockup": {
-   "title": "Red and white cosmetic tube in grey smoke",
-   "description": "A tall red-to-white cosmetic tube, also called a spray bottle, standing in a plume of grey smoke against a grey background.",
+   "title": "Cosmetic tube in grey smoke",
+   "description": "A tall cosmetic tube, also called a spray bottle, standing in a plume of grey smoke against a grey background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -128,8 +128,8 @@
    ]
   },
   "free-cosmetic-box-and-tube-mockup": {
-   "title": "Blue cosmetic box and tube",
-   "description": "A light blue cosmetic box with a matching squeeze tube, also called cream packaging, standing on a light grey background.",
+   "title": "Cosmetic box and tube",
+   "description": "A cosmetic box with a matching squeeze tube, also called cream packaging, standing on a light grey background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -154,8 +154,8 @@
    ]
   },
   "metallic-foil-pouch-mockup": {
-   "title": "Silver foil zip pouch on grey",
-   "description": "A silver metallic foil pouch with a zip seal, also called a zip bag, lying flat on a grey surface.",
+   "title": "Foil zip pouch on grey",
+   "description": "A metallic foil pouch with a zip seal, also called a zip bag, lying flat on a grey surface.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -176,8 +176,8 @@
    ]
   },
   "matt-can-mockup": {
-   "title": "Pink and white matte drink can",
-   "description": "A matte drink can, also called a beverage can, with a pink, gold and white design standing on a white background.",
+   "title": "Matte drink can",
+   "description": "A matte drink can, also called a beverage can, standing on a white background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -198,8 +198,8 @@
    ]
   },
   "spray-can-mockup": {
-   "title": "White spray can on teal",
-   "description": "A white spray can, also called an aerosol can, standing on a teal background.",
+   "title": "Spray can on teal",
+   "description": "A spray can, also called an aerosol can, standing on a teal background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -242,16 +242,12 @@
    ]
   },
   "leggings-mockup": {
-   "title": "Blue to pink gradient leggings",
-   "description": "A pair of women's leggings, also called tights, in a blue to pink gradient, floating on a light grey background.",
+   "title": "Women's leggings",
+   "description": "A pair of women's leggings, also called tights, floating on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
      "label": "Leggings"
-    },
-    {
-     "category": "Style",
-     "label": "Colorful"
     },
     {
      "category": "Style",
@@ -263,16 +259,12 @@
    ]
   },
   "top-mockup": {
-   "title": "Blue to pink gradient tank top",
-   "description": "A women's tank top, also called a crop top, in a blue to pink gradient, floating on a light grey background.",
+   "title": "Women's tank top",
+   "description": "A women's tank top, also called a crop top, floating on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
      "label": "Tank top"
-    },
-    {
-     "category": "Style",
-     "label": "Colorful"
     },
     {
      "category": "Style",
@@ -284,8 +276,8 @@
    ]
   },
   "top-leggings-mockup": {
-   "title": "Gradient top and leggings set",
-   "description": "A women's tank top and leggings, also called sportswear, in a blue to pink gradient, floating on a light grey background.",
+   "title": "Tank top and leggings set",
+   "description": "A women's tank top and leggings, also called sportswear, floating on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
@@ -297,10 +289,6 @@
     },
     {
      "category": "Style",
-     "label": "Colorful"
-    },
-    {
-     "category": "Style",
      "label": "3D render"
     }
    ],
@@ -309,8 +297,8 @@
    ]
   },
   "bus-stop-citylight-mockup": {
-   "title": "Blue poster in a bus shelter on a city street",
-   "description": "A blue citylight poster in a glass bus shelter, also called a bus stop ad, on a tree-lined street, with a person sitting on the bench.",
+   "title": "Poster in a bus shelter on a city street",
+   "description": "A citylight poster in a glass bus shelter, also called a bus stop ad, on a tree-lined street, with a person sitting on the bench.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -335,8 +323,8 @@
    ]
   },
   "poster-mockup": {
-   "title": "Blue poster on a graffiti wall",
-   "description": "A blue street poster pasted on a black wall covered in graffiti, with a fly on it.",
+   "title": "Poster on a graffiti wall",
+   "description": "A street poster pasted on a black wall covered in graffiti, with a fly on it.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -361,16 +349,12 @@
    ]
   },
   "mens-t-shirt-mockup": {
-   "title": "Men's t-shirt with a colourful geometric print",
-   "description": "A men's t-shirt, also called a tee, with a bold multicoloured geometric pattern, floating on a light grey background.",
+   "title": "Floating men's t-shirt",
+   "description": "A men's t-shirt, also called a tee, floating on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
      "label": "T-shirt"
-    },
-    {
-     "category": "Style",
-     "label": "Colorful"
     },
     {
      "category": "Style",
@@ -382,8 +366,8 @@
    ]
   },
   "free-imac-mockup-1": {
-   "title": "Silver iMac with keyboard and mouse",
-   "description": "A silver iMac, also called a desktop computer, with a dark screen, a keyboard and a mouse on a light grey background.",
+   "title": "iMac with keyboard and mouse",
+   "description": "An iMac, also called a desktop computer, with a keyboard and a mouse on a light grey background.",
    "tags": [
     {
      "category": "Device",
@@ -404,8 +388,8 @@
    ]
   },
   "free-imac-mockup-2": {
-   "title": "Silver iMac with keyboard and mouse",
-   "description": "A silver iMac, also called a desktop computer, with a dark screen, a keyboard and a mouse on a light grey background.",
+   "title": "iMac with keyboard and mouse",
+   "description": "An iMac, also called a desktop computer, with a keyboard and a mouse on a light grey background.",
    "tags": [
     {
      "category": "Device",
@@ -426,8 +410,8 @@
    ]
   },
   "free-imac-mockup-3": {
-   "title": "Silver iMac with keyboard and mouse",
-   "description": "A silver iMac, also called a desktop computer, with a dark screen, a keyboard and a mouse on a light grey background.",
+   "title": "iMac with keyboard and mouse",
+   "description": "An iMac, also called a desktop computer, with a keyboard and a mouse on a light grey background.",
    "tags": [
     {
      "category": "Device",
@@ -448,8 +432,8 @@
    ]
   },
   "oval-mug-mockup-1": {
-   "title": "Round white mug with a black handle",
-   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
+   "title": "Round-bellied mug on grey",
+   "description": "A round-bellied mug, also called a coffee cup, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
@@ -466,8 +450,8 @@
    ]
   },
   "oval-mug-mockup-2": {
-   "title": "Round white mug with a black handle",
-   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
+   "title": "Round-bellied mug on grey",
+   "description": "A round-bellied mug, also called a coffee cup, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
@@ -484,8 +468,8 @@
    ]
   },
   "oval-mug-mockup-3": {
-   "title": "Round white mug with a black handle",
-   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
+   "title": "Round-bellied mug on grey",
+   "description": "A round-bellied mug, also called a coffee cup, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
@@ -502,8 +486,8 @@
    ]
   },
   "oval-mug-mockup-4": {
-   "title": "Round white mug with a black handle",
-   "description": "A round-bellied white mug, also called a coffee cup, with a black handle and black inside, on a light grey background.",
+   "title": "Round-bellied mug on grey",
+   "description": "A round-bellied mug, also called a coffee cup, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
@@ -609,7 +593,7 @@
   },
   "iphone-mockup-1": {
    "title": "iPhone on grey tiles in sunlight",
-   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows, its screen showing a dark blue and purple design.",
+   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows.",
    "tags": [
     {
      "category": "Device",
@@ -631,7 +615,7 @@
   },
   "iphone-mockup-2": {
    "title": "iPhone on grey tiles in sunlight",
-   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows, its screen showing a dark blue and purple design.",
+   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows.",
    "tags": [
     {
      "category": "Device",
@@ -653,7 +637,7 @@
   },
   "iphone-mockup-3": {
    "title": "iPhone on grey tiles in sunlight",
-   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows, its screen showing a dark blue and purple design.",
+   "description": "An iPhone, also called a smartphone, lying on grey floor tiles in sunlight with sharp shadows.",
    "tags": [
     {
      "category": "Device",

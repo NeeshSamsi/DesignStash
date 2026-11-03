@@ -44,8 +44,55 @@ Every pile on the Sort board is titled by what its mockups share. The count is a
 
 ## Notes for the grouping service (`src/main/import/grouping-service.ts`)
 
-- **Same zip first:** PSDs that came out of one dropped zip are proposed as one pile (reason `archive`) before the folder and stem passes, whatever folders and names they have inside it. The zip is recorded as `importContext.archiveName` (as dropped) and `archiveTitle` (cleaned, only when it says something).
+- **Same zip first:** PSDs that came out of one dropped zip are proposed as one pile (reason `archive`) before the folder and stem passes, whatever folders they have inside it. The zip is recorded as `importContext.archiveName` (as dropped) and `archiveTitle` (cleaned, only when it says something).
+- **A zip of different products splits by stem** (`splitZip`, 2026-10-24). The zip stays one pile when every file name shares a start (the rule 2 test) or every `extractStem` is the same. Otherwise each stem is its own pile: the largest keeps the zip's name, a tie going to the one whose first file sorts first, and each other pile is named after its stem as written ("Tank Top"), carried in its members' `archiveTitle` so rule 0a titles it. A stem of one file is a mockup on its own, and the zip's mockups never regroup by the zip's folder later. Example: `female-top-and-leggings-mockup.zip` (leggings, a top, a set) gives three mockups on their own.
+- **Variant suffixes** `extractStem` strips, repeatedly: numbers and versions (`_2`, `-v2`, `2b`), a single letter (`-A`), `(copy)`, and angle words (front, back, rear, side, left, right, angle, angled, perspective, overhead, isometric, close up). `Phone_Back_2` and `Phone Front` are both `phone`.
 
 - **Generic folders:** the folder pass groups by the whole `folderTrail`. ~/Downloads or ~/Desktop shouldn't form a pile on their own (S9.E1). Skip generic last segments there too.
 - **Generic stems:** `extractStem('IMG_2041.psd')` returns `img`, so camera dumps become one stem group (S9.E2). Skip generic stems in the stem pass.
 - **Confidence:** stem groups are tagged `'medium'`, but the UI no longer shows confidence. Either drop the field or only propose groups the UI treats as confident.
+
+## Base title and variations (Proposed, Neesh 2026-10-24)
+
+Neesh: “I don't think variants should ever have COMPLETELY different titles.” A pile has a **base title**, and every mockup in it, the top included, has a **variation** of 1 to 3 words. A mockup's full title is `base · variation`:
+
+- Long scroll MacBook · front
+- Long scroll MacBook · side view
+- Long scroll MacBook · wavy surface
+
+**The rules**
+- **The base belongs to the pile.** Editing it on any mockup, the top included, renames the pile and every mockup in it. It's exact: no AI, ⌘Z undoes it. The edit check (look-over.md) carries the base exactly and never carries a variation.
+- **The variation belongs to the mockup,** and is edited per mockup.
+- **Where the variation comes from:** the AI names what's different (how well is still being measured). When it can't, the file name's own marker (A, B, 02), or a number when there is none (2, 3, and so on).
+- **Casing:** a variation is stored as written (“side view”). Shown on its own, as a card title or the sidebar heading, it starts with a capital (“Side view”).
+- **Search** covers both: “wavy” finds Long scroll MacBook · wavy surface.
+- **Mockups on their own** keep a single title.
+- **The Sort board's pile title** (the rule chain above) is the provisional name until the AI writes the base in Look it over. The old “top mockup's title becomes the pile's name in My Stash” is replaced by the base.
+
+**Where it shows** (Figma)
+
+| Place | What it shows | Frames |
+|---|---|---|
+| Look it over, a mockup in a pile | Title is two inputs under one label (**TitlePair**): the base with the pile icon, a 4 px round dot in `text/secondary` (the colour of the field borders), and the variation (180 px). Editing the base shows “Renames the pile: all 4 mockups.” under the field while it has focus, and the rail header follows as you type. | ↳ Look it over: L8.1, L8.2, L8.3; every pile step in L2, L5, L6, L7 |
+| The rail | The header shows the base; each step shows only its variation (“Top · three-quarter”, “Variant · side”). Before the AI has written, a step shows the file name. | every pile step |
+| Review and stash pile | Each card's title is its variation (“Side”); the rail header names the pile. | L2.4, L2.E3, L5.2, L6.E4, L7.6, L7.11 |
+| While the AI writes | In a pile the base is already known, so only the variation says “Writing with AI…”. | L6.1, L6.4 |
+| My Stash | The pile card shows the base. | ↳ Library: C1.1 |
+| The opened pile | The header shows the base; each card shows its variation. | ↳ Library: D3.1 to D3.E2 |
+| Details sidebar, a mockup in a pile | Read: the heading is the variation, and the line under it names the pile (“Variant in Clay iPhone 15 Pro · added 12 Oct”, “Top of …”). Edit: TitlePair `size=compact` (variation 120 px). | D3.2 (read), D3.3 (edit) |
+
+**Decisions**
+
+| Decision | Why | Principle |
+|---|---|---|
+| Two inputs under one Title label, joined by a dot, for a mockup in a pile | The title has two owners, the pile and the mockup, so each part gets its own field: you can see which part you're changing and what it affects. One label and the dot keep it reading as one title, the way it shows everywhere else. A single field with a fixed base would need a separate place to rename the pile, and splitting one string on the dot breaks the moment someone types one. | 4.9, 7.12, 8.14, 1.7 |
+| The base input carries the pile icon, and a hint shows only while it has focus | The icon says the base is shared before anyone types. The hint says what an edit will do at the moment it matters and is gone otherwise, so a quiet screen stays quiet. It appears because the person focused the field, so the small shift is theirs. | 8.12, 1.6, 8.17 |
+| Rail steps and review cards show only the variation | The rail header already names the pile, so repeating the base made every label truncate (“Variant · Clay iPhone…”). The variation is the part that tells the steps apart. | 1.6, 2.2, 3.5 |
+| The base renames exactly, with no AI | Renaming a pile is a direct edit; a model guessing per mockup would bring back the completely different titles Neesh wants to avoid. | 8.14, 0.3 |
+| The separator is a drawn 4 px dot in `text/secondary` | A text “·” at app sizes is 2 to 3 px of ink and vanished at 1x between two bordered fields. A 4 px dot in the borders' colour reads as part of the pair without competing with the text (contrast 7.8:1 on `surface-2`). | 2.4, 5.5 |
+| A variation shown on its own starts with a capital | Card titles and headings read as names; inside a full title the variation reads as part of one phrase. | 3.6, 7.5 |
+
+**Open questions**
+1. **Length:** cap the variation at 3 words in the field, or only suggest 1 to 3 and let people write more?
+2. **Two mockups with the same variation** in one pile (both “side”): allowed, or does the second get a marker (“side 2”)?
+3. **Renaming the base** where the pile lives in My Stash (the pile page header, D3) as well as from a mockup: should the page header itself be editable, or is Edit pile details enough?

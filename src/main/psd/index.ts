@@ -5,3 +5,4 @@ export { collectCandidateImages, imagesNamedFor, normalizeStem, findSidecar, fin
 export { isPlaceholder, PLACEHOLDER_ENTROPY } from './placeholder'
 export type { SidecarMatch } from './sidecar'
 export { resolveCover } from './cover-resolver'
+export { SLOT_MASK_FILE, designSlotMask, writeDesignSlotMask } from './design-slot'

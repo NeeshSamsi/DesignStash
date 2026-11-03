@@ -8,7 +8,8 @@ export const DROP_OVERLAY_CONTRACT = {
   figmaId: '218:1990',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1990',
   section: '3 · Layout & navigation',
-  description: 'Full-window drag-over state; rejected = no PSDs; queued = import already running.',
+  description:
+    'Full-window drag-over state; rejected = no PSDs; queued = import already running.\nSync 2026-10-23: inside CoverPanel the title uses title/lg/semibold; display/2xl does not fit the cover.',
   code: 'screens/gather/useGatherDrops.tsx',
   axes: {
     state: ['drag-over', 'rejected', 'queued']

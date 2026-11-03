@@ -1,4 +1,4 @@
-import shipped from './q9-2'
+import { appR4 } from './r4'
 
-/** Speed runs only: q9-2 under its own name, so a timing run on a few covers can't touch q9-2's stored results. */
-export default { ...shipped, id: 'sp-base', notes: 'q9-2 copy for timing on a quiet GPU.' }
+/** Round 4, 4B speed: the shipped pipeline unchanged, run before the candidates as their baseline. */
+export default appR4({ id: 'sp-base', notes: 'Baseline: the app as it ships, before the speed candidates.' })

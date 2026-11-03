@@ -36,6 +36,8 @@ export const testSet = {
   available: existsSync(join(root, 'MANIFEST.md')),
   /** A real download in `zips/`. */
   zip: (name: string) => inSet('zips', name),
+  /** A real download anywhere in the set, by its path inside it, such as `held-out/drink-can-mockup-matt.zip`. */
+  real: (rel: string) => inSet(...rel.split('/')),
   /** A real folder in `folders/`, such as "Mixed Drop". */
   folder: (name: string) => inSet('folders', name),
   /** A generated case, such as `invalid/Empty.zip` or `edge/Unicode_Names.zip`. */

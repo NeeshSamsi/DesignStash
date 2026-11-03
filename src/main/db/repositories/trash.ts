@@ -83,13 +83,13 @@ export class TrashRepository {
     if (m?.stage === 'stashed') this.search.upsertSearchIndex(id)
   }
 
-  deleteMockupsHard(ids: number[]): { libraryPath: string; coverPath: string }[] {
+  deleteMockupsHard(ids: number[]): { id: number; libraryPath: string; coverPath: string }[] {
     // Collect paths and remove FTS entries before the transaction (FTS run() can't nest in tx)
-    const paths: { libraryPath: string; coverPath: string }[] = []
+    const paths: { id: number; libraryPath: string; coverPath: string }[] = []
     for (const id of ids) {
       const m = this.mockups.getMockup(id)
       if (m) {
-        paths.push({ libraryPath: m.libraryPath, coverPath: m.coverPath })
+        paths.push({ id, libraryPath: m.libraryPath, coverPath: m.coverPath })
         this.search.removeSearchIndex(id)
       }
     }

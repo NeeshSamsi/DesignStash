@@ -2,7 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../connection'
 import { drafts, lookOverResume, mockupTags, mockups } from '../schema'
 import type { StashSnapshot } from '@shared/approval'
-import type { Draft, Mockup } from '../schema'
+import type { Draft, DraftCarry, DraftField, Mockup } from '../schema'
 
 export interface DraftFields {
   title: string
@@ -10,6 +10,9 @@ export interface DraftFields {
   tagIds: number[]
   touched?: boolean
   checked?: boolean
+  awaitingAi?: boolean
+  keptFields?: DraftField[]
+  carry?: DraftCarry | null
 }
 
 /** Look it over: the drafts kept until a pile or a mockup is stashed, and where Finish later left off. */
@@ -63,7 +66,9 @@ export class DraftRepository {
         description: defaults.description,
         tagIds: defaults.tagIds,
         touched: defaults.touched ?? false,
-        checked: defaults.checked ?? false
+        checked: defaults.checked ?? false,
+        awaitingAi: defaults.awaitingAi ?? false,
+        keptFields: defaults.keptFields ?? []
       })
       .onConflictDoNothing()
       .run()
@@ -144,7 +149,8 @@ export class DraftRepository {
           tagIds: d.tagIds,
           touched: d.touched,
           checked: d.checked,
-          skippedAt: d.skippedAt
+          skippedAt: d.skippedAt,
+          carry: d.carry ?? null
         })),
         resume: resume ? { unitId: resume.unitId, mockupId: resume.mockupId } : null
       }

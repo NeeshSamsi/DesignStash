@@ -126,6 +126,20 @@ describe('VisionInferenceProvider.analyze', () => {
     expect(dispose).toHaveBeenCalledOnce()
   })
 
+  it("says whether its runtime has the model loaded, and loads it on load()", async () => {
+    let ready = false
+    const load = vi.fn(async () => {
+      ready = true
+    })
+    const provider = new VisionInferenceProvider('m', { prompt: SHIPPED, complete: async () => ({ text: '' }), readImage: async () => null, loaded: () => ready, load })
+    expect(provider.loaded).toBe(false)
+    await provider.load()
+    expect([provider.loaded, load.mock.calls.length]).toEqual([true, 1])
+    // A runtime that can't say is taken as loaded.
+    expect(makeProvider().provider.loaded).toBe(true)
+    await expect(makeProvider().provider.load()).resolves.toBeUndefined()
+  })
+
   it('exposes id "vision" and the model name', () => {
     const { provider } = makeProvider()
     expect(provider.id).toBe('vision')
@@ -234,6 +248,242 @@ describe('VisionInferenceProvider scene-thing check', () => {
     const { provider } = checked({ desk: new Error('answered 500'), plant: Number.NaN })
     const result = await provider.analyze(INPUT)
     expect(result.tags.map((t) => t.label)).toEqual(['iMac', 'desk', 'plant'])
+  })
+})
+
+describe('VisionInferenceProvider with a masked design slot', () => {
+  const MASKED = 'data:image/jpeg;base64,MASKED'
+  const LAMP = {
+    title: 'Stacked white cube lamp',
+    description: 'A white cube lamp with three stacked sections on a dark base.',
+    tags: [{ category: 'Environment', label: 'lamp' }]
+  }
+  const BOXES = {
+    title: 'Three stacked boxes',
+    description: 'Three stacked boxes on a dark base.',
+    tags: [{ category: 'Print & Branding', label: 'box' }]
+  }
+
+  /** Answers LAMP first and BOXES when asked again; the check says no to a lamp. */
+  function masked(profile: Partial<PromptProfile>, redoFails = false, maskPath: string | null = '/library/mockups/1/cover-ai-outline.png') {
+    const answers: object[] = []
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      const text = JSON.stringify(req)
+      if (/Is there a lamp in this image/.test(text)) return { text: 'no', logprobs: { content: [{ top_logprobs: [{ token: 'no', logprob: 0 }] }] } }
+      if (/there is no lamp in it/.test(text)) {
+        if (redoFails) throw new Error('answered 500')
+        answers.push(BOXES)
+        return { text: JSON.stringify(BOXES) }
+      }
+      answers.push(LAMP)
+      return { text: JSON.stringify(LAMP) }
+    })
+    const readImage = vi.fn(async (path: string) => (path.includes('cover-ai') ? MASKED : IMAGE))
+    const maskedCover = vi.fn(async () => maskPath)
+    const provider = new VisionInferenceProvider('m', {
+      prompt: { ...SHIPPED, sceneThings: SCENE_THINGS, mask: 'outline', ...profile },
+      complete,
+      readImage,
+      maskedCover
+    })
+    return { provider, complete, readImage, maskedCover }
+  }
+
+  it("answers from the cover with the slot painted over, in the profile's fill", async () => {
+    const { provider, complete, maskedCover } = masked({})
+    await provider.analyze(INPUT)
+    expect(maskedCover).toHaveBeenCalledWith(INPUT.imagePath, 'outline')
+    expect(userParts(complete.mock.calls[0]![0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: MASKED } })
+  })
+
+  it('tells the prompt the slot is painted over, and only when it is', async () => {
+    const buildRequest = vi.fn(SHIPPED.buildRequest)
+    const { provider } = masked({ buildRequest })
+    await provider.analyze(INPUT)
+    expect(buildRequest.mock.calls[0]![0]).toEqual({ ...INPUT, slotMasked: true })
+    const unmasked = masked({ buildRequest }, false, null)
+    buildRequest.mockClear()
+    await unmasked.provider.analyze(INPUT)
+    expect(buildRequest.mock.calls[0]![0]).toEqual(INPUT)
+  })
+
+  it('with an object hint, names the object from the cover as it is and tells the masked request', async () => {
+    const calls: object[] = []
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      calls.push(req)
+      const text = JSON.stringify(req)
+      if (/What kind of object is this mockup of/.test(text)) return { text: JSON.stringify({ object: 'boxes' }) }
+      return { text: JSON.stringify(BOXES) }
+    })
+    const readImage = vi.fn(async (path: string) => (path.includes('cover-ai') ? MASKED : IMAGE))
+    const provider = new VisionInferenceProvider('m', {
+      prompt: { ...SHIPPED, mask: 'label', objectHint: true },
+      complete,
+      readImage,
+      maskedCover: async () => '/library/mockups/1/cover-ai-label.png'
+    })
+    await expect(provider.analyze(INPUT)).resolves.toEqual(BOXES)
+    const hint = calls[0] as ChatRequest
+    expect(userParts(hint)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+    expect(userText(hint)).not.toContain(INPUT.fileName)
+    const answer = calls[1] as ChatRequest
+    expect(userParts(answer)[0]).toEqual({ type: 'image_url', image_url: { url: MASKED } })
+    expect(userText(answer)).toContain('Seen in full, the main object is: boxes. Use that name for it.')
+  })
+
+  it('answers without a hint when naming the object fails, and asks none without a mask', async () => {
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      if (/What kind of object/.test(JSON.stringify(req))) throw new Error('answered 500')
+      return { text: JSON.stringify(BOXES) }
+    })
+    const provider = (mask: string | null) =>
+      new VisionInferenceProvider('m', {
+        prompt: { ...SHIPPED, mask: 'label', objectHint: true },
+        complete,
+        readImage: async () => IMAGE,
+        maskedCover: async () => mask
+      })
+    await expect(provider('/m/cover-ai-label.png').analyze(INPUT)).resolves.toEqual(BOXES)
+    expect(userText(complete.mock.calls[1]![0] as ChatRequest)).not.toContain('Seen in full')
+    complete.mockClear()
+    await provider(null).analyze(INPUT)
+    expect(complete).toHaveBeenCalledOnce()
+  })
+
+  it('asks the scene check about the cover as it is', async () => {
+    const { provider, complete } = masked({})
+    await provider.analyze(INPUT)
+    const question = complete.mock.calls[1]![0] as ChatRequest
+    expect(userParts(question)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+  })
+
+  it("shows the profile's fallback fill when the masked cover is too blank to show", async () => {
+    const SOFT = 'data:image/jpeg;base64,SOFT'
+    const buildRequest = vi.fn(SHIPPED.buildRequest)
+    const complete = vi.fn<(req: object) => Promise<ChatReply>>(async () => ({ text: JSON.stringify(BOXES) }))
+    const readImage = vi.fn(async (path: string) => (path.includes('label') ? null : path.includes('soft') ? SOFT : IMAGE))
+    const provider = (blankFallback?: 'soft') =>
+      new VisionInferenceProvider('m', {
+        prompt: { ...SHIPPED, buildRequest, mask: 'label', ...(blankFallback && { blankFallback }) },
+        complete,
+        readImage,
+        maskedCover: async (_path, fill) => `/m/cover-ai-${fill}.png`
+      })
+    await provider('soft').analyze(INPUT)
+    expect(userParts(complete.mock.calls[0]![0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: SOFT } })
+    expect(buildRequest.mock.calls[0]![0]).toEqual({ ...INPUT, slotMasked: true })
+    complete.mockClear()
+    buildRequest.mockClear()
+    await provider().analyze(INPUT)
+    expect(userParts(complete.mock.calls[0]![0] as ChatRequest).some((p) => p.type === 'image_url')).toBe(false)
+    expect(buildRequest.mock.calls[0]![0]).toEqual(INPUT)
+  })
+
+  it('answers from the cover as it is when the mockup has no slot mask', async () => {
+    const { provider, complete } = masked({}, false, null)
+    await provider.analyze(INPUT)
+    expect(userParts(complete.mock.calls[0]![0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+  })
+
+  it('without redo, takes the refused thing out of the first answer', async () => {
+    const { provider, complete } = masked({})
+    const result = await provider.analyze(INPUT)
+    expect(complete).toHaveBeenCalledTimes(2)
+    expect(result.tags).toEqual([])
+  })
+
+  it('with redo, asks again once, told the image has none of the refused things', async () => {
+    const { provider, complete } = masked({ redo: true })
+    await expect(provider.analyze(INPUT)).resolves.toEqual(BOXES)
+    expect(complete).toHaveBeenCalledTimes(3)
+    const again = complete.mock.calls[2]![0] as ChatRequest
+    expect(userParts(again)[0]).toEqual({ type: 'image_url', image_url: { url: MASKED } })
+    expect(userText(again)).toContain('Checked against the image: there is no lamp in it.')
+  })
+
+  it('keeps the first answer, less the refused thing, when asking again fails', async () => {
+    const { provider } = masked({ redo: true }, true)
+    const result = await provider.analyze(INPUT)
+    expect(result.title).toBe('Stacked white cube lamp')
+    expect(result.tags).toEqual([])
+  })
+})
+
+describe('VisionInferenceProvider placeholder check (verify)', () => {
+  const SOFT = 'data:image/jpeg;base64,SOFT'
+  const LABEL = 'data:image/jpeg;base64,LABEL'
+  const GRID = { title: 'Blue grid MacBook on white bench', description: 'A MacBook with a blue grid screen on a white bench.', tags: [] }
+  const CLEAN = { title: 'Long scroll MacBook on white bench', description: 'A MacBook on a white bench.', tags: [] }
+
+  function verifying(says: Record<string, 'yes' | 'no'>, masks = true) {
+    const calls: object[] = []
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      calls.push(req)
+      const text = JSON.stringify(req)
+      const word = /Is anything in this image ([a-z]+) in colour|Is there an? ([a-z]+) in this image/.exec(text)
+      if (word) {
+        const yes = says[word[1] ?? word[2]!] === 'yes'
+        return { text: yes ? 'yes' : 'no', logprobs: { content: [{ top_logprobs: [{ token: yes ? 'yes' : 'no', logprob: 0 }] }] } }
+      }
+      return { text: JSON.stringify(text.includes(LABEL) ? CLEAN : GRID) }
+    })
+    const provider = new VisionInferenceProvider('m', {
+      prompt: { ...SHIPPED, verify: { check: 'soft', remask: 'label' } },
+      complete,
+      readImage: async (path) => (path.includes('soft') ? SOFT : path.includes('label') ? LABEL : IMAGE),
+      maskedCover: async (_path, fill) => (masks ? `/m/cover-ai-${fill}.png` : null)
+    })
+    return { provider, calls }
+  }
+
+  it('answers from the cover as it is, and keeps the answer when every word is also outside the slot', async () => {
+    const { provider, calls } = verifying({ blue: 'yes', grid: 'yes' })
+    await expect(provider.analyze(INPUT)).resolves.toEqual(GRID)
+    expect(userParts(calls[0] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+    expect(userParts(calls[1] as ChatRequest)).toEqual([
+      { type: 'image_url', image_url: { url: SOFT } },
+      { type: 'text', text: 'Look only at the image. Is anything in this image blue in colour? Answer yes or no.' }
+    ])
+    expect(calls).toHaveLength(3)
+  })
+
+  it('answers again from the labelled cover, given the first answer less those words, when a word is only on the slot', async () => {
+    const { provider, calls } = verifying({ blue: 'no', grid: 'yes' })
+    await expect(provider.analyze(INPUT)).resolves.toEqual(CLEAN)
+    const again = calls[3] as ChatRequest
+    expect(userParts(again)[0]).toEqual({ type: 'image_url', image_url: { url: LABEL } })
+    expect(userText(again)).toContain(
+      "A first draft, written from the cover before its design area was blanked out, with the stand-in design's words taken out:\n" +
+        'Title: grid MacBook on white bench\nDescription: A MacBook with a grid screen on a white bench.\nTags: \n' +
+        'Keep its names, other names and details where the image agrees, mend any sentence the cuts left broken, and never describe the design area.'
+    )
+  })
+
+  it("answers again from the profile's fallback fill when the labelled cover is too blank to show, or keeps the answer without one", async () => {
+    const calls: object[] = []
+    const complete = vi.fn(async (req: object): Promise<ChatReply> => {
+      calls.push(req)
+      if (/Is anything in this image blue/.test(JSON.stringify(req))) return { text: 'no', logprobs: { content: [{ top_logprobs: [{ token: 'no', logprob: 0 }] }] } }
+      return { text: JSON.stringify(calls.length > 1 ? CLEAN : GRID) }
+    })
+    const provider = (blankFallback?: 'soft') =>
+      new VisionInferenceProvider('m', {
+        prompt: { ...SHIPPED, verify: { check: 'soft', remask: 'label' }, ...(blankFallback && { blankFallback }) },
+        complete,
+        readImage: async (path) => (path.includes('soft') ? SOFT : path.includes('label') ? null : IMAGE),
+        maskedCover: async (_path, fill) => `/m/cover-ai-${fill}.png`
+      })
+    await expect(provider('soft').analyze(INPUT)).resolves.toEqual(CLEAN)
+    expect(userParts(calls[3] as ChatRequest)[0]).toEqual({ type: 'image_url', image_url: { url: SOFT } })
+    calls.length = 0
+    await expect(provider().analyze(INPUT)).resolves.toEqual(GRID)
+    expect(calls).toHaveLength(3)
+  })
+
+  it('checks nothing for a mockup without a slot mask', async () => {
+    const { provider, calls } = verifying({}, false)
+    await expect(provider.analyze(INPUT)).resolves.toEqual(GRID)
+    expect(calls).toHaveLength(1)
   })
 })
 
@@ -513,5 +763,69 @@ describe('readCoverAsDataUrl', () => {
     await expect(readCoverAsDataUrl(join(dir, 'gone.webp'))).resolves.toBeNull()
     await expect(readCoverAsDataUrl('')).resolves.toBeNull()
     await expect(readCoverAsDataUrl(junk)).resolves.toBeNull()
+  })
+})
+
+describe('VisionInferenceProvider pile edits', () => {
+  const EDIT = {
+    before: { description: 'A laptop on a stack of white books.', tags: ['Laptop', 'books'] },
+    after: { description: 'A laptop on a white slatted bench.', tags: ['Laptop', 'bench'] }
+  }
+  const ENTRY = { description: 'A laptop on a grey mesh floor.', tags: ['Laptop', 'floor'] }
+
+  function pileProvider(pileEdits: PromptProfile['pileEdits'], reply: object) {
+    const complete = vi.fn<(req: ChatRequest) => Promise<ChatReply>>(async () => ({ text: JSON.stringify(reply) }))
+    const readImage = vi.fn<(path: string) => Promise<string | null>>(async () => IMAGE)
+    const provider = new VisionInferenceProvider('Qwen3.5 9B', { prompt: { ...SHIPPED, ...(pileEdits && { pileEdits }) }, complete, readImage })
+    return { provider, complete, readImage }
+  }
+
+  it('judges pile edits only when its profile says so, and rewrites unless told to copy', () => {
+    expect(pileProvider({ judge: true }, {}).provider.pileEdits?.check).toBeTypeOf('function')
+    expect(pileProvider(undefined, {}).provider.pileEdits?.check).toBeUndefined()
+    expect(pileProvider(undefined, {}).provider.pileEdits?.rewrite).toBeTypeOf('function')
+    expect(pileProvider({ copy: true }, {}).provider.pileEdits?.rewrite).toBeUndefined()
+  })
+
+  it('asks the cover as it is whether what the edit added is true of it, greedy, and reads the reason on a no', async () => {
+    const { provider, complete, readImage } = pileProvider({ judge: true }, { answer: 'no', reason: 'This one is on a mesh floor.' })
+    const said = await provider.pileEdits!.check!('/lib/side.webp', EDIT, ['slatted', 'bench'])
+    expect(said).toEqual({ answer: 'no', reason: 'This one is on a mesh floor' })
+    expect(readImage).toHaveBeenCalledWith('/lib/side.webp')
+    const req = complete.mock.calls[0]![0]
+    expect(userParts(req)[0]).toEqual({ type: 'image_url', image_url: { url: IMAGE } })
+    expect(userText(req)).toContain('The edit added: slatted, bench.')
+    expect(req).toMatchObject({ temperature: 0, seed: 42 })
+  })
+
+  it('gives no reason with a yes, and throws on a reply that is neither', async () => {
+    expect(await pileProvider({ judge: true }, { answer: 'yes', reason: 'it has a bench' }).provider.pileEdits!.check!('/c', EDIT, ['bench'])).toEqual({ answer: 'yes', reason: '' })
+    await expect(pileProvider({ judge: true }, { answer: 'maybe', reason: '' }).provider.pileEdits!.check!('/c', EDIT, ['bench'])).rejects.toThrow()
+  })
+
+  it('throws when there is no cover to check, so the edit is offered', async () => {
+    const { provider, readImage } = pileProvider({ judge: true }, { answer: 'yes', reason: '' })
+    readImage.mockResolvedValueOnce(null)
+    await expect(provider.pileEdits!.check!('/c', EDIT, ['bench'])).rejects.toThrow()
+  })
+
+  it("rewrites the variant's own description with the change, in a text request", async () => {
+    const { provider, complete, readImage } = pileProvider(undefined, { description: 'A laptop on a white slatted bench by a grey mesh floor.', tags: ['x'] })
+    expect(await provider.pileEdits!.rewrite!(EDIT, ENTRY)).toBe('A laptop on a white slatted bench by a grey mesh floor.')
+    const req = complete.mock.calls[0]![0]
+    expect(userParts(req).every((p) => p.type === 'text')).toBe(true)
+    expect(userText(req)).toContain('Another mockup in the pile has this entry: "A laptop on a grey mesh floor." Tags: Laptop, floor.')
+    expect(readImage).not.toHaveBeenCalled()
+  })
+
+  it('keeps the description, with no request, when an edit that only takes words out finds none of them', async () => {
+    const { provider, complete } = pileProvider(undefined, { description: 'x', tags: [] })
+    const removal = { before: { description: 'A mug on a saucer.', tags: ['saucer'] }, after: { description: 'A mug.', tags: [] } }
+    expect(await provider.pileEdits!.rewrite!(removal, ENTRY)).toBe(ENTRY.description)
+    expect(complete).not.toHaveBeenCalled()
+  })
+
+  it('throws on an empty rewrite, so the caller falls back to a copy', async () => {
+    await expect(pileProvider(undefined, { description: ' ', tags: [] }).provider.pileEdits!.rewrite!(EDIT, ENTRY)).rejects.toThrow()
   })
 })

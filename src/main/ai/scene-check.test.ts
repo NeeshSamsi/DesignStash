@@ -18,6 +18,12 @@ describe('mentionedThings', () => {
     expect(mentionedThings(a, SCENE_THINGS)).toEqual(['desk', 'plant', 'lamp'])
   })
 
+  it('finds plurals in -es', () => {
+    expect(mentionedThings(answer('Laptop on benches', 'A laptop on two white benches.'), SCENE_THINGS)).toEqual([
+      'bench'
+    ])
+  })
+
   it('matches whole words only', () => {
     expect(mentionedThings(answer('Handbag on a bench', 'A tote bag on a bench.'), SCENE_THINGS)).toEqual([
       'bench'
@@ -60,6 +66,31 @@ describe('withoutThing', () => {
   it('takes a thing out of a list, and a plural tag with it', () => {
     const a = answer('Mug and plants', 'A white mug next to some plants, on a table.', ['mug', 'plants'])
     expect(withoutThing(a, 'plant')).toEqual(answer('Mug', 'A white mug, on a table.', ['mug']))
+  })
+
+  it('takes out a stack or pile of the thing, however it is described', () => {
+    const a = answer(
+      'Long scroll MacBook on books',
+      'A long scroll MacBook, also called a website, resting on a stack of white books with a blue and white grid pattern.',
+      ['MacBook', 'books']
+    )
+    expect(withoutThing(a, 'book')).toEqual(
+      answer('Long scroll MacBook', 'A long scroll MacBook, also called a website with a blue and white grid pattern.', [
+        'MacBook'
+      ])
+    )
+    const b = answer('Mug', 'A white mug standing on top of a pile of three old books.')
+    expect(withoutThing(b, 'book').description).toBe('A white mug.')
+  })
+
+  it('takes the verb that placed the object on the thing out with it', () => {
+    const a = answer('iMac', 'A silver iMac sitting on a white desk against a grey wall.')
+    expect(withoutThing(a, 'desk').description).toBe('A silver iMac against a grey wall.')
+  })
+
+  it('takes out plurals in -es', () => {
+    const a = answer('Laptop', 'A laptop resting on two white benches in a hall.', ['benches'])
+    expect(withoutThing(a, 'bench')).toEqual(answer('Laptop', 'A laptop in a hall.'))
   })
 
   it('leaves other words that contain the thing alone', () => {

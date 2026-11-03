@@ -4,7 +4,8 @@ import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type Database from 'better-sqlite3'
 import { IPC_CHANNELS, type IpcResult } from '@shared/ipc'
-import type { LookOverQueue } from '@shared/approval'
+import type { LookOverItem, LookOverQueue } from '@shared/approval'
+import type { InferenceProvider } from '@shared/inference'
 import type { Repository } from '../db/repository'
 import { seedTaxonomy } from '../db/bootstrap'
 import { ensureSearchIndex } from '../db/search-index'
@@ -22,10 +23,13 @@ vi.mock('electron', () => ({
 }))
 
 import { registerApprovalHandlers } from './approval'
+import { inferenceQueueFor } from './library-effects'
 
 let sqlite: Database.Database
 let repo: Repository
 let push: ReturnType<typeof vi.fn>
+let ctx: HandlerContext
+let provider: InferenceProvider | null
 
 const call = async <T = unknown>(channel: string, args?: unknown): Promise<IpcResult<T>> =>
   (await handlers.get(channel)!(null, args)) as IpcResult<T>
@@ -37,13 +41,20 @@ beforeEach(() => {
   seedTaxonomy(test.db)
   ensureSearchIndex(test.db)
   push = vi.fn()
-  registerApprovalHandlers({
+  provider = null
+  let settings = { activeModelId: null, aiRunTimes: {} }
+  ctx = {
     repo,
     push,
-    ai: { activeProvider: async () => null },
+    ai: { activeProvider: async () => provider },
     telemetry: { get: () => ({ track: vi.fn() }) },
-    settings: { getLibraryRoot: () => '/library' }
-  } as unknown as HandlerContext)
+    settings: {
+      getLibraryRoot: () => '/library',
+      get: () => settings,
+      update: (patch: object) => (settings = { ...settings, ...patch })
+    }
+  } as unknown as HandlerContext
+  registerApprovalHandlers(ctx)
 })
 
 afterEach(() => sqlite.close())
@@ -104,7 +115,7 @@ describe('look-over channels', () => {
     ).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
   })
 
-  it('saves an edit on the top of a pile', async () => {
+  it("saves an edit on the top of a pile, offers it on the variant, and pushes the variant once accepting's version is ready", async () => {
     const [top, side] = [waiting('top'), waiting('side')]
     repo.piles.createPile([top.id, side.id], top.id)
     await call(IPC_CHANNELS.LOOK_OVER_OPEN)
@@ -115,7 +126,103 @@ describe('look-over channels', () => {
       description: 'Shared',
       tagIds: []
     })
-    expect(saved.success).toBe(true)
+    expect(saved).toEqual({ success: true, data: { propagatedIds: [side.id] } })
+    // With no model, the version is the top's description, marked a copy.
+    await vi.waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        IPC_CHANNELS.LOOK_OVER_DRAFT,
+        expect.objectContaining({ mockupId: side.id, carry: expect.objectContaining({ state: 'offered', after: { description: 'Shared', via: 'copy' } }) })
+      )
+    )
+  })
+})
+
+describe('look-over:answer-edit', () => {
+  /** A pile whose top's edit is on offer on its variant, with the version accepting gives ready. */
+  async function offered() {
+    const [top, side] = [waiting('top'), waiting('side')]
+    repo.piles.createPile([top.id, side.id], top.id)
+    await call(IPC_CHANNELS.LOOK_OVER_OPEN)
+    await call(IPC_CHANNELS.LOOK_OVER_SAVE_DRAFT, { mockupId: top.id, title: 'Top', description: 'Shared', tagIds: [] })
+    await vi.waitFor(() =>
+      expect(push).toHaveBeenCalledWith(IPC_CHANNELS.LOOK_OVER_DRAFT, expect.objectContaining({ mockupId: side.id, carry: expect.objectContaining({ after: expect.anything() }) }))
+    )
+    return side
+  }
+  const answer = (mockupId: number, action: string) => call<LookOverItem | null>(IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT, { mockupId, action })
+
+  it("accepts, undoes, dismisses and restores the offer on one variant, answering with its item", async () => {
+    const side = await offered()
+
+    const accepted = await answer(side.id, 'accept')
+    expect(accepted).toMatchObject({ success: true, data: { mockupId: side.id, description: 'Shared', carry: { state: 'applied' } } })
+    expect(await answer(side.id, 'undo')).toMatchObject({ success: true, data: { description: '', carry: { state: 'offered' } } })
+    expect(await answer(side.id, 'dismiss')).toMatchObject({ success: true, data: { carry: { state: 'dismissed' } } })
+    expect(await answer(side.id, 'restore')).toMatchObject({ success: true, data: { carry: { state: 'offered' } } })
+  })
+
+  it('answers null for a mockup with nothing in that state, and refuses an unknown answer', async () => {
+    const alone = waiting('alone')
+    expect(await answer(alone.id, 'accept')).toEqual({ success: true, data: null })
+    expect(await answer(alone.id, 'copy')).toMatchObject({ success: false, error: { code: 'INVALID_REQUEST' } })
+  })
+})
+
+describe('look-over:showing', () => {
+  /** A model that holds its first answer until `release`, and lists what it was asked about. */
+  function heldModel() {
+    const asked: string[] = []
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    provider = {
+      id: 'stub',
+      name: 'Stub',
+      analyze: async (input) => {
+        asked.push(input.fileName)
+        if (asked.length === 1) await held
+        return { title: input.fileName, description: '', tags: [] }
+      }
+    }
+    return { asked, release }
+  }
+  const showing = (mockupId: number) => call(IPC_CHANNELS.LOOK_OVER_SHOWING, { mockupId })
+
+  it('puts the mockup on screen first in the background queue, then the rest of its pile, and answers where it is', async () => {
+    const { asked, release } = heldModel()
+    const first = waiting('first')
+    const [top, a, b] = [waiting('top'), waiting('a'), waiting('b')]
+    repo.piles.createPile([top.id, a.id, b.id], top.id)
+    const after = waiting('after')
+    const queue = inferenceQueueFor(ctx)
+    await queue.enqueue([first.id, top.id, a.id, b.id, after.id])
+    await vi.waitFor(() => expect(asked).toEqual(['first']))
+
+    expect(await showing(a.id)).toMatchObject({ success: true, data: { mockupId: a.id, status: 'pending', run: { phase: 'queued' } } })
+    expect(await showing(first.id)).toMatchObject({ success: true, data: { mockupId: first.id, status: 'sniffing', run: { phase: 'writing' } } })
+    expect(await showing(9999)).toEqual({ success: true, data: null })
+    release()
+    await queue.idle()
+
+    expect(asked).toEqual(['first', 'a', 'b', 'top', 'after'])
+  })
+
+  it('puts the step Look it over opens on first, as it opens', async () => {
+    const { asked, release } = heldModel()
+    const piles = [0, 1].map((p) => {
+      const rows = ['top', 'x', 'y'].map((n) => waiting(`${n}${p}`))
+      repo.piles.createPile(rows.map((r) => r.id), rows[0]!.id)
+      repo.mockups.updateMockup(rows[0]!.id, { aiStatus: 'ready', aiResult: { title: 'Top', description: '', tags: [] } })
+      return rows
+    })
+    const queue = inferenceQueueFor(ctx)
+    await queue.enqueue([piles[1]![1]!.id, piles[1]![2]!.id, piles[0]![1]!.id, piles[0]![2]!.id])
+    await vi.waitFor(() => expect(asked).toEqual(['x1']))
+
+    await call(IPC_CHANNELS.LOOK_OVER_OPEN)
+    release()
+    await queue.idle()
+
+    expect(asked).toEqual(['x1', 'x0', 'y0', 'y1'])
   })
 })
 

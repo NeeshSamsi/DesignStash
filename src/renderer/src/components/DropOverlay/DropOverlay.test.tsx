@@ -29,4 +29,13 @@ describe('DropOverlay behaviour', () => {
     render(<DropOverlay state="rejected" />)
     expect(screen.getByRole('alert')).not.toBeNull()
   })
+
+  it('sets the title in display/2xl over the window and title/lg when compact', () => {
+    const { rerender } = render(<DropOverlay title="Drop to use as cover" />)
+    expect(screen.getByText('Drop to use as cover').className).toContain('type-display-2xl-medium')
+    rerender(<DropOverlay compact title="Drop to use as cover" />)
+    const title = screen.getByText('Drop to use as cover').className
+    expect(title).toContain('type-title-lg-semibold')
+    expect(title).not.toContain('type-display-2xl-medium')
+  })
 })

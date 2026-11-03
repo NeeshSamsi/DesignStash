@@ -21,7 +21,7 @@ export const KEYBOARD_SHORTCUT_CONTRACT = {
   disabled: false,
   booleans: {},
   texts: {
-    keys: '⌘K'
+    keys: '⌘F'
   },
   icons: {},
   slots: {}
@@ -32,12 +32,12 @@ export type KeyboardShortcutVariant = 'boxed' | 'plain'
 export interface KeyboardShortcutContractProps {
   /** Figma `variant` (2 options). Default `boxed`. */
   variant?: KeyboardShortcutVariant
-  /** Figma text. Default "⌘K". */
+  /** Figma text. Default "⌘F". */
   keys?: string
 }
 
 /** Figma defaults. Slots have none. */
 export const KEYBOARD_SHORTCUT_DEFAULTS = {
   variant: 'boxed',
-  keys: '⌘K'
+  keys: '⌘F'
 } satisfies KeyboardShortcutContractProps

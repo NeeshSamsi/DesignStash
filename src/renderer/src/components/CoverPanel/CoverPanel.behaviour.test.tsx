@@ -108,6 +108,8 @@ describe('CoverPanel · cover image', () => {
     fireEvent.dragEnter(root, { dataTransfer: dragData(png()) })
     expect(overlay(container)?.getAttribute('data-state')).toBe('drag-over')
     expect(screen.getByText('Drop to use as cover')).not.toBeNull()
+    // The cover is too small for the window-wide display size.
+    expect(screen.getByText('Drop to use as cover').className).toContain('type-title-lg-semibold')
     fireEvent.dragLeave(root)
     expect(overlay(container)).toBeNull()
   })

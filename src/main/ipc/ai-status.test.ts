@@ -8,6 +8,7 @@ import type { InferenceProvider } from '@shared/inference'
 import type { Repository } from '../db/repository'
 import { ensureSearchIndex } from '../db/search-index'
 import { createTestDb, sample } from '../db/repositories/__tests__/setup'
+import { LookOverService } from '../import/look-over-service'
 import { LibraryService } from '../library/library-service'
 import type { HandlerContext } from './context'
 
@@ -127,6 +128,27 @@ describe('ai:status push', () => {
     const firsts = track.mock.calls.filter(([name]) => name === 'first_suggestion')
     expect(firsts).toHaveLength(1)
     expect(firsts[0]?.[1]).toMatchObject({ seconds_since_install: expect.any(Number) })
+  })
+
+  it('fills in a Look it over draft that was waiting, and pushes it to the open flow', async () => {
+    const [top, side] = [make('top'), make('side')]
+    repo.piles.createPile([top.id, side.id], top.id)
+    repo.mockups.setStage([top.id, side.id], 'to_stash')
+    repo.mockups.updateMockup(side.id, { aiStatus: 'pending' })
+    await new LookOverService(repo, async () => null, { probe: async () => ({ width: 1, height: 1 }) }).open()
+
+    const queue = inferenceQueueFor(ctx)
+    await queue.enqueue([side.id])
+    await queue.idle()
+
+    await vi.waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        IPC_CHANNELS.LOOK_OVER_DRAFT,
+        expect.objectContaining({ mockupId: side.id, role: 'variant', title: 'Suggested', waitingForAi: false })
+      )
+    )
+    const drafts = push.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.LOOK_OVER_DRAFT)
+    expect(drafts).toHaveLength(1)
   })
 
   it('is one shared queue for the whole app', () => {

@@ -67,6 +67,8 @@ if (MODE === 'tokens') {
       style: s.fontName.style,
       size: s.fontSize,
       lineHeight: s.lineHeight.unit === 'PIXELS' ? s.lineHeight.value : null,
+      // Text styles set line height as a percentage of the font size (in steps of 10).
+      lineHeightPercent: s.lineHeight.unit === 'PERCENT' ? s.lineHeight.value : null,
       letterSpacingPercent: s.letterSpacing.unit === 'PERCENT' ? s.letterSpacing.value : 0,
       textCase: s.textCase,
       description: s.description
@@ -77,6 +79,7 @@ if (MODE === 'tokens') {
 if (MODE === 'components') {
   const page = await figma.getNodeByIdAsync(COMPONENTS_PAGE)
   await page.loadAsync()
+  page.findAll(() => true) // resolve nested instances before reading them
   const sets = page.findAllWithCriteria({ types: ['COMPONENT_SET'] }).slice(FROM, TO)
   const out = []
   for (const set of sets) {
@@ -131,6 +134,8 @@ if (MODE === 'screens') {
     const page = await figma.getNodeByIdAsync(id)
     if (!page) throw new Error(`Flow page ${id} (${name}) is gone; update FLOW_PAGES`)
     await page.loadAsync()
+    // Nested instances only resolve after a first full traversal; without it the component lists come back partial.
+    page.findAll(() => true)
     // One section per flow, straight on the page (never nested). Screens are the section's
     // frames; "Notes · …" cards sit under them.
     for (const section of page.children.filter((n) => n.type === 'SECTION').sort((a, b) => a.x - b.x)) {

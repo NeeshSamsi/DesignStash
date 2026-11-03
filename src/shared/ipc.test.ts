@@ -629,3 +629,88 @@ describe('menu:command push', () => {
     expect(payload.safeParse({ command: 'settings' }).success).toBe(false)
   })
 })
+
+describe('look-over:draft push', () => {
+  const { payload } = PUSH_CONTRACT[IPC_CHANNELS.LOOK_OVER_DRAFT]
+  const item = {
+    mockupId: 14,
+    pileId: 13,
+    role: 'variant',
+    title: 'Blue scroll Macbook',
+    description: 'A long page',
+    tags: [],
+    touched: false,
+    checked: false,
+    waitingForAi: false,
+    carry: null,
+    cover: { path: '/lib/c.webp', source: 'embedded', missing: false, width: 10, height: 10 }
+  }
+
+  it('is a push channel the preload relays', () => {
+    expect(isPushChannel(IPC_CHANNELS.LOOK_OVER_DRAFT)).toBe(true)
+  })
+
+  it('carries one Look it over item, saying whether it still waits for the AI', () => {
+    expect(payload.parse(item)).toEqual(item)
+    expect(payload.safeParse({ ...item, waitingForAi: undefined }).success).toBe(false)
+  })
+
+  it("carries a variant's offer of the top's edit: its reason, the version accepting gives and the tag changes", () => {
+    const tag = { tagId: 3, label: 'bench', categoryId: 1, categoryLabel: 'Environment' }
+    const offered = {
+      ...item,
+      carry: { state: 'offered', reason: 'this one is on a mesh floor', after: { description: 'A long page on a bench', via: 'rewrite' }, tagsAdded: [tag], tagsRemoved: [] }
+    }
+    expect(payload.parse(offered)).toEqual(offered)
+    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, after: null } }).success).toBe(true)
+    expect(payload.safeParse({ ...offered, carry: { ...offered.carry, state: 'copied' } }).success).toBe(false)
+  })
+})
+
+describe('look-over:answer-edit', () => {
+  const { request, response } = IPC_CONTRACT[IPC_CHANNELS.LOOK_OVER_ANSWER_EDIT]
+
+  it("takes one variant and the person's answer to its edit: accept, undo, dismiss or restore", () => {
+    for (const action of ['accept', 'undo', 'dismiss', 'restore'] as const) {
+      expect(request.parse({ mockupId: 3, action })).toEqual({ mockupId: 3, action })
+    }
+    expect(request.safeParse({ mockupId: 3, action: 'copy' }).success).toBe(false)
+    expect(request.safeParse({ action: 'accept' }).success).toBe(false)
+  })
+
+  it('answers with the updated item, or null when that variant had nothing in that state', () => {
+    expect(response.parse(null)).toBeNull()
+    expect(response.safeParse({ mockupId: 3 }).success).toBe(false)
+  })
+})
+
+describe('look-over:showing', () => {
+  const { request, response } = IPC_CONTRACT[IPC_CHANNELS.LOOK_OVER_SHOWING]
+
+  it('takes the mockup now on screen', () => {
+    expect(request.parse({ mockupId: 3 })).toEqual({ mockupId: 3 })
+    expect(request.safeParse({}).success).toBe(false)
+  })
+
+  it('answers with where its suggestion is: waiting its turn, its run, or how it ended; null when it is gone', () => {
+    expect(response.parse({ mockupId: 3, status: 'pending' })).toEqual({ mockupId: 3, status: 'pending' })
+    const queued = { mockupId: 3, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs: 20_000 } }
+    expect(response.parse(queued)).toEqual(queued)
+    const run = { phase: 'writing', writingSince: 1_700_000_000_000, slowAfterMs: 35_000 }
+    expect(response.parse({ mockupId: 3, status: 'sniffing', run })).toEqual({ mockupId: 3, status: 'sniffing', run })
+    expect(response.parse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'starting', writingSince: null } })?.run?.phase).toBe('starting')
+    expect(response.safeParse({ mockupId: 3, status: 'sniffing', run: { ...run, phase: 'loading' } }).success).toBe(false)
+    expect(response.parse(null)).toBeNull()
+  })
+})
+
+describe('ai:status with a run', () => {
+  it("carries a started run's phase, its clock and its threshold", () => {
+    const { payload } = PUSH_CONTRACT[IPC_CHANNELS.AI_STATUS]
+    const event = {
+      updates: [{ mockupId: 1, status: 'sniffing', run: { phase: 'starting', writingSince: null, slowAfterMs: 90_000 } }, { mockupId: 2, status: 'pending' }],
+      totals: { total: 2, remaining: 2 }
+    }
+    expect(payload.parse(event)).toEqual(event)
+  })
+})

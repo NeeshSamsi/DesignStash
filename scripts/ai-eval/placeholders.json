@@ -1,0 +1,1008 @@
+{
+ "_note": "What each item's design slot shows in its cover (ai-eval:slots, placeholder.jpg), and the regex fragments that describe it. Round 3, 2026-10-23.",
+ "generic": [
+  "checker(?:ed|board)?",
+  "placeholder",
+  "lorem",
+  "sample (?:text|art|design|image)",
+  "dummy",
+  "your (?:design|logo|brand|text|artwork) here",
+  "\\b(?:screens?|displays?|monitors?) (?:showing|displaying|shows|displays|featuring|reading|with an?)\\b",
+  "\\b(?:showing|displaying|featuring) (?:an? |the )?(?:app|interface|website|web ?page|home ?screen|lock ?screen|wallpaper|abstract|colou?rful|logo|text|pattern|graphic|design|image|photo)",
+  "\\bwallpaper\\b",
+  "\\b(?:app|user) interface\\b",
+  "\\bhome ?screen\\b",
+  "\\block ?screen\\b",
+  "\\b(?:blank|grey|gray|blue|black|white|purple|orange|colou?rful|bright|lit|glowing) (?:screen|display)s?\\b"
+ ],
+ "items": {
+  "m003t1513-a-long-scroll-macbook-mockup-08agu25": {
+   "shows": "blue grid with white lines on the screen and the sheet",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bgrid\\b",
+    "\\bpattern(?:ed)?\\b",
+    "white (?:lines|dots)",
+    "solar",
+    "\\btiles?\\b|tiled"
+   ]
+  },
+  "m003t1513-b-long-scroll-macbook-mockup-08agu25": {
+   "shows": "blue grid with white lines on the screen and the sheet",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bgrid\\b",
+    "\\bpattern(?:ed)?\\b",
+    "white (?:lines|dots)",
+    "solar",
+    "\\btiles?\\b|tiled"
+   ]
+  },
+  "m003t1513-c-long-scroll-macbook-mockup-08agu25": {
+   "shows": "blue grid with white lines on the screen and the sheet",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bgrid\\b",
+    "\\bpattern(?:ed)?\\b",
+    "white (?:lines|dots)",
+    "solar",
+    "\\btiles?\\b|tiled"
+   ]
+  },
+  "m003t1514-a-long-scroll-macbook-mockup-08agu25": {
+   "shows": "blue grid with white lines on the screen and the sheet",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bgrid\\b",
+    "\\bpattern(?:ed)?\\b",
+    "white (?:lines|dots)",
+    "solar",
+    "\\btiles?\\b|tiled"
+   ]
+  },
+  "m003t1514-b-long-scroll-macbook-mockup-08agu25": {
+   "shows": "blue grid with white lines on the screen and the sheet",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bgrid\\b",
+    "\\bpattern(?:ed)?\\b",
+    "white (?:lines|dots)",
+    "solar",
+    "\\btiles?\\b|tiled"
+   ]
+  },
+  "m003t1514-c-long-scroll-macbook-mockup-08agu25": {
+   "shows": "blue grid with white lines on the screen and the sheet",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bgrid\\b",
+    "\\bpattern(?:ed)?\\b",
+    "white (?:lines|dots)",
+    "solar",
+    "\\btiles?\\b|tiled"
+   ]
+  },
+  "apple-set": {
+   "shows": "colourful abstract paint-swirl wallpaper on every screen",
+   "patterns": [
+    "colou?rful",
+    "abstract",
+    "swirl",
+    "\\bpaint",
+    "vibrant",
+    "rainbow",
+    "marbl",
+    "fluid",
+    "psychedel",
+    "\\bart(?:work)?\\b"
+   ]
+  },
+  "matt-can-mockup": {
+   "shows": "peach-pink to white gradient label with sample text",
+   "patterns": [
+    "\\bpink\\b",
+    "peach",
+    "gradient",
+    "pastel",
+    "blush",
+    "salmon",
+    "\\brose\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "leggings-mockup": {
+   "shows": "blue to pink gradient print over the whole garment, sample text",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bpink\\b",
+    "purple",
+    "violet",
+    "lilac",
+    "lavender",
+    "gradient",
+    "ombre",
+    "pastel",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "top-mockup": {
+   "shows": "blue to pink gradient print over the whole garment, sample text",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bpink\\b",
+    "purple",
+    "violet",
+    "lilac",
+    "lavender",
+    "gradient",
+    "ombre",
+    "pastel",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "top-leggings-mockup": {
+   "shows": "blue to pink gradient print over the whole garment, sample text",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bpink\\b",
+    "purple",
+    "violet",
+    "lilac",
+    "lavender",
+    "gradient",
+    "ombre",
+    "pastel",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "scene-02": {
+   "shows": "white app screen with colourful icons and a button",
+   "patterns": [
+    "app icons?",
+    "\\bicons?\\b",
+    "white screen",
+    "colou?rful",
+    "explore"
+   ]
+  },
+  "free-stylish-cosmetic-tube-mockup": {
+   "shows": "red and white sample label (kaolin)",
+   "patterns": [
+    "kaolin",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "bus-stop-citylight-mockup": {
+   "shows": "blue poster with a slogan",
+   "patterns": [
+    "\\bblue\\b",
+    "shout",
+    "slogan",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "poster-mockup": {
+   "shows": "blue poster with a slogan",
+   "patterns": [
+    "blue (?:paper|poster|sheet)",
+    "poster is blue",
+    "flies",
+    "slogan",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "hand-held-iphone-duo-foldable-smartphone-free": {
+   "shows": "desert landscape photo with sample text",
+   "patterns": [
+    "desert",
+    "dunes?",
+    "\\bsand",
+    "landscape",
+    "mountain",
+    "sunset",
+    "\\bphoto"
+   ]
+  },
+  "kraft-paper-food-pack-mockup": {
+   "shows": "colourful M logo and sample text",
+   "patterns": [
+    "colou?rful",
+    "\\blogo\\b",
+    "abstract",
+    "geometric",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "mens-t-shirt-mockup": {
+   "shows": "colourful geometric print over the whole shirt",
+   "patterns": [
+    "geometric",
+    "colou?rful",
+    "abstract",
+    "\\bpattern",
+    "circles?",
+    "shapes",
+    "bauhaus",
+    "multicolou?r",
+    "\\bprint(?:ed)? (?:design|pattern)"
+   ]
+  },
+  "metallic-foil-pouch-mockup": {
+   "shows": "sample text and a green sticker",
+   "patterns": [
+    "\\bgreen\\b",
+    "sticker",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-imac-mockup-1": {
+   "shows": "black website page with sample text",
+   "patterns": [
+    "black screen",
+    "dark screen",
+    "website",
+    "web ?page",
+    "\\bweb\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-imac-mockup-2": {
+   "shows": "black website page with sample text",
+   "patterns": [
+    "black screen",
+    "dark screen",
+    "website",
+    "web ?page",
+    "\\bweb\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-imac-mockup-3": {
+   "shows": "black website page with sample text",
+   "patterns": [
+    "black screen",
+    "dark screen",
+    "website",
+    "web ?page",
+    "\\bweb\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "office-identity-business-cards-free-psd-mockup": {
+   "shows": "sample identity text on the cards",
+   "patterns": [
+    "john doe",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "oval-mug-mockup-1": {
+   "shows": "black bold MUG MOCKUP lettering",
+   "patterns": [
+    "black (?:letters|text|lettering|typography|graphic|design)",
+    "\\bletters\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "oval-mug-mockup-2": {
+   "shows": "black bold MUG MOCKUP lettering",
+   "patterns": [
+    "black (?:letters|text|lettering|typography|graphic|design)",
+    "\\bletters\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "oval-mug-mockup-3": {
+   "shows": "black bold MUG MOCKUP lettering",
+   "patterns": [
+    "black (?:letters|text|lettering|typography|graphic|design)",
+    "\\bletters\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "oval-mug-mockup-4": {
+   "shows": "black bold MUG MOCKUP lettering",
+   "patterns": [
+    "black (?:letters|text|lettering|typography|graphic|design)",
+    "\\bletters\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "dl-menu-mockup-1": {
+   "shows": "sample menu text in green",
+   "patterns": [
+    "\\bsalt\\b",
+    "\\bvine\\b",
+    "green (?:text|lettering)",
+    "starters",
+    "mains",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "dl-menu-mockup-2": {
+   "shows": "sample menu text in green",
+   "patterns": [
+    "\\bsalt\\b",
+    "\\bvine\\b",
+    "green (?:text|lettering)",
+    "starters",
+    "mains",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "dl-menu-mockup-3": {
+   "shows": "sample menu text in green",
+   "patterns": [
+    "\\bsalt\\b",
+    "\\bvine\\b",
+    "green (?:text|lettering)",
+    "starters",
+    "mains",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "dl-menu-mockup-4": {
+   "shows": "sample menu text in green",
+   "patterns": [
+    "\\bsalt\\b",
+    "\\bvine\\b",
+    "green (?:text|lettering)",
+    "starters",
+    "mains",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "spray-can-mockup": {
+   "shows": "sample text and coloured labels",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "iphone-mockup-1": {
+   "shows": "neon blue and purple light-line wallpaper",
+   "patterns": [
+    "neon",
+    "purple",
+    "violet",
+    "glow(?:ing)?",
+    "blue (?:and purple )?(?:light|lines)",
+    "abstract",
+    "light (?:lines|streaks)"
+   ]
+  },
+  "iphone-mockup-2": {
+   "shows": "neon blue and purple light-line wallpaper",
+   "patterns": [
+    "neon",
+    "purple",
+    "violet",
+    "glow(?:ing)?",
+    "blue (?:and purple )?(?:light|lines)",
+    "abstract",
+    "light (?:lines|streaks)"
+   ]
+  },
+  "iphone-mockup-3": {
+   "shows": "neon blue and purple light-line wallpaper",
+   "patterns": [
+    "neon",
+    "purple",
+    "violet",
+    "glow(?:ing)?",
+    "blue (?:and purple )?(?:light|lines)",
+    "abstract",
+    "light (?:lines|streaks)"
+   ]
+  },
+  "macbook-mockup-on-rocks-boho-interior": {
+   "shows": "white grid page with sample text",
+   "patterns": [
+    "\\bgrid\\b",
+    "white screen",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "amber-pump-bottle-mockup": {
+   "shows": "sample label text",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "lighter-mockup-1": {
+   "shows": "white to violet gradient print with sample text",
+   "patterns": [
+    "violet",
+    "purple",
+    "lilac",
+    "lavender",
+    "gradient",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "lighter-mockup-2": {
+   "shows": "white to violet gradient print with sample text",
+   "patterns": [
+    "violet",
+    "purple",
+    "lilac",
+    "lavender",
+    "gradient",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "lighter-mockup-3": {
+   "shows": "white to violet gradient print with sample text",
+   "patterns": [
+    "violet",
+    "purple",
+    "lilac",
+    "lavender",
+    "gradient",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "lighter-mockup-4": {
+   "shows": "white to violet gradient print with sample text",
+   "patterns": [
+    "violet",
+    "purple",
+    "lilac",
+    "lavender",
+    "gradient",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "lighter-mockup-5": {
+   "shows": "white to violet gradient print with sample text",
+   "patterns": [
+    "violet",
+    "purple",
+    "lilac",
+    "lavender",
+    "gradient",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "french-fries-packaging": {
+   "shows": "sample text on the carton",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "gift-card-holder-mockup-1": {
+   "shows": "purple to pink gradient print and a pink card",
+   "patterns": [
+    "purple",
+    "violet",
+    "\\bpink\\b",
+    "magenta",
+    "gradient",
+    "lilac",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "gift-card-holder-mockup-2": {
+   "shows": "purple to pink gradient print and a pink card",
+   "patterns": [
+    "purple",
+    "violet",
+    "\\bpink\\b",
+    "magenta",
+    "gradient",
+    "lilac",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "gift-card-holder-mockup-3": {
+   "shows": "purple to pink gradient print and a pink card",
+   "patterns": [
+    "purple",
+    "violet",
+    "\\bpink\\b",
+    "magenta",
+    "gradient",
+    "lilac",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "man-sweatshirt-mockup": {
+   "shows": "small sample text on the chest",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "three-flags-mockup": {
+   "shows": "blue flags reading Your. Brand. Here.",
+   "patterns": [
+    "\\bblue\\b",
+    "your brand",
+    "brand here",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-apron-mockup-1": {
+   "shows": "white sample text",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-apron-mockup-2": {
+   "shows": "white sample text",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-apron-mockup-3": {
+   "shows": "white sample text",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "open-spine-book-mockup-1": {
+   "shows": "dark cover and pages with white sample text",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "open-spine-book-mockup-2": {
+   "shows": "dark cover and pages with white sample text",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "open-spine-book-mockup-3": {
+   "shows": "dark cover and pages with white sample text",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "open-spine-book-mockup-4": {
+   "shows": "dark cover and pages with white sample text",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "signboard-mockup": {
+   "shows": "blue sign with a white emblem and sample text",
+   "patterns": [
+    "\\bblue\\b",
+    "emblem",
+    "\\blogo\\b",
+    "\\btree\\b",
+    "leaf",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "yellow-jam-jar-mockup": {
+   "shows": "sample label text",
+   "patterns": [
+    "smarty",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "011": {
+   "shows": "white wireframe page with MOCKUP in large type",
+   "patterns": [
+    "wireframe",
+    "white screen",
+    "\\blayout\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "sticker-mockup": {
+   "shows": "green smiley face on a black sticker with ring text",
+   "patterns": [
+    "smil(?:ey|ing)",
+    "\\bface\\b",
+    "emoji",
+    "\\bgreen\\b",
+    "\\blime\\b",
+    "neon",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "9110-poster-mockup-on-construction-fence": {
+   "shows": "red POSTER artwork and a notice",
+   "patterns": [
+    "\\bred\\b",
+    "your file",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "apple-watch-ultra-lay-psd": {
+   "shows": "blank screens",
+   "patterns": []
+  },
+  "apple-watch-ultra-realistic-psd": {
+   "shows": "Wayfinder watch faces with dials and complications",
+   "patterns": [
+    "watch ?faces?",
+    "\\bdials?\\b",
+    "complications?",
+    "compass",
+    "\\bclock"
+   ]
+  },
+  "b-mockups-psd": {
+   "shows": "orange page with a large 16",
+   "patterns": [
+    "\\borange\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "boards-environment": {
+   "shows": "lime green print with sample text on the top box",
+   "patterns": [
+    "\\blime\\b",
+    "\\bgreen\\b",
+    "neon",
+    "chartreuse",
+    "yellow",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "boards-isolated": {
+   "shows": "lime green print with sample text on the top box",
+   "patterns": [
+    "\\blime\\b",
+    "\\bgreen\\b",
+    "neon",
+    "chartreuse",
+    "yellow",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "floating-z-fold-brand-brochure-free-psd-mockup": {
+   "shows": "black panels with a wireframe pattern and sample text (sidecar cover, mask does not fit)",
+   "patterns": [
+    "wireframe",
+    "mesh",
+    "\\bgrid\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-2-id-cards-mockup": {
+   "shows": "ID CARD sample text with an orange dot",
+   "patterns": [
+    "orange dot",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-billboard-mockup": {
+   "shows": "white board with black sample type",
+   "patterns": [
+    "black (?:text|letters|lettering|type)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-cap-mockup": {
+   "shows": "small sample text on the front",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-craft-cup-mockup": {
+   "shows": "red sample text",
+   "patterns": [
+    "red (?:text|lettering|letters)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-fabric-shopper-bag-mockup": {
+   "shows": "large black sample type",
+   "patterns": [
+    "black (?:text|letters|lettering|type)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-fabric-tote-bag-mockup": {
+   "shows": "large black sample type",
+   "patterns": [
+    "black (?:text|letters|lettering|type)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-realistic-tote-bag-mockup": {
+   "shows": "large black sample type",
+   "patterns": [
+    "black (?:text|letters|lettering|type)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-tote-bag-mockup-on-the-floor": {
+   "shows": "large black sample type",
+   "patterns": [
+    "black (?:text|letters|lettering|type)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-tote-bag-mockup": {
+   "shows": "large black sample type",
+   "patterns": [
+    "black (?:text|letters|lettering|type)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-iphone-15-mockup": {
+   "shows": "sample text with a large neon yellow 15",
+   "patterns": [
+    "yellow",
+    "neon",
+    "glow(?:ing)?",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-notebook-envelope-and-business-card-mockup": {
+   "shows": "large black sample type with purple and green accents",
+   "patterns": [
+    "purple",
+    "violet",
+    "black (?:text|letters|lettering|type)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-notebook-envelope-and-business-card-mockup-2": {
+   "shows": "large black sample type with purple and green accents",
+   "patterns": [
+    "purple",
+    "violet",
+    "black (?:text|letters|lettering|type)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-outdoor-banner-mockup": {
+   "shows": "lime green banner with large type",
+   "patterns": [
+    "\\blime\\b",
+    "\\bgreen\\b",
+    "neon",
+    "chartreuse",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-paper-postal-packages-mockup": {
+   "shows": "sample address text and a barcode",
+   "patterns": [
+    "barcode",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-iphone-16": {
+   "shows": "silver abstract wave wallpaper",
+   "patterns": [
+    "\\bwaves?\\b",
+    "wavy",
+    "swirl",
+    "abstract",
+    "silver (?:screen|wallpaper)",
+    "metallic (?:screen|wallpaper)"
+   ]
+  },
+  "hanging-duct-tape-mockup": {
+   "shows": "sample text on the tape",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "qubus-eu": {
+   "shows": "sample text on the tape",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "tape-coiled-up-in-spiral-mockup": {
+   "shows": "colourful cartoon sticker art on the sticker roll",
+   "patterns": [
+    "colou?rful",
+    "\\bheart",
+    "emoji",
+    "cartoon",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "macbook-pro-showcase-screen-scene-free-psd": {
+   "shows": "colourful abstract artwork on the screen (sidecar cover, mask does not fit)",
+   "patterns": [
+    "colou?rful",
+    "abstract",
+    "rainbow",
+    "vibrant",
+    "psychedel",
+    "\\bgraphic"
+   ]
+  },
+  "paperback-book-on-mirror-base-scene-free-psd": {
+   "shows": "blue cover with orange circles and sample type (sidecar cover, mask does not fit)",
+   "patterns": [
+    "\\bblue\\b",
+    "circles",
+    "\\borange\\b",
+    "editorial",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-lightbox-mockup": {
+   "shows": "large black sample type",
+   "patterns": [
+    "black (?:text|letters|lettering|type)",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "matte-snack-bar-mockup": {
+   "shows": "SNACKBAR sample type",
+   "patterns": [
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-cosmetic-box-and-tube-mockup": {
+   "shows": "light blue print with sample type",
+   "patterns": [
+    "\\bblue\\b",
+    "\\bcyan\\b",
+    "\\bsky\\b",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  },
+  "free-3-notebook-business-cards-and-envelope": {
+   "shows": "pink, purple and green gradient covers with sample type",
+   "patterns": [
+    "\\bpink\\b",
+    "purple",
+    "magenta",
+    "gradient",
+    "\\bgreen\\b",
+    "\\bteal\\b",
+    "iridescent",
+    "holographic",
+    "colou?rful",
+    "vibrant",
+    "\\blettering\\b",
+    "\\btypography\\b",
+    "\\b(?:bold|black|white|printed|sample) (?:text|letters|type)\\b"
+   ]
+  }
+ }
+}

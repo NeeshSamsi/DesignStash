@@ -3,7 +3,7 @@ import type { AnalysisInput } from '../../../shared/inference'
 import { buildRequest, parseResult, type ChatContentPart, type ChatRequest } from '../vision-provider'
 import { SCENE_THINGS } from '../scene-check'
 import { PROMPT_PROFILES, promptProfile } from '.'
-import { SHIPPED, requestFrom } from './request'
+import { MASK_RULE, SHIPPED, requestFrom } from './request'
 import { profile as apple } from './apple'
 import { profile as qwen35 } from './qwen3.5-9b'
 import { profile as qwen3vl } from './qwen3-vl-4b'
@@ -77,6 +77,27 @@ describe('prompt profiles', () => {
     expect(text).not.toContain('When it shows the kind of product the names mention')
   })
 
+  it("shows Apple's model the cover with its design slot blurred in grey, and asks again on a refusal", () => {
+    expect(apple).toMatchObject({ mask: 'soft', redo: true })
+    expect(textOf(apple.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))).not.toContain('has been blanked out')
+  })
+
+  it('shows the 4B the cover with its design slot labelled (blurred where the label leaves it blank), names the object from the cover as it is, and asks again on a refusal', () => {
+    expect(qwen3vl).toMatchObject({ mask: 'label', blankFallback: 'soft', redo: true, objectHint: true })
+    const text = textOf(qwen3vl.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))
+    expect(text).toContain(`${SHIPPED.printedRule}\n${MASK_RULE}`)
+    expect(MASK_RULE).toContain('never write the words design area')
+    expect(textOf(qwen3vl.buildRequest(INPUT, IMAGE))).not.toContain(MASK_RULE)
+  })
+
+  it('answers the 9B from the cover as it is, checks its colour and pattern words on the blurred slot, and answers again from the labelled cover', () => {
+    expect(qwen35).toMatchObject({ verify: { check: 'soft', remask: 'label' }, redo: true })
+    expect(qwen35.mask).toBeUndefined()
+    expect(qwen35.blankFallback).toBeUndefined()
+    expect(textOf(qwen35.buildRequest({ ...INPUT, slotMasked: true }, IMAGE))).toContain(`${SHIPPED.printedRule}\n${MASK_RULE}`)
+    expect(textOf(qwen35.buildRequest(INPUT, IMAGE))).not.toContain(MASK_RULE)
+  })
+
   it('looks a profile up by id, and has none for an unknown id', () => {
     expect(promptProfile('qwen3.5-9b')).toBe(qwen35)
     expect(promptProfile('qwen2.5-vl-3b')).toBeUndefined()
@@ -90,6 +111,22 @@ describe('requestFrom', () => {
       expect(requestFrom(SHIPPED)(input, IMAGE)).toEqual(buildRequest(input, IMAGE))
       expect(requestFrom(SHIPPED)(input, null)).toEqual(buildRequest(input, null))
     }
+  })
+})
+
+describe('requestFrom with a mask rule', () => {
+  const text = (req: ChatRequest) =>
+    (req.messages[1]!.content as ChatContentPart[]).flatMap((p) => (p.type === 'text' ? [p.text] : [])).join('\n')
+  const spec = { ...SHIPPED, maskRule: MASK_RULE }
+
+  it('says the rule after the printed-words rule when the cover shown has its slot painted over', () => {
+    const t = text(requestFrom(spec)({ ...INPUT, slotMasked: true }, IMAGE))
+    expect(t).toContain(`${SHIPPED.printedRule}\n${MASK_RULE}`)
+  })
+
+  it('says nothing about a mask when the cover is shown as it is, or not at all', () => {
+    expect(text(requestFrom(spec)(INPUT, IMAGE))).not.toContain(MASK_RULE)
+    expect(text(requestFrom(spec)({ ...INPUT, slotMasked: true }, null))).not.toContain(MASK_RULE)
   })
 })
 

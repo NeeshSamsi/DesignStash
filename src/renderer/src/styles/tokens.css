@@ -197,6 +197,6 @@
   --ds-duration-slow: 280ms;
 
   /* font families (from the Figma text styles) */
-  --ds-font-display: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --ds-font-body: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --ds-font-display: 'Unbounded Variable', 'Unbounded', ui-sans-serif, system-ui, sans-serif;
+  --ds-font-body: 'Funnel Sans Variable', 'Funnel Sans', ui-sans-serif, system-ui, sans-serif;
 }

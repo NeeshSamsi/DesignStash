@@ -27,7 +27,10 @@ beforeEach(() => {
   stash = new StashService(repo, lookOver, { exists: deps.exists })
 })
 
-afterEach(() => sqlite.close())
+afterEach(async () => {
+  await lookOver.whenIdle()
+  sqlite.close()
+})
 
 const waiting = (name: string, extra = {}) => {
   const m = repo.mockups.createMockup({
@@ -64,9 +67,9 @@ describe('stash a pile', () => {
       description: 'On a stand',
       stage: 'stashed'
     })
-    // The variant took the top's description and tags, and kept its own name.
-    expect(repo.mockups.getMockup(side!.id)).toMatchObject({ title: 'phone side', description: 'On a stand', stage: 'stashed' })
-    expect(repo.mockups.getTagsForMockup(side!.id).map((t) => t.label)).toEqual(['Phone'])
+    // The top's edit was only offered on the variant, and nobody took it: it is stashed with its own words.
+    expect(repo.mockups.getMockup(side!.id)).toMatchObject({ title: 'phone side', description: '', stage: 'stashed' })
+    expect(repo.mockups.getTagsForMockup(side!.id)).toEqual([])
     expect(repo.library.getLibrary({ sort: 'name' }).map((r) => r.id)).toEqual([top!.id])
     expect(repo.inbox.getCounts()).toMatchObject({ toStash: 0 })
   })
@@ -161,7 +164,10 @@ describe('undo', () => {
     const [top, side] = pile('a', 'b')
     await lookOver.saveDraft({ mockupId: top!.id, title: 'Edited', description: 'Words', tagIds: [phone().id] })
     await lookOver.setResume(top!.id, side!.id)
+    await lookOver.whenIdle()
     const before = await lookOver.open()
+    // The top's edit is on offer on the variant, and comes back with it.
+    expect(before.units[0]!.items[1]!.carry).toMatchObject({ state: 'offered', after: { description: 'Words', via: 'copy' } })
 
     const res = await stash.stashPile(top!.id)
     expect(res.ok).toBe(true)

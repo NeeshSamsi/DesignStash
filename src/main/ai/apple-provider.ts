@@ -1,7 +1,9 @@
-import type { AnalysisInput, InferenceProvider, InferenceResult } from '../../shared/inference'
+import type { AnalysisInput, InferenceProvider, InferenceResult, PileEdit, PileEditEntry, PileEditSteps } from '../../shared/inference'
 import type { DescribeRequest, NativeHelper } from '../native/helper'
 import type { PromptProfile } from './prompts/profile'
-import { mentionedThings, sceneQuestion, withoutThing } from './scene-check'
+import { maskedCoverPath, type MaskFill } from './masked-cover'
+import { ENTRY_SCHEMA, PILE_EDIT_SYSTEM, readRewrite, rewritePrompt } from './pile-edit'
+import { mentionedThings, refusedNote, sceneQuestion, withoutThing } from './scene-check'
 import { readCoverAsDataUrl, type ChatContentPart } from './vision-provider'
 
 export interface AppleProviderDeps {
@@ -14,6 +16,8 @@ export interface AppleProviderDeps {
    * from their names alone.
    */
   hasUsableCover?(path: string): Promise<boolean>
+  /** The cover with its design slot painted over, or null without a mask. Default `maskedCoverPath`. */
+  maskedCover?(coverPath: string, fill: MaskFill): Promise<string | null>
 }
 
 /**
@@ -63,20 +67,41 @@ export function appleDescribeRequest(
 export class AppleInferenceProvider implements InferenceProvider {
   readonly id = 'apple'
   readonly name = "Apple's on-device model"
+  /** Apple judges no pile edits (round 3 C); accepting one rewrites, unless the profile copies. */
+  readonly pileEdits: PileEditSteps
 
-  constructor(private readonly deps: AppleProviderDeps) {}
+  constructor(private readonly deps: AppleProviderDeps) {
+    this.pileEdits = deps.prompt.pileEdits?.copy ? {} : { rewrite: (edit, entry) => this.rewriteForEdit(edit, entry) }
+  }
+
+  /** The variant's description with the edit's change worked in, from the text alone. */
+  private async rewriteForEdit(edit: PileEdit, entry: PileEditEntry): Promise<string> {
+    const prompt = rewritePrompt(edit, entry)
+    if (prompt === null) return entry.description
+    const reply = await this.deps.helper.describe({ imagePath: null, instructions: PILE_EDIT_SYSTEM, prompt, schema: ENTRY_SCHEMA, maxTokens: 400 })
+    return readRewrite(reply.text)
+  }
 
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
+    const { prompt } = this.deps
     const usable = await (this.deps.hasUsableCover ?? hasUsableCover)(input.imagePath)
-    const reply = await this.deps.helper.describe({
-      imagePath: usable ? input.imagePath : null,
-      ...appleDescribeRequest(input, usable, this.deps.prompt)
-    })
-    let answer = this.deps.prompt.parseResult(reply.text)
+    const masked = usable && prompt.mask ? await (this.deps.maskedCover ?? maskedCoverPath)(input.imagePath, prompt.mask) : null
+    const asked = masked ? { ...input, slotMasked: true } : input
+    const request = { imagePath: usable ? (masked ?? input.imagePath) : null, ...appleDescribeRequest(asked, usable, prompt) }
+    let answer = prompt.parseResult((await this.deps.helper.describe(request)).text)
     if (!usable) return answer
-    for (const thing of mentionedThings(answer, this.deps.prompt.sceneThings ?? [])) {
-      if ((await this.check(input.imagePath, thing)) === 'no') answer = withoutThing(answer, thing)
+    // The check looks at the cover as it is, so a thing read into the painted slot is checked against the real scene.
+    const refused: string[] = []
+    for (const thing of mentionedThings(answer, prompt.sceneThings ?? [])) {
+      if ((await this.check(input.imagePath, thing)) === 'no') refused.push(thing)
     }
+    if (prompt.redo && refused.length > 0) {
+      answer = await this.deps.helper
+        .describe({ ...request, prompt: `${request.prompt}\n\n${refusedNote(refused)}` })
+        .then((reply) => prompt.parseResult(reply.text))
+        .catch(() => answer)
+    }
+    for (const thing of refused) answer = withoutThing(answer, thing)
     return answer
   }
 

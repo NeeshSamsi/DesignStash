@@ -1,6 +1,7 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { CopyQueue } from '../import/copy-queue'
+import { writeDesignSlotMaskInWorker } from '../psd/design-slot-worker'
 import { createImportCompletedReporter } from '../telemetry/events'
 import type { HandlerContext } from './context'
 import { countsChanged, mockupsArrived, mockupsLeft } from './library-effects'
@@ -15,6 +16,8 @@ export function registerImportHandlers(ctx: HandlerContext): void {
   const copyQueue = new CopyQueue({
     repo,
     libraryRoot: settings.getLibraryRoot(),
+    // The design slot mask reads every layer's pixels, so it runs off the main thread.
+    deps: { writeSlotMask: writeDesignSlotMaskInWorker },
     onProgress: (progress) => {
       push(IPC_CHANNELS.COPY_PROGRESS, progress)
       reportImportCompleted(progress)

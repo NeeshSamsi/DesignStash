@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { join } from 'node:path'
-import type { InferenceProvider } from '../../shared/inference'
+import { InferenceResultSchema, type InferenceProvider } from '../../shared/inference'
 import { AppleInferenceProvider } from './apple-provider'
 import { PROMPT_PROFILES } from './prompts'
 import {
@@ -233,5 +233,29 @@ describe('the end-to-end test stub', () => {
       description: 'A stub description for phone_front.',
       tags: [{ category: 'Device', label: 'phone' }]
     })
+  })
+
+  it('answers a real test-set file with a believable suggestion, valid and with seeded tags', async () => {
+    const { stubProvider } = await import('./provider-factory')
+    const { STUB_SUGGESTIONS } = await import('./stub-suggestions')
+    const { TAXONOMY } = await import('../db/bootstrap')
+    expect(
+      await stubProvider.analyze({
+        imagePath: '/x.webp',
+        fileName: 'Matt_Can_Mockup.psd',
+        folderTrail: []
+      })
+    ).toMatchObject({
+      title: 'Pink and white matte drink can'
+    })
+    const seeded = new Set(TAXONOMY.flatMap((c) => c.tags.map((t) => `${c.label}/${t}`)))
+    const titles = Object.values(STUB_SUGGESTIONS).map((s) => s.title)
+    // Specs find cards by title, so no two are the same.
+    expect(new Set(titles).size).toBe(titles.length)
+    for (const s of Object.values(STUB_SUGGESTIONS)) {
+      expect(InferenceResultSchema.parse(s)).toEqual(s)
+      for (const t of s.tags)
+        expect(seeded, `${s.title}: ${t.label}`).toContain(`${t.category}/${t.label}`)
+    }
   })
 })

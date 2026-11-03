@@ -11,7 +11,7 @@ export const INPUT_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=212-190',
   section: '2 · Primitives (shadcn)',
   description:
-    'Single-line text entry. search = title-bar field (icon + ⌘K); inline-title = the Detail title field, bordered at rest like Textarea, at title size.',
+    'Single-line text entry. search = title-bar field (icon + ⌘F); inline-title = the Detail title field, bordered at rest like Textarea, at title size.',
   code: 'ui/input.tsx + input-group',
   axes: {
     variant: ['text', 'search', 'inline-title']

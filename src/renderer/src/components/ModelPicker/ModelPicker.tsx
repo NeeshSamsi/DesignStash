@@ -1,4 +1,4 @@
-import { useId, type ComponentProps, type ReactNode } from 'react'
+import { useId, type ComponentProps } from 'react'
 import { HardwareSummary } from '@renderer/components/HardwareSummary'
 import { ModelRow } from '@renderer/components/ModelRow'
 import { Switch } from '@renderer/components/Switch'
@@ -16,8 +16,6 @@ export interface ModelPickerProps
   onDescription?: string
   /** The same line when it is off. */
   offDescription?: string
-  /** A third model under the two Figma slots: Apple's built-in model, when this Mac can run it. */
-  model3?: ReactNode
 }
 
 /**
@@ -25,8 +23,8 @@ export interface ModelPickerProps
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=278-5325
  * Uses node 278:5325, the one in the snapshot (795:9729 is a duplicate). Settings › AI model mirrors
  * the accordion. The catalogue is Qwen3-VL 4B (the default, medium), Qwen3.5 9B (large, 16 GB+)
- * and, on macOS 27 with Apple Intelligence, Apple's built-in model in `model3`; Figma's sample rows
- * still show the old text models. Screens pass the real `hardware`, `aiSwitch` and model slots; the
+ * and, on macOS 27 with Apple Intelligence, Apple's built-in model in `model3`. The sample rows
+ * here still show the old models. Meaning search is its own MeaningSearchCard under the picker. Screens pass the real `hardware`, `aiSwitch` and model slots; the
  * defaults are samples.
  */
 export function ModelPicker({
@@ -34,10 +32,9 @@ export function ModelPicker({
   onAiChange,
   onDescription = 'Pick a model below. It runs entirely on your Mac.',
   offDescription = 'Off for now. Titles will come from file names.',
-  model3,
   ...rest
 }: ModelPickerProps) {
-  const { ai, hardware, aiSwitch, model1, model2, ...props } = {
+  const { ai, hardware, aiSwitch, model1, model2, model3, ...props } = {
     ...MODEL_PICKER_DEFAULTS,
     ...rest
   }

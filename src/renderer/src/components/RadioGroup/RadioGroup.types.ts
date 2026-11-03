@@ -28,7 +28,7 @@ export const RADIO_GROUP_CONTRACT = {
     showDescription: true
   },
   texts: {
-    label: 'Qwen 2.5 1.5B',
+    label: 'Qwen3-VL 4B',
     description: '1.0 GB · small'
   },
   icons: {},
@@ -46,7 +46,7 @@ export interface RadioGroupContractProps {
   disabled?: boolean
   /** Figma boolean. Default `true`. */
   showDescription?: boolean
-  /** Figma text. Default "Qwen 2.5 1.5B". */
+  /** Figma text. Default "Qwen3-VL 4B". */
   label?: string
   /** Figma text. Default "1.0 GB · small". */
   description?: string
@@ -58,6 +58,6 @@ export const RADIO_GROUP_DEFAULTS = {
   selected: false,
   disabled: false,
   showDescription: true,
-  label: 'Qwen 2.5 1.5B',
+  label: 'Qwen3-VL 4B',
   description: '1.0 GB · small'
 } satisfies RadioGroupContractProps

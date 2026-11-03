@@ -197,19 +197,37 @@ function Sample({ section, slots }: { section: SettingsLayoutSection; slots: Slo
             </div>
             <div className="flex flex-col gap-2 px-4 pt-3.5 pb-4">
               <p className="type-label-xs-medium text-tertiary">Your models</p>
-              {slots.modelQwen25VL3B ?? <ModelCard state="in-use" bestFit />}
+              {slots.modelQwen3VL4B ?? <ModelCard state="in-use" bestFit />}
+              <p className="mt-2 type-label-xs-medium text-tertiary">Built into macOS</p>
+              {slots.modelAppleSOnDeviceModel ?? (
+                <ModelCard
+                  state="downloaded"
+                  name="Apple’s on-device model"
+                  size="Built in, no download"
+                  quality={3}
+                  speed={5}
+                  deletable={false}
+                  description="Built into macOS with Apple Intelligence, so there is nothing to download. The fastest, with shorter descriptions."
+                />
+              )}
               <p className="mt-2 type-label-xs-medium text-tertiary">Available to download</p>
-              {slots.modelQwen25VL7B ?? (
+              {slots.modelQwen359B ?? (
                 <ModelCard
                   state="available"
-                  name="Qwen 2.5 VL 7B"
-                  size="5.5 GB"
+                  name="Qwen3.5 9B"
+                  size="6.6 GB"
                   quality={5}
-                  speed={2}
-                  description="The best titles and tags. Needs 16 GB of memory or more."
+                  speed={3}
+                  description="The richest descriptions, with the other names people search for. Slower, and uses about 7 GB of memory."
                 />
               )}
             </div>
+            {slots.meaningSearchRow && (
+              <div className="flex flex-col gap-2 px-4 pt-3.5 pb-4">
+                <p className="type-label-xs-medium text-tertiary">Search</p>
+                {slots.meaningSearchRow}
+              </div>
+            )}
           </SettingsGroup>
         </>
       )
@@ -250,7 +268,7 @@ function Sample({ section, slots }: { section: SettingsLayoutSection; slots: Slo
 
 type SlotProps = Pick<
   SettingsLayoutContractProps,
-  'modelQwen25VL3B' | 'modelQwen25VL7B' | 'tagTree'
+  'modelQwen3VL4B' | 'modelAppleSOnDeviceModel' | 'modelQwen359B' | 'meaningSearchRow' | 'tagTree'
 >
 
 /**
@@ -268,7 +286,15 @@ export function SettingsLayout({
   onClose,
   ...rest
 }: SettingsLayoutProps) {
-  const { section, modelQwen25VL3B, modelQwen25VL7B, tagTree, ...props } = {
+  const {
+    section,
+    modelQwen3VL4B,
+    modelAppleSOnDeviceModel,
+    modelQwen359B,
+    meaningSearchRow,
+    tagTree,
+    ...props
+  } = {
     ...SETTINGS_LAYOUT_DEFAULTS,
     ...rest
   }
@@ -307,7 +333,16 @@ export function SettingsLayout({
         </div>
         <div className={SETTINGS_BODY}>
           {children ?? (
-            <Sample section={section} slots={{ modelQwen25VL3B, modelQwen25VL7B, tagTree }} />
+            <Sample
+              section={section}
+              slots={{
+                modelQwen3VL4B,
+                modelAppleSOnDeviceModel,
+                modelQwen359B,
+                meaningSearchRow,
+                tagTree
+              }}
+            />
           )}
         </div>
       </div>

@@ -2,8 +2,8 @@
  "_note": "Sign-off items (test set sign-off/), written 2026-10-22 from the covers before any model answered them. ai-eval:score reads them only with --sign-off.",
  "items": {
   "amber-pump-bottle-mockup": {
-   "title": "Amber pump bottle",
-   "description": "An amber plastic pump bottle with a black pump, also called a soap or lotion dispenser, on a white background.",
+   "title": "Pump bottle",
+   "description": "A plastic pump bottle, also called a soap or lotion dispenser, on a white background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -24,8 +24,8 @@
    ]
   },
   "lighter-mockup-1": {
-   "title": "White flip-top lighter",
-   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, closed, on a light grey background.",
+   "title": "Flip-top lighter",
+   "description": "A flip-top metal lighter, also called a Zippo-style lighter, closed, on a light grey background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -46,8 +46,8 @@
    ]
   },
   "lighter-mockup-2": {
-   "title": "White flip-top lighter",
-   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, with its lid open, on a light grey background.",
+   "title": "Flip-top lighter",
+   "description": "A flip-top metal lighter, also called a Zippo-style lighter, with its lid open, on a light grey background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -68,8 +68,8 @@
    ]
   },
   "lighter-mockup-3": {
-   "title": "White flip-top lighter",
-   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, with its lid open, on a light grey background.",
+   "title": "Flip-top lighter",
+   "description": "A flip-top metal lighter, also called a Zippo-style lighter, with its lid open, on a light grey background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -90,8 +90,8 @@
    ]
   },
   "lighter-mockup-4": {
-   "title": "White flip-top lighter",
-   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, with its lid open, on a light grey background.",
+   "title": "Flip-top lighter",
+   "description": "A flip-top metal lighter, also called a Zippo-style lighter, with its lid open, on a light grey background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -112,8 +112,8 @@
    ]
   },
   "lighter-mockup-5": {
-   "title": "White flip-top lighter",
-   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, with its lid open and a small flame, on a light grey background.",
+   "title": "Flip-top lighter",
+   "description": "A flip-top metal lighter, also called a Zippo-style lighter, with its lid open and a small flame, on a light grey background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -134,8 +134,8 @@
    ]
   },
   "french-fries-packaging": {
-   "title": "French fries in a red carton",
-   "description": "A red French fries carton, also called a fry box, filled with fries, on a white background.",
+   "title": "French fries in a carton",
+   "description": "A French fries carton, also called a fry box, filled with fries, on a white background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -156,8 +156,8 @@
    ]
   },
   "gift-card-holder-mockup-1": {
-   "title": "Purple gift card holder with a pink card",
-   "description": "A purple hanging gift card holder, also called a card carrier, with a pink gift card, on a light lilac background.",
+   "title": "Hanging gift card holder with a card",
+   "description": "A hanging gift card holder, also called a card carrier, with a gift card, on a light lilac background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -178,8 +178,8 @@
    ]
   },
   "gift-card-holder-mockup-2": {
-   "title": "Purple gift card holder with a pink card",
-   "description": "A purple hanging gift card holder, also called a card carrier, with a pink gift card, on a light lilac background.",
+   "title": "Hanging gift card holder with a card",
+   "description": "A hanging gift card holder, also called a card carrier, with a gift card, on a light lilac background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -200,8 +200,8 @@
    ]
   },
   "gift-card-holder-mockup-3": {
-   "title": "Purple gift card holder with a pink card",
-   "description": "A purple hanging gift card holder, also called a card carrier, with a pink gift card, on a light lilac background.",
+   "title": "Hanging gift card holder with a card",
+   "description": "A hanging gift card holder, also called a card carrier, with a gift card, on a light lilac background.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -222,16 +222,12 @@
    ]
   },
   "man-sweatshirt-mockup": {
-   "title": "Men's sweatshirt with orange sleeves",
-   "description": "A men's crew-neck sweatshirt, also called a jumper, with a black front and orange gradient sleeves, floating on a light grey background.",
+   "title": "Floating men's sweatshirt",
+   "description": "A men's crew-neck sweatshirt, also called a jumper, floating on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
      "label": "Sweatshirt"
-    },
-    {
-     "category": "Style",
-     "label": "Colorful"
     },
     {
      "category": "Style",
@@ -243,8 +239,8 @@
    ]
   },
   "three-flags-mockup": {
-   "title": "Three blue flags on poles against a cloudy sky",
-   "description": "Three tall blue flags on poles, also called banners, against a grey cloudy sky.",
+   "title": "Three flags on poles against a cloudy sky",
+   "description": "Three tall flags on poles, also called banners, against a grey cloudy sky.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -265,8 +261,8 @@
    ]
   },
   "free-apron-mockup-1": {
-   "title": "Yellow apron with black straps",
-   "description": "A yellow bib apron, also called a kitchen apron, with black straps, on a light grey background.",
+   "title": "Bib apron",
+   "description": "A bib apron, also called a kitchen apron, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
@@ -283,8 +279,8 @@
    ]
   },
   "free-apron-mockup-2": {
-   "title": "Yellow apron with black straps",
-   "description": "A yellow bib apron, also called a kitchen apron, with black straps, on a light grey background.",
+   "title": "Bib apron",
+   "description": "A bib apron, also called a kitchen apron, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
@@ -301,8 +297,8 @@
    ]
   },
   "free-apron-mockup-3": {
-   "title": "Yellow apron with black straps",
-   "description": "A yellow bib apron, also called a kitchen apron, with black straps, on a light grey background.",
+   "title": "Bib apron",
+   "description": "A bib apron, also called a kitchen apron, on a light grey background.",
    "tags": [
     {
      "category": "Apparel",
@@ -319,8 +315,8 @@
    ]
   },
   "open-spine-book-mockup-1": {
-   "title": "Black sewn open-spine book",
-   "description": "A black book with a sewn open spine, also called a thread-bound book, lying on a black surface.",
+   "title": "Sewn open-spine book",
+   "description": "A book with a sewn open spine, also called a thread-bound book, lying on a black surface.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -341,8 +337,8 @@
    ]
   },
   "open-spine-book-mockup-2": {
-   "title": "Black sewn open-spine book",
-   "description": "A black book with a sewn open spine, also called a thread-bound book, lying on a black surface.",
+   "title": "Sewn open-spine book",
+   "description": "A book with a sewn open spine, also called a thread-bound book, lying on a black surface.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -363,8 +359,8 @@
    ]
   },
   "open-spine-book-mockup-3": {
-   "title": "Black sewn open-spine book",
-   "description": "A black book with a sewn open spine, also called a thread-bound book, lying on a black surface.",
+   "title": "Sewn open-spine book",
+   "description": "A book with a sewn open spine, also called a thread-bound book, lying on a black surface.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -385,8 +381,8 @@
    ]
   },
   "open-spine-book-mockup-4": {
-   "title": "Open black book with printed pages",
-   "description": "An open black book with a sewn open spine, also called a thread-bound book, showing two printed pages on a black surface.",
+   "title": "Open book with printed pages",
+   "description": "An open book with a sewn open spine, also called a thread-bound book, showing two printed pages on a black surface.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -407,8 +403,8 @@
    ]
   },
   "signboard-mockup": {
-   "title": "Blue hanging shop sign on a building",
-   "description": "A blue octagonal hanging shop sign, also called a blade sign, on a black iron bracket on a cream building facade in sunlight.",
+   "title": "Hanging shop sign on a building",
+   "description": "An octagonal hanging shop sign, also called a blade sign, on a black iron bracket on a cream building facade in sunlight.",
    "tags": [
     {
      "category": "Print & Branding",
@@ -433,8 +429,8 @@
    ]
   },
   "yellow-jam-jar-mockup": {
-   "title": "Glass jar of yellow jam with a clip lid",
-   "description": "A glass food jar with a clip-top lid, also called a preserving jar, filled with yellow jam, on a white background.",
+   "title": "Glass jar of jam with a clip lid",
+   "description": "A glass food jar with a clip-top lid, also called a preserving jar, filled with jam, on a white background.",
    "tags": [
     {
      "category": "Print & Branding",

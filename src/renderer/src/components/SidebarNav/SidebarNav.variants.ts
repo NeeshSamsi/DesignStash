@@ -22,7 +22,8 @@ export const sidebarNavListClass = 'flex flex-col gap-1'
 export const sidebarNavTreeClass = 'relative flex flex-col pb-1 pl-5'
 export const sidebarNavStemClass = 'absolute -top-2 left-5 h-2 border-l border-base'
 
-// The brand row: a 24px placeholder logo centred on the nav icon column (8px in), 8px to the name.
-export const sidebarNavBrandClass = 'flex items-center gap-2 py-2 pl-2'
+// The brand row: a 24px placeholder logo flush left with no row padding (Figma 2026-10-23), 8px to
+// the name in title/sm, so Unbounded fits the column.
+export const sidebarNavBrandClass = 'flex items-center gap-2 py-2'
 export const sidebarNavLogoClass =
   'flex size-6 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary'

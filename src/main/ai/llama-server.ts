@@ -85,6 +85,8 @@ export const defaultLlamaServerDeps: LlamaServerDeps = {
 export class LlamaServer {
   private child: ServerProcess | null = null
   private starting: Promise<string> | null = null
+  /** The model is loaded and answering: /health said so, and the server hasn't stopped since. */
+  private healthy = false
   private idleTimer: ReturnType<typeof setTimeout> | null = null
   private inFlight = 0
   private stderrTail: string[] = []
@@ -96,6 +98,23 @@ export class LlamaServer {
 
   get running(): boolean {
     return this.child !== null
+  }
+
+  /** Whether the model is loaded and answering now. False while the server is down or still loading. */
+  get ready(): boolean {
+    return this.healthy
+  }
+
+  /** Start the server and wait for the model to load, without a request. At once when it is ready. */
+  async start(): Promise<void> {
+    this.clearIdle()
+    this.inFlight++
+    try {
+      await this.ensureStarted()
+    } finally {
+      this.inFlight--
+      if (this.inFlight === 0) this.armIdle()
+    }
   }
 
   /** POST a chat completion and return the reply text. Starts the server if it isn't running. */
@@ -150,6 +169,7 @@ export class LlamaServer {
     const child = this.child
     this.child = null
     this.starting = null
+    this.healthy = false
     if (!child || child.exitCode !== null) return
 
     const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()))
@@ -163,7 +183,7 @@ export class LlamaServer {
 
   private ensureStarted(): Promise<string> {
     if (!this.starting) {
-      this.starting = this.start().catch((err) => {
+      this.starting = this.launch().catch((err) => {
         this.starting = null
         throw err
       })
@@ -171,7 +191,7 @@ export class LlamaServer {
     return this.starting
   }
 
-  private async start(): Promise<string> {
+  private async launch(): Promise<string> {
     const { binaryPath, modelPath, mmprojPath, embedding = false, ctxSize = 8192 } = this.config
     const port = await this.deps.freePort()
     const baseUrl = `http://${HOST}:${port}`
@@ -207,6 +227,7 @@ export class LlamaServer {
       if (this.child === child) {
         this.child = null
         this.starting = null
+        this.healthy = false
         this.clearIdle()
       }
     })
@@ -219,7 +240,10 @@ export class LlamaServer {
       try {
         // 503 while the model loads, 200 once it's ready.
         const res = await this.deps.fetch(`${baseUrl}/health`)
-        if (res.ok) return baseUrl
+        if (res.ok) {
+          this.healthy = this.child === child
+          return baseUrl
+        }
       } catch {
         // Not listening yet.
       }

@@ -91,8 +91,15 @@ function sharedFolder(members: PileTitleMember[]): string | undefined {
   return same ? first : undefined
 }
 
-/** The longest start every filename shares, cut back to the last separator, in `top`'s spelling. */
-function sharedNameStart(members: PileTitleMember[], top: PileTitleMember): string | undefined {
+/**
+ * The longest start every filename shares, cut back to the last separator, in `top`'s spelling.
+ * Undefined when it is too short or generic to mean the files belong together. The grouping
+ * service uses the same test to keep a zip of similar names as one pile.
+ */
+export function sharedNameStart(
+  members: Pick<PileTitleMember, 'fileName'>[],
+  top: Pick<PileTitleMember, 'fileName'>
+): string | undefined {
   const names = members.map((m) => m.fileName.toLowerCase())
   let length = 0
   while (names.every((n) => n.length > length && n[length] === names[0]![length])) length++

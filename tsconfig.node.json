@@ -27,6 +27,7 @@
     "playwright.config.ts",
     "e2e/**/*",
     "scripts/ai-eval/**/*",
+    "scripts/seed-dev/**/*",
     "scripts/helper-try.ts"
   ]
 }

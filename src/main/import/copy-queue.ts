@@ -6,7 +6,7 @@ import type { CopyFile, CopyPauseReason, CopyProgress, CopyStatus } from '@share
 import type { Repository } from '../db/repository'
 import type { CopyJob } from '../db/schema'
 import { removeAppCopies } from '../library/app-files'
-import { resolveCover } from '../psd'
+import { SLOT_MASK_FILE, resolveCover, writeDesignSlotMask } from '../psd'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
 import {
   entryPath,
@@ -21,6 +21,11 @@ import { copyWithHash, type CopySource } from './stream-copy'
 
 export interface CopyQueueDeps {
   resolveCover: (input: ResolveCoverInput) => Promise<CoverResolution>
+  /**
+   * Writes the PSD's design slot mask beside its cover (`writeDesignSlotMask`), so the AI never sees
+   * the placeholder. Says whether it wrote one; a failure only means the AI sees the cover as it is.
+   */
+  writeSlotMask: (psdPath: string, coverPath: string, outPath: string) => Promise<boolean>
   freeBytes: (path: string) => Promise<number>
   /** Copy a file (or a stream of one) by streaming it, telling `onBytes` how much is written, and return its SHA-256. */
   copyHashed: (
@@ -37,6 +42,8 @@ export interface CopyQueueDeps {
   /** The names in a folder; empty when it is not there. */
   readdir: (path: string) => Promise<string[]>
   rm: (path: string) => Promise<void>
+  /** Remove a folder once it is empty; fails when it is not. */
+  rmdir: (path: string) => Promise<void>
   mkdir: (path: string) => Promise<void>
   /** Room kept free beyond the file itself, for its cover and thumbnail. */
   reserveBytes: number
@@ -46,6 +53,7 @@ export interface CopyQueueDeps {
 
 const defaultDeps: CopyQueueDeps = {
   resolveCover,
+  writeSlotMask: writeDesignSlotMask,
   freeBytes: async (p) => {
     const s = await fs.statfs(p)
     return s.bavail * s.bsize
@@ -57,6 +65,7 @@ const defaultDeps: CopyQueueDeps = {
   stat: (p) => fs.stat(p),
   readdir: (p) => fs.readdir(p).catch(() => []),
   rm: (p) => fs.rm(p, { force: true, recursive: true }),
+  rmdir: (p) => fs.rmdir(p),
   mkdir: async (p) => {
     await fs.mkdir(p, { recursive: true })
   },
@@ -233,7 +242,7 @@ export class CopyQueue {
 
     const { ids } = this.repo.inbox.collectTossable(this.repo.copyJobs.landedMockupIds(haulId))
     const removed = this.repo.trash.deleteMockupsHard(ids)
-    await removeAppCopies(this.root, removed, this.deps.rm)
+    await removeAppCopies(this.repo, this.root, removed, this.deps)
     this.repo.copyJobs.setHaulState(haulId, { state: 'undone' })
     this.repo.copyJobs.forgetPendingSources(haulId)
     this.emit(haulId, null)
@@ -362,6 +371,11 @@ export class CopyQueue {
         },
         outDir: destDir
       })
+
+      if (cover.source !== 'none')
+        await this.deps
+          .writeSlotMask(libraryPath, cover.coverPath, join(destDir, SLOT_MASK_FILE))
+          .catch(() => false)
 
       const mockup = this.repo.mockups.createMockup({
         // Names inside zips sometimes start with a space.

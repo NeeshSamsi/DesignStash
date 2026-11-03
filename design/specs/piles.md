@@ -1,13 +1,14 @@
 # Piles in Look it over
 
 **Status:** designed 2026-10-12, built 2026-10-20. Its behaviour tests are real tests now (`src/renderer/src/components/PileRail/PileRail.behaviour.test.tsx`).
+**Proposed (awaiting Neesh):** the AI working state and the edit check, in [look-over.md](look-over.md).
 **Figma:** components PileRail, PileStep and CoverPanel (deck). The flow is in _↳ Look it over_ › sub-flow _2 · Piles_ (L2.1–L2.5, L2.E1–E5) and _5 · Moving around_ (L5.1–L5.3, L5.E1–E3).
 
 ## Model: a pile is a sub-form of drafts
 
 - **Two levels:** the haul has horizontal main steps (Sort → Look it over → Tucked away), and the pile inside the current step is vertical.
 - **Drafts until the end:** everything in a pile is a draft until **Stash pile**. Nothing goes into the stash one mockup at a time, so every mockup in the pile stays clickable and editable. There's never a mix of stashed and unstashed mockups in one pile.
-- **Order:** the top mockup comes first, then the variants, pre-filled from the top mockup. Editing the top mockup later updates the variants you haven't touched, and keeps the ones you edited (L2.E1).
+- **Order:** the top mockup comes first, then the variants. Each variant starts with its own AI suggestion (title, description and tags). One the AI hasn't finished yet starts from its file name and the top's description and tags, and takes its suggestion when it lands, in every field you haven't edited and a carry-over hasn't set. Editing the top mockup's description or tags later updates the variants you haven't touched, and keeps the ones you edited (L2.E1).
 - **Moving around:** **Next** goes on in order, any step in the rail jumps there, and **Review pile** jumps to the end.
 - **No Skip for now inside a pile:** Next already moves on without stashing. Skip for now exists only for mockups on their own, where it sends one to the end of the queue.
 

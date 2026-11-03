@@ -9,6 +9,7 @@ import { LlamaPidFile } from './llama-pid'
 import { LlamaServer } from './llama-server'
 import { PROMPT_PROFILES, promptProfile, type PromptProfile } from './prompts'
 import { MODEL_FILE_NAMES, getModel } from './registry'
+import { stubSuggestion } from './stub-suggestions'
 import { VisionInferenceProvider, readCoverAsDataUrl } from './vision-provider'
 
 /** A provider the factory can stop when the active model changes. */
@@ -56,12 +57,7 @@ export const stubProvider: InferenceProvider = {
   id: 'e2e-stub',
   name: 'Test stub',
   async analyze(input) {
-    const stem = input.fileName.replace(/\.[^/.]+$/, '')
-    return {
-      title: `Stub ${stem}`,
-      description: `A stub description for ${stem}.`,
-      tags: [{ category: 'Device', label: 'phone' }]
-    }
+    return stubSuggestion(input.fileName)
   }
 }
 
@@ -107,7 +103,9 @@ function createVisionProvider(files: VisionModelFiles, pidFile?: LlamaPidFile): 
       return { text, logprobs: choice?.logprobs }
     },
     readImage: readCoverAsDataUrl,
-    dispose: () => server.stop()
+    dispose: () => server.stop(),
+    loaded: () => server.ready,
+    load: () => server.start()
   })
 }
 

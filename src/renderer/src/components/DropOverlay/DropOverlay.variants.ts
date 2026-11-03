@@ -40,3 +40,14 @@ export const dropOverlayIconVariants = cva('size-6', {
   },
   defaultVariants: { state: 'drag-over' }
 })
+
+// display/2xl over the window; title/lg inside the cover, where the display size was clipped.
+export const dropOverlayTitleVariants = cva('text-foreground', {
+  variants: {
+    compact: {
+      true: 'type-title-lg-semibold',
+      false: 'type-display-2xl-medium'
+    }
+  },
+  defaultVariants: { compact: false }
+})

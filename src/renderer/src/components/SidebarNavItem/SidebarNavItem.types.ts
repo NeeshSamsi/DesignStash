@@ -32,7 +32,7 @@ export const SIDEBAR_NAV_ITEM_CONTRACT = {
     showIcon: true
   },
   texts: {
-    label: 'My Stash',
+    label: 'Starred',
     count: '12'
   },
   icons: {
@@ -52,7 +52,7 @@ export interface SidebarNavItemContractProps {
   showCount?: boolean
   /** Figma boolean. Default `true`. */
   showIcon?: boolean
-  /** Figma text. Default "My Stash". */
+  /** Figma text. Default "Starred". */
   label?: string
   /** Figma text. Default "12". */
   count?: string
@@ -66,7 +66,7 @@ export const SIDEBAR_NAV_ITEM_DEFAULTS = {
   active: false,
   showCount: true,
   showIcon: true,
-  label: 'My Stash',
+  label: 'Starred',
   count: '12',
   icon: FolderLibraryIcon
 } satisfies SidebarNavItemContractProps

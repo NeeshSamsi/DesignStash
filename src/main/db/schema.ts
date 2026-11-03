@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   type AnySQLiteColumn
 } from 'drizzle-orm/sqlite-core'
+import type { DraftCarry } from '../../shared/approval'
 
 // Shared timestamp columns (SQLite-native defaults).
 const timestamps = {
@@ -136,6 +137,12 @@ export const sortBoards = sqliteTable('sort_boards', {
  * draft until Stash pile, so nothing reaches My Stash one mockup at a time. A row is made when the
  * queue opens and is removed when the mockup is stashed.
  */
+/** A draft's fields, by name. */
+export type DraftField = 'title' | 'description' | 'tags'
+
+// The carry's shape lives with the contract, since Undo of a stash carries it to the renderer and back.
+export type { CarryState, DraftCarry, DraftWords } from '../../shared/approval'
+
 export const drafts = sqliteTable('drafts', {
   mockupId: integer('mockup_id')
     .primaryKey()
@@ -152,6 +159,18 @@ export const drafts = sqliteTable('drafts', {
   checked: integer('checked', { mode: 'boolean' }).notNull().default(false),
   /** Set by Skip for now (a mockup on its own): it moves to the end of the queue. */
   skippedAt: text('skipped_at'),
+  /**
+   * Made from the fallback (the file name, and a variant's top) while the background AI was still
+   * working on it. When the suggestion lands it replaces every field not in `keptFields`.
+   */
+  awaitingAi: integer('awaiting_ai', { mode: 'boolean' }).notNull().default(false),
+  /** Fields a late suggestion leaves alone: ones the user edited, and ones a carry-over from the top set. */
+  keptFields: text('kept_fields', { mode: 'json' })
+    .$type<DraftField[]>()
+    .notNull()
+    .default(sql`'[]'`),
+  /** The last edit to its pile's top, on an untouched variant: judged, offered or taken (`DraftCarry`). */
+  carry: text('carry', { mode: 'json' }).$type<DraftCarry>(),
   ...timestamps
 })
 

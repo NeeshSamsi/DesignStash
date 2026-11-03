@@ -14,6 +14,7 @@ import type { LibraryItem } from '@shared/library'
 import { DropdownMenu, DropdownMenuDivider } from '@renderer/components/DropdownMenu/DropdownMenu'
 import { DropdownMenuItem } from '@renderer/components/DropdownMenuItem/DropdownMenuItem'
 import type { UndoEntry } from './useLibraryActions'
+import { pointMenuAlign } from '@renderer/lib/point-menu'
 
 /** What the menu is for: one card, a selection, a pile, or empty space. */
 export type MenuTarget =
@@ -251,8 +252,8 @@ export function menuRows(
 
 /**
  * CardMenu — the one menu behind ⋯ and right-click, for a card, a selection, a pile or empty space.
- * It is the library's DropdownMenu, anchored to a point. Radix keeps it on screen near the window
- * edge. Never offers Duplicate, Reveal in Finder or a bare “Open”.
+ * It is the library's DropdownMenu, anchored to a point. Near the window's right edge it opens to
+ * the left of the pointer (pointMenuAlign), and Radix keeps it on screen. Never offers Duplicate, Reveal in Finder or a bare “Open”.
  */
 export function CardMenu({ target, at, onClose, actions, lastUndo }: CardMenuProps) {
   const open = target !== null
@@ -266,7 +267,7 @@ export function CardMenu({ target, at, onClose, actions, lastUndo }: CardMenuPro
     <DropdownMenu
       open={open}
       onOpenChange={(next) => !next && onClose()}
-      align="start"
+      align={pointMenuAlign(at.x)}
       trigger={
         <span
           aria-hidden

@@ -5,37 +5,23 @@ import {
   type InferenceResult
 } from '@shared/inference'
 import type { AiStatus } from '@shared/inbox'
-import type { AiStatusEvent } from '@shared/ipc/ai-status'
+import type { AiRun, AiStatusEvent, AiStatusUpdate } from '@shared/ipc/ai-status'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
+import { RunTimes, memoryRunTimes } from './run-timing'
 
 /**
  * What the provider is shown for a mockup: its cover, the file name it came in as, and the folders
- * around it. With `repo`, a variant whose pile's first mockup is already stashed also gets that
- * mockup's approved title, description and tags, so it is described the same way.
+ * around it. A variant in a pile is analysed alone. In round 3 B (design/research/ai-round3.md),
+ * variants given the top's suggestion or approved words copied its scene, and its product names
+ * alone made them no more consistent.
  */
-export function analysisInputFor(m: Mockup, repo?: Repository): AnalysisInput {
+export function analysisInputFor(m: Mockup): AnalysisInput {
   const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
-  const groupContext = repo ? pileContextFor(m, repo) : null
   return {
     imagePath: m.coverPath,
     fileName: ctx?.originalFilename ?? m.title,
-    folderTrail: ctx?.folderTrail ?? [],
-    ...(groupContext && { groupContext })
-  }
-}
-
-function pileContextFor(m: Mockup, repo: Repository): AnalysisInput['groupContext'] | null {
-  if (m.groupId === null) return null
-  const top = repo.mockups.getMockup(m.groupId)
-  if (!top || top.stage !== 'stashed' || top.deletedAt !== null) return null
-  const categories = new Map(repo.tags.getAllCategories().map((c) => [c.id, c.label]))
-  return {
-    originalTitle: top.title,
-    originalDescription: top.description ?? '',
-    originalTags: repo.mockups
-      .getTagsForMockup(top.id)
-      .map((t) => ({ category: categories.get(t.categoryId) ?? '', label: t.label }))
+    folderTrail: ctx?.folderTrail ?? []
   }
 }
 
@@ -45,6 +31,16 @@ export interface InferenceQueueDeps {
   getProvider: () => Promise<InferenceProvider | null>
   /** Called after every change of status, for the push event. */
   onStatus: (event: AiStatusEvent) => void
+  /**
+   * Readies a mockup's files before it is asked about: today, its design slot mask for one imported
+   * before the mask was made at import. A failure only means the provider sees the cover as it is.
+   */
+  prepare?: (m: Mockup) => Promise<void>
+  /** The active model's catalogue id, which this Mac's run times are kept under. */
+  model?: () => string | null
+  /** This Mac's recent run times, and the threshold for "taking a while" they give. Default: kept for this launch only. */
+  timing?: RunTimes
+  now?: () => number
 }
 
 /** Tries per mockup: the first, and one retry. */
@@ -59,11 +55,19 @@ const ATTEMPTS = 2
 export class InferenceQueue {
   private readonly fifo: number[] = []
   private current: number | null = null
+  /** Where the current mockup's run is. */
+  private run: AiRun | null = null
   /** Cancelled while being read: its answer is thrown away. */
   private readonly cancelled = new Set<number>()
   private pumping: Promise<void> | null = null
 
-  constructor(private readonly deps: InferenceQueueDeps) {}
+  private readonly timing: RunTimes
+  private readonly now: () => number
+
+  constructor(private readonly deps: InferenceQueueDeps) {
+    this.timing = deps.timing ?? new RunTimes(memoryRunTimes())
+    this.now = deps.now ?? Date.now
+  }
 
   /** Queue mockups for a suggestion. Ones that have one already, are in My Stash or Trash, or are gone are left out. */
   async enqueue(ids: number[]): Promise<void> {
@@ -106,6 +110,31 @@ export class InferenceQueue {
     }
   }
 
+  /**
+   * Put these mockups first, in this order: the one on screen in Look it over, then the rest of its
+   * pile. The one being read finishes first, and ones not waiting their turn are left out.
+   */
+  prioritise(ids: number[]): void {
+    const front = [...new Set(ids)].filter((id) => this.fifo.includes(id))
+    if (front.length === 0) return
+    const rest = this.fifo.filter((id) => !front.includes(id))
+    this.fifo.splice(0, this.fifo.length, ...front, ...rest)
+  }
+
+  /**
+   * Where one mockup is: waiting its turn (with the threshold, since the renderer counts a wait on
+   * screen too), its run, or the status it ended with. Null when it is gone.
+   */
+  statusOf(id: number): AiStatusUpdate | null {
+    if (this.current === id && this.run) return { mockupId: id, status: 'sniffing', run: this.run }
+    if (this.fifo.includes(id)) {
+      const slowAfterMs = this.timing.slowAfterMs(this.deps.model?.() ?? null)
+      return { mockupId: id, status: 'pending', run: { phase: 'queued', writingSince: null, slowAfterMs } }
+    }
+    const m = this.deps.repo.mockups.getMockup(id)
+    return m ? { mockupId: id, status: m.aiStatus } : null
+  }
+
   /** Whether a suggestion is being read or waiting its turn. */
   get busy(): boolean {
     return this.pumping !== null || this.fifo.length > 0
@@ -133,6 +162,7 @@ export class InferenceQueue {
         console.error('[AI] Queue error:', err)
       } finally {
         this.current = null
+        this.run = null
         this.cancelled.delete(id)
       }
     }
@@ -148,8 +178,22 @@ export class InferenceQueue {
       return
     }
 
-    this.emit([this.setStatus(id, 'sniffing')])
+    // The clock for "taking a while" starts once the model is loaded: a cold start says so instead.
+    const model = this.deps.model?.() ?? null
+    const slowAfterMs = this.timing.slowAfterMs(model)
+    const cold = provider.loaded === false
+    if (cold) {
+      this.run = { phase: 'starting', writingSince: null, slowAfterMs }
+      this.emit([{ ...this.setStatus(id, 'sniffing'), run: this.run }])
+      // A load that fails leaves it to the request, which fails and is tried again.
+      await provider.load?.().catch(() => {})
+    }
+    const since = this.now()
+    this.run = { phase: 'writing', writingSince: since, slowAfterMs }
+    this.emit([{ ...(cold ? { mockupId: id, status: 'sniffing' as const } : this.setStatus(id, 'sniffing')), run: this.run }])
+    await this.deps.prepare?.(m).catch(() => {})
     const result = await this.suggest(provider, m)
+    if (result && model) this.timing.record(model, this.now() - since)
 
     // Tossed or trashed while it was being read: nothing to write to.
     const now = this.deps.repo.mockups.getMockup(id)
@@ -170,7 +214,7 @@ export class InferenceQueue {
   private async suggest(provider: InferenceProvider, m: Mockup): Promise<InferenceResult | null> {
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
       try {
-        const parsed = InferenceResultSchema.safeParse(await provider.analyze(analysisInputFor(m, this.deps.repo)))
+        const parsed = InferenceResultSchema.safeParse(await provider.analyze(analysisInputFor(m)))
         if (parsed.success) return parsed.data
       } catch {
         // Fall through to the next attempt.

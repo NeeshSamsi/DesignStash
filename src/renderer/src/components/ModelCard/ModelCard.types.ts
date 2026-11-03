@@ -9,7 +9,7 @@ export const MODEL_CARD_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=795-9758',
   section: '9 · Onboarding & AI models',
   description:
-    'One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.',
+    'One on-device model in Settings › AI model, after Handy’s model card. Top: name, In use / Best fit for this Mac tags and one plain line, with quality and speed as five-step bars on the right (orange on the model in use). A divider, then the footer: languages, size on disk (or download size), and the actions. in-use = orange border, Delete. downloaded = Delete · Use this model. downloading = progress, “42% · 18 MB/s · about 3 min left”, Cancel. available = Download. failed = the reason in place, Try again. verifying = indeterminate bar, “Checking the download…”, no Cancel. paused = the languages line becomes the resume note and the button reads Resume. Every action is an explicit button, so nothing clickable sits inside a clickable card (Anton 8.19). Code: replaces ModelRow (manage) in SettingsAiPane.tsx.\nSync 2026-10: quality and speed steps fill with background/primary on every card.\nUse disabled (no AI switch) is the Use this model button set to state=disabled, with the tooltip &quot;Turn on AI to use a model.&quot;.\nSync 2026-10-22: catalogue is Qwen3-VL 4B, Qwen3.5 9B and Apple’s on-device model. Apple’s card has no Delete and sits under “Built into macOS”. The Meaning search row reuses this card with the bars, the globe and Use this model hidden (MeaningSearchRow).',
   code: 'screens/settings/AiModelPane.tsx',
   axes: {
     state: ['in-use', 'downloaded', 'downloading', 'available', 'failed', 'verifying', 'paused']
@@ -24,11 +24,12 @@ export const MODEL_CARD_CONTRACT = {
     bestFit: false
   },
   texts: {
-    name: 'Qwen 2.5 VL 3B',
-    description: 'Good titles and tags in a few seconds per mockup.',
-    languages: '29 languages',
-    size: '2.1 GB',
-    resumeNote: '840 MB of 2.1 GB downloaded'
+    name: 'Qwen3-VL 4B',
+    description:
+      'Accurate titles and tags at a quick pace. Uses about 4.4 GB of memory while it works.',
+    languages: '7 languages',
+    size: '3.0 GB',
+    resumeNote: '1.2 GB of 3.0 GB downloaded'
   },
   icons: {},
   slots: {}
@@ -48,15 +49,15 @@ export interface ModelCardContractProps {
   state?: ModelCardState
   /** Figma boolean. Default `false`. */
   bestFit?: boolean
-  /** Figma text. Default "Qwen 2.5 VL 3B". */
+  /** Figma text. Default "Qwen3-VL 4B". */
   name?: string
-  /** Figma text. Default "Good titles and tags in a few seconds per mockup.". */
+  /** Figma text. Default "Accurate titles and tags at a quick pace. Uses about 4.4 GB of memory while it works.". */
   description?: string
-  /** Figma text. Default "29 languages". */
+  /** Figma text. Default "7 languages". */
   languages?: string
-  /** Figma text. Default "2.1 GB". */
+  /** Figma text. Default "3.0 GB". */
   size?: string
-  /** Figma text. Default "840 MB of 2.1 GB downloaded". */
+  /** Figma text. Default "1.2 GB of 3.0 GB downloaded". */
   resumeNote?: string
 }
 
@@ -64,9 +65,10 @@ export interface ModelCardContractProps {
 export const MODEL_CARD_DEFAULTS = {
   state: 'in-use',
   bestFit: false,
-  name: 'Qwen 2.5 VL 3B',
-  description: 'Good titles and tags in a few seconds per mockup.',
-  languages: '29 languages',
-  size: '2.1 GB',
-  resumeNote: '840 MB of 2.1 GB downloaded'
+  name: 'Qwen3-VL 4B',
+  description:
+    'Accurate titles and tags at a quick pace. Uses about 4.4 GB of memory while it works.',
+  languages: '7 languages',
+  size: '3.0 GB',
+  resumeNote: '1.2 GB of 3.0 GB downloaded'
 } satisfies ModelCardContractProps

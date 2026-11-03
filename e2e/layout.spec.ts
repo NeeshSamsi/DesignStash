@@ -1,8 +1,10 @@
 /// <reference lib="dom" />
 import { join } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
-// Synthetic PSDs (makePsds): this spec is about layout, not importing, and they are fast.
-import { test, expect, makePsds, type E2EApp } from './fixtures/app'
+import { test, expect, type E2EApp } from './fixtures/app'
+// Real mockups from the test set when it is there, else generated ones: the screenshots should
+// show real covers, tall, wide and with a kit's placeholder screen.
+import { placeMockups } from './fixtures/real-mockups'
 
 /**
  * Layout at the smallest and the default window: My Stash, the details sidebar, Sort, Look it over and Settings
@@ -79,11 +81,16 @@ for (const { width, height } of SIZES) {
     await resize(app, width, height)
 
     const desk = join(app.userData, 'Desktop')
-    makePsds(join(desk, 'Clay phones'), ['phone_front', 'phone_side', 'phone_back'])
-    makePsds(desk, ['laptop'])
+    // A folder of three iMacs makes a pile; the MacBook (wide) and the can (tall) stand alone.
+    const pileFolder = 'Minimal iMac'
+    placeMockups(join(desk, pileFolder), ['imac', 'imac_angled', 'imac_side'])
+    const [laptop, can] = placeMockups(desk, ['laptop', 'can'])
+    const singleTitles = new RegExp(`^(${laptop!.title}|${can!.title})$`)
     expect((await app.invoke('copy:start', { paths: [desk] })).success).toBe(true)
     await window.getByRole('button', { name: /^To sort/ }).click()
-    await expect(window.getByText('AI suggestions ready for all 4')).toBeVisible()
+    await expect(window.getByText('AI suggestions ready for all 5')).toBeVisible({
+      timeout: 60_000
+    })
     // The page's actions sit in the header, on the title row, so the copy widget in the bottom corner
     // never covers them.
     const summary = window.locator('[data-ds="CopyWidget"]')
@@ -103,7 +110,7 @@ for (const { width, height } of SIZES) {
       await window.getByRole('button', { name: /^All/ }).click()
       const waiting = window.locator('[data-ds="WaitingToSortStrip"]')
       await expect(waiting).toBeVisible()
-      await expect(waiting.getByText('4 mockups waiting to be sorted')).toBeVisible()
+      await expect(waiting.getByText('5 mockups waiting to be sorted')).toBeVisible()
       await inside(window, waiting.getByRole('button', { name: 'Sort now' }), 'Sort now')
       const title = (await window.locator('[data-ds="PageHeader"]').boundingBox())!
       expect((await waiting.boundingBox())!.x, 'the strip lines up with the title').toBe(title.x)
@@ -117,7 +124,7 @@ for (const { width, height } of SIZES) {
     await test.step('Sort', async () => {
       await window.getByRole('button', { name: 'Sort', exact: true }).click()
       const dialog = window.getByRole('dialog')
-      await expect(window.getByText('Clay phones')).toBeVisible()
+      await expect(window.getByText(pileFolder)).toBeVisible()
       await inside(window, dialog, 'the Sort modal')
       await inside(window, window.getByRole('button', { name: 'Look them over' }), 'Look them over')
       await noSidewaysScroll(window, dialog, 'Sort')
@@ -139,15 +146,18 @@ for (const { width, height } of SIZES) {
       await shot('look-over-review')
       await window.getByRole('button', { name: /^Stash pile/ }).click()
 
-      await expect(window.getByRole('textbox', { name: 'Title' })).toHaveValue('Stub laptop')
-      await inside(window, window.getByRole('button', { name: /^Stash( & next)?$/ }), 'Stash')
-      await shot('look-over-single')
-      await window.getByRole('button', { name: /^Stash( & next)?$/ }).click()
+      // The two on their own come next, in either order.
+      for (const step of ['look-over-single', 'look-over-last']) {
+        await expect(window.getByRole('textbox', { name: 'Title' })).toHaveValue(singleTitles)
+        await inside(window, window.getByRole('button', { name: /^Stash( & next)?$/ }), 'Stash')
+        await shot(step)
+        await window.getByRole('button', { name: /^Stash( & next)?$/ }).click()
+      }
     })
 
     await test.step('My Stash', async () => {
       await window.getByRole('button', { name: /^All/ }).click()
-      await expect(window.getByText('2 mockups', { exact: true })).toBeVisible()
+      await expect(window.getByText('3 mockups', { exact: true })).toBeVisible()
       await noSidewaysScroll(window, null, 'My Stash')
       //F4MARK
       const left = async (selector: string) =>
@@ -161,7 +171,7 @@ for (const { width, height } of SIZES) {
     })
 
     await test.step('Details sidebar', async () => {
-      const card = window.locator('[data-mockup-id]').filter({ hasText: 'Stub laptop' })
+      const card = window.locator('[data-mockup-id]').filter({ hasText: laptop!.title })
       await card.hover()
       await card.getByRole('button', { name: 'Edit details' }).click()
       const panel = window.locator('[data-slot="details-panel"]')

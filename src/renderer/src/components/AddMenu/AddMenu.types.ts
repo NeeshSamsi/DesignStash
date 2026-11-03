@@ -10,7 +10,7 @@ export const ADD_MENU_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1767',
   section: '3 · Layout & navigation',
   description:
-    'Import entry point: Add files… / Add folder… + drop hint. Disabled while an import runs.',
+    'Import entry point: Add files… / Add folder… + drop hint. Disabled while an import runs.\nSync 2026-10-23: the trigger is Button base (16px padding, 20px icon) and fills the sidebar column (152).',
   code: 'components/AddMenu/AddMenu.tsx',
   axes: {},
   axisDefaults: {},

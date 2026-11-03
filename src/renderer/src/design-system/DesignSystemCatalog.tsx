@@ -285,6 +285,10 @@ function Primitives() {
   )
 }
 
+// 140% when Figma sets the line height as a percentage, else its px value.
+const lineHeightLabel = (s: { lineHeight: number | null; lineHeightPercent: number | null }) =>
+  s.lineHeightPercent != null ? `${Math.round(s.lineHeightPercent)}%` : s.lineHeight
+
 function TextStyles() {
   return (
     <>
@@ -298,7 +302,7 @@ function TextStyles() {
             <div className="flex w-64 shrink-0 flex-col">
               <code className="text-sm">{s.utility}</code>
               <span className="text-xs text-muted-foreground">
-                {s.family} {s.style} · {s.size}/{s.lineHeight}
+                {s.family} {s.style} · {s.size}/{lineHeightLabel(s)}
               </span>
             </div>
             <span className={s.utility}>Mockups, sorted and searchable</span>

@@ -188,6 +188,30 @@ describe('skipping', () => {
     expect(readdirSync(join(root, 'mockups'))).toHaveLength(1)
   })
 
+  it('writes the design slot mask beside the cover, for the AI', async () => {
+    psd('a.psd')
+    const writeSlotMask = vi.fn(async () => true)
+    const q = queue({ writeSlotMask })
+    await q.start([join(drop, 'a.psd')])
+    await q.idle()
+    const m = repo.mockups.getMockup(repo.inbox.list('to_sort')[0]!.id)!
+    expect(writeSlotMask).toHaveBeenCalledWith(m.libraryPath, m.coverPath, join(m.coverPath, '..', 'slot-mask.png'))
+  })
+
+  it('writes no slot mask without a cover, and lands the file when writing one fails', async () => {
+    psd('a.psd')
+    psd('b.psd')
+    resolveCover.mockImplementationOnce(async () => ({ source: 'none' }))
+    const writeSlotMask = vi.fn(async () => {
+      throw new Error('out of memory')
+    })
+    const q = queue({ writeSlotMask })
+    await q.start([drop])
+    await q.idle()
+    expect(writeSlotMask).toHaveBeenCalledTimes(1)
+    expect((await q.status())!.landed).toBe(2)
+  })
+
   it('clears the way back to a file once it has been handled', async () => {
     psd('a.psd')
     const q = queue()

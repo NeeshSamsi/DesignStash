@@ -60,21 +60,24 @@ describe('toss', () => {
     repo.piles.createPile([a.id, b.id], a.id)
     repo.mockups.setStage([a.id, b.id], 'to_stash')
 
+    // Each folder holds what the app writes for a mockup.
+    const names = ['original.psd', 'cover.webp', 'thumb.webp', 'slot-mask.png', 'cover-ai-soft.png']
+    const readdir = vi.fn(async (dir: string) => (dir.includes('/mockups/') ? names : []))
+    const rmdir = vi.fn<(dir: string) => Promise<void>>(async () => {})
+    inbox = new InboxService(repo, ROOT, { rm, stat, readdir, rmdir })
+
     const result = await inbox.toss([a.id])
 
     expect(result.tossedIds.sort()).toEqual([a.id, b.id].sort())
     expect(repo.mockups.getMockup(a.id)).toBeUndefined()
     expect(repo.mockups.getMockup(b.id)).toBeUndefined()
     expect(rm.mock.calls.map((c) => c[0]).sort()).toEqual(
-      [
-        `${ROOT}/mockups/a/original.psd`,
-        `${ROOT}/mockups/a/cover.webp`,
-        `${ROOT}/mockups/a/thumb.webp`,
-        `${ROOT}/mockups/b/original.psd`,
-        `${ROOT}/mockups/b/cover.webp`,
-        `${ROOT}/mockups/b/thumb.webp`
-      ].sort()
+      ['a', 'b'].flatMap((folder) => names.map((n) => `${ROOT}/mockups/${folder}/${n}`)).sort()
     )
+    expect(rmdir.mock.calls.map((c) => c[0]).sort()).toEqual([
+      `${ROOT}/mockups/a`,
+      `${ROOT}/mockups/b`
+    ])
   })
 
   it('never removes anything outside the stash folder, whatever a record points at', async () => {

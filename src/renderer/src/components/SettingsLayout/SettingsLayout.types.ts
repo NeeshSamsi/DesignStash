@@ -25,8 +25,10 @@ export const SETTINGS_LAYOUT_CONTRACT = {
   texts: {},
   icons: {},
   slots: {
-    modelQwen25VL3B: 'ModelCard',
-    modelQwen25VL7B: 'ModelCard',
+    modelQwen3VL4B: 'ModelCard',
+    modelAppleSOnDeviceModel: 'ModelCard',
+    modelQwen359B: 'ModelCard',
+    meaningSearchRow: 'ModelCard',
     tagTree: 'TagTree'
   }
 } as const satisfies ComponentContract
@@ -37,9 +39,13 @@ export interface SettingsLayoutContractProps {
   /** Figma `section` (5 options). Default `my-stash`. */
   section?: SettingsLayoutSection
   /** Slot — nests `ModelCard` in Figma. */
-  modelQwen25VL3B?: ReactNode
+  modelQwen3VL4B?: ReactNode
   /** Slot — nests `ModelCard` in Figma. */
-  modelQwen25VL7B?: ReactNode
+  modelAppleSOnDeviceModel?: ReactNode
+  /** Slot — nests `ModelCard` in Figma. */
+  modelQwen359B?: ReactNode
+  /** Slot — nests `ModelCard` in Figma. */
+  meaningSearchRow?: ReactNode
   /** Slot — nests `TagTree` in Figma. */
   tagTree?: ReactNode
 }

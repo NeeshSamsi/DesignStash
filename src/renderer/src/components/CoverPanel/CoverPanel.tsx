@@ -269,6 +269,7 @@ export function CoverPanel({
 
         {overlay && (
           <DropOverlay
+            compact
             state={overlay === 'rejected' ? 'rejected' : 'drag-over'}
             title={overlay === 'rejected' ? 'That’s not an image' : 'Drop to use as cover'}
             description={
@@ -307,7 +308,6 @@ export function CoverPanel({
           onDismiss={intake.dismissProblem}
         />
       )}
-
     </div>
   )
 }

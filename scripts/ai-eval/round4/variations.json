@@ -1,0 +1,57 @@
+{
+  "_note": "Round 4, variation words (Neesh, 2026-10-24): every mockup in a pile, the top included, gets a 1 to 3 word variation after the pile's base title (\"Long scroll MacBook · side view\"). Written from the covers by the ai-eval agent. Per mockup: what I'd say, `accept` (regex fragments, case-insensitive, matched from the start of a word; any one makes the answer right), `subtle` when the difference is only a slight turn or crop, so \"same\" isn't wrong, and `same` when it looks identical to the rest, so \"same\" is right; the file name can still tell it apart (EU, US). Piles are the eval's B piles (`piles()` in prompts/pile.ts).",
+  "items": {
+    "free-imac-mockup-1": { "say": "front view", "accept": ["front", "straight", "head-on", "keyboard", "desk setup"] },
+    "free-imac-mockup-2": { "say": "floating, tilted", "accept": ["float", "tilt", "suspend", "in the air", "levitat", "no keyboard", "without keyboard", "hover"] },
+    "free-imac-mockup-3": { "say": "angled view", "accept": ["angle", "side", "three-quarter", "3/4", "turned", "perspective"] },
+
+    "oval-mug-mockup-1": { "say": "front view", "accept": ["front", "eye level", "straight", "side view", "profile"] },
+    "oval-mug-mockup-2": { "say": "from above", "accept": ["above", "high(?!light)", "top", "overhead", "looking down", "inside", "interior", "open view", "close(?!d)"], "subtle": true },
+    "oval-mug-mockup-3": { "say": "floating", "accept": ["float", "tilt", "suspend", "in the air", "levitat", "hover"] },
+    "oval-mug-mockup-4": { "say": "slightly from above", "accept": ["above", "high(?!light)", "angle", "slightly", "inside", "interior", "smaller", "distance", "far"], "subtle": true },
+
+    "dl-menu-mockup-1": { "say": "on a plate", "accept": ["plate", "single", "one menu", "diagonal", "angled"] },
+    "dl-menu-mockup-2": { "say": "on a plate, upright", "accept": ["plate", "upright", "vertical", "straight", "close", "rotat", "turned"], "subtle": true },
+    "dl-menu-mockup-3": { "say": "front and back", "accept": ["two", "pair", "front and back", "both sides", "double", "multiple", "back(?!ground)"] },
+    "dl-menu-mockup-4": { "say": "two menus on the table", "accept": ["two", "pair", "multiple", "front and back", "both sides", "table(?!t)", "beside", "next to", "off the plate"] },
+
+    "iphone-mockup-1": { "say": "diagonal", "accept": ["diagonal", "tilt", "angle", "left", "rotat", "landscape"], "subtle": true },
+    "iphone-mockup-2": { "say": "turned the other way", "accept": ["tilt", "angle", "right", "rotat", "turned", "other way", "flipped", "mirror", "diagonal"], "subtle": true },
+    "iphone-mockup-3": { "say": "upright", "accept": ["upright", "vertical", "portrait", "straight", "standing", "rotat"], "subtle": true },
+
+    "lighter-mockup-1": { "say": "closed", "accept": ["closed", "shut", "lid down", "lid closed"] },
+    "lighter-mockup-2": { "say": "open, angled", "accept": ["open", "lid up", "lid raised", "angle"] },
+    "lighter-mockup-3": { "say": "open, front", "accept": ["open", "lid up", "lid raised", "front", "straight"] },
+    "lighter-mockup-4": { "say": "two lighters", "accept": ["two", "pair", "both", "double", "multiple", "closed and open", "open and closed", "duo"] },
+    "lighter-mockup-5": { "say": "with flame", "accept": ["flame", "lit", "fire", "burning", "ignit"] },
+
+    "gift-card-holder-mockup-1": { "say": "lying flat", "accept": ["flat", "lying", "angle", "tilt", "diagonal", "top-down", "from above"] },
+    "gift-card-holder-mockup-2": { "say": "front view", "accept": ["front", "straight", "upright", "vertical", "head-on", "centred", "centered", "hanging"] },
+    "gift-card-holder-mockup-3": { "say": "leaning", "accept": ["lean", "tilt", "standing", "angle", "side", "perspective", "upright"] },
+
+    "free-apron-mockup-1": { "say": "angled", "accept": ["angle", "diagonal", "tilt", "rotat", "flat lay", "lying"] },
+    "free-apron-mockup-2": { "say": "front view", "accept": ["front", "straight", "flat", "centred", "centered", "head-on"] },
+    "free-apron-mockup-3": { "say": "floating", "accept": ["float", "in the air", "tilt", "perspective", "side", "angle", "suspend", "flying", "hover"] },
+
+    "open-spine-book-mockup-1": { "say": "closed", "accept": ["closed", "single", "one book", "cover", "angle"] },
+    "open-spine-book-mockup-2": { "say": "two books", "accept": ["two", "pair", "stack", "both", "double", "multiple"] },
+    "open-spine-book-mockup-3": { "say": "close-up", "accept": ["close", "detail", "zoom", "macro", "cropped", "spine"] },
+    "open-spine-book-mockup-4": { "say": "open", "accept": ["open", "spread", "pages", "inside"] },
+
+    "apple-watch-ultra-realistic-psd": { "say": "realistic", "accept": ["realistic", "photo", "real", "trail loop", "titanium", "detailed", "watch face"] },
+    "apple-watch-ultra-lay-psd": { "say": "clay render", "accept": ["clay", "render", "matte", "untextured", "plain", "blank", "minimal", "ocean band"] },
+
+    "boards-environment": { "say": "in a concrete room", "accept": ["room", "hall", "concrete", "stair", "interior", "indoor", "environment", "scene", "space"] },
+    "boards-isolated": { "say": "isolated", "accept": ["isolated", "plain", "studio", "background", "no scene", "clean"] },
+
+    "free-notebook-envelope-and-business-card-mockup": { "say": "same (file: EU)", "accept": ["EU\\b", "europe", "A4"], "same": true },
+    "free-notebook-envelope-and-business-card-mockup-2": { "say": "same (file: US)", "accept": ["US\\b", "americ", "letter"], "same": true },
+
+    "m003t1513-a-long-scroll-macbook-mockup-08agu25": { "say": "white bench", "accept": ["bench", "seat"] },
+    "m003t1513-b-long-scroll-macbook-mockup-08agu25": { "say": "metal mesh floor", "accept": ["mesh", "metal", "perforat", "grat", "floor", "grid floor"] },
+    "m003t1513-c-long-scroll-macbook-mockup-08agu25": { "say": "dark concrete block", "accept": ["concrete", "block", "dark", "black", "plinth"] },
+    "m003t1514-a-long-scroll-macbook-mockup-08agu25": { "say": "window ledge", "accept": ["ledge", "window", "shelf", "sill", "wall", "hanging"] },
+    "m003t1514-b-long-scroll-macbook-mockup-08agu25": { "say": "rolled sheet", "accept": ["roll", "scroll", "curl", "isolated", "white background", "plain"] },
+    "m003t1514-c-long-scroll-macbook-mockup-08agu25": { "say": "floating", "accept": ["float", "in the air", "flying", "levitat", "suspend", "hover"] }
+  }
+}

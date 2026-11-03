@@ -1,4 +1,5 @@
 import type { AiDownloadProgress, AiMeaningInfo, AiModelInfo } from '@shared/ipc/ai'
+import type { MeaningSearchCardState } from '@renderer/components/MeaningSearchCard/MeaningSearchCard.types'
 import type { ModelRowState } from '@renderer/components/ModelRow/ModelRow.types'
 import { modelPhase, type HardwareInfo } from './model-phase'
 import {
@@ -176,4 +177,27 @@ export function downloadLabel(
   if (!selected) return 'Download'
   const withMeaning = meaning && meaningOn && !meaningStarted(meaning, meaningEvent)
   return `Download ${formatBytes(selected.sizeBytes + (withMeaning ? meaning.sizeBytes : 0))}`
+}
+
+/**
+ * The meaning search card's state: its switch (on or off) until the download starts, then the
+ * download's own phase. A paused download counts as not started, so the switch still decides.
+ */
+export function meaningCardState(
+  meaning: Pick<AiMeaningInfo, 'id' | 'installed' | 'sizeBytes' | 'downloadedBytes'>,
+  event: AiDownloadProgress | null,
+  on: boolean
+): MeaningSearchCardState {
+  switch (modelPhase(meaning, event).phase) {
+    case 'downloading':
+      return 'downloading'
+    case 'verifying':
+      return 'checking'
+    case 'failed':
+      return 'failed'
+    case 'installed':
+      return 'ready'
+    default:
+      return on ? 'on' : 'off'
+  }
 }
