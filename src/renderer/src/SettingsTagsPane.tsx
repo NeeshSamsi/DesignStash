@@ -1,7 +1,8 @@
-// PLACEHOLDER UI — raw mock exercising every tag-management IPC channel (M8.4)
+// Raw mock exercising every tag-management IPC channel (M8.4)
 import { useState, useEffect, useCallback } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { TagTree, TagTreeNode } from '@shared/tags'
+import { Button } from './ui/button'
 
 export default function SettingsTagsPane() {
   const [tree, setTree] = useState<TagTree>([])
@@ -124,33 +125,33 @@ export default function SettingsTagsPane() {
     await refresh()
   }
 
-  const btn = 'text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-200 px-2 py-1 rounded transition-colors'
-
   return (
-    <div className="mt-6 border-t border-neutral-700 pt-6">
-      <h2 className="text-lg font-semibold text-white mb-1">Tag Management (mock)</h2>
-      <p className="text-sm text-neutral-400 mb-4">Raw controls to exercise every tag-management IPC channel.</p>
+    <div className="mt-6 border-t border-border pt-6">
+      <h2 className="mb-1 text-lg font-semibold text-foreground">Tag Management (mock)</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Raw controls to exercise every tag-management IPC channel.
+      </p>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <button onClick={() => void handleRenameTag()} className={btn}>Rename tag</button>
-        <button onClick={() => void handleSetCategory()} className={btn}>Set tag category</button>
-        <button onClick={() => void handleSetParent()} className={btn}>Set tag parent</button>
-        <button onClick={() => void handleMerge()} className={btn}>Merge tags</button>
-        <button onClick={() => void handleDeleteTag()} className={btn}>Delete tag</button>
-        <button onClick={() => void handleCreateCategory()} className={btn}>Create category</button>
-        <button onClick={() => void handleRenameCategory()} className={btn}>Rename category</button>
-        <button onClick={() => void handleDeleteCategory()} className={btn}>Delete category</button>
-        <button onClick={() => void refresh()} className={btn}>Refresh</button>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Button variant="secondary" size="sm" onClick={() => void handleRenameTag()}>Rename tag</Button>
+        <Button variant="secondary" size="sm" onClick={() => void handleSetCategory()}>Set tag category</Button>
+        <Button variant="secondary" size="sm" onClick={() => void handleSetParent()}>Set tag parent</Button>
+        <Button variant="secondary" size="sm" onClick={() => void handleMerge()}>Merge tags</Button>
+        <Button variant="secondary" size="sm" onClick={() => void handleDeleteTag()}>Delete tag</Button>
+        <Button variant="secondary" size="sm" onClick={() => void handleCreateCategory()}>Create category</Button>
+        <Button variant="secondary" size="sm" onClick={() => void handleRenameCategory()}>Rename category</Button>
+        <Button variant="secondary" size="sm" onClick={() => void handleDeleteCategory()}>Delete category</Button>
+        <Button variant="secondary" size="sm" onClick={() => void refresh()}>Refresh</Button>
       </div>
 
-      {status && <p className="text-xs text-blue-400 mb-3 font-mono">{status}</p>}
+      {status && <p className="mb-3 font-mono text-xs text-primary">{status}</p>}
 
-      <pre className="text-xs text-neutral-300 bg-neutral-900 rounded-lg p-3 overflow-auto font-mono">
+      <pre className="overflow-auto rounded-lg bg-muted p-3 font-mono text-xs text-muted-foreground">
         {tree.map((cat) => (
           <div key={cat.categoryId}>
-            <span className="text-white">[{cat.categoryId}] {cat.categoryLabel}</span>
+            <span className="text-foreground">[{cat.categoryId}] {cat.categoryLabel}</span>
             {cat.tags.map((t) => (
-              <div key={t.tagId} className="pl-4 text-neutral-400">
+              <div key={t.tagId} className="pl-4 text-muted-foreground">
                 ({t.tagId}) {t.label} · parent={String(t.parentTagId)} · used={t.usageCount}
               </div>
             ))}

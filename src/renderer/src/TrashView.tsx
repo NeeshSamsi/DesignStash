@@ -4,6 +4,7 @@ import type { LibraryItem } from '@shared/library'
 import { useLibraryStore } from './stores/libraryStore'
 import { useUiStore } from './stores/uiStore'
 import { toast } from './stores/toastStore'
+import { Button } from './ui/button'
 
 export default function TrashView() {
   const trash = useLibraryStore((s) => s.trash)
@@ -54,62 +55,66 @@ export default function TrashView() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-neutral-400 text-sm">Loading…</p>
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading…</p>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto">
-      <div className="px-5 py-4 border-b border-neutral-800 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-slate-100">Trash</h2>
-        <p className="text-xs text-neutral-500">{trash.length} item{trash.length !== 1 ? 's' : ''}</p>
+    <div className="flex flex-1 flex-col overflow-auto">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <h2 className="text-base font-semibold text-foreground">Trash</h2>
+        <p className="text-xs text-muted-foreground">
+          {trash.length} item{trash.length !== 1 ? 's' : ''}
+        </p>
       </div>
 
       {trash.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-2">
-          <p className="text-neutral-400 text-sm">Trash is empty</p>
-          <p className="text-neutral-600 text-xs">Trashed mockups appear here</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-2">
+          <p className="text-sm text-muted-foreground">Trash is empty</p>
+          <p className="text-xs text-muted-foreground">Trashed mockups appear here</p>
         </div>
       ) : (
-        <ul className="divide-y divide-neutral-800">
+        <ul className="divide-y divide-border">
           {trash.map((item) => (
             <li
               key={item.id}
-              className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-800/50 transition-colors"
+              className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/50"
             >
-              <div className="w-12 h-12 bg-neutral-700 rounded-lg overflow-hidden shrink-0">
+              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
                 <img
                   src={`file://${item.coverPath}`}
                   alt={item.title}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                   onError={(e) => {
                     ;(e.target as HTMLImageElement).style.display = 'none'
                   }}
                 />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-100 truncate">{item.title}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-foreground">{item.title}</p>
                 {item.description && (
-                  <p className="text-xs text-neutral-500 truncate">{item.description}</p>
+                  <p className="truncate text-xs text-muted-foreground">{item.description}</p>
                 )}
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => void handleRestore(item)}
-                  className="text-xs bg-neutral-700 hover:bg-neutral-600 text-slate-200 px-3 py-1.5 rounded-lg transition-colors"
                   aria-label={`Restore ${item.title}`}
                 >
                   Restore
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
                   onClick={() => handleDeletePermanently(item)}
-                  className="text-xs bg-red-900/60 hover:bg-red-800/60 text-red-300 px-3 py-1.5 rounded-lg transition-colors"
                   aria-label={`Delete ${item.title} permanently`}
                 >
                   Delete permanently
-                </button>
+                </Button>
               </div>
             </li>
           ))}

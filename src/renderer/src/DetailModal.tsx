@@ -3,9 +3,10 @@ import { IPC_CHANNELS } from '@shared/ipc'
 import type { MockupDetail } from '@shared/library'
 import type { ApprovalTag, TagsByCategory } from '@shared/approval'
 import { useLibraryStore } from './stores/libraryStore'
-import { Modal } from './ui/Modal'
-import { TagEditor } from './ui/TagEditor'
+import { Modal } from './components/_legacy/Modal'
+import { TagEditor } from './components/_legacy/TagEditor'
 import { toast } from './stores/toastStore'
+import { Button } from './ui/button'
 
 type PendingAction = 'trash' | 'ungroup' | 'group-delete' | null
 
@@ -188,65 +189,59 @@ export function DetailModal({ mockupId, onClose }: Props) {
   const activeCover = allCovers[coverIndex] ?? ''
 
   return (
-    <Modal onClose={onClose} className="max-w-2xl">
+    <Modal onClose={onClose} className="sm:max-w-2xl" showClose={false} label="Mockup details">
       {/* Confirm overlay — rendered inline when a destructive action is pending */}
       {pendingAction && (
-        <div className="absolute inset-0 z-10 bg-neutral-900/90 rounded-xl flex flex-col items-center justify-center gap-4 p-6">
-          <p className="text-white text-sm text-center">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-xl bg-background/90 p-6">
+          <p className="text-center text-sm text-foreground">
             {pendingAction === 'trash' && 'Move this mockup to Trash?'}
             {pendingAction === 'ungroup' && 'Ungroup? All variants will become standalone mockups.'}
             {pendingAction === 'group-delete' && 'Delete this group and all its variants permanently?'}
           </p>
           <div className="flex gap-2">
-            <button
-              onClick={() => setPendingAction(null)}
-              className="text-sm bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded-lg transition-colors"
-            >
+            <Button variant="secondary" size="sm" onClick={() => setPendingAction(null)}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant={pendingAction === 'group-delete' ? 'destructive' : 'default'}
+              size="sm"
               onClick={() => {
                 if (pendingAction === 'trash') void handleTrash()
                 else if (pendingAction === 'ungroup') void handleUngroup()
                 else if (pendingAction === 'group-delete') void handleGroupDelete()
               }}
-              className={`text-sm px-4 py-2 rounded-lg transition-colors text-white ${
-                pendingAction === 'group-delete'
-                  ? 'bg-red-600 hover:bg-red-500'
-                  : 'bg-neutral-600 hover:bg-neutral-500'
-              }`}
             >
               {pendingAction === 'group-delete' ? 'Delete permanently' : 'Confirm'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {!detail ? (
-        <div className="p-8 flex items-center justify-center">
-          <span className="text-neutral-400 text-sm">Loading…</span>
+        <div className="flex items-center justify-center p-8">
+          <span className="text-sm text-muted-foreground">Loading…</span>
         </div>
       ) : (
         <>
           {/* Header */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-neutral-700">
+          <div className="flex items-center gap-3 border-b border-border px-5 py-4">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="flex-1 bg-transparent text-white text-base font-semibold focus:outline-none border-b border-transparent focus:border-neutral-500 pb-0.5 transition-colors"
+              className="flex-1 border-b border-transparent bg-transparent pb-0.5 text-base font-semibold text-foreground outline-none transition-colors focus:border-ring"
               aria-label="Title"
             />
             <button
               onClick={() => void handleFavouriteToggle()}
-              className={`text-xl leading-none transition-colors ${detail.item.favourite ? 'text-yellow-400' : 'text-neutral-500 hover:text-yellow-400'}`}
+              className={`text-xl leading-none transition-colors ${detail.item.favourite ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
               aria-label={detail.item.favourite ? 'Remove from favourites' : 'Add to favourites'}
             >
               ★
             </button>
             <button
               onClick={onClose}
-              className="text-neutral-400 hover:text-white transition-colors text-lg leading-none"
+              className="text-lg leading-none text-muted-foreground transition-colors hover:text-foreground"
               aria-label="Close"
             >
               ×
@@ -254,15 +249,15 @@ export function DetailModal({ mockupId, onClose }: Props) {
           </div>
 
           {/* Body */}
-          <div className="flex gap-5 p-5 overflow-auto max-h-modal-body">
+          <div className="flex max-h-modal-body gap-5 overflow-auto p-5">
             {/* Cover + carousel */}
-            <div className="w-48 shrink-0 flex flex-col gap-2">
-              <div className="w-full aspect-card bg-neutral-700 rounded-lg overflow-hidden">
+            <div className="flex w-48 shrink-0 flex-col gap-2">
+              <div className="aspect-card w-full overflow-hidden rounded-lg bg-muted">
                 {activeCover && (
                   <img
                     src={`file://${activeCover}`}
                     alt="Cover"
-                    className="w-full h-full object-cover"
+                    className="h-full w-full object-cover"
                     onError={(e) => {
                       ;(e.target as HTMLImageElement).style.display = 'none'
                     }}
@@ -270,20 +265,20 @@ export function DetailModal({ mockupId, onClose }: Props) {
                 )}
               </div>
               {allCovers.length > 1 && (
-                <div className="flex gap-1 flex-wrap">
+                <div className="flex flex-wrap gap-1">
                   {allCovers.map((cover, i) => (
                     <button
                       key={i}
                       onClick={() => setCoverIndex(i)}
-                      className={`w-10 h-10 rounded overflow-hidden border-2 transition-colors ${
-                        i === coverIndex ? 'border-brand-500' : 'border-neutral-600'
+                      className={`h-10 w-10 overflow-hidden rounded border-2 transition-colors ${
+                        i === coverIndex ? 'border-primary' : 'border-border'
                       }`}
                       aria-label={`Variant ${i + 1}`}
                     >
                       <img
                         src={`file://${cover}`}
                         alt=""
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-cover"
                         onError={(e) => {
                           ;(e.target as HTMLImageElement).style.display = 'none'
                         }}
@@ -295,23 +290,23 @@ export function DetailModal({ mockupId, onClose }: Props) {
             </div>
 
             {/* Edit fields */}
-            <div className="flex-1 flex flex-col gap-4 min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
               <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
                   Description
                 </label>
                 <textarea
                   value={desc}
                   onChange={(e) => setDesc(e.target.value)}
                   rows={3}
-                  className="w-full bg-neutral-700 border border-neutral-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                   placeholder="Short description…"
                   aria-label="Description"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1">Tags</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Tags</label>
                 <TagEditor
                   tags={tags}
                   categories={categories}
@@ -323,54 +318,43 @@ export function DetailModal({ mockupId, onClose }: Props) {
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-3 border-t border-neutral-700 flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 border-t border-border px-5 py-3">
             {/* File actions */}
-            <button
-              onClick={() => void handleOpenExternal()}
-              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-slate-200 px-3 py-1.5 rounded-lg transition-colors"
-            >
+            <Button variant="secondary" size="sm" onClick={() => void handleOpenExternal()}>
               Open in Photoshop
-            </button>
-            <button
-              onClick={() => void handleDuplicate()}
-              className="text-xs bg-neutral-700 hover:bg-neutral-600 text-slate-200 px-3 py-1.5 rounded-lg transition-colors"
-            >
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => void handleDuplicate()}>
               Duplicate
-            </button>
+            </Button>
 
             {/* Group actions */}
             {detail.item.isGroup && (
               <>
-                <button
-                  onClick={() => setPendingAction('ungroup')}
-                  className="text-xs bg-neutral-700 hover:bg-neutral-600 text-slate-200 px-3 py-1.5 rounded-lg transition-colors"
-                >
+                <Button variant="secondary" size="sm" onClick={() => setPendingAction('ungroup')}>
                   Ungroup
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
                   onClick={() => setPendingAction('group-delete')}
-                  className="text-xs bg-red-900/60 hover:bg-red-800/60 text-red-300 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   Delete Group
-                </button>
+                </Button>
               </>
             )}
 
             <div className="flex-1" />
 
-            <button
-              onClick={() => setPendingAction('trash')}
-              className="text-xs text-neutral-500 hover:text-red-400 transition-colors px-2"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setPendingAction('trash')}>
               Move to Trash
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
               disabled={isSaving || !title.trim()}
               onClick={() => void handleSave()}
-              className="text-xs bg-brand-500 hover:bg-brand-500/80 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg transition-colors"
             >
               {isSaving ? 'Saving…' : 'Save'}
-            </button>
+            </Button>
           </div>
         </>
       )}

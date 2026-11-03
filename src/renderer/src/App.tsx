@@ -157,7 +157,7 @@ export default function App() {
   if (onboarded === null) {
     return (
       <>
-        <div className="min-h-screen bg-neutral-900" />
+        <div className="min-h-screen bg-background" />
         <DebugMenu />
       </>
     )
@@ -225,12 +225,12 @@ export default function App() {
         {addFlow === null && view === 'trash' && <TrashView />}
         {addFlow === null && view === 'settings' && <SettingsPage />}
         {importProgress && importProgress.phase !== 'done' && (
-          <div className="fixed bottom-6 right-6 z-40 bg-neutral-800 border border-neutral-600 rounded-xl p-4 shadow-xl w-72">
-            <p className="text-sm font-medium text-slate-100 mb-1 capitalize">{importProgress.phase}…</p>
-            <p className="text-xs text-neutral-400 mb-2 truncate">{importProgress.currentTitle}</p>
-            <div className="w-full bg-neutral-700 rounded-full h-1.5">
+          <div className="fixed bottom-6 right-6 z-40 w-72 rounded-xl border border-border bg-card p-4 shadow-xl">
+            <p className="mb-1 text-sm font-medium capitalize text-foreground">{importProgress.phase}…</p>
+            <p className="mb-2 truncate text-xs text-muted-foreground">{importProgress.currentTitle}</p>
+            <div className="h-1.5 w-full rounded-full bg-muted">
               <div
-                className="bg-brand-500 h-1.5 rounded-full transition-all"
+                className="h-1.5 rounded-full bg-primary transition-all"
                 style={{ width: `${Math.round((importProgress.completed / importProgress.total) * 100)}%` }}
               />
             </div>

@@ -12,7 +12,7 @@ export default function Locked({ feature, children, fallback }: LockedProps) {
   if (enabled) return <>{children}</>
   if (fallback) return <>{fallback}</>
   return (
-    <div className="px-3 py-2 rounded bg-neutral-800 border border-neutral-600 text-neutral-400 text-xs">
+    <div className="rounded border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
       This is a Pro feature
     </div>
   )

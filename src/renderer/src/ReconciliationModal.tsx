@@ -1,15 +1,13 @@
 import { useState, useCallback } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { IntegrityReport } from '@shared/integrity'
-import { Modal } from './ui/Modal'
+import { Modal } from './components/_legacy/Modal'
+import { Button } from './ui/button'
 
 interface Props {
   report: IntegrityReport
   onClose: () => void
 }
-
-const btn =
-  'text-xs bg-neutral-700 hover:bg-neutral-600 text-neutral-200 px-2 py-1 rounded transition-colors'
 
 export function ReconciliationModal({ report: initialReport, onClose }: Props) {
   const [localReport, setLocalReport] = useState<IntegrityReport>(initialReport)
@@ -80,10 +78,10 @@ export function ReconciliationModal({ report: initialReport, onClose }: Props) {
   const totalRemaining = localReport.orphanFiles.length + localReport.orphanRecords.length
 
   return (
-    <Modal blocking className="max-w-2xl">
-      <div className="px-6 py-5 border-b border-neutral-700">
-        <h2 className="text-base font-semibold text-white">Library out of sync</h2>
-        <p className="text-sm text-neutral-400 mt-1">
+    <Modal blocking className="sm:max-w-2xl" label="Library reconciliation">
+      <div className="border-b border-border px-6 py-5">
+        <h2 className="text-base font-semibold text-foreground">Library out of sync</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           {localReport.orphanFiles.length} file{localReport.orphanFiles.length !== 1 ? 's' : ''} found
           outside your library
           {localReport.orphanRecords.length > 0 &&
@@ -92,36 +90,36 @@ export function ReconciliationModal({ report: initialReport, onClose }: Props) {
         </p>
       </div>
 
-      <div className="p-6 grid grid-cols-2 gap-6 max-h-96 overflow-auto">
+      <div className="grid max-h-96 grid-cols-2 gap-6 overflow-auto p-6">
         {/* Orphan files */}
         <section>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Untracked files ({localReport.orphanFiles.length})
             </h3>
             {localReport.orphanFiles.length > 1 && (
-              <button onClick={() => void handleAddAll()} className={btn}>
+              <Button variant="secondary" size="xs" onClick={() => void handleAddAll()}>
                 Add all
-              </button>
+              </Button>
             )}
           </div>
           {localReport.orphanFiles.length === 0 ? (
-            <p className="text-xs text-neutral-500">None</p>
+            <p className="text-xs text-muted-foreground">None</p>
           ) : (
             <ul className="space-y-1">
               {localReport.orphanFiles.map((f) => (
                 <li
                   key={f}
-                  className="flex items-center justify-between gap-2 bg-neutral-700/50 rounded p-2"
+                  className="flex items-center justify-between gap-2 rounded bg-muted/50 p-2"
                 >
-                  <span className="text-xs text-neutral-300 font-mono truncate flex-1">{f}</span>
-                  <span className="flex gap-1 shrink-0">
-                    <button onClick={() => void handleAddOrphan(f)} className={btn}>
+                  <span className="flex-1 truncate font-mono text-xs text-muted-foreground">{f}</span>
+                  <span className="flex shrink-0 gap-1">
+                    <Button variant="secondary" size="xs" onClick={() => void handleAddOrphan(f)}>
                       Add
-                    </button>
-                    <button onClick={() => handleIgnoreFile(f)} className={btn}>
+                    </Button>
+                    <Button variant="ghost" size="xs" onClick={() => handleIgnoreFile(f)}>
                       Ignore
-                    </button>
+                    </Button>
                   </span>
                 </li>
               ))}
@@ -131,35 +129,35 @@ export function ReconciliationModal({ report: initialReport, onClose }: Props) {
 
         {/* Orphan records */}
         <section>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Missing files ({localReport.orphanRecords.length})
             </h3>
             {localReport.orphanRecords.length > 1 && (
-              <button onClick={() => void handleDeleteAll()} className={btn}>
+              <Button variant="secondary" size="xs" onClick={() => void handleDeleteAll()}>
                 Delete all
-              </button>
+              </Button>
             )}
           </div>
           {localReport.orphanRecords.length === 0 ? (
-            <p className="text-xs text-neutral-500">None</p>
+            <p className="text-xs text-muted-foreground">None</p>
           ) : (
             <ul className="space-y-1">
               {localReport.orphanRecords.map((r) => (
                 <li
                   key={r.mockupId}
-                  className="flex items-center justify-between gap-2 bg-neutral-700/50 rounded p-2"
+                  className="flex items-center justify-between gap-2 rounded bg-muted/50 p-2"
                 >
-                  <span className="text-xs text-neutral-300 font-mono truncate flex-1">
+                  <span className="flex-1 truncate font-mono text-xs text-muted-foreground">
                     #{r.mockupId} · {r.libraryPath}
                   </span>
-                  <span className="flex gap-1 shrink-0">
-                    <button onClick={() => void handleDeleteRecord(r.mockupId)} className={btn}>
+                  <span className="flex shrink-0 gap-1">
+                    <Button variant="secondary" size="xs" onClick={() => void handleDeleteRecord(r.mockupId)}>
                       Delete entry
-                    </button>
-                    <button onClick={() => handleIgnoreRecord(r.mockupId)} className={btn}>
+                    </Button>
+                    <Button variant="ghost" size="xs" onClick={() => handleIgnoreRecord(r.mockupId)}>
                       Ignore
-                    </button>
+                    </Button>
                   </span>
                 </li>
               ))}
@@ -168,17 +166,13 @@ export function ReconciliationModal({ report: initialReport, onClose }: Props) {
         </section>
       </div>
 
-      <div className="px-6 py-4 border-t border-neutral-700 flex items-center justify-between">
-        <p className="text-xs text-neutral-500">
+      <div className="flex items-center justify-between border-t border-border px-6 py-4">
+        <p className="text-xs text-muted-foreground">
           {scanning ? 'Scanning…' : `${totalRemaining} item${totalRemaining !== 1 ? 's' : ''} remaining`}
         </p>
-        <button
-          disabled={totalRemaining > 0}
-          onClick={onClose}
-          className="text-xs bg-brand-500 hover:bg-brand-500/80 disabled:opacity-40 text-white px-4 py-1.5 rounded-lg transition-colors"
-        >
+        <Button size="sm" disabled={totalRemaining > 0} onClick={onClose}>
           Done
-        </button>
+        </Button>
       </div>
     </Modal>
   )

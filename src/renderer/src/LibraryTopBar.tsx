@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { TagsByCategory } from '@shared/approval'
 import { useLibraryStore } from './stores/libraryStore'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
+import { Input } from './ui/input'
 
 export default function LibraryTopBar() {
   const query = useLibraryStore((s) => s.query)
@@ -48,10 +51,10 @@ export default function LibraryTopBar() {
   const clearFilter = useCallback(() => setTagFilter([]), [setTagFilter])
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 flex-wrap relative">
+    <div className="relative flex flex-wrap items-center gap-3 px-4 py-2">
       {/* Search */}
-      <input
-        className="bg-neutral-700 border border-neutral-600 px-3 py-1.5 rounded-lg text-sm text-slate-100 placeholder-neutral-500 w-52 focus:outline-none focus:border-brand-500 transition-colors"
+      <Input
+        className="w-52"
         placeholder="Search…"
         value={inputValue}
         onChange={handleSearchChange}
@@ -60,57 +63,51 @@ export default function LibraryTopBar() {
 
       {/* Filter */}
       <div className="relative">
-        <button
+        <Button
+          variant={tagFilter.length > 0 ? 'default' : 'outline'}
+          size="sm"
           onClick={() => setFilterOpen((v) => !v)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors border ${
-            tagFilter.length > 0
-              ? 'bg-brand-500/20 border-brand-500/60 text-brand-500'
-              : 'bg-neutral-700 border-neutral-600 text-slate-200 hover:bg-neutral-600'
-          }`}
           aria-expanded={filterOpen}
           aria-label="Filter by tags"
         >
           Filter
           {tagFilter.length > 0 && (
-            <span className="text-xs bg-brand-500 text-white rounded-full px-1.5 leading-tight">
+            <Badge variant="secondary" className="ml-1">
               {tagFilter.length}
-            </span>
+            </Badge>
           )}
-        </button>
+        </Button>
 
         {filterOpen && (
-          <div className="absolute top-full left-0 mt-1 z-30 bg-neutral-800 border border-neutral-700 rounded-xl shadow-xl w-56 max-h-72 overflow-y-auto">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-700">
-              <span className="text-xs font-medium text-neutral-400">Tags</span>
+          <div className="absolute left-0 top-full z-30 mt-1 max-h-72 w-56 overflow-y-auto rounded-xl border border-border bg-popover text-popover-foreground shadow-xl">
+            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+              <span className="text-xs font-medium text-muted-foreground">Tags</span>
               {tagFilter.length > 0 && (
-                <button
-                  onClick={clearFilter}
-                  className="text-xs text-neutral-500 hover:text-red-400 transition-colors"
-                >
+                <Button variant="ghost" size="xs" onClick={clearFilter}>
                   Clear all
-                </button>
+                </Button>
               )}
             </div>
             {categories.length === 0 && (
-              <p className="px-3 py-3 text-xs text-neutral-500">No tags yet</p>
+              <p className="px-3 py-3 text-xs text-muted-foreground">No tags yet</p>
             )}
             {categories.map((cat) => (
               <div key={cat.categoryId}>
-                <p className="px-3 py-1.5 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {cat.categoryLabel}
                 </p>
                 {cat.tags.map((tag) => (
                   <label
                     key={tag.tagId}
-                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-neutral-700 cursor-pointer transition-colors"
+                    className="flex cursor-pointer items-center gap-2 px-3 py-1.5 transition-colors hover:bg-muted"
                   >
                     <input
                       type="checkbox"
                       checked={tagFilter.includes(tag.tagId)}
                       onChange={() => handleTagToggle(tag.tagId)}
-                      className="accent-brand-500 rounded"
+                      className="rounded accent-primary"
                     />
-                    <span className="text-sm text-slate-200">{tag.label}</span>
+                    <span className="text-sm text-foreground">{tag.label}</span>
                   </label>
                 ))}
               </div>
@@ -119,9 +116,9 @@ export default function LibraryTopBar() {
         )}
       </div>
 
-      {/* Sort */}
+      {/* Sort — native select (kept for accessible form semantics), tokenized */}
       <select
-        className="bg-neutral-700 border border-neutral-600 px-2 py-1.5 rounded-lg text-sm text-slate-100 focus:outline-none transition-colors"
+        className="rounded-lg border border-input bg-transparent px-2 py-1.5 text-sm text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
         value={sort}
         onChange={(e) => setSort(e.target.value as 'date' | 'name')}
         aria-label="Sort order"
@@ -131,7 +128,7 @@ export default function LibraryTopBar() {
       </select>
 
       {/* Stats */}
-      <div className="ml-auto text-xs text-neutral-500 hidden sm:flex gap-3">
+      <div className="ml-auto hidden gap-3 text-xs text-muted-foreground sm:flex">
         <span>{stats.total} items</span>
         {stats.favourites > 0 && <span>{stats.favourites} favourites</span>}
         {stats.groups > 0 && <span>{stats.groups} groups</span>}

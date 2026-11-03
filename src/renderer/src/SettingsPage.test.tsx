@@ -36,11 +36,11 @@ beforeEach(() => {
 describe('SettingsPage', () => {
   it('renders all tab labels', () => {
     render(<SettingsPage />)
-    expect(screen.getByRole('button', { name: 'Library' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'AI Models' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Privacy' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Tags' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'About' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Library' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'AI Models' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Privacy' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Tags' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'About' })).toBeTruthy()
   })
 
   it('Library tab shows the library root path', async () => {
@@ -50,7 +50,11 @@ describe('SettingsPage', () => {
 
   it('About tab shows app name and version', async () => {
     render(<SettingsPage />)
-    fireEvent.click(screen.getByRole('button', { name: 'About' }))
+    // Radix Tabs activate on focus/pointer-down, not a bare click.
+    const aboutTab = screen.getByRole('tab', { name: 'About' })
+    fireEvent.focus(aboutTab)
+    fireEvent.mouseDown(aboutTab)
+    fireEvent.click(aboutTab)
     expect(await screen.findByText('Version 1.0.0')).toBeTruthy()
   })
 

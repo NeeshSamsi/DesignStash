@@ -219,6 +219,9 @@ describe('App', () => {
         return { success: true, data: { libraryRoot: '/lib', onboarded: true, telemetryEnabled: true } }
       if (channel === IPC_CHANNELS.INTEGRITY_SCAN)
         return { success: true, data: { orphanFiles: ['/stash/lost.psd'], orphanRecords: [] } }
+      if (channel === IPC_CHANNELS.LIBRARY_LIST) return { success: true, data: { items: [] } }
+      if (channel === IPC_CHANNELS.LIBRARY_STATS)
+        return { success: true, data: { total: 0, favourites: 0, groups: 0, trashed: 0 } }
       return { success: true, data: {} }
     })
 

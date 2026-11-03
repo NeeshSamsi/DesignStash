@@ -24,19 +24,19 @@ export default function SettingsPrivacyPane() {
   }
 
   return (
-    <div className="mt-6 border-t border-neutral-700 pt-6">
-      <h2 className="text-lg font-semibold text-white mb-1">Privacy</h2>
-      <p className="text-sm text-neutral-400 mb-4">
+    <div className="mt-6 border-t border-border pt-6">
+      <h2 className="mb-1 text-lg font-semibold text-foreground">Privacy</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
         Anonymous usage data helps improve DesignStash. We never collect your files, file names,
         images, or the titles and tags you create.
       </p>
-      <label className="flex items-center gap-2 text-sm text-neutral-200">
+      <label className="flex items-center gap-2 text-sm text-foreground">
         <input
           type="checkbox"
           checked={enabled === true}
           disabled={enabled === null}
           onChange={(e) => void handleToggle(e.target.checked)}
-          className="accent-blue-500"
+          className="accent-primary"
         />
         Share anonymous usage data
       </label>

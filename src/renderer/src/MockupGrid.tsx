@@ -1,6 +1,7 @@
 import type { LibraryItem } from '@shared/library'
 import MockupTile from './MockupTile'
-import { EmptyState, LoadingState } from './ui/States'
+import { EmptyState, LoadingState } from './components/_legacy/States'
+import { Button } from './ui/button'
 
 interface MockupGridProps {
   items: LibraryItem[]
@@ -25,14 +26,7 @@ export default function MockupGrid({
         title="Your library is empty"
         description="Import PSD files or folders to get started."
         action={
-          onAddFiles && (
-            <button
-              onClick={onAddFiles}
-              className="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-500/80 text-white text-sm font-medium transition-colors"
-            >
-              + Import files
-            </button>
-          )
+          onAddFiles && <Button onClick={onAddFiles}>+ Import files</Button>
         }
       />
     )

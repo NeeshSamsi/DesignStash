@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { AiModelInfo, AiDownloadProgress } from '@shared/ipc'
+import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
 
 // ── types ────────────────────────────────────────────────────────────────────
 
@@ -27,14 +29,14 @@ function OnboardingCard({
 }) {
   const idx = STEPS.indexOf(step)
   return (
-    <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-8 font-sans">
-      <div className="max-w-lg w-full bg-neutral-800 rounded-xl shadow-2xl border border-neutral-700 p-8">
-        <div className="flex justify-center gap-1.5 mb-6" aria-label="Step progress">
+    <div className="flex min-h-screen items-center justify-center bg-background p-8 font-sans">
+      <div className="w-full max-w-lg rounded-xl border border-border bg-card p-8 text-card-foreground shadow-2xl">
+        <div className="mb-6 flex justify-center gap-1.5" aria-label="Step progress">
           {STEPS.map((s, i) => (
             <div
               key={s}
-              className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                i <= idx ? 'bg-brand-500' : 'bg-neutral-600'
+              className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                i <= idx ? 'bg-primary' : 'bg-muted'
               }`}
             />
           ))}
@@ -50,17 +52,14 @@ function OnboardingCard({
 function StepWelcome({ onNext }: StepProps) {
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-100 mb-2">Welcome to DesignStash</h1>
-      <p className="text-sm text-neutral-400 leading-relaxed mb-6">
+      <h1 className="mb-2 text-2xl font-bold text-foreground">Welcome to DesignStash</h1>
+      <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
         Your local-first library for organising and searching mockups. Your files stay on your Mac
         — no cloud, no account.
       </p>
-      <button
-        onClick={onNext}
-        className="bg-brand-500 hover:bg-brand-500/80 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
-      >
+      <Button size="lg" onClick={onNext}>
         Get Started
-      </button>
+      </Button>
     </div>
   )
 }
@@ -92,37 +91,25 @@ function StepLibrary({ onNext, onBack }: BackableStepProps) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-slate-100 mb-2">Choose your library location</h2>
-      <p className="text-sm text-neutral-400 leading-relaxed mb-4">
+      <h2 className="mb-2 text-xl font-bold text-foreground">Choose your library location</h2>
+      <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
         DesignStash manages its own folder — your PSD files are copied in and the app handles
         everything from there. You won&apos;t need to browse to it in Finder.
       </p>
-      <div className="bg-neutral-900/50 border border-neutral-700 rounded-lg px-4 py-3 mb-4">
-        <p className="text-xs text-neutral-500 mb-0.5">Library location</p>
-        <p className="text-sm text-slate-200 font-mono truncate">
+      <div className="mb-4 rounded-lg border border-border bg-muted/50 px-4 py-3">
+        <p className="mb-0.5 text-xs text-muted-foreground">Library location</p>
+        <p className="truncate font-mono text-sm text-foreground">
           {libraryPath ?? '~/Library/Application Support/DesignStash'}
         </p>
       </div>
       <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="text-sm px-4 py-2 rounded-lg text-neutral-400 hover:text-slate-200 transition-colors"
-        >
+        <Button variant="ghost" onClick={onBack}>
           ← Back
-        </button>
-        <button
-          onClick={() => void handleChooseFolder()}
-          disabled={busy}
-          className="text-sm px-4 py-2 rounded-lg bg-neutral-700 hover:bg-neutral-600 text-slate-200 disabled:opacity-50 transition-colors"
-        >
+        </Button>
+        <Button variant="secondary" onClick={() => void handleChooseFolder()} disabled={busy}>
           Choose a different folder…
-        </button>
-        <button
-          onClick={onNext}
-          className="text-sm px-6 py-2 rounded-lg bg-brand-500 hover:bg-brand-500/80 text-white font-medium transition-colors"
-        >
-          Continue
-        </button>
+        </Button>
+        <Button onClick={onNext}>Continue</Button>
       </div>
     </div>
   )
@@ -229,48 +216,42 @@ function StepAI({ onNext, onBack }: BackableStepProps) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-slate-100 mb-2">On-device AI tagging</h2>
-      <p className="text-sm text-neutral-400 leading-relaxed mb-4">
+      <h2 className="mb-2 text-xl font-bold text-foreground">On-device AI tagging</h2>
+      <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
         A small model runs entirely on your Mac — no internet needed after download. It
         auto-generates titles, descriptions, and tags for imported mockups.
       </p>
 
       {hardware && (
-        <p className="text-xs text-neutral-500 mb-4">
+        <p className="mb-4 text-xs text-muted-foreground">
           {hardware.chip} · {hardware.totalMemoryGB.toFixed(0)} GB RAM ·{' '}
-          <span className="text-brand-500">Recommended: {hardware.recommendedTier}</span>
+          <span className="text-primary">Recommended: {hardware.recommendedTier}</span>
         </p>
       )}
 
       {/* Enable / Skip toggle */}
       {aiMode === 'choose' && (
-        <div className="flex gap-2 mb-4">
-          <button
+        <div className="mb-4 flex gap-2">
+          <Button
+            variant={enableAI ? 'default' : 'secondary'}
+            className="flex-1"
             onClick={() => setEnableAI(true)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors border ${
-              enableAI
-                ? 'bg-brand-500 border-brand-500 text-white'
-                : 'bg-neutral-700 border-neutral-600 text-neutral-300 hover:bg-neutral-600'
-            }`}
           >
             Enable AI (recommended)
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={!enableAI ? 'default' : 'secondary'}
+            className="flex-1"
             onClick={() => setEnableAI(false)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors border ${
-              !enableAI
-                ? 'bg-neutral-600 border-neutral-500 text-slate-100'
-                : 'bg-neutral-700 border-neutral-600 text-neutral-400 hover:bg-neutral-600'
-            }`}
           >
             Skip for now
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Model list (only when enabling) */}
       {aiMode === 'choose' && enableAI && (
-        <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+        <div className="mb-4 max-h-48 space-y-2 overflow-y-auto">
           {models.map((model) => {
             const isRecommended = hardware?.recommendedTier === model.tier
             const isSelected = selected === model.id
@@ -278,32 +259,24 @@ function StepAI({ onNext, onBack }: BackableStepProps) {
               <button
                 key={model.id}
                 onClick={() => setSelected(model.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
                   isSelected
-                    ? 'border-brand-500 bg-brand-500/10'
-                    : 'border-neutral-600 bg-neutral-700/50 hover:bg-neutral-700'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border bg-muted/50 hover:bg-muted'
                 }`}
               >
                 <div
-                  className={`w-3 h-3 rounded-full border-2 shrink-0 ${
-                    isSelected ? 'border-brand-500 bg-brand-500' : 'border-neutral-500'
+                  className={`h-3 w-3 shrink-0 rounded-full border-2 ${
+                    isSelected ? 'border-primary bg-primary' : 'border-muted-foreground'
                   }`}
                 />
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-100">{model.name}</span>
-                    {isRecommended && (
-                      <span className="text-xs bg-brand-500/20 text-brand-500 px-1.5 py-0.5 rounded">
-                        Recommended
-                      </span>
-                    )}
-                    {model.installed && (
-                      <span className="text-xs bg-green-900/60 text-green-400 px-1.5 py-0.5 rounded">
-                        Downloaded
-                      </span>
-                    )}
+                    <span className="text-sm font-medium text-foreground">{model.name}</span>
+                    {isRecommended && <Badge>Recommended</Badge>}
+                    {model.installed && <Badge variant="secondary">Downloaded</Badge>}
                   </div>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-muted-foreground">
                     {formatBytes(model.sizeBytes)} · {model.tier}
                   </p>
                 </div>
@@ -316,65 +289,52 @@ function StepAI({ onNext, onBack }: BackableStepProps) {
       {/* Blocking download progress */}
       {aiMode === 'downloading' && !downloadDone && (
         <div className="mb-6">
-          <p className="text-sm text-slate-200 mb-2">
+          <p className="mb-2 text-sm text-foreground">
             {downloadProgress?.phase === 'verifying' ? 'Verifying model…' : `Downloading… ${pct}%`}
           </p>
-          <div className="w-full bg-neutral-700 rounded-full h-2 mb-3">
+          <div className="mb-3 h-2 w-full rounded-full bg-muted">
             <div
-              className="bg-brand-500 h-2 rounded-full transition-all"
+              className="h-2 rounded-full bg-primary transition-all"
               style={{ width: `${Math.min(pct, 100)}%` }}
             />
           </div>
-          <button
-            onClick={() => void handleCancel()}
-            className="text-sm text-neutral-400 hover:text-red-400 transition-colors"
-          >
+          <Button variant="ghost" size="sm" onClick={() => void handleCancel()}>
             Cancel download
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Download complete */}
       {downloadDone && (
-        <div className="mb-4 flex items-center gap-2 text-green-400 text-sm">
+        <div className="mb-4 flex items-center gap-2 text-sm text-primary">
           <span>✓</span>
           <span>Model downloaded and ready</span>
         </div>
       )}
 
       {/* Action buttons */}
-      <div className="flex items-center gap-3 mt-2">
-        <button
+      <div className="mt-2 flex items-center gap-3">
+        <Button
+          variant="ghost"
           onClick={onBack}
           disabled={aiMode === 'downloading' && !downloadDone}
-          className="text-sm px-4 py-2 rounded-lg text-neutral-400 hover:text-slate-200 disabled:opacity-40 transition-colors"
         >
           ← Back
-        </button>
+        </Button>
         {aiMode === 'choose' && enableAI && (
-          <button
-            onClick={() => void handleDownload()}
-            disabled={!selected}
-            className="px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-500/80 text-white text-sm font-medium disabled:opacity-50 transition-colors"
-          >
+          <Button size="lg" onClick={() => void handleDownload()} disabled={!selected}>
             Download &amp; Enable
-          </button>
+          </Button>
         )}
         {aiMode === 'choose' && !enableAI && (
-          <button
-            onClick={onNext}
-            className="px-6 py-2.5 rounded-lg bg-neutral-700 hover:bg-neutral-600 text-slate-200 text-sm font-medium transition-colors"
-          >
+          <Button variant="secondary" size="lg" onClick={onNext}>
             Skip — use manual tagging
-          </button>
+          </Button>
         )}
         {aiMode === 'downloading' && downloadDone && (
-          <button
-            onClick={() => void handleContinue()}
-            className="px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-500/80 text-white text-sm font-medium transition-colors"
-          >
+          <Button size="lg" onClick={() => void handleContinue()}>
             Continue
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -398,38 +358,26 @@ function StepPrivacy({ onNext, onBack }: BackableStepProps) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-slate-100 mb-2">
+      <h2 className="mb-2 text-xl font-bold text-foreground">
         Help improve DesignStash (optional)
       </h2>
-      <p className="text-sm text-neutral-400 leading-relaxed mb-2">
+      <p className="mb-2 text-sm leading-relaxed text-muted-foreground">
         We collect anonymous usage data — which features you use, how long things take, your
         Mac&apos;s chip/memory tier, and crash reports. We{' '}
-        <strong className="text-slate-300">never</strong> see your files, file names, images, or
+        <strong className="text-foreground">never</strong> see your files, file names, images, or
         the titles/tags you create. There&apos;s no account and no personal info. You can turn this
         off anytime in Settings.
       </p>
-      <div className="flex gap-3 mt-6">
-        <button
-          onClick={onBack}
-          disabled={busy}
-          className="text-sm px-4 py-2.5 rounded-lg text-neutral-400 hover:text-slate-200 disabled:opacity-40 transition-colors"
-        >
+      <div className="mt-6 flex gap-3">
+        <Button variant="ghost" onClick={onBack} disabled={busy}>
           ← Back
-        </button>
-        <button
-          onClick={() => void decide(true)}
-          disabled={busy}
-          className="bg-brand-500 hover:bg-brand-500/80 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors"
-        >
+        </Button>
+        <Button onClick={() => void decide(true)} disabled={busy}>
           Keep it on
-        </button>
-        <button
-          onClick={() => void decide(false)}
-          disabled={busy}
-          className="bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 text-neutral-200 px-5 py-2.5 rounded-lg font-medium text-sm transition-colors"
-        >
+        </Button>
+        <Button variant="secondary" onClick={() => void decide(false)} disabled={busy}>
           No thanks
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -440,25 +388,19 @@ function StepPrivacy({ onNext, onBack }: BackableStepProps) {
 function StepDone({ onEnter, onBack }: { onEnter: () => void; onBack: () => void }) {
   return (
     <div>
-      <h2 className="text-xl font-bold text-slate-100 mb-2">You&apos;re all set!</h2>
-      <p className="text-sm text-neutral-400 leading-relaxed mb-6">
+      <h2 className="mb-2 text-xl font-bold text-foreground">You&apos;re all set!</h2>
+      <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
         Your library is ready. Import your first mockups using the{' '}
-        <strong className="text-slate-300">+ Files</strong> or{' '}
-        <strong className="text-slate-300">+ Folder</strong> buttons in the sidebar.
+        <strong className="text-foreground">+ Files</strong> or{' '}
+        <strong className="text-foreground">+ Folder</strong> buttons in the sidebar.
       </p>
       <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="text-sm px-4 py-2.5 rounded-lg text-neutral-400 hover:text-slate-200 transition-colors"
-        >
+        <Button variant="ghost" onClick={onBack}>
           ← Back
-        </button>
-        <button
-          onClick={onEnter}
-          className="bg-brand-500 hover:bg-brand-500/80 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
-        >
+        </Button>
+        <Button size="lg" onClick={onEnter}>
           Open Library
-        </button>
+        </Button>
       </div>
     </div>
   )
