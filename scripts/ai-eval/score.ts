@@ -5,7 +5,9 @@
  * Each answer is also checked for words its gold entry's `absent` list rules out, and each saved
  * tag for support in the gold text.
  *
- *   pnpm ai-eval:score --model qwen2.5-vl-3b --prompt v0
+ *   pnpm ai-eval:score --model qwen2.5-vl-3b --prompt v0 [--no-synonyms]
+ *
+ * The search adds the app's hidden synonym words to every answer; --no-synonyms leaves them off.
  *
  * Writes runs/<model>/<prompt>/score.json and score.md. An item that failed is searched as the app
  * would save it with no suggestion: its file name as the title, no description, no tags.
@@ -14,7 +16,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanArchiveName } from '../../src/main/import/archive-name'
 import { stemOf } from '../../src/main/import/look-over-service'
-import { argValue, readItems, runDir, writeJson, type EvalItem } from './eval-files'
+import { HELD_OUT_DIR, SIGN_OFF_DIR, argValue, readItems, runDir, writeJson, type EvalItem } from './eval-files'
 import {
   checkAnswer,
   compileAbsent,
@@ -34,9 +36,97 @@ import {
   type QueryScore
 } from './scoring'
 import { SearchSim, type IndexedItem } from './search-sim'
+import {
+  EMBED_MODELS,
+  TextEmbedder,
+  fuse,
+  imageSimilarities,
+  textSimilarities,
+  type Fusion,
+  type Lever
+} from './meaning'
 import { createTagSnapper } from './searchable-tags'
+import { meaningDocument } from '../../src/main/search/meaning'
 
 const GOLD_PATH = join(import.meta.dirname, 'gold.json')
+const HELD_OUT_GOLD_PATH = join(import.meta.dirname, 'gold-heldout.json')
+/**
+ * `--held-out` is the final check: the held-out items join the search and their reference answers
+ * (gold-heldout.json) join gold.json. Without it they are left out, so a run that answered them
+ * scores the same as one that didn't.
+ */
+/**
+ * `--queries <file>` scores a separate query file (`[{ q, relevant }]`, written blind) over only the
+ * held-out and sign-off items it was judged against, so tuning items are not counted as wrong.
+ */
+const QUERIES_PATH = argValue('queries')
+const HELD_OUT = process.argv.includes('--held-out') || QUERIES_PATH !== undefined
+const SIGN_OFF_GOLD_PATH = join(import.meta.dirname, 'gold-signoff.json')
+/** `--sign-off`: the sign-off items and gold-signoff.json join in, like `--held-out` (and alongside it, if both). */
+const SIGN_OFF = process.argv.includes('--sign-off') || QUERIES_PATH !== undefined
+/**
+ * Meaning search, off unless asked for: `--embed bge|nomic|qwen3` blends in text embeddings,
+ * `--image` the SigLIP image scores (`siglip-scores.json`), both blended by `--fuse cutoff|rrf`.
+ * `--cut` and `--image-cut` set the similarity a meaning hit needs.
+ */
+const EMBED = argValue('embed')
+const IMAGE = process.argv.includes('--image')
+const FUSION = (argValue('fuse') ?? 'cutoff') as Fusion
+const CUT = Number(argValue('cut') ?? '0.6')
+/** Rank rule: at most this many meaning hits per query (above the `--cut` floor). Unlimited if unset. */
+const TOP = argValue('top') === undefined ? undefined : Number(argValue('top'))
+const IMAGE_TOP = argValue('image-top') === undefined ? undefined : Number(argValue('image-top'))
+const IMAGE_CUT = Number(argValue('image-cut') ?? '0.3')
+const MEANING = [EMBED && `embed-${EMBED}`, IMAGE && 'image'].filter(Boolean).join('-')
+const SCORE_NAME = [
+  'score',
+  HELD_OUT && 'heldout',
+  SIGN_OFF && 'signoff',
+  QUERIES_PATH && 'userq',
+  MEANING && `${MEANING}-${FUSION}${TOP !== undefined ? `-top${TOP}` : ''}`
+]
+  .filter(Boolean)
+  .join('-')
+
+interface HeldOutGold extends Gold {
+  /** Held-out ids to add to gold.json queries of the same text. */
+  addToQueries: Record<string, string[]>
+}
+
+function withHeldOut(gold: Gold, path: string = HELD_OUT_GOLD_PATH): Gold {
+  const held = JSON.parse(readFileSync(path, 'utf8')) as HeldOutGold
+  const queries = gold.queries.map((q) => ({
+    ...q,
+    relevant: [...q.relevant, ...(held.addToQueries[q.q] ?? [])]
+  }))
+  const known = new Set(queries.map((q) => q.q))
+  const extra = Object.entries(held.addToQueries)
+    .filter(([q]) => !known.has(q))
+    .map(([q, relevant]) => ({ q, relevant }))
+  return {
+    ...gold,
+    items: { ...gold.items, ...held.items },
+    queries: [...queries, ...held.queries, ...extra]
+  }
+}
+
+/** A query file: a bare `[{ q, relevant }]`, or an object with those under `queries` (gold-blind.json). */
+function readQueries(path: string): Gold['queries'] {
+  const raw = JSON.parse(readFileSync(path, 'utf8')) as Gold['queries'] | { queries: Gold['queries'] }
+  return Array.isArray(raw) ? raw : raw.queries
+}
+
+function inDir(item: EvalItem, dir: string): boolean {
+  return item.source.path.includes(`/${dir}/`)
+}
+
+/** Whether a scored run includes this item: tuning items always, held-out and sign-off ones with their flags. */
+function inScope(item: EvalItem): boolean {
+  if (QUERIES_PATH) return inDir(item, HELD_OUT_DIR) || inDir(item, SIGN_OFF_DIR)
+  if (inDir(item, HELD_OUT_DIR)) return HELD_OUT
+  if (inDir(item, SIGN_OFF_DIR)) return SIGN_OFF
+  return true
+}
 
 /** Every answer in one pass that has a gold entry, checked against it. A failed answer is left out. */
 function checkPass(
@@ -61,12 +151,17 @@ function checkPass(
   })
 }
 
-function searchAll(gold: Gold, indexed: IndexedItem[]): QueryScore[] {
-  const sim = new SearchSim(indexed)
+const SYNONYMS = !process.argv.includes('--no-synonyms')
+const NAMES = !process.argv.includes('--no-names')
+// Stemming is not in the app (see the guide), so it is off unless asked for.
+const STEM = process.argv.includes('--stem')
+
+function searchAll(gold: Gold, indexed: IndexedItem[], levers: Lever[] = []): QueryScore[] {
+  const sim = new SearchSim(indexed, { synonyms: SYNONYMS, names: NAMES, stem: STEM })
   try {
     return gold.queries.map((query) => {
       const { ids, error } = sim.search(query.q)
-      return scoreQuery(query, ids, error)
+      return scoreQuery(query, fuse(FUSION, query.q, ids, levers), error)
     })
   } finally {
     sim.close()
@@ -81,10 +176,19 @@ function indexedFor(item: EvalItem, result: ItemResult | undefined): IndexedItem
       title: result.parsed.title,
       description: result.parsed.description,
       tags: result.searchTags,
+      fileName: item.fileName,
+      folderTrail: item.folderTrail,
       ...(result.parsed.keywords && { keywords: result.parsed.keywords })
     }
   }
-  return { id: item.id, title: stemOf(item.fileName), description: '', tags: [] }
+  return {
+    id: item.id,
+    title: stemOf(item.fileName),
+    description: '',
+    tags: [],
+    fileName: item.fileName,
+    folderTrail: item.folderTrail
+  }
 }
 
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`
@@ -103,16 +207,33 @@ async function main(): Promise<void> {
   const model = argValue('model')
   const version = argValue('prompt')
   if (!model || !version)
-    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version>')
+    throw new Error('Usage: pnpm ai-eval:score --model <id> --prompt <version> [--no-synonyms] [--no-names] [--stem] [--held-out] [--sign-off] [--embed bge|nomic|qwen3|nlsentence|nlcontextual] [--image] [--fuse cutoff|rrf] [--cut n] [--top k] [--image-cut n] [--queries file]')
   if (!existsSync(GOLD_PATH)) throw new Error(`No gold data at ${GOLD_PATH}`)
   const dir = runDir(model, version)
   const resultsPath = join(dir, 'results.json')
   if (!existsSync(resultsPath))
     throw new Error(`No run at ${resultsPath}. Run \`pnpm ai-eval:run\` first.`)
 
-  const gold = JSON.parse(readFileSync(GOLD_PATH, 'utf8')) as Gold
-  const items = readItems().filter((i) => !i.duplicateOf)
-  const results = JSON.parse(readFileSync(resultsPath, 'utf8')) as ItemResult[]
+  const goldOnly = JSON.parse(readFileSync(GOLD_PATH, 'utf8')) as Gold
+  const withHeld = HELD_OUT ? withHeldOut(goldOnly) : goldOnly
+  const goldAll = SIGN_OFF ? withHeldOut(withHeld, SIGN_OFF_GOLD_PATH) : withHeld
+  const items = readItems().filter((i) => !i.duplicateOf && inScope(i))
+  const gold: Gold = QUERIES_PATH
+    ? {
+        ...goldAll,
+        items: Object.fromEntries(
+          Object.entries(goldAll.items).filter(([id]) => items.some((i) => i.id === id))
+        ),
+        queries: readQueries(QUERIES_PATH).map((q) => ({
+          q: q.q,
+          relevant: q.relevant
+        }))
+      }
+    : goldAll
+  const scoped = new Set(items.map((i) => i.id))
+  const results = (JSON.parse(readFileSync(resultsPath, 'utf8')) as ItemResult[]).filter((r) =>
+    scoped.has(r.id)
+  )
 
   const known = new Set(items.map((i) => i.id))
   const strays = [...Object.keys(gold.items), ...gold.queries.flatMap((q) => q.relevant)].filter(
@@ -129,15 +250,30 @@ async function main(): Promise<void> {
   }
 
   const repeats = [...new Set(results.map((r) => r.repeat))].sort((a, b) => a - b)
-  const passes = repeats.map((repeat) => {
+  const embedder = EMBED ? new TextEmbedder(EMBED_MODELS[EMBED]!) : null
+  const imageLever = IMAGE ? imageSimilarities() : null
+  const queryTexts = gold.queries.map((q) => q.q)
+  const docText = (i: IndexedItem) => meaningDocument(i.title, i.description, i.tags.map((t) => t.label))
+  const passes = []
+  for (const repeat of repeats) {
     const byId = new Map(results.filter((r) => r.repeat === repeat).map((r) => [r.id, r]))
     const missing = items.filter((i) => !byId.has(i.id)).map((i) => i.id)
-    const scores = searchAll(
-      gold,
-      items.map((i) => indexedFor(i, byId.get(i.id)))
-    )
+    const indexed = items.map((i) => indexedFor(i, byId.get(i.id)))
+    const levers: Lever[] = []
+    if (embedder)
+      levers.push({
+        sims: await textSimilarities(
+          embedder,
+          indexed.map((i) => ({ id: i.id, text: docText(i) })),
+          queryTexts
+        ),
+        cut: CUT,
+        ...(TOP !== undefined && { top: TOP })
+      })
+    if (imageLever) levers.push({ sims: imageLever, cut: IMAGE_CUT, ...(IMAGE_TOP !== undefined && { top: IMAGE_TOP }) })
+    const scores = searchAll(gold, indexed, levers)
     const checks = checkPass(gold, items, byId, repeat)
-    return {
+    passes.push({
       repeat,
       byId,
       missing,
@@ -145,8 +281,9 @@ async function main(): Promise<void> {
       headline: headline(scores),
       checks,
       hallucination: summarise(checks)
-    }
-  })
+    })
+  }
+  embedder?.close()
   const first = passes[0]!
   const allChecks = passes.flatMap((p) => p.checks)
   const firstChecks = new Map(first.checks.map((c) => [c.id, c]))
@@ -176,7 +313,9 @@ async function main(): Promise<void> {
         id: item.id,
         title: g.title,
         description: g.description,
-        tags: await snap(g.tags)
+        tags: await snap(g.tags),
+        fileName: item.fileName,
+        folderTrail: item.folderTrail
       })
     else goldIndexed.push(indexedFor(item, undefined))
   }
@@ -216,6 +355,7 @@ async function main(): Promise<void> {
   const score = {
     model,
     prompt: version,
+    synonyms: SYNONYMS,
     scoredAt: new Date().toISOString(),
     repeats: repeats.length,
     headline: meanHeadline(passes.map((p) => p.headline)),
@@ -252,10 +392,15 @@ async function main(): Promise<void> {
       }
     })
   }
-  writeJson(join(dir, 'score.json'), score)
-  writeFileSync(join(dir, 'score.md'), markdown(score))
+  writeJson(join(dir, `${SCORE_NAME}.json`), score)
+  writeFileSync(join(dir, `${SCORE_NAME}.md`), markdown(score))
 
-  console.log(`${model} · ${version} · ${gold.queries.length} queries · ${repeats.length} pass(es)`)
+  console.log(
+    `${model} · ${version} · ${gold.queries.length} queries · ${repeats.length} pass(es)` +
+      (SYNONYMS ? '' : ' · no synonyms') +
+      (NAMES ? '' : ' · no names') +
+      (STEM ? ' · stem' : '')
+  )
   console.log(
     `recall ${pct(score.headline.recall)}  precision ${pct(score.headline.precision)}  ` +
       `all-in-top ${pct(score.headline.allInTop)}`
@@ -276,7 +421,7 @@ async function main(): Promise<void> {
     console.log(
       `gold entries matching their own absent list: ${goldAbsentConflicts.map((c) => `${c.id} (${c.words.join(', ')})`).join('; ')}`
     )
-  console.log(`Wrote ${join(dir, 'score.json')} and score.md`)
+  console.log(`Wrote ${join(dir, `${SCORE_NAME}.json`)} and ${SCORE_NAME}.md`)
 }
 
 function markdown(s: {

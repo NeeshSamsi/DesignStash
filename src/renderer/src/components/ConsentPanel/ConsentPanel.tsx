@@ -20,12 +20,15 @@ export interface ConsentPanelProps
   collect?: readonly string[]
   /** What we never collect, each with a red cross. Figma's list until given. */
   neverCollect?: readonly string[]
-  /** Card: the two answers, equal in weight and neutral in wording. */
+  /**
+   * Card: the two answers, equal in weight and neutral in wording. Giving the card an
+   * `onEnabledChange` swaps them for the on-by-default switch (onboarding's opt-out).
+   */
   onDecline?: () => void
   onAccept?: () => void
   declineLabel?: string
   acceptLabel?: string
-  /** Accordion: the switch. Off collapses the lists. */
+  /** Accordion: the switch. Off collapses the lists. Card: the opt-out switch, when given. */
   enabled?: boolean
   onEnabledChange?: (enabled: boolean) => void
 }
@@ -37,7 +40,7 @@ const COLLECT = [
 ] as const
 const NEVER = [
   'Your files, file names or images',
-  'Titles, tags or descriptions',
+  'Titles, tags, descriptions or what you search for',
   'Anything that identifies you'
 ] as const
 
@@ -100,8 +103,10 @@ export function ConsentPanel({
   const line =
     description ??
     (accordion
-      ? 'Helps us squash bugs and decide what to fix next. Change your mind any time.'
-      : 'Just anonymous usage data. Change your mind any time.')
+      ? 'On by default. Helps us squash bugs and decide what to fix next.'
+      : onEnabledChange
+        ? 'Anonymous usage data is on by default. Switch it off here, or any time in Settings.'
+        : 'Just anonymous usage data. Change your mind any time.')
 
   const lists = (
     <div className="flex items-start gap-6">
@@ -169,10 +174,24 @@ export function ConsentPanel({
         </div>
       </div>
       {lists}
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="secondary" label={declineLabel} onClick={onDecline} />
-        <Button variant="secondary" label={acceptLabel} onClick={onAccept} />
-      </div>
+      {onEnabledChange ? (
+        <div className="flex items-center gap-4 rounded-xl bg-surface-3 px-4 py-3">
+          <p className="min-w-0 flex-1 type-body-sm-medium text-foreground">
+            Share anonymous usage data
+          </p>
+          <Switch
+            showLabel={false}
+            aria-label="Share anonymous usage data"
+            checked={enabled}
+            onCheckedChange={(next) => onEnabledChange(next)}
+          />
+        </div>
+      ) : (
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="secondary" label={declineLabel} onClick={onDecline} />
+          <Button variant="secondary" label={acceptLabel} onClick={onAccept} />
+        </div>
+      )}
     </div>
   )
 }

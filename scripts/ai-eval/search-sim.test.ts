@@ -24,7 +24,7 @@ const items = [
 
 describe('SearchSim', () => {
   it('prefix-matches title, description and tags, best match first', () => {
-    const sim = new SearchSim(items)
+    const sim = new SearchSim(items, { synonyms: false })
     expect(sim.search('tote').ids).toEqual(['tote', 'shirt'])
     expect(sim.search('ca').ids).toEqual(['cap', 'tote'])
     sim.close()
@@ -50,5 +50,24 @@ describe('SearchSim', () => {
     const sim = new SearchSim(items)
     expect(sim.search('t-shirt')).toEqual({ ids: ['shirt'] })
     sim.close()
+  })
+
+  it('adds synonyms as hidden words unless they are turned off', () => {
+    const on = new SearchSim(items)
+    expect(on.search('shopping bag').ids).toContain('tote')
+    on.close()
+    const off = new SearchSim(items, { synonyms: false })
+    expect(off.search('shopping bag').ids).toEqual([])
+    off.close()
+  })
+
+  it('adds words from the file and folder names unless they are turned off', () => {
+    const named = [{ ...items[0]!, fileName: 'Bus_Stop_Citylight.psd', folderTrail: [] }]
+    const on = new SearchSim(named)
+    expect(on.search('citylight').ids).toEqual(['tote'])
+    on.close()
+    const off = new SearchSim(named, { names: false })
+    expect(off.search('citylight').ids).toEqual([])
+    off.close()
   })
 })

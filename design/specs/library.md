@@ -21,6 +21,8 @@
 
 - **Focus:** ⌘K or a click.
 - **Results:** update as you type, after a 250ms debounce. The header says what was searched, and × clears the search and returns to All.
+- **Keyword search:** words in the title, description and tags, plus hidden words: synonyms, and words from the file and folder names (Technical guide, search). Filler words (on, in, with, the, a, and, of, for, at) are left out unless that is all there is.
+- **Meaning search** (decided 2026-10-22, after the blind-search test): for a search of 3 or more characters, the closest mockup by meaning is added after the keyword results if it is close enough (cosine 0.55 or more) and keyword search did not find it. At most one is added. "jumper" finds a sweatshirt. A pile is one result, as for keywords: a pile member that is the closest match does not use the slot. Without the meaning model (not downloaded, deleted, or its server failed) search is keyword-only and nothing says so. Measured on 90 blind searches: found 48.4% to 65.6%, right 55.1% to 87.8%, recall never lower.
 
 ## Tag filter (TagFilterPopover)
 

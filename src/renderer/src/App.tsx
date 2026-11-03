@@ -14,6 +14,8 @@ import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
 import { toast } from './stores/toastStore'
+import { useUpdateNotice } from './lib/update-notice'
+import { useActiveModelNotice } from './lib/model-notice'
 import { GatherDock, useGather, useGatherDrops } from './screens/gather'
 
 type AddFlow = 'approval' | null
@@ -35,6 +37,9 @@ function AppMain() {
   const libraryTagFilter = useLibraryStore((s) => s.tagFilter)
   const setLibraryItems = useLibraryStore((s) => s.setItems)
   const setLibraryStats = useLibraryStore((s) => s.setStats)
+
+  useUpdateNotice()
+  useActiveModelNotice()
 
   useEffect(() => {
     void (async () => {

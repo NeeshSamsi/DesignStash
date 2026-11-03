@@ -5,6 +5,7 @@ import { TagRepository } from './repositories/tags'
 import { LibraryQueryRepository } from './repositories/library-query'
 import { TrashRepository } from './repositories/trash'
 import { SearchRepository } from './repositories/search'
+import { EmbeddingRepository } from './repositories/embeddings'
 import { InboxRepository } from './repositories/inbox'
 import { SortBoardRepository } from './repositories/sort-board'
 import { DraftRepository } from './repositories/drafts'
@@ -19,6 +20,7 @@ export type { LibraryRow } from './repositories/library-query'
  */
 export class Repository {
   readonly search: SearchRepository
+  readonly embeddings: EmbeddingRepository
   readonly mockups: MockupRepository
   readonly piles: PileRepository
   readonly tags: TagRepository
@@ -31,6 +33,7 @@ export class Repository {
 
   constructor(db: AppDatabase) {
     this.search = new SearchRepository(db)
+    this.embeddings = new EmbeddingRepository(db)
     this.mockups = new MockupRepository(db, this.search)
     this.piles = new PileRepository(db)
     this.tags = new TagRepository(db, this.mockups, this.search)

@@ -1,6 +1,7 @@
 export type { RawImage, CoverSource, CoverResolution, ResolveCoverInput } from './types'
 export { readEmbeddedPreview } from './embedded'
 export { generateCoverFromRaw, generateCoverFromFile } from './image'
-export { collectCandidateImages, normalizeStem, findSidecar } from './sidecar'
+export { collectCandidateImages, imagesNamedFor, normalizeStem, findSidecar, findPreviewFor } from './sidecar'
+export { isPlaceholder, PLACEHOLDER_ENTROPY } from './placeholder'
 export type { SidecarMatch } from './sidecar'
 export { resolveCover } from './cover-resolver'

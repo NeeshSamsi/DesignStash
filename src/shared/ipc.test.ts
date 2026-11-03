@@ -159,8 +159,8 @@ describe('IPC Contract', () => {
       const valid = {
         models: [
           {
-            id: 'qwen2.5-vl-3b',
-            name: 'Qwen 2.5 VL 3B',
+            id: 'qwen3-vl-4b',
+            name: 'Qwen3-VL 4B',
             tier: 'medium',
             sizeBytes: 2774658784,
             description: 'Fast.',
@@ -169,14 +169,30 @@ describe('IPC Contract', () => {
             speed: 5,
             minMemoryGB: 8,
             bestFit: false,
+            builtIn: false,
             downloadedBytes: 0,
             installed: false,
             active: false
           }
         ],
-        legacy: [{ id: 'qwen2.5-1.5b', sizeBytes: 1040000000 }]
+        meaning: {
+          id: 'nomic-embed-v1.5',
+          name: 'Meaning search',
+          description: 'Finds mockups by what a search means.',
+          license: 'Apache 2.0',
+          sizeBytes: 146146432,
+          downloadedBytes: 0,
+          installed: false
+        },
+        legacy: [{ id: 'qwen2.5-1.5b', sizeBytes: 1040000000 }],
+        activeProblem: null
       }
       expect(response.parse(valid)).toEqual(valid)
+      expect(() => response.parse({ ...valid, meaning: undefined })).toThrow()
+      expect(response.parse({ ...valid, activeProblem: 'apple-intelligence-off' }).activeProblem).toBe(
+        'apple-intelligence-off'
+      )
+      expect(() => response.parse({ ...valid, activeProblem: 'gone' })).toThrow()
     })
   })
 
@@ -242,6 +258,7 @@ describe('IPC Contract', () => {
           speed: 3,
           minMemoryGB: 8,
           bestFit: false,
+          builtIn: false,
           downloadedBytes: 0,
           installed: false,
           active: false
@@ -251,8 +268,8 @@ describe('IPC Contract', () => {
 
     it('validates a well-formed model entry', () => {
       const valid = {
-        id: 'qwen2.5-vl-3b',
-        name: 'Qwen 2.5 VL 3B',
+        id: 'qwen3-vl-4b',
+        name: 'Qwen3-VL 4B',
         tier: 'medium',
         sizeBytes: 2774658784,
         description: 'Balanced.',
@@ -261,11 +278,35 @@ describe('IPC Contract', () => {
         speed: 4,
         minMemoryGB: 12,
         bestFit: true,
+        builtIn: false,
         downloadedBytes: 0,
         installed: true,
         active: true
       }
       expect(AiModelInfoSchema.parse(valid)).toEqual(valid)
+    })
+
+    it('needs to know whether a model is built in', () => {
+      const apple = {
+        id: 'apple',
+        name: 'Apple’s on-device model',
+        tier: 'small',
+        sizeBytes: 0,
+        description: 'Built in.',
+        languages: ['English'],
+        quality: 3,
+        speed: 5,
+        minMemoryGB: 8,
+        bestFit: false,
+        builtIn: true,
+        downloadedBytes: 0,
+        installed: true,
+        active: false
+      }
+      expect(AiModelInfoSchema.parse(apple)).toEqual(apple)
+      const withoutField: Record<string, unknown> = { ...apple }
+      delete withoutField.builtIn
+      expect(() => AiModelInfoSchema.parse(withoutField)).toThrow()
     })
   })
 
@@ -571,5 +612,20 @@ describe('IPC Contract', () => {
     it('rejects an invalid tier', () => {
       expect(() => response.parse({ tier: 'enterprise', enabled: {} })).toThrow()
     })
+  })
+})
+
+describe('menu:command push', () => {
+  const { payload } = PUSH_CONTRACT[IPC_CHANNELS.MENU_COMMAND]
+
+  it('is a push channel the preload relays', () => {
+    expect(isPushChannel(IPC_CHANNELS.MENU_COMMAND)).toBe(true)
+  })
+
+  it('carries one of the known commands and nothing else', () => {
+    expect(payload.parse('settings')).toBe('settings')
+    expect(payload.parse('view:trash')).toBe('view:trash')
+    expect(payload.safeParse('view:somewhere').success).toBe(false)
+    expect(payload.safeParse({ command: 'settings' }).success).toBe(false)
   })
 })

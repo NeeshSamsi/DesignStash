@@ -13,7 +13,10 @@ export interface ServerProcess {
 export interface LlamaServerConfig {
   binaryPath: string
   modelPath: string
-  mmprojPath: string
+  /** The image projector of a vision model. Not set for an embedding model. */
+  mmprojPath?: string
+  /** Run as an embedding server (`--embedding`): no chat, no image projector; `embed` is its call. */
+  embedding?: boolean
   /** Stop the server after this long without a request. Default 5 minutes. */
   idleMs?: number
   /** How long the model may take to load. Default 2 minutes. */
@@ -105,11 +108,27 @@ export class LlamaServer {
 
   /** POST a chat completion and return the whole reply (every choice, logprobs, usage, timings). */
   async complete(body: object): Promise<ChatCompletion> {
+    return (await this.post('/v1/chat/completions', body)) as ChatCompletion
+  }
+
+  /** Vectors for texts, in order, from an embedding server. Starts the server if it isn't running. */
+  async embed(texts: readonly string[]): Promise<number[][]> {
+    const json = (await this.post('/v1/embeddings', { input: texts })) as {
+      data?: { index?: number; embedding?: unknown }[]
+    }
+    const rows = [...(json.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+    if (rows.length !== texts.length || rows.some((r) => !Array.isArray(r.embedding))) {
+      throw new Error('llama-server reply has no embeddings')
+    }
+    return rows.map((r) => r.embedding as number[])
+  }
+
+  private async post(path: string, body: object): Promise<unknown> {
     this.clearIdle()
     this.inFlight++
     try {
       const baseUrl = await this.ensureStarted()
-      const res = await this.deps.fetch(`${baseUrl}/v1/chat/completions`, {
+      const res = await this.deps.fetch(`${baseUrl}${path}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
@@ -118,7 +137,7 @@ export class LlamaServer {
       if (!res.ok) {
         throw new Error(`llama-server answered ${res.status}: ${(await res.text()).slice(0, 200)}`)
       }
-      return (await res.json()) as ChatCompletion
+      return await res.json()
     } finally {
       this.inFlight--
       if (this.inFlight === 0) this.armIdle()
@@ -153,14 +172,14 @@ export class LlamaServer {
   }
 
   private async start(): Promise<string> {
-    const { binaryPath, modelPath, mmprojPath, ctxSize = 8192 } = this.config
+    const { binaryPath, modelPath, mmprojPath, embedding = false, ctxSize = 8192 } = this.config
     const port = await this.deps.freePort()
     const baseUrl = `http://${HOST}:${port}`
     const args = [
       '--model',
       modelPath,
-      '--mmproj',
-      mmprojPath,
+      ...(mmprojPath ? ['--mmproj', mmprojPath] : []),
+      ...(embedding ? ['--embedding'] : []),
       '--host',
       HOST,
       '--port',

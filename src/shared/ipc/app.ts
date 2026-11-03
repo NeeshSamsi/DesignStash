@@ -3,11 +3,19 @@ import { IPC_CHANNELS } from '../ipc-channels'
 
 export const UpdateStatusSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('up-to-date'), lastCheckedAt: z.string().nullable() }),
+  /**
+   * A newer release exists. While builds are unsigned the app cannot install it, so `releaseUrl`
+   * is the page to download it from; `notes` is the release's changelog (markdown, may be empty).
+   */
   z.object({
     state: z.literal('available'),
     version: z.string(),
+    notes: z.string(),
+    releaseUrl: z.string(),
     lastCheckedAt: z.string().nullable()
   }),
+  /** The last check could not reach GitHub (offline, rate limited). Never an error dialog. */
+  z.object({ state: z.literal('check-failed'), lastCheckedAt: z.string().nullable() }),
   z.object({
     state: z.literal('downloading'),
     version: z.string(),
@@ -44,5 +52,22 @@ export const appContract = {
     response: z.object({ installing: z.boolean() })
   },
   [IPC_CHANNELS.LICENCES_TEXT]: { request: z.void(), response: z.object({ text: z.string() }) },
-  [IPC_CHANNELS.REPORT_COPY]: { request: z.void(), response: z.object({ copied: z.boolean() }) }
+  /**
+   * "Report a problem". No request (or `copy`) copies the short facts report. `preview` returns the
+   * full text that Send would carry (facts plus log tail) without sending or copying. `send` posts
+   * `message` with that text to PostHog; `copy-full` puts message and text on the clipboard.
+   */
+  [IPC_CHANNELS.REPORT_COPY]: {
+    request: z
+      .object({
+        action: z.enum(['copy', 'preview', 'send', 'copy-full']),
+        message: z.string().max(20000).optional()
+      })
+      .optional(),
+    response: z.object({
+      copied: z.boolean(),
+      text: z.string().optional(),
+      outcome: z.enum(['sent', 'queued', 'unavailable']).optional()
+    })
+  }
 } as const

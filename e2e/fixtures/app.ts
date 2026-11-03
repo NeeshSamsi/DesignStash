@@ -7,7 +7,7 @@ import type { ElectronApplication, Page } from '@playwright/test'
 import { buildPsdWithComposite } from '../../src/main/psd/__fixtures__/build'
 
 /** The catalogue model the seeded settings point at. Its files are empty: the stub provider answers instead. */
-export const STUB_MODEL_ID = 'qwen2.5-vl-3b'
+export const STUB_MODEL_ID = 'qwen3-vl-4b'
 
 export interface LaunchOptions {
   /** Skip onboarding by seeding settings as a finished first run. Default true. */

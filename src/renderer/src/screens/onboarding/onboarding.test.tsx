@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { AiModelInfo } from '@shared/ipc/ai'
 import { OnboardingFlow, type OnboardingPage } from './OnboardingFlow'
@@ -19,6 +19,7 @@ const model = (id: string, over: Partial<AiModelInfo> = {}): AiModelInfo => ({
   speed: 3,
   minMemoryGB: 8,
   bestFit: id === 'a',
+  builtIn: false,
   downloadedBytes: 0,
   installed: false,
   active: false,
@@ -49,6 +50,154 @@ const mount = (start: OnboardingPage, onComplete = vi.fn()) => {
   return onComplete
 }
 const btn = (name: string | RegExp) => screen.getByRole('button', { name })
+
+const meaningInfo = (over: Record<string, unknown> = {}) => ({
+  id: 'nomic-embed-v1.5',
+  name: 'Meaning search',
+  description: 'Finds mockups by what a search means.',
+  license: 'Apache 2.0',
+  sizeBytes: 146_146_432,
+  downloadedBytes: 0,
+  installed: false,
+  ...over
+})
+
+describe('meaning search in AI setup', () => {
+  const MEANING = 'nomic-embed-v1.5'
+  const withMeaning = (over: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) =>
+    base({
+      [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+        ok({ models: [model('a'), model('b')], meaning: meaningInfo(over), legacy: [] }),
+      [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: () => ok({ started: true }),
+      ...(extra as Record<string, (r: unknown) => unknown>)
+    })
+  const card = () => screen.getByRole('group', { name: 'Meaning search' })
+  const meaningSwitch = () => screen.getByRole('switch', { name: 'Download meaning search' })
+  const progress = (phase: string, receivedBytes = 0, reason?: string) => ({
+    modelId: MEANING,
+    receivedBytes,
+    totalBytes: 146_146_432,
+    phase,
+    ...(reason ? { reason } : {})
+  })
+
+  it('is its own card, recommended and switched on, with its size', async () => {
+    installApi(withMeaning())
+    mount('ai')
+    await screen.findByText('Model a')
+    expect(within(card()).getByText('Recommended')).toBeTruthy()
+    expect(
+      within(card()).getByText(
+        'Finds mockups by what you mean, like “jumper” for a sweatshirt. Without it, search matches the words you type.'
+      )
+    ).toBeTruthy()
+    expect(within(card()).getByText('146 MB')).toBeTruthy()
+    expect(meaningSwitch().getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('adds its size to the Download button, and drops it when switched off', async () => {
+    installApi(withMeaning())
+    mount('ai')
+    await screen.findByText('Model a')
+    expect(btn('Download 2.2 GB')).toBeTruthy()
+    fireEvent.click(meaningSwitch())
+    expect(within(card()).getByText('Off · search matches the words you type')).toBeTruthy()
+    expect(btn('Download 2.1 GB')).toBeTruthy()
+  })
+
+  it('downloads with the vision model, shows its progress, and then stays as chosen', async () => {
+    const api = installApi(withMeaning())
+    mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(btn('Download 2.2 GB'))
+    await waitFor(() =>
+      expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toEqual(
+        expect.arrayContaining([{ id: 'a' }, { id: MEANING }])
+      )
+    )
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, progress('downloading', 54_000_000))
+    expect(await within(card()).findByText('Downloading 37%')).toBeTruthy()
+    expect((meaningSwitch() as HTMLButtonElement).disabled).toBe(true)
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, progress('verifying', 146_146_432))
+    expect(await within(card()).findByText('Checking the download')).toBeTruthy()
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, progress('done', 146_146_432))
+    expect(await within(card()).findByText('Ready')).toBeTruthy()
+  })
+
+  it('switched off, only the vision model downloads', async () => {
+    const api = installApi(withMeaning())
+    mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(meaningSwitch())
+    fireEvent.click(btn('Download 2.1 GB'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toEqual([{ id: 'a' }]))
+  })
+
+  it('already there, it reads Ready, adds nothing to the total and does not download again', async () => {
+    const api = installApi(withMeaning({ installed: true, downloadedBytes: 146_146_432 }))
+    mount('ai')
+    await screen.findByText('Model a')
+    expect(within(card()).getByText('Ready')).toBeTruthy()
+    expect((meaningSwitch() as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(btn('Download 2.1 GB'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toEqual([{ id: 'a' }]))
+  })
+
+  it('says where to try again when it fails, and leaves the vision model alone', async () => {
+    const api = installApi(withMeaning())
+    mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(btn('Download 2.2 GB'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toHaveLength(2))
+    api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, progress('error', 0, 'offline'))
+    expect(
+      await within(card()).findByText('Couldn’t download. Try again in Settings › AI model.')
+    ).toBeTruthy()
+  })
+
+  it('stays on show with AI turned off, and downloads on its own when the step is left', async () => {
+    const api = installApi(withMeaning())
+    const onComplete = mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(screen.getByRole('switch', { name: 'Use on-device AI' }))
+    expect(card()).toBeTruthy()
+    expect(btn('Continue')).toBeTruthy()
+    fireEvent.click(btn('Continue'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toEqual([{ id: MEANING }]))
+    expect(api.sent(IPC_CHANNELS.AI_SET_ACTIVE)).toEqual([])
+    expect(onComplete).not.toHaveBeenCalled()
+  })
+
+  it('Skip AI still downloads meaning search while its switch is on', async () => {
+    const api = installApi(withMeaning())
+    mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Skip AI' })[0]!)
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toEqual([{ id: MEANING }]))
+  })
+
+  it('with both switched off, nothing downloads', async () => {
+    const api = installApi(withMeaning())
+    mount('ai')
+    await screen.findByText('Model a')
+    fireEvent.click(meaningSwitch())
+    fireEvent.click(screen.getAllByRole('button', { name: 'Skip AI' })[0]!)
+    await screen.findByText('Your privacy')
+    expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toEqual([])
+  })
+
+  it('is hidden on a Mac that can’t run on-device AI', async () => {
+    installApi(
+      withMeaning(
+        {},
+        { [IPC_CHANNELS.AI_HARDWARE_INFO]: () => ok({ ...mac, isAppleSilicon: false }) }
+      )
+    )
+    mount('ai')
+    await screen.findByText(/needs Apple Silicon/)
+    expect(screen.queryByRole('group', { name: 'Meaning search' })).toBeNull()
+  })
+})
 
 describe('welcome and stash folder', () => {
   it('starts with the welcome in current words', () => {
@@ -179,7 +328,7 @@ describe('AI setup', () => {
     const api = installApi(base({ [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: () => ok({ started: true }) }))
     mount('ai')
     await screen.findByText('Model a')
-    fireEvent.click(btn('Download'))
+    fireEvent.click(btn('Download 2.1 GB'))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toEqual([{ id: 'a' }]))
 
     api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
@@ -208,7 +357,7 @@ describe('AI setup', () => {
     const api = installApi(base({ [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: () => ok({ started: true }) }))
     mount('ai')
     await screen.findByText('Model a')
-    fireEvent.click(btn('Download'))
+    fireEvent.click(btn('Download 2.1 GB'))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toHaveLength(1))
     api.push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
       modelId: 'a',
@@ -249,6 +398,38 @@ describe('AI setup', () => {
     fireEvent.click(btn('Continue'))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_SET_ACTIVE)).toEqual([{ id: 'a' }]))
     expect(await screen.findByRole('heading', { name: 'Your privacy' })).toBeTruthy()
+  })
+
+  it('offers Apple’s built-in model as a third row; picking it needs no download', async () => {
+    const apple = model('apple', {
+      name: 'Apple’s on-device model',
+      tier: 'small',
+      sizeBytes: 0,
+      builtIn: true,
+      installed: true
+    })
+    const api = installApi(
+      base({
+        [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+          ok({ models: [model('a'), model('b'), apple], legacy: [] })
+      })
+    )
+    mount('ai')
+    await screen.findByText('Model a')
+    expect(lastRow()).toHaveLength(3)
+    expect(screen.getByText('Built in')).toBeTruthy()
+    expect(screen.getByText(/Built in, no download/)).toBeTruthy()
+    // Qwen stays the pick until the person chooses otherwise.
+    expect(screen.getByRole('radio', { name: 'Model a' }).getAttribute('aria-checked')).toBe('true')
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Apple’s on-device model' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Your AI model is ready to go' })
+    ).toBeTruthy()
+    expect(screen.getByText(/built into your Mac and switched on/)).toBeTruthy()
+    fireEvent.click(btn('Continue'))
+    await waitFor(() => expect(api.sent(IPC_CHANNELS.AI_SET_ACTIVE)).toEqual([{ id: 'apple' }]))
+    expect(api.sent(IPC_CHANNELS.AI_DOWNLOAD_MODEL)).toHaveLength(0)
   })
 
   it.each([
@@ -367,31 +548,35 @@ describe('AI setup', () => {
 })
 
 describe('privacy and finish', () => {
-  it('shows what is and is not collected, and Don’t share records the choice', async () => {
+  it('shows what is and is not collected, with sharing on by default, and Continue records it', async () => {
     const api = installApi(base())
     mount('privacy')
     expect(screen.getByText('What we never collect')).toBeTruthy()
-    fireEvent.click(btn('Don’t share'))
+    expect(
+      screen.getByRole('switch', { name: 'Share anonymous usage data' }).getAttribute('aria-checked')
+    ).toBe('true')
+    fireEvent.click(btn('Continue'))
     await waitFor(() =>
-      expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: false }])
+      expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: true }])
     )
     expect(await screen.findByRole('heading', { name: 'Your stash is ready!' })).toBeTruthy()
   })
 
-  it('Share usage data records the other choice', async () => {
+  it('switching it off before Continue records the opt-out', async () => {
     const api = installApi(base())
     mount('privacy')
-    fireEvent.click(btn('Share usage data'))
+    fireEvent.click(screen.getByRole('switch', { name: 'Share anonymous usage data' }))
+    fireEvent.click(btn('Continue'))
     await waitFor(() =>
-      expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: true }])
+      expect(api.sent(IPC_CHANNELS.TELEMETRY_SET_CONSENT)).toEqual([{ enabled: false }])
     )
   })
 
-  it('the privacy step has the standard footer with Back, and no primary of its own', () => {
+  it('the privacy step has the standard footer with Back and Continue', () => {
     installApi(base())
     mount('privacy')
     expect(btn('Back')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
+    expect(btn('Continue')).toBeTruthy()
     fireEvent.click(btn('Back'))
     expect(screen.getByRole('heading', { name: 'Set up on-device AI' })).toBeTruthy()
   })
@@ -439,7 +624,7 @@ describe('privacy and finish', () => {
     fireEvent.click(btn('Continue'))
     await screen.findByRole('heading', { name: 'Set up on-device AI' })
     fireEvent.click(await screen.findByRole('button', { name: 'Skip AI' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Don’t share' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Open My Stash' }))
     await waitFor(() => expect(api.sent(IPC_CHANNELS.APP_RELAUNCH)).toHaveLength(1))
     expect(onComplete).not.toHaveBeenCalled()

@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import type { AiModelInfo } from '@shared/ipc/ai'
+import { Banner } from '../../components/Banner'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { HardwareSummary } from '../../components/HardwareSummary'
 import { ModelCard, type ModelCardProps } from '../../components/ModelCard'
 import { SettingsGroup } from '../../components/SettingsLayout'
 import { Switch } from '../../components/Switch'
+import { activeProblemCopy } from '../../lib/model-notice'
+import { cn } from '../../lib/utils'
 import { toast, undoToast } from '../../stores/toastStore'
+import { BUILT_IN_SIZE } from '../onboarding/ai-setup'
 import { modelPhase } from '../onboarding/model-phase'
 import { useModelCatalogue } from '../onboarding/useModelCatalogue'
+import { MeaningSearchRow } from './MeaningSearchRow'
 import { downloadFailureCopy, downloadRate, downloadRemaining, formatBytes } from './settings-copy'
 
 const languagesText = (languages: string[]) =>
@@ -16,17 +21,19 @@ const languagesText = (languages: string[]) =>
 
 /** Settings › AI model: this Mac, the on-device switch, and the model cards. Actions are buttons only. */
 export function AiModelPane() {
-  const { loaded, hardware, models, events, reload: load, setEvent } = useModelCatalogue()
+  const { loaded, hardware, models, meaning, activeProblem, events, reload: load, setEvent } =
+    useModelCatalogue()
   const [on, setOn] = useState(false)
   const started = useRef(false)
   const [deleting, setDeleting] = useState<AiModelInfo | null>(null)
 
-  // The switch starts on when a model is in use; after that only the person changes it.
+  // The switch starts on when a model is in use (even one that can't run right now); after that
+  // only the person changes it.
   useEffect(() => {
     if (!loaded || started.current) return
     started.current = true
-    setOn(models.some((m) => m.active))
-  }, [loaded, models])
+    setOn(models.some((m) => m.active) || activeProblem !== null)
+  }, [loaded, models, activeProblem])
 
   const toggle = async (next: boolean) => {
     setOn(next)
@@ -44,7 +51,7 @@ export function AiModelPane() {
     void load()
   }
   const download = async (id: string) => {
-    const model = models.find((m) => m.id === id)
+    const model = models.find((m) => m.id === id) ?? (meaning?.id === id ? meaning : undefined)
     setEvent(id, {
       modelId: id,
       receivedBytes: model?.downloadedBytes ?? 0,
@@ -98,6 +105,25 @@ export function AiModelPane() {
     }
   }
 
+  const removeMeaning = async () => {
+    if (!meaning) return
+    const res = await window.api.invoke(IPC_CHANNELS.AI_DELETE_MODEL, { id: meaning.id })
+    if (!res.success) {
+      toast({
+        variant: 'error',
+        message: 'Couldn’t delete meaning search',
+        description: 'Nothing was changed. Try again.'
+      })
+      return
+    }
+    void load()
+    if (res.data.undoable) {
+      undoToast('Meaning search deleted', () => {
+        void window.api.invoke(IPC_CHANNELS.AI_RESTORE_MODEL, { id: meaning.id }).then(() => load())
+      })
+    }
+  }
+
   const supported = hardware ? hardware.isAppleSilicon : true
 
   const cardFor = (model: AiModelInfo) => {
@@ -119,7 +145,7 @@ export function AiModelPane() {
         name={model.name}
         description={model.description}
         languages={languagesText(model.languages)}
-        size={formatBytes(model.sizeBytes)}
+        size={model.builtIn ? BUILT_IN_SIZE : formatBytes(model.sizeBytes)}
         bestFit={model.bestFit}
         quality={model.quality}
         speed={model.speed}
@@ -134,6 +160,7 @@ export function AiModelPane() {
             }
           : {})}
         useDisabled={!on}
+        deletable={!model.builtIn}
         downloadDisabled={!supported}
         onUse={() => void use(model.id)}
         onDownload={() => void download(model.id)}
@@ -145,8 +172,10 @@ export function AiModelPane() {
   }
 
   const yours = models
-    .filter((m) => m.installed)
+    .filter((m) => m.installed && !m.builtIn)
     .sort((a, b) => Number(b.active) - Number(a.active))
+  // Apple's model, listed only on a Mac that can run it.
+  const builtIn = models.filter((m) => m.builtIn)
   const available = models.filter((m) => !m.installed)
 
   const mac = hardware ? (
@@ -187,6 +216,16 @@ export function AiModelPane() {
             onCheckedChange={(next) => void toggle(next)}
           />
         </div>
+        {activeProblem && (
+          <div className="px-4 pt-3.5">
+            <Banner
+              tone="warning"
+              {...activeProblemCopy(activeProblem)}
+              action={false}
+              dismissible={false}
+            />
+          </div>
+        )}
         {models.length > 0 && (
           <div className="flex flex-col gap-2 px-4 pt-3.5 pb-4">
             {!on && supported && (
@@ -198,12 +237,32 @@ export function AiModelPane() {
                 {yours.map(cardFor)}
               </>
             )}
+            {builtIn.length > 0 && (
+              <>
+                <p className={cn('type-label-xs-medium text-tertiary', yours.length > 0 && 'mt-2')}>
+                  Built into macOS
+                </p>
+                {builtIn.map(cardFor)}
+              </>
+            )}
             {available.length > 0 && (
               <>
                 <p className="mt-2 type-label-xs-medium text-tertiary">Available to download</p>
                 {available.map(cardFor)}
               </>
             )}
+          </div>
+        )}
+        {meaning && (
+          <div className="flex flex-col gap-2 px-4 pt-1 pb-4">
+            <p className="type-label-xs-medium text-tertiary">Search</p>
+            <MeaningSearchRow
+              meaning={meaning}
+              event={events[meaning.id] ?? null}
+              onDownload={() => void download(meaning.id)}
+              onCancel={() => void cancel(meaning.id)}
+              onDelete={() => void removeMeaning()}
+            />
           </div>
         )}
       </SettingsGroup>

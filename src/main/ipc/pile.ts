@@ -1,4 +1,5 @@
 import { IPC_CHANNELS } from '@shared/ipc'
+import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { LookOverService } from '../import/look-over-service'
 import { StashService } from '../import/stash-service'
 import { PileService } from '../library/pile-service'
@@ -7,7 +8,14 @@ import { countsChanged } from './library-effects'
 import { registerIpcHandler } from './register'
 
 export function registerPileHandlers(ctx: HandlerContext): void {
-  const { repo, ai } = ctx
+  const { repo, ai, telemetry } = ctx
+  // Telemetry: how many mockups were approved into My Stash, and whether a model was on. Counts only.
+  const approved = async (count: number) => {
+    telemetry.get().track(TELEMETRY_EVENTS.AI_ITEM_APPROVED, {
+      count,
+      had_model: (await ai.activeProvider()) !== null
+    })
+  }
   const piles = new PileService(repo)
   const stash = new StashService(repo, new LookOverService(repo, () => ai.activeProvider()))
 
@@ -23,13 +31,19 @@ export function registerPileHandlers(ctx: HandlerContext): void {
 
   registerIpcHandler(IPC_CHANNELS.PILE_STASH, async (args) => {
     const result = await stash.stashPile(args.pileId)
-    if (result.ok) countsChanged(ctx)
+    if (result.ok) {
+      countsChanged(ctx)
+      void approved(result.stashedIds.length).catch(() => {})
+    }
     return result
   })
 
   registerIpcHandler(IPC_CHANNELS.MOCKUP_STASH, async (args) => {
     const result = await stash.stashSingle(args.mockupId)
-    if (result.ok) countsChanged(ctx)
+    if (result.ok) {
+      countsChanged(ctx)
+      void approved(result.stashedIds.length).catch(() => {})
+    }
     return result
   })
 

@@ -46,7 +46,7 @@ describe('migrations', () => {
         'tag_categories',
         'tags',
         'mockup_tags',
-        'embeddings'
+        'mockup_embeddings'
       ])
     )
   })
@@ -443,7 +443,8 @@ describe('migration: drop review status, add the pile check', () => {
     expect(count(old, 'drafts')).toBe(1)
     expect(count(old, 'look_over_resume')).toBe(1)
     expect(count(old, 'variants')).toBe(1)
-    expect(count(old, 'embeddings')).toBe(1)
+    // The unused `embeddings` placeholder was replaced by `mockup_embeddings` (migration 0013).
+    expect(old.prepare("SELECT name FROM sqlite_master WHERE name = 'embeddings'").all()).toEqual([])
     expect(count(old, 'copy_jobs')).toBe(1)
     expect(old.prepare('SELECT mockup_id FROM copy_jobs').get()).toEqual({ mockup_id: 3 })
     expect(count(old, 'tags')).toBe(2)
@@ -497,6 +498,73 @@ describe('migration: copy jobs from zips', () => {
     expect(
       old.prepare('SELECT source_path, file_name, size_bytes, archive_entry, archive_name FROM copy_jobs').get()
     ).toEqual({ source_path: '/src/a.psd', file_name: 'a.psd', size_bytes: 9, archive_entry: null, archive_name: null })
+    old.close()
+  })
+})
+
+describe('migration: search keywords', () => {
+  it('replaces mockups_fts with one that has a keywords column, on a database at 0011', () => {
+    const dir = tempDir()
+    cpSync('./drizzle', dir, { recursive: true })
+    const journalPath = join(dir, 'meta', '_journal.json')
+    const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: { tag: string }[] }
+    const cut = journal.entries.findIndex((e) => e.tag.endsWith('_search_keywords'))
+    expect(cut).toBeGreaterThan(0)
+    journal.entries = journal.entries.slice(0, cut)
+    writeFileSync(journalPath, JSON.stringify(journal))
+
+    const old = new Database(':memory:')
+    const oldDb = drizzle(old, { schema })
+    migrate(oldDb, { migrationsFolder: dir })
+    old.exec('CREATE VIRTUAL TABLE mockups_fts USING fts5(title, description, tags)')
+
+    migrate(oldDb, { migrationsFolder: './drizzle' })
+
+    const cols = old
+      .prepare('PRAGMA table_info(mockups_fts)')
+      .all()
+      .map((r) => (r as { name: string }).name)
+    expect(cols).toEqual(['title', 'description', 'tags', 'keywords'])
+    old
+      .prepare('INSERT INTO mockups_fts(rowid, title, description, tags, keywords) VALUES (2, ?, ?, ?, ?)')
+      .run('Bag', '', '', 'shopper')
+    const hit = old.prepare("SELECT rowid FROM mockups_fts WHERE mockups_fts MATCH 'shopper'").all()
+    expect(hit).toEqual([{ rowid: 2 }])
+    old.close()
+  })
+})
+
+describe('migration: meaning embeddings', () => {
+  it('applies on a database at 0012 and keeps its mockups', () => {
+    const dir = tempDir()
+    cpSync('./drizzle', dir, { recursive: true })
+    const journalPath = join(dir, 'meta', '_journal.json')
+    const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: { tag: string }[] }
+    const cut = journal.entries.findIndex((e) => e.tag.endsWith('_meaning_embeddings'))
+    expect(cut).toBeGreaterThan(0)
+    journal.entries = journal.entries.slice(0, cut)
+    writeFileSync(journalPath, JSON.stringify(journal))
+
+    const old = new Database(':memory:')
+    old.pragma('foreign_keys = ON')
+    const oldDb = drizzle(old, { schema })
+    migrate(oldDb, { migrationsFolder: dir })
+    old.exec(`INSERT INTO mockups (id, title, library_path, cover_path, cover_source)
+      VALUES (1, 'Tote', '/lib/a.psd', '/lib/a.png', 'embedded')`)
+
+    migrate(oldDb, { migrationsFolder: './drizzle' })
+
+    const cols = old
+      .prepare('PRAGMA table_info(mockup_embeddings)')
+      .all()
+      .map((r) => (r as { name: string }).name)
+    expect(cols).toEqual(['mockup_id', 'model_id', 'dimension', 'vector', 'text_hash'])
+    expect(old.prepare('SELECT count(*) AS c FROM mockups').get()).toEqual({ c: 1 })
+    old
+      .prepare('INSERT INTO mockup_embeddings VALUES (1, ?, 2, x\'0000\', ?)')
+      .run('nomic-embed-v1.5', 'h')
+    old.prepare('DELETE FROM mockups WHERE id = 1').run()
+    expect(old.prepare('SELECT count(*) AS c FROM mockup_embeddings').get()).toEqual({ c: 0 })
     old.close()
   })
 })

@@ -3,6 +3,15 @@ import sharp from 'sharp'
 import type { InferenceProvider, AnalysisInput, InferenceResult } from '../../shared/inference'
 import { InferenceResultSchema } from '../../shared/inference'
 import { normaliseTagLabel } from '../../shared/tags'
+import type { PromptProfile } from './prompts/profile'
+import { isPlaceholder } from '../psd/placeholder'
+import {
+  SCENE_CHECK_THRESHOLD,
+  mentionedThings,
+  pYes,
+  sceneQuestion,
+  withoutThing
+} from './scene-check'
 
 /**
  * The categories the model tags in, with what each covers: the seed categories in `db/bootstrap.ts`
@@ -79,11 +88,25 @@ export interface ChatRequest {
   /** Qwen's own generation config uses 1.05; llama-server's default is off. */
   repeat_penalty: number
   max_tokens: number
+  /** The rest of llama-server's sampling settings, for a model's tuned prompt profile. */
+  top_p?: number
+  top_k?: number
+  min_p?: number
+  presence_penalty?: number
+  seed?: number
+}
+
+/** One chat completion's reply: its text, and the logprobs when the request asked for them. */
+export interface ChatReply {
+  text: string
+  logprobs?: unknown
 }
 
 export interface VisionProviderDeps {
-  /** Send one chat request and return the reply text. */
-  complete(request: ChatRequest): Promise<string>
+  /** The model's own prompt: how it is asked and how its reply is read. */
+  prompt: PromptProfile
+  /** Send one chat request (an answer, or a scene-thing question) and return the reply. */
+  complete(request: object): Promise<ChatReply>
   /** The cover as a data URL the runtime can decode, or null when there isn't one to read. */
   readImage(path: string): Promise<string | null>
   /** Release the runtime (stop the server). */
@@ -161,7 +184,7 @@ export function buildRequest(input: AnalysisInput, imageUrl: string | null): Cha
  * Words every file in a mockup library shares, plus the stock sites they come from. They match every
  * search, so they say nothing; the models copy them from file names and from text printed on covers.
  */
-const JUNK_WORDS = /\b(free|mockups?|psd|templates?|pixeden|pixelbuddha|freepik|mockupfree|ls\.?graphics)\b/gi
+export const JUNK_WORDS = /\b(free|mockups?|psd|templates?|pixeden|pixelbuddha|freepik|mockupfree|ls\.?graphics)\b/gi
 
 /** Takes the junk words out of a title or label and tidies what's left. */
 function stripJunk(text: string): string {
@@ -285,12 +308,7 @@ export function parseResult(raw: string): InferenceResult {
   }
 }
 
-/**
- * Below this greyscale entropy a cover is a blank page or a notice, never a product shot. Measured on
- * the test set: the three "Remove this layer to start" previews score about 0.23, the plainest real
- * cover 2.24 (design/specs/ai.md).
- */
-export const PLACEHOLDER_ENTROPY = 1
+export { PLACEHOLDER_ENTROPY } from '../psd/placeholder'
 
 /**
  * Reads a cover for the model: scaled to fit `VISION_IMAGE_MAX_EDGE` and re-encoded as JPEG,
@@ -303,8 +321,7 @@ export async function readCoverAsDataUrl(path: string): Promise<string | null> {
   if (!path) return null
   try {
     const bytes = await readFile(path)
-    const { entropy } = await sharp(bytes).greyscale().resize(256, 256, { fit: 'inside' }).stats()
-    if (entropy < PLACEHOLDER_ENTROPY) return null
+    if (await isPlaceholder(bytes)) return null
     const jpeg = await sharp(bytes)
       .resize(VISION_IMAGE_MAX_EDGE, VISION_IMAGE_MAX_EDGE, {
         fit: 'inside',
@@ -320,10 +337,31 @@ export async function readCoverAsDataUrl(path: string): Promise<string | null> {
 }
 
 /**
+ * One scene-thing question on the answer's own image (llama-server reuses it from its cache): one
+ * greedy token held to "yes" or "no", with logprobs, so `pYes` can read how sure the model is.
+ */
+function sceneThingRequest(answerRequest: ChatRequest, thing: string): object {
+  const [system, user] = answerRequest.messages
+  const image = (user!.content as ChatContentPart[]).filter((p) => p.type === 'image_url')
+  return {
+    messages: [
+      system,
+      { role: 'user', content: [...image, { type: 'text', text: `Look only at the image. ${sceneQuestion(thing)}` }] }
+    ],
+    grammar: 'root ::= "yes" | "no"',
+    temperature: 0,
+    max_tokens: 1,
+    logprobs: true,
+    top_logprobs: 5
+  }
+}
+
+/**
  * Inference provider for a vision model (GGUF + mmproj) behind llama.cpp. It shows the model
  * the mockup's cover first, with the file name and folder trail as secondary text, and asks
- * for a JSON reply constrained by `RESULT_JSON_SCHEMA`. The transport is injected: the
- * provider factory wires it to a `LlamaServer`; tests pass a stub.
+ * in the words of the model's prompt profile (a JSON reply constrained by its schema). When the
+ * cover was shown, each scene thing the answer mentions is then checked (`scene-check.ts`). The
+ * transport is injected: the provider factory wires it to a `LlamaServer`; tests pass a stub.
  */
 export class VisionInferenceProvider implements InferenceProvider {
   readonly id = 'vision'
@@ -335,8 +373,18 @@ export class VisionInferenceProvider implements InferenceProvider {
 
   async analyze(input: AnalysisInput): Promise<InferenceResult> {
     const imageUrl = await this.deps.readImage(input.imagePath)
-    const reply = await this.deps.complete(buildRequest(input, imageUrl))
-    return parseResult(reply)
+    const request = this.deps.prompt.buildRequest(input, imageUrl)
+    let answer = this.deps.prompt.parseResult((await this.deps.complete(request)).text)
+    if (!imageUrl) return answer
+    for (const thing of mentionedThings(answer, this.deps.prompt.sceneThings ?? [])) {
+      const p = await this.deps
+        .complete(sceneThingRequest(request, thing))
+        .then((reply) => pYes(reply.logprobs))
+        // A check that fails says nothing about the thing, so it stays.
+        .catch(() => null)
+      if (p !== null && p < SCENE_CHECK_THRESHOLD) answer = withoutThing(answer, thing)
+    }
+    return answer
   }
 
   async dispose(): Promise<void> {

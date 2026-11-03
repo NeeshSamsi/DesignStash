@@ -34,7 +34,7 @@
 | Replace → file picker | Uploads; shows `replacing` |
 | Drag an image onto the cover | `DropOverlay` (drag-over) over the cover, the same component as dragging PSDs onto the library; drop → `replacing` |
 | ⌘V with an image on the clipboard | Same as a drop |
-| Sidecar image next to the PSD | Automatic. The app uses it only when the PSD has no embedded preview, so there is no prompt. The tag reads `Sidecar image`, and **Use the PSD's preview** still works as for any cover that isn't the embedded preview. |
+| Sidecar image next to the PSD | Automatic, so there is no prompt. The app uses it when the PSD has no embedded preview, or when the embedded preview is a placeholder (a "DELETE THIS LAYER" card: greyscale entropy under `PLACEHOLDER_ENTROPY`). For a placeholder it takes only a sure match: the image with the PSD's own name, else the folder's `preview` image, else the folder's only image; with several and none named for the PSD, the placeholder stays. Images packed in the PSD's own zip count. The tag reads `Sidecar image`, and **Use the PSD's preview** still works as for any cover that isn't the embedded preview. |
 
 - **Replacing:** the old cover stays visible, dimmed, with progress on top. Esc cancels and keeps it.
 - **No cover at all** (no embedded preview, no sidecar): the required `CoverDropZone` is shown, and **Stash & next is disabled** with a tooltip until a cover is added. Its drag-over is the same `DropOverlay`.

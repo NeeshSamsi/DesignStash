@@ -53,6 +53,13 @@ describe('ModelCard', () => {
     expect(screen.queryByText('In use')).toBeNull()
   })
 
+  it('a built-in model has Use this model and no Delete, in use or not', () => {
+    const { rerender } = render(<ModelCard state="downloaded" deletable={false} />)
+    expect(names()).toEqual(['Use this model'])
+    rerender(<ModelCard state="in-use" deletable={false} />)
+    expect(screen.queryAllByRole('button')).toEqual([])
+  })
+
   it('available: Download, with the download size', () => {
     const onDownload = vi.fn()
     render(<ModelCard state="available" size="4.6 GB" onDownload={onDownload} />)

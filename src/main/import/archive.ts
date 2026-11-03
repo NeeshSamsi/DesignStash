@@ -1,4 +1,6 @@
 import { extname, join } from 'node:path'
+import { SIDECAR_EXTENSIONS } from '@shared/constants'
+import { COVER_MAX_BYTES } from '@shared/cover-fit'
 import type { Readable } from 'node:stream'
 import yauzl from 'yauzl'
 import type { Entry, ExtraField } from 'yauzl'
@@ -103,6 +105,20 @@ export async function openArchiveEntry(zipPath: string, entryName: string): Prom
  */
 export function entryPath(zipPath: string, entryName: string): string {
   return join(zipPath, ...entrySegments(entryName))
+}
+
+/**
+ * The images in a zip that could be a PSD's preview (JPG, PNG or WebP, no packaging, nothing over
+ * the cover size limit), by the path `entryPath` gives each, to their entry's name.
+ */
+export function previewImages(zipPath: string, entries: ArchiveEntry[]): Map<string, string> {
+  const images = new Map<string, string>()
+  for (const e of entries) {
+    if (classifyEntry(e) !== 'other' || e.encrypted || e.size > COVER_MAX_BYTES) continue
+    if (!SIDECAR_EXTENSIONS.includes(extname(e.name).toLowerCase())) continue
+    images.set(entryPath(zipPath, e.name), e.name)
+  }
+  return images
 }
 
 const JUNK_NAMES = new Set(['.ds_store', 'thumbs.db', 'desktop.ini'])

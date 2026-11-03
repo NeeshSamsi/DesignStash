@@ -85,6 +85,20 @@
       "when": 1792560987127,
       "tag": "0011_copy_job_archives",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792564587127,
+      "tag": "0012_search_keywords",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792568187127,
+      "tag": "0013_meaning_embeddings",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { variantMatrix } from '@renderer/design-system/matrix'
-import { GlobalSearch, SEARCH_DEBOUNCE_MS, type GlobalSearchProps } from './GlobalSearch'
+import {
+  GlobalSearch,
+  SEARCH_DEBOUNCE_MS,
+  focusGlobalSearch,
+  type GlobalSearchProps
+} from './GlobalSearch'
 import { GLOBAL_SEARCH_CONTRACT } from './GlobalSearch.types'
 
 describe('GlobalSearch', () => {
@@ -34,12 +39,28 @@ describe('GlobalSearch', () => {
       expect(SEARCH_DEBOUNCE_MS).toBe(250)
     })
 
-    it('focuses the field on ⌘K', () => {
+    it('hints ⌘F, the main shortcut (⌘K still works)', () => {
+      const { container } = render(<GlobalSearch />)
+      const hint = container.querySelector('[data-ds="KeyboardShortcut"]')
+      expect(hint?.textContent).toBe('⌘F')
+    })
+
+    it.each(['f', 'k'])('focuses the field on ⌘%s', (key) => {
       render(<GlobalSearch />)
       const input = screen.getByRole('textbox', { name: 'Search' })
       expect(document.activeElement).not.toBe(input)
-      fireEvent.keyDown(window, { key: 'k', metaKey: true })
+      fireEvent.keyDown(window, { key, metaKey: true })
       expect(document.activeElement).toBe(input)
+    })
+
+    it('focusGlobalSearch focuses and selects the field on screen, and does nothing once it is gone', () => {
+      const { unmount } = render(<GlobalSearch value="fries" />)
+      const input = screen.getByRole('textbox', { name: 'Search' }) as HTMLInputElement
+      focusGlobalSearch()
+      expect(document.activeElement).toBe(input)
+      expect([input.selectionStart, input.selectionEnd]).toEqual([0, 5])
+      unmount()
+      expect(() => focusGlobalSearch()).not.toThrow()
     })
 
     it('ignores K without ⌘', () => {

@@ -50,7 +50,7 @@ export const STASH_STEP = {
 
 export const PRIVACY_STEP = {
   title: 'Your privacy',
-  body: 'Here’s exactly what we share to help squash bugs, and what we never touch.'
+  body: 'DesignStash shares anonymous usage data to help squash bugs. It’s on by default; switch it off below if you’d rather not. Here’s what it does and never includes.'
 } as const
 
 export const DONE_STEP = {

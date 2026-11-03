@@ -46,6 +46,12 @@ describe('ModelRow behaviour', () => {
     expect(screen.getByText('Downloaded')).not.toBeNull()
   })
 
+  it('installed can say Built in for a model that comes with macOS', () => {
+    render(<ModelRow state="installed" installedLabel="Built in" />)
+    expect(screen.getByText('Built in')).not.toBeNull()
+    expect(screen.queryByText('Downloaded')).toBeNull()
+  })
+
   it('selected sets the picked look; unset follows the state', () => {
     const picked = (props: ModelRowProps) => {
       const { container, unmount } = render(<ModelRow {...props} />)

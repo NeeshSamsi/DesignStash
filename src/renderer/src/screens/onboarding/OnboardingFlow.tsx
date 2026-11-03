@@ -28,6 +28,8 @@ export function OnboardingFlow({ onComplete, start = 'welcome' }: OnboardingFlow
   const [page, setPage] = useState<OnboardingPage>(start)
   const [moved, setMoved] = useState(false)
   const [deciding, setDeciding] = useState(false)
+  // Anonymous usage data is on until the person switches it off (opt-out).
+  const [share, setShare] = useState(true)
 
   const go = useCallback((delta: 1 | -1) => {
     setPage(
@@ -36,9 +38,9 @@ export function OnboardingFlow({ onComplete, start = 'welcome' }: OnboardingFlow
     )
   }, [])
 
-  const decide = async (enabled: boolean) => {
+  const decide = async () => {
     setDeciding(true)
-    await window.api.invoke(IPC_CHANNELS.TELEMETRY_SET_CONSENT, { enabled })
+    await window.api.invoke(IPC_CHANNELS.TELEMETRY_SET_CONSENT, { enabled: share })
     setDeciding(false)
     go(1)
   }
@@ -77,16 +79,11 @@ export function OnboardingFlow({ onComplete, start = 'welcome' }: OnboardingFlow
               step="4"
               title={PRIVACY_STEP.title}
               body={PRIVACY_STEP.body}
-              hidePrimary
+              busyLabel="Saving…"
               onBack={() => go(-1)}
+              onPrimary={() => void decide()}
               busy={deciding}
-              content={
-                <ConsentPanel
-                  mode="card"
-                  onDecline={() => void decide(false)}
-                  onAccept={() => void decide(true)}
-                />
-              }
+              content={<ConsentPanel mode="card" enabled={share} onEnabledChange={setShare} />}
             />
           )}
           {page === 'done' && (

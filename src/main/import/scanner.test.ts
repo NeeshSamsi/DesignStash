@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { scanForPsds } from './scanner'
 import { makeZip, markEncrypted, zipBytes } from './__tests__/zips'
@@ -16,7 +16,7 @@ afterAll(() => {
 })
 
 describe('scanForPsds', () => {
-  it('finds PSDs in nested folders and captures folderTrail', async () => {
+  it('finds PSDs in nested folders, with the dropped folder’s own name first in the trail', async () => {
     // Setup
     const nestedDir = join(TEST_DIR, 'nested')
     mkdirSync(join(nestedDir, 'sub'), { recursive: true })
@@ -34,10 +34,10 @@ describe('scanForPsds', () => {
     ])
 
     const file1 = result.psds.find((p) => p.importContext.originalFileName === 'file1.psd')
-    expect(file1?.importContext.folderTrail).toEqual([])
+    expect(file1?.importContext.folderTrail).toEqual(['nested'])
 
     const file2 = result.psds.find((p) => p.importContext.originalFileName === 'file2.psd')
-    expect(file2?.importContext.folderTrail).toEqual(['sub'])
+    expect(file2?.importContext.folderTrail).toEqual(['nested', 'sub'])
   })
 
   it('handles single dropped PSD file', async () => {
@@ -63,6 +63,22 @@ describe('scanForPsds', () => {
 
     expect(result.candidateImagePaths).toHaveLength(1)
     expect(result.candidateImagePaths[0]).toContain('design.jpg')
+  })
+
+  it('looks beside a dropped loose PSD only for images with its own name', async () => {
+    const dir = join(TEST_DIR, 'loose-drop')
+    mkdirSync(join(dir, 'sub'), { recursive: true })
+    const psd = join(dir, 'Poster Mockup.psd')
+    for (const name of ['Poster Mockup.psd', 'Poster Mockup.JPG', 'poster mockup.png', 'Other.jpg', 'preview.jpg']) {
+      writeFileSync(join(dir, name), '')
+    }
+    writeFileSync(join(dir, 'sub', 'Poster Mockup.jpg'), '')
+
+    const result = await scanForPsds([psd], { stagingDir: STAGING })
+
+    expect(result.candidateImagePaths.sort()).toEqual(
+      [join(dir, 'Poster Mockup.JPG'), join(dir, 'poster mockup.png')].sort()
+    )
   })
 
   describe('zips', () => {
@@ -137,7 +153,10 @@ describe('scanForPsds', () => {
       const trails = Object.fromEntries(
         result.psds.map((p) => [p.importContext.originalFileName, p.importContext.folderTrail])
       )
-      expect(trails).toEqual({ 'Cap.psd': ['Hats', 'Cap'], 'loose.psd': ['Hats'] })
+      expect(trails).toEqual({
+        'Cap.psd': [basename(d), 'Hats', 'Cap'],
+        'loose.psd': [basename(d), 'Hats']
+      })
     })
 
     it('counts a zip with no PSD inside once, as no-psd-in-archive', async () => {

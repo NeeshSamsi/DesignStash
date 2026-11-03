@@ -20,14 +20,40 @@ export const ITEMS_PATH = join(EVAL_DIR, 'items.json')
 export const COVERS_DIR = join(EVAL_DIR, 'covers')
 
 /** The real downloads in the test set, as a designer would drop them. The generated cases are left out. */
+/**
+ * Downloads kept apart from prompt tuning (test set MANIFEST.md): covered like the rest, scored
+ * against `gold-heldout.json` only for the final check.
+ */
+export const HELD_OUT_DIR = 'held-out'
+
+/** The final check (test set MANIFEST.md): covered like the rest, scored only with `--sign-off`. */
+export const SIGN_OFF_DIR = 'sign-off'
+
+const APART_DIRS = [HELD_OUT_DIR, SIGN_OFF_DIR]
+
+function zipsIn(root: string, dir: string): string[] {
+  return existsSync(join(root, dir))
+    ? readdirSync(join(root, dir))
+        .filter((n) => n.toLowerCase().endsWith('.zip'))
+        .map((n) => join(root, dir, n))
+    : []
+}
+
+/** The folder a test set zip is in: `zips/`, `held-out/` or `sign-off/`. */
+export function zipDir(name: string, root: string = TEST_SET): string {
+  const apart = APART_DIRS.find((dir) => existsSync(join(root, dir, name)))
+  return join(root, apart ?? 'zips')
+}
+
 export function realItemPaths(root: string = TEST_SET): string[] {
   const zips = readdirSync(join(root, 'zips'))
     .filter((n) => n.toLowerCase().endsWith('.zip'))
     .map((n) => join(root, 'zips', n))
+  const apart = APART_DIRS.flatMap((dir) => zipsIn(root, dir))
   const psds = readdirSync(join(root, 'psds'))
     .filter((n) => n.toLowerCase().endsWith('.psd'))
     .map((n) => join(root, 'psds', n))
-  return [...zips, ...psds, join(root, 'folders', 'Long Website Mockup')].sort()
+  return [...zips, ...apart, ...psds, join(root, 'folders', 'Long Website Mockup')].sort()
 }
 
 export interface EvalItem {

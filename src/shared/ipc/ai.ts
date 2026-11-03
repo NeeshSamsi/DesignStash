@@ -18,12 +18,28 @@ export const AiModelInfoSchema = z.object({
   minMemoryGB: z.number(),
   /** The model shown as "Best fit for this Mac". */
   bestFit: z.boolean(),
+  /**
+   * Comes with macOS (Apple's on-device model): nothing to download or delete, always installed.
+   * Listed only when this Mac can run it (macOS 27, Apple Intelligence on).
+   */
+  builtIn: z.boolean(),
   /** Bytes of a stopped download already on disk. Trying again carries on from here. */
   downloadedBytes: z.number(),
   installed: z.boolean(),
   active: z.boolean()
 })
 export type AiModelInfo = z.infer<typeof AiModelInfoSchema>
+
+/**
+ * Why the active model can't make suggestions right now. Only Apple's model has one: Apple
+ * Intelligence turned off, macOS still getting the model ready, or anything else that stops it.
+ */
+export const AiActiveProblemSchema = z.enum([
+  'apple-intelligence-off',
+  'apple-model-not-ready',
+  'apple-unavailable'
+])
+export type AiActiveProblem = z.infer<typeof AiActiveProblemSchema>
 
 /** The only reasons a download stops. */
 export const AiDownloadFailureSchema = z.enum(['offline', 'disk-full', 'checksum', 'server'])
@@ -43,6 +59,20 @@ export const AiDownloadProgressSchema = z.object({
 })
 export type AiDownloadProgress = z.infer<typeof AiDownloadProgressSchema>
 
+/** The meaning-search model: listed beside the vision models, but never one of them. */
+export const AiMeaningInfoSchema = z.object({
+  /** The id the download, cancel, delete and restore channels take. */
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  license: z.string(),
+  sizeBytes: z.number(),
+  /** Bytes on disk, finished or partial. */
+  downloadedBytes: z.number(),
+  installed: z.boolean()
+})
+export type AiMeaningInfo = z.infer<typeof AiMeaningInfoSchema>
+
 /** On-device AI models. */
 export const aiContract = {
   [IPC_CHANNELS.AI_HARDWARE_INFO]: {
@@ -58,8 +88,12 @@ export const aiContract = {
     request: z.void(),
     response: z.object({
       models: z.array(AiModelInfoSchema),
+      /** Meaning search: an embedding model downloaded with the vision model, never selectable. */
+      meaning: AiMeaningInfoSchema,
       /** Folders from earlier versions (the old text models). Ignored by the app and deletable. */
-      legacy: z.array(z.object({ id: z.string(), sizeBytes: z.number() }))
+      legacy: z.array(z.object({ id: z.string(), sizeBytes: z.number() })),
+      /** Set when the active model can't run, so the app can say why and offer another. */
+      activeProblem: AiActiveProblemSchema.nullable()
     })
   },
   [IPC_CHANNELS.AI_DOWNLOAD_MODEL]: {

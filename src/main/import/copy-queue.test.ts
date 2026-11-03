@@ -95,7 +95,7 @@ describe('landing files', () => {
     expect(m).toMatchObject({ stage: 'to_sort', coverSource: 'embedded' })
     expect(m.libraryPath.startsWith(join(root, 'mockups'))).toBe(true)
     expect(readFileSync(m.libraryPath, 'utf8')).toMatch(/AAAA|BBBBBB/)
-    expect(m.importContext).toMatchObject({ folderTrail: ['Phones'] })
+    expect(m.importContext).toMatchObject({ folderTrail: ['drop', 'Phones'] })
     expect(m.importContext).not.toHaveProperty('archiveName')
     // Originals are untouched, and no record of where they were is kept.
     expect(existsSync(a) && existsSync(b)).toBe(true)
@@ -758,6 +758,40 @@ describe('zips', () => {
       expect(existsSync(input.psdPath)).toBe(true)
     }
     expect(inputs.map((i) => i.sidecarFor).sort()).toEqual([loose, join(z, 'Files/Cap.psd')].sort())
+  })
+
+  it('offers the images in a PSD’s own zip as its preview, and reads them out of the zip', async () => {
+    const z = await zip('Can.zip', [
+      { name: 'Kit/Can.psd', data: 'CAN' },
+      { name: 'Kit/Can.jpg', data: 'JPEG BYTES' },
+      { name: 'Kit/license.pdf', data: 'pdf' },
+      { name: '__MACOSX/Kit/._Can.jpg', data: 'apple' }
+    ])
+    const beside = join(drop, 'Folder', 'Loose.jpg')
+    psd('Folder/Loose.psd', 'LOOSE')
+    writeFileSync(beside, 'LOOSE JPEG')
+    const q = queue()
+    await q.start([z, join(drop, 'Folder')])
+    await q.idle()
+
+    const inputs = resolveCover.mock.calls.map(([input]) => input)
+    const zipped = inputs.find((i) => i.sidecarFor === join(z, 'Kit/Can.psd'))!
+    expect(zipped.candidateImagePaths).toEqual([beside, join(z, 'Kit/Can.jpg')])
+    expect((await zipped.readImage!(join(z, 'Kit/Can.jpg'))).toString()).toBe('JPEG BYTES')
+    expect((await zipped.readImage!(beside)).toString()).toBe('LOOSE JPEG')
+
+    const loose = inputs.find((i) => i.sidecarFor === join(drop, 'Folder', 'Loose.psd'))!
+    expect(loose.candidateImagePaths).toEqual([beside])
+  })
+
+  it('still lands a zipped PSD when its zip’s images cannot be listed', async () => {
+    const z = await zip('Can.zip', [{ name: 'Can.psd', data: 'CAN' }])
+    const q = queue({ listArchive: async () => Promise.reject(new Error('bad zip')) })
+    await q.start([z])
+    await q.idle()
+
+    expect(repo.inbox.list('to_sort').map((r) => r.title)).toEqual(['Can'])
+    expect(resolveCover.mock.calls[0]![0].candidateImagePaths).toEqual([])
   })
 
   it('lists archives that gave no PSD as skipped rows, each once', async () => {

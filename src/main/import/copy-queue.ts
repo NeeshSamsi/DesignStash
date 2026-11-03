@@ -8,7 +8,13 @@ import type { CopyJob } from '../db/schema'
 import { removeAppCopies } from '../library/app-files'
 import { resolveCover } from '../psd'
 import type { CoverResolution, ResolveCoverInput } from '../psd/types'
-import { entryPath, openArchiveEntry } from './archive'
+import {
+  entryPath,
+  listArchive,
+  openArchiveEntry,
+  previewImages,
+  type ArchiveEntry
+} from './archive'
 import { cleanArchiveName } from './archive-name'
 import { scanForPsds } from './scanner'
 import { copyWithHash, type CopySource } from './stream-copy'
@@ -22,8 +28,11 @@ export interface CopyQueueDeps {
     dest: string,
     onBytes: (written: number) => void
   ) => Promise<{ sha256: string; bytes: number }>
-  /** Stream one PSD out of a zip. */
+  /** Stream one PSD (or a preview image) out of a zip. */
   openArchiveEntry: (zipPath: string, entryName: string) => Promise<Readable>
+  /** Every entry in a zip, for the images that could be a PSD's preview. */
+  listArchive: (zipPath: string) => Promise<ArchiveEntry[]>
+  readFile: (path: string) => Promise<Buffer>
   stat: (path: string) => Promise<{ size: number }>
   /** The names in a folder; empty when it is not there. */
   readdir: (path: string) => Promise<string[]>
@@ -43,6 +52,8 @@ const defaultDeps: CopyQueueDeps = {
   },
   copyHashed: copyWithHash,
   openArchiveEntry,
+  listArchive,
+  readFile: (p) => fs.readFile(p),
   stat: (p) => fs.stat(p),
   readdir: (p) => fs.readdir(p).catch(() => []),
   rm: (p) => fs.rm(p, { force: true, recursive: true }),
@@ -337,10 +348,18 @@ export class CopyQueue {
       }
 
       // The preview is read from the stash's copy; sidecars are matched against where the PSD came from.
+      // A kit's preview image is often packed beside the PSD, so a zip's own images are offered too.
+      const zipImages = entry === null ? new Map<string, string>() : await this.zipImages(job.sourcePath)
       const cover = await this.deps.resolveCover({
         psdPath: libraryPath,
         sidecarFor: entry === null ? job.sourcePath : entryPath(job.sourcePath, entry),
-        candidateImagePaths,
+        candidateImagePaths: [...candidateImagePaths, ...zipImages.keys()],
+        readImage: async (path) => {
+          const name = zipImages.get(path)
+          if (name === undefined) return this.deps.readFile(path)
+          const stream = await this.deps.openArchiveEntry(job.sourcePath, name)
+          return Buffer.concat(await stream.toArray())
+        },
         outDir: destDir
       })
 
@@ -372,6 +391,11 @@ export class CopyQueue {
         throw new Pause('source-gone')
       skip('unreadable')
     }
+  }
+
+  /** The images in a zip that could be a PSD's preview (`previewImages`); none when it can't be listed. */
+  private async zipImages(zipPath: string): Promise<Map<string, string>> {
+    return previewImages(zipPath, await this.deps.listArchive(zipPath).catch((): ArchiveEntry[] => []))
   }
 
   private async sourceStillThere(path: string): Promise<boolean> {

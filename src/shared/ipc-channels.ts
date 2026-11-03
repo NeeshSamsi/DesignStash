@@ -102,7 +102,8 @@ export const IPC_CHANNELS = {
   TELEMETRY_SET_CONSENT: 'telemetry:set-consent',
   ENTITLEMENTS_SNAPSHOT: 'entitlements:snapshot',
   DEBUG_RESET_APP: 'debug:reset-app',
-  DEBUG_READ_SETTINGS: 'debug:read-settings'
+  DEBUG_READ_SETTINGS: 'debug:read-settings',
+  MENU_COMMAND: 'menu:command'
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -118,7 +119,8 @@ export const PUSH_CHANNELS = [
   IPC_CHANNELS.AI_STATUS,
   IPC_CHANNELS.STASH_MOVE_PROGRESS,
   IPC_CHANNELS.COPY_PROGRESS,
-  IPC_CHANNELS.INBOX_COUNTS_CHANGED
+  IPC_CHANNELS.INBOX_COUNTS_CHANGED,
+  IPC_CHANNELS.MENU_COMMAND
 ] as const
 
 export type PushChannel = (typeof PUSH_CHANNELS)[number]

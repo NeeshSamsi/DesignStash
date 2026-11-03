@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IPC_CHANNELS } from '@shared/ipc'
 import { SettingsModal } from './SettingsModal'
+import { useUiStore } from '../../stores/uiStore'
 
 // Behaviour spec for Settings — see design/specs/settings.md.
 
@@ -80,6 +81,7 @@ const model = (over: Record<string, unknown> = {}) => ({
   speed: 3,
   minMemoryGB: 8,
   bestFit: true,
+  builtIn: false,
   downloadedBytes: 0,
   installed: true,
   active: true,
@@ -183,7 +185,12 @@ function setup(overrides: Record<string, Handler> = {}) {
     [IPC_CHANNELS.UPDATES_CANCEL]: () => ok({ state: 'up-to-date', lastCheckedAt: NOW }),
     [IPC_CHANNELS.UPDATES_INSTALL]: () => ok({ installing: true }),
     [IPC_CHANNELS.LICENCES_TEXT]: () => ok({ text: 'MIT License for everything' }),
-    [IPC_CHANNELS.REPORT_COPY]: () => ok({ copied: true }),
+    [IPC_CHANNELS.REPORT_COPY]: (p) => {
+      const action = (p as { action?: string } | undefined)?.action
+      if (action === 'preview') return ok({ copied: false, text: 'Version: 1.0.0\n[INFO] opened' })
+      if (action === 'send') return ok({ copied: false, outcome: 'sent' })
+      return ok({ copied: true })
+    },
     ...overrides
   }
   invoke = vi.fn(
@@ -588,6 +595,63 @@ describe('Settings · AI model', () => {
     )
   })
 
+  it('offers Apple’s built-in model as its own card, with nothing to download or delete', async () => {
+    setup({
+      [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+        ok({
+          models: [
+            model(),
+            model({
+              id: 'apple',
+              name: 'Apple’s on-device model',
+              tier: 'small',
+              sizeBytes: 0,
+              bestFit: false,
+              builtIn: true,
+              installed: true,
+              active: false
+            })
+          ],
+          legacy: []
+        })
+    })
+    open()
+    goto('AI model')
+    await screen.findByText('Built into macOS')
+    const card = screen
+      .getByText('Apple’s on-device model')
+      .closest('[data-ds="ModelCard"]') as HTMLElement
+    expect(within(card).getByText('Built in, no download')).not.toBeNull()
+    expect(within(card).queryByRole('button', { name: 'Delete' })).toBeNull()
+    fireEvent.click(within(card).getByRole('button', { name: 'Use this model' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'apple' })
+    )
+  })
+
+  it('says why Apple’s model in use makes no suggestions, and lets another be chosen', async () => {
+    setup({
+      [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+        ok({
+          models: [model({ active: false })],
+          legacy: [],
+          activeProblem: 'apple-intelligence-off'
+        })
+    })
+    open()
+    goto('AI model')
+    const banner = (await screen.findByText('Apple Intelligence is turned off')).closest(
+      '[data-ds="Banner"]'
+    ) as HTMLElement
+    expect(within(banner).getByText(/Turn it on in System Settings, or choose another model/)).not.toBeNull()
+    // AI is still on: the person only has to pick a model.
+    expect(screen.getByRole('switch', { name: 'Use on-device AI' }).getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Use this model' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_SET_ACTIVE, { id: 'qwen3b' })
+    )
+  })
+
   it('turns the switch off for Intel, with the plain reason', async () => {
     setup({
       [IPC_CHANNELS.AI_HARDWARE_INFO]: () =>
@@ -735,6 +799,37 @@ describe('Settings · About', () => {
     await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1))
   })
 
+  it('runs one check when the menu’s Check for Updates… opened it, and none the next time', async () => {
+    useUiStore.getState().requestUpdateCheck()
+    const first = open({ section: 'about' })
+    await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1))
+    expect(useUiStore.getState().updateCheckPending).toBe(false)
+    first.unmount()
+    open({ section: 'about' })
+    expect(await screen.findByText('Version 1.0.0 (42)')).not.toBeNull()
+    expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1)
+  })
+
+  it('a Check for Updates… while About is already open checks again, and Download still installs', async () => {
+    setup({
+      [IPC_CHANNELS.UPDATES_CHECK]: () =>
+        ok({
+          state: 'available',
+          version: '1.1.0',
+          notes: '',
+          releaseUrl: 'https://github.com/NeeshSamsi/DesignStash/releases/tag/v1.1.0',
+          lastCheckedAt: NOW
+        })
+    })
+    open({ section: 'about' })
+    expect(await screen.findByText('Up to date')).not.toBeNull()
+    act(() => useUiStore.getState().requestUpdateCheck())
+    expect(await screen.findByText('Version 1.1.0 is available.')).not.toBeNull()
+    expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1)
+    fireEvent.click(btn('Download'))
+    await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_INSTALL)).toHaveLength(1))
+  })
+
   it('claims nothing before the first check: no Up to date tag, just Not checked yet', async () => {
     setup({ [IPC_CHANNELS.UPDATES_STATUS]: () => ok({ state: 'up-to-date', lastCheckedAt: null }) })
     open()
@@ -766,6 +861,41 @@ describe('Settings · About', () => {
     await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_INSTALL)).toHaveLength(1))
   })
 
+  it('offers a newer release with What’s new and Download', async () => {
+    setup({
+      [IPC_CHANNELS.UPDATES_STATUS]: () =>
+        ok({
+          state: 'available',
+          version: '1.1.0',
+          notes: '### Features\n\n* a new thing',
+          releaseUrl: 'https://github.com/NeeshSamsi/DesignStash/releases/tag/v1.1.0',
+          lastCheckedAt: NOW
+        })
+    })
+    open()
+    goto('About')
+    expect(await screen.findByText('Version 1.1.0 is available.')).not.toBeNull()
+    fireEvent.click(btn('What’s new'))
+    expect(await screen.findByRole('dialog', { name: 'What’s new in 1.1.0' })).not.toBeNull()
+    expect(screen.getByText(/a new thing/)).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.click(btn('Download'))
+    await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_INSTALL)).toHaveLength(1))
+  })
+
+  it('says it could not check, in the row and without an error toast', async () => {
+    setup({
+      [IPC_CHANNELS.UPDATES_STATUS]: () => ok({ state: 'check-failed', lastCheckedAt: null }),
+      [IPC_CHANNELS.UPDATES_CHECK]: () => ok({ state: 'check-failed', lastCheckedAt: null })
+    })
+    open()
+    goto('About')
+    expect(await screen.findByText(/^Couldn’t check\./)).not.toBeNull()
+    fireEvent.click(btn('Check for updates'))
+    await waitFor(() => expect(calls(IPC_CHANNELS.UPDATES_CHECK)).toHaveLength(1))
+    expect(screen.queryByText('Couldn’t check for updates')).toBeNull()
+  })
+
   it('shows the licences in a View modal', async () => {
     open()
     goto('About')
@@ -774,12 +904,44 @@ describe('Settings · About', () => {
     expect(screen.getByRole('dialog', { name: 'Open-source licences' })).not.toBeNull()
   })
 
-  it('copies the problem report', async () => {
+  it('opens the report dialog, shows what will be sent in full and sends it with the message', async () => {
     open()
     goto('About')
-    fireEvent.click(await screen.findByRole('button', { name: 'Copy report' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Report…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Report a problem' })
+    expect(dialog).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }))
+    expect((await screen.findByTestId('report-details')).textContent).toContain('[INFO] opened')
+    fireEvent.change(screen.getByRole('textbox', { name: 'What happened' }), {
+      target: { value: 'The import froze' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(toasts.toast).toHaveBeenCalled())
-    expect(toasts.toast.mock.calls[0]![0].message).toBe('Copied your problem report')
+    expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.REPORT_COPY, {
+      action: 'send',
+      message: 'The import froze'
+    })
+    expect(toasts.toast.mock.calls[0]![0].message).toBe('Thanks, your report was sent')
+  })
+
+  it('offers Copy report when the report could not be sent', async () => {
+    setup({
+      [IPC_CHANNELS.REPORT_COPY]: (p) => {
+        const action = (p as { action?: string } | undefined)?.action
+        if (action === 'preview') return ok({ copied: false, text: 'Version: 1.0.0' })
+        if (action === 'send') return ok({ copied: false, outcome: 'unavailable' })
+        return ok({ copied: true })
+      }
+    })
+    open()
+    goto('About')
+    fireEvent.click(await screen.findByRole('button', { name: 'Report…' }))
+    await screen.findByRole('dialog', { name: 'Report a problem' })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy report' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.REPORT_COPY, { action: 'copy-full', message: '' })
+    )
   })
 
   it('offers no orange text links', async () => {
@@ -787,5 +949,67 @@ describe('Settings · About', () => {
     goto('About')
     await screen.findByText('Version 1.0.0 (42)')
     expect(document.querySelector('a')).toBeNull()
+  })
+})
+
+describe('Meaning search row', () => {
+  const meaning = (over: Record<string, unknown> = {}) => ({
+    id: 'nomic-embed-v1.5',
+    name: 'Meaning search',
+    description: 'Finds mockups by what a search means.',
+    license: 'Apache 2.0',
+    sizeBytes: 146_146_432,
+    downloadedBytes: 0,
+    installed: false,
+    ...over
+  })
+  const withMeaning = (over: Record<string, unknown> = {}) => ({
+    [IPC_CHANNELS.AI_LIST_MODELS]: () =>
+      ok({ models: [model()], meaning: meaning(over), legacy: [], activeProblem: null })
+  })
+
+  it('downloads from its own button and shows progress with Cancel', async () => {
+    setup(withMeaning())
+    open()
+    goto('AI model')
+    const row = (await screen.findByTestId('meaning-search-row')) as HTMLElement
+    expect(within(row).getByText('146 MB')).toBeTruthy()
+    fireEvent.click(within(row).getByRole('button', { name: 'Download' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: 'nomic-embed-v1.5' })
+    )
+    expect(within(row).getByRole('button', { name: 'Cancel' })).toBeTruthy()
+  })
+
+  it('offers Try again after a failed download, and Resume for a partial one', async () => {
+    setup(withMeaning({ downloadedBytes: 50_000_000 }))
+    open()
+    goto('AI model')
+    const row = (await screen.findByTestId('meaning-search-row')) as HTMLElement
+    expect(within(row).getByRole('button', { name: 'Resume' })).toBeTruthy()
+    act(() =>
+      pushes[IPC_CHANNELS.AI_DOWNLOAD_PROGRESS]!({
+        modelId: 'nomic-embed-v1.5',
+        receivedBytes: 50_000_000,
+        totalBytes: 146_146_432,
+        phase: 'error',
+        reason: 'offline'
+      })
+    )
+    expect(await within(row).findByRole('button', { name: 'Try again' })).toBeTruthy()
+  })
+
+  it('deletes with Undo once installed, without a confirm', async () => {
+    setup(withMeaning({ installed: true, downloadedBytes: 146_146_432 }))
+    open()
+    goto('AI model')
+    const row = (await screen.findByTestId('meaning-search-row')) as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Delete' }))
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.AI_DELETE_MODEL, { id: 'nomic-embed-v1.5' })
+    )
+    await waitFor(() =>
+      expect(toasts.undoToast).toHaveBeenCalledWith('Meaning search deleted', expect.any(Function))
+    )
   })
 })

@@ -31,6 +31,8 @@ export interface ModelCardProps
   resumeNote?: string
   /** Use this model is off, with the reason as its tooltip (AI is switched off). */
   useDisabled?: boolean
+  /** False for a model that comes with macOS: there is nothing to delete, so no Delete button. */
+  deletable?: boolean
   downloadDisabled?: boolean
   onUse?: () => void
   onDownload?: () => void
@@ -79,6 +81,7 @@ export function ModelCard({
   verifying = false,
   resumeNote,
   useDisabled = false,
+  deletable = true,
   downloadDisabled = false,
   onUse,
   onDownload,
@@ -159,7 +162,7 @@ export function ModelCard({
           </>
         )}
 
-        {(inUse || state === 'downloaded') && (
+        {deletable && (inUse || state === 'downloaded') && (
           <Button
             variant="secondary"
             size="sm"

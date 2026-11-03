@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildReport, type ReportFacts } from './report'
+import { buildReport, buildReportDetails, type ReportFacts } from './report'
 
 const facts: ReportFacts = {
   version: '0.4.0',
@@ -12,7 +12,7 @@ const facts: ReportFacts = {
   toStash: 2,
   trash: 1,
   stashCheck: 'in-sync',
-  aiModel: 'qwen2.5-vl-3b'
+  aiModel: 'qwen3-vl-4b'
 }
 
 describe('buildReport', () => {
@@ -45,5 +45,26 @@ describe('buildReport', () => {
     expect(text).not.toContain('/Users')
     expect(text).not.toContain('file://')
     expect(text).toContain('<path>')
+  })
+})
+
+describe('buildReportDetails and crashes', () => {
+  it('adds the crash line when there is one', () => {
+    expect(buildReport({ ...facts, crashes: '1 in the last 7 days, latest main on 2026-10-11' })).toContain(
+      'Crashes: 1 in the last 7 days'
+    )
+    expect(buildReport(facts)).not.toContain('Crashes:')
+  })
+
+  it('appends the log tail, scrubbed, under the facts', () => {
+    const text = buildReportDetails(facts, '[INFO] opened /Users/someone/Pictures/Library\n[WARN] slow')
+    expect(text).toContain('Version: 0.4.0')
+    expect(text).toContain('Log (last 200 lines):')
+    expect(text).toContain('[WARN] slow')
+    expect(text).not.toContain('someone')
+  })
+
+  it('says so when the log is empty', () => {
+    expect(buildReportDetails(facts, '')).toContain('No log lines yet.')
   })
 })

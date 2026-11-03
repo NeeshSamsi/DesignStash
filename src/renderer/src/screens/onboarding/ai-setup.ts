@@ -1,11 +1,12 @@
-import type { AiDownloadProgress, AiModelInfo } from '@shared/ipc/ai'
+import type { AiDownloadProgress, AiMeaningInfo, AiModelInfo } from '@shared/ipc/ai'
 import type { ModelRowState } from '@renderer/components/ModelRow/ModelRow.types'
 import { modelPhase, type HardwareInfo } from './model-phase'
 import {
   downloadFailureCopy,
   downloadRate,
   downloadRemaining,
-  formatBytes
+  formatBytes,
+  meaningStarted
 } from '../settings/settings-copy'
 
 /** The model to pick first: the one marked best fit, else the recommended tier, else the first. */
@@ -21,15 +22,20 @@ export function defaultSelection(
   )
 }
 
+/** What a built-in model shows where a size would be. */
+export const BUILT_IN_SIZE = 'Built in, no download'
+
 const TIER_LINE = {
   small: 'small · fastest',
   medium: 'medium · better titles and tags',
   large: 'large · best descriptions'
 } as const
 
-/** "2.1 GB · medium · better titles and tags". */
+/** "2.1 GB · medium · better titles and tags"; a built-in model has nothing to download. */
 export const modelDetail = (model: AiModelInfo) =>
-  `${formatBytes(model.sizeBytes)} · ${TIER_LINE[model.tier]}`
+  model.builtIn
+    ? `${BUILT_IN_SIZE} · fastest, shorter descriptions`
+    : `${formatBytes(model.sizeBytes)} · ${TIER_LINE[model.tier]}`
 
 export interface RowView {
   state: ModelRowState
@@ -151,8 +157,23 @@ export function aiHeading(
   if (screen === 'complete' && model) {
     return {
       title: 'Your AI model is ready to go',
-      body: `${model.name} is installed and switched on. From now on, everything you gather gets titles and tags automatically.`
+      body: `${model.name} is ${model.builtIn ? 'built into your Mac' : 'installed'} and switched on. From now on, everything you gather gets titles and tags automatically.`
     }
   }
   return base
+}
+
+/**
+ * The step's Download button with what it will fetch: the picked model, plus meaning search while
+ * its switch is on and its own download hasn't begun.
+ */
+export function downloadLabel(
+  selected: Pick<AiModelInfo, 'sizeBytes'> | null,
+  meaning: Pick<AiMeaningInfo, 'id' | 'installed' | 'sizeBytes' | 'downloadedBytes'> | null,
+  meaningEvent: AiDownloadProgress | null,
+  meaningOn: boolean
+): string {
+  if (!selected) return 'Download'
+  const withMeaning = meaning && meaningOn && !meaningStarted(meaning, meaningEvent)
+  return `Download ${formatBytes(selected.sizeBytes + (withMeaning ? meaning.sizeBytes : 0))}`
 }

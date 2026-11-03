@@ -7,7 +7,16 @@ import { ModelRow } from '@renderer/components/ModelRow'
 import { OnboardingStep } from '@renderer/components/OnboardingStep'
 import { Switch } from '@renderer/components/Switch'
 import { formatBytes } from '../settings/settings-copy'
-import { aiHeading, aiScreen, hardwareView, modelDetail, rowView, type AiScreen } from './ai-setup'
+import {
+  aiHeading,
+  aiScreen,
+  downloadLabel,
+  hardwareView,
+  modelDetail,
+  rowView,
+  type AiScreen
+} from './ai-setup'
+import { MeaningSearchCard } from './MeaningSearchCard'
 import { AI_STEP } from './onboarding-copy'
 import { continueInBackground } from './background-download'
 import { useAiSetup } from './useAiSetup'
@@ -46,6 +55,7 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
   }
   const leave = async () => {
     if (ai.aiOn && screen === 'complete') await ai.activate()
+    else if (!ai.aiOn) ai.leaveWithoutAi()
     keepDownloading()
     onNext()
   }
@@ -55,6 +65,7 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
   }
   const skip = () => {
     ai.setAiOn(false)
+    ai.leaveWithoutAi()
     onNext()
   }
 
@@ -77,6 +88,7 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
         name={model.name}
         detail={modelDetail(model)}
         recommended={model.bestFit && view.state !== 'installed'}
+        {...(model.builtIn ? { installedLabel: 'Built in' } : {})}
         selected={model.id === ai.selectedId}
         percent={view.percent}
         progressText={view.progressText}
@@ -107,25 +119,41 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
     )
   } else if (screen !== 'loading') {
     content = (
-      <ModelPicker
-        ai={screen === 'skipped' ? 'off' : 'on'}
-        hardware={hardwareCard}
-        aiSwitch={
-          <Switch
-            showLabel={false}
-            checked={ai.aiOn && screen !== 'unsupported'}
-            disabled={working || screen === 'unsupported'}
-            onCheckedChange={ai.setAiOn}
-            aria-label="Use on-device AI"
+      <div className="flex flex-col gap-3">
+        <ModelPicker
+          ai={screen === 'skipped' ? 'off' : 'on'}
+          hardware={hardwareCard}
+          aiSwitch={
+            <Switch
+              showLabel={false}
+              checked={ai.aiOn && screen !== 'unsupported'}
+              disabled={working || screen === 'unsupported'}
+              onCheckedChange={ai.setAiOn}
+              aria-label="Use on-device AI"
+            />
+          }
+          model1={rows[0]}
+          model2={rows[1]}
+          model3={rows[2]}
+        />
+        {ai.meaning && screen !== 'unsupported' && (
+          <MeaningSearchCard
+            meaning={ai.meaning}
+            event={ai.meaningEvent}
+            on={ai.meaningOn}
+            onChange={ai.setMeaningOn}
           />
-        }
-        model1={rows[0]}
-        model2={rows[1]}
-      />
+        )}
+      </div>
     )
   }
 
   const footer = footerFor(screen)
+  // Download says how much it fetches: the picked model, plus meaning search while it is switched on.
+  const primaryLabel =
+    screen === 'choose'
+      ? downloadLabel(selected, ai.meaning, ai.meaningEvent, ai.meaningOn)
+      : footer.primary
 
   return (
     <>
@@ -136,7 +164,7 @@ export function AiStep({ onBack, onNext }: AiStepProps) {
         body={heading.body}
         content={content}
         footer={screen !== 'empty'}
-        primaryLabel={footer.primary}
+        primaryLabel={primaryLabel}
         skipLabel="Skip AI"
         {...(footer.skip ? { onSkip: skip } : {})}
         onBack={back}

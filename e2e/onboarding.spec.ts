@@ -14,10 +14,19 @@ test('first run: welcome, stash folder, skip AI, say no to usage data, open My S
   await window.getByRole('button', { name: 'Continue' }).click()
 
   await expect(window.getByText('Set up on-device AI')).toBeVisible()
+  // Meaning search is its own card, on by default. This tester switches it off too, so skipping AI
+  // downloads nothing.
+  const meaning = window.getByRole('group', { name: 'Meaning search' })
+  await expect(meaning).toBeVisible()
+  await expect(meaning.getByText('146 MB')).toBeVisible()
+  await window.getByRole('switch', { name: 'Download meaning search' }).click()
+  await expect(meaning.getByText('Off · search matches the words you type')).toBeVisible()
   await window.getByRole('button', { name: 'Skip AI' }).first().click()
 
   await expect(window.getByText('Your privacy')).toBeVisible()
-  await window.getByRole('button', { name: 'Don’t share' }).click()
+  // Sharing is on by default; this tester switches it off before continuing.
+  await window.getByRole('switch', { name: 'Share anonymous usage data' }).click()
+  await window.getByRole('button', { name: 'Continue' }).click()
 
   await expect(window.getByText('Your stash is ready!')).toBeVisible()
   await window.getByRole('button', { name: 'Open My Stash' }).click()

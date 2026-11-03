@@ -1,5 +1,6 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { InferenceQueue } from '../ai/inference-queue'
+import { reportFirstSuggestion } from '../telemetry/events'
 import type { HandlerContext } from './context'
 
 /**
@@ -20,6 +21,9 @@ export function inferenceQueueFor(ctx: HandlerContext): InferenceQueue {
       getProvider: () => ctx.ai.activeProvider(),
       onStatus: (event) => {
         ctx.push(IPC_CHANNELS.AI_STATUS, event)
+        if (event.updates.some((u) => u.status === 'ready')) {
+          reportFirstSuggestion(ctx.settings, (name, props) => ctx.telemetry.get().track(name, props))
+        }
         // "Still sniffing" also rides on the inbox counts.
         countsChanged(ctx)
       }

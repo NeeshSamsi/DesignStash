@@ -1,0 +1,601 @@
+{
+ "_note": "Sign-off items (test set sign-off/), written 2026-10-22 from the covers before any model answered them. ai-eval:score reads them only with --sign-off.",
+ "items": {
+  "amber-pump-bottle-mockup": {
+   "title": "Amber pump bottle",
+   "description": "An amber plastic pump bottle with a black pump, also called a soap or lotion dispenser, on a white background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Bottle"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "cosmetic bottle mockup|high quality|customi[sz]",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b"
+   ]
+  },
+  "lighter-mockup-1": {
+   "title": "White flip-top lighter",
+   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, closed, on a light grey background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Lighter"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "lighter mockup|mockups-design|\\bfree\\b",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|flame|\\blit\\b|fire"
+   ]
+  },
+  "lighter-mockup-2": {
+   "title": "White flip-top lighter",
+   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, with its lid open, on a light grey background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Lighter"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "lighter mockup|mockups-design|\\bfree\\b",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|flame|\\blit\\b|fire"
+   ]
+  },
+  "lighter-mockup-3": {
+   "title": "White flip-top lighter",
+   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, with its lid open, on a light grey background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Lighter"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "lighter mockup|mockups-design|\\bfree\\b",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|flame|\\blit\\b|fire"
+   ]
+  },
+  "lighter-mockup-4": {
+   "title": "White flip-top lighter",
+   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, with its lid open, on a light grey background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Lighter"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "lighter mockup|mockups-design|\\bfree\\b",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|flame|\\blit\\b|fire"
+   ]
+  },
+  "lighter-mockup-5": {
+   "title": "White flip-top lighter",
+   "description": "A white and violet flip-top metal lighter, also called a Zippo-style lighter, with its lid open and a small flame, on a light grey background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Lighter"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "lighter mockup|mockups-design|\\bfree\\b",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b"
+   ]
+  },
+  "french-fries-packaging": {
+   "title": "French fries in a red carton",
+   "description": "A red French fries carton, also called a fry box, filled with fries, on a white background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Fries carton"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "premium quality|high quality|customi[sz]",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|ketchup|burger"
+   ]
+  },
+  "gift-card-holder-mockup-1": {
+   "title": "Purple gift card holder with a pink card",
+   "description": "A purple hanging gift card holder, also called a card carrier, with a pink gift card, on a light lilac background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Gift card"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "card mockup|holder mockup|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|\\bhook\\b|wallet"
+   ]
+  },
+  "gift-card-holder-mockup-2": {
+   "title": "Purple gift card holder with a pink card",
+   "description": "A purple hanging gift card holder, also called a card carrier, with a pink gift card, on a light lilac background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Gift card"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "card mockup|holder mockup|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|\\bhook\\b|wallet"
+   ]
+  },
+  "gift-card-holder-mockup-3": {
+   "title": "Purple gift card holder with a pink card",
+   "description": "A purple hanging gift card holder, also called a card carrier, with a pink gift card, on a light lilac background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Gift card"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "card mockup|holder mockup|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|\\bhook\\b|wallet"
+   ]
+  },
+  "man-sweatshirt-mockup": {
+   "title": "Men's sweatshirt with orange sleeves",
+   "description": "A men's crew-neck sweatshirt, also called a jumper, with a black front and orange gradient sleeves, floating on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Sweatshirt"
+    },
+    {
+     "category": "Style",
+     "label": "Colorful"
+    },
+    {
+     "category": "Style",
+     "label": "3D render"
+    }
+   ],
+   "absent": [
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|hanger|hoodie|\\bhood\\b"
+   ]
+  },
+  "three-flags-mockup": {
+   "title": "Three blue flags on poles against a cloudy sky",
+   "description": "Three tall blue flags on poles, also called banners, against a grey cloudy sky.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Flag"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Banner"
+    },
+    {
+     "category": "Environment",
+     "label": "Outdoor"
+    }
+   ],
+   "absent": [
+    "your brand|brand here|\\bmd\\b",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|building|street"
+   ]
+  },
+  "free-apron-mockup-1": {
+   "title": "Yellow apron with black straps",
+   "description": "A yellow bib apron, also called a kitchen apron, with black straps, on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Apron"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "free apron|apron mockup|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|kitchen counter|chef"
+   ]
+  },
+  "free-apron-mockup-2": {
+   "title": "Yellow apron with black straps",
+   "description": "A yellow bib apron, also called a kitchen apron, with black straps, on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Apron"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "free apron|apron mockup|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|kitchen counter|chef"
+   ]
+  },
+  "free-apron-mockup-3": {
+   "title": "Yellow apron with black straps",
+   "description": "A yellow bib apron, also called a kitchen apron, with black straps, on a light grey background.",
+   "tags": [
+    {
+     "category": "Apparel",
+     "label": "Apron"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "free apron|apron mockup|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|kitchen counter|chef"
+   ]
+  },
+  "open-spine-book-mockup-1": {
+   "title": "Black sewn open-spine book",
+   "description": "A black book with a sewn open spine, also called a thread-bound book, lying on a black surface.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Book"
+    },
+    {
+     "category": "Style",
+     "label": "Dark"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "sewn book block|bindery|drop your pages|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b"
+   ]
+  },
+  "open-spine-book-mockup-2": {
+   "title": "Black sewn open-spine book",
+   "description": "A black book with a sewn open spine, also called a thread-bound book, lying on a black surface.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Book"
+    },
+    {
+     "category": "Style",
+     "label": "Dark"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "sewn book block|bindery|drop your pages|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b"
+   ]
+  },
+  "open-spine-book-mockup-3": {
+   "title": "Black sewn open-spine book",
+   "description": "A black book with a sewn open spine, also called a thread-bound book, lying on a black surface.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Book"
+    },
+    {
+     "category": "Style",
+     "label": "Dark"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "sewn book block|bindery|drop your pages|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b"
+   ]
+  },
+  "open-spine-book-mockup-4": {
+   "title": "Open black book with printed pages",
+   "description": "An open black book with a sewn open spine, also called a thread-bound book, showing two printed pages on a black surface.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Book"
+    },
+    {
+     "category": "Style",
+     "label": "Dark"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "mockups-design|everything|bindery",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b"
+   ]
+  },
+  "signboard-mockup": {
+   "title": "Blue hanging shop sign on a building",
+   "description": "A blue octagonal hanging shop sign, also called a blade sign, on a black iron bracket on a cream building facade in sunlight.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Sign"
+    },
+    {
+     "category": "Environment",
+     "label": "Outdoor"
+    },
+    {
+     "category": "Environment",
+     "label": "Street"
+    },
+    {
+     "category": "Style",
+     "label": "Realistic"
+    }
+   ],
+   "absent": [
+    "sign mockup|mockups-design",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|neon|\\bnight\\b|illuminated|glowing"
+   ]
+  },
+  "yellow-jam-jar-mockup": {
+   "title": "Glass jar of yellow jam with a clip lid",
+   "description": "A glass food jar with a clip-top lid, also called a preserving jar, filled with yellow jam, on a white background.",
+   "tags": [
+    {
+     "category": "Print & Branding",
+     "label": "Jar"
+    },
+    {
+     "category": "Print & Branding",
+     "label": "Packaging"
+    },
+    {
+     "category": "Style",
+     "label": "Minimal"
+    }
+   ],
+   "absent": [
+    "smarty|food jar mockup",
+    "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b|\\bwearing\\b|\\bmodel\\b|\\bdesk\\b|\\btable\\b|\\bshelf\\b|spoon|bread"
+   ]
+  }
+ },
+ "queries": [
+  {
+   "q": "pump bottle",
+   "relevant": [
+    "amber-pump-bottle-mockup"
+   ]
+  },
+  {
+   "q": "bottle",
+   "relevant": [
+    "amber-pump-bottle-mockup"
+   ]
+  },
+  {
+   "q": "lighter",
+   "relevant": [
+    "lighter-mockup-1",
+    "lighter-mockup-2",
+    "lighter-mockup-3",
+    "lighter-mockup-4",
+    "lighter-mockup-5"
+   ]
+  },
+  {
+   "q": "zippo",
+   "relevant": [
+    "lighter-mockup-1",
+    "lighter-mockup-2",
+    "lighter-mockup-3",
+    "lighter-mockup-4",
+    "lighter-mockup-5"
+   ]
+  },
+  {
+   "q": "fries",
+   "relevant": [
+    "french-fries-packaging"
+   ]
+  },
+  {
+   "q": "food packaging",
+   "relevant": [
+    "french-fries-packaging",
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "gift card",
+   "relevant": [
+    "gift-card-holder-mockup-1",
+    "gift-card-holder-mockup-2",
+    "gift-card-holder-mockup-3"
+   ]
+  },
+  {
+   "q": "sweatshirt",
+   "relevant": [
+    "man-sweatshirt-mockup"
+   ]
+  },
+  {
+   "q": "jumper",
+   "relevant": [
+    "man-sweatshirt-mockup"
+   ]
+  },
+  {
+   "q": "flag",
+   "relevant": [
+    "three-flags-mockup"
+   ]
+  },
+  {
+   "q": "apron",
+   "relevant": [
+    "free-apron-mockup-1",
+    "free-apron-mockup-2",
+    "free-apron-mockup-3"
+   ]
+  },
+  {
+   "q": "jar",
+   "relevant": [
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "jam",
+   "relevant": [
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "shop sign",
+   "relevant": [
+    "signboard-mockup"
+   ]
+  },
+  {
+   "q": "signboard",
+   "relevant": [
+    "signboard-mockup"
+   ]
+  },
+  {
+   "q": "open book",
+   "relevant": [
+    "open-spine-book-mockup-4"
+   ]
+  }
+ ],
+ "addToQueries": {
+  "packaging": [
+   "amber-pump-bottle-mockup",
+   "french-fries-packaging",
+   "yellow-jam-jar-mockup",
+   "gift-card-holder-mockup-1",
+   "gift-card-holder-mockup-2",
+   "gift-card-holder-mockup-3"
+  ],
+  "book": [
+   "open-spine-book-mockup-1",
+   "open-spine-book-mockup-2",
+   "open-spine-book-mockup-3",
+   "open-spine-book-mockup-4"
+  ],
+  "sign": [
+   "signboard-mockup"
+  ],
+  "outdoor": [
+   "three-flags-mockup",
+   "signboard-mockup"
+  ],
+  "banner": [
+   "three-flags-mockup"
+  ],
+  "apparel": [
+   "man-sweatshirt-mockup",
+   "free-apron-mockup-1",
+   "free-apron-mockup-2",
+   "free-apron-mockup-3"
+  ]
+ }
+}

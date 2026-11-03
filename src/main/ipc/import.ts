@@ -1,17 +1,24 @@
 import { IPC_CHANNELS } from '@shared/ipc'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { CopyQueue } from '../import/copy-queue'
+import { createImportCompletedReporter } from '../telemetry/events'
 import type { HandlerContext } from './context'
 import { countsChanged, mockupsArrived, mockupsLeft } from './library-effects'
 import { registerIpcHandler } from './register'
 
 export function registerImportHandlers(ctx: HandlerContext): void {
   const { settings, telemetry, repo, push } = ctx
+  const reportImportCompleted = createImportCompletedReporter((event, props) =>
+    telemetry.get().track(event, props)
+  )
   // The resumable copy queue. Landed files wait in To sort and go to the AI queue as they arrive.
   const copyQueue = new CopyQueue({
     repo,
     libraryRoot: settings.getLibraryRoot(),
-    onProgress: (progress) => push(IPC_CHANNELS.COPY_PROGRESS, progress),
+    onProgress: (progress) => {
+      push(IPC_CHANNELS.COPY_PROGRESS, progress)
+      reportImportCompleted(progress)
+    },
     onLanded: (ids) => {
       mockupsArrived(ctx, ids)
       countsChanged(ctx)

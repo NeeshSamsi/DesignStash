@@ -290,3 +290,35 @@ describe('LlamaServer', () => {
     expect(h.spawnArgs).toHaveLength(0)
   })
 })
+
+describe('LlamaServer as an embedding server', () => {
+  const embedReply = (vectors: number[][]) =>
+    json({ data: vectors.map((embedding, index) => ({ index, embedding })) })
+
+  it('starts with --embedding and no --mmproj, and returns the vectors in input order', async () => {
+    const h = harness({
+      chat: () => embedReply([[0, 1], [1, 0]])
+    })
+    const server = new LlamaServer(
+      { binaryPath: '/bin/llama-server', modelPath: '/m/nomic.gguf', embedding: true, ctxSize: 2048 },
+      h.deps
+    )
+    expect(await server.embed(['a', 'b'])).toEqual([[0, 1], [1, 0]])
+    const args = h.spawnArgs[0]!
+    expect(args).toContain('--embedding')
+    expect(args).not.toContain('--mmproj')
+    expect(args[args.indexOf('--ctx-size') + 1]).toBe('2048')
+    expect(h.chatBodies[0]).toEqual({ input: ['a', 'b'] })
+    await server.stop()
+  })
+
+  it('throws when the reply has fewer vectors than texts', async () => {
+    const h = harness({ chat: () => embedReply([[1, 0]]) })
+    const server = new LlamaServer(
+      { binaryPath: '/bin/llama-server', modelPath: '/m/nomic.gguf', embedding: true },
+      h.deps
+    )
+    await expect(server.embed(['a', 'b'])).rejects.toThrow(/no embeddings/)
+    await server.stop()
+  })
+})

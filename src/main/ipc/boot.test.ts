@@ -151,3 +151,59 @@ describe('REPORT_COPY with an open library', () => {
     expect(copied[0]).toContain('<path>')
   })
 })
+
+describe('REPORT_COPY: preview, send and copy-full', () => {
+  const sent: { message: string; details: string }[] = []
+  function registerWithReporter(outcome: 'sent' | 'queued' | 'unavailable'): void {
+    handlers.clear()
+    sent.length = 0
+    registerPreAppHandlers({
+      settings: createSettingsStore(dir),
+      repo: null,
+      writeClipboard: (t) => copied.push(t),
+      version: () => '0.4.0',
+      reporter: {
+        send: (message, details) => {
+          sent.push({ message, details })
+          return Promise.resolve(outcome)
+        }
+      },
+      logTail: () => '[INFO] opened /Users/me/Pictures\n[WARN] slow',
+      crashLine: () => 'none in the last 7 days'
+    })
+  }
+
+  it('previews the exact text Send carries: facts, crashes and the scrubbed log tail', async () => {
+    registerWithReporter('sent')
+    const res = await call<{ text: string }>(IPC_CHANNELS.REPORT_COPY, { action: 'preview' })
+    const text = res.success ? res.data.text : ''
+    expect(text).toContain('Version: 0.4.0')
+    expect(text).toContain('Crashes: none in the last 7 days')
+    expect(text).toContain('[WARN] slow')
+    expect(text).not.toContain('/Users')
+    expect(copied).toEqual([])
+  })
+
+  it('sends the message with the previewed text and reports the outcome', async () => {
+    registerWithReporter('queued')
+    const preview = await call<{ text: string }>(IPC_CHANNELS.REPORT_COPY, { action: 'preview' })
+    const res = await call(IPC_CHANNELS.REPORT_COPY, { action: 'send', message: 'It froze' })
+    expect(res).toEqual({ success: true, data: { copied: false, outcome: 'queued' } })
+    expect(sent).toEqual([{ message: 'It froze', details: preview.success ? preview.data.text : '' }])
+  })
+
+  it('says unavailable when no reporter is wired', async () => {
+    register(null)
+    expect(await call(IPC_CHANNELS.REPORT_COPY, { action: 'send', message: 'x' })).toEqual({
+      success: true,
+      data: { copied: false, outcome: 'unavailable' }
+    })
+  })
+
+  it('copy-full puts the message above the full text on the clipboard', async () => {
+    registerWithReporter('sent')
+    await call(IPC_CHANNELS.REPORT_COPY, { action: 'copy-full', message: 'It froze' })
+    expect(copied[0]?.startsWith('It froze\n\nDesignStash problem report')).toBe(true)
+    expect(copied[0]).toContain('[WARN] slow')
+  })
+})

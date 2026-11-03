@@ -44,9 +44,10 @@ export function generateCoverFromRaw(
   )
 }
 
+/** From an image file, or an image's bytes. */
 export function generateCoverFromFile(
-  imagePath: string,
+  image: string | Buffer,
   outDir: string
 ): Promise<{ coverPath: string; thumbPath: string }> {
-  return writeDerivatives(sharp(imagePath), outDir)
+  return writeDerivatives(sharp(image), outDir)
 }

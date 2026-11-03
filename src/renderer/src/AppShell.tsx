@@ -10,12 +10,13 @@ import { useDetailsStore } from './stores/detailsStore'
 import { PANEL_SHARE } from './screens/details/panel-share'
 import './styles/details-transition.css'
 import { SettingsModal } from './screens/settings'
+import { ReportDialog } from './screens/settings/ReportDialog'
 import { StashCheckModal } from './screens/integrity'
 import { Toaster } from './ui/sonner'
 import { ActivityDock } from './components/ActivityDock'
 import { Button } from './components/Button'
 import { AppWindow } from './components/AppWindow'
-import { GlobalSearch } from './components/GlobalSearch'
+import { GlobalSearch, focusGlobalSearch } from './components/GlobalSearch'
 import { PageHeader } from './components/PageHeader'
 import { SidebarNav, sidebarNavVariant, type SidebarNavKey } from './components/SidebarNav'
 import { useInboxCounts } from './hooks/use-inbox-counts'
@@ -24,6 +25,7 @@ import { libraryDescription } from './lib/library-header'
 import { filterChips } from './lib/tag-filter'
 import { useTagTreeStore } from './stores/tagTreeStore'
 import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
+import { runMenuCommand, useMenuCommands, type MenuActions } from './lib/menu-commands'
 
 interface AppShellProps {
   children: ReactNode
@@ -100,6 +102,8 @@ export default function AppShell({
   const settingsSection = useUiStore((s) => s.settingsSection)
   const setSettingsSection = useUiStore((s) => s.setSettingsSection)
   const closeSettings = useUiStore((s) => s.closeSettings)
+  const reportOpen = useUiStore((s) => s.reportOpen)
+  const closeReport = useUiStore((s) => s.closeReport)
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
   const stats = useLibraryStore((s) => s.stats)
@@ -117,8 +121,9 @@ export default function AppShell({
   const setQuery = useLibraryStore((s) => s.setQuery)
 
   useShortcutDispatcher()
-  // ⌘K is handled by GlobalSearch (useSearchFocusShortcut); reserving it keeps anyone else off it.
-  useShortcut({ id: 'search.focus', combo: 'mod+k' })
+  // ⌘F and ⌘K are handled by GlobalSearch (useSearchFocusShortcut); reserving them keeps anyone else off them.
+  useShortcut({ id: 'search.focus', combo: 'mod+f' })
+  useShortcut({ id: 'search.focus-alias', combo: 'mod+k' })
   useShortcut({
     id: 'import.add-files',
     combo: 'mod+o',
@@ -128,6 +133,19 @@ export default function AppShell({
     id: 'import.add-folder',
     combo: 'mod+shift+o',
     handler: () => onAddFolder?.()
+  })
+  // The macOS menu's items run the same actions as the app's own controls and shortcuts.
+  const menuActions: MenuActions = {
+    addFiles: onAddFiles,
+    addFolder: onAddFolder,
+    focusSearch: focusGlobalSearch
+  }
+  useMenuCommands(menuActions)
+  // ⌘, is the macOS Settings key; the menu shows it and this runs it.
+  useShortcut({
+    id: 'settings.open',
+    combo: 'mod+,',
+    handler: () => runMenuCommand('settings', menuActions)
   })
 
   // The page's "Clear search" empties the library query; the field follows it.
@@ -288,6 +306,8 @@ export default function AppShell({
         onOpenTrash={() => setView('trash')}
         onReview={() => useUiStore.getState().openModal({ kind: 'reconcile' })}
       />
+      {/* Help › Report a Problem… opens this over any page; Settings › About has its own. */}
+      <ReportDialog open={reportOpen} onClose={closeReport} />
     </div>
   )
 }

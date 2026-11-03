@@ -8,6 +8,17 @@ import { pileRole } from './piles'
 import { isStashed } from './stashed'
 import type { PileRepository } from './piles'
 import type { SearchRepository } from './search'
+import { MEANING_FLOOR, MEANING_TOP, meaningHits } from '../../search/meaning'
+
+export interface LibraryQueryOptions {
+  tagIds?: number[]
+  categoryIds?: number[]
+  query?: string
+  starredOnly?: boolean
+  sort: 'date' | 'name'
+  /** Cosine of the search to each mockup, from meaning search. Left out: keyword results only. */
+  meaning?: ReadonlyMap<number, number> | null
+}
 
 export interface LibraryRow {
   id: number
@@ -47,13 +58,16 @@ export class LibraryQueryRepository {
     private readonly fileExists: (path: string) => boolean = existsSync
   ) {}
 
-  getLibrary(opts: {
-    tagIds?: number[]
-    categoryIds?: number[]
-    query?: string
-    starredOnly?: boolean
-    sort: 'date' | 'name'
-  }): LibraryRow[] {
+  getLibrary(opts: LibraryQueryOptions): LibraryRow[] {
+    return this.queryLibrary(opts).rows
+  }
+
+  /**
+   * The library grid for a search, and whether meaning search added a result. Keyword hits come
+   * first in rank order; then the closest meaning hit that keyword search did not find (`opts.meaning`,
+   * mockup id to cosine, computed by the caller because embedding a query is asynchronous).
+   */
+  queryLibrary(opts: LibraryQueryOptions): { rows: LibraryRow[]; meaningHit: boolean } {
     const { tagIds = [], categoryIds = [], sort } = opts
     const rawQuery = opts.query?.trim() ?? ''
 
@@ -72,7 +86,22 @@ export class LibraryQueryRepository {
 
     // FTS filter + rank map
     const ftsRankMap = rawQuery ? this.search.rankMatches(rawQuery) : null
-    if (ftsRankMap) candidates = candidates.filter((c) => ftsRankMap.has(c.id))
+    // The closest meaning hit among the mockups shown (a pile member is not one; its top is), then
+    // dropped if keyword search found it already.
+    const meaningIds =
+      ftsRankMap && opts.meaning
+        ? meaningHits(
+            new Map(
+              candidates.flatMap((c) => {
+                const sim = opts.meaning!.get(c.id)
+                return sim === undefined ? [] : [[c.id, sim] as const]
+              })
+            ),
+            { floor: MEANING_FLOOR, top: MEANING_TOP }
+          ).filter((id) => !ftsRankMap.has(id))
+        : []
+    const meaningSet = new Set(meaningIds)
+    if (ftsRankMap) candidates = candidates.filter((c) => ftsRankMap.has(c.id) || meaningSet.has(c.id))
 
     const lookups = this.loadLookups(candidates.map((c) => c.id))
 
@@ -91,13 +120,24 @@ export class LibraryQueryRepository {
     // Sort: FTS rank when searching, else name / date. Favourites don't jump the queue (Starred is its own view).
     candidates.sort((a, b) => {
       if (ftsRankMap) {
-        return (ftsRankMap.get(a.id) ?? 0) - (ftsRankMap.get(b.id) ?? 0)
+        // Keyword hits by rank; meaning hits after them, closest first.
+        const ra = ftsRankMap.get(a.id)
+        const rb = ftsRankMap.get(b.id)
+        if (ra === undefined && rb === undefined) {
+          return (opts.meaning?.get(b.id) ?? 0) - (opts.meaning?.get(a.id) ?? 0)
+        }
+        if (ra === undefined) return 1
+        if (rb === undefined) return -1
+        return ra - rb
       }
       if (sort === 'name') return a.title.localeCompare(b.title)
       return b.createdAt.localeCompare(a.createdAt)
     })
 
-    return this.toRows(candidates, lookups)
+    return {
+      rows: this.toRows(candidates, lookups),
+      meaningHit: candidates.some((c) => meaningSet.has(c.id))
+    }
   }
 
   /** Tags (with their category) and pile members for these mockups: two queries, however many ids. */

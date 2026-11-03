@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { AiDownloadProgress, AiModelInfo } from '@shared/ipc/ai'
+import type { AiDownloadProgress, AiMeaningInfo, AiModelInfo } from '@shared/ipc/ai'
 import { defaultSelection, partialDownload } from './ai-setup'
 import { backgroundEvent, stopBackground } from './background-download'
 import type { HardwareInfo } from './model-phase'
@@ -10,6 +10,12 @@ export interface AiSetup {
   loaded: boolean
   hardware: HardwareInfo | null
   models: AiModelInfo[]
+  /** The meaning-search model and its download, started with the vision model. */
+  meaning: AiMeaningInfo | null
+  meaningEvent: AiDownloadProgress | null
+  /** The meaning search card's switch: on by default. Off, it never downloads from this step. */
+  meaningOn: boolean
+  setMeaningOn: (on: boolean) => void
   aiOn: boolean
   selectedId: string | null
   /** The latest event for the download in flight (or that just ended). */
@@ -25,13 +31,26 @@ export interface AiSetup {
   dismissPartial: () => void
   /** Makes the selected model the one in use. Call when leaving the step with AI on. */
   activate: () => Promise<void>
+  /** Leaving with AI off: meaning search still downloads if its switch is on. */
+  leaveWithoutAi: () => void
 }
 
 /** Everything the AI step needs from main: hardware, the catalogue, and the download's progress. */
 export function useAiSetup(): AiSetup {
   const catalogue = useModelCatalogue(backgroundEvent())
-  const { loaded, hardware, models, latest: event, setEvent, reload: reloadCatalogue } = catalogue
+  const {
+    loaded,
+    hardware,
+    models,
+    meaning,
+    events,
+    latest: event,
+    setEvent,
+    reload: reloadCatalogue
+  } = catalogue
+  const meaningEvent = meaning ? (events[meaning.id] ?? null) : null
   const [aiOn, setAiOn] = useState(true)
+  const [meaningOn, setMeaningOn] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [partial, setPartial] = useState<AiModelInfo | null>(null)
   const chosen = useRef(false)
@@ -48,6 +67,22 @@ export function useAiSetup(): AiSetup {
     await reloadCatalogue()
   }, [reloadCatalogue])
 
+  /**
+   * Meaning search downloads beside the vision model, or on its own when AI is skipped. Nothing to
+   * do when it is switched off, already there or on its way.
+   */
+  const startMeaning = useCallback(async () => {
+    if (!meaningOn || !meaning || meaning.installed || meaningEvent?.phase === 'downloading') return
+    setEvent(meaning.id, {
+      modelId: meaning.id,
+      receivedBytes: meaning.downloadedBytes,
+      totalBytes: meaning.sizeBytes,
+      phase: 'downloading'
+    })
+    const res = await window.api.invoke(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: meaning.id })
+    if (!res.success || !res.data.started) setEvent(meaning.id, null)
+  }, [meaningOn, meaning, meaningEvent?.phase, setEvent])
+
   const download = useCallback(
     async (id?: string) => {
       const target = id ?? selectedId
@@ -55,6 +90,7 @@ export function useAiSetup(): AiSetup {
       setSelectedId(target)
       setPartial(null)
       stopBackground()
+      void startMeaning()
       setEvent(target, { modelId: target, receivedBytes: 0, totalBytes: 0, phase: 'downloading' })
       const res = await window.api.invoke(IPC_CHANNELS.AI_DOWNLOAD_MODEL, { id: target })
       if (!res.success || !res.data.started) {
@@ -67,7 +103,7 @@ export function useAiSetup(): AiSetup {
         })
       }
     },
-    [selectedId, setEvent]
+    [selectedId, setEvent, startMeaning]
   )
 
   const cancel = useCallback(async () => {
@@ -91,12 +127,18 @@ export function useAiSetup(): AiSetup {
   const activate = useCallback(async () => {
     if (!selectedId) return
     await window.api.invoke(IPC_CHANNELS.AI_SET_ACTIVE, { id: selectedId })
-  }, [selectedId])
+    // A built-in model needs no download, so meaning search starts when the step is left.
+    void startMeaning()
+  }, [selectedId, startMeaning])
 
   return {
     loaded,
     hardware,
     models,
+    meaning,
+    meaningEvent,
+    meaningOn,
+    setMeaningOn,
     aiOn,
     selectedId,
     event,
@@ -108,6 +150,7 @@ export function useAiSetup(): AiSetup {
     cancel,
     startOver,
     dismissPartial: () => setPartial(null),
-    activate
+    activate,
+    leaveWithoutAi: () => void startMeaning()
   }
 }

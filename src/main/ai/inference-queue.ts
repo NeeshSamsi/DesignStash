@@ -9,13 +9,33 @@ import type { AiStatusEvent } from '@shared/ipc/ai-status'
 import type { Repository } from '../db/repository'
 import type { Mockup } from '../db/schema'
 
-/** What the provider is shown for a mockup: its cover, the file name it came in as, and the folders around it. */
-export function analysisInputFor(m: Mockup): AnalysisInput {
+/**
+ * What the provider is shown for a mockup: its cover, the file name it came in as, and the folders
+ * around it. With `repo`, a variant whose pile's first mockup is already stashed also gets that
+ * mockup's approved title, description and tags, so it is described the same way.
+ */
+export function analysisInputFor(m: Mockup, repo?: Repository): AnalysisInput {
   const ctx = m.importContext as { folderTrail?: string[]; originalFilename?: string } | null
+  const groupContext = repo ? pileContextFor(m, repo) : null
   return {
     imagePath: m.coverPath,
     fileName: ctx?.originalFilename ?? m.title,
-    folderTrail: ctx?.folderTrail ?? []
+    folderTrail: ctx?.folderTrail ?? [],
+    ...(groupContext && { groupContext })
+  }
+}
+
+function pileContextFor(m: Mockup, repo: Repository): AnalysisInput['groupContext'] | null {
+  if (m.groupId === null) return null
+  const top = repo.mockups.getMockup(m.groupId)
+  if (!top || top.stage !== 'stashed' || top.deletedAt !== null) return null
+  const categories = new Map(repo.tags.getAllCategories().map((c) => [c.id, c.label]))
+  return {
+    originalTitle: top.title,
+    originalDescription: top.description ?? '',
+    originalTags: repo.mockups
+      .getTagsForMockup(top.id)
+      .map((t) => ({ category: categories.get(t.categoryId) ?? '', label: t.label }))
   }
 }
 
@@ -86,6 +106,11 @@ export class InferenceQueue {
     }
   }
 
+  /** Whether a suggestion is being read or waiting its turn. */
+  get busy(): boolean {
+    return this.pumping !== null || this.fifo.length > 0
+  }
+
   /** Resolves when nothing is queued or running. */
   async idle(): Promise<void> {
     while (this.pumping) await this.pumping
@@ -145,7 +170,7 @@ export class InferenceQueue {
   private async suggest(provider: InferenceProvider, m: Mockup): Promise<InferenceResult | null> {
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
       try {
-        const parsed = InferenceResultSchema.safeParse(await provider.analyze(analysisInputFor(m)))
+        const parsed = InferenceResultSchema.safeParse(await provider.analyze(analysisInputFor(m, this.deps.repo)))
         if (parsed.success) return parsed.data
       } catch {
         // Fall through to the next attempt.

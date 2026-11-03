@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { variantMatrix } from '@renderer/design-system/matrix'
+import { ModelRow } from '@renderer/components/ModelRow'
 import { ModelPicker, type ModelPickerProps } from './ModelPicker'
 import { MODEL_PICKER_CONTRACT } from './ModelPicker.types'
 
@@ -17,6 +18,12 @@ describe('ModelPicker behaviour', () => {
     expect(screen.getByRole('radiogroup')).not.toBeNull()
     expect(screen.getAllByRole('radio')).toHaveLength(2)
     expect(screen.getByText('Qwen 2.5 VL 3B')).not.toBeNull()
+  })
+
+  it('shows a third model under the two slots when one is given', () => {
+    render(<ModelPicker ai="on" model3={<ModelRow name="Apple’s on-device model" />} />)
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
+    expect(screen.getByText('Apple’s on-device model')).not.toBeNull()
   })
 
   it('off collapses the models and says titles come from file names', () => {

@@ -1,5 +1,6 @@
 import type { StashCheckStatus, StashChangeFailure } from '@shared/stash'
-import type { AiDownloadFailure } from '@shared/ipc/ai'
+import type { AiDownloadFailure, AiDownloadProgress, AiMeaningInfo } from '@shared/ipc/ai'
+import { modelPhase } from '../onboarding/model-phase'
 
 /** 14.2 GB, 412 MB, 3 KB. One decimal from GB up. */
 export function formatBytes(bytes: number): string {
@@ -94,5 +95,38 @@ export function stashCheckView(status: StashCheckStatus, now: Date = new Date())
     tag: 'Couldn’t check',
     line: `${line}. Something stopped the check.`,
     review: false
+  }
+}
+
+/** Whether meaning search's own download has begun (or ended), so its choice is settled. */
+export function meaningStarted(
+  meaning: Pick<AiMeaningInfo, 'id' | 'installed' | 'sizeBytes' | 'downloadedBytes'>,
+  event: AiDownloadProgress | null
+): boolean {
+  const { phase } = modelPhase(meaning, event)
+  return phase !== 'not-installed' && phase !== 'paused'
+}
+
+/**
+ * The status line on onboarding's meaning search card: its size before it starts, then how far it
+ * is, then ready, or where to retry. Switched off before it starts, it says what search does without it.
+ */
+export function meaningLine(
+  meaning: Pick<AiMeaningInfo, 'id' | 'installed' | 'sizeBytes' | 'downloadedBytes'>,
+  event: AiDownloadProgress | null,
+  on = true
+): string {
+  const status = modelPhase(meaning, event)
+  switch (status.phase) {
+    case 'installed':
+      return 'Ready'
+    case 'downloading':
+      return `Downloading ${status.percent}%`
+    case 'verifying':
+      return 'Checking the download'
+    case 'failed':
+      return 'Couldn’t download. Try again in Settings › AI model.'
+    default:
+      return on ? formatBytes(meaning.sizeBytes) : 'Off · search matches the words you type'
   }
 }

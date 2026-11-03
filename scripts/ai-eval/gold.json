@@ -483,8 +483,8 @@
       ]
     },
     "floating-z-fold-brand-brochure-free-psd-mockup": {
-      "title": "Floating Z-fold brochure",
-      "description": "A Z-fold leaflet brochure floating in the air (the preview is a placeholder, so this comes from the file name).",
+      "title": "Floating Z-fold brochure on black",
+      "description": "A Z-fold brochure, also called a leaflet, floating against a black background, with a fine grid pattern on its panels.",
       "tags": [
         {
           "category": "Print & Branding",
@@ -502,8 +502,7 @@
       "notes": "The PSD's embedded preview is Pixeden's \"Remove this layer to start\" placeholder, so the model only has the file name.",
       "absent": [
         "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
-        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
-        "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction"
+        "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer"
       ]
     },
     "free-2-id-cards-mockup": {
@@ -1047,8 +1046,8 @@
       ]
     },
     "macbook-pro-showcase-screen-scene-free-psd": {
-      "title": "MacBook Pro screen showcase scene",
-      "description": "A MacBook Pro laptop in a showcase scene for presenting a screen design (the preview is a placeholder, so this comes from the file name).",
+      "title": "MacBook Pro on a white tiled block",
+      "description": "A silver MacBook Pro laptop with a colourful screen, standing on a white tiled block against a light grey wall.",
       "tags": [
         {
           "category": "Device",
@@ -1057,17 +1056,20 @@
         {
           "category": "Device",
           "label": "Laptop"
+        },
+        {
+          "category": "Environment",
+          "label": "Pedestal"
         }
       ],
       "notes": "Placeholder preview (Pixeden); only the file name says what it is.",
       "absent": [
-        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
-        "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction"
+        "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b"
       ]
     },
     "paperback-book-on-mirror-base-scene-free-psd": {
-      "title": "Paperback book on a mirror base",
-      "description": "A paperback book standing on a mirror base (the preview is a placeholder, so this comes from the file name).",
+      "title": "Blue paperback book on a mirror base",
+      "description": "A blue paperback book, also called a softcover, standing on a mirrored glass base that reflects it, against a light grey wall.",
       "tags": [
         {
           "category": "Print & Branding",
@@ -1086,7 +1088,6 @@
       "absent": [
         "\\bwrists?\\b|\\bhands?\\b|\\bheld\\b|\\bholding\\b|\\bperson\\b|\\bpeople\\b|\\bwoman\\b|\\bman\\b|\\bworn\\b",
         "\\blaptops?\\b|\\bmonitors?\\b|\\bscreen device|\\bcomputer",
-        "handwrit|\\bnote\\b|\\blayer\\b|overlay|text box|notice|trash|instruction",
         "dimly lit|dark tones"
       ]
     },

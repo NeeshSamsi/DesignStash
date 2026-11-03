@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { IPC_CHANNELS } from '@shared/ipc'
-import type { AiDownloadProgress, AiModelInfo } from '@shared/ipc/ai'
+import type { AiActiveProblem, AiDownloadProgress, AiMeaningInfo, AiModelInfo } from '@shared/ipc/ai'
+import { MEANING_MODEL_ID } from '@shared/meaning'
 import { subscribePush } from '@renderer/lib/subscribe'
 import type { HardwareInfo } from './model-phase'
 
@@ -8,6 +9,10 @@ export interface ModelCatalogue {
   loaded: boolean
   hardware: HardwareInfo | null
   models: AiModelInfo[]
+  /** The meaning-search model, listed apart from the vision models. Null until the list loads. */
+  meaning: AiMeaningInfo | null
+  /** Why the active model can't run (Apple's, with Apple Intelligence off), or null. */
+  activeProblem: AiActiveProblem | null
   /** The latest download event for each model. */
   events: Record<string, AiDownloadProgress>
   /** The latest event of any model: the download in flight, or the one that just ended. */
@@ -26,6 +31,8 @@ export function useModelCatalogue(seed?: AiDownloadProgress | null): ModelCatalo
   const [loaded, setLoaded] = useState(false)
   const [hardware, setHardware] = useState<HardwareInfo | null>(null)
   const [models, setModels] = useState<AiModelInfo[]>([])
+  const [meaning, setMeaning] = useState<AiMeaningInfo | null>(null)
+  const [activeProblem, setActiveProblem] = useState<AiActiveProblem | null>(null)
   const [events, setEvents] = useState<Record<string, AiDownloadProgress>>(() =>
     seed ? { [seed.modelId]: seed } : {}
   )
@@ -37,7 +44,11 @@ export function useModelCatalogue(seed?: AiDownloadProgress | null): ModelCatalo
       window.api.invoke(IPC_CHANNELS.AI_LIST_MODELS, undefined).catch(() => null)
     ])
     if (hw?.success) setHardware(hw.data)
-    if (list?.success) setModels(list.data.models)
+    if (list?.success) {
+      setModels(list.data.models)
+      setMeaning(list.data.meaning)
+      setActiveProblem(list.data.activeProblem ?? null)
+    }
     setLoaded(true)
     return list?.success ? list.data.models : null
   }, [])
@@ -47,6 +58,8 @@ export function useModelCatalogue(seed?: AiDownloadProgress | null): ModelCatalo
       if (event) return { ...current, [modelId]: event }
       return Object.fromEntries(Object.entries(current).filter(([id]) => id !== modelId))
     })
+    // The meaning-search download runs beside the vision model's and is not the one in flight.
+    if (modelId === MEANING_MODEL_ID) return
     setLatest((current) => (event ? event : current?.modelId === modelId ? null : current))
   }, [])
 
@@ -59,5 +72,5 @@ export function useModelCatalogue(seed?: AiDownloadProgress | null): ModelCatalo
     })
   }, [reload, setEvent])
 
-  return { loaded, hardware, models, events, latest, reload, setEvent }
+  return { loaded, hardware, models, meaning, activeProblem, events, latest, reload, setEvent }
 }

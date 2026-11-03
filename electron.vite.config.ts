@@ -3,6 +3,7 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { cspMetaTags } from './src/main/csp'
+import { posthogDefine } from './src/main/telemetry/define'
 
 // Production builds only: the dev server is covered by the header in the main process, which
 // allows Vite's HMR origin.
@@ -12,9 +13,12 @@ const cspMetaPlugin = {
   transformIndexHtml: () => cspMetaTags()
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   main: {
     plugins: [externalizeDepsPlugin()],
+    // The PostHog key is baked in at build time, never read at runtime: from the environment (the
+    // release workflow's secret) or else a local .env. Without one the build stays Noop.
+    define: posthogDefine(mode, process.cwd()),
     resolve: {
       alias: { '@shared': resolve('src/shared') }
     },
@@ -51,4 +55,4 @@ export default defineConfig({
     },
     plugins: [react(), tailwindcss(), cspMetaPlugin]
   }
-})
+}))

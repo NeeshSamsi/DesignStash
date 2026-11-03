@@ -38,6 +38,16 @@ describe('ConsentPanel', () => {
       expect(decline.className).toBe(share.className)
     })
 
+    it('with an onEnabledChange it shows the on-by-default switch instead of two buttons', () => {
+      const onEnabledChange = vi.fn()
+      render(<ConsentPanel enabled onEnabledChange={onEnabledChange} />)
+      expect(screen.queryByRole('button', { name: 'Share usage data' })).toBeNull()
+      const toggle = screen.getByRole('switch', { name: 'Share anonymous usage data' })
+      expect(toggle.getAttribute('aria-checked')).toBe('true')
+      fireEvent.click(toggle)
+      expect(onEnabledChange).toHaveBeenCalledWith(false)
+    })
+
     it('says it is anonymous and can be changed', () => {
       render(<ConsentPanel />)
       expect(screen.getByText('Help improve DesignStash')).not.toBeNull()

@@ -108,6 +108,15 @@ describe('settings store', () => {
     expect(reloaded).toBe(first)
   })
 
+  it('stamps the install time once, and a new install has no first suggestion yet', () => {
+    const dir = tempDir()
+    const first = createSettingsStore(dir, { now: () => new Date('2026-10-22T10:00:00Z') }).get()
+    expect(first.installedAt).toBe('2026-10-22T10:00:00.000Z')
+    expect(first.firstSuggestionSentAt).toBeNull()
+    const later = createSettingsStore(dir, { now: () => new Date('2026-11-01T00:00:00Z') }).get()
+    expect(later.installedAt).toBe('2026-10-22T10:00:00.000Z')
+  })
+
   it('update({ telemetryEnabled: false }) persists and reloads as false', () => {
     const dir = tempDir()
     createSettingsStore(dir).update({ telemetryEnabled: false })
@@ -120,7 +129,8 @@ describe('settings store', () => {
     expect(store.get()).toMatchObject({
       pendingStash: null,
       stashCheck: null,
-      updatesCheckedAt: null
+      updatesCheckedAt: null,
+      updatesLatest: null
     })
   })
 

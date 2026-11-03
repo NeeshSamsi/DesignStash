@@ -1,0 +1,773 @@
+{
+ "_note": "The blind searches. Written 2026-10-22 by a separate agent with no access to the repo, the eval or the models' answers: it saw only the 51 held-out and sign-off cover images and a brief asking for about 90 searches a brand designer would type (2 to 3 per kit: plain name, everyday synonym, category word, object plus scene or look; about 15 broad searches), with `relevant` judged per search as every cover a designer would be happy to see. Nobody tuned on them. Score with: pnpm -s ai-eval:score --model <id> --prompt <version> --queries scripts/ai-eval/gold-blind.json. Only the 51 held-out and sign-off items are indexed.",
+ "queries": [
+  {
+   "q": "tablet with keyboard",
+   "relevant": [
+    "apple-set"
+   ]
+  },
+  {
+   "q": "apple devices",
+   "relevant": [
+    "apple-set",
+    "hand-held-iphone-duo-foldable-smartphone-free",
+    "iphone-mockup-1",
+    "iphone-mockup-2",
+    "iphone-mockup-3"
+   ]
+  },
+  {
+   "q": "drink can",
+   "relevant": [
+    "matt-can-mockup",
+    "spray-can-mockup"
+   ]
+  },
+  {
+   "q": "beverage packaging",
+   "relevant": [
+    "matt-can-mockup"
+   ]
+  },
+  {
+   "q": "spray can",
+   "relevant": [
+    "spray-can-mockup"
+   ]
+  },
+  {
+   "q": "can on teal",
+   "relevant": [
+    "spray-can-mockup"
+   ]
+  },
+  {
+   "q": "leggings",
+   "relevant": [
+    "leggings-mockup",
+    "top-leggings-mockup"
+   ]
+  },
+  {
+   "q": "yoga pants",
+   "relevant": [
+    "leggings-mockup",
+    "top-leggings-mockup"
+   ]
+  },
+  {
+   "q": "sportswear set",
+   "relevant": [
+    "leggings-mockup",
+    "top-leggings-mockup",
+    "top-mockup"
+   ]
+  },
+  {
+   "q": "crop top",
+   "relevant": [
+    "top-leggings-mockup",
+    "top-mockup"
+   ]
+  },
+  {
+   "q": "gym outfit",
+   "relevant": [
+    "leggings-mockup",
+    "top-leggings-mockup",
+    "top-mockup"
+   ]
+  },
+  {
+   "q": "smart display",
+   "relevant": [
+    "scene-02"
+   ]
+  },
+  {
+   "q": "hand touching a screen",
+   "relevant": [
+    "hand-held-iphone-duo-foldable-smartphone-free",
+    "scene-02"
+   ]
+  },
+  {
+   "q": "spray bottle in smoke",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup"
+   ]
+  },
+  {
+   "q": "skincare in smoke",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup"
+   ]
+  },
+  {
+   "q": "red gradient bottle",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup"
+   ]
+  },
+  {
+   "q": "bus shelter ad",
+   "relevant": [
+    "bus-stop-citylight-mockup"
+   ]
+  },
+  {
+   "q": "city light poster",
+   "relevant": [
+    "bus-stop-citylight-mockup",
+    "poster-mockup"
+   ]
+  },
+  {
+   "q": "bus stop",
+   "relevant": [
+    "bus-stop-citylight-mockup"
+   ]
+  },
+  {
+   "q": "street poster",
+   "relevant": [
+    "bus-stop-citylight-mockup",
+    "poster-mockup"
+   ]
+  },
+  {
+   "q": "poster on graffiti wall",
+   "relevant": [
+    "poster-mockup"
+   ]
+  },
+  {
+   "q": "wheatpaste poster",
+   "relevant": [
+    "poster-mockup"
+   ]
+  },
+  {
+   "q": "foldable phone",
+   "relevant": [
+    "hand-held-iphone-duo-foldable-smartphone-free"
+   ]
+  },
+  {
+   "q": "phone in hand",
+   "relevant": [
+    "hand-held-iphone-duo-foldable-smartphone-free"
+   ]
+  },
+  {
+   "q": "kraft pouch",
+   "relevant": [
+    "kraft-paper-food-pack-mockup"
+   ]
+  },
+  {
+   "q": "paper stand up bag",
+   "relevant": [
+    "kraft-paper-food-pack-mockup",
+    "metallic-foil-pouch-mockup"
+   ]
+  },
+  {
+   "q": "t-shirt",
+   "relevant": [
+    "mens-t-shirt-mockup"
+   ]
+  },
+  {
+   "q": "tee",
+   "relevant": [
+    "man-sweatshirt-mockup",
+    "mens-t-shirt-mockup"
+   ]
+  },
+  {
+   "q": "all over print shirt",
+   "relevant": [
+    "mens-t-shirt-mockup"
+   ]
+  },
+  {
+   "q": "foil pouch",
+   "relevant": [
+    "metallic-foil-pouch-mockup"
+   ]
+  },
+  {
+   "q": "silver zip bag",
+   "relevant": [
+    "metallic-foil-pouch-mockup"
+   ]
+  },
+  {
+   "q": "snack bag mockup",
+   "relevant": [
+    "kraft-paper-food-pack-mockup",
+    "metallic-foil-pouch-mockup"
+   ]
+  },
+  {
+   "q": "imac",
+   "relevant": [
+    "free-imac-mockup-1",
+    "free-imac-mockup-2",
+    "free-imac-mockup-3"
+   ]
+  },
+  {
+   "q": "desktop computer",
+   "relevant": [
+    "free-imac-mockup-1",
+    "free-imac-mockup-2",
+    "free-imac-mockup-3"
+   ]
+  },
+  {
+   "q": "website on a monitor",
+   "relevant": [
+    "apple-set",
+    "free-imac-mockup-1",
+    "free-imac-mockup-2",
+    "free-imac-mockup-3"
+   ]
+  },
+  {
+   "q": "business cards",
+   "relevant": [
+    "office-identity-business-cards-free-psd-mockup"
+   ]
+  },
+  {
+   "q": "stationery",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4",
+    "gift-card-holder-mockup-1",
+    "gift-card-holder-mockup-2",
+    "gift-card-holder-mockup-3",
+    "office-identity-business-cards-free-psd-mockup",
+    "open-spine-book-mockup-1",
+    "open-spine-book-mockup-2",
+    "open-spine-book-mockup-3",
+    "open-spine-book-mockup-4"
+   ]
+  },
+  {
+   "q": "mug",
+   "relevant": [
+    "oval-mug-mockup-1",
+    "oval-mug-mockup-2",
+    "oval-mug-mockup-3",
+    "oval-mug-mockup-4"
+   ]
+  },
+  {
+   "q": "coffee cup",
+   "relevant": [
+    "oval-mug-mockup-1",
+    "oval-mug-mockup-2",
+    "oval-mug-mockup-3",
+    "oval-mug-mockup-4"
+   ]
+  },
+  {
+   "q": "black and white mug",
+   "relevant": [
+    "oval-mug-mockup-1",
+    "oval-mug-mockup-2",
+    "oval-mug-mockup-3",
+    "oval-mug-mockup-4"
+   ]
+  },
+  {
+   "q": "menu",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4"
+   ]
+  },
+  {
+   "q": "restaurant menu card",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4"
+   ]
+  },
+  {
+   "q": "menu on a plate",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4"
+   ]
+  },
+  {
+   "q": "iphone",
+   "relevant": [
+    "hand-held-iphone-duo-foldable-smartphone-free",
+    "iphone-mockup-1",
+    "iphone-mockup-2",
+    "iphone-mockup-3"
+   ]
+  },
+  {
+   "q": "phone on tiles",
+   "relevant": [
+    "iphone-mockup-1",
+    "iphone-mockup-2",
+    "iphone-mockup-3"
+   ]
+  },
+  {
+   "q": "pump bottle",
+   "relevant": [
+    "amber-pump-bottle-mockup"
+   ]
+  },
+  {
+   "q": "brown cosmetic bottle",
+   "relevant": [
+    "amber-pump-bottle-mockup"
+   ]
+  },
+  {
+   "q": "lighter",
+   "relevant": [
+    "lighter-mockup-1",
+    "lighter-mockup-2",
+    "lighter-mockup-3",
+    "lighter-mockup-4",
+    "lighter-mockup-5"
+   ]
+  },
+  {
+   "q": "lighter with flame",
+   "relevant": [
+    "lighter-mockup-5"
+   ]
+  },
+  {
+   "q": "french fries",
+   "relevant": [
+    "french-fries-packaging"
+   ]
+  },
+  {
+   "q": "fries box",
+   "relevant": [
+    "french-fries-packaging"
+   ]
+  },
+  {
+   "q": "gift card",
+   "relevant": [
+    "gift-card-holder-mockup-1",
+    "gift-card-holder-mockup-2",
+    "gift-card-holder-mockup-3"
+   ]
+  },
+  {
+   "q": "card on hanger packaging",
+   "relevant": [
+    "gift-card-holder-mockup-1",
+    "gift-card-holder-mockup-2",
+    "gift-card-holder-mockup-3"
+   ]
+  },
+  {
+   "q": "sweatshirt",
+   "relevant": [
+    "man-sweatshirt-mockup"
+   ]
+  },
+  {
+   "q": "jumper",
+   "relevant": [
+    "man-sweatshirt-mockup"
+   ]
+  },
+  {
+   "q": "flags",
+   "relevant": [
+    "three-flags-mockup"
+   ]
+  },
+  {
+   "q": "flags against stormy sky",
+   "relevant": [
+    "three-flags-mockup"
+   ]
+  },
+  {
+   "q": "apron",
+   "relevant": [
+    "free-apron-mockup-1",
+    "free-apron-mockup-2",
+    "free-apron-mockup-3"
+   ]
+  },
+  {
+   "q": "chef apron",
+   "relevant": [
+    "free-apron-mockup-1",
+    "free-apron-mockup-2",
+    "free-apron-mockup-3"
+   ]
+  },
+  {
+   "q": "yellow apron",
+   "relevant": [
+    "free-apron-mockup-1",
+    "free-apron-mockup-2",
+    "free-apron-mockup-3"
+   ]
+  },
+  {
+   "q": "book",
+   "relevant": [
+    "open-spine-book-mockup-1",
+    "open-spine-book-mockup-2",
+    "open-spine-book-mockup-3",
+    "open-spine-book-mockup-4"
+   ]
+  },
+  {
+   "q": "notebook",
+   "relevant": [
+    "open-spine-book-mockup-1",
+    "open-spine-book-mockup-2",
+    "open-spine-book-mockup-3",
+    "open-spine-book-mockup-4"
+   ]
+  },
+  {
+   "q": "sewn spine book",
+   "relevant": [
+    "open-spine-book-mockup-1",
+    "open-spine-book-mockup-2",
+    "open-spine-book-mockup-3",
+    "open-spine-book-mockup-4"
+   ]
+  },
+  {
+   "q": "open book spread",
+   "relevant": [
+    "open-spine-book-mockup-4"
+   ]
+  },
+  {
+   "q": "hanging sign",
+   "relevant": [
+    "signboard-mockup"
+   ]
+  },
+  {
+   "q": "shop sign",
+   "relevant": [
+    "bus-stop-citylight-mockup",
+    "signboard-mockup"
+   ]
+  },
+  {
+   "q": "jam jar",
+   "relevant": [
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "food jar",
+   "relevant": [
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "honey jar",
+   "relevant": [
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "cosmetic tube and box",
+   "relevant": [
+    "free-cosmetic-box-and-tube-mockup"
+   ]
+  },
+  {
+   "q": "tube",
+   "relevant": [
+    "free-cosmetic-box-and-tube-mockup",
+    "free-stylish-cosmetic-tube-mockup"
+   ]
+  },
+  {
+   "q": "skincare packaging",
+   "relevant": [
+    "amber-pump-bottle-mockup",
+    "free-cosmetic-box-and-tube-mockup",
+    "free-stylish-cosmetic-tube-mockup"
+   ]
+  },
+  {
+   "q": "food packaging",
+   "relevant": [
+    "french-fries-packaging",
+    "kraft-paper-food-pack-mockup",
+    "matt-can-mockup",
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "things for a cafe brand",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4",
+    "free-apron-mockup-1",
+    "free-apron-mockup-2",
+    "free-apron-mockup-3",
+    "kraft-paper-food-pack-mockup",
+    "oval-mug-mockup-1",
+    "oval-mug-mockup-2",
+    "oval-mug-mockup-3",
+    "oval-mug-mockup-4",
+    "signboard-mockup",
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "outdoor advertising",
+   "relevant": [
+    "bus-stop-citylight-mockup",
+    "poster-mockup",
+    "signboard-mockup",
+    "three-flags-mockup"
+   ]
+  },
+  {
+   "q": "dark moody",
+   "relevant": [
+    "free-stylish-cosmetic-tube-mockup",
+    "iphone-mockup-1",
+    "iphone-mockup-2",
+    "iphone-mockup-3",
+    "open-spine-book-mockup-1",
+    "open-spine-book-mockup-2",
+    "open-spine-book-mockup-3",
+    "open-spine-book-mockup-4",
+    "poster-mockup",
+    "three-flags-mockup"
+   ]
+  },
+  {
+   "q": "floating product",
+   "relevant": [
+    "free-apron-mockup-3",
+    "free-imac-mockup-2",
+    "free-stylish-cosmetic-tube-mockup",
+    "gift-card-holder-mockup-3",
+    "leggings-mockup",
+    "lighter-mockup-3",
+    "lighter-mockup-4",
+    "man-sweatshirt-mockup",
+    "mens-t-shirt-mockup",
+    "office-identity-business-cards-free-psd-mockup",
+    "oval-mug-mockup-3",
+    "top-leggings-mockup",
+    "top-mockup"
+   ]
+  },
+  {
+   "q": "packaging",
+   "relevant": [
+    "amber-pump-bottle-mockup",
+    "free-cosmetic-box-and-tube-mockup",
+    "free-stylish-cosmetic-tube-mockup",
+    "french-fries-packaging",
+    "gift-card-holder-mockup-1",
+    "gift-card-holder-mockup-2",
+    "gift-card-holder-mockup-3",
+    "kraft-paper-food-pack-mockup",
+    "matt-can-mockup",
+    "metallic-foil-pouch-mockup",
+    "spray-can-mockup",
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "apparel",
+   "relevant": [
+    "free-apron-mockup-1",
+    "free-apron-mockup-2",
+    "free-apron-mockup-3",
+    "leggings-mockup",
+    "man-sweatshirt-mockup",
+    "mens-t-shirt-mockup",
+    "top-leggings-mockup",
+    "top-mockup"
+   ]
+  },
+  {
+   "q": "signage",
+   "relevant": [
+    "bus-stop-citylight-mockup",
+    "poster-mockup",
+    "signboard-mockup",
+    "three-flags-mockup"
+   ]
+  },
+  {
+   "q": "devices",
+   "relevant": [
+    "apple-set",
+    "free-imac-mockup-1",
+    "free-imac-mockup-2",
+    "free-imac-mockup-3",
+    "hand-held-iphone-duo-foldable-smartphone-free",
+    "iphone-mockup-1",
+    "iphone-mockup-2",
+    "iphone-mockup-3",
+    "scene-02"
+   ]
+  },
+  {
+   "q": "print collateral",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4",
+    "gift-card-holder-mockup-1",
+    "gift-card-holder-mockup-2",
+    "gift-card-holder-mockup-3",
+    "office-identity-business-cards-free-psd-mockup",
+    "open-spine-book-mockup-1",
+    "open-spine-book-mockup-2",
+    "open-spine-book-mockup-3",
+    "open-spine-book-mockup-4",
+    "poster-mockup"
+   ]
+  },
+  {
+   "q": "cosmetics",
+   "relevant": [
+    "amber-pump-bottle-mockup",
+    "free-cosmetic-box-and-tube-mockup",
+    "free-stylish-cosmetic-tube-mockup"
+   ]
+  },
+  {
+   "q": "restaurant branding",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4",
+    "free-apron-mockup-1",
+    "free-apron-mockup-2",
+    "free-apron-mockup-3",
+    "french-fries-packaging",
+    "oval-mug-mockup-1",
+    "oval-mug-mockup-2",
+    "oval-mug-mockup-3",
+    "oval-mug-mockup-4",
+    "signboard-mockup"
+   ]
+  },
+  {
+   "q": "white background product",
+   "relevant": [
+    "amber-pump-bottle-mockup",
+    "free-cosmetic-box-and-tube-mockup",
+    "french-fries-packaging",
+    "kraft-paper-food-pack-mockup",
+    "leggings-mockup",
+    "lighter-mockup-1",
+    "lighter-mockup-2",
+    "lighter-mockup-3",
+    "lighter-mockup-4",
+    "lighter-mockup-5",
+    "matt-can-mockup",
+    "oval-mug-mockup-1",
+    "oval-mug-mockup-2",
+    "oval-mug-mockup-3",
+    "oval-mug-mockup-4",
+    "top-leggings-mockup",
+    "top-mockup",
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "colourful",
+   "relevant": [
+    "apple-set",
+    "gift-card-holder-mockup-1",
+    "gift-card-holder-mockup-2",
+    "gift-card-holder-mockup-3",
+    "leggings-mockup",
+    "man-sweatshirt-mockup",
+    "mens-t-shirt-mockup",
+    "top-leggings-mockup",
+    "top-mockup"
+   ]
+  },
+  {
+   "q": "app presentation",
+   "relevant": [
+    "apple-set",
+    "free-imac-mockup-1",
+    "free-imac-mockup-2",
+    "free-imac-mockup-3",
+    "hand-held-iphone-duo-foldable-smartphone-free",
+    "iphone-mockup-1",
+    "iphone-mockup-2",
+    "iphone-mockup-3",
+    "scene-02"
+   ]
+  },
+  {
+   "q": "sunlight and shadows",
+   "relevant": [
+    "dl-menu-mockup-1",
+    "dl-menu-mockup-2",
+    "dl-menu-mockup-3",
+    "dl-menu-mockup-4",
+    "iphone-mockup-1",
+    "iphone-mockup-2",
+    "iphone-mockup-3",
+    "signboard-mockup"
+   ]
+  },
+  {
+   "q": "bottles and jars",
+   "relevant": [
+    "amber-pump-bottle-mockup",
+    "free-stylish-cosmetic-tube-mockup",
+    "yellow-jam-jar-mockup"
+   ]
+  },
+  {
+   "q": "metal and gold",
+   "relevant": [
+    "lighter-mockup-1",
+    "lighter-mockup-2",
+    "lighter-mockup-3",
+    "lighter-mockup-4",
+    "lighter-mockup-5",
+    "metallic-foil-pouch-mockup"
+   ]
+  }
+ ]
+}

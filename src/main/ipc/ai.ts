@@ -1,14 +1,34 @@
 import { IPC_CHANNELS } from '@shared/ipc'
+import type { AiActiveProblem } from '@shared/ipc/ai'
 import { TELEMETRY_EVENTS } from '@shared/telemetry'
 import { detectHardware, recommendTier } from '../ai/hardware'
-import { getModel } from '../ai/registry'
 import { DownloadError, assertSafeId, classifyDownloadError } from '../ai/download'
-import { MODEL_REGISTRY, availableModels, bestFitModelId } from '../ai/registry'
+import {
+  MEANING_MODEL,
+  MODEL_REGISTRY,
+  availableModels,
+  bestFitModelId,
+  getModel,
+  isBuiltIn,
+  isMeaningModel
+} from '../ai/registry'
+import { inferenceQueueFor } from './library-effects'
 import type { HandlerContext } from './context'
 import { registerIpcHandler } from './register'
 
-export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerContext): void {
+/** Why the active model (Apple's) can't run, as the renderer words it. */
+function appleProblem(reason: string | null): AiActiveProblem {
+  if (reason === 'appleIntelligenceNotEnabled') return 'apple-intelligence-off'
+  if (reason === 'modelNotReady') return 'apple-model-not-ready'
+  return 'apple-unavailable'
+}
+
+export function registerAiHandlers(ctx: HandlerContext): void {
+  const { settings, telemetry, ai, push } = ctx
   const { downloader, activeDownloads } = ai
+
+  // Meaning-search vectors wait for suggestions to finish first.
+  ai.embeddings.setBusyCheck(() => inferenceQueueFor(ctx).busy)
 
   // Models deleted last session can no longer be undone.
   void downloader.purgeSetAside().catch(() => {})
@@ -21,8 +41,11 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
   registerIpcHandler(IPC_CHANNELS.AI_LIST_MODELS, async () => {
     const activeModelId = settings.get().activeModelId
     const bestFit = bestFitModelId(detectHardware())
+    // Apple's model is offered only where it can run: macOS 27 with Apple Intelligence on.
+    const apple = await ai.appleStatus()
+    const offered = availableModels().filter((entry) => !isBuiltIn(entry) || apple.available)
     const models = await Promise.all(
-      availableModels().map(async (entry) => ({
+      offered.map(async (entry) => ({
         id: entry.id,
         name: entry.name,
         tier: entry.tier,
@@ -33,18 +56,38 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
         speed: entry.speed,
         minMemoryGB: entry.minMemoryGB,
         bestFit: entry.id === bestFit,
+        builtIn: isBuiltIn(entry),
         downloadedBytes: await downloader.downloadedBytes(entry.id),
-        installed: await downloader.isInstalled(entry.id),
+        installed: isBuiltIn(entry) || (await downloader.isInstalled(entry.id)),
         active: entry.id === activeModelId
       }))
     )
-    return { models, legacy: await downloader.listLegacy() }
+    const active = activeModelId ? getModel(activeModelId) : undefined
+    return {
+      models,
+      meaning: {
+        id: MEANING_MODEL.id,
+        name: MEANING_MODEL.name,
+        description: MEANING_MODEL.description,
+        license: MEANING_MODEL.license,
+        sizeBytes: MEANING_MODEL.sizeBytes,
+        downloadedBytes: await downloader.downloadedBytes(MEANING_MODEL.id),
+        installed: await downloader.isInstalled(MEANING_MODEL.id)
+      },
+      legacy: await downloader.listLegacy(),
+      activeProblem: active && isBuiltIn(active) && !apple.available ? appleProblem(apple.reason) : null
+    }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_DOWNLOAD_MODEL, (args) => {
     if (activeDownloads.has(args.id)) return { started: false }
     const controller = new AbortController()
     activeDownloads.set(args.id, controller)
+    const startedAt = Date.now()
+    // Telemetry: the catalogue id, its size and how long it took. Never a path.
+    const sizeMb = Math.round(
+      ((isMeaningModel(args.id) ? MEANING_MODEL : getModel(args.id))?.sizeBytes ?? 0) / 1_000_000
+    )
     void downloader
       .download(args.id, {
         signal: controller.signal,
@@ -52,9 +95,24 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
           push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, p)
         }
       })
+      .then(() => {
+        // Meaning search catches up on the library now that its model is there.
+        if (isMeaningModel(args.id)) ai.embeddings.backfill()
+        telemetry.get().track(TELEMETRY_EVENTS.MODEL_DOWNLOAD_FINISHED, {
+          model_id: args.id,
+          size_mb: sizeMb,
+          duration_s: Math.round((Date.now() - startedAt) / 1000)
+        })
+      })
       .catch((err: unknown) => {
         const failure = classifyDownloadError(err)
         if (failure.name === 'AbortError') return
+        telemetry.get().track(TELEMETRY_EVENTS.MODEL_DOWNLOAD_FAILED, {
+          model_id: args.id,
+          size_mb: sizeMb,
+          duration_s: Math.round((Date.now() - startedAt) / 1000),
+          reason: failure instanceof DownloadError ? failure.reason : 'server'
+        })
         // Only the reason goes to the screen, never the system's own message.
         push(IPC_CHANNELS.AI_DOWNLOAD_PROGRESS, {
           modelId: args.id,
@@ -84,6 +142,9 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
 
   registerIpcHandler(IPC_CHANNELS.AI_DELETE_MODEL, async (args) => {
     assertSafeId(args.id)
+    const model = getModel(args.id)
+    // A built-in model comes with macOS: there is nothing of ours to delete.
+    if (model && isBuiltIn(model)) return { deleted: false, inUse: false, undoable: false }
     const inUse = settings.get().activeModelId === args.id
     if (inUse && !args.confirmed) return { deleted: false, inUse: true, undoable: false }
 
@@ -91,23 +152,28 @@ export function registerAiHandlers({ settings, telemetry, ai, push }: HandlerCon
     activeDownloads.get(args.id)?.abort()
     activeDownloads.delete(args.id)
 
-    const legacy = !getModel(args.id)
+    const legacy = !model && !isMeaningModel(args.id)
     if (legacy) {
       await downloader.deleteModel(args.id)
       return { deleted: true, inUse: false, undoable: false }
     }
     const deleted = await downloader.setAside(args.id)
     if (deleted && inUse) settings.update({ activeModelId: null })
+    // Search goes back to keywords only: the vectors and the server go with the model.
+    if (deleted && isMeaningModel(args.id)) await ai.embeddings.modelRemoved()
     return { deleted, inUse: deleted && inUse, undoable: deleted }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_RESTORE_MODEL, async (args) => {
     const restored = await downloader.restoreSetAside(args.id)
+    if (restored && isMeaningModel(args.id)) ai.embeddings.backfill()
     if (restored && args.makeActive) settings.update({ activeModelId: args.id })
     return { restored }
   })
 
   registerIpcHandler(IPC_CHANNELS.AI_SET_ACTIVE, (args) => {
+    // The meaning-search model is not a vision model; it can never be the active one.
+    if (args.id && isMeaningModel(args.id)) return { modelId: settings.get().activeModelId }
     settings.update({ activeModelId: args.id })
     // Telemetry: hardware/model tier enum only — never the model id beyond its tier.
     if (args.id) {
