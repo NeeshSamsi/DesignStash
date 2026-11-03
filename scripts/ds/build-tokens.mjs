@@ -114,12 +114,18 @@ const lines = ['  /* primitives */']
 for (const [name, hex] of Object.entries(snap.primitives.colors))
   lines.push(`  ${v(name)}: ${hex};`)
 lines.push('', '  /* semantic colours (aliases keep the primitive chain visible) */')
-for (const t of snap.tokens.colors) lines.push(`  ${v(t.name)}: var(${v(t.alias)});`)
+// An alias can carry an alpha (Figma: alias + opacity), e.g. background/selection = maple-300 @ 20%.
+const aliasValue = (t) =>
+  t.alpha == null
+    ? `var(${v(t.alias)})`
+    : `color-mix(in srgb, var(${v(t.alias)}) ${Math.round(t.alpha * 100)}%, transparent)`
+for (const t of snap.tokens.colors) lines.push(`  ${v(t.name)}: ${aliasValue(t)};`)
 lines.push('', '  /* spacing, radius, border width, icon sizes — equal to Tailwind defaults */')
 for (const t of snap.tokens.numbers) lines.push(`  ${v(t.name)}: ${px(t.value)};`)
 const families = {}
 for (const s of snap.textStyles) families[s.name.split('/')[0]] ??= s.family
-const fontStack = (f) => `'${f}', ui-sans-serif, system-ui, sans-serif`
+// The bundled font first: @fontsource-variable registers it as '<Family> Variable'.
+const fontStack = (f) => `'${f} Variable', '${f}', ui-sans-serif, system-ui, sans-serif`
 lines.push('', '  /* font families (from the Figma text styles) */')
 lines.push(`  --ds-font-display: ${fontStack(families.display ?? families.body)};`)
 lines.push(`  --ds-font-body: ${fontStack(families.body)};`)
@@ -183,8 +189,7 @@ writeFileSync(
   `${HEADER}/*
  * PORT SWITCH — points shadcn's variables at the Figma tokens, re-theming every ui/
  * component (and any added later with \`shadcn add\`) without touching its classes.
- * Import it from assets/main.css after the shadcn :root/.dark blocks when the port starts,
- * then delete those blocks' colour values.
+ * Imported last by assets/main.css, which keeps shadcn's @theme mapping but no colour values.
  */
 :root,
 .dark {
@@ -215,6 +220,7 @@ const data = {
     return {
       name: t.name,
       alias: t.alias,
+      alpha: t.alpha,
       description: t.description,
       cssVar: v(t.name),
       utility,

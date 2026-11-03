@@ -1,163 +1,251 @@
-import { useUiStore } from './stores/uiStore'
-import { ConfirmDialog } from './components/_legacy/ConfirmDialog'
-import { FullscreenPreview } from './FullscreenPreview'
-import { DetailModal } from './DetailModal'
-import { ReconciliationModal } from './ReconciliationModal'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { useUiStore, type AppView } from './stores/uiStore'
+import { useLibraryStore } from './stores/libraryStore'
+import { DetailsSidebar, DiscardAsk } from './screens/details/DetailsSidebar'
+import { mockupsLabel } from './screens/details/details-model'
+import { usePanelLayout } from './screens/details/use-panel-layout'
+import { useDetailsEscape } from './screens/details/use-details-escape'
+import { useDetailsStore } from './stores/detailsStore'
+import { PANEL_SHARE } from './screens/details/panel-share'
+import './styles/details-transition.css'
+import { SettingsModal } from './screens/settings'
+import { StashCheckModal } from './screens/integrity'
 import { Toaster } from './ui/sonner'
-import { Button } from './ui/button'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-} from './ui/sidebar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu'
-import { cn } from './lib/utils'
+import { ActivityDock } from './components/ActivityDock'
+import { AppWindow } from './components/AppWindow'
+import { GlobalSearch } from './components/GlobalSearch'
+import { PageHeader } from './components/PageHeader'
+import { SidebarNav, sidebarNavVariant, type SidebarNavKey } from './components/SidebarNav'
+import { useInboxCounts } from './hooks/use-inbox-counts'
+import { useHeaderSlot } from './lib/page-header-slot'
+import { useShortcut, useShortcutDispatcher } from './lib/shortcuts'
 
 interface AppShellProps {
-  children: React.ReactNode
-  topBar?: React.ReactNode
+  children: ReactNode
+  /** Hide the PageHeader (pipeline screens bring their own heading). */
+  showHeader?: boolean
   onAddFiles?: () => void
   onAddFolder?: () => void
-  onDrop?: (e: React.DragEvent<HTMLElement>) => void
-  onDragOver?: (e: React.DragEvent<HTMLElement>) => void
-  onDragEnter?: (e: React.DragEvent<HTMLElement>) => void
-  onDragLeave?: (e: React.DragEvent<HTMLElement>) => void
-  isDropping?: boolean
+  /** The copy widget (Gather); it sits in the ActivityDock under the toasts. */
+  copyWidget?: ReactNode
+  /** The window-wide DropOverlay while files are dragged over a page that takes them. */
+  dropOverlay?: ReactNode
+  /** The cursor-following DropHint over a page that does not. */
+  dropHint?: ReactNode
 }
 
-function AddMenu({
-  onAddFiles,
-  onAddFolder,
-}: {
-  onAddFiles?: () => void
-  onAddFolder?: () => void
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button className="w-full" size="sm" aria-label="Add mockups">
-          + Add
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
-        <DropdownMenuItem onSelect={() => onAddFiles?.()}>Add files…</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onAddFolder?.()}>Add folder…</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
+/** How far the dock and toasts sit in from the corner they are anchored to. */
+const DOCK_INSET = 16
+
+const mockups = (n: number) => `${n} ${n === 1 ? 'mockup' : 'mockups'}`
+
+interface HeaderCounts {
+  total: number
+  favourites: number
+  toSort: number
+  toStash: number
+  trash: number
+}
+
+/** Where each page sits in the header. Settings still brings its own heading. */
+function headerFor(view: AppView, counts: HeaderCounts) {
+  switch (view) {
+    case 'all':
+      return { parent: 'My Stash', current: 'All', description: mockups(counts.total) }
+    case 'starred':
+      return { parent: 'My Stash', current: 'Starred', description: mockups(counts.favourites) }
+    case 'to-sort':
+      return { current: 'To sort', description: `${mockups(counts.toSort)} waiting to be sorted` }
+    case 'to-stash':
+      return {
+        current: 'To stash',
+        description: `${counts.toStash} ${counts.toStash === 1 ? 'pile or mockup' : 'piles and mockups'} waiting`
+      }
+    case 'trash':
+      return {
+        current: 'Trash',
+        description: `${counts.trash} ${counts.trash === 1 ? 'item' : 'items'}`
+      }
+    default:
+      return null
+  }
+}
+
+const NAV_VIEWS: Partial<Record<SidebarNavKey, AppView>> = {
+  all: 'all',
+  starred: 'starred',
+  'to-sort': 'to-sort',
+  'to-stash': 'to-stash',
+  trash: 'trash'
 }
 
 export default function AppShell({
   children,
-  topBar,
+  showHeader = true,
   onAddFiles,
   onAddFolder,
-  onDrop,
-  onDragOver,
-  onDragEnter,
-  onDragLeave,
-  isDropping = false,
+  copyWidget,
+  dropOverlay,
+  dropHint
 }: AppShellProps) {
   const view = useUiStore((s) => s.view)
   const setView = useUiStore((s) => s.setView)
+  const settingsOpen = useUiStore((s) => s.settingsOpen)
+  const openSettings = useUiStore((s) => s.openSettings)
+  const settingsSection = useUiStore((s) => s.settingsSection)
+  const setSettingsSection = useUiStore((s) => s.setSettingsSection)
+  const closeSettings = useUiStore((s) => s.closeSettings)
   const modal = useUiStore((s) => s.modal)
   const closeModal = useUiStore((s) => s.closeModal)
+  const stats = useLibraryStore((s) => s.stats)
+  const searchText = useUiStore((s) => s.searchText)
+  const setSearchText = useUiStore((s) => s.setSearchText)
+  const inbox = useInboxCounts()
+  const setActionsEl = useHeaderSlot((s) => s.setActionsEl)
+  const status = useHeaderSlot((s) => s.status)
+  const query = useLibraryStore((s) => s.query)
+  const setQuery = useLibraryStore((s) => s.setQuery)
+
+  useShortcutDispatcher()
+  // ⌘K is handled by GlobalSearch (useSearchFocusShortcut); reserving it keeps anyone else off it.
+  useShortcut({ id: 'search.focus', combo: 'mod+k' })
+  useShortcut({
+    id: 'import.add-files',
+    combo: 'mod+o',
+    handler: () => onAddFiles?.()
+  })
+  useShortcut({
+    id: 'import.add-folder',
+    combo: 'mod+shift+o',
+    handler: () => onAddFolder?.()
+  })
+
+  // The page's "Clear search" empties the library query; the field follows it.
+  const lastQuery = useRef(query)
+  useEffect(() => {
+    if (query === '' && lastQuery.current !== '') useUiStore.getState().setSearchText('')
+    lastQuery.current = query
+  }, [query])
+
+  const pile = useDetailsStore((s) => s.pile)
+  const sidebarOpen = useDetailsStore((s) => s.target !== null)
+  useDetailsEscape()
+  // The layout follows the selection inside a view transition, so the grid morphs instead of snapping.
+  const panelOpen = usePanelLayout(sidebarOpen)
+  // Toasts and the dock sit 16px inside the container's bottom-right corner: left of the sidebar while
+  // it is open, moving with the panel (they have transition names) so they never cover its buttons.
+  const dockRight = DOCK_INSET + (panelOpen ? PANEL_SHARE : 0)
+
+  const header = showHeader
+    ? pile
+      ? {
+          parent: 'My Stash',
+          current: pile.title,
+          description: `Pile · ${mockupsLabel(pile.count)} · Esc to go back`
+        }
+      : headerFor(view, {
+          total: stats.total,
+          favourites: stats.favourites,
+          toSort: inbox?.toSort ?? 0,
+          toStash: inbox?.toStash ?? 0,
+          trash: inbox?.trash ?? stats.trashed
+        })
+    : null
+
+  const onQueryChange = (next: string) => {
+    setQuery(next)
+    // Search looks through My Stash: typing from any other page takes you there.
+    if (next !== '' && view !== 'all' && view !== 'starred') setView('all')
+  }
+
+  const dialog =
+    modal === null ? undefined : (
+      <>
+        {modal.kind === 'reconcile' && (
+          <StashCheckModal
+            report={modal.report}
+            onClose={closeModal}
+            onOpenSettings={() => openSettings('my-stash')}
+          />
+        )}
+      </>
+    )
 
   return (
-    <SidebarProvider
-      style={{ '--sidebar-width': '14rem' } as React.CSSProperties}
-      className="h-screen overflow-hidden"
-    >
-      <Sidebar collapsible="none">
-        <SidebarContent className="p-2 pt-4">
-          <SidebarGroup className="gap-1 p-0">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={view === 'library'}
-                  onClick={() => setView('library')}
+    <div data-slot="app-shell" className="h-screen overflow-hidden">
+      <AppWindow
+        state={dropOverlay ? 'drag-over' : 'idle'}
+        showHeader={header !== null}
+        search={
+          <GlobalSearch
+            value={searchText}
+            onValueChange={setSearchText}
+            onQueryChange={onQueryChange}
+          />
+        }
+        sidebar={
+          <SidebarNav
+            variant={sidebarNavVariant(inbox?.toSort ?? 0, inbox?.toStash ?? 0)}
+            selected={view as SidebarNavKey}
+            counts={{
+              library: stats.total,
+              starred: stats.favourites,
+              all: stats.total,
+              toSort: inbox?.toSort ?? 0,
+              toStash: inbox?.toStash ?? 0,
+              trash: inbox?.trash ?? stats.trashed
+            }}
+            settingsActive={settingsOpen}
+            onNavigate={(key) => {
+              const next = NAV_VIEWS[key]
+              if (next) setView(next)
+            }}
+            onOpenSettings={() => openSettings()}
+          />
+        }
+        {...(header
+          ? {
+              header: (
+                <PageHeader
+                  current={header.current}
+                  breadcrumb={header.parent !== undefined}
+                  {...(pile ? { onParent: () => useDetailsStore.getState().closePile() } : {})}
+                  {...(header.parent !== undefined ? { parent: header.parent } : {})}
+                  description={status ? `${header.description} · ${status}` : header.description}
                 >
-                  Library
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton isActive={view === 'trash'} onClick={() => setView('trash')}>
-                  Trash
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-            <div className="px-2 pt-1">
-              <AddMenu
-                {...(onAddFiles !== undefined && { onAddFiles })}
-                {...(onAddFolder !== undefined && { onAddFolder })}
-              />
-            </div>
-          </SidebarGroup>
-        </SidebarContent>
-
-        <SidebarFooter className="p-2 pb-4">
-          <div className="flex items-center gap-2 px-2 py-2">
-            <span className="text-xs font-bold tracking-widest text-primary">DS</span>
-            <span className="text-sm font-semibold text-sidebar-foreground">DesignStash</span>
-          </div>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={view === 'settings'}
-                onClick={() => setView('settings')}
-              >
-                Settings
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-
-      <SidebarInset
-        className={cn('overflow-hidden transition-colors', isDropping && 'bg-primary/10')}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        onDragEnter={onDragEnter}
-        onDragLeave={onDragLeave}
-      >
-        {topBar && <div className="shrink-0 border-b border-border">{topBar}</div>}
-        <div className="flex-1 overflow-auto">{children}</div>
-      </SidebarInset>
-
-      {/* Modal layer */}
-      {modal?.kind === 'confirm' && (
-        <ConfirmDialog
-          title={modal.title}
-          message={modal.message}
-          {...(modal.danger !== undefined && { danger: modal.danger })}
-          onConfirm={() => {
-            modal.onConfirm()
-            closeModal()
-          }}
-          onCancel={closeModal}
-        />
-      )}
-      {modal?.kind === 'preview' && (
-        <FullscreenPreview coverPath={modal.coverPath} onClose={closeModal} />
-      )}
-      {modal?.kind === 'detail' && <DetailModal mockupId={modal.mockupId} onClose={closeModal} />}
-      {modal?.kind === 'reconcile' && (
-        <ReconciliationModal report={modal.report} onClose={closeModal} />
-      )}
-
-      {/* Toast layer */}
-      <Toaster />
-    </SidebarProvider>
+                  {/* Pages put their actions here with HeaderActions. */}
+                  <div ref={setActionsEl} className="contents" />
+                </PageHeader>
+              )
+            }
+          : {})}
+        page={<div className="flex min-h-full flex-col *:flex-1">{children}</div>}
+        aside={<DetailsSidebar open={panelOpen} />}
+        asideOpen={panelOpen}
+        {...(dropOverlay ? { drop: dropOverlay } : {})}
+        {...(dialog ? { dialog } : {})}
+      />
+      <DiscardAsk />
+      <ActivityDock
+        className="pointer-events-auto fixed bottom-4 z-toast"
+        style={{ right: dockRight, viewTransitionName: 'activity-dock' }}
+        toastContent={
+          <Toaster
+            offset={{ right: dockRight, bottom: DOCK_INSET }}
+            style={{ viewTransitionName: 'toasts' }}
+          />
+        }
+        importContent={copyWidget}
+      />
+      {dropHint}
+      <SettingsModal
+        open={settingsOpen}
+        section={settingsSection}
+        onSectionChange={setSettingsSection}
+        onClose={closeSettings}
+        onOpenTrash={() => setView('trash')}
+        onReview={() => useUiStore.getState().openModal({ kind: 'reconcile' })}
+      />
+    </div>
   )
 }

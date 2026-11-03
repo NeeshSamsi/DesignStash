@@ -1,0 +1,17 @@
+/*
+ * A page that is still loading shows its skeleton only after a short wait. Data the page already
+ * kept shows at once, and a fast answer never flashes a skeleton for a frame. The grid holds its
+ * place while it waits, so nothing moves when the skeleton or the cards arrive.
+ */
+@keyframes ds-loading-grace {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+[data-ds='MockupGrid'][data-state='loading'] {
+  animation: ds-loading-grace 1ms linear 150ms backwards;
+}

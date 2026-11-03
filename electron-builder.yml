@@ -1,0 +1,22 @@
+# Packaging for the macOS app. Run `node scripts/fetch-llama-server.mjs` and
+# `node scripts/stage-llama-server.mjs` first (the `package:stage` script does both), then build.
+appId: app.designstash
+productName: DesignStash
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**
+  - package.json
+mac:
+  target:
+    - target: dmg
+      arch: arm64
+# The migrations and llama-server are read at run time from <resources>, next to the app.
+extraResources:
+  - from: drizzle
+    to: drizzle
+  - from: build/llama-server
+    to: llama-server
+    filter:
+      - '**/*'

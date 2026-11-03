@@ -1,16 +1,25 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=216-1656
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const pageHeaderVariants = cva('', {
+// Figma PageHeader 216:1656. page = breadcrumb title at 24px; section = 18px semibold title.
+export const pageHeaderVariants = cva('flex w-full flex-col', {
   variants: {
     variant: {
-      page: '',
-      section: ''
+      page: 'gap-2',
+      section: 'gap-1'
     }
   },
   defaultVariants: { variant: 'page' }
 })
+
+export const pageHeaderRowClass = 'flex items-center justify-between gap-4'
+export const pageHeaderTitleVariants = cva('flex min-w-0 items-center gap-1 text-foreground', {
+  variants: {
+    variant: {
+      page: 'type-display-2xl-regular',
+      section: 'type-title-lg-semibold'
+    }
+  },
+  defaultVariants: { variant: 'page' }
+})
+export const pageHeaderCurrentClass = 'type-display-2xl-medium'
+export const pageHeaderDescriptionClass = 'type-body-sm-regular text-muted-foreground'

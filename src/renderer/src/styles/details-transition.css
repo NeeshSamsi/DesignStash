@@ -1,0 +1,161 @@
+/*
+ * The details sidebar opening and closing, as a view transition (lib/panel-transition.ts).
+ * The browser morphs what has a `view-transition-name`: each visible card (named at the time), the
+ * main panel's surface layer, the dock and toasts, and the sidebar. Timing comes from the panel tokens in main.css.
+ * Under reduced motion, or without the API, the layout simply changes and none of this runs.
+ */
+
+:root {
+  /* The sidebar's share of the window (380 + 8 gap + 8 margin): how far it travels in and out. */
+  --details-panel-share: 24.75rem;
+}
+
+/* The page stays clickable and hoverable while it morphs: no part of the transition takes the pointer. */
+::view-transition,
+::view-transition-group(*),
+::view-transition-image-pair(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  pointer-events: none;
+}
+
+/* Cards, the panel's surface and the dock move together: 280ms settling out when opening, 180ms on the same curve closing. */
+::view-transition-group(*) {
+  animation-duration: var(--duration-panel-open);
+  animation-timing-function: var(--ease-panel-out);
+}
+html[data-panel-motion='close']::view-transition-group(*) {
+  animation-duration: var(--duration-panel-container-close);
+  animation-timing-function: var(--ease-panel-out);
+}
+
+/*
+ * Paint order. Whatever has a name paints above the root image, in the order the elements paint: the panel's
+ * empty surface layer (main-panel-bg) first, then the content block (main-content) above it, then the cards,
+ * the toolbar's right end and the title-row actions, then the dock and toasts, and the sidebar. The real
+ * window surface and the left navigation stay in the root image underneath, which is opaque: html and
+ * body keep their backgrounds, so nothing ever shows through to a black backdrop.
+ */
+::view-transition-image-pair(root) {
+  isolation: auto;
+}
+::view-transition-old(root) {
+  display: none;
+}
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/*
+ * The panel's surface morphs its width and its top-right corner (an empty rounded rectangle, so scaling
+ * it shows nothing wrong). Only its new image is drawn, so it never double-draws.
+ */
+::view-transition-old(main-panel-bg) {
+  display: none;
+}
+::view-transition-new(main-panel-bg) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/*
+ * The content (header, toolbar, the page) is never scaled or faded: its new state, at its natural size,
+ * is clipped by a group whose box follows the panel. It appears at once and is revealed as the panel grows.
+ */
+::view-transition-group(main-content) {
+  overflow: clip;
+}
+::view-transition-old(main-content) {
+  display: none;
+}
+::view-transition-new(main-content) {
+  animation: none;
+  mix-blend-mode: normal;
+  inline-size: auto;
+  block-size: auto;
+}
+
+/*
+ * A card is one image: its final one, scaled from its old box to its new one. The old image is not
+ * drawn and the new one does not fade in, so a title is never shown twice.
+ */
+::view-transition-old(.card) {
+  display: none;
+}
+::view-transition-new(.card) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/*
+ * A card is captured twice, so a control that shows only on hover would cross-fade as a ghost. While a
+ * transition runs, hover-only controls and the scrim behind them stay hidden in both captures.
+ */
+html[data-panel-motion] [data-mockup-id] [class*='group-hover/card:opacity-100'] {
+  opacity: 0 !important;
+  transition: none !important;
+}
+html[data-panel-motion]
+  [data-mockup-id]
+  [class*='group-hover/card:inline-flex']:not([aria-pressed='true']) {
+  display: none !important;
+}
+
+/*
+ * Stacking. A group that exists in only one state (the sidebar, going out) can fall below the groups of
+ * the other state, so the order is set here: the sidebar above the cards and the content, the dock and
+ * toasts above everything.
+ */
+::view-transition-group(details-panel) {
+  z-index: 10;
+}
+::view-transition-group(activity-dock),
+::view-transition-group(toasts) {
+  z-index: 20;
+}
+
+/* The sidebar enters as one block from the right, 40ms behind the container, fading in over its first 100ms. */
+::view-transition-group(details-panel) {
+  animation: none;
+}
+::view-transition-new(details-panel) {
+  animation:
+    details-panel-slide-in 260ms var(--ease-panel-out) 40ms both,
+    details-panel-fade-in 100ms linear 40ms both;
+}
+/* ...and leaves in 150ms on the quick curve. */
+::view-transition-old(details-panel) {
+  animation:
+    details-panel-slide-out var(--duration-panel-close) var(--ease-panel-in) both,
+    details-panel-fade-out var(--duration-panel-close) var(--ease-panel-in) both;
+}
+
+@keyframes details-panel-slide-in {
+  from {
+    transform: translateX(var(--details-panel-share));
+  }
+}
+@keyframes details-panel-slide-out {
+  to {
+    transform: translateX(var(--details-panel-share));
+  }
+}
+@keyframes details-panel-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes details-panel-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}

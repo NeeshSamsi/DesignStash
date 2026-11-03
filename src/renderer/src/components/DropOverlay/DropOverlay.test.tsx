@@ -17,3 +17,16 @@ describe('DropOverlay', () => {
     }
   })
 })
+
+describe('DropOverlay behaviour', () => {
+  it('shows the Figma title and description', () => {
+    render(<DropOverlay />)
+    expect(screen.getByText('Drop PSDs to add them')).not.toBeNull()
+    expect(screen.getByText(/Files or folders both work/)).not.toBeNull()
+  })
+
+  it('announces a rejected drop as an alert', () => {
+    render(<DropOverlay state="rejected" />)
+    expect(screen.getByRole('alert')).not.toBeNull()
+  })
+})

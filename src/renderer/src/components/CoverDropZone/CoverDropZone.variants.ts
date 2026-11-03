@@ -1,22 +1,17 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-3425
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const coverDropZoneVariants = cva('', {
-  variants: {
-    variant: {
-      required: '',
-      replace: ''
+// Figma CoverDropZone 220:3425. The required cover well: 4:3, dashed, with the drag-over overlay on top.
+export const coverDropZoneVariants = cva(
+  'relative flex aspect-card w-detail-media cursor-pointer flex-col items-center justify-center gap-3 overflow-clip rounded-xl border border-dashed bg-surface-2 p-8 outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  {
+    variants: {
+      state: {
+        idle: 'border-strong',
+        'drag-over': 'border-strong',
+        uploading: 'pointer-events-none border-strong',
+        error: 'border-error'
+      }
     },
-    state: {
-      idle: '',
-      'drag-over': '',
-      uploading: '',
-      error: ''
-    }
-  },
-  defaultVariants: { variant: 'required', state: 'idle' }
-})
+    defaultVariants: { state: 'idle' }
+  }
+)

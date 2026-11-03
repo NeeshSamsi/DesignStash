@@ -9,7 +9,7 @@ export const DROP_OVERLAY_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1990',
   section: '3 · Layout & navigation',
   description: 'Full-window drag-over state; rejected = no PSDs; queued = import already running.',
-  code: 'App.tsx drag handlers',
+  code: 'screens/gather/useGatherDrops.tsx',
   axes: {
     state: ['drag-over', 'rejected', 'queued']
   },
@@ -21,8 +21,8 @@ export const DROP_OVERLAY_CONTRACT = {
   disabled: false,
   booleans: {},
   texts: {
-    title: 'Drop PSDs to import',
-    description: 'Files or folders — we copy them into your library.'
+    title: 'Drop PSDs to add them',
+    description: 'Files or folders both work. We’ll copy them into your stash folder.'
   },
   icons: {},
   slots: {}
@@ -33,15 +33,15 @@ export type DropOverlayState = 'drag-over' | 'rejected' | 'queued'
 export interface DropOverlayContractProps {
   /** Figma `state` (3 options). Default `drag-over`. */
   state?: DropOverlayState
-  /** Figma text. Default "Drop PSDs to import". */
+  /** Figma text. Default "Drop PSDs to add them". */
   title?: string
-  /** Figma text. Default "Files or folders — we copy them into your library.". */
+  /** Figma text. Default "Files or folders both work. We’ll copy them into your stash folder.". */
   description?: string
 }
 
 /** Figma defaults. Slots have none. */
 export const DROP_OVERLAY_DEFAULTS = {
   state: 'drag-over',
-  title: 'Drop PSDs to import',
-  description: 'Files or folders — we copy them into your library.'
+  title: 'Drop PSDs to add them',
+  description: 'Files or folders both work. We’ll copy them into your stash folder.'
 } satisfies DropOverlayContractProps

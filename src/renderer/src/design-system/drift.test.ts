@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CATALOG } from './catalog.generated'
 import { SCREENS } from './screens.generated'
@@ -9,11 +7,18 @@ import * as barrel from '@renderer/components'
 // Guards the Figma → code contract. If this fails, the snapshot in design/figma changed:
 // run `pnpm ds` (tokens + scaffold) and fill in whatever the scaffold adds.
 
+const snapshots = import.meta.glob<string>('../../../../design/figma/*.json', {
+  query: '?raw',
+  import: 'default',
+  eager: true
+})
+
 const snapshot = <T>(name: string): T =>
-  JSON.parse(readFileSync(resolve(__dirname, '../../../../design/figma', name), 'utf8')) as T
+  JSON.parse(snapshots[`../../../../design/figma/${name}`] ?? '') as T
 
 interface FigmaComponent {
   name: string
+  retired?: boolean
   figmaId: string
   variants: Record<string, string[]>
 }
@@ -25,7 +30,7 @@ const pascal = (s: string) =>
     .replace(/^./, (c) => c.toUpperCase())
 
 const figma = snapshot<{ components: FigmaComponent[] }>('components.json').components.filter(
-  (c) => !FIGMA_ONLY.has(c.name)
+  (c) => !FIGMA_ONLY.has(c.name) && !c.retired
 )
 const byName = new Map(CATALOG.map((e) => [e.contract.name, e]))
 

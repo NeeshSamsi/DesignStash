@@ -8,8 +8,8 @@ export const LIGHTBOX_CONTRACT = {
   figmaId: '218:2719',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-2719',
   section: '5 · Overlays & dialogs',
-  description: 'Full-window cover viewer with zoom and prev/next for group variants.',
-  code: 'FullscreenPreview.tsx',
+  description: 'Full-window cover viewer with zoom and prev/next for pile variants.',
+  code: 'screens/library/LibraryLightbox.tsx',
   axes: {
     mode: ['single', 'group'],
     state: ['loaded', 'loading', 'missing']
@@ -23,7 +23,7 @@ export const LIGHTBOX_CONTRACT = {
   disabled: false,
   booleans: {},
   texts: {
-    caption: 'iPhone 15 Pro — Clay'
+    caption: 'Clay iPhone 15 Pro'
   },
   icons: {},
   slots: {}
@@ -37,7 +37,7 @@ export interface LightboxContractProps {
   mode?: LightboxMode
   /** Figma `state` (3 options). Default `loaded`. */
   state?: LightboxState
-  /** Figma text. Default "iPhone 15 Pro — Clay". */
+  /** Figma text. Default "Clay iPhone 15 Pro". */
   caption?: string
 }
 
@@ -45,5 +45,5 @@ export interface LightboxContractProps {
 export const LIGHTBOX_DEFAULTS = {
   mode: 'single',
   state: 'loaded',
-  caption: 'iPhone 15 Pro — Clay'
+  caption: 'Clay iPhone 15 Pro'
 } satisfies LightboxContractProps

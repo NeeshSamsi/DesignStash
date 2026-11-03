@@ -15,6 +15,7 @@
   --background-color-surface-inverse: var(--ds-background-surface-inverse);
   --background-color-surface-inverse-hover: var(--ds-background-surface-inverse-hover);
   --background-color-selected: var(--ds-background-selected);
+  --background-color-selection: var(--ds-background-selection);
   --background-color-primary-hover: var(--ds-background-primary-hover);
   --background-color-primary-active: var(--ds-background-primary-active);
   --background-color-primary-weak: var(--ds-background-primary-weak);

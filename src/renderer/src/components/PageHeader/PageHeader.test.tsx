@@ -17,3 +17,27 @@ describe('PageHeader', () => {
     }
   })
 })
+
+describe('PageHeader behaviour', () => {
+  it('shows the description at zero items', () => {
+    render(<PageHeader description="0 mockups" />)
+    expect(screen.getByText('0 mockups')).not.toBeNull()
+  })
+
+  it('renders actions only when given', () => {
+    const { rerender } = render(<PageHeader actions />)
+    expect(screen.queryByRole('button')).toBeNull()
+    rerender(
+      <PageHeader actions>
+        <button type="button">Empty Trash</button>
+      </PageHeader>
+    )
+    expect(screen.getByRole('button', { name: 'Empty Trash' })).not.toBeNull()
+  })
+
+  it('section has no breadcrumb', () => {
+    render(<PageHeader variant="section" />)
+    expect(screen.queryByText('My Stash')).toBeNull()
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Starred')
+  })
+})

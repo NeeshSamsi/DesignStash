@@ -8,14 +8,13 @@ export const COVER_DROP_ZONE_CONTRACT = {
   figmaId: '220:3425',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-3425',
   section: '8 · Approval & editing',
-  description: 'Drag-drop or click to upload a cover; required blocks Approve.',
-  code: 'ApprovalStepper.tsx upload zone',
+  description:
+    'Required cover drop zone (no cover yet). Drag-over is the shared DropOverlay. Rules: design/specs/cover.md.',
+  code: 'components/CoverPanel/CoverPanel.tsx',
   axes: {
-    variant: ['required', 'replace'],
     state: ['idle', 'drag-over', 'uploading', 'error']
   },
   axisDefaults: {
-    variant: 'required',
     state: 'idle'
   },
   flags: {},
@@ -27,18 +26,14 @@ export const COVER_DROP_ZONE_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type CoverDropZoneVariant = 'required' | 'replace'
 export type CoverDropZoneState = 'idle' | 'drag-over' | 'uploading' | 'error'
 
 export interface CoverDropZoneContractProps {
-  /** Figma `variant` (2 options). Default `required`. */
-  variant?: CoverDropZoneVariant
   /** Figma `state` (4 options). Default `idle`. */
   state?: CoverDropZoneState
 }
 
 /** Figma defaults. Slots have none. */
 export const COVER_DROP_ZONE_DEFAULTS = {
-  variant: 'required',
   state: 'idle'
 } satisfies CoverDropZoneContractProps

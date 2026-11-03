@@ -1,30 +1,25 @@
-import { ScaffoldStub } from '@renderer/design-system/ScaffoldStub'
-import { cn } from '@renderer/lib/utils'
+import type { ComponentProps } from 'react'
+import { Kbd } from '@renderer/ui/kbd'
 import {
-  KEYBOARD_SHORTCUT_CONTRACT,
   KEYBOARD_SHORTCUT_DEFAULTS,
   type KeyboardShortcutContractProps
 } from './KeyboardShortcut.types'
-import { keyboardShortcutVariants } from './KeyboardShortcut.variants'
 
-export interface KeyboardShortcutProps extends KeyboardShortcutContractProps {
-  className?: string
-}
+export interface KeyboardShortcutProps
+  extends
+    KeyboardShortcutContractProps,
+    Omit<ComponentProps<'kbd'>, keyof KeyboardShortcutContractProps> {}
 
 /**
  * KeyboardShortcut — Shortcut hint; boxed in inputs/palettes, plain in menus and tooltips.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=211-41
- * Today: ui/kbd.tsx (variant="default" ↔ boxed)
+ * Styles live in ui/kbd.tsx; this maps the Figma props onto it (boxed → default).
  */
-export function KeyboardShortcut({ className, ...rest }: KeyboardShortcutProps) {
-  const props = { ...KEYBOARD_SHORTCUT_DEFAULTS, ...rest }
-  // TODO(port): replace ScaffoldStub with the real markup. Keep the props contract and
-  // data-ds="KeyboardShortcut" on the root element.
+export function KeyboardShortcut(rest: KeyboardShortcutProps) {
+  const { variant, keys, ...props } = { ...KEYBOARD_SHORTCUT_DEFAULTS, ...rest }
   return (
-    <ScaffoldStub
-      contract={KEYBOARD_SHORTCUT_CONTRACT}
-      props={props}
-      className={cn(keyboardShortcutVariants({ variant: props.variant }), className)}
-    />
+    <Kbd data-ds="KeyboardShortcut" variant={variant === 'boxed' ? 'default' : 'plain'} {...props}>
+      {keys}
+    </Kbd>
   )
 }

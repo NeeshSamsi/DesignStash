@@ -8,10 +8,11 @@ export const GROUP_MEMBER_THUMB_CONTRACT = {
   figmaId: '220:2979',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=220-2979',
   section: '7 · Import & grouping',
-  description: 'Draggable member of a proposed group (cover + file name + Primary badge).',
-  code: 'GroupingReview.tsx',
+  description:
+    'A mockup tile inside a pile on the Sort board. Cover on top, filename in a padded caption bar. Top row: Primary badge (left) and the ⋯ menu (right, on hover). States: idle · hover (cover zooms like the library card) · selected (selection ring + accent caption, Finder-style) · lifted (in hand while dragging) · left-behind (dashed slot where it was) · drop-ghost (where it will land) · pile-target (dropping a tile on it starts a pile).',
+  code: 'screens/sort/SortBoard.tsx',
   axes: {
-    state: ['idle', 'dragging', 'drop-ghost']
+    state: ['idle', 'selected', 'lifted', 'left-behind', 'drop-ghost', 'pile-target']
   },
   axisDefaults: {
     state: 'idle'
@@ -29,10 +30,16 @@ export const GROUP_MEMBER_THUMB_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type GroupMemberThumbState = 'idle' | 'dragging' | 'drop-ghost'
+export type GroupMemberThumbState =
+  | 'idle'
+  | 'selected'
+  | 'lifted'
+  | 'left-behind'
+  | 'drop-ghost'
+  | 'pile-target'
 
 export interface GroupMemberThumbContractProps {
-  /** Figma `state` (3 options). Default `idle`. */
+  /** Figma `state` (6 options). Default `idle`. */
   state?: GroupMemberThumbState
   /** Figma boolean. Default `false`. */
   primary?: boolean

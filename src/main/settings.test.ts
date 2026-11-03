@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createSettingsStore } from './settings'
@@ -113,5 +113,105 @@ describe('settings store', () => {
     createSettingsStore(dir).update({ telemetryEnabled: false })
     const reloaded = createSettingsStore(dir)
     expect(reloaded.get().telemetryEnabled).toBe(false)
+  })
+
+  it('starts with no pending stash change, no stash check and no update check', () => {
+    const store = createSettingsStore(tempDir())
+    expect(store.get()).toMatchObject({
+      pendingStash: null,
+      stashCheck: null,
+      updatesCheckedAt: null
+    })
+  })
+
+  it('keeps a pending stash change and a stash check across a restart', () => {
+    const dir = tempDir()
+    createSettingsStore(dir).update({
+      pendingStash: { path: '/new', mode: 'move', oldRoot: '/old' },
+      stashCheck: {
+        at: '2026-10-20T02:41:00.000Z',
+        trigger: 'launch',
+        result: 'in-sync',
+        toReview: 0
+      }
+    })
+    expect(createSettingsStore(dir).get()).toMatchObject({
+      pendingStash: { path: '/new', mode: 'move', oldRoot: '/old' },
+      stashCheck: { trigger: 'launch', result: 'in-sync' }
+    })
+  })
+
+  describe('a corrupt settings file', () => {
+    const backups = (dir: string): string[] =>
+      readdirSync(dir).filter((name) => name.startsWith('settings.corrupt-'))
+
+    it('is backed up untouched, then reset to defaults', () => {
+      const dir = tempDir()
+      writeFileSync(join(dir, 'settings.json'), '{ not valid json !!!', 'utf-8')
+      const store = createSettingsStore(dir)
+      expect(store.get().onboarded).toBe(false)
+      const [backup] = backups(dir)
+      expect(backups(dir)).toHaveLength(1)
+      expect(readFileSync(join(dir, backup!), 'utf-8')).toBe('{ not valid json !!!')
+      // The reset file is valid again, so the next launch is clean.
+      expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf-8'))).toMatchObject({
+        onboarded: false
+      })
+    })
+
+    it('is reported once, then reads clean on the next launch', () => {
+      const dir = tempDir()
+      writeFileSync(join(dir, 'settings.json'), '{ nope', 'utf-8')
+      const first = createSettingsStore(dir)
+      first.get()
+      expect(first.loadIssue()).toEqual({ kind: 'corrupt', backedUp: true })
+      const second = createSettingsStore(dir)
+      second.get()
+      expect(second.loadIssue()).toBeNull()
+    })
+
+    it('counts valid JSON that is not an object as corrupt', () => {
+      const dir = tempDir()
+      writeFileSync(join(dir, 'settings.json'), '[1, 2]', 'utf-8')
+      const store = createSettingsStore(dir)
+      store.get()
+      expect(store.loadIssue()).toEqual({ kind: 'corrupt', backedUp: true })
+      expect(backups(dir)).toHaveLength(1)
+    })
+
+    it('never overwrites an earlier backup', () => {
+      const dir = tempDir()
+      const fixed = () => new Date('2026-10-20T02:41:00.000Z')
+      writeFileSync(join(dir, 'settings.json'), 'first', 'utf-8')
+      createSettingsStore(dir, { now: fixed }).get()
+      writeFileSync(join(dir, 'settings.json'), 'second', 'utf-8')
+      createSettingsStore(dir, { now: fixed }).get()
+      const names = backups(dir)
+      expect(names).toHaveLength(2)
+      expect(names.map((name) => readFileSync(join(dir, name), 'utf-8')).sort()).toEqual([
+        'first',
+        'second'
+      ])
+    })
+
+    it('a missing file is a first launch, not a problem', () => {
+      const dir = tempDir()
+      const store = createSettingsStore(dir)
+      store.get()
+      expect(store.loadIssue()).toBeNull()
+      expect(backups(dir)).toHaveLength(0)
+    })
+
+    it('still starts when the backup cannot be made', () => {
+      const dir = tempDir()
+      writeFileSync(join(dir, 'settings.json'), '{ nope', 'utf-8')
+      const store = createSettingsStore(dir, {
+        copyFile: () => {
+          throw new Error('read-only')
+        }
+      })
+      expect(store.get().onboarded).toBe(false)
+      expect(store.loadIssue()).toEqual({ kind: 'corrupt', backedUp: false })
+    })
   })
 })

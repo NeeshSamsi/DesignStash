@@ -8,11 +8,22 @@ export const TAG_EDITOR_CONTRACT = {
   figmaId: '222:2959',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=222-2959',
   section: '8 · Approval & editing',
-  description: 'Add/remove tags: removable chips, combobox, grouped suggestions, create-new flow.',
-  code: '_legacy/TagEditor.tsx',
+  description:
+    'Tags field with inline add: “+ Add tag” is first and becomes the input in place; added tags append at the end; AI suggestions sit after a divider and move into your tags when accepted. Rules: design/specs/tags.md.',
+  code: 'components/TagEditor/TagEditor.tsx',
   axes: {
     variant: ['editable', 'read-only'],
-    state: ['idle', 'typing', 'suggestions', 'no-match', 'picking-category', 'confirming']
+    state: [
+      'idle',
+      'adding',
+      'suggestions',
+      'no-match',
+      'added',
+      'duplicate',
+      'marked',
+      'empty',
+      'thinking'
+    ]
   },
   axisDefaults: {
     variant: 'editable',
@@ -30,16 +41,19 @@ export const TAG_EDITOR_CONTRACT = {
 export type TagEditorVariant = 'editable' | 'read-only'
 export type TagEditorState =
   | 'idle'
-  | 'typing'
+  | 'adding'
   | 'suggestions'
   | 'no-match'
-  | 'picking-category'
-  | 'confirming'
+  | 'added'
+  | 'duplicate'
+  | 'marked'
+  | 'empty'
+  | 'thinking'
 
 export interface TagEditorContractProps {
   /** Figma `variant` (2 options). Default `editable`. */
   variant?: TagEditorVariant
-  /** Figma `state` (6 options). Default `idle`. */
+  /** Figma `state` (9 options). Default `idle`. */
   state?: TagEditorState
 }
 

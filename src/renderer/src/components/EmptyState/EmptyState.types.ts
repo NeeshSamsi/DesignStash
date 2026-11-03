@@ -10,8 +10,9 @@ export const EMPTY_STATE_CONTRACT = {
   figmaId: '214:403',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-403',
   section: '4 · Feedback & states',
-  description: 'Zero-data / zero-result state with a required primary action.',
-  code: '_legacy/States.tsx',
+  description:
+    'Zero-data / zero-result state with a required primary action. secondary-action is off by default: only add one when it has a real destination (there is no help site).',
+  code: 'components/EmptyState/EmptyState.tsx',
   axes: {
     variant: ['page', 'inline']
   },
@@ -22,11 +23,11 @@ export const EMPTY_STATE_CONTRACT = {
   interactionStates: [],
   disabled: false,
   booleans: {
-    secondaryAction: true
+    secondaryAction: false
   },
   texts: {
-    title: 'Your library is empty',
-    description: 'Add PSD mockups and DesignStash will tag, group and index them for you.'
+    title: 'Your stash is looking a little bare',
+    description: 'Add some PSD mockups and we’ll tuck them away, tagged and grouped.'
   },
   icons: {
     icon: 'folder-library'
@@ -39,11 +40,11 @@ export type EmptyStateVariant = 'page' | 'inline'
 export interface EmptyStateContractProps {
   /** Figma `variant` (2 options). Default `page`. */
   variant?: EmptyStateVariant
-  /** Figma boolean. Default `true`. */
+  /** Figma boolean. Default `false`. */
   secondaryAction?: boolean
-  /** Figma text. Default "Your library is empty". */
+  /** Figma text. Default "Your stash is looking a little bare". */
   title?: string
-  /** Figma text. Default "Add PSD mockups and DesignStash will tag, group and index them for you.". */
+  /** Figma text. Default "Add some PSD mockups and we’ll tuck them away, tagged and grouped.". */
   description?: string
   /** Figma icon swap. Default `folder-library`. */
   icon?: IconSvgElement
@@ -52,8 +53,8 @@ export interface EmptyStateContractProps {
 /** Figma defaults. Slots have none. */
 export const EMPTY_STATE_DEFAULTS = {
   variant: 'page',
-  secondaryAction: true,
-  title: 'Your library is empty',
-  description: 'Add PSD mockups and DesignStash will tag, group and index them for you.',
+  secondaryAction: false,
+  title: 'Your stash is looking a little bare',
+  description: 'Add some PSD mockups and we’ll tuck them away, tagged and grouped.',
   icon: FolderLibraryIcon
 } satisfies EmptyStateContractProps

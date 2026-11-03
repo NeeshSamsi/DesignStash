@@ -33,12 +33,7 @@ export function detectHardware(): HardwareInfo {
   }
 }
 
+/** 32 GB or more gets the large model. Every Mac under that gets the medium one, the default. */
 export function recommendTier(hw: HardwareInfo): ModelTier {
-  if (hw.totalMemoryGB < 16) {
-    return 'small'
-  }
-  if (hw.totalMemoryGB >= 16 && hw.totalMemoryGB < 32) {
-    return 'medium'
-  }
-  return 'large'
+  return hw.totalMemoryGB >= 32 ? 'large' : 'medium'
 }

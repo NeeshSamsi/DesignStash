@@ -148,6 +148,6 @@ export function toContract(c) {
 
 export function loadContracts() {
   return loadSnapshot('components.json')
-    .components.filter((c) => !FIGMA_ONLY.has(c.name))
+    .components.filter((c) => !FIGMA_ONLY.has(c.name) && !c.retired)
     .map(toContract)
 }

@@ -1,0 +1,80 @@
+import { useEffect } from 'react'
+import type { InboxItem } from '@shared/inbox'
+import { coverUrl } from '@shared/cover-url'
+import { CoverImage } from '@renderer/components/CoverImage'
+import { useInboxCounts } from '@renderer/hooks/use-inbox-counts'
+import { pluralise } from '@renderer/lib/inbox-list'
+import { useCopyStore } from '@renderer/stores/copyStore'
+import { useWaitingStripStore } from '@renderer/stores/waitingStripStore'
+import { Button } from '@renderer/ui/button'
+import { useInboxList } from '../inboxes/useInboxList'
+
+const COVERS = 3
+
+export interface WaitingToSortStripProps {
+  /** Opens Sort on what is waiting in To sort. */
+  onSort: (items: InboxItem[]) => void
+}
+
+/**
+ * The strip that leads My Stash while To sort has anything: a stack of covers, how many wait, what
+ * to do, and Later · Sort now. It follows a running copy as files land. Later puts it off until the
+ * next copy lands.
+ * Figma: Archive › D1 exploration › D1.C Waiting card in My Stash.
+ */
+export function WaitingToSortStrip({ onSort }: WaitingToSortStripProps) {
+  const counts = useInboxCounts()
+  const { items } = useInboxList('to_sort')
+  const haul = useCopyStore((s) => s.haul)
+  const hiddenAt = useWaitingStripStore((s) => s.hiddenAt)
+  const later = useWaitingStripStore((s) => s.later)
+  const lower = useWaitingStripStore((s) => s.lower)
+
+  const waiting = counts?.toSort ?? 0
+  useEffect(() => lower(waiting), [waiting, lower])
+  if (waiting === 0 || (hiddenAt !== null && waiting <= hiddenAt)) return null
+
+  const copying = haul !== null && (haul.state === 'running' || haul.state === 'paused')
+  const title = copying
+    ? `Copying ${haul.landed} of ${haul.total} · ${waiting} waiting to be sorted`
+    : `${pluralise(waiting, 'mockup', 'mockups')} waiting to be sorted`
+  const hint = copying
+    ? 'They land in To sort as they arrive. You can start sorting what is here.'
+    : 'They landed in To sort. Sort them into piles, then look them over to stash them.'
+
+  // The newest arrivals lead; a slot whose mockup has not been listed yet shows as loading.
+  const newest = [...(items ?? [])].sort((a, b) => b.id - a.id).slice(0, COVERS)
+  const slots = Array.from({ length: Math.min(COVERS, waiting) }, (_, i) => newest[i])
+
+  return (
+    <section
+      aria-label="Waiting to be sorted"
+      data-ds="WaitingToSortStrip"
+      className="flex items-center gap-4 rounded-xl border border-border bg-surface-2 px-6 py-3"
+    >
+      <div aria-hidden className="flex shrink-0 items-center pr-2">
+        {slots.map((item, i) => (
+          <CoverImage
+            key={item?.id ?? `slot-${i}`}
+            size="xs"
+            state={item === undefined ? 'loading' : item.coverPath ? 'loaded' : 'no-preview'}
+            {...(item?.coverPath ? { src: coverUrl(item.coverPath) } : {})}
+            className={i > 0 ? 'h-12 w-16 -ml-7 rounded-lg' : 'h-12 w-16 rounded-lg'}
+          />
+        ))}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="type-body-sm-medium truncate text-foreground">{title}</p>
+        <p className="type-body-sm-regular truncate text-muted-foreground">{hint}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={() => later(waiting)}>
+          Later
+        </Button>
+        <Button size="sm" disabled={items === null} onClick={() => onSort(items ?? [])}>
+          Sort now
+        </Button>
+      </div>
+    </section>
+  )
+}

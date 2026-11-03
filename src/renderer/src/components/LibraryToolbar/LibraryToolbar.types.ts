@@ -9,7 +9,7 @@ export const LIBRARY_TOOLBAR_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-2228',
   section: '6 · Library',
   description: 'Filter (+count) → TagFilterPopover, active chips + Clear, stats, sort Select.',
-  code: 'LibraryTopBar.tsx',
+  code: 'screens/library/LibraryPage.tsx',
   axes: {
     filters: ['none', 'active']
   },

@@ -4,7 +4,11 @@
 //
 //   const MODE = 'tokens'                    → variables + text styles
 //   const MODE = 'components'; FROM/TO       → component-set contracts [FROM, TO)
-//   const MODE = 'screens';    FROM/TO       → Flows-page screens [FROM, TO) + DS components used
+//   const MODE = 'screens';    FROM/TO       → screens on the ↳ flow pages [FROM, TO) + DS components used
+//
+// Flow pages sit between the "Flows" title page and the Archive divider, one per stage, in
+// journey order. Each page holds one section per flow (not nested); screens and their
+// "Notes · …" cards sit inside it.
 //
 // Claude merges the chunks into design/figma/{tokens,components,screens}.json, keeping the
 // hand-curated fields (`code` hints, swap `kind`, screen `flow` names) from the current files.
@@ -14,7 +18,18 @@ const MODE = 'components'
 const FROM = 0
 const TO = 30
 const COMPONENTS_PAGE = '189:343'
-const FLOWS_PAGE = '0:1'
+// Flow pages in journey order. This order is the order of screens.json and the DEV catalog.
+// IDs, not names, so renaming a page can't break the extract.
+const FLOW_PAGES = [
+  ['476:554', '↳ Start'],
+  ['476:2214', '↳ Gather'],
+  ['476:8322', '↳ Sort'],
+  ['476:34703', '↳ Look it over'],
+  ['476:42227', '↳ Library'],
+  ['476:49755', '↳ Inboxes & Trash'],
+  ['476:54461', '↳ Settings'],
+  ['476:57911', '↳ Integrity & errors']
+]
 
 const hex = (c) =>
   '#' +
@@ -103,24 +118,37 @@ if (MODE === 'components') {
 }
 
 if (MODE === 'screens') {
-  const page = await figma.getNodeByIdAsync(FLOWS_PAGE)
-  await page.loadAsync()
+  // Guard: a ↳ page missing from FLOW_PAGES would silently drop out of the snapshot.
+  const listed = new Set(FLOW_PAGES.map(([id]) => id))
+  const unlisted = figma.root.children.filter((p) => p.name.startsWith('↳') && !listed.has(p.id))
+  if (unlisted.length)
+    throw new Error(`Add these pages to FLOW_PAGES: ${unlisted.map((p) => `${p.id} ${p.name}`).join(', ')}`)
   const componentsPage = await figma.getNodeByIdAsync(COMPONENTS_PAGE)
   await componentsPage.loadAsync()
   const dsSets = new Set(componentsPage.findAllWithCriteria({ types: ['COMPONENT_SET'] }).map((s) => s.id))
-  const frames = page.children.filter((n) => n.type === 'FRAME' || n.type === 'SECTION')
-  const screens = page
-    .findAll((n) => n.type === 'FRAME' && n.parent && (n.parent.type === 'SECTION' || n.parent.type === 'PAGE'))
-    .slice(FROM, TO)
+  const all = []
+  for (const [id, name] of FLOW_PAGES) {
+    const page = await figma.getNodeByIdAsync(id)
+    if (!page) throw new Error(`Flow page ${id} (${name}) is gone; update FLOW_PAGES`)
+    await page.loadAsync()
+    // One section per flow, straight on the page (never nested). Screens are the section's
+    // frames; "Notes · …" cards sit under them.
+    for (const section of page.children.filter((n) => n.type === 'SECTION').sort((a, b) => a.x - b.x)) {
+      const frames = section.children
+        .filter((n) => n.type === 'FRAME' && !n.name.startsWith('Notes · '))
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+      for (const frame of frames) all.push({ frame, page: page.name, flow: section.name })
+    }
+  }
   const out = []
-  for (const screen of screens) {
+  for (const { frame, page, flow } of all.slice(FROM, TO)) {
     const used = new Set()
-    for (const inst of screen.findAllWithCriteria({ types: ['INSTANCE'] })) {
+    for (const inst of frame.findAllWithCriteria({ types: ['INSTANCE'] })) {
       const main = await inst.getMainComponentAsync()
       const set = main?.parent?.type === 'COMPONENT_SET' ? main.parent : main
       if (set && dsSets.has(set.id)) used.add(set.name)
     }
-    out.push({ title: screen.name, figmaId: screen.id, group: screen.parent.name, components: [...used].sort() })
+    out.push({ title: frame.name, figmaId: frame.id, page, flow, components: [...used].sort() })
   }
-  return { topLevel: frames.length, from: FROM, screens: out }
+  return { total: all.length, from: FROM, screens: out }
 }

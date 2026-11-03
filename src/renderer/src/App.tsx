@@ -1,32 +1,32 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { ImportProgress, ImportSummary } from '@shared/ipc'
 import { IPC_CHANNELS } from '@shared/ipc'
-import Onboarding from './onboarding/Onboarding'
-import GroupingReview from './GroupingReview'
-import ApprovalStepper from './ApprovalStepper'
-import LibraryView from './LibraryView'
-import LibraryTopBar from './LibraryTopBar'
-import TrashView from './TrashView'
-import SettingsPage from './SettingsPage'
+import type { InboxItem } from '@shared/inbox'
+import { BootGate } from './screens/boot/BootGate'
+import { stashCheckCopy } from './screens/integrity'
+import LibraryPage from './screens/library/LibraryPage'
+import InboxPage from './screens/inboxes/InboxPage'
+import TrashPage from './screens/trash/TrashPage'
+import { SortFlow } from './screens/sort'
+import { LookOverFlow } from './screens/look-over'
 import AppShell from './AppShell'
 import DebugMenu from './DebugMenu'
-import { useGroupingStore } from './stores/groupingStore'
-import { useApprovalStore } from './stores/approvalStore'
 import { useEntitlementStore } from './stores/entitlementStore'
 import { useUiStore } from './stores/uiStore'
 import { useLibraryStore } from './stores/libraryStore'
+import { toast } from './stores/toastStore'
+import { GatherDock, useGather, useGatherDrops } from './screens/gather'
 
-type AddFlow = 'grouping' | 'approval' | null
+type AddFlow = 'approval' | null
 
-export default function App() {
-  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null)
-  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
-  const [isDropping, setIsDropping] = useState(false)
-  const [onboarded, setOnboarded] = useState<boolean | null>(null)
+/** The app window, once launch is fine and onboarding is done. */
+function AppMain() {
   const [addFlow, setAddFlow] = useState<AddFlow>(null)
+  /** The import batch on the Sort board, or null when it is closed. */
+  const [sortBatch, setSortBatch] = useState<string | null>(null)
 
-  const groupingStore = useGroupingStore()
-  const approvalStore = useApprovalStore()
+  const gather = useGather()
+  const drops = useGatherDrops(gather)
+
   const setSnapshot = useEntitlementStore((s) => s.setSnapshot)
   const view = useUiStore((s) => s.view)
   const openModal = useUiStore((s) => s.openModal)
@@ -38,37 +38,36 @@ export default function App() {
   const setLibraryLoading = useLibraryStore((s) => s.setLoading)
 
   useEffect(() => {
-    const unsubscribe = window.api.onImportProgress(setImportProgress)
-    return () => unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    void (async () => {
-      const res = await window.api.invoke(IPC_CHANNELS.SETTINGS_GET, undefined)
-      setOnboarded(res.success ? res.data.onboarded : true)
-    })()
-  }, [])
-
-  useEffect(() => {
     void (async () => {
       const res = await window.api.invoke(IPC_CHANNELS.ENTITLEMENTS_SNAPSHOT, undefined)
       if (res.success) setSnapshot(res.data)
     })()
   }, [setSnapshot])
 
-  // Boot integrity scan — runs once when the shell is first entered.
+  // The launch stash check, once when the shell is first entered. Changes open the blocking stash
+  // check modal on what was found; a check that fails points at Settings › My Stash.
   useEffect(() => {
-    if (onboarded !== true) return
     void (async () => {
-      const res = await window.api.invoke(IPC_CHANNELS.INTEGRITY_SCAN, undefined)
-      if (res.success) {
-        const report = res.data
-        if (report.orphanFiles.length > 0 || report.orphanRecords.length > 0) {
-          openModal({ kind: 'reconcile', report })
-        }
+      const res = await window.api
+        .invoke(IPC_CHANNELS.INTEGRITY_REPORT, undefined)
+        .catch(() => null)
+      if (!res?.success) {
+        toast({
+          variant: 'error',
+          message: stashCheckCopy.couldNotCheck.message,
+          description: stashCheckCopy.couldNotCheck.description,
+          action: {
+            label: stashCheckCopy.couldNotCheck.action,
+            onClick: () => useUiStore.getState().openSettings('my-stash')
+          }
+        })
+        return
+      }
+      if (res.data.found.length > 0 || res.data.gone.length > 0) {
+        openModal({ kind: 'reconcile', report: res.data })
       }
     })()
-  }, [onboarded, openModal])
+  }, [openModal])
 
   const refreshLibrary = useCallback(async () => {
     setLibraryLoading(true)
@@ -76,167 +75,97 @@ export default function App() {
       window.api.invoke(IPC_CHANNELS.LIBRARY_LIST, {
         tagIds: libraryTagFilter.length ? libraryTagFilter : undefined,
         query: libraryQuery || undefined,
-        sort: librarySort,
+        sort: librarySort
       }),
-      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined),
+      window.api.invoke(IPC_CHANNELS.LIBRARY_STATS, undefined)
     ])
     setLibraryLoading(false)
     if (listRes.success) setLibraryItems(listRes.data.items)
     if (statsRes.success) setLibraryStats(statsRes.data)
-  }, [libraryQuery, librarySort, libraryTagFilter, setLibraryLoading, setLibraryItems, setLibraryStats])
+  }, [
+    libraryQuery,
+    librarySort,
+    libraryTagFilter,
+    setLibraryLoading,
+    setLibraryItems,
+    setLibraryStats
+  ])
 
-  const handleImport = useCallback(
-    async (paths: string[]) => {
-      setImportSummary(null)
-      setImportProgress(null)
-      const result = await window.api.invoke(IPC_CHANNELS.IMPORT_START, { paths })
-      if (result.success) {
-        const summary = result.data
-        setImportSummary(summary)
-        groupingStore.setLoading(true)
-        const proposeRes = await window.api.invoke(IPC_CHANNELS.GROUPING_PROPOSE, {
-          batchId: summary.batchId,
-        })
-        groupingStore.setLoading(false)
-        if (proposeRes.success) {
-          groupingStore.setProposal(proposeRes.data)
-          setAddFlow('grouping')
-        }
-      } else {
-        console.error(result.error)
-      }
-    },
-    [groupingStore]
-  )
-
-  const handleFileSelect = useCallback(async () => {
-    const result = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_PSD_FILES, undefined)
-    if (result.success && result.data.paths.length > 0) {
-      void handleImport(result.data.paths)
-    }
-  }, [handleImport])
-
-  const handleFolderSelect = useCallback(async () => {
-    const result = await window.api.invoke(IPC_CHANNELS.DIALOG_SELECT_DIRECTORY, undefined)
-    if (result.success && result.data.path) {
-      void handleImport([result.data.path])
-    }
-  }, [handleImport])
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLElement>) => {
-      event.preventDefault()
-      event.stopPropagation()
-      setIsDropping(false)
-      const files = Array.from(event.dataTransfer.files)
-      if (files.length > 0) {
-        const paths = files.map((file) => window.api.getPathForFile(file))
-        void handleImport(paths)
-      }
-    },
-    [handleImport]
-  )
-
-  const handleDragOver = (event: React.DragEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
+  // The Sort board works on an import batch; Look it over works on the whole queue main holds, piles first.
+  const batchOf = (items: InboxItem[]) =>
+    items.find((item) => item.batchId !== null)?.batchId ?? null
+  const openSort = (items: InboxItem[]) => {
+    const batchId = batchOf(items)
+    if (batchId === null)
+      return toast({ variant: 'error', message: 'Couldn’t open these. Try again.' })
+    setSortBatch(batchId)
   }
+  const openLookOver = () => setAddFlow('approval')
 
-  const handleDragEnter = (event: React.DragEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    setIsDropping(true)
-  }
-
-  const handleDragLeave = (event: React.DragEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    setIsDropping(false)
-  }
-
-  if (onboarded === null) {
-    return (
-      <>
-        <div className="min-h-screen bg-background" />
-        <DebugMenu />
-      </>
-    )
-  }
-
-  if (!onboarded) {
-    return (
-      <>
-        <Onboarding onComplete={() => setOnboarded(true)} />
-        <DebugMenu />
-      </>
-    )
-  }
-
-  const handleGroupingConfirm = async () => {
-    const batchId = importSummary?.batchId
-    if (!batchId) { setAddFlow(null); return }
-    approvalStore.setInitializing(true)
-    const res = await window.api.invoke(IPC_CHANNELS.APPROVAL_INIT, { batchId })
-    approvalStore.setInitializing(false)
-    if (res.success) {
-      approvalStore.setQueue(res.data)
-      groupingStore.reset()
-      setAddFlow('approval')
-    }
-  }
-
-  const handlePipelineCancel = () => {
+  const handleLookOverClosed = async () => {
     setAddFlow(null)
-    groupingStore.reset()
-    approvalStore.reset()
-  }
-
-  const handleApprovalComplete = async () => {
-    setAddFlow(null)
-    approvalStore.reset()
     await refreshLibrary()
   }
 
   return (
     <>
       <AppShell
-        topBar={view === 'library' && addFlow === null ? <LibraryTopBar /> : undefined}
-        onAddFiles={() => void handleFileSelect()}
-        onAddFolder={() => void handleFolderSelect()}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        isDropping={isDropping}
+        showHeader={addFlow === null}
+        onAddFiles={() => void gather.addFiles()}
+        onAddFolder={() => void gather.addFolder()}
+        copyWidget={<GatherDock gather={gather} />}
+        dropOverlay={drops.overlay}
+        dropHint={drops.hint}
       >
-        {addFlow === 'grouping' && (
-          <GroupingReview
-            onConfirm={() => void handleGroupingConfirm()}
-            onCancel={handlePipelineCancel}
+        {addFlow === null && (view === 'all' || view === 'starred') && (
+          <LibraryPage
+            starredOnly={view === 'starred'}
+            onAddFiles={() => void gather.addFiles()}
+            onAddFolder={() => void gather.addFolder()}
+            onSortWaiting={openSort}
           />
         )}
-        {addFlow === 'approval' && (
-          <ApprovalStepper
-            onComplete={() => void handleApprovalComplete()}
-            onCancel={handlePipelineCancel}
+        {addFlow === null && view === 'to-sort' && (
+          <InboxPage
+            key="to_sort"
+            stage="to_sort"
+            onSort={openSort}
+            onAddFiles={() => void gather.addFiles()}
+            onAddFolder={() => void gather.addFolder()}
           />
         )}
-        {addFlow === null && view === 'library' && <LibraryView />}
-        {addFlow === null && view === 'trash' && <TrashView />}
-        {addFlow === null && view === 'settings' && <SettingsPage />}
-        {importProgress && importProgress.phase !== 'done' && (
-          <div className="fixed bottom-6 right-6 z-40 w-72 rounded-xl border border-border bg-card p-4 shadow-xl">
-            <p className="mb-1 text-sm font-medium capitalize text-foreground">{importProgress.phase}…</p>
-            <p className="mb-2 truncate text-xs text-muted-foreground">{importProgress.currentTitle}</p>
-            <div className="h-1.5 w-full rounded-full bg-muted">
-              <div
-                className="h-1.5 rounded-full bg-primary transition-all"
-                style={{ width: `${Math.round((importProgress.completed / importProgress.total) * 100)}%` }}
-              />
-            </div>
-          </div>
+        {addFlow === null && view === 'to-stash' && (
+          <InboxPage
+            key="to_stash"
+            stage="to_stash"
+            onLookOver={openLookOver}
+            onAddFiles={() => void gather.addFiles()}
+            onAddFolder={() => void gather.addFolder()}
+          />
         )}
+        {addFlow === null && view === 'trash' && <TrashPage />}
       </AppShell>
+      <SortFlow
+        open={sortBatch !== null}
+        batchId={sortBatch}
+        onClose={() => setSortBatch(null)}
+        onLookThemOver={openLookOver}
+      />
+      <LookOverFlow
+        open={addFlow === 'approval'}
+        onClose={() => void handleLookOverClosed()}
+        onBackToSort={() => setAddFlow(null)}
+      />
+    </>
+  )
+}
+
+export default function App() {
+  return (
+    <>
+      <BootGate>
+        <AppMain />
+      </BootGate>
       <DebugMenu />
     </>
   )

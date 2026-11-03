@@ -10,8 +10,9 @@ export const LIST_ROW_CONTRACT = {
   figmaId: '214:1260',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-1260',
   section: '11 · Lists, trash, integrity & recovery',
-  description: 'Generic row: media or thumb · title/subtitle · actions.',
-  code: 'ui/item.tsx → ListRow',
+  description:
+    'Generic row: media or thumb · title/subtitle · actions. Row actions use the standard secondary button.',
+  code: 'components/ListRow/ListRow.tsx',
   axes: {
     density: ['regular', 'compact'],
     state: ['default', 'selected', 'busy', 'error']
@@ -29,7 +30,7 @@ export const LIST_ROW_CONTRACT = {
     thumb: false
   },
   texts: {
-    title: 'iPhone 15 Pro — Clay',
+    title: 'Clay iPhone 15 Pro',
     subtitle: 'Trashed 2 days ago · +3 variants'
   },
   icons: {
@@ -52,7 +53,7 @@ export interface ListRowContractProps {
   actions?: boolean
   /** Figma boolean. Default `false`. */
   thumb?: boolean
-  /** Figma text. Default "iPhone 15 Pro — Clay". */
+  /** Figma text. Default "Clay iPhone 15 Pro". */
   title?: string
   /** Figma text. Default "Trashed 2 days ago · +3 variants". */
   subtitle?: string
@@ -67,7 +68,7 @@ export const LIST_ROW_DEFAULTS = {
   media: true,
   actions: true,
   thumb: false,
-  title: 'iPhone 15 Pro — Clay',
+  title: 'Clay iPhone 15 Pro',
   subtitle: 'Trashed 2 days ago · +3 variants',
   mediaIcon: Image01Icon
 } satisfies ListRowContractProps

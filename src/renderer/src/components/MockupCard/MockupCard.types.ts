@@ -9,11 +9,19 @@ export const MOCKUP_CARD_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=217-1492',
   section: '6 · Library',
   description:
-    'A mockup in any grid: squircle container, cover zoom on hover, icon-only Open / Zoom.',
-  code: 'MockupTile.tsx',
+    "A mockup in any grid: an iOS-squircle container (radius 2xl, 60% corner smoothing; surface-2) with CoverImage, “+N variants” badge, favourite, title and tag line. Hover: the cover zooms ~6% (150ms); Star then ⋯ top-right; along the cover's bottom, over a soft scrim, a full-width primary Open in Photoshop with Edit details (ghost) under it. Edit details, double-click and ↵ open Detail; Space previews; ⋯ = the right-click menu. Selected = border/primary ring. left-behind = the slot a dragged card leaves; group-target = a card being dropped on (drop-hint). pending-review (inbox cards): status badge (show-status) and the +N badge share the top-left row; hover shows one full-width primary button (Look it over in To stash). trash: no star or ⋯, a “Trashed 2 days ago” line, hover Restore with Delete for good under it.",
+  code: 'screens/library/LibraryCard.tsx',
   axes: {
-    variant: ['library', 'pending-review', 'compact'],
-    state: ['default', 'selected', 'loading', 'no-preview', 'cover-missing']
+    variant: ['library', 'pending-review', 'compact', 'trash'],
+    state: [
+      'default',
+      'selected',
+      'loading',
+      'no-preview',
+      'cover-missing',
+      'left-behind',
+      'group-target'
+    ]
   },
   axisDefaults: {
     variant: 'library',
@@ -25,23 +33,32 @@ export const MOCKUP_CARD_CONTRACT = {
   booleans: {
     showVariants: true,
     showFavourite: true,
-    showTags: true
+    showTags: true,
+    showStatus: true
   },
   texts: {
-    title: 'iPhone 15 Pro — Clay',
-    tags: 'Device · Clay · Studio'
+    title: 'Clay iPhone 15 Pro',
+    tags: 'Device · Clay · Studio',
+    dropHint: 'Start a pile'
   },
   icons: {},
   slots: {}
 } as const satisfies ComponentContract
 
-export type MockupCardVariant = 'library' | 'pending-review' | 'compact'
-export type MockupCardState = 'default' | 'selected' | 'loading' | 'no-preview' | 'cover-missing'
+export type MockupCardVariant = 'library' | 'pending-review' | 'compact' | 'trash'
+export type MockupCardState =
+  | 'default'
+  | 'selected'
+  | 'loading'
+  | 'no-preview'
+  | 'cover-missing'
+  | 'left-behind'
+  | 'group-target'
 
 export interface MockupCardContractProps {
-  /** Figma `variant` (3 options). Default `library`. */
+  /** Figma `variant` (4 options). Default `library`. */
   variant?: MockupCardVariant
-  /** Figma `state` (5 options). Default `default`. */
+  /** Figma `state` (7 options). Default `default`. */
   state?: MockupCardState
   /** Figma boolean. Default `true`. */
   showVariants?: boolean
@@ -49,10 +66,14 @@ export interface MockupCardContractProps {
   showFavourite?: boolean
   /** Figma boolean. Default `true`. */
   showTags?: boolean
-  /** Figma text. Default "iPhone 15 Pro — Clay". */
+  /** Figma boolean. Default `true`. */
+  showStatus?: boolean
+  /** Figma text. Default "Clay iPhone 15 Pro". */
   title?: string
   /** Figma text. Default "Device · Clay · Studio". */
   tags?: string
+  /** Figma text. Default "Start a pile". */
+  dropHint?: string
 }
 
 /** Figma defaults. Slots have none. */
@@ -62,6 +83,8 @@ export const MOCKUP_CARD_DEFAULTS = {
   showVariants: true,
   showFavourite: true,
   showTags: true,
-  title: 'iPhone 15 Pro — Clay',
-  tags: 'Device · Clay · Studio'
+  showStatus: true,
+  title: 'Clay iPhone 15 Pro',
+  tags: 'Device · Clay · Studio',
+  dropHint: 'Start a pile'
 } satisfies MockupCardContractProps

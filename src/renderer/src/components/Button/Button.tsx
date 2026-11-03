@@ -1,26 +1,71 @@
-import { ScaffoldStub } from '@renderer/design-system/ScaffoldStub'
-import { cn } from '@renderer/lib/utils'
-import { BUTTON_CONTRACT, BUTTON_DEFAULTS, type ButtonContractProps } from './Button.types'
-import { buttonVariants } from './Button.variants'
+import type { ComponentProps, ReactNode } from 'react'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { Spinner } from '@renderer/components/Spinner'
+import { Button as UiButton } from '@renderer/ui/button'
+import { BUTTON_DEFAULTS, type ButtonContractProps } from './Button.types'
 
-export interface ButtonProps extends ButtonContractProps {
-  className?: string
+export interface ButtonProps
+  extends ButtonContractProps, Omit<ComponentProps<'button'>, keyof ButtonContractProps> {
+  /** Replaces `label` when the content is more than text. */
+  children?: ReactNode
 }
+
+const VARIANT = {
+  primary: 'default',
+  secondary: 'secondary',
+  outline: 'outline',
+  ghost: 'ghost',
+  destructive: 'destructive',
+  link: 'link'
+} as const
+
+const SIZE = { xs: 'xs', sm: 'sm', base: 'default', lg: 'lg', icon: 'icon' } as const
 
 /**
  * Button — Every clickable action. loading shows the Spinner; disabled = 50% opacity; focus = 2px border/focus ring outside.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=211-2091
- * Today: ui/button.tsx (variant="default" ↔ primary, size="default" ↔ base)
+ * Styles live in ui/button.tsx; this maps the Figma props onto it (primary → default, base → default).
+ * size=icon shows `iconStart` alone, so pass an aria-label.
  */
-export function Button({ className, ...rest }: ButtonProps) {
-  const props = { ...BUTTON_DEFAULTS, ...rest }
-  // TODO(port): replace ScaffoldStub with the real markup. Keep the props contract and
-  // data-ds="Button" on the root element.
+export function Button({ children, ...rest }: ButtonProps) {
+  const {
+    variant,
+    size,
+    disabled,
+    showIconStart,
+    showIconEnd,
+    loading,
+    label,
+    iconStart,
+    iconEnd,
+    ...props
+  } = { ...BUTTON_DEFAULTS, ...rest }
+  const spinner = <Spinner size={size === 'xs' || size === 'sm' ? 'sm' : 'base'} />
+
   return (
-    <ScaffoldStub
-      contract={BUTTON_CONTRACT}
-      props={props}
-      className={cn(buttonVariants({ variant: props.variant, size: props.size }), className)}
-    />
+    <UiButton
+      data-ds="Button"
+      variant={VARIANT[variant]}
+      size={SIZE[size]}
+      disabled={disabled}
+      aria-busy={loading || undefined}
+      {...props}
+    >
+      {size === 'icon' ? (
+        loading ? (
+          spinner
+        ) : (
+          <HugeiconsIcon icon={iconStart} strokeWidth={1.5} />
+        )
+      ) : (
+        <>
+          {loading
+            ? spinner
+            : showIconStart && <HugeiconsIcon icon={iconStart} strokeWidth={1.5} />}
+          {children ?? label}
+          {showIconEnd && <HugeiconsIcon icon={iconEnd} strokeWidth={1.5} />}
+        </>
+      )}
+    </UiButton>
   )
 }

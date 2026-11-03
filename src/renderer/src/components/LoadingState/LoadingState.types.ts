@@ -9,7 +9,7 @@ export const LOADING_STATE_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-476',
   section: '4 · Feedback & states',
   description: 'Waiting states: spinner or content-shaped skeletons.',
-  code: '_legacy/States.tsx',
+  code: 'components/LoadingState/LoadingState.tsx',
   axes: {
     variant: ['page', 'inline', 'skeleton-grid', 'skeleton-list']
   },
@@ -23,7 +23,7 @@ export const LOADING_STATE_CONTRACT = {
     showSub: true
   },
   texts: {
-    message: 'Loading your library…'
+    message: 'Rummaging through your stash…'
   },
   icons: {},
   slots: {}
@@ -36,7 +36,7 @@ export interface LoadingStateContractProps {
   variant?: LoadingStateVariant
   /** Figma boolean. Default `true`. */
   showSub?: boolean
-  /** Figma text. Default "Loading your library…". */
+  /** Figma text. Default "Rummaging through your stash…". */
   message?: string
 }
 
@@ -44,5 +44,5 @@ export interface LoadingStateContractProps {
 export const LOADING_STATE_DEFAULTS = {
   variant: 'page',
   showSub: true,
-  message: 'Loading your library…'
+  message: 'Rummaging through your stash…'
 } satisfies LoadingStateContractProps

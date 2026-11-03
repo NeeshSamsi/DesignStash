@@ -26,7 +26,7 @@ export const TABS_TRIGGER_CONTRACT = {
   disabled: false,
   booleans: {},
   texts: {
-    label: 'Library'
+    label: 'My Stash'
   },
   icons: {},
   slots: {}
@@ -39,7 +39,7 @@ export interface TabsTriggerContractProps {
   variant?: TabsTriggerVariant
   /** Figma `state=active` (false = `state=inactive`). */
   active?: boolean
-  /** Figma text. Default "Library". */
+  /** Figma text. Default "My Stash". */
   label?: string
 }
 
@@ -47,5 +47,5 @@ export interface TabsTriggerContractProps {
 export const TABS_TRIGGER_DEFAULTS = {
   variant: 'line',
   active: false,
-  label: 'Library'
+  label: 'My Stash'
 } satisfies TabsTriggerContractProps

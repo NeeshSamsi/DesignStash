@@ -9,7 +9,7 @@ export const BANNER_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-777',
   section: '4 · Feedback & states',
   description: 'Persistent inline message at the top of a view.',
-  code: 'ui/alert.tsx → Banner',
+  code: 'components/Banner/Banner.tsx',
   axes: {
     tone: ['info', 'warning', 'error', 'success']
   },

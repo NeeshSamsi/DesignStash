@@ -1,17 +1,20 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1828
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const sidebarNavItemVariants = cva('', {
-  variants: {
-    variant: {
-      parent: '',
-      child: ''
+// Figma SidebarNav Item 218:1828. hover/focus are CSS; active = background/selected.
+// parent rows are text-foreground; child rows (under a TreeBranch) are text-tertiary until active.
+export const sidebarNavItemVariants = cva(
+  'flex w-full min-w-0 items-center gap-2 rounded-lg px-3 py-1.5 text-left outline-none transition-colors hover:bg-surface-2-hover focus-visible:ring-2 focus-visible:ring-ring',
+  {
+    variants: {
+      variant: {
+        parent: 'text-foreground',
+        child: 'text-tertiary'
+      },
+      active: {
+        true: 'bg-selected text-foreground hover:bg-selected',
+        false: ''
+      }
     },
-    active: { true: '', false: '' }
-  },
-  defaultVariants: { variant: 'parent', active: false }
-})
+    defaultVariants: { variant: 'parent', active: false }
+  }
+)

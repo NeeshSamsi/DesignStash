@@ -1,22 +1,34 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-1260
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const listRowVariants = cva('', {
-  variants: {
-    density: {
-      regular: '',
-      compact: ''
+// The border is always there (transparent at rest) so selecting or flagging a row never shifts it.
+export const listRowVariants = cva(
+  'flex items-center gap-3 rounded-lg border border-transparent px-3 hover:bg-surface-1-hover',
+  {
+    variants: {
+      density: {
+        regular: 'py-2.5',
+        compact: 'py-1.5'
+      },
+      state: {
+        default: '',
+        selected: 'border-selected bg-surface-3 hover:bg-surface-3',
+        busy: '',
+        error: 'border-error'
+      }
     },
-    state: {
-      default: '',
-      selected: '',
-      busy: '',
-      error: ''
-    }
-  },
-  defaultVariants: { density: 'regular', state: 'default' }
-})
+    defaultVariants: { density: 'regular', state: 'default' }
+  }
+)
+
+export const listRowMediaVariants = cva(
+  'flex shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-3 text-muted-foreground',
+  {
+    variants: {
+      density: {
+        regular: 'h-9 w-12',
+        compact: 'h-6 w-8'
+      }
+    },
+    defaultVariants: { density: 'regular' }
+  }
+)

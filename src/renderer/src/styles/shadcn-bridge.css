@@ -2,8 +2,7 @@
 /*
  * PORT SWITCH — points shadcn's variables at the Figma tokens, re-theming every ui/
  * component (and any added later with `shadcn add`) without touching its classes.
- * Import it from assets/main.css after the shadcn :root/.dark blocks when the port starts,
- * then delete those blocks' colour values.
+ * Imported last by assets/main.css, which keeps shadcn's @theme mapping but no colour values.
  */
 :root,
 .dark {

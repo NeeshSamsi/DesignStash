@@ -13,11 +13,14 @@ export const tagEditorVariants = cva('', {
     },
     state: {
       idle: '',
-      typing: '',
+      adding: '',
       suggestions: '',
       'no-match': '',
-      'picking-category': '',
-      confirming: ''
+      added: '',
+      duplicate: '',
+      marked: '',
+      empty: '',
+      thinking: ''
     }
   },
   defaultVariants: { variant: 'editable', state: 'idle' }

@@ -1,18 +1,14 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=211-118
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
+// Sizes from Figma 211:118. `card` is MockupCard's 240 width (WP1.1's w-card token once it lands).
 export const skeletonVariants = cva('', {
   variants: {
     variant: {
-      block: '',
-      line: '',
-      circle: '',
-      card: '',
-      row: ''
+      block: 'h-24 w-40',
+      line: 'flex flex-col gap-2',
+      circle: 'size-10 rounded-full',
+      card: 'flex w-card flex-col gap-2',
+      row: 'flex items-center gap-3'
     }
   },
   defaultVariants: { variant: 'block' }

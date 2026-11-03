@@ -1,0 +1,37 @@
+export interface Size {
+  width: number
+  height: number
+}
+
+/**
+ * The smallest the window can be resized to: the sidebar (176), the main panel at its minimum (512) and
+ * the details sidebar's share (396) make 1084, rounded up to a multiple of 8.
+ */
+export const MIN_WINDOW: Size = { width: 1088, height: 680 }
+
+const DEFAULT_WINDOW: Size = { width: 1440, height: 900 }
+const WORK_AREA_SHARE = 0.95
+
+/**
+ * The first-launch window: 1440×900, but no more than 95% of the display's work area, and never
+ * below the minimum size. `workArea` is the display minus the menu bar and dock.
+ */
+export function initialWindowSize(workArea: Size): Size {
+  const fit = (preferred: number, available: number, minimum: number): number =>
+    Math.max(minimum, Math.min(preferred, Math.floor(available * WORK_AREA_SHARE)))
+  return {
+    width: fit(DEFAULT_WINDOW.width, workArea.width, MIN_WINDOW.width),
+    height: fit(DEFAULT_WINDOW.height, workArea.height, MIN_WINDOW.height)
+  }
+}
+
+/** The size options for the main window: its first-launch size and the minimum it can be resized to. */
+export function windowSizeOptions(workArea: Size): {
+  width: number
+  height: number
+  minWidth: number
+  minHeight: number
+} {
+  const { width, height } = initialWindowSize(workArea)
+  return { width, height, minWidth: MIN_WINDOW.width, minHeight: MIN_WINDOW.height }
+}

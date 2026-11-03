@@ -24,7 +24,8 @@ export const DROPDOWN_MENU_ITEM_CONTRACT = {
   disabled: true,
   booleans: {
     showShortcut: true,
-    showIcon: true
+    showIcon: true,
+    submenu: false
   },
   texts: {
     label: 'Add files…'
@@ -48,6 +49,8 @@ export interface DropdownMenuItemContractProps {
   showShortcut?: boolean
   /** Figma boolean. Default `true`. */
   showIcon?: boolean
+  /** Figma boolean. Default `false`. */
+  submenu?: boolean
   /** Figma text. Default "Add files…". */
   label?: string
   /** Figma icon swap. Default `file-add`. */
@@ -62,6 +65,7 @@ export const DROPDOWN_MENU_ITEM_DEFAULTS = {
   disabled: false,
   showShortcut: true,
   showIcon: true,
+  submenu: false,
   label: 'Add files…',
   icon: FileAddIcon
 } satisfies DropdownMenuItemContractProps

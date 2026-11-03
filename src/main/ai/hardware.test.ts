@@ -3,14 +3,14 @@ import { recommendTier, detectHardware } from './hardware'
 import type { HardwareInfo } from './hardware'
 
 describe('recommendTier', () => {
-  it('should recommend "small" for less than 16GB memory', () => {
+  it('should recommend "medium" for less than 16GB memory', () => {
     const hw: HardwareInfo = { chip: 'test', totalMemoryGB: 8, isAppleSilicon: false }
-    expect(recommendTier(hw)).toBe('small')
+    expect(recommendTier(hw)).toBe('medium')
   })
 
-  it('should recommend "small" for just under 16GB memory', () => {
+  it('should recommend "medium" for just under 16GB memory', () => {
     const hw: HardwareInfo = { chip: 'test', totalMemoryGB: 15.9, isAppleSilicon: false }
-    expect(recommendTier(hw)).toBe('small')
+    expect(recommendTier(hw)).toBe('medium')
   })
 
   it('should recommend "medium" for 16GB memory', () => {

@@ -26,7 +26,7 @@ export const PAGE_HEADER_CONTRACT = {
   },
   texts: {
     current: 'Starred',
-    parent: 'Mockups Library',
+    parent: 'My Stash',
     description: '12 mockups · favourites always sort first'
   },
   icons: {},
@@ -46,7 +46,7 @@ export interface PageHeaderContractProps {
   actions?: boolean
   /** Figma text. Default "Starred". */
   current?: string
-  /** Figma text. Default "Mockups Library". */
+  /** Figma text. Default "My Stash". */
   parent?: string
   /** Figma text. Default "12 mockups · favourites always sort first". */
   description?: string
@@ -59,6 +59,6 @@ export const PAGE_HEADER_DEFAULTS = {
   showDescription: true,
   actions: false,
   current: 'Starred',
-  parent: 'Mockups Library',
+  parent: 'My Stash',
   description: '12 mockups · favourites always sort first'
 } satisfies PageHeaderContractProps

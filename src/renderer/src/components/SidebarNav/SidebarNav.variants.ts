@@ -1,16 +1,28 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-1964
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const sidebarNavVariants = cva('', {
-  variants: {
-    variant: {
-      'no-pending': '',
-      'with-pending': ''
-    }
-  },
-  defaultVariants: { variant: 'no-pending' }
-})
+// Figma SidebarNav 218:1964: w-sidebar, surface-2, 12px padding (one step under Figma's 16, none on top, the title bar owns it).
+// `variant` says which of To sort / To stash are listed; the rows come from the props.
+export const sidebarNavVariants = cva(
+  'flex h-full w-sidebar flex-col gap-4 bg-surface-2 px-3 pb-3',
+  {
+    variants: {
+      variant: {
+        none: '',
+        'to-sort': '',
+        'to-stash': '',
+        both: ''
+      }
+    },
+    defaultVariants: { variant: 'none' }
+  }
+)
+
+export const sidebarNavListClass = 'flex flex-col gap-1'
+// Two child rows (32 each) plus 4px; the stem joins the My Stash row 8px above.
+export const sidebarNavTreeClass = 'relative flex flex-col pb-1 pl-5'
+export const sidebarNavStemClass = 'absolute -top-2 left-5 h-2 border-l border-base'
+
+// The brand row: a 24px placeholder logo centred on the nav icon column (8px in), 8px to the name.
+export const sidebarNavBrandClass = 'flex items-center gap-2 py-2 pl-2'
+export const sidebarNavLogoClass =
+  'flex size-6 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary'

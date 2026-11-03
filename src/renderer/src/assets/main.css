@@ -6,7 +6,6 @@
 /* Design system (generated from Figma — pnpm ds:tokens). Additive: no shadcn keys overlap. */
 @import '../styles/tokens.css';
 @import '../styles/theme.css';
-/* TODO(port): import '../styles/shadcn-bridge.css' after the shadcn block below and drop shadcn's colour values. */
 
 @custom-variant dark (&:is(.dark *));
 
@@ -15,15 +14,87 @@
  * Per CLAUDE.md: add named tokens here instead of using arbitrary values in markup.
  */
 @theme {
-  --color-brand-500: oklch(0.55 0.18 270);
   --aspect-card: 4 / 3;
-  --max-h-modal-body: 70vh;
+  --max-height-modal-body: 70vh;
+  /* Modals keep a 2rem margin to the window on every side (orchestrator-approved, WP-R). */
+  --max-width-viewport: calc(100vw - 4rem);
+  --max-height-viewport: calc(100vh - 4rem);
+
+  /* Layout sizes the Figma screens rely on (approved D1). px in comments = Figma. */
+  --width-sidebar: 11rem; /* 176 */
+  --width-title-search: 20rem; /* 320 */
+  --width-settings-modal: 55rem; /* 880 */
+  --height-settings-modal: 47.5rem; /* 760 */
+  --width-flow-modal: 84.5rem; /* 1352 */
+  --height-flow-modal: 51.375rem; /* 822 */
+  --width-card: 15rem; /* 240 */
+  --width-detail-media: 30rem; /* 480 */
+  --width-variant-slot: 5.75rem; /* 92 */
+  --width-variant-thumb: 5.25rem; /* 84 */
+  --height-variant-thumb: 4rem; /* 64 */
+  --spacing-deck-peek: 0.75rem; /* 12 */
+  --width-toast: 22.5rem; /* 360 */
+  /* Above the dialog layer (z-50) so a toast raised inside a modal stays clickable. */
+  --z-index-toast: 60;
+  /* Above dialogs (50) and toasts (60): the overlay scrollbar layer. */
+  --z-index-scrollbar: 70;
+  --min-width-tag-input: 7.5rem; /* 120 */
+  --max-width-tag-label: 9.375rem; /* 150 */
+  --max-height-tag-filter: 15rem; /* 240 */
+  --height-card-cover: 10.5rem; /* 168 */
+  --height-card-cover-compact: 6.75rem; /* 108 */
+
+  /* Same value as background/overlay; a colour token so gradients can use it (to-scrim). */
+  --color-scrim: var(--ds-color-black-alpha-60);
 }
 
-/* shadcn/ui token mapping (radix-rhea style, "mist" base color). */
+/* Card corners (B5) and motion for the card hover and the details panel (B7). Static so the
+   variables exist for var() and for other agents' utilities even before a class uses them. */
+@theme static {
+  --radius-card: 1.5rem; /* 24 */
+  --radius-card-cover: 0.875rem; /* 14 */
+
+  /* Panel: open settles out; close leaves at once, and the container widens on the same out curve. */
+  --ease-panel-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-panel-in: cubic-bezier(0.4, 0, 1, 1); /* moves at once on close */
+  --duration-panel-open: 280ms;
+  --duration-panel-close: 150ms; /* the panel */
+  --duration-panel-container-close: 180ms; /* the container, on ease-panel-out */
+
+  /* Card hover springs. In overshoots slightly (bounce ~0.45, ~450ms); out settles (bounce ~0.15, ~400ms). */
+  --ease-card-in: linear(0, 0.025, 0.092, 0.188, 0.302, 0.423, 0.545, 0.662, 0.768, 0.861, 0.94, 1.003, 1.052, 1.088, 1.11, 1.123, 1.126, 1.123, 1.114, 1.102, 1.088, 1.072, 1.057, 1.042, 1);
+  --ease-card-out: linear(0, 0.024, 0.085, 0.167, 0.26, 0.356, 0.45, 0.538, 0.618, 0.689, 0.75, 0.803, 0.847, 0.884, 0.914, 0.938, 0.956, 0.971, 0.982, 0.99, 0.996, 1.001, 1.003, 1.005, 1);
+  --duration-card-in: 450ms;
+  --duration-card-out: 400ms;
+
+  /* Fluid card grids: a column is never narrower than this, and cards stretch to fill the row. */
+  --size-card-min: 13.75rem; /* 220 */
+  --gap-card-x: 1rem; /* 16 */
+  --gap-card-y: 1.5rem; /* 24 */
+
+  /* What the content panel is meant to keep: two cards, their gap and its padding (2×220 + 16 + 2×28). The window
+     minimum guarantees it; below that the panel gives way to one column rather than push the sidebar off screen. */
+  --size-main-min: 32rem; /* 512 */
+}
+
+/* Responsive card grid: columns come and go with the grid's own width; cards fill each column. */
+@utility grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--size-card-min), 1fr));
+  column-gap: var(--gap-card-x);
+  row-gap: var(--gap-card-y);
+  align-items: start;
+}
+
+/* Continuous (squircle) corners where the engine supports corner-shape; a plain radius elsewhere. */
+@utility corner-squircle {
+  @supports (corner-shape: superellipse(1.5)) {
+    corner-shape: superellipse(1.5);
+  }
+}
+
+/* shadcn/ui token mapping (radix-rhea style). Values come from shadcn-bridge.css below. */
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: 'Inter Variable', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -55,85 +126,23 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Electron title bar: drag the window by it, and keep controls inside it clickable. */
+@utility app-drag {
+  -webkit-app-region: drag;
+}
+@utility app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Dark only until Figma adds a Light mode (D2). */
 :root {
-  color-scheme: light dark;
-
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.148 0.004 228.8);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.148 0.004 228.8);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.148 0.004 228.8);
-  --primary: oklch(0.553 0.195 38.402);
-  --primary-foreground: oklch(0.98 0.016 73.684);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.963 0.002 197.1);
-  --muted-foreground: oklch(0.56 0.021 213.5);
-  --accent: oklch(0.963 0.002 197.1);
-  --accent-foreground: oklch(0.218 0.008 223.9);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.925 0.005 214.3);
-  --input: oklch(0.925 0.005 214.3);
-  --ring: oklch(0.723 0.014 214.4);
-  --chart-1: oklch(0.872 0.007 219.6);
-  --chart-2: oklch(0.56 0.021 213.5);
-  --chart-3: oklch(0.45 0.017 213.2);
-  --chart-4: oklch(0.378 0.015 216);
-  --chart-5: oklch(0.275 0.011 216.9);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.987 0.002 197.1);
-  --sidebar-foreground: oklch(0.148 0.004 228.8);
-  --sidebar-primary: oklch(0.646 0.222 41.116);
-  --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
-  --sidebar-accent: oklch(0.963 0.002 197.1);
-  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
-  --sidebar-border: oklch(0.925 0.005 214.3);
-  --sidebar-ring: oklch(0.723 0.014 214.4);
+  color-scheme: dark;
 }
 
-.dark {
-  --background: oklch(0.148 0.004 228.8);
-  --foreground: oklch(0.987 0.002 197.1);
-  --card: oklch(0.218 0.008 223.9);
-  --card-foreground: oklch(0.987 0.002 197.1);
-  --popover: oklch(0.218 0.008 223.9);
-  --popover-foreground: oklch(0.987 0.002 197.1);
-  --primary: oklch(0.47 0.157 37.304);
-  --primary-foreground: oklch(0.98 0.016 73.684);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.275 0.011 216.9);
-  --muted-foreground: oklch(0.723 0.014 214.4);
-  --accent: oklch(0.275 0.011 216.9);
-  --accent-foreground: oklch(0.987 0.002 197.1);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.56 0.021 213.5);
-  --chart-1: oklch(0.872 0.007 219.6);
-  --chart-2: oklch(0.56 0.021 213.5);
-  --chart-3: oklch(0.45 0.017 213.2);
-  --chart-4: oklch(0.378 0.015 216);
-  --chart-5: oklch(0.275 0.011 216.9);
-  --sidebar: oklch(0.218 0.008 223.9);
-  --sidebar-foreground: oklch(0.987 0.002 197.1);
-  --sidebar-primary: oklch(0.705 0.213 47.604);
-  --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
-  --sidebar-accent: oklch(0.275 0.011 216.9);
-  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.56 0.021 213.5);
-}
+/* PORT SWITCH: shadcn variables, radii and fonts → Figma tokens. */
+@import '../styles/shadcn-bridge.css';
 
 @layer base {
   * {
@@ -147,6 +156,108 @@
   }
 }
 
+/*
+ * One scrollbar for the whole app (B3). Native bars are hidden here and drawn over the content by
+ * lib/overlay-scrollbars.ts, so they never take width. Wheel, trackpad and keyboard scrolling stay native.
+ * Colours are the design tokens: gutter surface-3, thumb text-tertiary (Figma D3).
+ */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+.ds-scrollbar-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-index-scrollbar);
+  pointer-events: none;
+}
+.ds-scrollbar {
+  --ds-scrollbar-size: 12px;
+  position: fixed;
+  user-select: none;
+  touch-action: none;
+}
+.ds-scrollbar[data-axis='vertical'] {
+  width: var(--ds-scrollbar-size);
+}
+.ds-scrollbar[data-axis='horizontal'] {
+  height: var(--ds-scrollbar-size);
+}
+.ds-scrollbar-track {
+  position: absolute;
+  inset: 0;
+  background: var(--ds-background-surface-3);
+  opacity: 0;
+  /* Out is faster than in. */
+  transition:
+    transform 100ms ease-in,
+    opacity 100ms ease-in;
+}
+.ds-scrollbar[data-axis='vertical'] .ds-scrollbar-track {
+  transform: translateX(100%);
+}
+.ds-scrollbar[data-axis='horizontal'] .ds-scrollbar-track {
+  transform: translateY(100%);
+}
+.ds-scrollbar[data-state='open'] .ds-scrollbar-track {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition:
+    transform 150ms ease-out,
+    opacity 150ms ease-out;
+}
+.ds-scrollbar-thumb {
+  position: absolute;
+  border-radius: 99px;
+  background: var(--ds-text-tertiary);
+  opacity: 0;
+  /* The thin thumb fades 200ms after it has been idle for 800ms. */
+  transition:
+    opacity 200ms ease-out,
+    width 100ms ease-out,
+    height 100ms ease-out;
+}
+.ds-scrollbar[data-axis='vertical'] .ds-scrollbar-thumb {
+  left: 50%;
+  top: 0;
+  width: 6px;
+}
+.ds-scrollbar[data-axis='horizontal'] .ds-scrollbar-thumb {
+  top: 50%;
+  left: 0;
+  height: 6px;
+}
+.ds-scrollbar:not([data-state='hidden']) .ds-scrollbar-thumb {
+  opacity: 0.5;
+  pointer-events: auto;
+}
+.ds-scrollbar[data-state='open'] .ds-scrollbar-thumb {
+  opacity: 0.7;
+}
+.ds-scrollbar .ds-scrollbar-thumb[data-state='hover'],
+.ds-scrollbar .ds-scrollbar-thumb[data-state='dragging'] {
+  opacity: 0.9;
+}
+.ds-scrollbar .ds-scrollbar-thumb[data-state='dragging'] {
+  opacity: 1;
+}
+.ds-scrollbar[data-axis='vertical'] .ds-scrollbar-thumb:is([data-state='hover'], [data-state='dragging']) {
+  width: 8px;
+}
+.ds-scrollbar[data-axis='horizontal'] .ds-scrollbar-thumb:is([data-state='hover'], [data-state='dragging']) {
+  height: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-scrollbar-track,
+  .ds-scrollbar-thumb {
+    transition: none;
+  }
+}
+
 html,
 body,
 #root {
@@ -155,27 +266,4 @@ body,
 
 body {
   margin: 0;
-}
-
-/*
- * True "squircle" — a full superellipse (n=4): rounded corners AND gently bulged
- * sides, the continuous Lamé curve. Applied via clip-path (percentage points, so it
- * scales to any element). Best on square-ish, image-dominant surfaces (mockup tiles,
- * avatars). Avoid on wide elements — the long edges balloon — and on bordered ones,
- * since clip-path cuts borders (drop-shadows still work via filter: drop-shadow).
- */
-@utility squircle {
-  clip-path: polygon(
-    100% 50%, 99.88% 65.65%, 99.52% 72.08%, 98.91% 76.94%, 98.06% 80.93%, 96.96% 84.33%,
-    95.59% 87.27%, 93.96% 89.82%, 92.04% 92.04%, 89.82% 93.96%, 87.27% 95.59%, 84.33% 96.96%,
-    80.93% 98.06%, 76.94% 98.91%, 72.08% 99.52%, 65.65% 99.88%, 50% 100%, 34.35% 99.88%,
-    27.92% 99.52%, 23.06% 98.91%, 19.07% 98.06%, 15.67% 96.96%, 12.73% 95.59%, 10.18% 93.96%,
-    7.96% 92.04%, 6.04% 89.82%, 4.41% 87.27%, 3.04% 84.33%, 1.94% 80.93%, 1.09% 76.94%,
-    0.48% 72.08%, 0.12% 65.65%, 0% 50%, 0.12% 34.35%, 0.48% 27.92%, 1.09% 23.06%, 1.94% 19.07%,
-    3.04% 15.67%, 4.41% 12.73%, 6.04% 10.18%, 7.96% 7.96%, 10.18% 6.04%, 12.73% 4.41%,
-    15.67% 3.04%, 19.07% 1.94%, 23.06% 1.09%, 27.92% 0.48%, 34.35% 0.12%, 50% 0%, 65.65% 0.12%,
-    72.08% 0.48%, 76.94% 1.09%, 80.93% 1.94%, 84.33% 3.04%, 87.27% 4.41%, 89.82% 6.04%,
-    92.04% 7.96%, 93.96% 10.18%, 95.59% 12.73%, 96.96% 15.67%, 98.06% 19.07%, 98.91% 23.06%,
-    99.52% 27.92%, 99.88% 34.35%
-  );
 }

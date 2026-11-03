@@ -1,19 +1,28 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-6619
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const reconciliationPanelVariants = cva('', {
-  variants: {
-    state: {
-      scanning: '',
-      drift: '',
-      resolving: '',
-      rescanning: '',
-      'all-resolved': ''
-    }
-  },
-  defaultVariants: { state: 'scanning' }
-})
+// Figma ReconciliationPanel 223:6619: the body of the blocking stash-check modal. A 640 wide surface-2
+// card, 24 padding, 16 between the heading, the two groups and the footer.
+export const reconciliationPanelVariants = cva(
+  'flex max-h-viewport w-160 max-w-full flex-col gap-4 rounded-xl border border-base bg-surface-2 p-6',
+  {
+    variants: {
+      state: {
+        scanning: '',
+        drift: '',
+        resolving: '',
+        rescanning: '',
+        'all-resolved': ''
+      }
+    },
+    defaultVariants: { state: 'scanning' }
+  }
+)
+
+// The Figma radius is 10px, which has no token, so it is rounded-xl (as in ModelCard).
+export const reconciliationGroupVariants = cva(
+  'flex w-full flex-col overflow-clip rounded-xl border border-subtle bg-surface-1'
+)
+
+export const reconciliationRowVariants = cva(
+  'flex items-center gap-3 border-t border-subtle py-2.5 pr-3 pl-4'
+)

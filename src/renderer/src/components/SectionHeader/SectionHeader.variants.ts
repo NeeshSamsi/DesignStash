@@ -1,15 +1,10 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-1350
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const sectionHeaderVariants = cva('', {
+export const sectionHeaderVariants = cva('flex items-center justify-between py-2', {
   variants: {
     variant: {
       static: '',
-      sticky: ''
+      sticky: 'sticky top-0 z-10 rounded-md border border-subtle bg-surface-1 px-3'
     }
   },
   defaultVariants: { variant: 'static' }

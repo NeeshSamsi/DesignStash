@@ -10,7 +10,7 @@ export const APP_WINDOW_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=218-2248',
   section: '3 · Layout & navigation',
   description:
-    'The window: traffic lights, centred GlobalSearch, SidebarNav (176), content panel with PageHeader + page slot. modal-open adds the scrim; drag-over adds DropOverlay.',
+    'The window: traffic lights, centred GlobalSearch, SidebarNav (176), content panel with PageHeader + page slot. modal-open adds the scrim; drag-over adds DropOverlay. Slot: page (screen content inside the window, under the PageHeader).',
   code: 'AppShell.tsx',
   axes: {
     state: ['idle', 'modal-open', 'drag-over']
@@ -22,8 +22,7 @@ export const APP_WINDOW_CONTRACT = {
   interactionStates: [],
   disabled: false,
   booleans: {
-    showHeader: true,
-    pageHint: true
+    showHeader: true
   },
   texts: {},
   icons: {},
@@ -32,7 +31,8 @@ export const APP_WINDOW_CONTRACT = {
     sidebar: 'SidebarNav',
     header: 'PageHeader',
     dialog: 'ConfirmDialog',
-    drop: 'DropOverlay'
+    drop: 'DropOverlay',
+    page: 'content'
   }
 } as const satisfies ComponentContract
 
@@ -43,8 +43,6 @@ export interface AppWindowContractProps {
   state?: AppWindowState
   /** Figma boolean. Default `true`. */
   showHeader?: boolean
-  /** Figma boolean. Default `true`. */
-  pageHint?: boolean
   /** Slot — nests `GlobalSearch` in Figma. */
   search?: ReactNode
   /** Slot — nests `SidebarNav` in Figma. */
@@ -55,11 +53,12 @@ export interface AppWindowContractProps {
   dialog?: ReactNode
   /** Slot — nests `DropOverlay` in Figma. */
   drop?: ReactNode
+  /** Slot — free content slot. */
+  page?: ReactNode
 }
 
 /** Figma defaults. Slots have none. */
 export const APP_WINDOW_DEFAULTS = {
   state: 'idle',
-  showHeader: true,
-  pageHint: true
+  showHeader: true
 } satisfies AppWindowContractProps

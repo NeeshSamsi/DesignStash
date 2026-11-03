@@ -1,16 +1,29 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=216-1679
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const centeredLayoutVariants = cva('', {
-  variants: {
-    variant: {
-      card: '',
-      bare: ''
-    }
-  },
-  defaultVariants: { variant: 'card' }
-})
+// Figma CenteredLayout 216:1679: full window, no sidebar. The top 44px keeps the macOS traffic
+// lights clear; the 560 stage is centred. card = surface-1 panel, bare = content straight on the window.
+export const centeredLayoutVariants = cva(
+  'flex h-full w-full flex-col overflow-hidden bg-surface-2',
+  {
+    variants: {
+      variant: {
+        card: '',
+        bare: ''
+      }
+    },
+    defaultVariants: { variant: 'card' }
+  }
+)
+
+export const centeredLayoutContentVariants = cva(
+  'flex w-140 max-w-full shrink-0 flex-col items-center gap-6',
+  {
+    variants: {
+      variant: {
+        card: 'rounded-2xl border border-subtle bg-surface-1 p-10',
+        bare: ''
+      }
+    },
+    defaultVariants: { variant: 'card' }
+  }
+)

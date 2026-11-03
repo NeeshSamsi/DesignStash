@@ -8,14 +8,13 @@ export const MODEL_ROW_CONTRACT = {
   figmaId: '223:4073',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4073',
   section: '9 · Onboarding & AI models',
-  description: 'One on-device model through its whole lifecycle — picker or manage.',
-  code: 'Onboarding + SettingsAiPane',
+  description:
+    'One on-device model in the onboarding picker (a radio list): download, pause/resume, verify, installed, failed. Settings › AI model uses ModelCard.',
+  code: 'screens/onboarding/AiStep.tsx',
   axes: {
-    variant: ['picker', 'manage'],
-    state: ['not-installed', 'downloading', 'paused', 'verifying', 'failed', 'installed', 'active']
+    state: ['not-installed', 'downloading', 'paused', 'verifying', 'failed', 'installed']
   },
   axisDefaults: {
-    variant: 'picker',
     state: 'not-installed'
   },
   flags: {},
@@ -27,7 +26,6 @@ export const MODEL_ROW_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type ModelRowVariant = 'picker' | 'manage'
 export type ModelRowState =
   | 'not-installed'
   | 'downloading'
@@ -35,17 +33,13 @@ export type ModelRowState =
   | 'verifying'
   | 'failed'
   | 'installed'
-  | 'active'
 
 export interface ModelRowContractProps {
-  /** Figma `variant` (2 options). Default `picker`. */
-  variant?: ModelRowVariant
-  /** Figma `state` (7 options). Default `not-installed`. */
+  /** Figma `state` (6 options). Default `not-installed`. */
   state?: ModelRowState
 }
 
 /** Figma defaults. Slots have none. */
 export const MODEL_ROW_DEFAULTS = {
-  variant: 'picker',
   state: 'not-installed'
 } satisfies ModelRowContractProps

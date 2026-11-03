@@ -9,8 +9,8 @@ export const ERROR_STATE_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=214-666',
   section: '4 · Feedback & states',
   description:
-    'What failed, why, and what to do; every IPC {code, message} surfaces here or in a Toast.',
-  code: '_legacy/States.tsx',
+    'What failed, why, and what to do; every IPC {code, message} surfaces here or in a Toast. inline matches Banner: neutral surface-2 card, border/subtle, 3px left accent in border/error (no tinted fill).',
+  code: 'components/ErrorState/ErrorState.tsx',
   axes: {
     variant: ['inline', 'page', 'full-window']
   },

@@ -8,14 +8,13 @@ export const PATH_FIELD_CONTRACT = {
   figmaId: '223:3718',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-3718',
   section: '9 · Onboarding & AI models',
-  description: 'Where the library lives, in plain language, with Choose….',
+  description:
+    'Where the stash lives during onboarding: friendly path + location, with Choose…. Errors: not writable, already a stash (→ ChoiceDialog), unavailable drive. Settings › My Stash has its own path field with Change….',
   code: null,
   axes: {
-    variant: ['onboarding', 'settings'],
-    state: ['default', 'busy', 'not-writable', 'existing-library', 'unavailable']
+    state: ['default', 'busy', 'not-writable', 'existing-library']
   },
   axisDefaults: {
-    variant: 'onboarding',
     state: 'default'
   },
   flags: {},
@@ -27,23 +26,14 @@ export const PATH_FIELD_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type PathFieldVariant = 'onboarding' | 'settings'
-export type PathFieldState =
-  | 'default'
-  | 'busy'
-  | 'not-writable'
-  | 'existing-library'
-  | 'unavailable'
+export type PathFieldState = 'default' | 'busy' | 'not-writable' | 'existing-library'
 
 export interface PathFieldContractProps {
-  /** Figma `variant` (2 options). Default `onboarding`. */
-  variant?: PathFieldVariant
-  /** Figma `state` (5 options). Default `default`. */
+  /** Figma `state` (4 options). Default `default`. */
   state?: PathFieldState
 }
 
 /** Figma defaults. Slots have none. */
 export const PATH_FIELD_DEFAULTS = {
-  variant: 'onboarding',
   state: 'default'
 } satisfies PathFieldContractProps

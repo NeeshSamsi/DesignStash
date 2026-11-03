@@ -1,6 +1,9 @@
-import { ScaffoldStub } from '@renderer/design-system/ScaffoldStub'
+import { Cancel01Icon } from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/react'
 import { cn } from '@renderer/lib/utils'
-import { DIALOG_CONTRACT, DIALOG_DEFAULTS, type DialogContractProps } from './Dialog.types'
+import { Button } from '@renderer/ui/button'
+import { dialogDescriptionClass, dialogPanelClass, dialogTitleClass } from '@renderer/ui/dialog'
+import { DIALOG_DEFAULTS, type DialogContractProps } from './Dialog.types'
 import { dialogVariants } from './Dialog.variants'
 
 export interface DialogProps extends DialogContractProps {
@@ -10,17 +13,45 @@ export interface DialogProps extends DialogContractProps {
 /**
  * Dialog — Overlay shells. Screens never use these directly — they use Modal / ConfirmDialog / ChoiceDialog.
  * Figma: https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=213-781
- * Today: ui/dialog.tsx, ui/alert-dialog.tsx, ui/sheet.tsx
+ * Adapter over ui/dialog.tsx, ui/alert-dialog.tsx and ui/sheet.tsx: this renders the static shell
+ * (catalog, Figma parity); the live overlays are the ui/ primitives.
  */
 export function Dialog({ className, ...rest }: DialogProps) {
   const props = { ...DIALOG_DEFAULTS, ...rest }
-  // TODO(port): replace ScaffoldStub with the real markup. Keep the props contract and
-  // data-ds="Dialog" on the root element.
+  const isAlert = props.variant === 'alert-dialog'
   return (
-    <ScaffoldStub
-      contract={DIALOG_CONTRACT}
-      props={props}
-      className={cn(dialogVariants({ variant: props.variant }), className)}
-    />
+    <div
+      data-ds="Dialog"
+      data-variant={props.variant}
+      className={cn(dialogPanelClass, dialogVariants({ variant: props.variant }), className)}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <p className={dialogTitleClass}>{props.title}</p>
+          {props.showDescription && <p className={dialogDescriptionClass}>{props.description}</p>}
+        </div>
+        {!isAlert && (
+          <Button variant="ghost" size="icon" aria-label="Close">
+            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+          </Button>
+        )}
+      </div>
+      {!isAlert && (
+        <div
+          className={cn(
+            'flex flex-col items-center justify-center rounded-md border border-dashed border-subtle px-4 py-10',
+            props.variant === 'sheet' && 'flex-1'
+          )}
+        >
+          <p className="type-caption-xs-regular text-tertiary">Content slot</p>
+        </div>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost">Cancel</Button>
+        <Button variant={isAlert ? 'destructive' : 'default'}>
+          {isAlert ? 'Move to Trash' : 'Confirm'}
+        </Button>
+      </div>
+    </div>
   )
 }

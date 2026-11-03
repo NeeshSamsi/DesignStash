@@ -8,16 +8,26 @@ export const TAG_TREE_CONTRACT = {
   figmaId: '223:5509',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-5509',
   section: '10 · Settings & tags',
-  description: 'Manage the two-tier taxonomy with inline rename and row menus.',
-  code: 'SettingsTagsPane.tsx',
+  description:
+    'Settings › Tags: two tiers, category then tag. Each category is its own grouped container (name, tag count, ⋯) with its tags, use counts and its own Add tag row; a dashed New category row closes the list. No nesting. ⋯ on hover: Rename, Move to, Merge into, Delete. Delete is instant with Undo; Merge and Delete category ask first. Rules: design/specs/settings.md.',
+  code: 'screens/settings/TagsPane.tsx',
   axes: {
-    state: ['default', 'renaming', 'menu-open', 'empty', 'loading']
+    state: [
+      'default',
+      'adding',
+      'added',
+      'duplicate',
+      'renaming',
+      'new-category',
+      'empty',
+      'loading'
+    ]
   },
   axisDefaults: {
     state: 'default'
   },
   flags: {},
-  interactionStates: [],
+  interactionStates: ['hover'],
   disabled: false,
   booleans: {},
   texts: {},
@@ -25,10 +35,18 @@ export const TAG_TREE_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type TagTreeState = 'default' | 'renaming' | 'menu-open' | 'empty' | 'loading'
+export type TagTreeState =
+  | 'default'
+  | 'adding'
+  | 'added'
+  | 'duplicate'
+  | 'renaming'
+  | 'new-category'
+  | 'empty'
+  | 'loading'
 
 export interface TagTreeContractProps {
-  /** Figma `state` (5 options). Default `default`. */
+  /** Figma `state` (8 options). Default `default`. */
   state?: TagTreeState
 }
 

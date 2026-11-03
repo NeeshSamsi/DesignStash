@@ -8,16 +8,11 @@ export const CONSENT_PANEL_CONTRACT = {
   figmaId: '223:4275',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-4275',
   section: '9 · Onboarding & AI models',
-  description: 'Telemetry disclosure + choice: collect / never collect.',
-  code: 'SettingsPrivacyPane + TelemetryDisclosure',
-  axes: {
-    variant: ['onboarding', 'settings'],
-    state: ['default', 'on', 'off', 'loading']
-  },
-  axisDefaults: {
-    variant: 'onboarding',
-    state: 'default'
-  },
+  description:
+    'Telemetry disclosure + choice for onboarding (A4): what we collect / never collect, with No thanks · Keep it on. Settings › Privacy shows the same lists in its usage-data accordion.',
+  code: 'screens/settings/PrivacyPane.tsx',
+  axes: {},
+  axisDefaults: {},
   flags: {},
   interactionStates: [],
   disabled: false,
@@ -27,18 +22,8 @@ export const CONSENT_PANEL_CONTRACT = {
   slots: {}
 } as const satisfies ComponentContract
 
-export type ConsentPanelVariant = 'onboarding' | 'settings'
-export type ConsentPanelState = 'default' | 'on' | 'off' | 'loading'
-
-export interface ConsentPanelContractProps {
-  /** Figma `variant` (2 options). Default `onboarding`. */
-  variant?: ConsentPanelVariant
-  /** Figma `state` (4 options). Default `default`. */
-  state?: ConsentPanelState
-}
+/** No Figma properties. */
+export type ConsentPanelContractProps = Record<never, never>
 
 /** Figma defaults. Slots have none. */
-export const CONSENT_PANEL_DEFAULTS = {
-  variant: 'onboarding',
-  state: 'default'
-} satisfies ConsentPanelContractProps
+export const CONSENT_PANEL_DEFAULTS = {} satisfies ConsentPanelContractProps

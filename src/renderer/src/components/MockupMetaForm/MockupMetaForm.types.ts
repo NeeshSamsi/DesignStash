@@ -8,11 +8,12 @@ export const MOCKUP_META_FORM_CONTRACT = {
   figmaId: '222:3346',
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=222-3346',
   section: '8 · Approval & editing',
-  description: 'One title / description / tags editor for approval and detail.',
+  description:
+    'One title / description / tags editor for approval and detail (detail edits the title in the modal header). No status of its own: in Detail an enabled Save means unsaved changes, and a failed save is an error toast. Dirty state drives the unsaved-changes guard. Code: extract from ApprovalStepper ItemEditor + DetailModal.',
   code: null,
   axes: {
     variant: ['approval', 'detail'],
-    state: ['pristine', 'invalid', 'edited', 'saving', 'save-failed']
+    state: ['pristine', 'invalid', 'edited', 'saving', 'thinking']
   },
   axisDefaults: {
     variant: 'approval',
@@ -25,14 +26,14 @@ export const MOCKUP_META_FORM_CONTRACT = {
     showHint: true
   },
   texts: {
-    hint: 'Title, description and tags suggested by AI — check before approving.'
+    hint: 'AI suggested the title, description and tags. Give them a quick check before you stash it.'
   },
   icons: {},
   slots: {}
 } as const satisfies ComponentContract
 
 export type MockupMetaFormVariant = 'approval' | 'detail'
-export type MockupMetaFormState = 'pristine' | 'invalid' | 'edited' | 'saving' | 'save-failed'
+export type MockupMetaFormState = 'pristine' | 'invalid' | 'edited' | 'saving' | 'thinking'
 
 export interface MockupMetaFormContractProps {
   /** Figma `variant` (2 options). Default `approval`. */
@@ -41,7 +42,7 @@ export interface MockupMetaFormContractProps {
   state?: MockupMetaFormState
   /** Figma boolean. Default `true`. */
   showHint?: boolean
-  /** Figma text. Default "Title, description and tags suggested by AI — check before approving.". */
+  /** Figma text. Default "AI suggested the title, description and tags. Give them a quick check before you stash it.". */
   hint?: string
 }
 
@@ -50,5 +51,5 @@ export const MOCKUP_META_FORM_DEFAULTS = {
   variant: 'approval',
   state: 'pristine',
   showHint: true,
-  hint: 'Title, description and tags suggested by AI — check before approving.'
+  hint: 'AI suggested the title, description and tags. Give them a quick check before you stash it.'
 } satisfies MockupMetaFormContractProps

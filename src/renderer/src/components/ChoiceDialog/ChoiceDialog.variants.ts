@@ -1,16 +1,4 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=216-1145
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const choiceDialogVariants = cva('', {
-  variants: {
-    variant: {
-      neutral: '',
-      'destructive-secondary': ''
-    }
-  },
-  defaultVariants: { variant: 'neutral' }
-})
+// Wider than ConfirmDialog (Figma 448); the data-[size] form beats ui/alert-dialog's own max width.
+export const choiceDialogVariants = cva('w-112 gap-6 data-[size=default]:max-w-112')

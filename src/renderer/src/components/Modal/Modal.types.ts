@@ -10,7 +10,7 @@ export const MODAL_CONTRACT = {
   figmaUrl: 'https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=216-780',
   section: '5 · Overlays & dialogs',
   description: 'Base content dialog: header, scrolling body slot, ActionBar footer.',
-  code: '_legacy/Modal.tsx',
+  code: 'components/Modal/Modal.tsx',
   axes: {
     size: ['sm', 'md', 'lg', 'xl']
   },
@@ -27,7 +27,7 @@ export const MODAL_CONTRACT = {
   },
   texts: {
     title: 'Skipped files',
-    description: 'Modal description — what this view is for.'
+    description: 'A short line about what this view is for.'
   },
   icons: {},
   slots: {
@@ -48,7 +48,7 @@ export interface ModalContractProps {
   footer?: boolean
   /** Figma text. Default "Skipped files". */
   title?: string
-  /** Figma text. Default "Modal description — what this view is for.". */
+  /** Figma text. Default "A short line about what this view is for.". */
   description?: string
   /** Slot — free content slot. */
   body?: ReactNode
@@ -61,5 +61,5 @@ export const MODAL_DEFAULTS = {
   showDescription: true,
   footer: true,
   title: 'Skipped files',
-  description: 'Modal description — what this view is for.'
+  description: 'A short line about what this view is for.'
 } satisfies ModalContractProps

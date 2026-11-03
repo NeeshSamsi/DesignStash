@@ -1,23 +1,24 @@
 import { cva } from 'class-variance-authority'
 
-// TODO(port): fill every class slot from Figma — https://www.figma.com/design/fB8PHTrzz89lAQOhXbsHMK/DesignStash?node-id=223-3718
-// Colours: the Figma token name (bg-surface-3, text-tertiary, border-focus…) except the five
-// shadcn owns — text-foreground, text-muted-foreground, bg-primary, border-primary, border-input.
-// Type: type-<role>-<size>-<weight>. States: hover: focus-visible: active: disabled: (never variants).
-// shadcn-backed primitive? Restyle ui/ instead and make this component a thin adapter (design/README.md).
-export const pathFieldVariants = cva('', {
+// Figma PathField 223:3718: the stash location box. Border by state: input at rest, error when not writable, warning for an existing stash.
+export const pathFieldVariants = cva('flex w-full flex-col gap-2', {
   variants: {
-    variant: {
-      onboarding: '',
-      settings: ''
-    },
-    state: {
-      default: '',
-      busy: '',
-      'not-writable': '',
-      'existing-library': '',
-      unavailable: ''
-    }
+    state: { default: '', busy: '', 'not-writable': '', 'existing-library': '' }
   },
-  defaultVariants: { variant: 'onboarding', state: 'default' }
+  defaultVariants: { state: 'default' }
 })
+
+export const pathFieldBoxVariants = cva(
+  'flex items-center gap-3 overflow-clip rounded-lg border bg-surface-2 px-3 py-2.5',
+  {
+    variants: {
+      state: {
+        default: 'border-input',
+        busy: 'border-input',
+        'not-writable': 'border-error',
+        'existing-library': 'border-warning'
+      }
+    },
+    defaultVariants: { state: 'default' }
+  }
+)
